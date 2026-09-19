@@ -1,0 +1,60 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+  "report_generated_utc": "2026-03-13T20:15:00Z",
+
+  "code_deploy_state": {
+    "branch": "main",
+    "head_sha": "8db0fab26a9fa0baef452e267dd2d06f40eb49c7",
+    "git_status": "1 modified (monitoring/memory_monitoring.json), multiple untracked audit artifacts",
+    "runtime_sha": "8db0fab (container built from this commit)",
+    "runtime_matches_local_head": true
+  },
+
+  "runtime_process_state": {
+    "container_health": {
+      "api": "healthy (up 2 days)",
+      "redis": "healthy (up 2 days)",
+      "postgres": "healthy (up 2 days)"
+    },
+    "api_reachable": true,
+    "runtime_healthy": true,
+    "market_status": "CLOSED",
+    "total_trades_today": 0,
+    "total_trades_lifetime": 158,
+    "current_equity": 111612.21,
+    "peak_equity": 111612.21,
+    "cumulative_pnl": -1008.77,
+    "learning_mode": true,
+    "evolution_freeze": true,
+    "evolution_trades_remaining": 142,
+    "current_regime": "high_vol",
+    "tick_count": 942,
+    "open_positions": 0,
+    "pending_entries": 0,
+    "pending_exits": 0,
+    "accepted_orders": 0,
+    "stale_accepted_orders": 0,
+    "last_tick_utc": "2026-03-13T19:56:17.033638+00:00",
+    "data_stale": false,
+    "win_rate": 0.4304,
+    "winning_trades": 68,
+    "losing_trades": 89,
+    "avg_win": 17.70,
+    "avg_loss": -24.86,
+    "scanner_scans": 132,
+    "scanner_candidates": 0,
+    "ml_trained": false
+  },
+
+  "alpaca_account": {
+    "equity": 111612.21,
+    "cash": 111612.21,
+    "buying_power": 446448.84,
+    "long_market_value": 0,
+    "short_market_value": 0,
+    "status": "ACTIVE",
+    "pdt_flag": true,
+    "daytrade_count": 16
+  }
+}

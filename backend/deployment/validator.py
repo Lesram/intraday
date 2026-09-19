@@ -6,7 +6,7 @@ and provides automated fixes for common deployment issues.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 import os
 from pathlib import Path
@@ -43,7 +43,7 @@ class ProductionDeploymentValidator:
         self.logger.info("🚀 Starting Production Deployment Validation")
 
         validation_results = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
             'overall_status': 'PENDING',
             'readiness_score': 0,
             'critical_issues': [],

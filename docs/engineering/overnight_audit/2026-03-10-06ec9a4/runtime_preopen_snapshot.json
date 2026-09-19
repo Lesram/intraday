@@ -1,0 +1,70 @@
+{
+  "local_code_state": {
+    "branch": "main",
+    "head_sha": "06ec9a4",
+    "head_sha_full": "06ec9a46ef3f1659fb86e17ebb703075382f3a70",
+    "uncommitted_changes": [
+      "M backend/organism/background_trainer.py",
+      "M backend/organism/brain_persistence.py",
+      "M backend/organism/continuous_learner.py",
+      "M backend/organism/live_engine.py",
+      "M backend/organism/ml_signal.py",
+      "M scripts/runtime/generate_paper_validation_bundle.py"
+    ],
+    "uncommitted_changes_description": "J4 (evaluation-event history) + J5 (bg-trainer wiring) patches, not yet deployed"
+  },
+  "deployed_runtime_state": {
+    "container": "intra-api-1",
+    "container_status": "Up 3 hours (healthy)",
+    "runtime_sha": "unknown (git not in container)",
+    "api_reachable": true,
+    "data_stale": false,
+    "tick_count": 780,
+    "total_trades": 160,
+    "open_positions": 0,
+    "current_equity": 111612.23,
+    "peak_equity": 111728.49,
+    "brain_generation": 0,
+    "brain_total_runs": 36,
+    "evolved_generation": 3,
+    "ml_trained_api": true,
+    "learning_mode_api": true
+  },
+  "resolved_config": {
+    "timeframe": "1Min",
+    "timeframe_source": "container_env",
+    "max_positions": 15,
+    "alpha_top_n": 5,
+    "tick_interval_seconds": 10,
+    "exploration_enabled": false,
+    "drawdown_kill_pct": 0.20,
+    "risk_budget_learning": 0.001,
+    "risk_budget_production": 0.0025,
+    "confidence_gate_baseline": 0.4,
+    "fitness_gate_production": 0.45,
+    "horizon_timeout_bars": 18,
+    "bar_boundary_entry_only_declared": true,
+    "bar_boundary_entry_only_enforced": false,
+    "learning_mode": true,
+    "evolution_freeze": true
+  },
+  "universe": {
+    "env_override": "AAPL,MSFT,NVDA,TSLA,AMD,META,AMZN,GOOGL,SPY,QQQ,IWM,XLK,XLE,AVGO,CRM,COST,WMT,LLY,XOM,CAT,NFLX,ADBE,INTC,MU,COIN,SNOW,PLTR,UBER,ABNB,SQ",
+    "env_count": 30,
+    "code_default": "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,AMD,AVGO,CRM,COST,WMT,LLY,XOM,CAT,SPY,QQQ,IWM,XLK,XLE,SH,PSQ",
+    "code_default_count": 22,
+    "inverse_etfs_in_env": false,
+    "inverse_etfs_in_code": true,
+    "extra_symbols_in_env": ["NFLX","ADBE","INTC","MU","COIN","SNOW","PLTR","UBER","ABNB","SQ"],
+    "missing_from_env": ["SH","PSQ"]
+  },
+  "mismatch_indicators": {
+    "sha_match": "unknown",
+    "max_positions_code_vs_env": "code=8, env=15, MISMATCH",
+    "universe_size_code_vs_env": "code=22, env=30, MISMATCH",
+    "universe_composition": "env missing SH/PSQ inverse ETFs, added 10 extra symbols",
+    "bar_boundary_config_vs_code": "config=true, code=not_enforced, MISMATCH",
+    "ml_trained_api_vs_bundle": "api=true, bundle=false, STALE_BUNDLE",
+    "total_trades_api_vs_bundle": "api=160, bundle=142, STALE_BUNDLE"
+  }
+}

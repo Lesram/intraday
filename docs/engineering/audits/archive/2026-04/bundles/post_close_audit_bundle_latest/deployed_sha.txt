@@ -1,0 +1,7 @@
+save_essential_state count, reconciliation_adjustment count, regime_at_exit fix count:
+1
+1
+1
+---
+Container built from commit that includes all 3 fixes (3534346 or later)
+Repo HEAD: 8f1e65785521573668b4ec067d58f40fe0cdf5fe

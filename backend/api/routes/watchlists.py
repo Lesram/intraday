@@ -1,7 +1,7 @@
 """
 Watchlist management routes
 """
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 import os
 
@@ -166,7 +166,7 @@ async def update_watchlist(
             )
             db.add(db_symbol)
 
-    watchlist.updated_at = datetime.utcnow()
+    watchlist.updated_at = datetime.now(UTC)
     await db.commit()
 
     # Re-query with eager loading to get updated symbols
@@ -276,7 +276,7 @@ async def add_symbol_to_watchlist(
     )
     db.add(db_symbol)
 
-    watchlist.updated_at = datetime.utcnow()
+    watchlist.updated_at = datetime.now(UTC)
     await db.commit()
 
     # Re-query with eager loading to get updated symbols
@@ -331,7 +331,7 @@ async def remove_symbol_from_watchlist(
             detail=f"Symbol {symbol} not found in watchlist"
         )
 
-    watchlist.updated_at = datetime.utcnow()
+    watchlist.updated_at = datetime.now(UTC)
     await db.commit()
 
     # Re-query with eager loading to get updated symbols
@@ -387,7 +387,7 @@ async def reorder_watchlist_symbols(
         )
         db.add(db_symbol)
 
-    watchlist.updated_at = datetime.utcnow()
+    watchlist.updated_at = datetime.now(UTC)
     await db.commit()
 
     # Re-query with eager loading to get updated symbols
@@ -449,7 +449,7 @@ async def get_watchlist_quotes(
                     quotes_data.append({
                         "symbol": symbol,
                         "price": price,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(UTC).isoformat()
                     })
                 else:
                     # If no price available, return placeholder

@@ -1,0 +1,46 @@
+{
+  "audit_date": "2026-03-11",
+  "head_sha": "8db0fab",
+  "audit_timestamp_utc": "2026-03-11T18:59:00Z",
+
+  "recommendation": "GO_WITH_MANUAL_ACTION",
+
+  "rationale": {
+    "tick_loop_advancing": true,
+    "market_status_consistent": true,
+    "data_feed_healthy": true,
+    "no_runtime_blockers": true,
+    "no_suspicious_gate_blocking": true,
+    "stale_order_present": true,
+
+    "summary": "The organism is operating correctly and being genuinely selective. The tick loop advances every ~13s, data feeds are fresh, and all 3 containers are healthy. Zero trades today is explained by legitimately low confidence — the best candidate all day scored 0.22 vs a 0.25 floor gate. Regime instability (4 transitions: trending_up → trending_down → high_vol → low_vol) confirms a choppy/uncertain market day. The only operational issue is a stale WMT sell order from Mar 4 that should be cleaned up."
+  },
+
+  "manual_actions_required": [
+    {
+      "action": "cancel_stale_order",
+      "target": {
+        "order_id": "b6cc18d7-d6d5-4341-a9d4-f082b648ce9e",
+        "symbol": "WMT",
+        "side": "sell",
+        "qty": 42,
+        "status": "accepted",
+        "age_days": 6.9
+      },
+      "reason": "Ghost order — no broker_order_id, never sent to Alpaca, stuck in DB since Mar 4. No corresponding open position exists.",
+      "urgency": "LOW — not blocking runtime, but pollutes order state"
+    }
+  ],
+
+  "observations_for_future_sessions": [
+    "Zero-trade days will recur when breakout+tension signals stay below 0.25 for all 22 symbols. This is by design — the gates prevent forced entries in low-conviction environments.",
+    "The 721s tick gap at 13:55 UTC and a 12.3s tick at 14:44 UTC suggest occasional scheduler latency — non-blocking but worth monitoring.",
+    "Alpha weights sum = 0.9497 (warning) — harmless cosmetic gap but indicates a minor config calibration issue.",
+    "The 'async for' error in /api/v1/orders/validate fired 4 times at 07:20 UTC — this is a pre-market API bug in the order validation endpoint, not organism-related.",
+    "Market scanner returning 0 candidates consistently — normal for a low-momentum day but confirms lack of external signal input."
+  ],
+
+  "blockers_found": [],
+  "strategy_logic_changes_recommended": false,
+  "restart_recommended": false
+}

@@ -1,0 +1,36 @@
+commit 35281624cf85ddab0d5c9a20e5eccf74c385aa7b
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Wed Apr 8 23:46:29 2026 -0700
+
+    fix(brain): extend trained-state overwrite guard to save_essential_state [F-lite]
+    
+    Closes the proven Patch E gap. The recurring brain wipe (2026-04-08 02:08
+    UTC and 2026-04-09 02:58 UTC) went through save_essential_state(), not
+    save(). Patch E's guard was only in save(), so save_essential_state()
+    silently wrote zeros over a trained manifest when called with a fresh
+    learner/signal_gen.
+    
+    F-lite mirrors Patch E's guard at the top of save_essential_state() with
+    one addition: if self._manifest is empty (e.g. fresh OrganismBrain instance
+    pointing at an already-trained brain dir), the guard falls back to reading
+    manifest.json from disk before deciding. Unlike save(), there is no force
+    flag — the essential-save path is protected unconditionally against
+    trained→fresh regressions. The force-save endpoint (POST /organism/save?
+    force=true) is unaffected because it goes through save(), not
+    save_essential_state().
+    
+    Full Patch F (helper consolidation, read-back invariant, break-glass
+    semantics, suspicious-write stack tracing, LiveEngine forensic guard)
+    remains queued for a dedicated maintenance window. F-lite is the tactical
+    close of the one proven gap.
+    
+    Tests: 3 new tests in test_apr9_patch_f_lite_essential_state_guard.py
+    (blocks trained overwrite, allows healthy save, reads from disk when
+    self._manifest is empty). All 44 patch tests + 107 organism regression
+    subset pass.
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+ backend/organism/brain_persistence.py              |  44 +++++
+ ...test_apr9_patch_f_lite_essential_state_guard.py | 204 +++++++++++++++++++++
+ 2 files changed, 248 insertions(+)

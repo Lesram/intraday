@@ -1,0 +1,37 @@
+commit 15cc0a449d02a6e8baa0c534e81c1a35a2841860
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Sat Apr 11 12:59:51 2026 -0700
+
+    fix(mechanical): G1 exit-level restore warning + G2 cooldown-on-success-only + G3 NaN pyramid guard
+    
+    Three real-money mechanical hardening fixes identified by structural
+    code audit. All offline-only — NOT deployed. Safe to deploy after the
+    Exp1A observation window. No interaction with Exp1A/2/3.
+    
+    G1: Exit level restore failure promoted from DEBUG to WARNING and marks
+        the symbol's entry_metadata with exit_levels_failed=True so the
+        safety-net exit path can detect and handle positions running without
+        stop-loss protection after restart.
+        (live_engine.py:816-822)
+    
+    G2: Exit cooldown is now set ONLY on successful exit order submission.
+        Previously the finally block set cooldown regardless of success/failure,
+        creating a 30-second dead zone where a failed exit couldn't be retried.
+        On failure, the position is now eligible for immediate retry on the
+        next tick. Logged at WARNING for visibility.
+        (live_engine.py:1679-1690)
+    
+    G3: Pyramider.check_pyramid() now guards against NaN, Inf, zero, and
+        negative current_price at the top of the method. Previously, NaN
+        price would propagate into R-multiple comparisons where NaN < CUT_FULL
+        is always False, silently disabling all pyramid actions.
+        (pyramider.py:164-169)
+    
+    12 new tests. All 119 tests pass (12 G1/G2/G3 + 107 organism regression).
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+ backend/organism/live_engine.py         |  28 ++++-
+ backend/organism/pyramider.py           |   8 ++
+ tests/test_g1_g2_g3_mechanical_fixes.py | 183 ++++++++++++++++++++++++++++++++
+ 3 files changed, 214 insertions(+), 5 deletions(-)

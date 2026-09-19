@@ -1,0 +1,4 @@
+Total activities: 100
+Types: {'FILL': 100}
+
+No non-fill activities (no fees, interest, dividends, or adjustments)

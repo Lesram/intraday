@@ -1,0 +1,74 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+
+  "recommendation": "GO_UNCHANGED",
+
+  "blocker_count": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+
+  "rationale": {
+    "summary": "No blockers found. All issues are either structural design gaps (not bugs) or cosmetic. The organism ran correctly today — it correctly rejected losers and its inability to capture winners was due to well-understood structural limitations in the confidence formula and regime detection. No code change is justified by 2 days of evidence.",
+
+    "why_not_strategy_tweak": [
+      "The confidence gate is working as designed. Lowering it from 0.25 to 0.15 would have produced 2 winners + 3 losers over 2 days — no improvement.",
+      "The inverse ETF problem (SH/PSQ always eff_conf=0.00) is a confidence FORMULA issue, not a gate threshold issue. Changing the gate doesn't help.",
+      "The regime detector lag is a known limitation but it did NOT cause today's zero-trade outcome — the primary blocker was confidence scores, not regime.",
+      "Two data points (3/11 + 3/12) are insufficient to justify any strategy parameter change."
+    ],
+
+    "why_not_non_strategy_fix": [
+      "Trade forensic fields are wired correctly — they'll populate on the next trade. No fix needed.",
+      "realized_trades DB gap is a design gap, not a bug. Fixing it tonight adds risk for no immediate benefit.",
+      "Alpaca connection retry would be nice-to-have but errors are post-close and self-recovering.",
+      "Brain manifest sync gap (142 vs 158) will auto-correct on next brain save. Not urgent."
+    ],
+
+    "what_the_evidence_actually_shows": {
+      "forensic_fields": "FULLY WIRED in code since C2 patch (2026-03-09). Not exercised live due to 2 consecutive zero-trade days. Will auto-validate on next trade.",
+      "regime_detector": "Regime lag is real but NOT the primary cause of missed trades. Even with perfect regime detection, SH/PSQ would score eff_conf=0.00 because the confidence formula has no component for inverse-ETF worthiness.",
+      "missed_opportunities": "5 of 7 today's winners WERE detected as candidates. They failed at confidence (eff_conf 0.00-0.20, gate=0.25). The scanner IS working — the confidence formula is the bottleneck.",
+      "connection_errors": "All post-12:44 ET, all self-recovered, zero impact on trading",
+      "db_gap": "Design gap, not bug. Organism and DB are parallel systems that were never connected."
+    }
+  },
+
+  "investigation_items_for_later": [
+    {
+      "id": "INV-003",
+      "title": "Regime detector cross-session state contamination",
+      "severity": "MEDIUM",
+      "detail": "Smoothed regime probabilities persist across sessions. Consider resetting at session open.",
+      "timing": "After 5+ more trading sessions of evidence"
+    },
+    {
+      "id": "INV-008",
+      "title": "Confidence formula structural gap for inverse ETFs and defensive rotations",
+      "severity": "HIGH",
+      "detail": "The formula 0.65*breakout + 0.35*tension will ALWAYS produce near-zero for SH/PSQ/CRM-style moves. This is the root cause of the organism's inability to trade on sell-off days. Addressing this requires a strategy change (Phase C work).",
+      "timing": "Requires design discussion, not a quick fix"
+    },
+    {
+      "id": "INV-009",
+      "title": "COST liquidity gate uses share volume not dollar volume",
+      "severity": "LOW",
+      "detail": "COST at ~$1000/share has adequate dollar liquidity but fails the 10,000 share/20-bar gate.",
+      "timing": "Low priority — affects only 1 symbol"
+    },
+    {
+      "id": "INV-010",
+      "title": "MAE calculation uses stop_loss proxy instead of actual worst price",
+      "severity": "LOW",
+      "detail": "live_engine.py:3330 uses stop_loss distance, not true min-price tracking. Overstates MAE.",
+      "timing": "After more trades accumulate for validation"
+    }
+  ],
+
+  "exact_action_for_tomorrow": "No changes. Keep all thresholds, universe, confidence formula, and configuration identical. The next trade that opens and closes will validate the forensic field wiring. Continue accumulating evidence for the structural issues identified.",
+
+  "confidence_in_recommendation": "HIGH — zero blockers found, all issues are well-understood structural gaps, and 2 days of data cannot justify parameter changes"
+}

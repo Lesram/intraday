@@ -20,14 +20,15 @@ export const apiRoutes: ApiRoute[] = [
   { method: 'POST', endpoint: '/api/v1/auth/password-change', purpose: 'Change password', group: 'Authentication' },
 
   // Orders
+  // Audit-I finding I-8 (2026-05-02): removed `/api/v1/orders/bulk` and
+  // `DELETE /api/v1/orders/{order_id}` — neither exists on the backend.
+  // Cancel uses `POST /api/v1/orders/{order_id}/cancel`.
   { method: 'GET', endpoint: '/api/v1/orders/', purpose: 'List orders (includes system orders)', group: 'Orders' },
   { method: 'POST', endpoint: '/api/v1/orders/', purpose: 'Place single order', group: 'Orders' },
-  { method: 'POST', endpoint: '/api/v1/orders/bulk', purpose: 'Place bulk orders', group: 'Orders' },
   { method: 'GET', endpoint: '/api/v1/orders/{order_id}', purpose: 'Get order details', group: 'Orders' },
   { method: 'GET', endpoint: '/api/v1/orders/{order_id}/status', purpose: 'Get order status', group: 'Orders' },
   { method: 'PATCH', endpoint: '/api/v1/orders/{order_id}', purpose: 'Modify order', group: 'Orders' },
-  { method: 'DELETE', endpoint: '/api/v1/orders/{order_id}', purpose: 'Cancel order', group: 'Orders' },
-  { method: 'POST', endpoint: '/api/v1/orders/{order_id}/cancel', purpose: 'Cancel order (alternative)', group: 'Orders' },
+  { method: 'POST', endpoint: '/api/v1/orders/{order_id}/cancel', purpose: 'Cancel order', group: 'Orders' },
   { method: 'GET', endpoint: '/api/v1/orders/{order_id}/audit', purpose: 'Order audit trail', group: 'Orders' },
   { method: 'POST', endpoint: '/api/v1/orders/{order_id}/close-position', purpose: 'Close position via order', group: 'Orders' },
 

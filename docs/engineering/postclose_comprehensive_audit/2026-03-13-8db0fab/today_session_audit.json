@@ -1,0 +1,69 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "session_summary": {
+    "total_trades": 0,
+    "realized_pnl": 0.0,
+    "unrealized_pnl": 0.0,
+    "win_rate": "N/A (no trades)",
+    "avg_win": "N/A",
+    "avg_loss": "N/A",
+    "payoff_ratio": "N/A",
+    "mfe_summary": "N/A",
+    "mae_summary": "N/A",
+    "consecutive_zero_trade_days": 3
+  },
+
+  "orders": {
+    "submitted": 0,
+    "filled": 0,
+    "cancelled": 0,
+    "rejected": 0,
+    "stale": 0
+  },
+
+  "by_entry_source": {},
+  "by_exit_reason": {},
+  "top_winners": [],
+  "top_losers": [],
+  "symbol_breakdown": {},
+
+  "forensic_field_check": "N/A — no trades today to validate. Last brain save was 2026-03-11T21:13:37. All 142 CSV rows are pre-fix legacy with blank forensic fields. 16 in-memory trades (143-158) from post-fix runtime have not been persisted.",
+
+  "candidate_activity": {
+    "total_candidates_reaching_gates": "~120 rejection events across session",
+    "unique_symbols_rejected": ["WMT", "SH", "PSQ", "XOM", "COST", "XLE", "META", "AMZN", "GOOGL", "AAPL", "LLY"],
+    "max_eff_conf": 0.20,
+    "max_eff_conf_symbols": ["PSQ (0.20)", "SH (0.19)", "XOM (0.18)", "WMT (0.16)"],
+    "confidence_gate_floor": 0.25,
+    "gap_to_passing": 0.05,
+    "entries_blocked_ticks": 42,
+    "total_visible_ticks": 138,
+    "entries_blocked_pct": "30.4%"
+  },
+
+  "regime_timeline": [
+    {"utc": "13:56:15", "et": "8:56 (pre-market)", "regime": "trending_up"},
+    {"utc": "18:43:13", "et": "1:43 PM", "regime": "high_vol"},
+    {"utc": "19:37:32", "et": "2:37 PM", "regime": "trending_up"},
+    {"utc": "19:56:19", "et": "2:56 PM", "regime": "high_vol"}
+  ],
+
+  "errors": {
+    "total_errors": 19,
+    "all_alpaca_disconnects": true,
+    "first_error_utc": "14:25:03",
+    "last_error_utc": "19:56:06",
+    "errors_during_market_hours": 19,
+    "note": "All errors are Alpaca position service RemoteDisconnected — same pattern as 3/12. Self-recovering with streak=1."
+  },
+
+  "training": {
+    "jobs_submitted": 2,
+    "jobs_rejected": 2,
+    "job_22": "score=0.355<0.35, precision=0.471, cal_error=0.238, cal_mono=False",
+    "job_23": "score=0.318<0.35, precision=0.352, cal_error=0.339, cal_mono=False",
+    "note": "Job #22 was extremely close to passing (score=0.355, threshold=0.35). Precision improved to 47.1%. Still fails on calibration monotonicity."
+  }
+}

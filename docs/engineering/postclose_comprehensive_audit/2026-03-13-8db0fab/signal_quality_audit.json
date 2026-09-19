@@ -1,0 +1,49 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "signal_sources": {
+    "breakout_readiness": {
+      "description": "0.6 * breakout_readiness + 0.4 * squeeze_momentum",
+      "quality_today": "LOW — breakout signals near zero across universe due to market character (rotation, not breakout)",
+      "max_observed": "~0.12 (XOM)",
+      "expected_range": "0.0 to 1.0",
+      "note": "Breakout signals are correctly low. The market did not exhibit breakout characteristics today."
+    },
+    "tension": {
+      "description": "Mean-reversion tension score, capped at 1.0",
+      "quality_today": "MODERATE — inverse ETFs showed elevated tension (0.45-0.48) reflecting bearish market stress",
+      "max_observed": "~0.48 (SH)",
+      "expected_range": "0.0 to 1.0",
+      "note": "Tension signal is capturing market stress but has only 35% weight in the confidence formula."
+    },
+    "ml_signal": {
+      "description": "ML model prediction (disabled in learning mode)",
+      "quality_today": "N/A — ML weight = 0 in learning mode",
+      "note": "ML training job #22 nearly passed (score=0.355 vs 0.35 threshold). If ML were active, it could potentially improve scoring for non-breakout moves."
+    }
+  },
+
+  "regime_signal": {
+    "transitions_today": 4,
+    "timeline": [
+      {"utc": "13:56:15", "regime": "trending_up", "correct": "PARTIALLY — pre-market, no strong signal yet"},
+      {"utc": "18:43:13", "regime": "high_vol", "correct": "YES — market was selling off"},
+      {"utc": "19:37:32", "regime": "trending_up", "correct": "NO — brief bounce, still weak market"},
+      {"utc": "19:56:19", "regime": "high_vol", "correct": "YES — correctly reverted"}
+    ],
+    "accuracy": "50% (2/4 transitions correct)",
+    "lag_assessment": "15-20 bars as expected from SMA(200) + EMA smoothing",
+    "impact_on_trades": "NONE — no trades entered, so regime accuracy was irrelevant today"
+  },
+
+  "scanner_signal": {
+    "scans": 132,
+    "candidates_found": 0,
+    "symbols_evaluated": 11,
+    "detection_of_winners": "4/5 (80%) — PSQ, SH, XOM, WMT all evaluated, LLY missed",
+    "note": "Scanner is working well at detecting potential opportunities. The bottleneck is downstream in the confidence formula."
+  },
+
+  "overall_signal_quality": "FUNCTIONING_AS_DESIGNED. All signals are producing expected outputs given market conditions. The fundamental issue is that the confidence formula weights breakout heavily (65%), and today's opportunities were non-breakout in nature. This is a design limitation, not a signal quality problem."
+}

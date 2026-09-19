@@ -8,7 +8,8 @@ Targets 70%+ coverage for QuoteManager:
 - Metrics tracking
 """
 
-from datetime import datetime, timedelta
+# V4 Z-R-1 (2026-05-02): production tz-aware UTC; fixtures need it too.
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -38,7 +39,7 @@ def sample_quote():
         bid=149.99,
         ask=150.01,
         last=150.00,
-        timestamp=datetime.now(),
+        timestamp=datetime.now(UTC),
         volume=1000000,
     )
 
@@ -69,7 +70,7 @@ class TestQuote:
             bid=0,
             ask=0,
             last=150.00,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
         )
         assert quote.mid == 150.00
         
@@ -96,7 +97,7 @@ class TestQuote:
             bid=149.99,
             ask=150.01,
             last=150.00,
-            timestamp=datetime.now() - timedelta(seconds=10),
+            timestamp=datetime.now(UTC) - timedelta(seconds=10),
         )
         
         assert old_quote.is_stale(max_age_seconds=5) is True
@@ -145,7 +146,7 @@ class TestGetQuote:
             bid=149.99,
             ask=150.01,
             last=150.00,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
         )
         
         quote_manager.get_quotes = AsyncMock(return_value={"AAPL": expected_quote})
@@ -181,7 +182,7 @@ class TestCache:
             bid=149.99,
             ask=150.01,
             last=150.00,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
         )
         quote_manager.memory_cache["AAPL"] = test_quote
         
@@ -233,7 +234,7 @@ class TestMetrics:
             bid=149.99,
             ask=150.01,
             last=150.00,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
         )
         quote_manager.memory_cache["AAPL"] = test_quote
         

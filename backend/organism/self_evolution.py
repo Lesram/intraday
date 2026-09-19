@@ -382,46 +382,16 @@ class EvolutionEngine:
     ) -> None:
         """Adjust alpha scanner weights based on signal attribution.
 
-        For each trade, we check whether high-confidence signals
-        (ML, breakout, volume, momentum) predicted the right direction.
-        Signals that correlated with wins get more weight.
+        NOTE: alpha_weight_ml is NOT adapted here.  There is no explicit
+        ML-attribution field on trade records, so confidence is not a
+        reliable proxy for ML participation -- especially in learning
+        mode where ML weight is zero.  Only momentum and regime weights
+        are adapted based on directional accuracy.
         """
-        # Bucketise trades by signal present at entry
-        # We use confidence ≈ breakout_score proxy plus predicted_return
-        win_pnl = [t.pnl for t in trades if t.pnl > 0]
-        loss_pnl = [t.pnl for t in trades if t.pnl <= 0]
-
-        if not win_pnl and not loss_pnl:
+        if not trades:
             return
 
-        avg_win = float(np.mean(win_pnl)) if win_pnl else 0.0
-        avg_loss = float(np.mean(loss_pnl)) if loss_pnl else 0.0
-        total_pnl = sum(t.pnl for t in trades)
-
-        # Heuristic: if ML-predicted trades (high confidence) won more
-        high_conf_trades = [t for t in trades if t.confidence > 0.6]
-        low_conf_trades = [t for t in trades if t.confidence <= 0.6]
-
-        high_conf_wr = (
-            sum(1 for t in high_conf_trades if t.pnl > 0)
-            / max(len(high_conf_trades), 1)
-        )
-        low_conf_wr = (
-            sum(1 for t in low_conf_trades if t.pnl > 0)
-            / max(len(low_conf_trades), 1)
-        )
-
-        # If high-confidence (ML-driven) trades have better win rate,
-        # increase ML weight at the expense of the weakest signal
-        if high_conf_wr > low_conf_wr + 0.05 and len(high_conf_trades) >= 3:
-            ml_boost = min(0.05, (high_conf_wr - low_conf_wr) * 0.15)
-            params.alpha_weight_ml = self._ema_update(
-                params.alpha_weight_ml,
-                params.alpha_weight_ml + ml_boost,
-            )
-            changes["alpha_weight_ml"] = f"+{ml_boost:.3f} (high-conf WR {high_conf_wr:.1%})"
-
-        # Direction accuracy of trades → boost momentum if direction is right
+        # Direction accuracy of trades -> boost momentum if direction is right
         correct_dir = [t for t in trades if t.correct_direction]
         dir_accuracy = len(correct_dir) / max(len(trades), 1)
 
@@ -579,9 +549,20 @@ class EvolutionEngine:
 
         current_scale = params.regime_size_scales[epoch_regime]
 
+        # Audit 2026-06-09 (plan 2.5): above-1.0 sizing is risk-EXPANDING
+        # and must clear an evidence bar, not ride a small-sample epoch.
+        # Scale-ups beyond 1.0 require >= 100 resolved trades in this
+        # regime (cumulative); the 1.5 ceiling only becomes reachable with
+        # real evidence. Scale-DOWNS (risk-reducing) are never gated.
+        _regime_trade_count = int(
+            params.regime_trade_counts.get(epoch_regime, 0)
+            if hasattr(params, "regime_trade_counts") else 0
+        ) or n
+        _up_ceiling = 1.5 if _regime_trade_count >= 100 else 1.0
+
         # Positive average → this regime is working, scale up (gently)
         if avg_pnl > 0:
-            new_scale = min(current_scale * 1.08, 1.5)
+            new_scale = min(current_scale * 1.08, _up_ceiling)
         elif avg_pnl < 0:
             new_scale = max(current_scale * 0.90, 0.05)
         else:
@@ -804,6 +785,25 @@ class EvolutionEngine:
     #   7. BREAKOUT WEIGHT ADAPTATION
     # ═════════════════════════════════════════════════════════════
 
+    @staticmethod
+    def _is_breakout_trade(t: Any) -> bool:
+        """Check if a trade was breakout-sourced.
+
+        Uses entry_source as the primary criterion.  Falls back to a
+        confidence heuristic (> 0.6) for old trades that pre-date the
+        entry_source field.
+        """
+        raw_src = getattr(t, "entry_source", "")
+        if isinstance(raw_src, str):
+            src = raw_src.strip().lower()
+            if src and src not in {"nan", "none", "null"}:
+                return "breakout" in src
+        # Backward compat: old trades without entry_source
+        try:
+            return float(getattr(t, "confidence", 0.0) or 0.0) > 0.6
+        except (TypeError, ValueError):
+            return False
+
     def _evolve_breakout_weights(
         self,
         params: EvolvedParams,
@@ -812,26 +812,24 @@ class EvolutionEngine:
     ) -> None:
         """Adjust breakout scanner weights based on breakout trade outcomes.
 
-        Trades with high breakout_score that were profitable → boost
-        the breakout signals.  Trades with low breakout_score that won →
-        reduce over-reliance on breakout.
+        Trades are identified as breakout trades by entry_source (primary)
+        or a confidence > 0.6 fallback for legacy trades without
+        entry_source.  The winning/losing split uses PnL, not confidence.
         """
-        # We can infer breakout involvement from confidence (which is
-        # boosted by breakout_score in the master script)
-        high_brk = [t for t in trades if t.confidence > 0.7]
-        low_brk = [t for t in trades if t.confidence <= 0.5]
+        brk_trades = [t for t in trades if self._is_breakout_trade(t)]
+        non_brk = [t for t in trades if not self._is_breakout_trade(t)]
 
-        if len(high_brk) < 3:
+        if len(brk_trades) < 3:
             return
 
-        brk_win_rate = sum(1 for t in high_brk if t.pnl > 0) / len(high_brk)
-        brk_avg_pnl = float(np.mean([t.pnl for t in high_brk]))
+        brk_win_rate = sum(1 for t in brk_trades if t.pnl > 0) / len(brk_trades)
+        brk_avg_pnl = float(np.mean([t.pnl for t in brk_trades]))
         non_brk_avg = (
-            float(np.mean([t.pnl for t in low_brk]))
-            if low_brk else 0.0
+            float(np.mean([t.pnl for t in non_brk]))
+            if non_brk else 0.0
         )
 
-        if brk_avg_pnl > non_brk_avg * 1.5 and brk_win_rate > 0.5:
+        if brk_avg_pnl > 0 and brk_avg_pnl > non_brk_avg * 1.5 and brk_win_rate > 0.5:
             # Breakout trades outperform — increase volume & squeeze weights
             params.breakout_weight_volume = self._ema_update(
                 params.breakout_weight_volume,
@@ -846,7 +844,7 @@ class EvolutionEngine:
                 f"boost (brk_pnl=${brk_avg_pnl:.0f} > "
                 f"non_brk=${non_brk_avg:.0f})"
             )
-        elif brk_avg_pnl < 0 and len(high_brk) >= 3:
+        elif brk_avg_pnl < 0 and len(brk_trades) >= 3:
             # Breakout trades losing — reduce weights
             params.breakout_weight_volume = self._ema_update(
                 params.breakout_weight_volume,
@@ -891,7 +889,7 @@ class EvolutionEngine:
         - High average holding-period → indicators may be too slow → shorten.
         - Very short holding-period → may be too fast → lengthen.
         """
-        brk_trades = [t for t in trades if t.confidence > 0.6]
+        brk_trades = [t for t in trades if self._is_breakout_trade(t)]
         if len(brk_trades) < 5:
             return
 
@@ -933,10 +931,16 @@ class EvolutionEngine:
     # ═════════════════════════════════════════════════════════════
 
     # Thresholds for enabling / disabling shorts
+    # Audit 2026-06-09 (plan 2.5): re-enabling shorts from a 10-trade EMA
+    # was statistically meaningless (a coin flips 55%+ over 10 trials ~25%
+    # of the time) and defeated the conservative shorts-start-disabled
+    # guard. Now requires 100 resolved short observations — Gate-2-style
+    # evidence, not noise.
     _SHORT_ENABLE_WR = 0.55       # need 55% win rate on shorts to enable
     _SHORT_ENABLE_PNL = 10.0      # need avg PnL > $10 on shorts
     _SHORT_DISABLE_WR = 0.35      # disable if WR drops below 35%
-    _SHORT_MIN_TRADES = 10        # minimum short trades to judge
+    _SHORT_MIN_TRADES = 10        # minimum short trades to update EMA stats
+    _SHORT_ENABLE_MIN_TRADES = 100  # plan 2.5: evidence bar to ENABLE shorts
 
     def _evolve_short_side(
         self,
@@ -950,6 +954,13 @@ class EvolutionEngine:
         has accumulated enough evidence that bearish trades are profitable
         in the current regime.  They can be disabled again if performance
         degrades.
+
+        Audit-M finding M-13 (2026-05-02): Under LONG_ONLY=True (current
+        production setting) this method early-returns at line 944
+        (`if not short_trades: return`) because no short trades ever
+        accumulate. The path is correct — a no-op when shorts are
+        impossible — but kept defined so toggling LONG_ONLY=False
+        without a code change reactivates the evolution logic.
         """
         alpha = 0.3
         # Identify short-direction trades (direction == -1)
@@ -976,6 +987,10 @@ class EvolutionEngine:
             return  # Not enough data
 
         if not params.shorts_enabled:
+            # Plan 2.5: ENABLING is a risk-expanding decision and needs a
+            # much higher evidence bar than the EMA-update threshold.
+            if params.short_trade_count < self._SHORT_ENABLE_MIN_TRADES:
+                return
             # Check if we should enable
             if (
                 params.short_win_rate >= self._SHORT_ENABLE_WR
@@ -1030,13 +1045,16 @@ class EvolutionEngine:
         if len(trades) < self.min_trades:
             return
 
-        # Estimate directional accuracy from trade outcomes
-        # Use actual trade direction (sign of pnl with shares direction)
+        # Estimate directional accuracy from trade outcomes.
+        # A trade is "correct" when the position was profitable:
+        # - Long (direction>0) with pnl>0, OR
+        # - Short (direction<0) with pnl>0.
+        # Use correct_direction property when available (handles edge cases).
         correct = sum(
             1 for t in trades
             if (
-                (getattr(t, "direction", 1) > 0 and t.pnl > 0)
-                or (getattr(t, "direction", 1) < 0 and t.pnl < 0)
+                getattr(t, "correct_direction", False)
+                or (not hasattr(t, "correct_direction") and t.pnl > 0)
             )
         )
         accuracy = correct / len(trades)
@@ -1139,20 +1157,29 @@ class EvolutionEngine:
 
     @staticmethod
     def _normalize_alpha_weights(params: EvolvedParams) -> None:
-        """Ensure alpha weights sum to 1.0."""
-        total = (
-            params.alpha_weight_ml
-            + params.alpha_weight_volume
+        """Normalise alpha weights to sum to 1.0.
+
+        alpha_weight_ml is held fixed because there is no explicit ML
+        attribution signal on trade records -- only momentum and regime
+        weights are adapted, so only those (plus volume and breakout)
+        are renormalized to fill the remainder (1.0 - alpha_weight_ml).
+        """
+        ml_fixed = params.alpha_weight_ml
+        non_ml_total = (
+            params.alpha_weight_volume
             + params.alpha_weight_momentum
             + params.alpha_weight_breakout
             + params.alpha_weight_regime
         )
-        if total > 0:
-            params.alpha_weight_ml /= total
-            params.alpha_weight_volume /= total
-            params.alpha_weight_momentum /= total
-            params.alpha_weight_breakout /= total
-            params.alpha_weight_regime /= total
+        target = 1.0 - ml_fixed
+        if non_ml_total > 1e-8:
+            scale = target / non_ml_total
+            params.alpha_weight_volume *= scale
+            params.alpha_weight_momentum *= scale
+            params.alpha_weight_breakout *= scale
+            params.alpha_weight_regime *= scale
+        # ML weight stays exactly where it was
+        params.alpha_weight_ml = ml_fixed
 
     @staticmethod
     def _normalize_breakout_weights(params: EvolvedParams) -> None:

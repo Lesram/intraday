@@ -1,0 +1,41 @@
+{
+  "source": "organism_brain/ml_state.json",
+  "generation": 116,
+  "is_trained": true,
+  "feature_count": 79,
+  "train_window": 100,
+  "latest_metrics": {
+    "generation": 116,
+    "accuracy": 0.6169,
+    "precision": 0.5146,
+    "recall": 0.7154,
+    "f1": 0.5986,
+    "direction_accuracy": 0.6169,
+    "mean_pred_return": -0.000119,
+    "hit_rate": 0.6039
+  },
+  "feature_importance_top10": [
+    ["garman_klass_vol", 0.0483],
+    ["hurst", 0.0367],
+    ["pct_from_52w_low", 0.0352],
+    ["sma_20", 0.0329],
+    ["trend_strength", 0.0308],
+    ["rel_strength_spy", 0.0303],
+    ["hurst_exponent", 0.0283],
+    ["choppiness", 0.0255],
+    ["ret_autocorr_10", 0.0252],
+    ["adx_14", 0.0242]
+  ],
+  "xgb_params": {
+    "n_estimators": 177,
+    "max_depth": 3,
+    "learning_rate": 0.0398,
+    "min_child_weight": 5,
+    "subsample": 0.8632,
+    "colsample_bytree": 0.8632,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0
+  },
+  "joblib_artifacts_mtime": "2026-04-15T19:43 PDT — not re-saved since (in-memory state has evolved to gen 116; on-disk joblib is from the image-build era)",
+  "calibration_nonzero_buckets": [[53,167],[11,53],[3,8]]
+}

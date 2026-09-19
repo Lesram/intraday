@@ -350,7 +350,7 @@ class TestConfigValidator:
         """Test validation in development mode."""
         with patch.dict(os.environ, {
             "DATABASE_URL": "postgresql://localhost/db",
-            "JWT_SECRET": "supersecretkeythatisatleast32chars",
+            "SECURITY_JWT_SECRET": "supersecretkeythatisatleast32chars",
         }, clear=True):
             validator = ConfigValidator(environment="development")
             errors = validator.validate()
@@ -365,14 +365,17 @@ class TestConfigValidator:
             validator = ConfigValidator(environment="development")
             errors = validator.validate()
             
-            required_errors = [e for e in errors if e.key in ["DATABASE_URL", "JWT_SECRET"]]
+            required_errors = [
+                e for e in errors
+                if e.key in ["DATABASE_URL", "SECURITY_JWT_SECRET"]
+            ]
             assert len(required_errors) >= 2
     
     def test_validate_production_missing_alpaca(self):
         """Test production validation missing Alpaca keys."""
         with patch.dict(os.environ, {
             "DATABASE_URL": "postgresql://localhost/db",
-            "JWT_SECRET": "supersecretkeythatisatleast32chars",
+            "SECURITY_JWT_SECRET": "supersecretkeythatisatleast32chars",
         }, clear=True):
             validator = ConfigValidator(environment="production")
             errors = validator.validate()
@@ -384,21 +387,24 @@ class TestConfigValidator:
         """Test warning for short JWT secret."""
         with patch.dict(os.environ, {
             "DATABASE_URL": "postgresql://localhost/db",
-            "JWT_SECRET": "short",
+            "SECURITY_JWT_SECRET": "short",
         }, clear=True):
             validator = ConfigValidator(environment="development")
             errors = validator.validate()
             
-            jwt_warnings = [e for e in errors if e.key == "JWT_SECRET" and e.severity == "warning"]
+            jwt_warnings = [
+                e for e in errors
+                if e.key == "SECURITY_JWT_SECRET" and e.severity == "warning"
+            ]
             assert len(jwt_warnings) == 1
     
     def test_validate_development_secret_in_production(self):
         """Test error for development secret in production."""
         with patch.dict(os.environ, {
             "DATABASE_URL": "postgresql://localhost/db",
-            "JWT_SECRET": "development-secret",
-            "ALPACA_API_KEY": "key",
-            "ALPACA_SECRET_KEY": "secret",
+            "SECURITY_JWT_SECRET": "development-secret",
+            "ALPACA_API_KEY_ID": "key",
+            "ALPACA_API_SECRET_KEY": "secret",
         }, clear=True):
             validator = ConfigValidator(environment="production")
             errors = validator.validate()
@@ -410,7 +416,7 @@ class TestConfigValidator:
         """Test is_valid returns True when valid."""
         with patch.dict(os.environ, {
             "DATABASE_URL": "postgresql://localhost/db",
-            "JWT_SECRET": "supersecretkeythatisatleast32chars",
+            "SECURITY_JWT_SECRET": "supersecretkeythatisatleast32chars",
         }, clear=True):
             validator = ConfigValidator(environment="development")
             assert validator.is_valid() is True

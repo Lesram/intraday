@@ -1,0 +1,21 @@
+{
+  "task_id": "paper-scheduler-bridge",
+  "summary": "Immutable scheduler bridge validation only; no old-main platform test claim",
+  "sha": "8439b44405c6d3cfe704138f0c871a6f7287341c",
+  "branch": "codex/paper-scheduler-bridge",
+  "tests_passed": [
+    "paper-postclose-audit.yml",
+    "nightly.yml",
+    "staging.yml"
+  ],
+  "tests_failed": [],
+  "runtime_behavior_changed": false,
+  "risks": [
+    "Scheduled evidence comes from pinned operational source, not main",
+    "Old-main CI failures and existing staging lint diagnostics are retained",
+    "Do not merge until pinned postclose and safety evidence pass"
+  ],
+  "source_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "validation_errors": [],
+  "source_evidence_pr": "https://github.com/Lesram/intraday/pull/12"
+}

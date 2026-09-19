@@ -2,14 +2,20 @@ import { Table, Input } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useState, useMemo } from 'react';
 
-interface ThresholdTableProps<T extends Record<string, unknown>> {
+// V13 W98 (Lens 7): the original constraint was
+// ``T extends Record<string, unknown>`` which blocked typed records
+// (RegimeScale, ThresholdConfig, etc.) from satisfying the index
+// signature.  Relaxing to ``T extends object`` keeps the generic
+// useful while letting concrete typed records pass.  The unsafe
+// indexing in ``filtered`` is now narrowed via a typed helper.
+interface ThresholdTableProps<T extends object> {
   data: T[];
   columns: ColumnsType<T>;
   searchField?: keyof T;
   pageSize?: number;
 }
 
-function ThresholdTable<T extends Record<string, unknown>>({
+function ThresholdTable<T extends object>({
   data,
   columns,
   searchField,
@@ -20,7 +26,10 @@ function ThresholdTable<T extends Record<string, unknown>>({
   const filtered = useMemo(() => {
     if (!search || !searchField) return data;
     const lower = search.toLowerCase();
-    return data.filter((row) => String(row[searchField]).toLowerCase().includes(lower));
+    return data.filter((row) => {
+      const v = (row as Record<string, unknown>)[searchField as string];
+      return String(v ?? '').toLowerCase().includes(lower);
+    });
   }, [data, search, searchField]);
 
   return (

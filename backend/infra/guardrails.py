@@ -262,10 +262,39 @@ class TradingGuardrails:
             )
 
     def _check_trading_window(self, order: OrderRequest):
-        """Check if order is submitted during allowed trading hours."""
-        now_utc = datetime.now(UTC).time()
+        """Check if order is submitted during allowed trading hours.
 
-        # Simple window check (doesn't handle overnight windows)
+        Audit-K finding K-1 (2026-05-02): the trading window was checked
+        against UTC time-of-day. Window default 14:30-21:00 UTC = 9:30-16:00
+        EST in winter, but 10:30-17:00 EDT in summer (DST shift). To make
+        this DST-safe, prefer the canonical `is_market_open` helper if
+        you don't need a custom window. Kept the literal-time fallback
+        for users who set explicit TRADING_WINDOW_START/END.
+        """
+        try:
+            from backend.utils.market_hours import is_market_open
+            # If user is using defaults (14:30 / 21:00 UTC), use canonical
+            # market-hours helper for DST-correctness.
+            if (
+                str(self.trading_window_start) == "14:30:00"
+                and str(self.trading_window_end) == "21:00:00"
+            ):
+                if not is_market_open(include_extended=False):
+                    now_utc = datetime.now(UTC).time()
+                    raise GuardrailViolation(
+                        code=GuardrailCode.MARKET_CLOSED,
+                        message="Trading window closed (canonical market_hours)",
+                        details={
+                            "current_time_utc": str(now_utc),
+                            "can_override": self.allow_admin_override and order.is_admin,
+                        },
+                    )
+                return
+        except ImportError:
+            pass
+
+        # Custom-window fallback (still UTC-literal — user's responsibility)
+        now_utc = datetime.now(UTC).time()
         if not (self.trading_window_start <= now_utc <= self.trading_window_end):
             raise GuardrailViolation(
                 code=GuardrailCode.MARKET_CLOSED,

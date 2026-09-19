@@ -1,0 +1,225 @@
+{
+  "total_pnl": 53.719999999999985,
+  "trades": [
+    {
+      "symbol": "AMD",
+      "shares": 22,
+      "avg_entry": 207.990455,
+      "exit_price": 209.68,
+      "buy_cost": 4575.79,
+      "sell_proceeds": 4612.96,
+      "pnl": 37.17,
+      "entry_time": "2026-04-02T14:07:06",
+      "exit_time": "2026-04-02T14:24:08"
+    },
+    {
+      "symbol": "AMZN",
+      "shares": 22,
+      "avg_entry": 209.186364,
+      "exit_price": 210.12,
+      "buy_cost": 4602.1,
+      "sell_proceeds": 4622.64,
+      "pnl": 20.54,
+      "entry_time": "2026-04-02T14:19:05",
+      "exit_time": "2026-04-02T14:36:06"
+    },
+    {
+      "symbol": "META",
+      "shares": 5,
+      "avg_entry": 576.96,
+      "exit_price": 573.8,
+      "buy_cost": 2884.8,
+      "sell_proceeds": 2869.0,
+      "pnl": -15.8,
+      "entry_time": "2026-04-02T14:37:11",
+      "exit_time": "2026-04-02T14:39:07"
+    },
+    {
+      "symbol": "IWM",
+      "shares": 7,
+      "avg_entry": 251.339231,
+      "exit_price": 250.555715,
+      "buy_cost": 1759.37,
+      "sell_proceeds": 1753.89,
+      "pnl": -5.48,
+      "entry_time": "2026-04-02T14:37:10",
+      "exit_time": "2026-04-02T14:42:09"
+    },
+    {
+      "symbol": "XLK",
+      "shares": 40,
+      "avg_entry": 133.92175,
+      "exit_price": 134.97925,
+      "buy_cost": 5356.87,
+      "sell_proceeds": 5399.17,
+      "pnl": 42.3,
+      "entry_time": "2026-04-02T14:28:12",
+      "exit_time": "2026-04-02T14:43:16"
+    },
+    {
+      "symbol": "AMD",
+      "shares": 8,
+      "avg_entry": 212.99,
+      "exit_price": 212.1,
+      "buy_cost": 1703.92,
+      "sell_proceeds": 1696.8,
+      "pnl": -7.12,
+      "entry_time": "2026-04-02T14:57:11",
+      "exit_time": "2026-04-02T15:03:10"
+    },
+    {
+      "symbol": "AMD",
+      "shares": 15,
+      "avg_entry": 214.286667,
+      "exit_price": 214.270667,
+      "buy_cost": 3214.3,
+      "sell_proceeds": 3214.06,
+      "pnl": -0.24,
+      "entry_time": "2026-04-02T15:11:07",
+      "exit_time": "2026-04-02T15:22:11"
+    },
+    {
+      "symbol": "XLE",
+      "shares": 55,
+      "avg_entry": 59.438,
+      "exit_price": 59.35,
+      "buy_cost": 3269.09,
+      "sell_proceeds": 3264.25,
+      "pnl": -4.84,
+      "entry_time": "2026-04-02T15:19:06",
+      "exit_time": "2026-04-02T15:26:05"
+    },
+    {
+      "symbol": "XLK",
+      "shares": 24,
+      "avg_entry": 135.58,
+      "exit_price": 135.37,
+      "buy_cost": 3253.92,
+      "sell_proceeds": 3248.88,
+      "pnl": -5.04,
+      "entry_time": "2026-04-02T15:37:07",
+      "exit_time": "2026-04-02T15:42:03"
+    },
+    {
+      "symbol": "AMZN",
+      "shares": 15,
+      "avg_entry": 210.03,
+      "exit_price": 209.912,
+      "buy_cost": 3150.45,
+      "sell_proceeds": 3148.68,
+      "pnl": -1.77,
+      "entry_time": "2026-04-02T15:47:11",
+      "exit_time": "2026-04-02T15:50:03"
+    },
+    {
+      "symbol": "XLE",
+      "shares": 56,
+      "avg_entry": 59.21,
+      "exit_price": 59.13,
+      "buy_cost": 3315.76,
+      "sell_proceeds": 3311.28,
+      "pnl": -4.48,
+      "entry_time": "2026-04-02T15:55:07",
+      "exit_time": "2026-04-02T15:56:08"
+    },
+    {
+      "symbol": "XLK",
+      "shares": 12,
+      "avg_entry": 135.21,
+      "exit_price": 134.949167,
+      "buy_cost": 1622.52,
+      "sell_proceeds": 1619.39,
+      "pnl": -3.13,
+      "entry_time": "2026-04-02T15:58:09",
+      "exit_time": "2026-04-02T16:09:10"
+    },
+    {
+      "symbol": "SH",
+      "shares": 88,
+      "avg_entry": 37.71,
+      "exit_price": 37.69,
+      "buy_cost": 3318.48,
+      "sell_proceeds": 3316.72,
+      "pnl": -1.76,
+      "entry_time": "2026-04-02T17:14:12",
+      "exit_time": "2026-04-02T17:16:03"
+    },
+    {
+      "symbol": "XLK",
+      "shares": 40,
+      "avg_entry": 135.262,
+      "exit_price": 135.47,
+      "buy_cost": 5410.48,
+      "sell_proceeds": 5418.8,
+      "pnl": 8.32,
+      "entry_time": "2026-04-02T17:12:09",
+      "exit_time": "2026-04-02T17:29:01"
+    },
+    {
+      "symbol": "XLK",
+      "shares": 24,
+      "avg_entry": 135.380417,
+      "exit_price": 135.229166,
+      "buy_cost": 3249.13,
+      "sell_proceeds": 3245.5,
+      "pnl": -3.63,
+      "entry_time": "2026-04-02T17:39:08",
+      "exit_time": "2026-04-02T17:46:05"
+    },
+    {
+      "symbol": "XOM",
+      "shares": 24,
+      "avg_entry": 160.301515,
+      "exit_price": 160.67,
+      "buy_cost": 3847.24,
+      "sell_proceeds": 3856.08,
+      "pnl": 8.84,
+      "entry_time": "2026-04-02T17:54:11",
+      "exit_time": "2026-04-02T18:11:33"
+    },
+    {
+      "symbol": "NVDA",
+      "shares": 4,
+      "avg_entry": 176.97,
+      "exit_price": 176.975,
+      "buy_cost": 707.88,
+      "sell_proceeds": 707.9,
+      "pnl": 0.02,
+      "entry_time": "2026-04-02T18:42:12",
+      "exit_time": "2026-04-02T18:56:13"
+    },
+    {
+      "symbol": "XOM",
+      "shares": 20,
+      "avg_entry": 160.96,
+      "exit_price": 160.81,
+      "buy_cost": 3219.2,
+      "sell_proceeds": 3216.2,
+      "pnl": -3.0,
+      "entry_time": "2026-04-02T18:52:06",
+      "exit_time": "2026-04-02T18:58:04"
+    },
+    {
+      "symbol": "SH",
+      "shares": 88,
+      "avg_entry": 37.69,
+      "exit_price": 37.68,
+      "buy_cost": 3316.72,
+      "sell_proceeds": 3315.84,
+      "pnl": -0.88,
+      "entry_time": "2026-04-02T19:01:12",
+      "exit_time": "2026-04-02T19:02:04"
+    },
+    {
+      "symbol": "PSQ",
+      "shares": 105,
+      "avg_entry": 31.88,
+      "exit_price": 31.82,
+      "buy_cost": 3347.4,
+      "sell_proceeds": 3341.1,
+      "pnl": -6.3,
+      "entry_time": "2026-04-02T19:43:12",
+      "exit_time": "2026-04-02T19:51:06"
+    }
+  ]
+}

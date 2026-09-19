@@ -63,9 +63,7 @@ def check_no_hardcoded_credentials() -> bool:
         (r'{["\']admin["\']: ["\']admin123["\']', "credentials dictionary"),
     ]
     
-    excluded_files = {
-        "backend/api/auth.py",  # Legacy file with test fallback
-    }
+    excluded_files = set()  # COMP-007 fix: no files excluded from credential scanning
     
     for py_file in backend_path.rglob("*.py"):
         # Skip excluded files

@@ -84,7 +84,7 @@ async def get_portfolio(
     except Exception as e:
         logger.error(f"[PORTFOLIO] ERROR: {type(e).__name__}: {str(e)}")
         logger.error(f"[PORTFOLIO] Traceback:\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch portfolio: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch portfolio")
 
 
 @router.get("/history", response_model=list[dict[str, Any]])
@@ -116,29 +116,56 @@ async def get_portfolio_history(
 
         return history
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch portfolio history: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch portfolio history")
 
 
 class PositionResponse(BaseModel):
-    """§13.4 FIX: Consolidated position DTO matching frontend Position interface."""
+    """Consolidated position DTO matching the frontend Position interface.
+
+    V4 O-2 (2026-05-02): the previous schema declared `populate_by_name=True`
+    in the comment "alignment with frontend Position interface", but
+    populate_by_name only affects *input* parsing — output JSON used the
+    snake_case field names. The frontend (`portfolioStore.ts`) reads
+    `averagePrice / marketValue / unrealizedPnL / unrealizedPnLPercent`,
+    so 5 of 7 numeric fields silently arrived as `undefined`. Dormant
+    today only because the paper account is flat. Add explicit
+    `serialization_alias` for each divergent field so the JSON keys
+    match what the frontend reads, and emit by_alias on response.
+    """
+
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str
     quantity: float = Field(default=0.0, alias="qty")
-    average_entry_price: float = Field(default=0.0, alias="avg_price")
-    current_price: float = 0.0
-    market_value: float = 0.0
-    unrealized_pl: float = Field(default=0.0, alias="unrealized_pnl")
-    unrealized_pl_percent: float = 0.0
-    realized_pl: float = 0.0
-    cost_basis: float = 0.0
+    average_entry_price: float = Field(
+        default=0.0,
+        alias="avg_price",
+        serialization_alias="averagePrice",
+    )
+    current_price: float = Field(default=0.0, serialization_alias="currentPrice")
+    market_value: float = Field(default=0.0, serialization_alias="marketValue")
+    unrealized_pl: float = Field(
+        default=0.0,
+        alias="unrealized_pnl",
+        serialization_alias="unrealizedPnL",
+    )
+    unrealized_pl_percent: float = Field(
+        default=0.0,
+        serialization_alias="unrealizedPnLPercent",
+    )
+    realized_pl: float = Field(default=0.0, serialization_alias="realizedPnL")
+    cost_basis: float = Field(default=0.0, serialization_alias="costBasis")
     side: str = "long"
-    opened_at: str = ""
-    updated_at: str = ""
-    strategy_id: str | None = None
+    opened_at: str = Field(default="", serialization_alias="openedAt")
+    updated_at: str = Field(default="", serialization_alias="updatedAt")
+    strategy_id: str | None = Field(default=None, serialization_alias="strategyId")
 
 
-@router.get("/positions/{symbol}", response_model=PositionResponse)
+@router.get(
+    "/positions/{symbol}",
+    response_model=PositionResponse,
+    response_model_by_alias=True,
+)
 async def get_position_by_symbol(
     symbol: str,
     request: Request,
@@ -173,7 +200,7 @@ async def get_position_by_symbol(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch position: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch position")
 
 
 @router.get("/positions", response_model=Any)
@@ -203,11 +230,17 @@ async def get_positions(
         result = repo.get_all_positions()
         positions = result if result is not None else []
 
-    # Convert to response models, skipping any invalid entries
+    # Convert to response models, skipping any invalid entries.
+    # V4 O-2 (2026-05-02): emit by_alias so the camelCase
+    # serialization_aliases on PositionResponse reach the frontend
+    # (route uses response_model=Any so FastAPI does not auto-apply
+    # by_alias for us).
     safe_positions = []
     for p in positions:
         try:
-            safe_positions.append(PositionResponse(**p))
+            safe_positions.append(
+                PositionResponse(**p).model_dump(by_alias=True)
+            )
         except Exception:
             continue
 
@@ -312,7 +345,7 @@ async def sync_portfolio_from_alpaca(
         if not sync_result.get("success"):
             raise HTTPException(
                 status_code=502,
-                detail=f"Failed to sync from Alpaca: {sync_result.get('error')}"
+                detail="Failed to sync from Alpaca"
             )
 
         logger.info(f"[SYNC] Successfully synced portfolio for user {user_id}")
@@ -339,7 +372,7 @@ async def sync_portfolio_from_alpaca(
         logger.error(f"[SYNC] Traceback:\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to sync portfolio: {str(e)}"
+            detail="Failed to sync portfolio"
         )
 
 

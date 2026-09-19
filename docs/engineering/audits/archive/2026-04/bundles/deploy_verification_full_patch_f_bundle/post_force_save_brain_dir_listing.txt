@@ -1,0 +1,14 @@
+  ✅ manifest.json  247B  23:25:54
+  ✅ learning_state.json  264B  23:25:54
+  ✅ ml_classifier.joblib  248507B  23:25:54
+  ✅ ml_regressor.joblib  168098B  23:25:54
+  ✅ reference_feats.csv  20126B  23:25:54
+  ✅ trade_history.csv  25498B  23:25:54
+  ✅ equity_curve.csv  107861B  23:25:54
+  ✅ evaluation_event_history.json  52768B  23:25:54
+  ✅ evolved_params.json  3717B  23:25:54
+  ✅ governance_state.json  297B  23:25:54
+  ✅ regime_state.json  178B  23:25:54
+  ✅ ml_state.json  3163B  23:25:54
+  ✅ extra_counters.json  9764B  23:25:54
+  ❌ transfer_knowledge.json  MISSING

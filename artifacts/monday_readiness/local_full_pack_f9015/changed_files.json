@@ -1,0 +1,70 @@
+{
+  "scope": "base",
+  "ref": "codex/fix-artifact-reporting...HEAD",
+  "total": 36,
+  "all": [
+    ".github/workflows/artifact-reporting.yml",
+    ".github/workflows/nightly.yml",
+    ".github/workflows/paper-postclose-audit.yml",
+    ".github/workflows/paper-readiness.yml",
+    "artifacts/monday_readiness/freeze_environment.json",
+    "artifacts/monday_readiness/frozen_surface_reference.json",
+    "backend/api/routes/market_data.py",
+    "backend/api/routes/paper_monitor.py",
+    "backend/api/routes/scanner.py",
+    "backend/api/routes_setup.py",
+    "backend/api/socketio_server.py",
+    "backend/infra/security.py",
+    "docker-compose.paper.yml",
+    "docs/engineering/MONDAY_CI_READINESS.md",
+    "docs/runbooks/PAPER_BACKUP_RECOVERY.md",
+    "docs/runbooks/PAPER_MONITORING.md",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "ops/launchd/com.intra.paper.watchdog.plist",
+    "ops/launchd/com.intra.postgres-backup.plist",
+    "reports/PAPER_FILL_RECONCILIATION_2026-09-19.md",
+    "scripts/ci/check_kpi_thresholds.py",
+    "scripts/ops/paper_watchdog.py",
+    "scripts/ops/paper_watchdog.sh",
+    "scripts/research/paper_fill_reconciliation.py",
+    "scripts/runtime/INSTALL_BRAIN_BACKUP.md",
+    "scripts/runtime/backup/paper_database.py",
+    "scripts/runtime/com.intra.brain-backup.plist",
+    "scripts/runtime/rotate_brain_backup.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_paper_backup_recovery.py",
+    "tests/test_paper_fill_reconciliation.py",
+    "tests/test_paper_monitor_access.py",
+    "tests/test_paper_watchdog.py",
+    "tests/test_position_reconciliation.py",
+    "tests/test_postclose_kpi_reporting.py"
+  ],
+  "backend": [
+    "backend/api/routes/market_data.py",
+    "backend/api/routes/paper_monitor.py",
+    "backend/api/routes/scanner.py",
+    "backend/api/routes_setup.py",
+    "backend/api/socketio_server.py",
+    "backend/infra/security.py"
+  ],
+  "organism": [],
+  "tests": [
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_paper_backup_recovery.py",
+    "tests/test_paper_fill_reconciliation.py",
+    "tests/test_paper_monitor_access.py",
+    "tests/test_paper_watchdog.py",
+    "tests/test_position_reconciliation.py",
+    "tests/test_postclose_kpi_reporting.py"
+  ],
+  "config": [
+    "docker-compose.paper.yml"
+  ],
+  "docs": [
+    "docs/engineering/MONDAY_CI_READINESS.md",
+    "docs/runbooks/PAPER_BACKUP_RECOVERY.md",
+    "docs/runbooks/PAPER_MONITORING.md",
+    "docs/runbooks/PAPER_UPTIME.md"
+  ]
+}

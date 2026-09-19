@@ -1,0 +1,52 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "recommendation": "GO_UNCHANGED",
+
+  "classification": "HEALTHY_SELECTIVITY",
+
+  "rationale": {
+    "summary": "Today's zero-trade outcome was healthy selectivity. Counterfactual analysis shows 7 of 10 rejected candidates would have been losers. The one genuine missed opportunity (XLE +1.21%) was rejected at eff_conf=0.21, only 0.04 below the 0.25 gate — but the near-miss band was 50/50 (XLE winner, TSLA loser), providing no statistical basis for a gate adjustment.",
+
+    "why_not_lower_confidence_gate": [
+      "Near-miss band (0.20-0.25) produced 1 winner and 1 loser = 50% hit rate",
+      "Overall counterfactual win rate was 20% — far worse than the organism's 40% lifetime",
+      "Lowering the 0.25 gate to 0.20 would capture XLE but also TSLA (-1.11%), NVDA (-0.74%), and more future bad entries",
+      "Single-day evidence is insufficient to change a threshold that protects against negative expectancy"
+    ],
+
+    "why_not_universe_change": [
+      "HIMS (+12%) and PATH (+3.2%) are mid-cap names inappropriate for a learning-mode seed universe",
+      "INTC (+2.5%) and MU (+1.9%) are plausible adds but require multi-day evidence, not one day's move",
+      "XOM (+2.4%) was already IN the universe but wasn't produced as a candidate — a scanner sensitivity issue, not a universe issue"
+    ],
+
+    "why_not_pipeline_fix": [
+      "No stale state, no bar-boundary blockage, no order-state corruption",
+      "XOM absence from candidate logs is notable but not a bug — the breakout scanner criteria may not detect gradual sector rotations",
+      "All gate thresholds fired correctly per their design"
+    ]
+  },
+
+  "investigation_items_for_later": [
+    {
+      "id": "INV-001",
+      "title": "Why was XOM never a candidate despite +2.43% intraday move?",
+      "detail": "XOM is in the 22-symbol universe but was never logged as a rejected candidate. The breakout/alpha scanner's criteria may require sharper intraday patterns (gap-ups, volume spikes) rather than gradual sector-driven rallies. Worth investigating the scanner's sensitivity to energy-sector momentum.",
+      "priority": "MEDIUM",
+      "timing": "Not tonight — requires code analysis and multi-day data"
+    },
+    {
+      "id": "INV-002",
+      "title": "Consider adding INTC and MU to seed universe",
+      "detail": "Both are large-cap semis, highly liquid, and had +2-2.5% moves today. They complement the existing AMD/NVDA/AVGO semi exposure. However, this should be evaluated over multiple sessions, not a single day.",
+      "priority": "LOW",
+      "timing": "After next 5+ trading sessions, if pattern repeats"
+    }
+  ],
+
+  "exact_action_for_tomorrow": "No changes. Keep all thresholds, universe, and configuration identical. Monitor whether XOM appears as a candidate if energy continues to rally.",
+
+  "confidence_in_recommendation": "HIGH — counterfactual evidence strongly supports that the gates were net-beneficial today. The one missed XLE trade is insufficient to override the 7 correctly avoided losers."
+}

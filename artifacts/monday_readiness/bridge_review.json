@@ -1,0 +1,76 @@
+{
+  "schema": "intra_independent_bridge_review_v1",
+  "task_id": "paper-scheduler-bridge-review",
+  "reviewed_at_utc": "2026-09-19T19:40:06.296209+00:00",
+  "reviewer": "Codex independent review agent",
+  "verdict": "approve_bounded_four_workflow_diff_conditional_on_pinned_postclose_and_safety_acceptance",
+  "blocking_source_findings": [],
+  "pr_url": "https://github.com/Lesram/intraday/pull/13",
+  "head_sha": "8b880d7f4f609509cbbed7c650f979013277d3e4",
+  "base_sha": "32a3474736bf7f5b3fa2a4308d626b7c3fe75755",
+  "pinned_operational_source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "reviewed_file_sha256": {
+    ".github/workflows/nightly.yml": "4dc5e7a975142c91f8c6d23898c58c630a4b5fc757e908d9d5eb81cea57d6c7c",
+    ".github/workflows/paper-postclose-audit.yml": "274025c196449bf13340a8472fb0045f5c58d4658c824ecd7974f7ce8ecdfbc6",
+    ".github/workflows/scheduler-bridge-check.yml": "4c95efd5a946681bf66f9997f8e449e56ff61b1752b95bed53be36167e3eb8c5",
+    ".github/workflows/staging.yml": "780494fa1bb6db78e98970ea53b8f18d4c3155448ba3b7718a3469eb4c1f8527"
+  },
+  "scope": "Exactly four workflows on main: two schedule delegates, focused bridge validation, and staging push-path protection. No application source, broker, frozen strategy or deployment image is changed by this review.",
+  "findings": [
+    "Both delegates retain their existing UTC schedules and manual dispatch and pin both reusable workflow revision and source_sha to the same full 0d1c93d SHA.",
+    "Delegates supply no inherited secrets and request contents:read plus issues:write for the already-authorized automatic failure issue behavior.",
+    "The focused contract checks exact triggers/permissions/inputs, remote reusable target existence and pinned checkout, same source for both delegates, and the narrow staging exclusion.",
+    "Staging push.paths-ignore contains exactly the four changed workflow paths. Bridge-only merges skip this old-main staging pipeline; a push containing backend/build/dependency changes remains eligible. Existing explicit labeled and manual triggers are preserved.",
+    "The three bridge-owned workflows receive strict actionlint validation. Staging candidate diagnostics are compared with the PR base; its four existing diagnostics are retained explicitly, with no new signature accepted."
+  ],
+  "validation": {
+    "hosted_run_id": 35464820978,
+    "hosted_run_url": "https://github.com/Lesram/intraday/actions/runs/35464820978",
+    "status": "completed",
+    "conclusion": "success",
+    "pr_head_sha": "8b880d7f4f609509cbbed7c650f979013277d3e4",
+    "tested_checkout_sha": "c2760451a74fb22a8f96673556833154d1746441",
+    "checkout_note": "The hosted pull_request checkout reports its synthetic merge SHA; run metadata identifies the reviewed PR head.",
+    "contract_results": [
+      {
+        "workflow": "paper-postclose-audit.yml",
+        "status": "pass",
+        "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0"
+      },
+      {
+        "workflow": "nightly.yml",
+        "status": "pass",
+        "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0"
+      },
+      {
+        "workflow": "staging.yml",
+        "status": "pass",
+        "excluded_push_paths": [
+          ".github/workflows/nightly.yml",
+          ".github/workflows/paper-postclose-audit.yml",
+          ".github/workflows/scheduler-bridge-check.yml",
+          ".github/workflows/staging.yml"
+        ],
+        "unchanged_baseline_diagnostics": 4
+      }
+    ],
+    "validation_errors": [],
+    "staging_baseline_diagnostics": 4,
+    "diff_check": "passed",
+    "reviewer_mutations": "Only this review artifact; no main source edits, merge or deployment."
+  },
+  "conditional_acceptance_gates": [
+    "Require successful actual post-close audit of pinned source 0d1c93d, including truthful full-pack/KPI/status artifacts, plus accepted source safety evidence before activating the bridge.",
+    "Retain required branch-protection/PR acceptance decisions without representing unrelated old-main checks as green or silently bypassing them.",
+    "After any authorized merge, verify the real scheduled run audited source SHA and uploaded evidence. The focused contract pass is not proof that a future cron execution has occurred.",
+    "Update both workflow pins together through review for later source changes; preserve final evidence and no-secret-change verification."
+  ],
+  "explicit_baselines_and_limits": [
+    "Old-main CI Quality Gates (lint, type, security, test/coverage and Quality Summary) remain failed in the current PR run; this review neither fixes nor certifies them.",
+    "The unchanged old-main secret-scan job fails. Its recursive literal grep matches its own sk_live pattern; it is not represented as a clean scanner result or as proof of a new credential in this four-file diff. No credential literal was introduced by the reviewed diff.",
+    "Four preexisting staging actionlint diagnostics remain: two obsolete setup-python action uses, one obsolete codecov action, and an undefined needs.test reference. Preserving their baseline does not certify staging deploy readiness.",
+    "paths-ignore protects this staging push workflow only; explicit manual/labeled staging triggers remain available.",
+    "Scheduled evidence runs isolated against the pinned operational source, not old main, and does not itself observe the local broker/runtime.",
+    "No accounting activation, historical-state change, forward-clock reset, strategy promotion or real-money action is approved."
+  ]
+}

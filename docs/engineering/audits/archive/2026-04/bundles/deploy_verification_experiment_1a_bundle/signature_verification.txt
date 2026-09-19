@@ -1,0 +1,36 @@
+=== 1. Exp1A chop min-hold gate ===
+1936:                        _CHOP_MIN_HOLD_BARS = 10
+1941:                        if _is_chop and _bars_held < _CHOP_MIN_HOLD_BARS:
+1944:                                "Exp1A: pyramid_cut suppressed (chop min-hold): "
+1947:                                sym, _bars_held, _CHOP_MIN_HOLD_BARS,
+
+=== 2. Threshold = 10 bars ===
+1936:                        _CHOP_MIN_HOLD_BARS = 10
+
+=== 3. stop_loss path unchanged (in adaptive_exits) ===
+69:            "stop_loss": round(self.stop_loss, 4),
+395:            return ExitSignal(True, "stop_loss", levels.stop_loss)
+397:            return ExitSignal(True, "stop_loss", levels.stop_loss)
+
+=== 4. horizon_timeout / max_holding_period unchanged ===
+508:            return ExitSignal(True, "horizon_timeout", current_price)
+516:                return ExitSignal(True, "max_holding_period", current_price)
+
+=== 5. Suppression log line present ===
+1944:                                "Exp1A: pyramid_cut suppressed (chop min-hold): "
+
+=== 6. Full Patch F signatures still present ===
+/app/backend/organism/live_engine.py:351:        self._forensic_signal_gen_id: int = id(self.signal_gen)
+/app/backend/organism/live_engine.py:4407:                id(self.signal_gen) != self._forensic_signal_gen_id
+/app/backend/organism/live_engine.py:4412:                    "FORENSIC GUARD: live engine's learner/signal_gen object "
+/app/backend/organism/live_engine.py:4416:                    id(self.signal_gen), self._forensic_signal_gen_id,
+/app/backend/organism/live_engine.py:4439:                            "FORENSIC GUARD: live learner.state.total_trades=0 "
+/app/backend/organism/brain_persistence.py:587:        # F2: trained-state guard is now inside _write_manifest_guarded
+/app/backend/organism/brain_persistence.py:614:            wrote = self._write_manifest_guarded(
+/app/backend/organism/brain_persistence.py:715:    def _write_manifest_guarded(
+
+=== 7. Boot log ===
+{"timestamp": "2026-04-11T01:55:06", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Brain loaded: gen=45, runs=315, trades=214", "module": "brain_persistence", "function": "load", "line": 219}
+{"timestamp": "2026-04-11T01:55:06", "level": "INFO", "logger": "backend.organism.trading_phase", "message": "Trading phase: production_frozen (trades=214, ML_isolation_exit=0, freeze_exit=86)", "module": "trading_phase", "function": "log_trading_phase", "line": 75}
+{"timestamp": "2026-04-11T01:55:06", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "PREFLIGHT: 16/18 checks passed (0 critical failures, 2 warnings)", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-11T01:55:06.514238Z"}", "module": "live_engine", "function": "initialize", "line": 972}
+{"timestamp": "2026-04-11T01:55:06", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler loop started", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-11T01:55:06.528197Z"}", "module": "scheduler", "function": "_run_loop", "line": 303}

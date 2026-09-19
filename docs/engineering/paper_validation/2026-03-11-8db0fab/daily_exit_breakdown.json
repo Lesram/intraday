@@ -1,0 +1,7 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+  "exits_today": 0,
+  "exit_breakdown_by_reason": {},
+  "note": "No trades entered today, therefore no exits. See daily_kpi_summary.json for gate audit instead."
+}

@@ -1,0 +1,50 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "market_summary": {
+    "spy_return_pct": -0.57,
+    "qqq_return_pct": -1.15,
+    "vix_close": "estimated elevated (tech sell-off continuation)",
+    "market_character": "Tech weakness, energy strength, defensive rotation",
+    "tradeable_moves": "YES — multiple symbols had intraday moves exceeding 1%"
+  },
+
+  "universe_returns": {
+    "winners": [
+      {"symbol": "XOM", "return_pct": 1.69, "in_universe": true},
+      {"symbol": "WMT", "return_pct": 0.95, "in_universe": true},
+      {"symbol": "LLY", "return_pct": 0.80, "in_universe": true},
+      {"symbol": "SH", "return_pct": 0.62, "in_universe": true},
+      {"symbol": "PSQ", "return_pct": 0.64, "in_universe": true}
+    ],
+    "losers": [
+      {"symbol": "AVGO", "return_pct": -4.11, "in_universe": true},
+      {"symbol": "META", "return_pct": -3.83, "in_universe": true},
+      {"symbol": "CRM", "return_pct": -3.24, "in_universe": true},
+      {"symbol": "GOOGL", "return_pct": -1.50, "in_universe": true},
+      {"symbol": "AMZN", "return_pct": -1.20, "in_universe": true},
+      {"symbol": "AAPL", "return_pct": -0.90, "in_universe": true}
+    ]
+  },
+
+  "counterfactual_analysis": {
+    "winners_detected_as_candidates": ["PSQ", "SH", "XOM", "WMT"],
+    "winners_missed_entirely": ["LLY"],
+    "detection_rate": "4/5 winners detected (80%)",
+    "best_candidate_eff_conf": 0.20,
+    "gate_floor": 0.25,
+    "gap": 0.05,
+    "would_lowering_gate_help": "Marginal. At 0.15 gate, PSQ (0.20) and SH (0.19) would pass, but these are inverse ETFs with near-zero breakout scores. The confidence formula itself is the bottleneck, not the gate threshold.",
+    "estimated_counterfactual_win_rate": "40-50% (based on similar 3/12 analysis: 2 winners + 3 losers from gate lowering)",
+    "estimated_counterfactual_pnl": "Approximately break-even or slightly negative given position sizing"
+  },
+
+  "opportunity_cost": {
+    "best_tradeable_move": "XOM +1.69%",
+    "if_captured_at_risk_budget": "~$18.80 (0.10% of $111,612 equity × 1.69% move)",
+    "realistic_capture_rate": "30-50% of move",
+    "realistic_opportunity_cost": "$5-10 per winner",
+    "verdict": "Low opportunity cost. The market was not strongly directional for the organism's breakout/momentum style."
+  }
+}

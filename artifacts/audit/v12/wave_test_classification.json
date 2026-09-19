@@ -1,0 +1,1527 @@
+{
+  "by_classification": {
+    "behavioral": 41,
+    "marker-only": 94,
+    "mixed": 17,
+    "structural": 1
+  },
+  "by_file": {
+    "tests/test_wave32_fixes.py": {
+      "behavioral": 3,
+      "marker-only": 5,
+      "mixed": 1
+    },
+    "tests/test_wave33_fixes.py": {
+      "behavioral": 6,
+      "marker-only": 2
+    },
+    "tests/test_wave34_fixes.py": {
+      "behavioral": 2,
+      "marker-only": 3,
+      "mixed": 2
+    },
+    "tests/test_wave35_fixes.py": {
+      "behavioral": 2,
+      "marker-only": 6
+    },
+    "tests/test_wave36_fixes.py": {
+      "behavioral": 3,
+      "structural": 1
+    },
+    "tests/test_wave37_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 2,
+      "mixed": 1
+    },
+    "tests/test_wave38_fixes.py": {
+      "behavioral": 2,
+      "marker-only": 2
+    },
+    "tests/test_wave39_fixes.py": {
+      "marker-only": 2,
+      "mixed": 1
+    },
+    "tests/test_wave40_fixes.py": {
+      "marker-only": 6
+    },
+    "tests/test_wave41_fixes.py": {
+      "behavioral": 2,
+      "marker-only": 11
+    },
+    "tests/test_wave42_fixes.py": {
+      "marker-only": 6
+    },
+    "tests/test_wave43_fixes.py": {
+      "marker-only": 2,
+      "mixed": 1
+    },
+    "tests/test_wave44_fixes.py": {
+      "behavioral": 2,
+      "marker-only": 3
+    },
+    "tests/test_wave45_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 3,
+      "mixed": 1
+    },
+    "tests/test_wave46_fixes.py": {
+      "marker-only": 1,
+      "mixed": 1
+    },
+    "tests/test_wave47_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 1,
+      "mixed": 2
+    },
+    "tests/test_wave48_fixes.py": {
+      "behavioral": 2,
+      "marker-only": 2
+    },
+    "tests/test_wave50_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 2,
+      "mixed": 1
+    },
+    "tests/test_wave51_fixes.py": {
+      "marker-only": 3,
+      "mixed": 1
+    },
+    "tests/test_wave52_fixes.py": {
+      "marker-only": 5
+    },
+    "tests/test_wave53_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 3
+    },
+    "tests/test_wave54_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 2,
+      "mixed": 1
+    },
+    "tests/test_wave55_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 2,
+      "mixed": 1
+    },
+    "tests/test_wave56_fixes.py": {
+      "marker-only": 5
+    },
+    "tests/test_wave57_fixes.py": {
+      "marker-only": 1,
+      "mixed": 2
+    },
+    "tests/test_wave60_fixes.py": {
+      "behavioral": 3,
+      "marker-only": 2
+    },
+    "tests/test_wave61_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 2
+    },
+    "tests/test_wave62_fixes.py": {
+      "marker-only": 3
+    },
+    "tests/test_wave63_fixes.py": {
+      "marker-only": 3
+    },
+    "tests/test_wave64_fixes.py": {
+      "behavioral": 1,
+      "marker-only": 1
+    },
+    "tests/test_wave65_fixes.py": {
+      "behavioral": 2
+    },
+    "tests/test_wave67_fixes.py": {
+      "behavioral": 1,
+      "mixed": 1
+    },
+    "tests/test_wave68_fixes.py": {
+      "behavioral": 2,
+      "marker-only": 3
+    }
+  },
+  "files_scanned": 33,
+  "pct_marker_only": 61.44,
+  "tests": [
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 27,
+      "marker_assertions": 2,
+      "name": "test_dd2_1_pending_exit_max_loss_safety_net_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 49,
+      "marker_assertions": 3,
+      "name": "test_dd2_1_pending_exit_block_evaluates_pnl_pct",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 78,
+      "marker_assertions": 1,
+      "name": "test_w3_g1_grep_count_negative_increments_fails_in_required_mode",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 122,
+      "marker_assertions": 2,
+      "name": "test_w3_g2_diff_test_count_scoped_across_all_paths",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 6,
+      "classification": "behavioral",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 143,
+      "marker_assertions": 0,
+      "name": "test_w3_g3_sameclass_block_re_strips_shell_prompt",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 171,
+      "marker_assertions": 2,
+      "name": "test_aa2_new_1_audit_routes_use_require_admin",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 5,
+      "classification": "behavioral",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 194,
+      "marker_assertions": 0,
+      "name": "test_aa2_new_2_verify_token_malformed_payload_yields_401",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "behavioral",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 221,
+      "marker_assertions": 0,
+      "name": "test_aa2_new_2_verify_token_wrong_type_roles_yields_401",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave32_fixes.py",
+      "line": 250,
+      "marker_assertions": 2,
+      "name": "test_aa2_new_3_hsts_emits_under_x_forwarded_proto",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "behavioral",
+      "file": "tests/test_wave33_fixes.py",
+      "line": 26,
+      "marker_assertions": 0,
+      "name": "test_nn_crit_1_orphan_position_import_deleted",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 5,
+      "classification": "behavioral",
+      "file": "tests/test_wave33_fixes.py",
+      "line": 38,
+      "marker_assertions": 0,
+      "name": "test_nn_crit_1_no_imports_of_orphan",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave33_fixes.py",
+      "line": 59,
+      "marker_assertions": 2,
+      "name": "test_nn_crit_1_canonical_import_endpoints_still_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "behavioral",
+      "file": "tests/test_wave33_fixes.py",
+      "line": 79,
+      "marker_assertions": 0,
+      "name": "test_dd2_2_record_prediction_outcome_accepts_raw_confidence_kwarg",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 4,
+      "classification": "behavioral",
+      "file": "tests/test_wave33_fixes.py",
+      "line": 93,
+      "marker_assertions": 0,
+      "name": "test_dd2_2_record_prediction_outcome_uses_raw_axis_when_provided",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "behavioral",
+      "file": "tests/test_wave33_fixes.py",
+      "line": 119,
+      "marker_assertions": 0,
+      "name": "test_dd2_2_legacy_path_still_bins_when_raw_missing",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave33_fixes.py",
+      "line": 133,
+      "marker_assertions": 2,
+      "name": "test_dd2_2_live_engine_passes_ml_raw_confidence_to_recorder",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 7,
+      "classification": "behavioral",
+      "file": "tests/test_wave33_fixes.py",
+      "line": 154,
+      "marker_assertions": 0,
+      "name": "test_dd2_2_calibration_loop_axis_consistent_under_synthetic_load",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "mixed",
+      "file": "tests/test_wave34_fixes.py",
+      "line": 32,
+      "marker_assertions": 1,
+      "name": "test_dd2_3_aggregate_history_field_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 7,
+      "classification": "behavioral",
+      "file": "tests/test_wave34_fixes.py",
+      "line": 44,
+      "marker_assertions": 0,
+      "name": "test_dd2_3_market_regime_appends_to_aggregate_history",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 7,
+      "classification": "behavioral",
+      "file": "tests/test_wave34_fixes.py",
+      "line": 68,
+      "marker_assertions": 0,
+      "name": "test_dd2_3_churn_rate_nonzero_when_regime_flips",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "mixed",
+      "file": "tests/test_wave34_fixes.py",
+      "line": 99,
+      "marker_assertions": 1,
+      "name": "test_dd2_4_hysteresis_band_attribute_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave34_fixes.py",
+      "line": 113,
+      "marker_assertions": 1,
+      "name": "test_dd2_4_detect_uses_hysteresis_in_argmax",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave34_fixes.py",
+      "line": 129,
+      "marker_assertions": 2,
+      "name": "test_dd2_5_regime_eligible_branch_checks_atr_var",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave34_fixes.py",
+      "line": 153,
+      "marker_assertions": 2,
+      "name": "test_nn_high_1_telemetry_write_logs_at_warning_on_failure",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave35_fixes.py",
+      "line": 34,
+      "marker_assertions": 1,
+      "name": "test_dd2_7_is_learning_mode_caches_per_tick",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 4,
+      "classification": "behavioral",
+      "file": "tests/test_wave35_fixes.py",
+      "line": 46,
+      "marker_assertions": 0,
+      "name": "test_dd2_7_cache_returns_same_value_within_tick",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave35_fixes.py",
+      "line": 86,
+      "marker_assertions": 3,
+      "name": "test_dd2_8_pure_breakout_gates_on_direction",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave35_fixes.py",
+      "line": 117,
+      "marker_assertions": 2,
+      "name": "test_dd2_9_eod_flatten_upper_bounded_at_close",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave35_fixes.py",
+      "line": 132,
+      "marker_assertions": 1,
+      "name": "test_dd2_9_zoneinfo_failure_logs_warning",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "behavioral",
+      "file": "tests/test_wave35_fixes.py",
+      "line": 149,
+      "marker_assertions": 0,
+      "name": "test_dd2_10_organism_runner_accepts_now_fn",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave35_fixes.py",
+      "line": 160,
+      "marker_assertions": 1,
+      "name": "test_dd2_10_runner_drift_check_uses_injected_clock",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave35_fixes.py",
+      "line": 171,
+      "marker_assertions": 1,
+      "name": "test_dd2_10_routes_admin_cleanup_uses_canonical_clock",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "behavioral",
+      "file": "tests/test_wave36_fixes.py",
+      "line": 46,
+      "marker_assertions": 0,
+      "name": "test_wave36_orphan_module_deleted",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 6,
+      "classification": "behavioral",
+      "file": "tests/test_wave36_fixes.py",
+      "line": 56,
+      "marker_assertions": 0,
+      "name": "test_wave36_strategies_init_imports_only_live_modules",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "structural",
+      "file": "tests/test_wave36_fixes.py",
+      "line": 76,
+      "marker_assertions": 0,
+      "name": "test_wave36_versioning_remains_imported_live",
+      "notes": [
+        "no_assertions_or_calls"
+      ]
+    },
+    {
+      "behavioral_signals": 6,
+      "classification": "behavioral",
+      "file": "tests/test_wave36_fixes.py",
+      "line": 83,
+      "marker_assertions": 0,
+      "name": "test_wave36_no_dangling_risk_imports",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "mixed",
+      "file": "tests/test_wave37_fixes.py",
+      "line": 20,
+      "marker_assertions": 1,
+      "name": "test_migration_smoke_script_exists_and_runs",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave37_fixes.py",
+      "line": 40,
+      "marker_assertions": 1,
+      "name": "test_migrations_versions_directory_present_at_correct_path",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave37_fixes.py",
+      "line": 51,
+      "marker_assertions": 1,
+      "name": "test_alembic_ini_script_location_correct",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "behavioral",
+      "file": "tests/test_wave37_fixes.py",
+      "line": 61,
+      "marker_assertions": 0,
+      "name": "test_migrations_count_at_least_15",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "behavioral",
+      "file": "tests/test_wave38_fixes.py",
+      "line": 41,
+      "marker_assertions": 0,
+      "name": "test_wave38_orphan_path_deleted",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 5,
+      "classification": "behavioral",
+      "file": "tests/test_wave38_fixes.py",
+      "line": 50,
+      "marker_assertions": 0,
+      "name": "test_wave38_no_dangling_mlops_imports",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave38_fixes.py",
+      "line": 67,
+      "marker_assertions": 1,
+      "name": "test_wave38_canonical_broker_path_intact",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave38_fixes.py",
+      "line": 75,
+      "marker_assertions": 1,
+      "name": "test_wave38_canonical_ml_modules_intact",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "mixed",
+      "file": "tests/test_wave39_fixes.py",
+      "line": 21,
+      "marker_assertions": 1,
+      "name": "test_wave39_no_local_entries_blocked",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave39_fixes.py",
+      "line": 44,
+      "marker_assertions": 1,
+      "name": "test_wave39_self_entries_blocked_initialized_at_tick_entry",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave39_fixes.py",
+      "line": 57,
+      "marker_assertions": 2,
+      "name": "test_wave39_plan_doc_updated",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave40_fixes.py",
+      "line": 22,
+      "marker_assertions": 1,
+      "name": "test_wave40_stage_helper_method_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave40_fixes.py",
+      "line": 31,
+      "marker_assertions": 1,
+      "name": "test_wave40_stage_helper_called_from_tick_inner",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave40_fixes.py",
+      "line": 42,
+      "marker_assertions": 2,
+      "name": "test_wave40_stage_helper_evaluates_governance_halt",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave40_fixes.py",
+      "line": 56,
+      "marker_assertions": 2,
+      "name": "test_wave40_stage_helper_evaluates_warmup_and_stale",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave40_fixes.py",
+      "line": 68,
+      "marker_assertions": 1,
+      "name": "test_wave40_short_circuit_ordering_preserved",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave40_fixes.py",
+      "line": 82,
+      "marker_assertions": 1,
+      "name": "test_wave40_inline_governance_check_removed",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 27,
+      "marker_assertions": 3,
+      "name": "test_uu_1_daily_max_loss_uses_canonical_dispatcher",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 52,
+      "marker_assertions": 4,
+      "name": "test_uu_2_auth_rollback_logs_at_error",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 75,
+      "marker_assertions": 1,
+      "name": "test_uu_3_brain_save_lock_release_logs_at_warning",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "behavioral",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 87,
+      "marker_assertions": 0,
+      "name": "test_pp_1_atomic_csv_helper_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 93,
+      "marker_assertions": 1,
+      "name": "test_pp_1_save_equity_curve_uses_atomic_write",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 103,
+      "marker_assertions": 1,
+      "name": "test_pp_1_save_epoch_metrics_uses_atomic_write",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 111,
+      "marker_assertions": 1,
+      "name": "test_pp_1_save_reference_features_uses_atomic_write",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 8,
+      "classification": "behavioral",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 119,
+      "marker_assertions": 0,
+      "name": "test_pp_1_atomic_csv_actually_atomic",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 139,
+      "marker_assertions": 1,
+      "name": "test_pp_2_restore_from_latest_backup_method_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 148,
+      "marker_assertions": 2,
+      "name": "test_pp_2_load_invokes_backup_fallback_on_exception",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 165,
+      "marker_assertions": 2,
+      "name": "test_pp_3_critical_bypasses_dedup_and_rate_limit",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 176,
+      "marker_assertions": 1,
+      "name": "test_pp_3_all_channels_failed_logs_critical",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave41_fixes.py",
+      "line": 192,
+      "marker_assertions": 2,
+      "name": "test_pp_4_lifespan_requires_allow_no_db_in_dev",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave42_fixes.py",
+      "line": 26,
+      "marker_assertions": 2,
+      "name": "test_aa3_1_logout_calls_blacklist_token",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave42_fixes.py",
+      "line": 38,
+      "marker_assertions": 2,
+      "name": "test_aa3_1_get_current_user_consults_blacklist",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave42_fixes.py",
+      "line": 57,
+      "marker_assertions": 2,
+      "name": "test_aa3_2_decode_token_rejects_non_access_token_type",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave42_fixes.py",
+      "line": 71,
+      "marker_assertions": 1,
+      "name": "test_aa3_2_create_access_token_sets_token_type",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave42_fixes.py",
+      "line": 87,
+      "marker_assertions": 2,
+      "name": "test_aa3_3_refresh_blacklists_redeemed_jti",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave42_fixes.py",
+      "line": 100,
+      "marker_assertions": 1,
+      "name": "test_aa3_3_refresh_replay_returns_401",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave43_fixes.py",
+      "line": 24,
+      "marker_assertions": 3,
+      "name": "test_dd3_2_alpaca_stream_uses_incremental_qty",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave43_fixes.py",
+      "line": 41,
+      "marker_assertions": 1,
+      "name": "test_dd3_2_zero_or_negative_increment_skipped",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave43_fixes.py",
+      "line": 57,
+      "marker_assertions": 2,
+      "name": "test_dd3_3_exit_path_consults_exit_cooldown",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "behavioral",
+      "file": "tests/test_wave44_fixes.py",
+      "line": 25,
+      "marker_assertions": 0,
+      "name": "test_dd3_1_pyramid_position_has_max_level_property",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave44_fixes.py",
+      "line": 32,
+      "marker_assertions": 3,
+      "name": "test_dd3_1_check_pyramid_keys_on_max_level",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 6,
+      "classification": "behavioral",
+      "file": "tests/test_wave44_fixes.py",
+      "line": 47,
+      "marker_assertions": 0,
+      "name": "test_dd3_1_layer_2_reachable_with_collapsed_layer_list",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave44_fixes.py",
+      "line": 81,
+      "marker_assertions": 2,
+      "name": "test_dd3_4_eod_flatten_cancels_pending_entries",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave44_fixes.py",
+      "line": 99,
+      "marker_assertions": 2,
+      "name": "test_dd3_5_fitness_gate_distinguishes_missing_from_default",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave45_fixes.py",
+      "line": 19,
+      "marker_assertions": 2,
+      "name": "test_pp_5_scanner_tracks_consecutive_failures",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave45_fixes.py",
+      "line": 30,
+      "marker_assertions": 2,
+      "name": "test_pp_5_scanner_alerts_after_threshold",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave45_fixes.py",
+      "line": 43,
+      "marker_assertions": 1,
+      "name": "test_pp_6_streaming_provider_exposes_stale_symbols",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "behavioral",
+      "file": "tests/test_wave45_fixes.py",
+      "line": 53,
+      "marker_assertions": 0,
+      "name": "test_pp_6_stale_symbols_returns_per_symbol_age",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave45_fixes.py",
+      "line": 74,
+      "marker_assertions": 2,
+      "name": "test_pp_6_live_engine_consults_per_symbol_stale",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave46_fixes.py",
+      "line": 23,
+      "marker_assertions": 1,
+      "name": "test_tt_2_watchdog_constant_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave46_fixes.py",
+      "line": 32,
+      "marker_assertions": 3,
+      "name": "test_tt_2_live_tick_uses_wait_for",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave47_fixes.py",
+      "line": 23,
+      "marker_assertions": 2,
+      "name": "test_tt_4_async_alpaca_methods_use_async_rate_limit",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave47_fixes.py",
+      "line": 43,
+      "marker_assertions": 1,
+      "name": "test_tt_5_trade_history_bounded",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 6,
+      "classification": "behavioral",
+      "file": "tests/test_wave47_fixes.py",
+      "line": 53,
+      "marker_assertions": 0,
+      "name": "test_tt_5_record_trade_truncates_oversize_history",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "mixed",
+      "file": "tests/test_wave47_fixes.py",
+      "line": 74,
+      "marker_assertions": 1,
+      "name": "test_aa3_4_jwt_decode_passes_leeway",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "behavioral",
+      "file": "tests/test_wave48_fixes.py",
+      "line": 19,
+      "marker_assertions": 0,
+      "name": "test_z7_1_pytest_collection_clean",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 10,
+      "classification": "behavioral",
+      "file": "tests/test_wave48_fixes.py",
+      "line": 59,
+      "marker_assertions": 0,
+      "name": "test_w4_3_wave_commit_re_accepts_hyphens",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave48_fixes.py",
+      "line": 75,
+      "marker_assertions": 2,
+      "name": "test_w4_1_aliased_fixture_detection_marker",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave48_fixes.py",
+      "line": 86,
+      "marker_assertions": 1,
+      "name": "test_w4_1_canonical_pytest_fixture_still_counted",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave50_fixes.py",
+      "line": 22,
+      "marker_assertions": 3,
+      "name": "test_aa4_2_lifespan_wires_token_blacklist",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave50_fixes.py",
+      "line": 36,
+      "marker_assertions": 2,
+      "name": "test_aa4_3_settings_get_requires_admin",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave50_fixes.py",
+      "line": 58,
+      "marker_assertions": 2,
+      "name": "test_aa4_4_x_api_key_handles_enum_environment",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "behavioral",
+      "file": "tests/test_wave50_fixes.py",
+      "line": 69,
+      "marker_assertions": 0,
+      "name": "test_aa4_4_concrete_enum_does_not_raise",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave51_fixes.py",
+      "line": 23,
+      "marker_assertions": 3,
+      "name": "test_ww_1_essential_save_creates_backup",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave51_fixes.py",
+      "line": 37,
+      "marker_assertions": 1,
+      "name": "test_pp2_1_lifespan_smoke_select_in_outer_block",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave51_fixes.py",
+      "line": 50,
+      "marker_assertions": 3,
+      "name": "test_uu2_a_successful_login_rollback_logs_error",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave51_fixes.py",
+      "line": 72,
+      "marker_assertions": 3,
+      "name": "test_uu2_c_lot_tracker_rollback_logs_error",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave52_fixes.py",
+      "line": 23,
+      "marker_assertions": 3,
+      "name": "test_yy_1_governance_drawdown_kill_dispatches_alert",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave52_fixes.py",
+      "line": 35,
+      "marker_assertions": 2,
+      "name": "test_yy_1_emergency_stop_dispatches_alert",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave52_fixes.py",
+      "line": 44,
+      "marker_assertions": 3,
+      "name": "test_yy_1_circuit_breaker_dispatches_alert",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave52_fixes.py",
+      "line": 56,
+      "marker_assertions": 2,
+      "name": "test_yy_2_alpaca_stream_emits_order_filled_audit",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave52_fixes.py",
+      "line": 65,
+      "marker_assertions": 3,
+      "name": "test_yy_5_readyz_checks_brain_and_tick",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave53_fixes.py",
+      "line": 25,
+      "marker_assertions": 3,
+      "name": "test_dd4_1_extra_counters_includes_symbol_trade_counts_runtime",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave53_fixes.py",
+      "line": 39,
+      "marker_assertions": 1,
+      "name": "test_dd4_1_apply_to_learner_restores_counts_and_fitness",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave53_fixes.py",
+      "line": 50,
+      "marker_assertions": 3,
+      "name": "test_dd4_2_reconcile_preserves_l0_entry_price",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 8,
+      "classification": "behavioral",
+      "file": "tests/test_wave53_fixes.py",
+      "line": 67,
+      "marker_assertions": 0,
+      "name": "test_dd4_4_pyramider_telemetry_exposes_counters",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "behavioral",
+      "file": "tests/test_wave54_fixes.py",
+      "line": 20,
+      "marker_assertions": 0,
+      "name": "test_vv_3_order_status_includes_alpaca_wire_vocab",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "mixed",
+      "file": "tests/test_wave54_fixes.py",
+      "line": 40,
+      "marker_assertions": 2,
+      "name": "test_vv_3_orthography_aliases_both_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave54_fixes.py",
+      "line": 50,
+      "marker_assertions": 2,
+      "name": "test_vv_3_partial_alias_preserved",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave54_fixes.py",
+      "line": 57,
+      "marker_assertions": 1,
+      "name": "test_vv_plan_doc_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave55_fixes.py",
+      "line": 26,
+      "marker_assertions": 2,
+      "name": "test_xx_1_ec197_downgrade_uses_if_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave55_fixes.py",
+      "line": 41,
+      "marker_assertions": 1,
+      "name": "test_xx_2_widen_ck_orders_status_migration_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 2,
+      "classification": "behavioral",
+      "file": "tests/test_wave55_fixes.py",
+      "line": 58,
+      "marker_assertions": 0,
+      "name": "test_xx_2_migration_tree_still_single_headed",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave55_fixes.py",
+      "line": 79,
+      "marker_assertions": 2,
+      "name": "test_bb4_f2_verify_eod_cancel_inline_in_live_engine",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave56_fixes.py",
+      "line": 20,
+      "marker_assertions": 2,
+      "name": "test_ww_2_backup_naming_microsecond_resolution",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave56_fixes.py",
+      "line": 31,
+      "marker_assertions": 2,
+      "name": "test_pp2_2_restore_captures_corrupt_head_forensic",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave56_fixes.py",
+      "line": 40,
+      "marker_assertions": 2,
+      "name": "test_pp2_3_save_sweeps_tmp_orphans",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave56_fixes.py",
+      "line": 49,
+      "marker_assertions": 1,
+      "name": "test_ww_3_save_brain_marker_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave56_fixes.py",
+      "line": 57,
+      "marker_assertions": 1,
+      "name": "test_z8_1_wave_commit_re_em_dash_marker",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave57_fixes.py",
+      "line": 15,
+      "marker_assertions": 1,
+      "name": "test_uu2_b_ruff_select_includes_error_handling_rules",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave57_fixes.py",
+      "line": 26,
+      "marker_assertions": 2,
+      "name": "test_uu2_b_grandfather_ratchet_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 1,
+      "classification": "mixed",
+      "file": "tests/test_wave57_fixes.py",
+      "line": 37,
+      "marker_assertions": 1,
+      "name": "test_uu2_b_error_handling_doc_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "behavioral",
+      "file": "tests/test_wave60_fixes.py",
+      "line": 20,
+      "marker_assertions": 0,
+      "name": "test_dd4_3_helper_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 8,
+      "classification": "behavioral",
+      "file": "tests/test_wave60_fixes.py",
+      "line": 33,
+      "marker_assertions": 0,
+      "name": "test_dd4_3_inverse_etf_swaps_trending_directions",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 6,
+      "classification": "behavioral",
+      "file": "tests/test_wave60_fixes.py",
+      "line": 43,
+      "marker_assertions": 0,
+      "name": "test_dd4_3_normal_symbol_unchanged",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave60_fixes.py",
+      "line": 50,
+      "marker_assertions": 1,
+      "name": "test_dd4_3_kelly_uses_effective_regime",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave60_fixes.py",
+      "line": 60,
+      "marker_assertions": 1,
+      "name": "test_dd4_3_adaptive_exits_uses_effective_regime",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave61_fixes.py",
+      "line": 17,
+      "marker_assertions": 5,
+      "name": "test_xx_3_portfolio_history_migration_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave61_fixes.py",
+      "line": 38,
+      "marker_assertions": 3,
+      "name": "test_xx_3_migration_has_downgrade",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "behavioral",
+      "file": "tests/test_wave61_fixes.py",
+      "line": 51,
+      "marker_assertions": 0,
+      "name": "test_xx_3_migration_tree_still_single_headed",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave62_fixes.py",
+      "line": 18,
+      "marker_assertions": 3,
+      "name": "test_yy_3_organism_entries_blocked_has_reason_label",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave62_fixes.py",
+      "line": 30,
+      "marker_assertions": 2,
+      "name": "test_yy_4_ml_retrain_failures_counter_exists",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave62_fixes.py",
+      "line": 39,
+      "marker_assertions": 4,
+      "name": "test_yy_4_background_trainer_alerts_on_training_error",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave63_fixes.py",
+      "line": 15,
+      "marker_assertions": 1,
+      "name": "test_hh2_n_1_helper_extracted",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave63_fixes.py",
+      "line": 22,
+      "marker_assertions": 2,
+      "name": "test_hh2_n_1_route_uses_helper",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave63_fixes.py",
+      "line": 32,
+      "marker_assertions": 1,
+      "name": "test_hh2_n_1_route_loc_reduced",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 7,
+      "classification": "behavioral",
+      "file": "tests/test_wave64_fixes.py",
+      "line": 15,
+      "marker_assertions": 0,
+      "name": "test_vv_1_order_validation_response_serializes_camel",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave64_fixes.py",
+      "line": 33,
+      "marker_assertions": 2,
+      "name": "test_vv_1_marker_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 10,
+      "classification": "behavioral",
+      "file": "tests/test_wave65_fixes.py",
+      "line": 20,
+      "marker_assertions": 0,
+      "name": "test_vv_2_risk_metric_serializes_decimal_as_float",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 7,
+      "classification": "behavioral",
+      "file": "tests/test_wave65_fixes.py",
+      "line": 42,
+      "marker_assertions": 0,
+      "name": "test_vv_2_risk_violation_serializes_decimal_as_float",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 7,
+      "classification": "behavioral",
+      "file": "tests/test_wave67_fixes.py",
+      "line": 25,
+      "marker_assertions": 0,
+      "name": "test_aa5_1_jwt_decode_actually_succeeds_with_valid_token",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 3,
+      "classification": "mixed",
+      "file": "tests/test_wave67_fixes.py",
+      "line": 49,
+      "marker_assertions": 3,
+      "name": "test_aa5_1_marker_present",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave68_fixes.py",
+      "line": 21,
+      "marker_assertions": 2,
+      "name": "test_aaa_f1_debug_endpoints_gated",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 5,
+      "classification": "behavioral",
+      "file": "tests/test_wave68_fixes.py",
+      "line": 31,
+      "marker_assertions": 0,
+      "name": "test_aaa_f1_default_router_is_empty_stub",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 10,
+      "classification": "behavioral",
+      "file": "tests/test_wave68_fixes.py",
+      "line": 47,
+      "marker_assertions": 0,
+      "name": "test_aaa_f2_orders_require_trader_enforces_roles",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave68_fixes.py",
+      "line": 85,
+      "marker_assertions": 3,
+      "name": "test_ccc_2_paper_compose_wires_risk_caps",
+      "notes": []
+    },
+    {
+      "behavioral_signals": 0,
+      "classification": "marker-only",
+      "file": "tests/test_wave68_fixes.py",
+      "line": 100,
+      "marker_assertions": 2,
+      "name": "test_ccc_2_default_compose_wires_risk_caps",
+      "notes": []
+    }
+  ],
+  "tests_total": 153
+}

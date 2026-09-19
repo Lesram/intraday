@@ -1,0 +1,20 @@
+{
+  "decision": "READY_WITH_RISKS",
+  "date": "2026-03-18",
+  "sha": "16dcdd8 + away-mode hardening",
+  "rationale": "All high-priority paper-path blockers have been fixed. The platform now has: (1) protected inverse ETF universe, (2) decoupled scanner from entry blocking, (3) persisted pending entries across restart, (4) trade update DLQ, (5) adaptive gap-fill, (6) session resilience, (7) comprehensive watchdog observability. Remaining risks are LOW severity and do not block unattended operation.",
+  "risks_acknowledged": [
+    "DLQ file needs periodic manual review (check /tmp/intra_trade_update_dlq.jsonl)",
+    "Gaps > 1 hour on WebSocket not fully covered (extremely rare on Alpaca paper)",
+    "Watchdog alerts log to application log only — no external notification (Slack/email)",
+    "Pre-existing 28 test failures unrelated to trading path"
+  ],
+  "what_would_make_READY": [
+    "External alerting integration (Slack webhook for CRITICAL watchdog states)",
+    "Auto-replay of DLQ entries",
+    "One full live trading day with all hardening active showing normal operation"
+  ],
+  "paper_path_blockers": 0,
+  "away_mode_blockers": 0,
+  "strategy_behavior_changed": false
+}

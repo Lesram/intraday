@@ -1,0 +1,27 @@
+{
+  "label": "order_safety",
+  "exit_code": 0,
+  "seconds": 3.35,
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--timeout=30",
+    "--tb=short",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/artifacts/monday_readiness/order_safety.xml",
+    "tests/test_order_pipeline_e2e.py",
+    "tests/test_audit_0_4_eod_flatten_escalation.py",
+    "tests/test_paper_runtime_config.py",
+    "tests/test_admin_trading_execution_mode.py"
+  ],
+  "network_denied": true,
+  "real_checkout_writes_denied": true,
+  "real_env_and_brain_reads_denied": true
+}

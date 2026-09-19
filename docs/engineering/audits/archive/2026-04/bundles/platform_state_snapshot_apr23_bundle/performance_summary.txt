@@ -1,0 +1,50 @@
+=== Paper-trading performance summary — captured 2026-04-24T04:00Z ===
+
+Account
+- Equity (current) : $111,529.48
+- Equity (prior)   : $111,541.62
+- Session change   : -$12.14  (Apr 23 PDT)
+- Peak equity      : $111,784.74  (extra_counters.peak_equity)
+- Drawdown from peak : -$255.26  (-0.23%)
+- Positions        : 0 (flat)
+- Daytrade count   : 79
+- Account status   : ACTIVE, not blocked
+
+Brain lifetime (since last reset 2026-03-31)
+- Generation       : 115 (best_generation=26)
+- Total runs       : 1184
+- Total trades     : 370
+- Cumulative PnL   : -$619.75
+- Best Sharpe      : 3.4363
+- Expectancy       : -$1.68 / trade (lifetime; per REAL_MONEY_GAP_MAP last report -$1.92)
+- Retrain count    : 115  (ORGANISM_RETRAIN_INTERVAL=180; bars_since_retrain=0)
+- Drift events     : 0
+
+Recent-window context (from NEXT_DEPLOY_DECISION.md, 5 sessions Apr 16-22, 90 trades)
+- Pyramid cut share : 56% → 33% after Exp1A
+- PSQ/SH chop trades : eliminated after Exp2
+- Expectancy trend  : -$1.75 all-time → -$0.41 last 100 trades (improving)
+- Trailing giveback : $195.21 MFE destroyed in 5 sessions (Exp4 targets this — NOT LIVE)
+- Containers        : 0 restarts, 0 incidents, 0 save failures in window
+
+Apr 23 trade tape (last 10 rows of trade_history.csv)
+- 10 trades; all in chop regime
+- 4 losers (stop_loss / pyramid_cut / max_holding), 3 winners (max_holding_period)
+- Session net per tape ≈ -$4 to -$15 (matches session change)
+
+ML signal (ml_state.json, gen 116)
+- Accuracy 0.6169, F1 0.5986, Hit rate 0.6039, Precision 0.5146, Recall 0.7154
+- Mean predicted return: -0.000119 (slightly bearish bias)
+
+Universe / fitness
+- 22 active symbols (includes SH, PSQ inverse ETFs)
+- 85 rotations observed
+- Protected (held in-universe): PSQ, SH
+- Best live-trading fitness: SPY (0.531), XLE (0.517), PLTR (0.513, non-active)
+- Worst: SNOW (0.075, -$103 avg), UBER (0.215, -$35), CRM (0.226, -$11)
+
+Bottom-line read (from REAL_MONEY_GAP_MAP.md)
+- Mechanically ready for real money (persistence, controls, EOD flatten, reconciliation all CLOSED)
+- Algorithmically NOT ready — expectancy is still negative
+- Primary blocker: positive paper edge over ≥3 weeks sustained
+- Earliest realistic timeline: 4-8 weeks

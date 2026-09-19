@@ -1,0 +1,38 @@
+{
+  "task_id": "replay-ci-cumulative-budget",
+  "source_before": "69949da9af1ed342d65e37e79264a3c4bd143964",
+  "scope": "CI-only replay cumulative deadline and retained case-progress evidence; frozen application, selection, test assertions, per-case timeouts, numerical thread settings and live snapshots unchanged",
+  "evidence": {
+    "passing_postclose": 35464396251,
+    "failed_postclose": 35464757621,
+    "failed_readiness": 35464760863,
+    "passing_replay_seconds": 456.236,
+    "failed_replay_outer_seconds": 600,
+    "completed_case_markers_at_failure": 22,
+    "total_replay_cases": 28,
+    "offline_case23_default_seconds": 12.37,
+    "offline_case23_native_one_thread_seconds": 11.95,
+    "thread_fix_supported": false,
+    "local_architecture": "linux arm64; not representative of hosted amd64 speed",
+    "latest_required_prepatch_pass": 35465405324
+  },
+  "affected_files": [
+    "scripts/ci/generate_artifacts.py",
+    "tests/test_generate_artifacts.py",
+    "tests/test_artifact_workflow_contract.py",
+    ".github/workflows/paper-postclose-audit.yml",
+    ".github/workflows/paper-readiness.yml",
+    ".github/workflows/pr-verify.yml",
+    "docs/engineering/MONDAY_CI_READINESS.md",
+    "reports/MONDAY_PAPER_READINESS_2026-09-21.md"
+  ],
+  "repair": "Replay outer1200s, verbose case names and durations retained; fullpack50minutes with readiness/postclose80minutes, existing pr-verify110minutes sufficient. No retries/xfails/skips. Await uncensored hosted replay and required safety check at the new commit.",
+  "tests": [
+    "focused reporting/workflow/artifact behavioral regressions, including actual verbose child-pytest pass/timeout",
+    "actionlint affected workflows",
+    "Ruff and scoped diff check",
+    "unchanged frozen surface verification",
+    "actual source-pinned hosted post-close plus required operational-safety fullpack at new SHA"
+  ],
+  "canonical_artifacts": "Do not regenerate or overwrite authenticated runtime/canonical full-pack snapshots; local targeted evidence stays in this dedicated folder, final source-bound fullpack/audit index uploaded by GitHub Actions."
+}

@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
+# M-11 (audit-2026-05-02): removed unused `import numpy as np`
 
 
 @dataclass
@@ -65,6 +65,19 @@ class PyramidPosition:
         return len(self.layers)
 
     @property
+    def max_level(self) -> int:
+        """V9 DD3-1 / Wave-44 (2026-05-03): the largest `level` field
+        across all layers.  Used by `check_pyramid` to decide which
+        next-level to add — robust to `_reconcile_fills` collapsing the
+        layers list (which made layer_count==1 forever, blocking Layer 2).
+
+        Returns -1 if there are no layers.
+        """
+        if not self.layers:
+            return -1
+        return max(lay.level for lay in self.layers)
+
+    @property
     def r_multiple(self) -> float:
         """Current R-multiple from initial entry."""
         if not self.layers or self.atr_at_entry < 1e-6:
@@ -88,15 +101,66 @@ class PyramidPosition:
         return pnl
 
     def to_dict(self) -> dict[str, Any]:
+        """Telemetry-style summary (small, for status responses)."""
         return {
-            "symbol": self.symbol,
-            "direction": self.direction,
-            "layers": self.layer_count,
-            "total_shares": self.total_shares,
-            "avg_entry": round(self.avg_entry, 2),
-            "current_stop": round(self.current_stop, 2),
-            "r_multiple": round(self.r_multiple, 2),
+            "symbol": str(self.symbol),
+            "direction": float(self.direction),
+            "layers": int(self.layer_count),
+            "total_shares": int(self.total_shares),
+            "avg_entry": round(float(self.avg_entry), 2),
+            "current_stop": round(float(self.current_stop), 2),
+            "r_multiple": round(float(self.r_multiple), 2),
         }
+
+    def to_persistence(self) -> dict[str, Any]:
+        """Full state for brain persistence (audit-D D-20, 2026-05-02)."""
+        return {
+            "symbol": str(self.symbol),
+            "direction": float(self.direction),
+            "layers": [
+                {
+                    "shares": int(l.shares),
+                    "entry_price": float(l.entry_price),
+                    "bar_added": int(l.bar_added),
+                    "level": int(l.level),
+                }
+                for l in self.layers
+            ],
+            "target_total_shares": int(self.target_total_shares),
+            "atr_at_entry": float(self.atr_at_entry),
+            "initial_stop": float(self.initial_stop),
+            "current_stop": float(self.current_stop),
+            "highest_price": float(self.highest_price),
+            "lowest_price": float(self.lowest_price)
+                             if self.lowest_price != float("inf") else None,
+            "breakout_score": float(self.breakout_score),
+        }
+
+    @classmethod
+    def from_persistence(cls, data: dict[str, Any]) -> "PyramidPosition":
+        """Reconstruct PyramidPosition from serialized form (D-20)."""
+        layers = [
+            PyramidLevel(
+                shares=int(l["shares"]),
+                entry_price=float(l["entry_price"]),
+                bar_added=int(l["bar_added"]),
+                level=int(l["level"]),
+            )
+            for l in (data.get("layers") or [])
+        ]
+        lowest = data.get("lowest_price")
+        return cls(
+            symbol=str(data["symbol"]),
+            direction=float(data["direction"]),
+            layers=layers,
+            target_total_shares=int(data.get("target_total_shares", 0)),
+            atr_at_entry=float(data.get("atr_at_entry", 0.0)),
+            initial_stop=float(data.get("initial_stop", 0.0)),
+            current_stop=float(data.get("current_stop", 0.0)),
+            highest_price=float(data.get("highest_price", 0.0)),
+            lowest_price=float(lowest) if lowest is not None else float("inf"),
+            breakout_score=float(data.get("breakout_score", 0.0)),
+        )
 
 
 @dataclass
@@ -135,12 +199,39 @@ class MomentumPyramider:
 
     MAX_LAYERS = 3
 
-    def __init__(self):
+    def __init__(self, enabled: bool = True):
+        # Work order Task C (2026-06-25): pyramiding is structurally negative
+        # (-$452 across 151 trades, 0.7% win). When disabled, entries size at
+        # full target (no Layer-0 reduction) and no adds/cuts ever fire, so no
+        # pyramid positions — and thus no pyramid_cut_* exits — are created.
+        # Default True keeps behavior byte-identical; set ORGANISM_PYRAMID_ENABLED
+        # =false in the deployment to disable. The code path is preserved (guards
+        # intact), just inert.
+        self.enabled = enabled
         self._pyramid_count = 0
         self._max_layers_reached = 0
 
+    def telemetry(self) -> dict:
+        """V10 DD4-4 / Wave-53 (2026-05-03): expose pyramid counters.
+
+        Previously `_pyramid_count` and `_max_layers_reached` were
+        write-only — incremented but never read or telemetered.  The
+        result was that DD3-1 / DD4-2 fixes couldn't be self-verified
+        from runtime artifacts.  Now: callers can include this in
+        tick telemetry / brain manifest export.
+        """
+        return {
+            "pyramid_count_total": int(self._pyramid_count),
+            "max_layers_reached": int(self._max_layers_reached),
+        }
+
     def initial_shares(self, target_shares: int) -> int:
-        """Calculate initial entry size (Layer 0)."""
+        """Calculate initial entry size (Layer 0).
+
+        Disabled (Task C): no reduction — enter at the full target size.
+        """
+        if not self.enabled:
+            return max(1, int(target_shares))
         return max(1, int(target_shares * self.LAYER_0_PCT))
 
     def check_pyramid(
@@ -159,7 +250,17 @@ class MomentumPyramider:
         -------
         PyramidAction with recommended action.
         """
+        if not self.enabled:
+            return PyramidAction(action="none")  # Task C: pyramiding disabled
         if not position.layers:
+            return PyramidAction(action="none")
+
+        # G3: guard against NaN/Inf current_price. If streaming data
+        # is stale or corrupt, current_price can be NaN, which would
+        # silently disable all pyramid actions (NaN comparisons are
+        # always False). Catch early and return safely.
+        import math
+        if not math.isfinite(current_price) or current_price <= 0:
             return PyramidAction(action="none")
 
         entry = position.layers[0].entry_price
@@ -210,8 +311,11 @@ class MomentumPyramider:
                     )
             return PyramidAction(action="none")
 
-        # Layer 1: add at +1.5R
-        if position.layer_count == 1 and r_current >= self.ADD_1_THRESHOLD:
+        # Layer 1: add at +1.5R.
+        # V9 DD3-1 / Wave-44 (2026-05-03): key on `max_level == 0` (initial
+        # only) instead of `layer_count == 1` so a layer-list collapse in
+        # _reconcile_fills doesn't make Layer 1 re-fire indefinitely.
+        if position.max_level == 0 and r_current >= self.ADD_1_THRESHOLD:
             add_shares = max(1, int(position.target_total_shares * self.LAYER_1_PCT))
             # Move stop to breakeven
             new_stop = entry  # Breakeven
@@ -226,8 +330,11 @@ class MomentumPyramider:
                 reason=f"pyramid_L1_at_{r_current:.1f}R",
             )
 
-        # Layer 2: add at +3.0R
-        if position.layer_count == 2 and r_current >= self.ADD_2_THRESHOLD:
+        # Layer 2: add at +3.0R.
+        # V9 DD3-1 / Wave-44 (2026-05-03): key on `max_level == 1` (after
+        # one successful add).  Previously `layer_count == 2` was unreachable
+        # if _reconcile_fills collapsed the layer list back to 1 entry.
+        if position.max_level == 1 and r_current >= self.ADD_2_THRESHOLD:
             add_shares = max(1, int(position.target_total_shares * self.LAYER_2_PCT))
             # Trail at 1.5× ATR from current
             if position.direction > 0:

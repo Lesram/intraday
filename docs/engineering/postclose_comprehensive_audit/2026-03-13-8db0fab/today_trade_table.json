@@ -1,0 +1,7 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+  "trades": [],
+  "total_trades": 0,
+  "note": "Third consecutive zero-trade day. No entries passed the confidence gate (max eff_conf=0.20, gate=0.25)."
+}

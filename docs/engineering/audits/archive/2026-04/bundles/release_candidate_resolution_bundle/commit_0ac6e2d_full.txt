@@ -1,0 +1,28 @@
+commit 0ac6e2d16a1081c283ab302be695f2305b4405ab
+Author:     Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+AuthorDate: Thu Apr 23 22:55:23 2026 -0700
+Commit:     Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+CommitDate: Thu Apr 23 22:55:23 2026 -0700
+
+    fix(governance): canonical drawdown-kill resolution + startup validator
+    
+    Establishes a single source of truth for the drawdown-kill threshold
+    and logs both the resolved value and its source at startup so operators
+    can tell immediately whether the env override or the code default is
+    active.
+    
+    Prior state had three inconsistent sources:
+      - backend/organism/governance.py default: 0.05
+      - docker-compose.yml fallback:            0.03
+      - .env (operational runtime):             0.20
+    
+    Changes:
+      - Hoist DEFAULT_DRAWDOWN_KILL_PCT (0.05) to a module-level constant
+      - Resolve env-vs-default explicitly and record _drawdown_limit_source
+      - Log one-line INFO at startup: resolved value, source, code default
+      - WARN if env value > 1.5x the code default (drift detection)
+    
+    6 new tests covering env override, code default, drift warning boundaries.
+    No behavioral change to the kill-switch logic itself.
+    
+    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>

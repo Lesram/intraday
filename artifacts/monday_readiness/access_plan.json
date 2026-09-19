@@ -1,0 +1,23 @@
+{
+  "scope": "Paper-only read access for dedicated monitoring account; preserve existing admin/trader gates",
+  "files": [
+    "backend/api/routes/paper_monitor.py",
+    "backend/api/routes_setup.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "docker-compose.paper.yml",
+    "tests/test_paper_monitor_access.py",
+    "backend/infra/security.py",
+    "backend/api/socketio_server.py",
+    "backend/api/routes/market_data.py",
+    "backend/api/routes/scanner.py",
+    ".github/workflows/paper-readiness.yml"
+  ],
+  "tests": [
+    "new authentication/authorization route tests",
+    "existing security boundary/deploy/data-integrity tests",
+    "settings/config/system integration",
+    "full safety and replay pack"
+  ],
+  "runtime_effect": "New GET-only observer surface and loopback host bindings; no frozen strategy or order path change",
+  "roles": "Dedicated paper_monitor principal is centrally restricted to four GET monitoring routes, identity and logout; denied elsewhere including direct WebSocket auth. Admin route guard unchanged."
+}

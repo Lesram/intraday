@@ -1,0 +1,23 @@
+BROKER ROUND TRIPS: 20
+BROKER TOTAL PNL: $+53.72
+
+ 1. AMD     22sh  entry=$  207.9905  exit=$  209.6800  cost=$   4575.79  proceeds=$   4612.96  PnL=$  +37.17
+ 2. AMZN    22sh  entry=$  209.1864  exit=$  210.1200  cost=$   4602.10  proceeds=$   4622.64  PnL=$  +20.54
+ 3. META     5sh  entry=$  576.9600  exit=$  573.8000  cost=$   2884.80  proceeds=$   2869.00  PnL=$  -15.80
+ 4. IWM      7sh  entry=$  251.3392  exit=$  250.5557  cost=$   1759.37  proceeds=$   1753.89  PnL=$   -5.48
+ 5. XLK     40sh  entry=$  133.9218  exit=$  134.9793  cost=$   5356.87  proceeds=$   5399.17  PnL=$  +42.30
+ 6. AMD      8sh  entry=$  212.9900  exit=$  212.1000  cost=$   1703.92  proceeds=$   1696.80  PnL=$   -7.12
+ 7. AMD     15sh  entry=$  214.2867  exit=$  214.2707  cost=$   3214.30  proceeds=$   3214.06  PnL=$   -0.24
+ 8. XLE     55sh  entry=$   59.4380  exit=$   59.3500  cost=$   3269.09  proceeds=$   3264.25  PnL=$   -4.84
+ 9. XLK     24sh  entry=$  135.5800  exit=$  135.3700  cost=$   3253.92  proceeds=$   3248.88  PnL=$   -5.04
+10. AMZN    15sh  entry=$  210.0300  exit=$  209.9120  cost=$   3150.45  proceeds=$   3148.68  PnL=$   -1.77
+11. XLE     56sh  entry=$   59.2100  exit=$   59.1300  cost=$   3315.76  proceeds=$   3311.28  PnL=$   -4.48
+12. XLK     12sh  entry=$  135.2100  exit=$  134.9492  cost=$   1622.52  proceeds=$   1619.39  PnL=$   -3.13
+13. SH      88sh  entry=$   37.7100  exit=$   37.6900  cost=$   3318.48  proceeds=$   3316.72  PnL=$   -1.76
+14. XLK     40sh  entry=$  135.2620  exit=$  135.4700  cost=$   5410.48  proceeds=$   5418.80  PnL=$   +8.32
+15. XLK     24sh  entry=$  135.3804  exit=$  135.2292  cost=$   3249.13  proceeds=$   3245.50  PnL=$   -3.63
+16. XOM     24sh  entry=$  160.3015  exit=$  160.6700  cost=$   3847.24  proceeds=$   3856.08  PnL=$   +8.84
+17. NVDA     4sh  entry=$  176.9700  exit=$  176.9750  cost=$    707.88  proceeds=$    707.90  PnL=$   +0.02
+18. XOM     20sh  entry=$  160.9600  exit=$  160.8100  cost=$   3219.20  proceeds=$   3216.20  PnL=$   -3.00
+19. SH      88sh  entry=$   37.6900  exit=$   37.6800  cost=$   3316.72  proceeds=$   3315.84  PnL=$   -0.88
+20. PSQ    105sh  entry=$   31.8800  exit=$   31.8200  cost=$   3347.40  proceeds=$   3341.10  PnL=$   -6.30

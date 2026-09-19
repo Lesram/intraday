@@ -1,0 +1,69 @@
+{
+  "checked_at": "2026-09-19T19:36:29.350346+00:00",
+  "daemon": true,
+  "containers": {
+    "postgres": {
+      "name": "trading_platform_db_paper",
+      "verified": true,
+      "running": true,
+      "health": "healthy",
+      "age_seconds": 1433.2012531757355
+    },
+    "redis": {
+      "name": "intra-redis-1",
+      "verified": true,
+      "running": true,
+      "health": "healthy",
+      "age_seconds": 1433.1433939933777
+    },
+    "api": {
+      "name": "intra-api-1",
+      "verified": true,
+      "running": true,
+      "health": "healthy",
+      "age_seconds": 1422.5638880729675
+    }
+  },
+  "readiness": {
+    "status": "ready",
+    "reachable": true
+  },
+  "problems": [],
+  "healthy": true,
+  "paused": false,
+  "last_recovery_at": null,
+  "actions": [],
+  "notification": {
+    "enabled": true,
+    "attempted": false,
+    "delivered": false
+  },
+  "critical_monitor": {
+    "scanned_at": "2026-09-19T19:36:29.350346+00:00",
+    "available": true,
+    "new_events": 0,
+    "seen": [
+      "9af012ff4aa37ef4238d2d2d897c61c3a274da2a025c5f48fe6f80afe1beb891",
+      "533d764704b2bf32d6ab165ba8dfede18198be828c2b285bb152bccc0f05f41b"
+    ],
+    "truncated": false,
+    "pending_events": 0
+  },
+  "backup_monitor": {
+    "enabled": true,
+    "max_age_seconds": 93600,
+    "backups": {
+      "brain": {
+        "status": "ok",
+        "files_verified": 26,
+        "age_seconds": 1361.2446751594543
+      },
+      "postgres": {
+        "status": "ok",
+        "files_verified": 1,
+        "age_seconds": 1361.0237431526184
+      }
+    },
+    "problems": []
+  }
+}

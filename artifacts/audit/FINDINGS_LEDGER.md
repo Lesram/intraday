@@ -1,0 +1,503 @@
+# Findings Ledger
+
+Tracks every audit finding through the fix-and-verify cycle. Updated as fixes ship.
+
+**Audit round v1:** 2026-05-01 (baseline).
+**Fix campaign:** Phase 1–5, deployed in 5 sequenced batches.
+**Audit round v2:** scheduled after Phase 5 deploys.
+
+State semantics:
+- `open` — finding exists, no fix shipped
+- `in-progress` — fix written, not yet deployed
+- `fixed` — code committed to main
+- `verified` — deployed and observed-working in production
+- `closed-v2` — re-audit confirmed not re-detected
+
+## Critical findings (8)
+
+| ID | Track | Title | Severity | State | Phase | Fix commit |
+|---|---|---|---|---|---|---|
+| 1 | G | `lifespan.shutdown()` doesn't `force_save_brain()` | 🔴 Critical | open | Phase 1 | — |
+| 2 | G | Reconciliation PnL pollutes Kelly/ML/symbol-ban gating | 🔴 Critical | open | Phase 4 | — |
+| 3 | A | EOD path still has `predicted_return` 0.003 floor | 🔴 Critical | open | Phase 1 | — |
+| 4 | B | `DROP_ML_FROM_GATE` only patched alpha+breakout (3 sites still raw) | 🔴 Critical | open | Phase 1 | — |
+| 5 | E | Poisoned ORB cache fed 1,295 wrong shadow events for IWM | 🔴 Critical | open | Phase 2 | — |
+| 6 | E | Stale streaming-buffer bars served to scanners (108min stale on AMZN) | 🔴 Critical | open | Phase 2 | — |
+| 7 | D | `_symbol_banned` reset on restart, never on date change | 🔴 Critical | open | Phase 3 | — |
+| 8 | F | Daily max-loss halt persists across day rollover | 🔴 Critical | open | Phase 1 | — |
+
+## High-priority findings (10)
+
+| ID | Track | Title | Severity | State | Phase | Fix commit |
+|---|---|---|---|---|---|---|
+| 9 | A | EOD scanner absolute stop floor `max(atr, 0.10)` | 🟡 High | open | Phase 1 | — |
+| 10 | A | Tension saturation at 0.80 (5 callsites) | 🟡 High | open | Phase 5 | — |
+| 11 | D | `_pending_entry_order_ids` written then immediately wiped | 🟡 High | open | Phase 3 | — |
+| 12 | C | RF/LGBM ensemble (40% blend) not persisted | 🟡 High | open | Phase 3 | — |
+| 13 | E | EOD `LIVE_LOOKBACK=100` too small for 15:30 ET decision | 🟡 High | open | Phase 2 | — |
+| 14 | B+F | `MAX_DAILY_LOSS=0` (disabled in `.env`) | 🟡 High | open | Phase 5 | — |
+| 15 | F | Sector cap maps ETFs to "ETF" not GICS | 🟡 High | open | Phase 5 | — |
+| 16 | F | Daily reset uses UTC not ET (8 PM ET = next day) | 🟡 High | open | Phase 1 | — |
+| 17 | B | `MR_TARGET_RETRACEMENT` default mismatch (0.65 vs 0.8) | 🟡 High | open | Phase 1 | — |
+| 18 | D | `_exit_cooldown` and `_pending_exit` not persisted | 🟡 High | open | Phase 3 | — |
+
+## Lower-priority findings (12)
+
+| ID | Track | Title | Severity | State | Phase | Fix commit |
+|---|---|---|---|---|---|---|
+| 19 | F | Drawdown cooldown computes 599s instead of 600s (IEEE-754 drift) | 🟢 Cosmetic | open | Phase 1 | — |
+| 20 | D | `_pyramid_positions` not persisted | 🟢 Low | open | Phase 3 | — |
+| 21 | D | `_ml_reversal_used` one-shot guard not persisted | 🟢 Low | open | Phase 3 | — |
+| 22 | D | `evolved_params.json` stale since Apr 15 | 🟢 Low | open | Phase 3 | — |
+| 23 | D | ML calibration persisted twice (ml_state.json + extra_counters) | 🟢 Low | open | Phase 3 | — |
+| 24 | F | Notional-cap floor `max(1, ...)` permissive at lower bound | 🟢 Low | open | Phase 5 | — |
+| 25 | C | S17 `_last_val_X` cache not persisted | 🟢 Low | open | Phase 5 | — |
+| 26 | C | Diagnostic schema-drift alert may be log-only | 🟢 Low | open | Phase 5 | — |
+| 27 | G | Orphan-adopted trades have no first-class flag (entry_source="" collides with legacy) | 🟢 Low | open | Phase 4 | — |
+| 28 | G | Stale-metadata mis-attribution edge cases | 🟢 Low | open | Phase 4 | — |
+| 29 | G | Pyramid-restart silent desync | 🟢 Low | open | Phase 4 | — |
+| 30 | G | DB race in trade write | 🟢 Low | open | Phase 4 | — |
+
+## Per-phase fix tally
+
+| Phase | Findings count | Critical | High | Low |
+|---|---|---|---|---|
+| Phase 1 (quick wins) | 9 | 4 | 4 | 1 |
+| Phase 2 (data pipeline) | 3 | 2 | 1 | 0 |
+| Phase 3 (state persistence) | 9 | 1 | 3 | 5 |
+| Phase 4 (reconciliation) | 5 | 1 | 0 | 4 |
+| Phase 5 (calibration & misc) | 4 | 0 | 2 | 2 |
+| **Total** | **30** | **8** | **10** | **12** |
+
+## Status legend update history
+
+- 2026-05-01: ledger created, all 30 findings open.
+- 2026-05-02: Phase 1-5 + 6.5 complete. v2 re-audit run. Final state:
+  - **Closed-v2: 21** (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 21, 27, plus T1+T2+T3+GAP-1..5 from v2)
+  - **Deferred low-priority: 8** (12, 20, 22, 23, 24, 25, 26, 28, 29, 30)
+  - See `MASTER_AUDIT_SYNTHESIS_v2.md` for detail.
+
+## v2 new findings (Phase 6.5)
+
+All closed in commit `f65f9c3`.
+
+| ID | Track | Title | State |
+|---|---|---|---|
+| T1 | A | ORB/EOD inline tension caps still at 0.80 | closed-v2 |
+| T2 | A | EOD heuristic predicted_return cap 0.020 | closed-v2 |
+| T3 | A | MR composite dead `max(0.45, ...)` floor | closed-v2 |
+| GAP-1 | G | Startup orphan-adoption no entry_source tag | closed-v2 |
+| GAP-2 | G | is_reconciliation_artifact not persisted | closed-v2 |
+| GAP-3 | G | Kelly + signal_gen mutators ungated | closed-v2 |
+| GAP-4 | G | Evolution engine unfiltered trades | closed-v2 |
+| GAP-5 | G | DB-trade reconstruction no flag derivation | closed-v2 |
+
+## v3 findings (Tracks H–M, 2026-05-02)
+
+58 findings across 6 surfaces. ~50 closed in waves 8a-11d on `rc-1.5-curated`. H-1 and H-2 held for after V4. See `MASTER_AUDIT_SYNTHESIS_v3.md` for full detail and `MASTER_AUDIT_SYNTHESIS_v4.md` Track Z for closure verification.
+
+## v4 findings (Tracks N/O/P/Q/R/Z, 2026-05-02)
+
+**Total: 52 new findings.** See `MASTER_AUDIT_SYNTHESIS_v4.md` for cross-track patterns and wave 12-15 fix sequence.
+
+### V4 Critical / Organism-level (12)
+
+| ID | Track | Title | Severity | Wave |
+|---|---|---|---|---|
+| N-C-1 | N | `Drawing` ORM has no migration; `/api/drawings` will 500 | Crit | 13 |
+| N-C-2 | N | `tick_telemetry` writes silently broken (`backend.infra.database` doesn't exist) | Crit | 12c |
+| N-C-3 | N | Outbox `claim_batch` doesn't flip status; restart re-submits orders | Crit | 12b |
+| P-P0-1 | P | `/api/v1/system/metrics` returns 503 on every scrape | P0 | 12e |
+| P-P0-2 | P | All 12 ORGANISM_* Prometheus metrics phantom (registry split-brain) | P0 | 12e |
+| P-P0-3 | P | Wave-8c missed: `live_engine.py:5625` forensic-guard alert dropped | P0 | 12f |
+| P-P0-4 | P | 3 dead alert call sites with wrong signatures, all silent | P0 | 12f |
+| P-P0-5 | P | Drawdown-kill triggering has no alert wiring | P0 | 13 |
+| P-P0-6 | P | Walk-forward Sharpe regression (46x, no alert, brain refusing to save) | P0 | 13 |
+| **R-F-1** | R | *is_reconciliation_artifact* flag NOT in `trade_history.csv` — restart erases isolation | Org | 12a |
+| **R-F-5** | R | Wave-11d ensemble persistence regressed (`save_essential_state` skips `_save_ml_models`) | Org | 12d |
+| **R-F-6** | R | BG trainer evolution path NOT filtered for reconciliation artifacts (sync IS — split) | Org | 12a |
+
+### V4 High (18)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| N-H-1 | N | Schema drift: position_lots.user_id Integer FK declared, varchar in DB | 14 |
+| N-H-2 | N | `LotTracker.close_lots_fifo` no row-locking; lost-update race | 13 |
+| N-H-3 | N | No automated PostgreSQL backup | 14 |
+| N-H-4 | N | `async for db in get_session()` leak idiom | 14 |
+| O-1 | O | `getCurrentUser()` `/auth/me` raw cast; only login normalizes | 13 |
+| O-2 | O | PositionResponse snake_case output, FE reads camelCase → 5 undefined fields | 13 |
+| O-3 | O | OrganismStatus.governance keys mismatch — kill-switch banner won't toggle | 13 |
+| P-P1-1..5 | P | ML retrain alerts; ALL-stale reconnect; log rotation; FE auth ERROR; orphan adoption silent | 14 |
+| Q-Q5 | Q | `CacheService.memory_cache` set-only-grow → OOM risk during Redis outage | 14 |
+| Q-Q15 | Q | `_save_brain` inside `_reconcile_fills` blocks event loop (Phase-1 to_thread missed) | 13 |
+| R-F-2 | R | H-1 ID-namespace mismatch (still open, two-grep proof captured) | hold |
+| R-F-3 | R | Per-symbol counters never reset on date-roll → ghost bans (same as Q-Q1) | 13 |
+| R-F-7 | R | Walk-forward gate consumes `_all_trades[-100:]` UNFILTERED | 13 |
+| R-F-8 | R | `len(_all_trades)` drives learning-mode/Kelly/freeze threshold UNFILTERED | 13 |
+
+### V4 Medium (15)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| N-M-1 | N | Naive datetimes on `users.*` columns | 15 |
+| N-M-2 | N | `daily_ledger` outside canonical Base namespace | 15 |
+| O-4 | O | `handleApiError()` collapses 422 array to "An error occurred" | 13 |
+| O-5 | O | `PositionsTable.tsx` raw fetch hardcodes localhost:8000 | 14 |
+| O-6 | O | WS URLs hardcode `:8000`; break behind reverse proxy | 14 |
+| O-7 | O | `POST /chart-templates` (no slash) hits 307 every save | 14 |
+| P-P2-1..4 | P | pandas_ta noise; INFO chatter; `/observability/health/ready` returns unknown | 14 |
+| Q-Q2 | Q | `_equity_curve` 37k entries uncapped; full CSV rewrite per save | 14 |
+| Q-Q14 | Q | alpaca_client sync SDK relies on each caller wrapping in `to_thread` | 14 |
+| Q-Q1 | Q | Per-symbol "today" counters never reset on date-roll (logic, not leak) | 13 |
+| R-F-4 | R | Bar-boundary detection bypasses `_now_fn()` — replay/live parity broken on exit | 14 |
+| R-F-9 | R | Asymmetric orphan adoption (`target=qty` in-tick vs `target=qty*1.5` startup) | 15 |
+
+### V4 Low / Test-fixture (7)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| Z-R-1 | Z | 6 `Quote.is_stale` test fixtures use naive datetime against tz-aware production (K-4 drift) | 15 |
+| Z-R-2 | Z | 5 cache TTL tests `TypeError` (K-8 drift) | 15 |
+| Z-R-3 | Z | Fragile string-grep test | 15 |
+| Z-R-4 | Z | 2 pre-existing failures pre-wave-8 (NOT regressions) | hold |
+| Q-(3) | Q | 3 nits/info findings (DataFrame allocation per tick, etc.) | 15 |
+
+## V4 cross-track patterns (see synthesis)
+
+1. **Save-path bifurcation** (R-F-5, Q-Q15, N-C-3) — multiple persistence entry points don't carry the same logic
+2. **Persistence boundary loses runtime state** (R-F-1, N-C-2, N-H-1, Z-R-1/R-2) — flags erased crossing CSV/DB/fixture boundary
+3. **Day-roll boundary leaky one level deeper** (Q-Q1, R-F-3, R-F-7, R-F-8) — V3 K closed module-level; V4 finds counter/threshold-level
+4. **Phantom observability** (P-P0-1, P-P0-2, P-P0-3..6, N-C-2) — declared but never delivered
+5. **Audit catches its own work** (R-F-5 = wave-11d regression; Q-Q15 = Phase-1 missed site; P-P0-3 = wave-8c missed site)
+
+## Status legend update history
+
+- 2026-05-02 21:30 PT: V4 audit complete. 6 tracks, 52 findings. Wave 12-15 sequence proposed in `MASTER_AUDIT_SYNTHESIS_v4.md`. Container healthy on rc-1.5-curated @ ed64acd; brain coherent (gen=168, trades=498).
+- 2026-05-02 23:30 PT: Waves 12 (12a-12f), 13 (13a-d, 13e-g), 14, and 15 all shipped on rc-1.5-curated. Final HEAD `3fe2a0d`. Container healthy at gen=168, trades=498 across 9 force-recreate cycles.
+
+## V4 closure status (post waves 12-15)
+
+| Finding | Wave | Commit |
+|---|---|---|
+| **R-F-1** | 12a | 731330b |
+| **R-F-6** | 12a | 731330b |
+| **N-C-3** | 12b | 211a5c6 |
+| **N-C-2** | 12cd | 2c6750f |
+| **R-F-5** | 12cd | 2c6750f |
+| **P-P0-1** | 12e | 5551487 |
+| **P-P0-2** | 12e | 5551487 |
+| **P-P0-3** | 12f | 925175b |
+| **P-P0-4** | 12f | 925175b |
+| Q-Q1 / R-F-3 | 13ad | 75cb998 |
+| R-F-7 / R-F-8 | 13ad | 75cb998 |
+| P-P0-5 | 13ad | 75cb998 |
+| Q-Q15 | 13ad | 75cb998 |
+| N-H-2 | 13efg | 435885d |
+| O-2 / O-3 / O-4 | 13efg | 435885d |
+| N-C-1 | 13efg | 435885d |
+| Q-Q5 / Q-Q2 | 14 | 3104b61 |
+| P-P1-* | 14 | 3104b61 |
+| P-P2-* | 14 | 3104b61 |
+| N-H-1 / N-H-3 / N-H-4 | 14 | 3104b61 |
+| O-5 / O-6 / O-7 | 14 | 3104b61 |
+| Z-R-1 / Z-R-2 | 15 | 3fe2a0d |
+| R-F-9 | 15 | 3fe2a0d |
+| N-M-1 (documented) | 15 | 3fe2a0d |
+| N-M-2 (misread; no fix needed) | 15 | 3fe2a0d |
+| Z-R-3 (already hardened) | (verified) | 3fe2a0d |
+| **H-1 / R-F-2** | 16d | 7fc68fc |
+| **H-2** (V3) | 16c | fadcd40 |
+| Z-R-3 (fragile string-grep) | 16ab | 4a49058 |
+| Z-R-4 (pre-existing pre-wave-8) | 16ab | 4a49058 |
+
+## v5 findings (Tracks Z2/S/T/U, 2026-05-03)
+
+**Total: 21 new findings; 0 production regressions in waves 12-16.**
+See `MASTER_AUDIT_SYNTHESIS_v5.md` for cross-track patterns and wave 17-19 sequence.
+
+### V5 Critical / High (6)
+
+| ID | Track | Title | Severity | Wave |
+|---|---|---|---|---|
+| **S-J3-1** | S | Wave-8c J-3 alert "fix" silently drops every alert (`get_running_loop()` always raises in worker threads) | Critical | 17a |
+| **U-RF4** | U | V4 R-F-4 fix never shipped; bypass moved to `live_engine.py:2064`; replay `bars_held` reads wall clock | High | 17b |
+| **S-WS-GAP-1** | S | H-1 unification regresses across WS gap; `_gap_fill_after_reconnect` doesn't re-populate `_terminal_order_ids` | High | 17c |
+| **S-NET-CB-1** | S | `CircuitBreaker` class not wired to `broker.submit_order` (only retry-with-backoff exists) | High | 18 |
+| **S-NET-T-1** | S | TradingClient / StockHistoricalDataClient constructed without explicit timeout | High | 18 |
+| **B-T-1** | T | `live_engine.py:1336` hard-codes `direction=1.0` in DB-replay reconstruction; short trades restored with corrupted return / direction | High | 18 |
+
+### V5 Medium (6)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| B-T-2 | T | `cumulative_pnl` round-of-sum vs CSV sum-of-rounded asymmetry; state and CSV never reconcile across restart | 17d |
+| B-T-3 | T | `int(qty)` truncates fractional shares to 0 in 8+ live_engine sites | 18 |
+| B-T-7 | T | Kelly `atr_var = max(..., 1e-6)` floor saturates near-zero-vol bars to per-position max | 18 |
+| S-OUTBOX-1 | S | N-C-3 lease (300s) shorter than worst-case sequential batch (~21 min) | 18 |
+| S-CLK-1 | S | Drawdown cooldown uses wall clock, not monotonic — NTP step shifts cooldown | 19 |
+| S-DISK-1 | S | `save_essential_state` doesn't use `.tmp_save/` swap — partial state on disk-full | 19 |
+
+### V5 Latent / Bypass (9)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| B-T-4 | T | `streaming_data_provider.get_bar_age()` uses raw `time.time()`, escapes `_time_fn` injection | 19 |
+| B-T-5 | T | `walk_forward.py:389` falls back to `std=1.0` for single-pnl windows (synthesizes fake Sharpe) | 19 |
+| U-1 | U | `live_engine.py:1424, 3865` — tick-duration telemetry direct `datetime.now()` | 19 |
+| U-2 | U | `live_engine.py:4593, 4714` — order idempotency-key date prefix | 19 |
+| U-3 | U | `regime.py:164, 396, 424, 436, 555, 577` — regime state timestamps every tick | 17b |
+| U-4 | U | `governance.py:142, 206` — drawdown cooldown wall-clock anchor | 17b |
+| U-5 | U | `governance.py:34` — daily change-budget reset key | 19 |
+| U-6 | U | `promotion.py:245` — stage min-duration check | 19 |
+| U-7 | U | `continuous_learner.py:327, 346` — retrain evaluation event timestamps | 19 |
+
+## V5 cross-track patterns (see synthesis)
+
+1. **Fix that didn't actually fix** (S-J3-1, U-RF4, S-WS-GAP-1) — single-site fixes need a same-class sweep at write-time
+2. **Injection coverage is partial** (Track U: 1 of 5+ components patched; B-T-4 corroborates) — auxiliary components have their own clocks
+3. **Persistence boundary asymmetry** (B-T-2; same shape as V4 R-F-1)
+4. **Floor / fallback masks edge case** (B-T-5, B-T-7) — synthesizes a number rather than refusing
+5. **Dormant trap** (B-T-1, B-T-3) — code looks correct because the path is currently disabled
+
+## Status legend update history
+
+- 2026-05-03 00:30 PT: V5 audit complete. 4 tracks, 21 findings (0 production regressions in waves 12-16). Wave 17-19 sequence proposed in `MASTER_AUDIT_SYNTHESIS_v5.md`. Container healthy on rc-1.5-curated @ d43dbec.
+- 2026-05-03 03:00 PT: Waves 17 (a-d), 18, and 19 all shipped on rc-1.5-curated. Final HEAD `0ea2695`. Container healthy across 7 force-recreate cycles. All 21 V5 findings closed.
+- 2026-05-03 04:00 PT: V6 audit complete. 5 tracks (Z3/V/W/T2/X), ~18 actionable findings + 14 W-process-gaps + 0 T2 + 2 Z3 cosmetic. 0 production regressions in waves 17-19. See `MASTER_AUDIT_SYNTHESIS_v6.md`.
+- 2026-05-03 04:30 PT: Waves 20 (a-e), 21, and 22 all shipped on rc-1.5-curated. Final HEAD `3baefb4`. Container healthy. All V6 actionable findings closed (V-T-1..V-T-9, X-1..X-8, W-marker gaps, T2 hypothesis pin, regime.py:589 obs).
+- 2026-05-03 06:00 PT: V7 audit complete. **10 tracks (largest round in the cycle).** 0 wave-20-22 regressions confirmed by Z4. ~91 actionable findings open — the largest open backlog since V1. Most severe: AA-C-1 (JWT secret = public default), AA-C-2 (require_roles returns function ref → 18 admin endpoints lose role gate), DD-1 (manufactures breakout score from flat-price data), BB BUG-10 (audit_logs empty), BB BUG-8 (LotTracker dead code; position_lots/realized_trades empty despite 1,369 orders). Wave 23-27 sequence proposed in `MASTER_AUDIT_SYNTHESIS_v7.md`.
+
+## v7 findings (Tracks Z4/W2/AA/BB/CC/DD/EE/FF/GG/HH, 2026-05-03)
+
+**Total: ~91 actionable findings + 14 wave-process gaps + 13 deterministic test regressions.**
+See `MASTER_AUDIT_SYNTHESIS_v7.md` for cross-track patterns and wave 23-27 sequence.
+
+### V7 Critical (4)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| **AA-C-1** | AA | JWT secret = public default `dev_secret_key_minimum_32_chars_for_development_only` | 23a |
+| **AA-C-2** | AA | `require_roles()` factory returns function ref → 18 admin endpoints lose role gate | 23b |
+| **BB BUG-10** | BB | `audit_logs` table empty; ComplianceAuditService.log only invoked by viewer | 24 |
+| **BB BUG-8** | BB | `LotTracker` dead in production; position_lots + realized_trades = 0 rows despite 1,369 orders | 24 |
+
+### V7 High (23)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| AA-H-1 | AA | SecurityHeadersMiddleware exists but never imported | 24 |
+| AA-H-2 | AA | 5 endpoints public without auth (`/scanner/symbols`, `/observability/*`) | 23c |
+| AA-H-3 | AA | AuditAction.USER_LOGIN/LOGOUT/CONFIG_UPDATED enums never invoked | 24 |
+| AA-H-4 | AA | Container: no cap_drop, no read_only, no security_opt; gid=0 (root) | 24 |
+| BB BUG-1/2/3 | BB | orders table missing CHECK constraints on qty>0, filled_qty<=qty, status, side, tif, order_type | 25 |
+| **DD-1** | DD | `comp_breakout_readiness` returns 0.633 on flat-price data (manufactures breakout score) | 24 |
+| **DD-2** | DD | Regime detector default atr_ratio=0.02 = 10× high-vol threshold when ATR cols missing | 24 |
+| **DD-3** | DD | SPY cross-asset features positional iloc[-len(df):] silent misalignment | 24 |
+| **DD-4** | DD | Kelly regime-stratified path bypasses spread-cost / ML-conf / breakout floors | 24 |
+| EE-1 | EE | Compose healthcheck targets shallow `/healthz`; `/readyz` 503 ignored | 25 |
+| EE-3 | EE | redis-server bind 127.0.0.1 refuses cross-container traffic | 23e |
+| EE-4 | EE | Single manual pg dump; no cron/restore script/integrity check | 25 |
+| FF-1 | FF | submit_symbol_order does NOT call validate_order; qty=0/-1/injection reach outbox | 25 |
+| FF-2 | FF | Idempotency-key cache returns prior result without verifying body matches | 25 |
+| FF-3 | FF | WS _process_trade_update silently drops messages on JSON null filled_qty | 25 |
+| GG-6 | GG | OPERATOR_COMMAND_SHEET 92 commits behind HEAD; brain numbers stale by 70+ trades | 26 |
+| GG-7 | GG | MONDAY_DEPLOY_eb90fa3.md still at repo root as live runbook | 26 |
+| GG-9 | GG | README quick-setup commands literally broken (cd algotrading_platform; ./scripts/run_ci_locally.sh) | 26 |
+| HH-1 | HH | live_engine.py 6,401 LOC; 2,510-line `_live_tick_inner`; 374-line `__init__` | 27 |
+| HH-2 | HH | OrganismBrain god-class: 2,119 LOC, 13 hand-paired _save_X/_load_X | 27 |
+| HH-3 | HH | 7 settings entry-points, 383 os.getenv calls (configuration sprawl) | 27 |
+| W2-1 | W | V6 W's 3 CI rules never shipped: no PR template, no workflow checks | 26 |
+| AA-M-2 | AA | Rate limiter keys on never-populated user_id → defaults to per-IP | 24 |
+
+### V7 Medium / Low (~50)
+
+See `MASTER_AUDIT_SYNTHESIS_v7.md` for full per-track tables. Highlights:
+- AA-M-1 Redis password = `changeme_redis` default
+- AA-M-3..5 `/settings/organism|trading|ml`, `/risk/emergency-stop` lack role enforcement
+- BB BUG-6 order_events ondelete=CASCADE in ORM, missing in migration
+- BB BUG-9 scheduled_reconciliation drift logs only to stdout
+- BB BUG-11 save_essential_state writes 7+ files non-atomically
+- DD-5..11 Kelly historic on zero-edge; regime tie-break dict-order; system anti-predictivity not surfaced; pure-breakout mis-tag; sector "Unknown" bypass
+- EE-2/5/6/7/8 health/ready sentinel; DR scenarios without runbooks; shutdown timeout; no resource limits; SLI gauges 503ing every 10s
+- FF-4..11 empty body 502; negative MAX_NOTIONAL silent disable; empty/duplicate ORGANISM_LIVE_SYMBOLS; etc.
+- GG-1..5/8/10/11 mapss.md drift; README references 9 non-existent files; FINDINGS_LEDGER inconsistent; live_engine docstring omits Ferrari scanners
+- HH-4..10 layering violations; 136 lazy imports; strategies/ vs organism/ duplication; public surface implicit
+
+### V7 Process gaps
+
+W2: 3 CI rule ship gaps. CC: 8 organism modules at 0% coverage; 13 deterministic regressions; 224 redundant @pytest.mark.asyncio decorators.
+
+## V7 cross-track patterns (see synthesis)
+
+1. **Auth + Audit + Compliance trio is broken** (AA-C-1/2, AA-H-3, BB-10, BB-8 converge — single most operationally severe pattern in the cycle)
+2. **Strategy logic was the unaudited blind spot** (V1-V6 audited infra; DD found 11)
+3. **Process enforcement gap** (W2 confirms V5 Pattern 1 / V6 Pattern 1 never shipped)
+4. **Dead code with live-looking telemetry** (LotTracker, audit_logs, strategies/, anti-predictivity)
+5. **Documentation drift accelerates after a deploy** (OPERATOR_COMMAND_SHEET 92 commits behind)
+6. **`live_engine.py` is the gravitational center of pain** (every track touched it; R-1 split is highest-ROI refactor)
+
+## Status legend update history
+
+- 2026-05-03 06:00 PT: V7 round complete. Largest open backlog since V1. Wave 23 (security URGENT) recommended within 24-48 hours. Synthesis in `MASTER_AUDIT_SYNTHESIS_v7.md`.
+- 2026-05-03 07:30 PT: Waves 23-27 shipped on rc-1.5-curated. ~33 V7 findings closed across 5 wave commits (73f96e7, 7ed1aa6, 413cf9e, 614f0a3, f7d8df8). Container healthy. ~58 remain deferred (mostly BB-8/10 audit wiring, EE runbooks, HH structural refactors). Wave 23 closed both AA-C-1 + AA-C-2 (the audit cycle's most operationally severe pair); Wave 24 closed all 4 DD strategy-logic findings + AA security hardening; Wave 25 added 7 orders CHECK constraints + closed FF-1/2/3; Wave 26 shipped V6 W's CI rules (PR template + check_wave_markers.py + workflow); Wave 27 shipped HH R-5 shared clock helpers (R-1 deferred, needs maintenance window).
+
+## V7 closure status (post waves 23-27)
+
+| Finding | Wave | Commit |
+|---|---|---|
+| **AA-C-1** (JWT public default) | 23a | 73f96e7 |
+| **AA-C-2** (require_roles broken factory; 18 admin endpoints) | 23b | 73f96e7 |
+| AA-H-2 (5 endpoints public) | 23c | 73f96e7 |
+| AA-M-1 (Redis default password) | 23d | 73f96e7 |
+| EE-3 (Redis bind 127.0.0.1) | 23e | 73f96e7 |
+| **DD-1** (manufactures breakout score from flat-price data) | 24 | 7ed1aa6 |
+| **DD-2** (regime ATR-missing default = 10x high-vol) | 24 | 7ed1aa6 |
+| **DD-3** (SPY positional misalignment) | 24 | 7ed1aa6 |
+| **DD-4** (Kelly regime-stratified bypass) | 24 | 7ed1aa6 |
+| AA-H-1 (security headers middleware) | 24 | 7ed1aa6 |
+| AA-H-4 (container hardening) | 24 | 7ed1aa6 |
+| AA-M-3..5 (settings/risk role enforcement) | 24 | 7ed1aa6 |
+| EE-7 (redis/postgres log rotation) | 24 | 7ed1aa6 |
+| BB-1/2/3 (orders CHECK constraints) | 25 | 413cf9e |
+| FF-1 (validate_order wired) | 25 | 413cf9e |
+| FF-2 (idempotency body verify) | 25 | 413cf9e |
+| FF-3 (WS null filled_qty) | 25 | 413cf9e |
+| EE-2 (/observability/health/ready) | 25 | 413cf9e |
+| EE-8 (MetricsRegistry.create_gauge) | 25 | 413cf9e |
+| W2-1 (V6 W's 3 CI rules shipped) | 26 | 614f0a3 |
+| T2-pin (pytest-cov + xdist + coverage) | 26 | 614f0a3 |
+| GG-6 (OPERATOR_COMMAND_SHEET stale) | 26 | 614f0a3 |
+| GG-7 (MONDAY_DEPLOY_eb90fa3 stale flag) | 26 | 614f0a3 |
+| GG-9 (README quick-setup broken) | 26 | 614f0a3 |
+| HH R-5 (shared clock-injection helpers) | 27 | f7d8df8 |
+
+### V7 deferred (~58 items)
+
+- **BB-6** order_events FK ondelete=CASCADE migration
+- **BB-8** LotTracker dead code wiring (production stream integration)
+- **BB-10** ComplianceAuditService event-by-event invocation
+- **AA-H-3** USER_LOGIN/LOGOUT/CONFIG_UPDATED audit invocation (depends on BB-10)
+- **EE-1** healthcheck deepens to /readyz
+- **EE-4** pg_backup cron + restore script + integrity check
+- **EE-5** DR runbooks for 6 scenarios
+- **EE-6** graceful shutdown per-component timeout
+- **CC** fix 13 deterministic regressions; mutation testing; flaky cleanup
+- **GG-1..5/8/10/11** mapss.md drift; FINDINGS_LEDGER inconsistency; live_engine docstring; etc.
+- **HH R-1** pipeline-split _live_tick_inner (2,510 lines — needs maintenance window)
+- **HH R-2** consolidate 7 settings entry-points (cross-cutting)
+- **HH R-3** brain serializer registry
+- **DD-5..11**, **FF-4..11**, **AA-L-1..3**, **AA-M-2** medium/low residuals
+
+## V6 closure status (post waves 20-22)
+
+| Finding | Wave | Commit |
+|---|---|---|
+| **V-T-1** (CRITICAL — order_service._trip S-J3-1 same-class) | 20a | 643ba6d |
+| **V-T-2** (HIGH — bg_trainer.get_result S-J3-1 same-class) | 20a | 643ba6d |
+| **V-T-3** (metric undercount HELP/emission mismatch) | 20e | 643ba6d |
+| V-T-4 (outbox dispatcher errors → alert) | 21 | 8430bf6 |
+| V-T-5 (DB startup failure → alert) | 22 | 3baefb4 |
+| V-T-6 (C1 watchdog → alert) | 21 | 8430bf6 |
+| V-T-7 (orphan adoption → INFO alert) | 21 | 8430bf6 |
+| V-T-8 (trace_span coverage) | deferred | — |
+| V-T-9 (feature_engineer + performance log levels) | 22 | 3baefb4 |
+| **X-1** (load_dotenv mid-replay) | 20c | 643ba6d |
+| X-2 / X-3 / X-4 / X-8 (wall-clock leaks) | 20b | 643ba6d |
+| X-5 / X-6 (replay attr-loop bugs) | 20d | 643ba6d |
+| X-7 (brain_dir defense-in-depth) | 22 | 3baefb4 |
+| W-find / live_engine.py:6265 | 20b | 643ba6d |
+| W marker U-1 / U-2 backfill | 21 | 8430bf6 |
+| T2 follow-up: hypothesis pin | 21 | 8430bf6 |
+| Wave-18 behavioral test backfill (8 tests) | 21 | 8430bf6 |
+| regime.py:589 (Z3 obs) | 22 | 3baefb4 |
+| CI determinism smoke test (6 tests) | 22 | 3baefb4 |
+
+V-T-8 (trace_span coverage) deferred to a future round — instrumenting
+3,600 lines of live_engine.py with trace_spans is itself a project
+requiring careful span boundary design; the underlying observability gap
+is documented and the metric coverage backfill (V-T-1..V-T-7) closes
+the immediate blind-spot risk.
+
+## v6 findings (Tracks Z3/V/W/T2/X, 2026-05-03)
+
+**Total: ~18 actionable findings + 14 wave-process gaps.**
+
+### V6 Critical / High (9 actionable)
+
+| ID | Track | Title | Severity | Wave |
+|---|---|---|---|---|
+| **V-T-1** | V | Latent S-J3-1 regression: `order_service.py:_trip()` ships broken wave-8c anti-pattern | Critical | 20a |
+| **V-T-2** | V | Same broken pattern at `background_trainer.py:get_result()` | High | 20a |
+| **V-T-3** | V | `ORGANISM_EXITS_SKIPPED_NO_DATA` undercounts by ~10× (HELP/emission mismatch) | High | 20e |
+| V-T-4 | V | Outbox worker errors: 11 logger.error sites, zero send_alert | High | 21 |
+| V-T-5 | V | DB connection failure silent in dev mode | High | 21 |
+| V-T-6 | V | C1/C2/stream-instability watchdog: no alert wiring | High | 21 |
+| V-T-7 | V | Reconciliation orphan adoption silently mutates entry metadata | High | 21 |
+| **X-1** | X | `live_tick()` lazy-imports alpaca_stream → triggers `load_dotenv()` mid-replay → first/second GovernanceController read different limits | High | 20c |
+| **X-8** | X | `background_trainer.py:130` writes `metrics.evaluated_at = datetime.now()` — bypasses `_now_fn` chain. Wall-clock leaks into brain artifact | High | 20b |
+
+### V6 Medium (4 actionable)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| V-T-8 | V | Zero `trace_span` calls in 3,600-line live_engine.py — no tick-internal latency observability | 22 |
+| X-2 | X | `live_engine.py:1473, 3923` use raw `time.time()` for tick `duration_s` | 20b |
+| X-3 | X | `brain_persistence.py:954` writes `saved_at` from wall clock | 20b |
+| X-5/6 | X | Wave-19 attr-loop has bugs: only matches `_now_fn` (skips StreamingDataProvider's `_time_fn`), lists nonexistent `promotion_controller` attribute | 20d |
+
+### V6 Low / Latent (5 actionable)
+
+| ID | Track | Title | Wave |
+|---|---|---|---|
+| W-find / X-4 | W,X,Z3 | `live_engine.py:6265` direct `datetime.now(UTC)` in `TradingSignal` stamping (3-track convergence) | 20b |
+| V-T-9 | V | Log stream 99.6% INFO; feature_engineer + performance produce 60.7% of lines | 22 |
+| X-7 | X | `OrganismLiveEngine` defaults `brain_dir=organism_brain` (production); no defense-in-depth assertion | 22 |
+| Z3-1 | Z3 | `regime.py:589` non-injected clock in offline `regime.check_drift` metadata | 22 |
+| W-marker-1 | W | U-1, U-2 (wave-19) shipped without source markers | 21 |
+| W-marker-2 | W | P-P0-3 (wave-12f) marker overwritten by wave-17a re-fix | 21 |
+
+### V6 Process-level (W: 14 wave gaps; T2: 0 bugs but coverage backfill)
+
+W-process: 15 of 37 waves fail (a)/(b)/(c). Behavioral/structural test ratio
+~25%/~25%/~50% mixed. Wave 18 highest silent-regression risk (6 findings, 0
+behavioral tests).
+
+T2-process: 5 numerical invariants had zero regression-test coverage before T2;
+`tests/test_numerical_properties_v6.py` (26 tests) closes the gap.
+
+## V6 cross-track patterns (see synthesis)
+
+1. **Same-class scans need machine enforcement** (V-T-1/2 missed by 17a; X-4/X-8 missed by 17b/19)
+2. **Three tracks converged on `live_engine.py:6265`** — Z3 wrong (cosmetic); X right (real bug)
+3. **Replay determinism harder than wave-17b/19 made it look** (X found 8 issues despite the fix waves)
+4. **Phantom telemetry persists despite wave-12e** (V found 5 missing alerts + metric undercount + 0 traces)
+5. **Behavioral testing is the durable defense** (T2 closes coverage gap; W shows wave 18 is highest risk)
+
+## V5 closure status (post waves 17-19)
+
+| Finding | Wave | Commit |
+|---|---|---|
+| **S-J3-1** | 17a | 9bcbe8b |
+| **U-RF4** | 17b | 08ee62f |
+| **S-WS-GAP-1** | 17c | 610aeb0 |
+| **B-T-2** | 17d | 610aeb0 |
+| U-3 (regime.py) | 17b | 08ee62f |
+| U-4 (governance.py) | 17b | 08ee62f |
+| U-5 (governance _today_et) | 17b | 08ee62f |
+| **B-T-1** | 18 | a42ca5f |
+| **S-NET-CB-1** | 18 | a42ca5f |
+| **S-NET-T-1** | 18 | a42ca5f |
+| S-OUTBOX-1 | 18 | a42ca5f |
+| B-T-3 | 18 | a42ca5f |
+| B-T-7 | 18 | a42ca5f |
+| U-1 (live_engine telemetry) | 19 | 0ea2695 |
+| U-2 (live_engine idempotency-key) | 19 | 0ea2695 |
+| U-6 (promotion.py) | 19 | 0ea2695 |
+| U-7 (continuous_learner.py) | 19 | 0ea2695 |
+| B-T-4 (streaming_data_provider) | 19 | 0ea2695 |
+| B-T-5 (walk_forward) | 19 | 0ea2695 |
+| S-CLK-1 (drawdown monotonic) | 19 | 0ea2695 |
+| S-DISK-1 (atomic JSON writes) | 19 | 0ea2695 |
+| Z2 hygiene (wave12e POST) | 19 | 0ea2695 |
+| P-P0-6 (walk-forward Sharpe regression) | partially closed by R-F-7 | 75cb998 |

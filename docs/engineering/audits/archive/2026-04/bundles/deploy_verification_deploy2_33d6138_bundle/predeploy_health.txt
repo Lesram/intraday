@@ -1,0 +1,7 @@
+captured_at=2026-04-24T02:41:31Z
+=== /health ===
+{"status":"ok","version":"1.0.0","timestamp":"2026-04-24T02:41:31.461642+00:00"}
+=== /healthz (last 3 probes from logs) ===
+{"timestamp": "2026-04-24T02:40:18", "level": "INFO", "logger": "uvicorn.access", "message": "127.0.0.1:54494 - "GET /healthz HTTP/1.1" 200", "module": "httptools_impl", "function": "send", "line": 483}
+{"timestamp": "2026-04-24T02:40:48", "level": "INFO", "logger": "uvicorn.access", "message": "127.0.0.1:55802 - "GET /healthz HTTP/1.1" 200", "module": "httptools_impl", "function": "send", "line": 483}
+{"timestamp": "2026-04-24T02:41:18", "level": "INFO", "logger": "uvicorn.access", "message": "127.0.0.1:47916 - "GET /healthz HTTP/1.1" 200", "module": "httptools_impl", "function": "send", "line": 483}

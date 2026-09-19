@@ -37,14 +37,24 @@ from backend.utils.logger import get_logger
 
 audit_logger = get_logger("audit")
 
-# Weakly tracked tasks created by this module for deterministic cleanup
-_WS_TASKS: "weakref.WeakSet[asyncio.Task]" = weakref.WeakSet()
+# Audit-J finding J-6 (2026-05-02): _WS_TASKS used to be a weakref.WeakSet,
+# which only retains a weak reference to each task. The strong reference
+# was held in client info dicts elsewhere, so correctness depended on a
+# side-channel — easy to break with a refactor. Switched to a plain
+# strong-ref set with explicit cleanup in cancel_all_ws_tasks. Tasks
+# still self-remove via add_done_callback so we don't leak completed
+# task references.
+_WS_TASKS: "set[asyncio.Task]" = set()
 
 
 def _track_task(t: asyncio.Task) -> asyncio.Task:
-    """Track a task in a weak set and return it (no-op on failure)."""
+    """Track a task in a strong-ref set and return it (no-op on failure).
+
+    Self-cleans on completion via done_callback.
+    """
     try:
         _WS_TASKS.add(t)
+        t.add_done_callback(_WS_TASKS.discard)
     except Exception:
         pass
     return t

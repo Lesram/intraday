@@ -1,0 +1,14 @@
+=== F-lite guard in container's save_essential_state ===
+583:        # PATCH F-LITE: extend the trained-state overwrite guard to the
+616:                    "BRAIN SAVE BLOCKED (save_essential_state): refusing to "
+
+=== Patch E still present (save guard) ===
+289:                    "BRAIN SAVE BLOCKED: refusing to overwrite trained manifest "
+
+=== Boot log excerpt ===
+{"timestamp": "2026-04-09T07:58:01", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Brain loaded: gen=27, runs=109, trades=204", "module": "brain_persistence", "function": "load", "line": 219}
+{"timestamp": "2026-04-09T07:58:01", "level": "INFO", "logger": "backend.organism.brain_persistence", "message": "Learner state restored: gen=27, trades=204", "module": "brain_persistence", "function": "apply_to_learner", "line": 531}
+{"timestamp": "2026-04-09T07:58:01", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "Organism live engine initialized from brain: gen=27, trades=204", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-09T07:58:01.217923Z"}", "module": "live_engine", "function": "initialize", "line": 898}
+{"timestamp": "2026-04-09T07:58:01", "level": "INFO", "logger": "backend.organism.trading_phase", "message": "Trading phase: production_frozen (trades=204, ML_isolation_exit=0, freeze_exit=96)", "module": "trading_phase", "function": "log_trading_phase", "line": 75}
+{"timestamp": "2026-04-09T07:58:01", "level": "INFO", "logger": "backend.organism.live_engine", "message": "{"event": "PREFLIGHT: 16/18 checks passed (0 critical failures, 2 warnings)", "logger": "backend.organism.live_engine", "level": "info", "timestamp": "2026-04-09T07:58:01.571599Z"}", "module": "live_engine", "function": "initialize", "line": 966}
+{"timestamp": "2026-04-09T07:58:01", "level": "INFO", "logger": "backend.organism.scheduler", "message": "{"event": "Organism scheduler loop started", "logger": "backend.organism.scheduler", "level": "info", "timestamp": "2026-04-09T07:58:01.580637Z"}", "module": "scheduler", "function": "_run_loop", "line": 303}

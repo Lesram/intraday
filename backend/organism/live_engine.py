@@ -31,6 +31,8 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from zoneinfo import ZoneInfo
 from typing import Any, Callable
 
 import numpy as np
@@ -40,19 +42,36 @@ from backend.organism.adaptive_exits import AdaptiveExitEngine
 from backend.organism.alpha_scanner import AlphaScanner
 from backend.organism.brain_persistence import OrganismBrain
 from backend.organism.breakout_scanner import BreakoutScanner
+from backend.organism.candidate_shadow_telemetry import (
+    CandidateShadowTelemetryRecorder,
+    infer_entry_source,
+)
 from backend.organism.continuous_learner import ContinuousLearner, TradeRecord
 from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
-from backend.organism.ml_features import compute_ml_features, FEATURE_COLUMNS
-from backend.organism.multi_timeframe import add_multi_timeframe_features
+from backend.organism.live_engine_data import _DataFeederMixin
+from backend.organism.live_engine_fills import _FillLookupMixin
+from backend.organism.live_engine_state import _StateReconstructionMixin
+from backend.organism.live_engine_telemetry import _TelemetryRecordingMixin
+from backend.organism.experimental.alt_exit_engine import AltExitEngine
+from backend.organism.experimental.shadow_exit import (
+    ShadowExitTelemetryRecorder,
+    _ShadowExitMixin,
+)
+from backend.organism.ml_features import FEATURE_COLUMNS
 from backend.organism.ml_signal import MLSignalGenerator
+from backend.organism.schema.candidate_signal import CandidateSignal, infer_strategy_id
 from backend.organism.pyramider import (
     MomentumPyramider,
     PyramidPosition,
     PyramidLevel,
 )
 from backend.organism.regime import RegimeDetector, RegimeLabel
+from backend.organism.orb_scanner import ORBScanner
+from backend.organism.eod_scanner import EODMomentumScanner
+from backend.organism.mean_reversion_scanner import MeanReversionScanner
 from backend.organism.sector_map import sector_gate_allows, get_sector
+from backend.organism.strategy_governor import StrategyGovernor
 from backend.organism.decision_telemetry import (
     DecisionSnapshot,
     DecisionTelemetryStore,
@@ -61,6 +80,12 @@ from backend.organism.decision_telemetry import (
     PositionExitDetail,
     SymbolAlphaDetail,
     SymbolBreakoutDetail,
+)
+from backend.organism.engines import (
+    EODReversalShadowEngine,
+    ETFIntradayMomentumEngine,
+    ORBSIPV2Engine,
+    ResidualMeanReversionEngine,
 )
 from backend.organism.self_evolution import (
     EvolutionEngine,
@@ -116,7 +141,15 @@ try:
     )
     ORGANISM_EXITS_SKIPPED_NO_DATA = Counter(
         "organism_exits_skipped_no_data_total",
-        "Exit checks that fell back to broker price due to missing features",
+        # V6 V-T-3 / Wave-20e (2026-05-03): HELP text now describes the
+        # actual emission site (safety-net branch only) rather than
+        # the broader event class. The previous "Exit checks that fell
+        # back to broker price due to missing features" suggested a
+        # ~10× larger event population than is actually emitted.
+        # Operators read this HELP to understand the metric, so its
+        # accuracy matters more than its breadth.
+        "Safety-net exits triggered when no features were available "
+        "(15%-loss broker-price-only fallback)",
     )
     ORGANISM_SECTOR_CAP_BLOCKED = Counter(
         "organism_sector_cap_blocked_total",
@@ -129,6 +162,21 @@ try:
     ORGANISM_ENTRIES_BLOCKED = Counter(
         "organism_entries_blocked_total",
         "Ticks where new entries were blocked (halt/drawdown/zero equity)",
+        # V11 prep / Wave-62 (YY-3 closure, 2026-05-03): label dimension
+        # so dashboards can break down halt cause without scraping logs.
+        # Reasons mirror self._last_entries_blocked_reason:
+        #   governance_halt, warmup, stale_data, daily_max_loss,
+        #   equity_zero, drawdown_kill, insufficient_data, throttle,
+        #   burst_cap, fitness_gate, sector_gate, liquidity, long_only.
+        labelnames=("reason",),
+    )
+    # V11 prep / Wave-62 (YY-4 closure): ML retrain failure counter so
+    # operators see the failure rate.  BackgroundTrainer's training-
+    # internal-error path was alert-silent + counter-less pre-V11.
+    ML_RETRAIN_FAILURES = Counter(
+        "ml_retrain_failures_total",
+        "BackgroundTrainer retrain failures by phase (executor / training).",
+        labelnames=("phase",),
     )
     _PROMETHEUS_AVAILABLE = True
 except ImportError:
@@ -164,6 +212,9 @@ LIVE_UNIVERSE_CSV = _env_str(
 )
 MAX_OPEN_POSITIONS = _env_int("ORGANISM_MAX_POSITIONS", 8)
 ALPHA_TOP_N = _env_int("ORGANISM_ALPHA_TOP_N", 5)
+PROTECTED_SYMBOLS: set[str] = {
+    s.strip() for s in _env_str("ORGANISM_PROTECTED_SYMBOLS", "SH,PSQ").split(",") if s.strip()
+}
 BRAIN_DIR = _env_str("ORGANISM_BRAIN_DIR", "organism_brain")
 RETRAIN_INTERVAL = _env_int("ORGANISM_RETRAIN_INTERVAL", 60)
 TRAIN_WINDOW = _env_int("ORGANISM_TRAIN_WINDOW", 200)
@@ -179,10 +230,183 @@ PREDICTION_HORIZON = _env_int(
     _HORIZON_DEFAULTS.get(LIVE_TIMEFRAME, 1),
 )
 
-# Exploration bucket — micro-size trades on rejected candidates to prevent data starvation
+# Exploration bucket — LEGACY. The execution path was removed in H1 hardening
+# (improve9). EXPLORATION_ENABLED remains because tests/test_semantic_invariants.py
+# pins it to False as a regression check. The MAX_NOTIONAL / MAX_POSITIONS
+# constants (audit-M finding M-1, 2026-05-02) were truly orphan and have
+# been removed.
 EXPLORATION_ENABLED = _env_bool("ORGANISM_EXPLORATION_ENABLED", False)
-EXPLORATION_MAX_NOTIONAL = _env_float("ORGANISM_EXPLORATION_MAX_NOTIONAL", 200.0)
-EXPLORATION_MAX_POSITIONS = _env_int("ORGANISM_EXPLORATION_MAX_POSITIONS", 3)
+
+# ── Real-money risk limits ─────────────────────────────────────
+MAX_NOTIONAL_PER_TRADE = _env_float("ORGANISM_MAX_NOTIONAL", 0.0)  # 0 = disabled
+MAX_DAILY_LOSS = _env_float("ORGANISM_MAX_DAILY_LOSS", 0.0)        # 0 = disabled
+
+# M2-B: ORB Stocks-in-Play live entry feature flag.
+# When False (default): ORB scanner runs in SHADOW mode only (logs candidates,
+# doesn't fire entries). When True: ORB candidates flow into the entry pipeline
+# alongside alpha+breakout, gated through the same composite confidence + Kelly
+# + gates, with entry_source="orb_sip" for telemetry differentiation.
+# Promote to True only after Phase B+C+D evidence per ORB_PROMOTION_CRITERIA.md.
+ORB_LIVE_ENABLED = _env_bool("ORGANISM_ORB_LIVE_ENABLED", False)
+# M2-C: EOD Momentum live entry feature flag (Heston-Korajczyk-Sadka).
+EOD_LIVE_ENABLED = _env_bool("ORGANISM_EOD_LIVE_ENABLED", False)
+
+# M3-1: Strong-signal-shorting. When False (default), all shorts blocked by
+# LONG_ONLY. When True, ORB/EOD candidates that meet a HIGHER bar can fire
+# shorts even with LONG_ONLY=True. Bypasses long_only ONLY for "exceptional"
+# pattern-based signals; never for alpha+breakout/ML which have weaker edge.
+# Exits for short positions are also unblocked (otherwise shorts would never
+# close). Use with care; designed for tiny-capital experimentation.
+STRONG_SHORT_ENABLED = _env_bool("ORGANISM_STRONG_SHORT_ENABLED", False)
+STRONG_SHORT_COMPOSITE_MIN = _env_float("ORGANISM_STRONG_SHORT_COMPOSITE_MIN", 0.55)
+STRONG_SHORT_RV_MIN = _env_float("ORGANISM_STRONG_SHORT_RV_MIN", 2.5)
+STRONG_SHORT_DAYRET_MIN = _env_float("ORGANISM_STRONG_SHORT_DAYRET_MIN", 1.5)
+
+# M3-2: Inverse-ETF translation. When True, ORB/EOD short signals on SPY
+# translate to LONG SH; QQQ-shorts translate to LONG PSQ. Lets us act on
+# short patterns within long_only constraints. Conservative — covers only
+# the 2 inverse-ETF mappings we have in the universe.
+INVERSE_ETF_TRANSLATION_ENABLED = _env_bool(
+    "ORGANISM_INVERSE_ETF_TRANSLATION_ENABLED", False,
+)
+INVERSE_ETF_MAP = {
+    "SPY": "SH",   # SPY short → SH long
+    "QQQ": "PSQ",  # QQQ short → PSQ long
+}
+
+# M3-4: ORB/EOD-only mode. When True, alpha+breakout candidate phase
+# short-circuits, leaving slots free for ORB/EOD only. Diagnostic mode
+# for evaluating ORB/EOD edge in isolation.
+DISABLE_ALPHA_BREAKOUT = _env_bool("ORGANISM_DISABLE_ALPHA_BREAKOUT", False)
+
+# Ferrari v1: Mean-Reversion Scanner — intraday VWAP-displacement fade.
+# Default: SHADOW only (logs candidates, no entries fire). When
+# ORGANISM_MEAN_REVERSION_LIVE_ENABLED=true, candidates flow into the
+# entry pipeline alongside alpha+breakout/ORB/EOD. Tuned via replay
+# (artifacts/ferrari_v1/COMBINED_REPORT.md) to displacement≥2.5×ATR,
+# stop=1.0×ATR, target=0.8 retracement → 3.35:1 W:L on alt-period
+# replay, +$36/share on 388 trades. Promote after 5 sessions of shadow.
+MEAN_REVERSION_LIVE_ENABLED = _env_bool(
+    "ORGANISM_MEAN_REVERSION_LIVE_ENABLED", False,
+)
+MR_MIN_DISPLACEMENT_ATR = _env_float(
+    "ORGANISM_MR_MIN_DISPLACEMENT_ATR", 4.0,  # tightened from 2.5 (Day-1 data: avg=5.46)
+)
+MR_TARGET_RETRACEMENT = _env_float(
+    "ORGANISM_MR_TARGET_RETRACEMENT", 0.8,
+)
+MR_STOP_EXTENSION_ATR = _env_float(
+    "ORGANISM_MR_STOP_EXTENSION_ATR", 1.0,
+)
+# Day-1 production showed R:R up to 1,021 — micro-stop edge case on
+# low-vol low-priced names. Floor stop_distance at 5 bps of price.
+MR_MIN_STOP_BPS = _env_float("ORGANISM_MR_MIN_STOP_BPS", 5.0)
+MR_COOLDOWN_MINUTES = _env_int("ORGANISM_MR_COOLDOWN_MINUTES", 60)
+MR_TOP_N = _env_int("ORGANISM_MR_TOP_N", 3)
+
+# Surgical fix #2 (Ferrari v1 ML leakage audit): drop ML weight from the
+# production composite gate. Audit found corr(confidence, correct_direction)
+# = -0.112 on resolved trades; ML confidence is anti-predictive. Keeps
+# full composite for ranking; the gate uses a recomposite that pushes
+# ML's weight to breakout. Default ON since the audit's evidence is
+# unambiguous; flip OFF (=false) to revert if observable behavior degrades.
+DROP_ML_FROM_GATE = _env_bool("ORGANISM_DROP_ML_FROM_GATE", True)
+
+# Intra 2.0 Phase 1 (step 5) — THIN SEAM. When True, the live engine re-sources
+# per-symbol entry DIRECTION through the Strategy framework (MomentumStrategy via
+# StrategySelector) instead of trusting alpha_scanner's direction field directly.
+# It is a PROVABLE NO-OP in the live config: momentum._direction reproduces
+# alpha_scanner._observable_direction bit-for-bit (29k-grid parity test), and the
+# scanner already derives direction from observables when DROP_ML_FROM_GATE is on.
+# Universe, regime-gating, confidence, ranking, sizing and exits are UNCHANGED —
+# they stay in the engine (thin seam: only direction authority moves). The seam
+# self-activates only when DROP_ML_FROM_GATE is also on (the regime the framework
+# models). Default OFF; flip via ORGANISM_FRAMEWORK_ROUTING after engine-level
+# replay parity is proven. NOTE: the framework also OWNS confidence/sizing in its
+# own contract, but that is DEFERRED to a later named step with its own parity
+# gate (the live confidence composite is known anti-predictive, corr=-0.112, so
+# that step is a redesign, NOT a faithful port). See docs Phase-1 step 5.
+FRAMEWORK_ROUTING_ENABLED = _env_bool("ORGANISM_FRAMEWORK_ROUTING", False)
+
+# Phase 3 Task 3 (5c) COMMIT A — full selector routing, STRUCTURALLY INERT.
+# When on: ONE selector.scan_all() pass per tick produces every strategy's
+# candidates (momentum direction authority, pure-breakout entries, ORB/MR
+# shadow lists), replacing the scattered per-strategy scanner calls. All
+# conversion logic, gates, caps, ranking formulas and sizing are UNCHANGED —
+# flag-on must equal flag-off on the replay parity axes (entries/exits/
+# ledger/equity). The inline breakout scan at step 7 still runs as a FEATURE
+# input (alpha confidence's breakout_score reads ALL signals, sub-threshold
+# included — scanner-as-feature is distinct from breakout-as-strategy).
+# Known inert deltas: ORB "quiet scan" periodic log and shadow-count telemetry
+# derive from triggered-only candidates under v2. Default OFF; flip only after
+# scripts/verify_routing_v2_parity.py is green. Commit B (ranking by 5b
+# confidence + attribution) is a SEPARATE behavior change with its own gate.
+FRAMEWORK_ROUTING_V2_ENABLED = _env_bool("ORGANISM_FRAMEWORK_ROUTING_V2", False)
+
+# Phase 3 Task 3/4 COMMIT B — the INTENDED behavior change (requires V2 on).
+#   "legacy"      : ranking_score sort + composite confidence gates (today).
+#   "flat_policy" : the 5b/Task-4 redesign — REGIME_POLICY order is the ranking
+#                   authority (5b verdict: flat ships, no score beat flat OOS),
+#                   composite-confidence entry gates bypass (caps/liquidity/
+#                   fitness/sector/risk-budget remain the binding constraints),
+#                   Kelly confidence/breakout multipliers neutralized to 1.0.
+# Gate: scripts/verify_strategy_reconciliation.py + replay review, then Task-5
+# freeze. NOT inert — do not expect A/B parity with legacy.
+ROUTING_RANK_POLICY = os.getenv("ORGANISM_ROUTING_RANK_POLICY", "legacy").strip().lower()
+
+# Phase 3 candidate-filter shadow telemetry. Disabled by default and
+# observability-only: when enabled, records candidate slices that would be
+# blocked by the proposed confidence/regime filters without changing ranking,
+# sizing, or order submission.
+CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED = _env_bool(
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED", False,
+)
+CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH = _env_str(
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+    "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+)
+ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED = _env_bool(
+    "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED", True,
+)
+ALPHA_BREAKOUT_BAD_REGIME_FILTERS = frozenset({"chop", "trending_down"})
+# Audit 2026-06-09 (plan 3.2): which entry sources the bad-regime filter
+# applies to. Default preserves existing behavior (alpha+breakout only).
+# The chop stand-down experiment widens this to "alpha,alpha+breakout,
+# breakout" — live data showed 364 chop trades netting ~$0 gross (negative
+# after costs), mostly from the pure-alpha source the filter never covered.
+BAD_REGIME_FILTER_SOURCES = frozenset(
+    s.strip() for s in _env_str(
+        "ORGANISM_BAD_REGIME_FILTER_SOURCES", "alpha+breakout",
+    ).split(",") if s.strip()
+)
+STRATEGY_EVIDENCE_TELEMETRY_ENABLED = _env_bool(
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED", False,
+)
+STRATEGY_EVIDENCE_TELEMETRY_PATH = _env_str(
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+    "organism_brain/strategy_evidence_events.jsonl",
+)
+PHASE9_SHADOW_ENGINES_ENABLED = _env_bool(
+    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED", False,
+)
+# Task S (SHADOW_EXIT_AND_CORPUS_BRIEF): log-only retracement shadow exit.
+# "" = off; "retracement" = on. Zero effect on real trading. Defaults are the
+# Task-X best variant (F=0.6, min_favorable_R=1.0).
+# Work order Task C: pyramiding is structurally negative (-$452, 0.7% win).
+# Default True (byte-identical behavior); set false in deployment to disable.
+ORGANISM_PYRAMID_ENABLED = _env_bool("ORGANISM_PYRAMID_ENABLED", True)
+ORGANISM_SHADOW_EXIT_POLICY = _env_str("ORGANISM_SHADOW_EXIT_POLICY", "")
+ORGANISM_SHADOW_EXIT_RETRACE_FRAC = _env_float("ORGANISM_SHADOW_EXIT_RETRACE_FRAC", 0.6)
+ORGANISM_SHADOW_EXIT_MIN_FAV_R = _env_float("ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R", 1.0)
+# Default derives from BRAIN_DIR (2026-07-29 sign-off) so the test suite's
+# ORGANISM_BRAIN_DIR redirect covers this path transitively — the old literal
+# bypassed it and let replay runs write the real telemetry file. Behavior-
+# invariant in-container: the paper compose sets this env explicitly, and with
+# both envs unset the derived value equals the old literal byte-for-byte.
+ORGANISM_SHADOW_EXIT_TELEMETRY_PATH = _env_str(
+    "ORGANISM_SHADOW_EXIT_TELEMETRY_PATH",
+    os.path.join(BRAIN_DIR, "shadow_exit_telemetry.jsonl"),
+)
 
 # ── Dynamic intraday adjustments ────────────────────────────────
 _IS_INTRADAY = LIVE_TIMEFRAME in ("1Min", "5Min", "15Min", "1Hour")
@@ -190,6 +414,16 @@ if _IS_INTRADAY and MIN_BARS == 200:
     MIN_BARS = _env_int("ORGANISM_MIN_BARS", 50)
 if _IS_INTRADAY and RETRAIN_INTERVAL == 60:
     RETRAIN_INTERVAL = _env_int("ORGANISM_RETRAIN_INTERVAL", 200)
+
+
+@dataclass
+class SafetyGateResult:
+    """Decision object for a hard pass/block safety gate."""
+    blocked: bool
+    reason: str = ""
+    activity_type: str = ""
+    activity_message: str = ""
+    error_message: str = ""
 
 
 @dataclass
@@ -232,6 +466,8 @@ class LiveTickResult:
     # Background training metadata
     training_status: str = ""  # "training", "completed", "rejected", ""
     training_metadata: dict[str, Any] = field(default_factory=dict)
+    # C5: Watchdog state (populated by engine at end of tick)
+    watchdog: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -250,10 +486,110 @@ class LiveTickResult:
             "activity": [a.to_dict() for a in self.activity[-50:]],
             "training_status": self.training_status,
             "training_metadata": self.training_metadata,
+            "watchdog": self.watchdog,
         }
 
 
-class OrganismLiveEngine:
+def _should_suppress_chop_cut(
+    *,
+    regime: str,
+    now_ts: float,
+    entry_time: float | None,
+    chop_min_hold_bars: int,
+    bar_seconds: int = 60,
+) -> tuple[bool, int]:
+    """V12 W72 (DD5-1): chop-min-hold gate computed in BARS, not ticks.
+
+    Returns ``(suppress, bars_held)``.
+
+    The pre-V12 implementation used ``self._tick_count - entry_tick``
+    which counts SCHEDULER ticks (10s interval), not minute-bars.  At
+    a 1-min bar timeframe the gate fired well before ``min_hold_bars``
+    elapsed, leaving the chop-cut suppression effectively inert (V11
+    DD5-1 + external auditor finding).
+
+    Now: ``bars_held = floor((now - entry_time) / 60s)``.  A 5-minute
+    hold reads as 5 bars; a 11-minute hold reads as 11 bars.
+
+    Falls open (no suppression) when ``entry_time`` is missing — that
+    matches the prior behavior on entries minted before V12 W72 (no
+    ``entry_time`` was ever stored as None) and is the safe default for
+    non-chop regimes anyway.
+    """
+    if entry_time is None:
+        return False, 0
+    bars_held = max(0, int((now_ts - entry_time) // bar_seconds))
+    suppress = (regime == "chop") and (bars_held < chop_min_hold_bars)
+    return suppress, bars_held
+
+
+def _market_return_bps(frame: pd.DataFrame | None, now: Any | None = None) -> float:
+    if frame is None or len(frame) < 2 or "close" not in frame.columns:
+        return 0.0
+    if now is not None and "timestamp" in frame.columns:
+        now_ts = pd.Timestamp(now)
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        ts = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+        frame = frame[ts <= now_ts]
+        if len(frame) < 2:
+            return 0.0
+    elif now is not None and frame.index.dtype.kind == "M":
+        now_ts = pd.Timestamp(now)
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.tz_localize("UTC")
+        ts = pd.to_datetime(pd.Series(frame.index), utc=True, errors="coerce")
+        frame = frame[(ts <= now_ts).to_numpy()]
+        if len(frame) < 2:
+            return 0.0
+    try:
+        first = float(frame["close"].iloc[0])
+        latest = float(frame["close"].iloc[-1])
+    except (TypeError, ValueError):
+        return 0.0
+    if first <= 0:
+        return 0.0
+    return (latest - first) / first * 10000.0
+
+
+def _trim_frame_asof(frame: pd.DataFrame, now: Any) -> pd.DataFrame:
+    """Return only rows observable at ``now`` when a timestamp is available."""
+    if frame is None or len(frame) == 0:
+        return frame
+    now_ts = pd.Timestamp(now)
+    if now_ts.tzinfo is None:
+        now_ts = now_ts.tz_localize("UTC")
+    else:
+        now_ts = now_ts.tz_convert("UTC")
+    if "timestamp" in frame.columns:
+        ts = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+        if ts.notna().any():
+            return frame.loc[(ts <= now_ts).to_numpy()].copy()
+    if frame.index.dtype.kind == "M":
+        ts = pd.to_datetime(pd.Series(frame.index), utc=True, errors="coerce")
+        if ts.notna().any():
+            return frame.loc[(ts <= now_ts).to_numpy()].copy()
+    return frame
+
+
+def trim_feature_frames_asof(
+    features_by_symbol: dict[str, pd.DataFrame],
+    now: Any,
+) -> dict[str, pd.DataFrame]:
+    """Causal boundary before ranking/sizing/order paths see feature frames."""
+    return {
+        symbol: _trim_frame_asof(frame, now)
+        for symbol, frame in features_by_symbol.items()
+    }
+
+
+class OrganismLiveEngine(
+    _FillLookupMixin,
+    _StateReconstructionMixin,
+    _TelemetryRecordingMixin,
+    _DataFeederMixin,
+    _ShadowExitMixin,
+):
     """Unified live trading engine — the organism in production.
 
     Combines all organism modules into a single ``live_tick()`` method
@@ -290,6 +626,27 @@ class OrganismLiveEngine:
         _TIMEFRAME_BPD = {"1Min": 390, "5Min": 78, "15Min": 26, "1Hour": 7, "1Day": 1}
         self._bars_per_day = _TIMEFRAME_BPD.get(self._timeframe, 1)
 
+        # ── Fail-closed risk-limit guard (audit 2026-06-09, finding 3.3) ──
+        # In `execute` mode the engine refuses to start with the dollar
+        # circuit breakers disabled. MAX_DAILY_LOSS / MAX_NOTIONAL_PER_TRADE
+        # default to 0 (= disabled); running real order flow without a hard
+        # daily-loss halt must be impossible, not merely unconfigured.
+        self._assert_risk_limits_armed()
+
+        # ── Timeframe sanity + runtime risk snapshot (plan 1.4) ──────────
+        # The intraday scanners (ORB/MR/EOD) are time-of-day-gated 1-minute
+        # strategies; on a daily timeframe they silently go dormant. An env
+        # regression must be loud, not silent.
+        self._warn_if_timeframe_strands_strategies()
+        logger.info(
+            "RUNTIME RISK SNAPSHOT: timeframe=%s is_intraday=%s "
+            "max_daily_loss=%.2f max_notional_per_trade=%.2f "
+            "max_open_positions=%s long_only=%s universe_size=%d",
+            self._timeframe, self._is_intraday,
+            MAX_DAILY_LOSS, MAX_NOTIONAL_PER_TRADE,
+            MAX_OPEN_POSITIONS, LONG_ONLY, len(self._universe),
+        )
+
         # ── Organism components ──────────────────────────────────
         self.signal_gen = MLSignalGenerator(
             train_window=TRAIN_WINDOW,
@@ -309,7 +666,7 @@ class OrganismLiveEngine:
             self.breakout_scanner.ATR_SHORT = 10 * _intraday_scale      # 40
             self.breakout_scanner.ATR_LONG = 50 * _intraday_scale       # 200
             self.breakout_scanner.VOL_AVG_PERIOD = 20 * _intraday_scale # 80
-        self.pyramider = MomentumPyramider()
+        self.pyramider = MomentumPyramider(enabled=ORGANISM_PYRAMID_ENABLED)
         if self._is_intraday:
             self.kelly_sizer = KellySizer(
                 max_position_pct=0.08,    # HFT: smaller positions, faster turns
@@ -338,7 +695,72 @@ class OrganismLiveEngine:
             min_trades_for_eval=10,
             improvement_threshold=0.05,
         )
+
+        # F4 — forensic fingerprints for detecting unexpected object
+        # replacement. If id() changes after init, something swapped the
+        # live learner or signal_gen mid-session.
+        self._forensic_signal_gen_id: int = id(self.signal_gen)
+        self._forensic_learner_id: int = id(self.learner)
         self.regime_detector = RegimeDetector(is_intraday=self._is_intraday, bars_per_day=self._bars_per_day)
+        # RC-1.5 shadow telemetry: parallel detector with the proposed
+        # RC-2 sensitivity factor. Logs only — does not gate any decision.
+        # Goal: 5 sessions of disagreement data → evidence-based RC-2.
+        self._shadow_regime_detector = RegimeDetector(
+            is_intraday=self._is_intraday,
+            bars_per_day=self._bars_per_day,
+            intraday_trend_sensitivity=0.50,
+        )
+        # Counter for periodic shadow-summary log lines (every N ticks).
+        self._shadow_disagreement_count: int = 0
+        self._shadow_total_ticks: int = 0
+
+        # R3 shadow telemetry: ORB Stocks-in-Play scanner (Zarattini-Barbon-Aziz
+        # 2024). Default: SHADOW only (logs candidates, doesn't fire entries).
+        # When ORGANISM_ORB_LIVE_ENABLED=true, candidates flow into the entry
+        # pipeline alongside alpha+breakout, gated through composite + Kelly.
+        # min_rv_ratio=1.0: our 22-symbol universe doesn't have catalyst-
+        # spike RV>=1.5 names like the paper's 1000-stock universe. Lowering
+        # to 1.0 means "above-average for this name" — weaker signal but at
+        # least produces candidates. If real edge requires the paper's
+        # threshold, we need a bigger universe.
+        self._orb_scanner = ORBScanner(
+            opening_minutes=5,
+            top_n=10,
+            min_rv_ratio=1.0,
+        )
+        self._orb_shadow_log_count: int = 0
+        self._orb_shadow_breakout_count: int = 0
+        # Latest triggered ORB candidates from this tick's shadow scan.
+        # Picked up by the cand_dicts build phase when ORB_LIVE_ENABLED.
+        self._latest_orb_triggered: list = []
+        self._orb_live_count_today: int = 0  # how many ORB-live entries fired this session
+
+        # M2-C: EOD Momentum scanner (Heston-Korajczyk-Sadka inspired).
+        # Default: SHADOW only. Promote via ORGANISM_EOD_LIVE_ENABLED=true.
+        self._eod_scanner = EODMomentumScanner(
+            min_day_return_pct=0.30,
+            top_n=5,
+        )
+        self._latest_eod_candidates: list = []
+        self._eod_shadow_log_count: int = 0
+        self._eod_live_count_today: int = 0
+
+        # Ferrari v1: Mean-Reversion Scanner — VWAP-displacement fade.
+        # Default SHADOW; promote via ORGANISM_MEAN_REVERSION_LIVE_ENABLED.
+        # Tuning constants come from env (see MR_* constants above), with
+        # replay-validated defaults.
+        self._mean_reversion_scanner = MeanReversionScanner(
+            min_displacement_atr=MR_MIN_DISPLACEMENT_ATR,
+            target_retracement=MR_TARGET_RETRACEMENT,
+            stop_extension_atr=MR_STOP_EXTENSION_ATR,
+            min_stop_bps=MR_MIN_STOP_BPS,
+            cooldown_minutes=MR_COOLDOWN_MINUTES,
+            top_n=MR_TOP_N,
+            long_only=LONG_ONLY,
+        )
+        self._latest_mr_candidates: list = []
+        self._mr_shadow_log_count: int = 0
+        self._mr_live_count_today: int = 0
         self.governance = GovernanceController()
         self.evolution_engine = EvolutionEngine(
             alpha=0.30,
@@ -350,6 +772,7 @@ class OrganismLiveEngine:
         # ── Dynamic Universe Selector (Phase 4.1) ──────────────
         self.universe_selector = DynamicUniverseSelector(
             seed_symbols=list(self._universe),
+            protected_symbols=PROTECTED_SYMBOLS,
         )
 
         # ── Market Scanner (Phase 5) ───────────────────────────
@@ -359,6 +782,30 @@ class OrganismLiveEngine:
         self._scanner_candidates: list[str] = []
 
         # ── Brain persistence ────────────────────────────────────
+        # V6 X-7 / Wave-22 (2026-05-03): defense-in-depth assertion.
+        # Replay must NEVER point this engine at the production brain
+        # dir (the live trading system's persistent state). Replay's
+        # tempdir wrapper saves users today, but if a future change
+        # constructs the engine directly without the wrapper, an
+        # accidental write to organism_brain/ would corrupt production
+        # state. Refuse to construct in replay mode unless brain_dir
+        # is explicitly outside production (env opt-in via
+        # ORGANISM_REPLAY_ALLOW_PROD_BRAIN_DIR=1 for emergencies).
+        _is_replay = os.getenv("ORGANISM_REPLAY_MODE", "0") in ("1", "true")
+        if _is_replay and not os.getenv(
+            "ORGANISM_REPLAY_ALLOW_PROD_BRAIN_DIR", "0"
+        ) in ("1", "true"):
+            from pathlib import Path as _Path
+            _resolved = str(_Path(brain_dir).resolve())
+            _prod = str(_Path("organism_brain").resolve())
+            if _resolved == _prod or _resolved.endswith("/organism_brain"):
+                raise RuntimeError(
+                    "Replay mode (ORGANISM_REPLAY_MODE=1) refuses to "
+                    f"construct OrganismLiveEngine with brain_dir={_resolved} "
+                    "— this is the production brain path. Use a tempdir "
+                    "or set ORGANISM_REPLAY_ALLOW_PROD_BRAIN_DIR=1 if "
+                    "this is intentional (emergency recovery only)."
+                )
         self.brain = OrganismBrain(brain_dir=brain_dir)
 
         # ── Transfer Learning Engine (Phase 4.7) ─────────────────
@@ -381,6 +828,57 @@ class OrganismLiveEngine:
 
         # ── Decision telemetry (in-memory ring buffer) ────────
         self._telemetry = DecisionTelemetryStore()
+        self._candidate_filter_shadow_events: int = 0
+        self._candidate_filter_shadow_recorder = (
+            CandidateShadowTelemetryRecorder(
+                CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH
+            )
+            if CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED
+            else None
+        )
+        self._strategy_evidence_events: int = 0
+        self._strategy_evidence_recorder = (
+            CandidateShadowTelemetryRecorder(
+                STRATEGY_EVIDENCE_TELEMETRY_PATH,
+                record_all_candidates=True,
+            )
+            if STRATEGY_EVIDENCE_TELEMETRY_ENABLED
+            else None
+        )
+        self._phase9_shadow_engines = (
+            [
+                ETFIntradayMomentumEngine(),
+                ORBSIPV2Engine(),
+                ResidualMeanReversionEngine(),
+                EODReversalShadowEngine(),
+            ]
+            if PHASE9_SHADOW_ENGINES_ENABLED
+            else []
+        )
+        self._phase9_shadow_signal_events: int = 0
+        self._phase9_last_shadow_bar: str = ""
+        self._phase9_last_engine_counts: dict[str, int] = {}
+
+        # Task S: log-only retracement shadow exit (off by default).
+        if ORGANISM_SHADOW_EXIT_POLICY:
+            self._shadow_engine = AltExitEngine.for_timeframe(self._timeframe)
+            self._shadow_engine.alt_policy = ORGANISM_SHADOW_EXIT_POLICY
+            self._shadow_engine.alt_retrace_frac = ORGANISM_SHADOW_EXIT_RETRACE_FRAC
+            self._shadow_engine.alt_min_fav_r = ORGANISM_SHADOW_EXIT_MIN_FAV_R
+            self._shadow_levels = {}
+            self._shadow_pending = {}
+            self._shadow_prev_syms = set()
+            self._shadow_last_price = {}
+            self._shadow_bar_seen = {}
+            self._shadow_exit = ShadowExitTelemetryRecorder(
+                ORGANISM_SHADOW_EXIT_TELEMETRY_PATH
+            )
+        else:
+            self._shadow_exit = None
+        self._legacy_orb_last_signal_keys: set[str] = set()
+        # Task 4: per-bar dedup keys for un-routed framework shadow signals.
+        self._fw_shadow_last_signal_keys: set[str] = set()
+        self._strategy_governor = StrategyGovernor()
 
         # ── Live state ──────────────────────────────────────────
         self._session_id = uuid.uuid4().hex[:8]  # unique per engine lifetime
@@ -388,6 +886,7 @@ class OrganismLiveEngine:
         self._bars_since_retrain: int = 0
         self._all_trades: list[TradeRecord] = []
         self._equity_curve: list[float] = []
+        self._cumulative_pnl: float = 0.0
         self._epoch_metrics: list[dict[str, Any]] = []
         self._peak_equity: float = 0.0
         self._initialized: bool = False
@@ -410,10 +909,21 @@ class OrganismLiveEngine:
         self._pending_entry: dict[str, int] = {}
         self._PENDING_ENTRY_TICKS = 30  # Wait 30 ticks (~5 min) per-symbol cooldown (was 15)
 
+        # CORE-011: Track order IDs for pending entry orders so we can
+        # cancel them at the broker level on drawdown kill.
+        # Maps symbol → order_id (from order service response)
+        self._pending_entry_order_ids: dict[str, str] = {}
+
         # Liquidity gate — block entries on illiquid symbols (seed universe bypass)
         # NOTE: This is per-bar volume, not daily. For 1-min bars, mega-caps
         # do 50K-200K/bar. 10K/bar ≈ 3.9M daily — filters out true penny stocks.
         self._MIN_AVG_VOLUME = 10_000
+        # 2026-06-24: share-count floor spuriously blocks high-priced / thin-ETF
+        # core names (COST ~$900, SH) that have ample DOLLAR volume. Primary
+        # gate is now a per-bar dollar-volume floor (default $1M/min); the
+        # share-count floor above is the fallback when no price is available.
+        # Set to 0 to disable the dollar-volume floor (share-count only).
+        self._MIN_AVG_DOLLAR_VOLUME = _env_float("ORGANISM_MIN_AVG_DOLLAR_VOLUME", 1_000_000.0)
 
         # Symbols with pending exit orders — prevents duplicate exits across
         # ticks while the broker is still processing the exit.
@@ -443,8 +953,10 @@ class OrganismLiveEngine:
         self._entry_timestamps: list[float] = []
         # Static fallback; overridden by _dynamic_max_entries_per_hour property
         self._MAX_ENTRIES_PER_HOUR = 3
+        self._entry_throttle_override_per_hour: int | None = None
         # Learning mode threshold: < 200 completed trades = learning (was 50)
-        self._LEARNING_MODE_TRADES = 200
+        from backend.organism.trading_phase import LEARNING_MODE_TRADES
+        self._LEARNING_MODE_TRADES = LEARNING_MODE_TRADES
 
         # C2 (improve8): Burst cap — rolling 15-min window
         self._entry_timestamps_15m: list[float] = []
@@ -469,6 +981,17 @@ class OrganismLiveEngine:
         self._symbol_stop_loss_times: dict[str, list[float]] = {}  # symbol → timestamps of stop-loss exits
         self._symbol_banned: set[str] = set()                  # banned symbols for the session
         self._SYMBOL_BAN_CONSEC_LOSSES = 2  # ban after this many consecutive losers with 0 wins
+        # V12 W72 / DD5-3: separate runtime accumulator from the
+        # promotion-gated ``evolved_params.symbol_trade_counts``.  Pre-V12
+        # the persisted ``symbol_trade_counts_runtime`` was an identity
+        # copy of evolved_params.symbol_trade_counts, defeating the
+        # "runtime tracker that advances during the 300-trade evolution
+        # freeze" purpose (V11 DD5-3 + external auditor finding).  This
+        # dict is incremented at the same source as
+        # evolved_params.symbol_trade_counts but is NEVER reset by the
+        # promotion gate, so it reflects true cumulative live trades
+        # regardless of evolution status.
+        self._symbol_trade_counts_runtime: dict[str, int] = {}
 
         # A5 (improve8): Regime transition cooldown
         self._last_regime: str = "unknown"
@@ -484,6 +1007,16 @@ class OrganismLiveEngine:
         # before blocking entries (soft block, auto-recovers).
         self._consecutive_equity_zero: int = 0
         self._EQUITY_ZERO_THRESHOLD = 3  # 3 consecutive zeros (~30s) before blocking
+
+        # Last-known-good equity fallback — avoids false equity-zero soft-blocks
+        # when broker API transiently returns 0 or errors.
+        self._last_valid_equity: float = 0.0
+        self._last_valid_equity_tick: int = 0
+        self._EQUITY_FALLBACK_MAX_TICKS: int = 30  # ~5 minutes at 10s ticks
+
+        # ── Daily max-loss tracking ──────────────────────────────
+        self._daily_starting_equity: float = 0.0
+        self._daily_loss_date: str = ""
 
         # Serialize live_tick() calls to prevent concurrent state mutation
         # (scheduler loop + manual /tick endpoint)
@@ -502,16 +1035,388 @@ class OrganismLiveEngine:
         # ── Diagnostics ──────────────────────────────────────────
         self._last_diagnostic_report: Any = None
 
+        # ── C1-C5: Away-mode watchdog state ──────────────────────
+        # C1: No-trade watchdog
+        self._watchdog_last_order_tick: int = 0
+        self._watchdog_no_trade_sessions: int = 0
+        self._watchdog_zero_candidates_ticks: int = 0
+        self._watchdog_state: str = "OK"  # "OK", "WARNING_NO_TRADES", "CRITICAL_MULTI_SESSION"
+        # C2: Equity fallback watchdog
+        self._watchdog_equity_fallback_count: int = 0
+        self._watchdog_equity_fallback_streak: int = 0
+        # C3: Universe drift watchdog
+        self._watchdog_universe_drift: dict[str, Any] = {}
+        # C4: Brain save watchdog
+        self._watchdog_last_brain_save_tick: int = 0
+        # Work order 2026-07-23 Task 1 — bounded walk-forward save-skip.
+        # The walk-forward gate compares current Sharpe to a MONOTONIC
+        # best_sharpe high-water mark, so a losing/chop tape can gate 100%
+        # of full saves indefinitely — ML joblibs, evolved_params, transfer
+        # knowledge and the .save_complete sentinel then never persist and a
+        # restart silently reverts them to the last clean full save. After
+        # this many consecutive gated skips we force ONE full (gated_save=true)
+        # save to bound restart state-loss. Persistence cadence only — not a
+        # decision param, so it is not part of the frozen surface.
+        self._consecutive_wf_skips: int = 0
+        self._max_wf_save_skips: int = max(
+            1, int(os.environ.get("ORGANISM_MAX_WF_SAVE_SKIPS", "12"))
+        )
+        # Apr-7 P0 fix: monotonic authoritative submission counters.
+        # These are bumped inside _submit_entry_order / _submit_exit_order
+        # on every successful broker submission, independent of per-tick
+        # LiveTickResult counters. The C1 watchdog reads these so it can
+        # never disagree with reality even if a result field is missed.
+        self._total_orders_submitted: int = 0
+        self._total_exits_submitted: int = 0
+        self._watchdog_last_total_orders: int = 0
+
+    def _warn_if_timeframe_strands_strategies(self) -> None:
+        """Plan 1.4: loud error when time-of-day-gated strategies are
+        enabled on a non-intraday timeframe (they would silently never
+        fire — the audit found the module DEFAULT timeframe is 1Day while
+        every intraday engine needs 1Min)."""
+        if self._is_intraday:
+            return
+        stranded = [
+            name for name, enabled in (
+                ("ORB (ORGANISM_ORB_LIVE_ENABLED)", ORB_LIVE_ENABLED),
+                ("EOD (ORGANISM_EOD_LIVE_ENABLED)", EOD_LIVE_ENABLED),
+                ("MeanReversion (ORGANISM_MEAN_REVERSION_LIVE_ENABLED)",
+                 MEAN_REVERSION_LIVE_ENABLED),
+            ) if enabled
+        ]
+        if stranded:
+            logger.error(
+                "TIMEFRAME MISMATCH: timeframe=%s is not intraday but these "
+                "live-enabled strategies require 1-minute bars and will "
+                "NEVER fire: %s. Set ORGANISM_LIVE_TIMEFRAME=1Min or disable "
+                "them. (Audit 2026-06-09, plan 1.4.)",
+                self._timeframe, ", ".join(stranded),
+            )
+
+    @staticmethod
+    def _assert_risk_limits_armed() -> None:
+        """Fail-closed startup guard (audit 2026-06-09, finding 3.3).
+
+        Refuse to construct the engine in ``execute`` mode while the dollar
+        circuit breakers are disabled (their module defaults are 0 =
+        disabled). Raises ``RuntimeError`` listing exactly which limits are
+        unarmed and which env vars arm them. Shadow/dry_run modes are
+        unaffected, so tests and replay keep working without env setup.
+        """
+        try:
+            from backend.services.trading_execution_mode import (
+                get_trading_execution_mode,
+            )
+            mode = get_trading_execution_mode().mode
+        except Exception:
+            # If the execution-mode service is unavailable, fall back to the
+            # raw env with the same fail-closed semantics as AppSettings.
+            raw = os.getenv("TRADING_EXECUTION_MODE", "shadow").strip().lower()
+            mode = "execute" if raw in ("paper", "live", "execute") else "shadow"
+
+        if mode != "execute":
+            return
+
+        unarmed: list[str] = []
+        if MAX_DAILY_LOSS <= 0:
+            unarmed.append("ORGANISM_MAX_DAILY_LOSS (daily dollar-loss halt)")
+        if MAX_NOTIONAL_PER_TRADE <= 0:
+            unarmed.append("ORGANISM_MAX_NOTIONAL (per-trade notional cap)")
+        if unarmed:
+            raise RuntimeError(
+                "REFUSING TO START in execute mode with risk breakers "
+                f"disabled: {', '.join(unarmed)}. Set these env vars to "
+                "positive values, or run in shadow/dry_run mode. "
+                "(Audit 2026-06-09, finding 3.3: real order flow without a "
+                "hard daily-loss halt must be impossible.)"
+            )
+
+    # ── EOD flatten escalation (audit 2026-06-09, finding 3.4) ───────
+
+    def _overnight_flag_path(self) -> Path:
+        return Path(self.brain.brain_dir) / "overnight_positions.json"
+
+    def _record_unflattened_positions(
+        self, symbols: list[str], session_date: str, now_iso: str
+    ) -> None:
+        """Escalate when positions survive past the 16:00 ET close.
+
+        Previously this condition produced a single ``logger.warning`` and
+        nothing else — broker reject/outage during the 15:58–16:00 flatten
+        window silently left positions carrying overnight gap risk.
+        Now: persist a flag file (consumed next session for a forced exit)
+        and fire a CRITICAL alert, once per session.
+        """
+        import json as _json
+
+        try:
+            self._overnight_flag_path().write_text(_json.dumps({
+                "session_date": session_date,
+                "symbols": sorted(set(symbols)),
+                "recorded_at": now_iso,
+            }))
+        except Exception as _werr:
+            logger.error("EOD escalation: failed to persist overnight flag: %s", _werr)
+
+        if getattr(self, "_eod_escalation_alerted_date", "") == session_date:
+            return  # already alerted this session
+        self._eod_escalation_alerted_date = session_date
+        try:
+            from backend.infra.alerting import (
+                AlertCategory, AlertSeverity, send_alert,
+                dispatch_alert_from_thread,
+            )
+            _syms_text = ", ".join(sorted(set(symbols)))
+            dispatch_alert_from_thread(
+                lambda: send_alert(
+                    AlertCategory.RISK_VIOLATION,
+                    AlertSeverity.CRITICAL,
+                    "EOD FLATTEN FAILED — positions open past close",
+                    f"Positions still open after 16:00 ET: {_syms_text}. "
+                    f"Overnight gap risk. A forced exit is scheduled for the "
+                    f"next session open. Manual intervention recommended.",
+                )
+            )
+        except Exception as _aerr:
+            logger.error("EOD escalation: alert dispatch failed: %s", _aerr)
+
+    def _load_overnight_flag(self) -> "tuple[str, list[str]] | None":
+        import json as _json
+
+        p = self._overnight_flag_path()
+        try:
+            if not p.is_file():
+                return None
+            data = _json.loads(p.read_text())
+            return str(data.get("session_date", "")), list(data.get("symbols", []))
+        except Exception as _rerr:
+            logger.warning("EOD escalation: overnight flag unreadable: %s", _rerr)
+            return None
+
+    def _clear_overnight_flag(self) -> None:
+        try:
+            p = self._overnight_flag_path()
+            if p.is_file():
+                p.unlink()
+        except Exception as _derr:
+            logger.warning("EOD escalation: failed to clear overnight flag: %s", _derr)
+
+    async def _force_exit_overnight_stragglers(
+        self,
+        current_positions: dict[str, Any],
+        result: "LiveTickResult",
+        now_iso: str,
+    ) -> None:
+        """Audit 2026-06-09 finding 3.4 — morning forced exit.
+
+        If a previous session ended with positions that the EOD flatten
+        failed to close (broker reject/outage/partial fill), a flag file
+        was persisted. Force-exit those symbols during the NEXT session's
+        regular hours instead of letting them ride.
+        """
+        _ov = self._load_overnight_flag()
+        if _ov is None:
+            return
+        _ov_date, _ov_syms = _ov
+        try:
+            import zoneinfo as _zi
+            _now_et2 = self._now_fn().astimezone(
+                _zi.ZoneInfo("America/New_York")
+            )
+            _today_et = _now_et2.strftime("%Y-%m-%d")
+            _hhmm_now = _now_et2.hour * 100 + _now_et2.minute
+        except Exception:
+            _today_et, _hhmm_now = "", -1
+        # Only on a LATER session than the failed flatten, and only during
+        # regular hours (same-session re-entry into the flatten window must
+        # not trigger this).
+        if not (_today_et > _ov_date and 930 <= _hhmm_now < 1558):
+            return
+        for sym in _ov_syms:
+            pos_data = current_positions.get(sym)
+            if pos_data is None or sym in self._pending_exit:
+                continue
+            _shares = int(abs(float(pos_data.get("qty", 0))))
+            if _shares <= 0:
+                continue
+            try:
+                _dir = (
+                    1.0 if pos_data.get("side", "long") == "long" else -1.0
+                )
+                await self._submit_exit_order(
+                    sym, _shares, "overnight_force_exit",
+                    direction=_dir,
+                    broker_positions=current_positions,
+                )
+                self._exit_cooldown[sym] = self._tick_count
+                self._pending_exit[sym] = self._tick_count
+                result.trades_closed += 1
+                result.orders_submitted += 1
+                result.activity.append(ActivityEvent(
+                    event_type="exit",
+                    symbol=sym,
+                    message=(
+                        f"OVERNIGHT FORCE EXIT: {sym} — EOD flatten failed "
+                        f"on {_ov_date}; closing {_shares} shares at "
+                        f"session open"
+                    ),
+                    details={
+                        "reason": "overnight_force_exit",
+                        "shares": _shares,
+                        "failed_flatten_date": _ov_date,
+                    },
+                    timestamp=now_iso,
+                ))
+                logger.warning(
+                    "Overnight force exit: closing %s (%d shares) — EOD "
+                    "flatten failed on %s", sym, _shares, _ov_date,
+                )
+            except Exception as _fe_err:
+                result.errors.append(
+                    f"Overnight force exit failed for {sym}: {_fe_err}"
+                )
+        # Clear the flag once all flagged symbols have been dispatched
+        # (or are no longer held).
+        _remaining = [
+            s for s in _ov_syms
+            if s in current_positions and s not in self._pending_exit
+        ]
+        if not _remaining:
+            self._clear_overnight_flag()
+
     # ── Dynamic throttle ──────────────────────────────────────
+
+    @staticmethod
+    def _safe_int_qty(qty: Any, *, context: str = "") -> int:
+        """V5 B-T-3 / Wave-18 (2026-05-03): convert a broker `qty`
+        (which may be a Decimal, str, or float) to an int while
+        warning on fractional truncation.
+
+        The platform currently trades whole shares only, so `int(qty)`
+        is correct in practice — but if a fractional fill ever appears
+        (broker fractional-share support, partial fill rounding,
+        upstream bug), `int(0.5) == 0` silently blocks exits. Warn loudly
+        so the operator notices.
+        """
+        try:
+            f = float(qty)
+        except (TypeError, ValueError):
+            return 0
+        i = int(f)
+        if abs(f - i) > 1e-9 and f >= 0:
+            logger.warning(
+                "Fractional qty truncated to %d (was %f) at %s — "
+                "B-T-3: investigate if fractional shares now active",
+                i, f, context or "unspecified",
+            )
+        return i
+
+    def _strategy_trades(self) -> list[Any]:
+        """V4 R-F-7 / R-F-8 (2026-05-02): trades excluding reconciliation
+        artifacts. Use this view at any *gate* or *threshold* consumer
+        — learning-mode, walk-forward Sharpe gate, evolution-freeze count,
+        Kelly trade-count. Without this filter, cross-session-cleanup
+        bookkeeping inflates the trade count and pollutes the gate
+        statistics. Logging / telemetry sites can keep using
+        `len(self._all_trades)` for display continuity.
+        """
+        return [
+            t for t in self._all_trades
+            if not getattr(t, "is_reconciliation_artifact", False)
+        ]
+
+    @property
+    def _trading_phase(self) -> dict[str, Any]:
+        """Phase 2: cached phase resolver with expectancy-aware promotion.
+
+        Trade count still controls bootstrap thresholds.  Once the brain
+        has enough strategy trades, realized expectancy can demote it to
+        ``production_guarded`` so full Kelly/ML behavior is not enabled
+        solely because a losing system crossed 300 trades.
+        """
+        cache: tuple[int, dict[str, Any]] | None = getattr(
+            self, "_trading_phase_tick_cache", None
+        )
+        tick = getattr(self, "_tick_count", -1)
+        if cache is not None and cache[0] == tick:
+            return cache[1]
+
+        trades = self._strategy_trades()
+        expectancy: dict[str, Any] | None = None
+        try:
+            from backend.organism.trading_phase import EVOLUTION_FREEZE_TRADES
+            if len(trades) >= EVOLUTION_FREEZE_TRADES:
+                from backend.organism.strategy_expectancy import compute_from_trades
+                expectancy = compute_from_trades(trades)
+            from backend.organism.trading_phase import resolve_trading_phase
+            phase = resolve_trading_phase(
+                len(trades),
+                strategy_expectancy=expectancy,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Trading phase resolver failed; falling back to count-only "
+                "learning mode check: %s",
+                exc,
+            )
+            from backend.organism.trading_phase import resolve_trading_phase
+            phase = resolve_trading_phase(len(trades))
+
+        self._trading_phase_tick_cache = (tick, phase)
+        return phase
 
     @property
     def _is_learning_mode(self) -> bool:
-        """True when engine has < 200 completed trades (still learning)."""
-        return len(self._all_trades) < self._LEARNING_MODE_TRADES
+        """True when engine has < LEARNING_MODE_TRADES completed strategy trades.
+
+        V8 DD2-7 / Wave-35 (2026-05-03): cache per tick so reconciliation
+        closing trade #200 mid-tick can't have exit/entry/sizing/gate
+        sites within the same step() see different learning_mode values.
+        Cache is keyed on `self._tick_count`; the next tick recomputes.
+        """
+        from backend.organism.trading_phase import LEARNING_MODE_TRADES
+        threshold = LEARNING_MODE_TRADES
+        # V4 R-F-8 (2026-05-02): filter reconciliation artifacts.
+        cache: tuple[int, bool] | None = getattr(
+            self, "_learning_mode_tick_cache", None
+        )
+        tick = getattr(self, "_tick_count", -1)
+        if cache is not None and cache[0] == tick:
+            return cache[1]
+        phase = getattr(self, "_trading_phase", None)
+        if isinstance(phase, dict):
+            value = bool(
+                phase.get(
+                    "is_learning",
+                    len(self._strategy_trades()) < threshold,
+                )
+            )
+        else:
+            value = len(self._strategy_trades()) < threshold
+        self._learning_mode_tick_cache = (tick, value)
+        return value
+
+    @property
+    def _is_guarded_production_mode(self) -> bool:
+        """True when realized expectancy blocks full production promotion."""
+        return bool(self._trading_phase.get("is_guarded", False))
+
+    @property
+    def _ml_isolation_mode(self) -> bool:
+        """True when ML must not influence main-book ranking/gates."""
+        return not bool(self._trading_phase.get("ml_influence_enabled", False))
+
+    @property
+    def _fixed_risk_sizing_mode(self) -> bool:
+        """True when Kelly sizing must be bypassed for fixed ATR risk."""
+        return bool(self._trading_phase.get("fixed_risk_sizing", False))
 
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
         """Learning mode: 12/hr. Production: max(3, 6 - open_positions)."""
+        if self._entry_throttle_override_per_hour is not None:
+            return max(0, int(self._entry_throttle_override_per_hour))
         if self._is_learning_mode:
             return 12  # was 8 — more entries for faster data collection
         open_pos = len(self._exit_levels)
@@ -524,12 +1429,53 @@ class OrganismLiveEngine:
         symbol: str,
         features_by_symbol: dict[str, pd.DataFrame],
     ) -> bool:
-        """Return False if symbol's avg volume over last 20 bars < minimum."""
+        """Return False if symbol's avg volume over last 20 bars < minimum.
+
+        Fails closed: missing data, missing volume column, or fewer than
+        20 bars all return False.
+
+        Diagnostics (2026-06-24): the two block reasons are logged distinctly
+        so a flood of blocks is never again mistaken for a dead feed —
+          - <20 bars: the symbol is outside the streaming data universe (e.g.
+            an in-play name the market scanner surfaced but the feed never
+            subscribed to). NOT real illiquidity; DEBUG.
+          - avg_vol < floor: genuine thin volume on a covered symbol; INFO with
+            the value. NOTE: the floor is a SHARE count, so high-priced names
+            (COST/AAPL) can trip it on quiet bars despite ample dollar-volume
+            — see follow-up to switch to a dollar-volume floor.
+        """
         df = features_by_symbol.get(symbol)
-        if df is None or "volume" not in df.columns or len(df) < 20:
-            return True  # No data → conservative pass
+        n_bars = 0 if df is None or "volume" not in getattr(df, "columns", []) else len(df)
+        if n_bars < 20:
+            logger.debug(
+                "Liquidity gate: %s has %d bars (<20) — outside data universe / "
+                "no streaming coverage, not real illiquidity.", symbol, n_bars,
+            )
+            return False  # Fail closed — insufficient data
         avg_vol = float(df["volume"].iloc[-20:].mean())
-        return avg_vol >= self._MIN_AVG_VOLUME
+        # Primary gate: per-bar DOLLAR volume (when enabled + price available),
+        # so high-priced names (COST/AAPL) and thin-priced ETFs are judged on
+        # the dollars that actually trade, not raw share count.
+        min_dollar = getattr(self, "_MIN_AVG_DOLLAR_VOLUME", 0.0)
+        if min_dollar > 0 and "close" in df.columns:
+            avg_dollar = float((df["volume"].iloc[-20:] * df["close"].iloc[-20:]).mean())
+            if avg_dollar < min_dollar:
+                logger.info(
+                    "Liquidity gate blocked %s: 20-bar avg dollar-vol=$%.0f < "
+                    "$%.0f floor (avg_vol=%.0f shares).",
+                    symbol, avg_dollar, min_dollar, avg_vol,
+                )
+                return False
+            return True
+        # Fallback: share-count floor (no price column available).
+        if avg_vol < self._MIN_AVG_VOLUME:
+            logger.info(
+                "Liquidity gate blocked %s: 20-bar avg_vol=%.0f shares < %d "
+                "floor (share-count fallback; no price for dollar-volume).",
+                symbol, avg_vol, self._MIN_AVG_VOLUME,
+            )
+            return False
+        return True
 
     def _passes_entry_gates(
         self,
@@ -541,36 +1487,78 @@ class OrganismLiveEngine:
         *,
         fitness_gate: float,
         min_trades_for_fitness: int,
+        allow_short: bool = False,
+        for_pyramid_add: bool = False,
     ) -> tuple[bool, str]:
         """Shared entry gate check used by both alpha and pure-breakout paths.
 
         Returns (passed, rejection_reason). If passed is True, rejection_reason
         is empty.
+
+        allow_short (M3-1): when True, the long_only gate is skipped. Caller
+        must have independently verified the signal qualifies as "strong
+        enough" per the strong-signal-shorting feature thresholds.
+
+        for_pyramid_add (audit 2026-06-09, finding 3.5): when True, the
+        position-presence checks (open_position / pending_entry /
+        entry_metadata / re-entry cooldowns), long_only, and sector gates
+        are skipped — a pyramid add necessarily targets an already-open
+        position whose direction and sector count are established. The
+        QUALITY gates below (fitness, liquidity, circuit breaker) still
+        apply, so a symbol degrading mid-day cannot receive adds.
         """
-        if symbol in open_symbols:
-            return False, "open_position"
-        if symbol in self._exit_cooldown:
-            return False, "exit_cooldown"
-        # Per-exit-type re-entry cooldown
-        _last_exit_type = self._symbol_exit_type.get(symbol)
-        _last_exit_tick = self._symbol_exit_tick.get(symbol, 0)
-        if _last_exit_type and _last_exit_tick > 0:
-            _ticks_since = self._tick_count - _last_exit_tick
-            if _last_exit_type in ("stop_loss", "safety_net") and _ticks_since < self._STOP_LOSS_REENTRY_TICKS:
+        if not for_pyramid_add:
+            if symbol in open_symbols:
+                return False, "open_position"
+            if symbol in self._exit_cooldown:
                 return False, "exit_cooldown"
-            elif _last_exit_type == "ftf_loss" and _ticks_since < self._FTF_LOSS_REENTRY_TICKS:
-                return False, "exit_cooldown"
-        if symbol in self._pending_entry:
-            return False, "pending_entry"
-        if symbol in self._entry_metadata:
-            return False, "entry_metadata"
-        if LONG_ONLY and direction < 0:
-            return False, "long_only"
-        if not sector_gate_allows(symbol, open_symbols, planned_entries):
-            return False, "sector_gate"
-        # Fitness gate: learning = no gate, production = hard gate for 10+ trades
-        sym_fitness = self.evolved_params.symbol_fitness.get(symbol, 0.5)
+            # Per-exit-type re-entry cooldown
+            _last_exit_type = self._symbol_exit_type.get(symbol)
+            _last_exit_tick = self._symbol_exit_tick.get(symbol, 0)
+            if _last_exit_type and _last_exit_tick > 0:
+                _ticks_since = self._tick_count - _last_exit_tick
+                if _last_exit_type in ("stop_loss", "safety_net") and _ticks_since < self._STOP_LOSS_REENTRY_TICKS:
+                    return False, "exit_cooldown"
+                elif _last_exit_type == "ftf_loss" and _ticks_since < self._FTF_LOSS_REENTRY_TICKS:
+                    return False, "exit_cooldown"
+            if symbol in self._pending_entry:
+                return False, "pending_entry"
+            if symbol in self._entry_metadata:
+                return False, "entry_metadata"
+            if LONG_ONLY and direction < 0 and not allow_short:
+                return False, "long_only"
+            if not sector_gate_allows(symbol, open_symbols, planned_entries):
+                return False, "sector_gate"
+        # Fitness gate: learning = no gate, production = hard gate for 10+ trades.
+        # V9 DD3-5 / Wave-44 (2026-05-03): if symbol_fitness has no entry
+        # for this symbol, treat as "fitness data unavailable" — block the
+        # gate from passing on the default 0.5 (which previously bypassed
+        # the 0.45 prod gate silently for every symbol when the saved
+        # brain had symbol_fitness == {}).  Behavior:
+        #  - If fitness recorded: existing gate semantics.
+        #  - If fitness NOT recorded but trade_count >= min_trades_for_fitness:
+        #    warn once and treat as fitness == 0 (block).
+        #  - If fitness NOT recorded and trade_count < min: pass (under
+        #    threshold; same as current).
+        symbol_fitness_map = self.evolved_params.symbol_fitness or {}
         _sym_trade_count = self.evolved_params.symbol_trade_counts.get(symbol, 0)
+        if symbol in symbol_fitness_map:
+            sym_fitness = symbol_fitness_map[symbol]
+        elif (
+            not self._is_learning_mode
+            and _sym_trade_count >= min_trades_for_fitness
+        ):
+            if not getattr(self, "_warned_dd3_5_missing_fitness", False):
+                logger.warning(
+                    "DD3-5: symbol_fitness has no entry for %s despite "
+                    "%d trades (gate=%s). Treating as fitness=0 (block). "
+                    "Brain may need a re-evolve cycle.",
+                    symbol, _sym_trade_count, fitness_gate,
+                )
+                self._warned_dd3_5_missing_fitness = True
+            return False, "fitness_gate"
+        else:
+            sym_fitness = 0.5  # learning-mode default; gate disabled anyway
         if (
             not self._is_learning_mode
             and _sym_trade_count >= min_trades_for_fitness
@@ -585,6 +1573,110 @@ class OrganismLiveEngine:
             return False, "circuit_breaker"
         return True, ""
 
+    def _alpha_breakout_defensive_filter_reason(
+        self,
+        candidate: dict[str, Any],
+        regime: str,
+    ) -> str:
+        """Return non-empty reason when evidence says this slice should not fire."""
+        _src = infer_entry_source(candidate)
+        if (
+            not ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED
+            or str(regime) not in ALPHA_BREAKOUT_BAD_REGIME_FILTERS
+            # Plan 3.2: configurable source coverage (default unchanged).
+            or _src not in BAD_REGIME_FILTER_SOURCES
+        ):
+            return ""
+        return f"{_src.replace('+', '_')}_{regime}_blocked_by_evidence"
+
+    def _record_defensive_filtered_candidate(
+        self,
+        candidate: dict[str, Any],
+        regime: str,
+        rejected: list[dict[str, Any]],
+    ) -> bool:
+        reason = self._alpha_breakout_defensive_filter_reason(candidate, regime)
+        if not reason:
+            return False
+        rejected.append({
+            **candidate,
+            "live_pipeline_candidate": False,
+            "defensive_filter_reason": reason,
+        })
+        logger.info(
+            "Defensive alpha+breakout filter blocked %s regime=%s "
+            "confidence=%.3f eff_conf=%.3f breakout=%.3f reason=%s",
+            candidate.get("symbol"),
+            regime,
+            float(candidate.get("confidence") or 0.0),
+            float(candidate.get("effective_confidence") or 0.0),
+            float(candidate.get("breakout_score") or 0.0),
+            reason,
+        )
+        return True
+
+    def _record_directionless_candidate(
+        self,
+        candidate: dict[str, Any],
+        rejected: list[dict[str, Any]],
+    ) -> bool:
+        """Record and reject live-path candidates that have no trade side."""
+        try:
+            direction = float(candidate.get("direction") or 0.0)
+        except (TypeError, ValueError):
+            direction = 0.0
+        if direction != 0.0:
+            return False
+        rejected.append({
+            **candidate,
+            "live_pipeline_candidate": False,
+            "defensive_filter_reason": "direction_zero",
+        })
+        logger.info(
+            "Direction-zero candidate rejected before sizing: %s "
+            "confidence=%.3f eff_conf=%.3f breakout=%.3f",
+            candidate.get("symbol"),
+            float(candidate.get("confidence") or 0.0),
+            float(candidate.get("effective_confidence") or 0.0),
+            float(candidate.get("breakout_score") or 0.0),
+        )
+        return True
+
+    def _infer_no_order_reason(
+        self,
+        result: LiveTickResult,
+        *,
+        sizes_count: int | None = None,
+    ) -> str:
+        """Return the dominant reason a tick produced no order."""
+        if result.orders_submitted > 0:
+            return ""
+        entries_blocked_reason = getattr(self, "_last_entries_blocked_reason", "")
+        if entries_blocked_reason:
+            return entries_blocked_reason
+        rejections = getattr(self, "_last_gate_rejections", {})
+        live_candidates = int(getattr(self, "_last_live_candidates_pre_sizing", 0))
+        sized = (
+            int(sizes_count)
+            if sizes_count is not None
+            else len(getattr(self, "_last_kelly_sizes", []) or [])
+        )
+        if rejections.get("direction_zero", 0) > 0 and live_candidates == 0:
+            return "direction_zero"
+        if rejections.get("defensive_filter", 0) > 0 and live_candidates == 0:
+            return "defensive_filter"
+        if rejections.get("below_main_conf", 0) > 0 and live_candidates == 0:
+            return "below_main_conf"
+        if rejections.get("below_expl_conf", 0) > 0 and live_candidates == 0:
+            return "below_expl_conf"
+        if rejections.get("sizer_invalid", 0) > 0 and sized == 0:
+            return "sizer_invalid"
+        if live_candidates > 0 and sized == 0:
+            return "sizer_rejected_all"
+        if sized > 0:
+            return "orders_skipped_after_sizing"
+        return "no_actionable_candidates"
+
     # ═════════════════════════════════════════════════════════════
     #  INITIALIZATION / SHUTDOWN
     # ═════════════════════════════════════════════════════════════
@@ -598,8 +1690,8 @@ class OrganismLiveEngine:
 
         if brain_loaded:
             # Restore ML models
-            ml_ok = self.brain.apply_to_signal_generator(self.signal_gen)
-            lr_ok = self.brain.apply_to_learner(self.learner)
+            self.brain.apply_to_signal_generator(self.signal_gen)
+            self.brain.apply_to_learner(self.learner)
 
             # Restore evolved params (Phase 1.1 — own file)
             # Hardening: only restore bookkeeping fields (symbol_fitness,
@@ -642,14 +1734,48 @@ class OrganismLiveEngine:
             if us_data and isinstance(us_data, dict):
                 self.universe_selector = DynamicUniverseSelector.from_dict(
                     us_data, seed_symbols=list(self._universe),
+                    protected_symbols=PROTECTED_SYMBOLS,
                 )
                 restored_universe = self.universe_selector.active_universe
                 if restored_universe:
                     self._universe = restored_universe
+                    # Log whether protected symbols are present after restore+merge
+                    active_set = set(self._universe)
+                    missing_protected = PROTECTED_SYMBOLS - active_set
                     logger.info(
-                        "Universe selector restored: %d symbols",
+                        "Universe selector restored: %d symbols, "
+                        "protected present: %s, protected missing: %s",
                         len(self._universe),
+                        sorted(PROTECTED_SYMBOLS & active_set) or "none",
+                        sorted(missing_protected) or "none",
                     )
+
+            # A2: In learning mode, converge restored universe to the
+            # configured base + protected symbols.  This prevents stale
+            # dynamic additions from inflating API calls and causing
+            # ConnectTimeout cascades.
+            if self._is_learning_mode:
+                base = set(
+                    s.strip().upper()
+                    for s in LIVE_UNIVERSE_CSV.split(",")
+                    if s.strip()
+                )
+                base |= PROTECTED_SYMBOLS  # ensure SH/PSQ
+                active_set = set(self._universe)
+                extras = active_set - base
+                if extras:
+                    self._universe = [s for s in self._universe if s in base]
+                    # Ensure all base symbols are present
+                    for s in sorted(base):
+                        if s not in self._universe:
+                            self._universe.append(s)
+                    logger.info(
+                        "Learning-mode universe converged: removed %d extras %s, "
+                        "active=%d symbols",
+                        len(extras), sorted(extras), len(self._universe),
+                    )
+                    # Update selector to match
+                    self.universe_selector._active = list(self._universe)
 
             # Restore cumulative data — try brain first, then DB fallback
             prev_trades = self.brain.get_trade_records()
@@ -713,6 +1839,7 @@ class OrganismLiveEngine:
                             atr_at_entry=_atr,
                             regime_at_entry=lvl_data.get("regime_at_entry", "unknown"),
                             highest_favorable=float(lvl_data.get("highest_favorable", lvl_data.get("entry", 0))),
+                            worst_adverse=float(lvl_data.get("worst_adverse", 0)),
                             bars_held=int(lvl_data.get("bars_held", 0)),
                             partial_tp_price=float(lvl_data.get("partial_tp_price", 0)),
                             partial_tp_taken=bool(lvl_data.get("partial_tp_taken", False)),
@@ -724,6 +1851,7 @@ class OrganismLiveEngine:
                             price_at_prior_bar=float(lvl_data.get("price_at_prior_bar", 0.0)),
                             ftf_stop_tightened=bool(lvl_data.get("ftf_stop_tightened", False)),
                             price_two_bars_ago=float(lvl_data.get("price_two_bars_ago", 0.0)),
+                            initial_risk_at_entry=float(lvl_data.get("initial_risk_at_entry", 0.0)),
                         )
                     except (KeyError, ValueError, TypeError) as e:
                         logger.debug("Cannot restore exit levels for %s: %s", sym, e)
@@ -733,13 +1861,67 @@ class OrganismLiveEngine:
                         len(self._exit_levels),
                     )
 
-            # Restore entry metadata
+            # Restore entry metadata — cross-check with broker positions
+            # to prevent stale/orphan metadata from creating phantom trades.
             saved_entry_meta = self.brain.extra_counters.get("entry_metadata", {})
             if saved_entry_meta and isinstance(saved_entry_meta, dict):
+                try:
+                    broker_positions = await self._positions_service.get_all_positions()
+                    broker_symbols = set(broker_positions.keys()) if broker_positions else set()
+                except Exception:
+                    broker_symbols = None  # Cannot validate — keep all metadata
+
+                if broker_symbols is not None:
+                    stale_symbols = set(saved_entry_meta.keys()) - broker_symbols
+                    if stale_symbols:
+                        for sym in stale_symbols:
+                            saved_entry_meta.pop(sym, None)
+                        logger.warning(
+                            "Pruned %d stale entry metadata (no broker position): %s",
+                            len(stale_symbols),
+                            sorted(stale_symbols),
+                        )
                 self._entry_metadata = saved_entry_meta
+                if self._entry_metadata:
+                    logger.info(
+                        "Restored entry metadata for %d positions from brain",
+                        len(self._entry_metadata),
+                    )
+
+            # REMEDIATION: Restore pending entry order IDs and cancel stale orders
+            saved_pending_ids = self.brain.extra_counters.get("pending_entry_order_ids", {})
+            if saved_pending_ids and isinstance(saved_pending_ids, dict):
+                stale_count = 0
+                for sym, order_id in saved_pending_ids.items():
+                    try:
+                        await self._order_service.cancel_order(order_id)
+                        stale_count += 1
+                        logger.warning(
+                            "Cancelled stale pending entry order for %s: %s",
+                            sym, order_id,
+                        )
+                    except Exception as e:
+                        logger.debug(
+                            "Could not cancel stale order %s for %s (may already be expired): %s",
+                            order_id, sym, e,
+                        )
+                if stale_count:
+                    logger.info(
+                        "Cancelled %d stale pending entry orders from prior session",
+                        stale_count,
+                    )
+
+            # A4 away-mode fix: Restore pending entry cooldowns from brain.
+            # On restart, tick numbers are stale — reset each to current tick
+            # so the symbol gets a fresh cooldown window of _PENDING_ENTRY_TICKS.
+            saved_pending = self.brain.extra_counters.get("pending_entry")
+            if saved_pending and isinstance(saved_pending, dict):
+                for sym in saved_pending:
+                    self._pending_entry[sym] = self._tick_count
                 logger.info(
-                    "Restored entry metadata for %d positions from brain",
-                    len(self._entry_metadata),
+                    "Restored %d pending entry cooldowns from brain "
+                    "(reset to tick %d for fresh cooldown)",
+                    len(saved_pending), self._tick_count,
                 )
 
             # Restore regime-stratified Kelly stats
@@ -754,6 +1936,160 @@ class OrganismLiveEngine:
                 self.signal_gen.load_calibration(cal_data)
                 logger.info("Restored ML calibration from brain")
 
+            # Audit-D restores (2026-05-01): _pending_exit, _exit_cooldown,
+            # _symbol_banned, _ml_reversal_used, daily counters. Bug-class:
+            # save sites used to omit these fields; restart wiped state.
+            saved_pending_exit = self.brain.extra_counters.get("pending_exit")
+            if isinstance(saved_pending_exit, dict):
+                # Reset tick numbers to current tick (cooldown windows
+                # restart fresh; same pattern as pending_entry above).
+                for sym in saved_pending_exit:
+                    self._pending_exit[sym] = self._tick_count
+                if saved_pending_exit:
+                    logger.info(
+                        "Restored %d pending exits (reset to tick %d)",
+                        len(saved_pending_exit), self._tick_count,
+                    )
+
+            saved_exit_cd = self.brain.extra_counters.get("exit_cooldown")
+            if isinstance(saved_exit_cd, dict):
+                for sym in saved_exit_cd:
+                    self._exit_cooldown[sym] = self._tick_count
+                if saved_exit_cd:
+                    logger.info(
+                        "Restored %d exit cooldowns (reset to tick %d)",
+                        len(saved_exit_cd), self._tick_count,
+                    )
+
+            saved_banned = self.brain.extra_counters.get("symbol_banned")
+            if isinstance(saved_banned, list):
+                # Date-roll check: only restore bans if same session.
+                # See _maybe_reset_daily_session in tick loop for details.
+                saved_session = self.brain.extra_counters.get("daily_session_date", "")
+                from zoneinfo import ZoneInfo
+                try:
+                    today_et = self._now_fn().astimezone(
+                        ZoneInfo("America/New_York")
+                    ).strftime("%Y-%m-%d")
+                except Exception:
+                    today_et = self._now_fn().strftime("%Y-%m-%d")
+                if saved_session == today_et:
+                    self._symbol_banned = set(saved_banned)
+                    if saved_banned:
+                        logger.info(
+                            "Restored %d symbol bans (same session %s)",
+                            len(saved_banned), saved_session,
+                        )
+                else:
+                    if saved_banned:
+                        logger.info(
+                            "Symbol bans NOT restored (saved session %s != "
+                            "current %s) — date-roll cleared bans",
+                            saved_session, today_et,
+                        )
+
+            saved_mr_used = self.brain.extra_counters.get("ml_reversal_used")
+            if isinstance(saved_mr_used, list):
+                self._ml_reversal_used = set(saved_mr_used)
+
+            # V10 DD4-1 / Wave-53 (2026-05-03): restore symbol_trade_counts +
+            # symbol_fitness from extra_counters if present.  evolved_params
+            # is promotion-gated, so its counts can be stale; the runtime-
+            # truth copy in extra_counters is updated every essential save.
+            # Use the larger of (evolved_params version, extra_counters
+            # version) so we never go backwards on a restart.
+            #
+            # V12 W72 / DD5-3 (2026-05-03): also restore the separate
+            # runtime accumulator from disk so its cross-restart history
+            # is preserved.  Previously this dict was reconstructed-by-
+            # snapshot from evolved_params, defeating the point.
+            try:
+                _ec_counts = self.brain.extra_counters.get(
+                    "symbol_trade_counts_runtime", {}
+                )
+                _ec_fitness = self.brain.extra_counters.get(
+                    "symbol_fitness_runtime", {}
+                )
+                # Always rehydrate the runtime accumulator from disk; it
+                # is the cross-restart authoritative source.
+                if isinstance(_ec_counts, dict) and _ec_counts:
+                    self._symbol_trade_counts_runtime = {
+                        str(k): int(v) for k, v in _ec_counts.items()
+                    }
+                if isinstance(_ec_counts, dict) and _ec_counts:
+                    _ep_counts = (
+                        getattr(self.evolved_params,
+                                "symbol_trade_counts", {}) or {}
+                    )
+                    for sym, n in _ec_counts.items():
+                        existing = int(_ep_counts.get(sym, 0))
+                        if int(n) > existing:
+                            _ep_counts[sym] = int(n)
+                    self.evolved_params.symbol_trade_counts = _ep_counts
+                if isinstance(_ec_fitness, dict) and _ec_fitness:
+                    _ep_fit = (
+                        getattr(self.evolved_params,
+                                "symbol_fitness", {}) or {}
+                    )
+                    for sym, f in _ec_fitness.items():
+                        if sym not in _ep_fit:
+                            _ep_fit[sym] = float(f)
+                    self.evolved_params.symbol_fitness = _ep_fit
+                if _ec_counts or _ec_fitness:
+                    logger.info(
+                        "DD4-1: restored runtime symbol_trade_counts "
+                        "(%d syms) + fitness (%d syms) from extra_counters",
+                        len(_ec_counts or {}), len(_ec_fitness or {}),
+                    )
+            except Exception as _dd41_err:
+                logger.warning(
+                    "DD4-1: runtime counters/fitness restore failed: %s",
+                    _dd41_err,
+                )
+
+            # Restore daily counters only if same session
+            saved_session = self.brain.extra_counters.get("daily_session_date", "")
+            try:
+                from zoneinfo import ZoneInfo
+                today_et = self._now_fn().astimezone(
+                    ZoneInfo("America/New_York")
+                ).strftime("%Y-%m-%d")
+            except Exception:
+                today_et = self._now_fn().strftime("%Y-%m-%d")
+            if saved_session == today_et:
+                self._orb_live_count_today = int(
+                    self.brain.extra_counters.get("orb_live_count_today", 0)
+                )
+                self._eod_live_count_today = int(
+                    self.brain.extra_counters.get("eod_live_count_today", 0)
+                )
+                self._mr_live_count_today = int(
+                    self.brain.extra_counters.get("mr_live_count_today", 0)
+                )
+
+            # Audit-D finding D-20 (2026-05-02): restore pyramid_positions.
+            # Same-session-only restore: a pyramid layer from a prior
+            # session is stale (target/stop computed off old ATR). Only
+            # rehydrate on intraday restart.
+            saved_pyramids = self.brain.extra_counters.get("pyramid_positions")
+            if (
+                isinstance(saved_pyramids, dict)
+                and saved_session == today_et
+            ):
+                from backend.organism.pyramider import PyramidPosition as _PP
+                for sym, pyr_data in saved_pyramids.items():
+                    try:
+                        self._pyramid_positions[sym] = _PP.from_persistence(pyr_data)
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to restore pyramid for %s: %s", sym, e,
+                        )
+                if saved_pyramids:
+                    logger.info(
+                        "Restored %d pyramid positions (same session %s)",
+                        len(saved_pyramids), saved_session,
+                    )
+
             # Validate brain
             warnings = self.brain.validate_brain()
             for w in warnings:
@@ -767,6 +2103,17 @@ class OrganismLiveEngine:
             )
         else:
             logger.info("Organism live engine starting fresh (no brain)")
+
+        # H4 / Phase 2: log resolved trading phase using shared resolver.
+        # Use strategy-trade count plus expectancy so a high-trade losing
+        # brain is logged as production_guarded rather than full production.
+        from backend.organism.strategy_expectancy import compute_from_trades
+        from backend.organism.trading_phase import log_trading_phase
+        _strategy_trades_for_phase = self._strategy_trades()
+        log_trading_phase(
+            len(_strategy_trades_for_phase),
+            strategy_expectancy=compute_from_trades(_strategy_trades_for_phase),
+        )
 
         # ── Phase 4.7: Transfer learning warm-start ──────────────
         # Hardening: skip warm-start during 300-trade evolution freeze.
@@ -834,126 +2181,20 @@ class OrganismLiveEngine:
         except Exception as e:
             logger.debug("Preflight diagnostics error (non-fatal): %s", e)
 
+        # Apr-7 P0: seed watchdog baselines so a fresh boot does NOT
+        # immediately claim "no orders" / "no brain save" since tick 0.
+        # Real liveness is enforced once tick_count advances past the
+        # 6h/3h thresholds without a real order / save.
+        self._watchdog_last_order_tick = self._tick_count
+        self._watchdog_last_brain_save_tick = self._tick_count
+        self._watchdog_last_total_orders = self._total_orders_submitted
+
         return brain_loaded
 
-    async def _reconstruct_trades_from_db(self) -> None:
-        """Reconstruct trade history from filled organism orders in DB.
-
-        Called on startup when brain has no trade records (e.g. after a
-        Docker restart that wiped trade_history.csv before it was written).
-        Pairs entry and exit orders per symbol to build TradeRecord objects.
-        """
-        from sqlalchemy import select, text as sa_text
-        from backend.infra.schemas import Order
-
-        async with self._sessionmaker() as session:
-            stmt = (
-                select(Order)
-                .where(
-                    Order.status == "filled",
-                    sa_text("attributes->>'source' = 'organism'"),
-                )
-                .order_by(Order.submitted_at.asc())
-            )
-            result = await session.execute(stmt)
-            orders = list(result.scalars().all())
-
-        if not orders:
-            logger.info("No filled organism orders in DB — nothing to reconstruct")
-            return
-
-        # Separate entries and exits
-        entry_reasons = {"entry", "pyramid", "ml_entry", "alpha_entry", "breakout_entry"}
-        entries: dict[str, list] = {}  # symbol → [order, ...]
-        exits: dict[str, list] = {}
-
-        for o in orders:
-            attrs = o.attributes or {}
-            reason = (attrs.get("reason") or "").lower()
-            sym = o.symbol
-
-            is_entry = (
-                any(r in reason for r in entry_reasons)
-                or (o.side == "buy" and not reason)
-            )
-            if is_entry:
-                entries.setdefault(sym, []).append(o)
-            else:
-                exits.setdefault(sym, []).append(o)
-
-        # Pair exits to entries
-        reconstructed: list[TradeRecord] = []
-        entry_idx: dict[str, int] = {}  # symbol → next unmatched entry index
-
-        for sym, exit_orders in exits.items():
-            sym_entries = entries.get(sym, [])
-            idx = entry_idx.get(sym, 0)
-
-            for ex_order in exit_orders:
-                if idx >= len(sym_entries):
-                    break  # No more entries to match
-
-                en_order = sym_entries[idx]
-                idx += 1
-
-                entry_price = float(en_order.avg_fill_price or 0)
-                exit_price = float(ex_order.avg_fill_price or 0)
-                shares = int(float(en_order.filled_qty or en_order.qty or 0))
-
-                if entry_price <= 0 or exit_price <= 0 or shares <= 0:
-                    continue
-
-                pnl = (exit_price - entry_price) * shares
-                actual_return = (exit_price - entry_price) / entry_price
-
-                en_attrs = en_order.attributes or {}
-                ex_attrs = ex_order.attributes or {}
-
-                reconstructed.append(TradeRecord(
-                    symbol=sym,
-                    direction=1.0,  # LONG_ONLY
-                    entry_price=entry_price,
-                    exit_price=exit_price,
-                    entry_bar=0,
-                    exit_bar=0,
-                    shares=shares,
-                    pnl=pnl,
-                    exit_reason=ex_attrs.get("reason", "unknown"),
-                    predicted_return=0.0,
-                    actual_return=actual_return,
-                    confidence=float(en_attrs.get("confidence", 0.0)),
-                ))
-
-            entry_idx[sym] = idx
-
-        if not reconstructed:
-            logger.info("No matched entry/exit pairs found in DB")
-            return
-
-        self._all_trades = reconstructed
-        cumulative = 0.0
-        for t in reconstructed:
-            cumulative += t.pnl
-            self._equity_curve.append(cumulative)
-        self._peak_equity = max(self._equity_curve) if self._equity_curve else 0.0
-
-        # Feed reconstructed trades to learner so ML can train
-        if hasattr(self, 'learner') and self.learner:
-            for t in reconstructed:
-                try:
-                    self.learner.record_trade(t)
-                except Exception as e:
-                    logger.warning("Failed to record reconstructed trade for %s: %s", t.symbol, e)
-            logger.info(
-                "Fed %d reconstructed trades to learner (total_trades=%d)",
-                len(reconstructed), self.learner.state.total_trades,
-            )
-
-        logger.info(
-            "Reconstructed %d trades from DB: cumulative PnL=$%.2f",
-            len(reconstructed),
-            cumulative,
-        )
+    # _reconstruct_trades_from_db extracted to
+    # backend/organism/live_engine_state.py::_StateReconstructionMixin
+    # (2026-06-08 decomposition). Still a method of OrganismLiveEngine via
+    # inheritance — getsource and all call sites are unchanged.
 
     async def shutdown(self) -> None:
         """Save brain state on graceful shutdown."""
@@ -971,6 +2212,18 @@ class OrganismLiveEngine:
     #  MAIN LIVE TICK
     # ═════════════════════════════════════════════════════════════
 
+    # V9 TT-2 / Wave-46 (2026-05-03): tick watchdog timeout. Production
+    # data showed pathological 1987s and 1256s tick outliers (33-min /
+    # 21-min) co-located with WS keepalive timeouts. Without a watchdog
+    # the tick body could stall the scheduler indefinitely, masking
+    # liveness from operator. 30s gives plenty of headroom over the
+    # measured p99=13s without missing the 10s scheduler interval by
+    # more than a few ticks under stress.
+    _TICK_WATCHDOG_SECONDS = 30.0
+
+    # V9 TT-1 / Wave-46 (2026-05-03): timeouts and slow-tick logs are
+    # a Prometheus-counter target.  Maintain monotonic counters so
+    # operators can dashboard them.
     async def live_tick(self) -> LiveTickResult:
         """Execute one full organism cycle — called every bar interval.
 
@@ -987,20 +2240,81 @@ class OrganismLiveEngine:
             10. Record trade outcomes from recent fills
             11. Periodic retrain + evolve
             12. Brain save (periodic checkpoint)
+
+        V9 TT-2 / Wave-46: wraps the inner body in asyncio.wait_for so
+        a hung WebSocket-reconnect or DB query doesn't stall the
+        scheduler indefinitely.  On timeout: alert operator, increment
+        watchdog counter, return a degraded LiveTickResult.
         """
         async with self._tick_lock:
-            return await self._live_tick_inner()
+            try:
+                result = await asyncio.wait_for(
+                    self._live_tick_inner(),
+                    timeout=self._TICK_WATCHDOG_SECONDS,
+                )
+                # Task S: log-only shadow exit eval (outside _live_tick_inner;
+                # never affects real trading, never raises into the tick).
+                if getattr(self, "_shadow_exit", None) is not None:
+                    try:
+                        self._shadow_evaluate_exits(result)
+                    except Exception as e:
+                        logger.warning("shadow exit eval failed: %s", e)
+                return result
+            except asyncio.TimeoutError:
+                self._tick_watchdog_timeouts = (
+                    getattr(self, "_tick_watchdog_timeouts", 0) + 1
+                )
+                logger.error(
+                    "TT-2: tick watchdog FIRED after %.1fs (count=%d). "
+                    "Returning degraded result. Likely cause: stream "
+                    "reconnect stall or DB query timeout.",
+                    self._TICK_WATCHDOG_SECONDS,
+                    self._tick_watchdog_timeouts,
+                )
+                # Best-effort operator alert.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
+                    )
+                    dispatch_alert_from_thread(
+                        lambda: send_alert(
+                            AlertCategory.SYSTEM_ERROR,
+                            AlertSeverity.WARNING,
+                            "Tick Watchdog Timeout",
+                            f"Live tick exceeded "
+                            f"{self._TICK_WATCHDOG_SECONDS:.0f}s "
+                            f"(total timeouts={self._tick_watchdog_timeouts}).",
+                        )
+                    )
+                except Exception as _alert_err:
+                    logger.warning(
+                        "TT-2: watchdog alert dispatch failed: %s",
+                        _alert_err,
+                    )
+                # Return degraded but valid LiveTickResult.
+                return LiveTickResult(
+                    timestamp=self._now_fn().isoformat(),
+                    errors=[
+                        f"TT-2: tick watchdog timeout "
+                        f"({self._TICK_WATCHDOG_SECONDS:.0f}s)"
+                    ],
+                )
 
-    async def _live_tick_inner(self) -> LiveTickResult:
-        """Inner tick logic — always called under _tick_lock."""
-        t0 = time.time()
-        result = LiveTickResult(
-            timestamp=self._now_fn().isoformat(),
-        )
-        self._tick_count += 1
-        # Gate-level rejection telemetry (reset each tick)
-        self._last_gate_rejections: dict[str, int] = {}
-        self._last_entries_blocked_reason: str = ""
+    # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted helper.
+    # The full pipeline-split of `_live_tick_inner` is multi-day
+    # work; this wave extracts the simplest bounded block (cooldown
+    # expiry at the top of the method) so future audits can test it
+    # in isolation. See `docs/architecture/HH_R1_PIPELINE_SPLIT_PLAN.md`
+    # for the full 13-step extraction plan.
+    def _stage_expire_cooldowns(self) -> None:
+        """Stage 0a: expire cooldowns and pending-entry tracking maps.
+
+        Pure state mutation; no inputs, no return value. Runs at the
+        very top of every tick to drop entries older than their TTL.
+        Extracted from _live_tick_inner for HH R-1 (V7 architecture
+        finding: 2,510-line method with no isolated stages).
+        """
         # Expire old cooldowns (keep only recent exits)
         self._exit_cooldown = {
             sym: tick for sym, tick in self._exit_cooldown.items()
@@ -1011,93 +2325,557 @@ class OrganismLiveEngine:
             sym: tick for sym, tick in self._pending_entry.items()
             if self._tick_count - tick < self._PENDING_ENTRY_TICKS
         }
+        # CORE-011: expire order ID tracking in sync with pending entries
+        self._pending_entry_order_ids = {
+            sym: oid for sym, oid in self._pending_entry_order_ids.items()
+            if sym in self._pending_entry
+        }
+        # REMEDIATION: Clear pending entries whose orders reached terminal state
+        # (rejected/cancelled/expired) without waiting for 30-tick expiry.
+        try:
+            from backend.integrations.alpaca_stream import get_stream_client
+            _stream = get_stream_client() if get_stream_client is not None else None
+        except Exception:
+            _stream = None
+        if _stream is not None and hasattr(_stream, 'is_order_terminal'):
+            for sym, oid in list(self._pending_entry_order_ids.items()):
+                if _stream.is_order_terminal(oid):
+                    self._pending_entry.pop(sym, None)
+                    self._pending_entry_order_ids.pop(sym, None)
+                    logger.info(
+                        "Cleared pending entry for %s: order %s reached terminal state",
+                        sym, oid,
+                    )
         # Expire old pending exits
         self._pending_exit = {
             sym: tick for sym, tick in self._pending_exit.items()
             if self._tick_count - tick < self._PENDING_EXIT_TICKS
         }
 
+    def _evaluate_entry_blocker_gate(self) -> SafetyGateResult:
+        """Evaluate early entry blockers without mutating tick state."""
+        if self.governance.is_trading_halted:
+            return SafetyGateResult(
+                blocked=True,
+                reason="governance_halt",
+                activity_type="governance",
+                activity_message=(
+                    "Trading halted — blocking new entries, exits still running"
+                ),
+                error_message="Trading halted by governance — exits still active",
+            )
+        if self._entries_blocked:
+            return SafetyGateResult(blocked=False)
+        if self._tick_count <= self._WARMUP_TICKS:
+            return SafetyGateResult(
+                blocked=True,
+                reason="warmup",
+                activity_type="skip",
+                activity_message=(
+                    f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} "
+                    "— entries blocked"
+                ),
+            )
+        if self._data_stale:
+            return SafetyGateResult(
+                blocked=True,
+                reason="stale_data",
+                activity_type="skip",
+                activity_message="Stale data — blocking entries (exits still active)",
+            )
+        return SafetyGateResult(blocked=False)
+
+    # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted
+    # together. P7.2 adds a SafetyGateResult decision boundary so the
+    # pass/block decision is testable separately from LiveTickResult effects.
+    def _stage_check_entry_blockers(
+        self, result: "LiveTickResult", now_iso: str,
+    ) -> None:
+        """Stages 1 / 1.1 / 1.2 — apply the early entry blocker gate."""
+        gate = self._evaluate_entry_blocker_gate()
+        if not gate.blocked:
+            return
+
+        self._entries_blocked = True
+        self._last_entries_blocked_reason = gate.reason
+        if gate.reason == "warmup":
+            logger.info(
+                "Warmup period: %d/%d ticks — blocking entries",
+                self._tick_count, self._WARMUP_TICKS,
+            )
+        if gate.error_message:
+            result.errors.append(gate.error_message)
+        if gate.activity_message:
+            result.activity.append(ActivityEvent(
+                event_type=gate.activity_type,
+                message=gate.activity_message,
+                timestamp=now_iso,
+            ))
+
+    async def _stage_update_equity_curve(self) -> None:
+        """Append latest equity while bounding in-memory curve retention."""
+        try:
+            eq = await self._get_equity()
+            self._equity_curve.append(eq)
+            max_equity_curve_len = 100_000
+            if len(self._equity_curve) > max_equity_curve_len:
+                # Drop oldest entries in one O(n) trim, cheaper than per-tick.
+                drop_count = len(self._equity_curve) - max_equity_curve_len
+                del self._equity_curve[:drop_count]
+        except Exception:
+            pass
+
+    def _record_candidate_evidence(
+        self,
+        cand_dicts: list[dict[str, Any]],
+        *,
+        regime: str,
+        now_iso: str,
+    ) -> None:
+        """Record pre-sizing candidate evidence without affecting live decisions."""
+        # Phase 3 candidate-filter shadow telemetry. This records
+        # only proposed no-entry filter matches and is deliberately
+        # placed before Kelly sizing/order submission so it cannot
+        # influence the live path. Disabled unless explicitly enabled.
+        if self._candidate_filter_shadow_recorder is not None:
+            try:
+                _shadow_written = (
+                    self._candidate_filter_shadow_recorder.record_candidates(
+                        cand_dicts,
+                        regime=regime,
+                        tick=self._tick_count,
+                        timestamp=now_iso,
+                    )
+                )
+                self._candidate_filter_shadow_events += _shadow_written
+            except Exception as _shadow_err:
+                logger.warning(
+                    "Candidate filter shadow telemetry write failed: %s",
+                    _shadow_err,
+                )
+
+        # Phase 6 strategy evidence warehouse feed. Records every
+        # surviving pre-sizing candidate, including candidates with no
+        # current shadow-filter tag. Observability-only and intentionally
+        # before Kelly sizing/order submission.
+        if self._strategy_evidence_recorder is not None:
+            try:
+                _evidence_written = (
+                    self._strategy_evidence_recorder.record_candidates(
+                        cand_dicts,
+                        regime=regime,
+                        tick=self._tick_count,
+                        timestamp=now_iso,
+                    )
+                )
+                self._strategy_evidence_events += _evidence_written
+            except Exception as _evidence_err:
+                logger.warning(
+                    "Strategy evidence telemetry write failed: %s",
+                    _evidence_err,
+                )
+
+    # _record_phase9_shadow_signals / _record_legacy_orb_shadow_signals
+    # extracted to backend/organism/live_engine_telemetry.py
+    # ::_TelemetryRecordingMixin (2026-06-08 decomposition). Still methods of
+    # OrganismLiveEngine via inheritance — getsource and all call sites are
+    # unchanged. (_record_candidate_evidence above stays here on purpose: a
+    # file-text guard pins its def location relative to _live_tick_inner.)
+
+    def _record_signal_activity(
+        self,
+        result: LiveTickResult,
+        cand_dicts: list[dict[str, Any]],
+        *,
+        now_iso: str,
+    ) -> None:
+        """Append signal activity events for dashboard/operator visibility."""
+        for cd in cand_dicts[:10]:
+            side = "BUY" if cd["direction"] > 0 else "SELL"
+            result.activity.append(ActivityEvent(
+                event_type="signal",
+                symbol=cd["symbol"],
+                message=(
+                    f"{side} signal: {cd['symbol']} "
+                    f"(confidence={cd['confidence']:.2f}, "
+                    f"breakout={cd['breakout_score']:.2f})"
+                ),
+                details=cd,
+                timestamp=now_iso,
+            ))
+
+    def _record_sizer_rejections(self) -> None:
+        """Copy sizer-level rejection counts into tick gate telemetry."""
+        _sizer_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
+        self._last_gate_rejections["cost_gate"] = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "weight_too_small"
+        )
+        self._last_gate_rejections["min_notional"] = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "below_min_notional"
+        )
+        _invalid_direction = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "invalid_direction"
+        )
+        _invalid_signal = sum(
+            1 for r in _sizer_rejects if r.get("reason") == "invalid_signal"
+        )
+        if _invalid_direction:
+            self._last_gate_rejections["direction_zero"] = (
+                self._last_gate_rejections.get("direction_zero", 0)
+                + _invalid_direction
+            )
+        if _invalid_direction or _invalid_signal:
+            self._last_gate_rejections["sizer_invalid"] = (
+                _invalid_direction + _invalid_signal
+            )
+
+    def _apply_intraday_seasonality_filter(self, sizes: list[Any]) -> None:
+        """Reduce late-session allocations in-place for intraday trading."""
+        if not self._is_intraday or not sizes:
+            return
+        _now = self._now_fn()
+        try:
+            import zoneinfo
+            now_et = _now.astimezone(zoneinfo.ZoneInfo("America/New_York"))
+        except Exception:
+            now_et = _now
+        hhmm = now_et.hour * 100 + now_et.minute
+        if 1545 <= hhmm <= 1600:
+            for sz in sizes:
+                sz.shares = max(1, int(sz.shares * 0.6))
+                sz.notional = sz.notional * 0.6
+                sz.target_weight = sz.target_weight * 0.6
+            logger.info(
+                "Seasonality filter: reduced allocation 40%% (time=%d)",
+                hhmm,
+            )
+
+    async def _stage_check_stream_health(
+        self, result: LiveTickResult, now_iso: str,
+    ) -> None:
+        """Stage 0 — recover stale streaming data on the existing cadence."""
+        if (
+            self._streaming_provider is None
+            or self._tick_count % 30 != 0
+        ):
+            return
+        try:
+            recovered = await self._streaming_provider.check_and_recover_stale_stream()
+            if recovered:
+                result.activity.append(ActivityEvent(
+                    event_type="stream",
+                    message="Stale data detected — stream reconnect attempted",
+                    timestamp=now_iso,
+                ))
+        except Exception as e:
+            logger.debug("Stream staleness check error (non-fatal): %s", e)
+
+    def _stage_update_data_staleness(self) -> None:
+        """Stage 0.5 — refresh aggregate and per-symbol data-stale state."""
+        _was_stale = self._data_stale
+        if self._streaming_provider is None:
+            return
+        try:
+            last_update = getattr(self._streaming_provider, "last_update_time", None)
+            if last_update is not None:
+                staleness_s = self._time_fn() - last_update
+                self._data_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
+                if self._data_stale and not _was_stale:
+                    logger.warning(
+                        "Data stream stale: %.0fs since last update "
+                        "(threshold=%.0fs) — blocking entries",
+                        staleness_s, self._DATA_STALE_THRESHOLD_S,
+                    )
+                elif not self._data_stale and _was_stale:
+                    logger.info("Data stream fresh again — entries unblocked")
+            else:
+                self._data_stale = False
+            # V9 PP-6: per-symbol staleness check.
+            if hasattr(self._streaming_provider, "stale_symbols"):
+                stale_syms = self._streaming_provider.stale_symbols(
+                    threshold_s=self._DATA_STALE_THRESHOLD_S,
+                    now=self._time_fn(),
+                )
+                if stale_syms:
+                    # Trigger _data_stale even if aggregate looked fresh.
+                    self._data_stale = True
+                    if not _was_stale:
+                        logger.warning(
+                            "PP-6: %d symbol(s) stale beyond threshold "
+                            "(aggregate looked fresh): %s",
+                            len(stale_syms),
+                            [(s, round(a, 1)) for s, a in stale_syms[:5]],
+                        )
+        except Exception as _stale_err:
+            # V9 UU pattern: surface, don't pass.
+            logger.debug(
+                "Stale-data check error (non-fatal): %s", _stale_err,
+            )
+
+    def _get_strategy_selector(self):
+        """Lazily build + cache the momentum-only live StrategySelector.
+
+        Phase 1 step 5 thin seam. Built once, momentum-only, in LIVE mode (so
+        the selector's Rule-A regime/live_routing policy is active). Mean-
+        reversion/ORB are registered but live_routing:false, so they never
+        influence this live path even once built (steps 7/9)."""
+        sel = getattr(self, "_strategy_selector", None)
+        if sel is None:
+            from backend.organism.strategy_selector import StrategySelector
+            sel = StrategySelector.from_config(mode="live", only={"momentum"})
+            self._strategy_selector = sel
+        return sel
+
+    def _get_strategy_selector_v2(self):
+        """Lazily build + cache the ALL-strategy live selector (5c Commit A).
+
+        Engine scanner instances are INJECTED so mark_fired/cooldown/orb-cache
+        state stays single-source (a duplicate scanner would double-fire).
+        Momentum is a pure function — no scanner to inject."""
+        sel = getattr(self, "_strategy_selector_v2", None)
+        if sel is None:
+            from backend.organism.strategy_selector import StrategySelector
+            sel = StrategySelector.from_config(
+                mode="live",
+                scanner_overrides={
+                    "breakout": self.breakout_scanner,
+                    "mean_reversion": self._mean_reversion_scanner,
+                    "orb": self._orb_scanner,
+                },
+            )
+            self._strategy_selector_v2 = sel
+        return sel
+
+    def _scan_all_strategies_v2(self, features_by_symbol, regime):
+        """5c Commit A: the single per-tick scan pass. Returns scan_all()'s
+        {name: {candidates, routed}} and caches it on the instance for
+        downstream consumers (Task 4 attribution reads the same result).
+
+        PER-TICK MEMOIZED: the ORB/MR shadow lists, the pure-breakout entry
+        block and the momentum seam all consume this — the underlying scanners
+        are STATEFUL (mark_fired/cooldowns), so exactly one scan may run per
+        tick no matter how many consumers ask.
+
+        Fail-closed: an unexpected selector error yields an empty result —
+        every consumer then behaves as a no-candidate tick (stand down)."""
+        if getattr(self, "_last_scan_all_tick", None) == self._tick_count:
+            return self._last_scan_all_result
+        try:
+            res = self._get_strategy_selector_v2().scan_all(features_by_symbol, regime)
+        except Exception as _v2_err:
+            logger.warning("Routing v2 scan_all failed this tick (stand down): %s",
+                           _v2_err)
+            res = {}
+        self._last_scan_all_result = res
+        self._last_scan_all_tick = self._tick_count
+        # Task 4: un-routed strategies stream into the evidence feed as
+        # shadow-attribution signals (measured, never sized — Rule A). Once
+        # per tick, on the fresh scan only; failure never affects the tick.
+        try:
+            self._record_framework_shadow_candidates(
+                res, regime=regime, now_iso=self._now_fn().isoformat())
+        except Exception as _fw_shadow_err:
+            logger.debug("Framework shadow attribution err: %s", _fw_shadow_err)
+        return res
+
+    @staticmethod
+    def _v2_raws(scan_res, name):
+        """Unwrap the raw scanner candidates for one strategy from scan_all()."""
+        return [c.extra["raw"] for c in scan_res.get(name, {}).get("candidates", [])
+                if isinstance(c.extra, dict) and "raw" in c.extra]
+
+    def _v2_orb_shadow_pass(self, features_by_symbol, regime, now_iso):
+        """5c Commit A: ORB shadow+live-list population from the single
+        selector pass (engine scanner injected ⇒ cooldown/cache state identical
+        to the inline call). Wrapper pre-filters to triggered && direction!=0 —
+        the same subset the inline live block acts on. The non-triggered
+        "scanner alive but quiet" periodic log is not reproduced (documented
+        inert delta; parity axes unaffected). Sets self._latest_orb_triggered."""
+        try:
+            triggered = self._v2_raws(
+                self._scan_all_strategies_v2(features_by_symbol, regime), "orb")
+            self._latest_orb_triggered = triggered
+            self._orb_shadow_log_count += 1
+            self._orb_shadow_breakout_count += len(triggered)
+            if triggered:
+                for c in triggered:
+                    logger.info(
+                        "ORB shadow BREAKOUT: %s dir=%+.0f rv=%.2f "
+                        "orb_high=%.4f orb_low=%.4f curr=%.4f stop=%.4f atr=%.4f",
+                        c.symbol, c.direction, c.rv_ratio, c.orb_high, c.orb_low,
+                        c.current_price, c.suggested_stop, c.atr_at_entry,
+                    )
+                self._record_legacy_orb_shadow_signals(
+                    triggered, regime=regime, now_iso=now_iso)
+        except Exception as _orb_err:
+            logger.debug("ORB v2 scan err: %s", _orb_err)
+
+    def _v2_mr_candidates(self, features_by_symbol, regime):
+        """5c Commit A: MR candidates from this tick's memoized selector pass
+        (never a second scan of the stateful scanner). The MR wrapper emits
+        every scanner candidate — the same list the inline call produced."""
+        return self._v2_raws(
+            self._scan_all_strategies_v2(features_by_symbol, regime),
+            "mean_reversion")
+
+    def _rank_policy_effective(self) -> str:
+        """Commit B: the rank policy in force ("legacy" unless V2 is on)."""
+        return ROUTING_RANK_POLICY if FRAMEWORK_ROUTING_V2_ENABLED else "legacy"
+
+    def _conf_gates_on(self) -> bool:
+        """5c Commit B: composite-confidence entry gates (eff_conf/_bo_conf
+        thresholds) bypass under flat_policy — the 5b verdict retired the
+        composite from the decision path. Caps/liquidity/fitness/sector/
+        risk-budget stay binding; data-quality & regime-safety exploration
+        routes (heuristic, trending_down, stale) REMAIN active."""
+        return self._rank_policy_effective() != "flat_policy"
+
+    def _rank_candidates(self, cand_dicts, regime):
+        """Task 4 ranking authority (5c Commit B).
+
+        legacy (default): ranking_score desc — today's composite ordering.
+        flat_policy (V2 + ORGANISM_ROUTING_RANK_POLICY=flat_policy): the
+        declarative REGIME_POLICY order ranks candidates — (policy index of
+        fw_strategy, build order) — because the 5b verdict shipped FLAT: no
+        score beat flat sizing OOS, so composite ordering is noise-ordering.
+        Candidates whose fw_strategy is absent from the regime's policy are
+        DROPPED; an empty policy list drops everything = explicit STAND-DOWN.
+        """
+        if not (FRAMEWORK_ROUTING_V2_ENABLED and ROUTING_RANK_POLICY == "flat_policy"):
+            cand_dicts.sort(key=lambda x: x["ranking_score"], reverse=True)
+            return cand_dicts
+        from backend.organism.strategies.strategy_config import regime_policy
+        order = regime_policy().get(regime, [])
+        idx = {name: i for i, name in enumerate(order)}
+        kept = [(idx[d.get("fw_strategy")], i, d)
+                for i, d in enumerate(cand_dicts) if d.get("fw_strategy") in idx]
+        if len(kept) < len(cand_dicts):
+            logger.info(
+                "Task-4 policy: regime=%s dropped %d/%d candidates (%s)",
+                regime, len(cand_dicts) - len(kept), len(cand_dicts),
+                "STAND-DOWN" if not order else "not policy-eligible",
+            )
+        kept.sort(key=lambda t: (t[0], t[1]))
+        return [d for _, _, d in kept]
+
+    def _v2_breakout_raws(self, features_by_symbol, regime):
+        """5c Commit A: pure-breakout entry signals from the selector pass
+        (breakout-as-STRATEGY). The inline step-7 scan stays as a FEATURE
+        input (alpha confidence reads sub-threshold composites from
+        breakout_by_sym). The wrapper pre-filters at
+        entry_composite_threshold (== the inline 0.55 gate, which then
+        no-ops) and stable-sorts by clamped confidence, so the first-2 cap
+        selects the same signals."""
+        return self._v2_raws(
+            self._scan_all_strategies_v2(features_by_symbol, regime), "breakout")
+
+    def _scan_entry_candidates(self, features_by_symbol, ml_signals, regime):
+        """Produce the entry-candidate list for this tick.
+
+        Default path (flag off) is byte-identical to the historical inline call:
+        ``alpha_scanner.scan(...)``. With the Phase-1 thin seam on
+        (FRAMEWORK_ROUTING_ENABLED and DROP_ML_FROM_GATE), per-symbol entry
+        DIRECTION is re-sourced through the Strategy framework. Everything else
+        about each candidate — the universe, scores, ml_signal, and all
+        downstream confidence/gate/rank/size logic — is untouched, so flag-on
+        equals flag-off by construction (momentum._direction == the scanner's
+        _observable_direction). A tripwire logs any divergence (must never fire).
+        """
+        candidates = self.alpha_scanner.scan(
+            features_by_symbol, ml_signals, regime,
+            ml_is_trained=self.signal_gen.is_trained,
+            learning_mode=self._ml_isolation_mode,
+            derive_direction_from_observables=DROP_ML_FROM_GATE,
+        )
+        # Seam activates only when direction is observable-derived (the regime
+        # the framework models). If ML is in the gate, the scanner's direction
+        # is ml-derived and the framework does not represent it — leave as-is.
+        # 5c Commit A: routing v2 implies the seam (v2 is a superset).
+        if not ((FRAMEWORK_ROUTING_ENABLED or FRAMEWORK_ROUTING_V2_ENABLED)
+                and DROP_ML_FROM_GATE):
+            return candidates
+
+        try:
+            if FRAMEWORK_ROUTING_V2_ENABLED:
+                # Reuse this tick's memoized scan_all pass. Rule-A parity with
+                # the v1 momentum-only live selector: un-routed (regime-
+                # ineligible) momentum contributes nothing — directions stand.
+                _mom = self._scan_all_strategies_v2(
+                    features_by_symbol, regime).get("momentum") or {}
+                mom_cands = _mom.get("candidates", []) if _mom.get("routed") else []
+            else:
+                mom_cands = self._get_strategy_selector().select(features_by_symbol, regime)
+        except Exception as _seam_err:  # never let the seam break a live tick
+            logger.warning("Framework seam disabled this tick (select error): %s", _seam_err)
+            return candidates
+        mom_dir = {c.symbol: c.direction for c in mom_cands}
+
+        for c in candidates:
+            fw = mom_dir.get(c.symbol)
+            if fw is None:
+                continue  # regime not eligible for momentum -> engine direction stands
+            if fw != c.direction:
+                logger.error(
+                    "FRAMEWORK SEAM MISMATCH %s: framework_dir=%s scanner_dir=%s "
+                    "regime=%s — parity tripwire (should be impossible)",
+                    c.symbol, fw, c.direction, regime,
+                )
+            c.direction = fw  # framework is the direction authority when routed
+        return candidates
+
+    async def _live_tick_inner(self) -> LiveTickResult:
+        """Inner tick logic — always called under _tick_lock."""
+        # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick
+        # duration is replay-deterministic. Wall-clock `time.time()`
+        # polluted every per-tick hash in replay.
+        t0 = self._time_fn()
+        result = LiveTickResult(
+            timestamp=self._now_fn().isoformat(),
+        )
+        self._tick_count += 1
+        # Gate-level rejection telemetry (reset each tick)
+        self._last_gate_rejections: dict[str, int] = {}
+        self._last_entries_blocked_reason: str = ""
+        self._last_live_candidates_pre_sizing: int = 0
+        self._last_no_order_reason: str = ""
+        # V8 HH R-1 prep / Wave-39 (2026-05-03): uplift `entries_blocked`
+        # from local var to instance attribute so it's shareable with
+        # extracted stage helpers (waves 39-40 stage 0.5 / 1 / 1.1 / 1.2).
+        # Reset per tick to default False; gates set True as they fire.
+        self._entries_blocked: bool = False
+
+        # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted to helper
+        # so the cooldown-expiry block is testable in isolation.
+        self._stage_expire_cooldowns()
+
+
         try:
             now_iso = result.timestamp
 
             # 0. STREAM HEALTH — detect and recover stale WebSocket data.
             # Run every 30 ticks (~5 min) to avoid hammering reconnect.
-            if (
-                self._streaming_provider is not None
-                and self._tick_count % 30 == 0
-            ):
-                try:
-                    recovered = await self._streaming_provider.check_and_recover_stale_stream()
-                    if recovered:
-                        result.activity.append(ActivityEvent(
-                            event_type="stream",
-                            message="Stale data detected — stream reconnect attempted",
-                            timestamp=now_iso,
-                        ))
-                except Exception as e:
-                    logger.debug("Stream staleness check error (non-fatal): %s", e)
+            await self._stage_check_stream_health(result, now_iso)
 
-            # 0.5 STALE DATA GATE — check streaming provider freshness
-            _was_stale = self._data_stale
-            if self._streaming_provider is not None:
-                try:
-                    last_update = getattr(self._streaming_provider, "last_update_time", None)
-                    if last_update is not None:
-                        staleness_s = self._time_fn() - last_update
-                        self._data_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
-                        if self._data_stale and not _was_stale:
-                            logger.warning(
-                                "Data stream stale: %.0fs since last update "
-                                "(threshold=%.0fs) — blocking entries",
-                                staleness_s, self._DATA_STALE_THRESHOLD_S,
-                            )
-                        elif not self._data_stale and _was_stale:
-                            logger.info("Data stream fresh again — entries unblocked")
-                    else:
-                        self._data_stale = False
-                except Exception:
-                    pass  # Non-fatal — default to not-stale
+            # 0.5 STALE DATA GATE — check streaming provider freshness.
+            # V9 PP-6 / Wave-45 (2026-05-03): also check PER-SYMBOL
+            # staleness via stale_symbols(). The aggregate
+            # last_update_time hid stalls on active symbols when
+            # background symbols kept ticking.
+            self._stage_update_data_staleness()
 
-            # 1. GOVERNANCE CHECK
-            # When halted, we still MUST process exits and reconciliation
-            # to manage open risk.  Only new entries are blocked.
-            entries_blocked = False
-            if self.governance.is_trading_halted:
-                entries_blocked = True
-                self._last_entries_blocked_reason = "governance_halt"
-                result.errors.append("Trading halted by governance — exits still active")
-                result.activity.append(ActivityEvent(
-                    event_type="governance", message="Trading halted — blocking new entries, exits still running",
-                    timestamp=now_iso,
-                ))
-
-            # 1.1 WARMUP GATE — let features stabilize before entering
-            if not entries_blocked and self._tick_count <= self._WARMUP_TICKS:
-                entries_blocked = True
-                self._last_entries_blocked_reason = "warmup"
-                logger.info(
-                    "Warmup period: %d/%d ticks — blocking entries",
-                    self._tick_count, self._WARMUP_TICKS,
-                )
-                result.activity.append(ActivityEvent(
-                    event_type="skip",
-                    message=f"Warmup: tick {self._tick_count}/{self._WARMUP_TICKS} — entries blocked",
-                    timestamp=now_iso,
-                ))
-
-            # 1.2 STALE DATA GATE — block entries when data > 2 min stale
-            if not entries_blocked and self._data_stale:
-                entries_blocked = True
-                self._last_entries_blocked_reason = "stale_data"
-                result.activity.append(ActivityEvent(
-                    event_type="skip",
-                    message="Stale data — blocking entries (exits still active)",
-                    timestamp=now_iso,
-                ))
+            # V8 HH R-1 / Wave-40 (2026-05-03): stages 1 + 1.1 + 1.2 extracted.
+            self._stage_check_entry_blockers(result, now_iso)
 
             # 1.3 EOD ENTRY BLOCK + FLATTEN (improve7)
-            # Block new entries after 15:45 ET, force close all by 15:58 ET.
+            # Block new ALPHA+BREAKOUT entries after 15:45 ET — those signals
+            # don't have time to manage before EOD flatten. ORB/EOD strategies
+            # are designed for the late-day window and EOD-flatten immediately,
+            # so they should NOT be blocked by this rule.
+            # M3-5 fix: split self._entries_blocked into a dedicated alpha_breakout
+            # block flag (no longer using the shared safety flag for this
+            # time-of-day rule, which was silently shutting down EOD strategy).
             _eod_flatten_triggered = False
+            self._alpha_breakout_late_blocked = False
             if self._is_intraday:
                 try:
                     import zoneinfo
@@ -1105,31 +2883,57 @@ class OrganismLiveEngine:
                     _now_et = _now_utc.astimezone(zoneinfo.ZoneInfo("America/New_York"))
                     _hhmm_eod = _now_et.hour * 100 + _now_et.minute
                     if _hhmm_eod >= 1545:
-                        if not entries_blocked:
-                            entries_blocked = True
-                            self._last_entries_blocked_reason = "eod_entry_block"
-                            result.activity.append(ActivityEvent(
-                                event_type="skip",
-                                message=f"EOD entry block — no new entries after 15:45 ET ({_hhmm_eod})",
-                                timestamp=now_iso,
-                            ))
-                    if _hhmm_eod >= 1558:
+                        # Set a strategy-specific flag, NOT the global safety
+                        # flag. ORB/EOD live paths check this and ignore it.
+                        self._alpha_breakout_late_blocked = True
+                        result.activity.append(ActivityEvent(
+                            event_type="skip",
+                            message=f"Alpha+breakout entry block — late-day rule ({_hhmm_eod})",
+                            timestamp=now_iso,
+                        ))
+                    # V8 DD2-9 / Wave-35 (2026-05-03): upper-bound the EOD
+                    # flatten window at 16:00 ET (market close).  The
+                    # _pending_exit 3-tick TTL would otherwise retry exit
+                    # submissions past close, broker would reject, and the
+                    # cycle would repeat indefinitely with no operator alert.
+                    if 1558 <= _hhmm_eod < 1600:
                         _eod_flatten_triggered = True
-                except Exception:
-                    pass  # timezone parsing failure is non-fatal
+                    elif _hhmm_eod >= 1600:
+                        # Past close — don't keep retrying rejecting submits.
+                        # Audit 2026-06-09 finding 3.4: escalate (CRITICAL
+                        # alert + overnight flag → next-open forced exit).
+                        _open = getattr(self, "_last_known_positions", None) or {}
+                        if _open:
+                            logger.warning(
+                                "EOD flatten window passed (now=%d ET); "
+                                "positions still open: %s", _hhmm_eod, list(_open))
+                            self._record_unflattened_positions(
+                                list(_open), _now_et.strftime("%Y-%m-%d"), now_iso)
+                except Exception as exc:
+                    # V8 DD2-9 / Wave-35: zoneinfo / clock failures previously
+                    # silently disabled EOD flatten globally via bare `pass`.
+                    # Now: log at WARNING so operators see persistent failures.
+                    logger.warning(
+                        "EOD flatten timezone resolution failed: %s "
+                        "(EOD flatten disabled this tick)", exc,
+                    )
 
             # 1.5 MARKET SCAN (Phase 5) — discover new stocks
-            # Skip scanner when entries are blocked (halt/drawdown) — no point
-            # scanning for new candidates we won't enter.
+            # A2 away-mode fix: scanner MUST run even when entries are blocked
+            # so that tension_lookup stays populated (prevents death spiral
+            # where blocked entries → empty scanner → zero tension → permanent block).
             if (
-                not entries_blocked
-                and self.market_scanner is not None
+                self.market_scanner is not None
                 and self._tick_count % SCAN_INTERVAL_TICKS == 0
             ):
                 try:
                     new_candidates = await self.market_scanner.scan()
                     if new_candidates:
                         self._scanner_candidates = new_candidates
+                        # V9 PP-5 / Wave-45 (2026-05-03): record success time
+                        # so a long missing-API run can be detected.
+                        self._scanner_last_success_tick = self._tick_count
+                        self._scanner_consecutive_failures = 0
                         # Temporarily add top scanner picks to universe for this tick
                         scanner_additions = [
                             s for s in new_candidates[:20]
@@ -1154,9 +2958,45 @@ class OrganismLiveEngine:
                         ))
                 except Exception as e:
                     logger.warning("Market scan failed: %s", e)
+                    # V9 PP-5: track consecutive failures + alert at threshold.
+                    self._scanner_consecutive_failures = (
+                        getattr(self, "_scanner_consecutive_failures", 0) + 1
+                    )
+                    _PP5_FAIL_ALERT = 5  # alert after 5 consecutive scan failures
+                    if (
+                        self._scanner_consecutive_failures == _PP5_FAIL_ALERT
+                    ):
+                        try:
+                            from backend.infra.alerting import (
+                                AlertCategory, AlertSeverity, send_alert,
+                                dispatch_alert_from_thread,
+                            )
+                            # V12 W75 (UU3-2 / F821): capture exception text
+                            # as a string before the lambda — Python deletes
+                            # the ``except`` exception variable at block exit,
+                            # and ``dispatch_alert_from_thread`` may run the
+                            # lambda on another thread after that point,
+                            # which would raise NameError on ``e``.
+                            _last_err_text = str(e)
+                            dispatch_alert_from_thread(
+                                lambda: send_alert(
+                                    AlertCategory.SYSTEM_ERROR,
+                                    AlertSeverity.WARNING,
+                                    "Market Scanner Persistent Failure",
+                                    f"Scanner failed {_PP5_FAIL_ALERT} consecutive "
+                                    f"runs.  Universe will trade off STALE candidates "
+                                    f"until scanner recovers.  Last error: {_last_err_text}",
+                                )
+                            )
+                        except Exception as _alert_err:
+                            logger.warning(
+                                "PP-5: scanner-failure alert dispatch failed: %s",
+                                _alert_err,
+                            )
 
             # 2. FETCH LATEST DATA
             features_by_symbol = await self._fetch_and_compute_features()
+            features_by_symbol = trim_feature_frames_asof(features_by_symbol, now_iso)
             # Save for telemetry: latest close prices and feature count
             self._last_features_count = len(features_by_symbol)
             self._last_prices = {}
@@ -1168,7 +3008,7 @@ class OrganismLiveEngine:
                 result.errors.append(
                     f"Insufficient data: got {len(features_by_symbol)} symbols"
                 )
-                entries_blocked = True
+                self._entries_blocked = True
                 self._last_entries_blocked_reason = "insufficient_data"
                 logger.warning(
                     "Insufficient features (%d symbols) — blocking entries, "
@@ -1180,6 +3020,7 @@ class OrganismLiveEngine:
             # Skip regime detection when features are insufficient — it
             # requires meaningful price data to function.
             regime = RegimeLabel.UNKNOWN  # default — overwritten below if features are sufficient
+            self._last_regime = str(regime)
             _regime_conf = 0.0  # confidence of regime label
             if not insufficient_features:
                 spy_features = features_by_symbol.get("SPY")
@@ -1201,6 +3042,7 @@ class OrganismLiveEngine:
                         features_by_symbol
                     )
                 regime = regime_state.primary
+                self._last_regime = str(regime)
                 _regime_conf = getattr(regime_state, "confidence", 0.0)
                 result.regime = regime
                 result.activity.append(ActivityEvent(
@@ -1209,6 +3051,148 @@ class OrganismLiveEngine:
                     details={"regime": regime, "tick": self._tick_count},
                     timestamp=now_iso,
                 ))
+
+                # RC-1.5 shadow-mode telemetry: log what the proposed RC-2
+                # regime classifier (intraday_trend_sensitivity=0.50) would
+                # have decided. Logging only — does not gate.
+                if spy_features is not None and len(spy_features) >= 10:
+                    try:
+                        shadow_state = self._shadow_regime_detector.detect(spy_features)
+                        shadow_regime = shadow_state.primary
+                        self._shadow_total_ticks += 1
+                        if shadow_regime != regime:
+                            self._shadow_disagreement_count += 1
+                            logger.info(
+                                "RC-1.5 shadow: regime disagreement live=%s shadow=%s "
+                                "tick=%d shadow_conf=%.3f",
+                                regime, shadow_regime, self._tick_count,
+                                shadow_state.confidence,
+                            )
+                        # Periodic summary every 500 ticks
+                        if self._shadow_total_ticks > 0 and self._shadow_total_ticks % 500 == 0:
+                            disagreement_pct = (
+                                100.0 * self._shadow_disagreement_count
+                                / self._shadow_total_ticks
+                            )
+                            logger.info(
+                                "RC-1.5 shadow summary: %d/%d ticks regime-disagree "
+                                "(%.1f%%)",
+                                self._shadow_disagreement_count,
+                                self._shadow_total_ticks,
+                                disagreement_pct,
+                            )
+                    except Exception as _shadow_err:
+                        # Shadow telemetry must never affect live decisions
+                        logger.debug("RC-1.5 shadow regime err: %s", _shadow_err)
+
+                # R3 ORB Stocks-in-Play scan (shadow + optional live).
+                # Always runs (logs). When ORGANISM_ORB_LIVE_ENABLED=true,
+                # triggered candidates flow into the entry pipeline below.
+                self._latest_orb_triggered = []  # reset each tick
+                if FRAMEWORK_ROUTING_V2_ENABLED:  # 5c: see helper docstring
+                    self._v2_orb_shadow_pass(features_by_symbol, regime, now_iso)
+                else:  # inline path (flag off) — logic unchanged, re-indented
+                    try:
+                        _now_ts = self._now_fn()
+                        orb_candidates = self._orb_scanner.scan(
+                            features_by_symbol, _now_ts,
+                        )
+                        if orb_candidates:
+                            triggered = [c for c in orb_candidates if c.breakout_triggered]
+                            self._latest_orb_triggered = triggered  # for live path
+                            self._orb_shadow_log_count += 1
+                            self._orb_shadow_breakout_count += len(triggered)
+                            if triggered:
+                                for c in triggered:
+                                    # Cross-reference: did alpha+breakout also pick this name?
+                                    # V12 W75 (UU3-2 / F821): ``dir()`` returned
+                                    # a stale list for ruff's static analysis;
+                                    # ``locals().get("open_symbols", set())`` is
+                                    # equivalent semantics with a name ruff can
+                                    # follow.  Same defensive intent: gracefully
+                                    # handle the early-tick case where
+                                    # ``open_symbols`` hasn't been computed yet.
+                                    _in_alpha = c.symbol in locals().get("open_symbols", set())
+                                    logger.info(
+                                        "ORB shadow BREAKOUT: %s dir=%+.0f rv=%.2f "
+                                        "orb_high=%.4f orb_low=%.4f curr=%.4f "
+                                        "stop=%.4f atr=%.4f",
+                                        c.symbol, c.direction, c.rv_ratio,
+                                        c.orb_high, c.orb_low, c.current_price,
+                                        c.suggested_stop, c.atr_at_entry,
+                                    )
+                                self._record_legacy_orb_shadow_signals(
+                                    triggered,
+                                    regime=regime,
+                                    now_iso=now_iso,
+                                )
+                            elif self._orb_shadow_log_count % 60 == 0:
+                                # Periodic non-triggered summary every 60 logged
+                                # scans — confirms scanner is alive but quiet.
+                                logger.info(
+                                    "ORB shadow scan: %d candidates ranked, %d "
+                                    "breakouts in cache (none triggered now); "
+                                    "session breakouts=%d",
+                                    len(orb_candidates),
+                                    self._orb_scanner.orb_cache_size,
+                                    self._orb_shadow_breakout_count,
+                                )
+                    except Exception as _orb_err:
+                        logger.debug("ORB shadow scan err: %s", _orb_err)
+
+                # M2-C: EOD Momentum scan (Heston-Korajczyk-Sadka inspired).
+                # Always runs (logs). When ORGANISM_EOD_LIVE_ENABLED=true,
+                # candidates flow into the entry pipeline below. Activates
+                # only at 15:30-15:50 ET (decision window).
+                self._latest_eod_candidates = []
+                try:
+                    _now_ts = self._now_fn()
+                    eod_cands = self._eod_scanner.scan(
+                        features_by_symbol, _now_ts,
+                    )
+                    if eod_cands:
+                        self._latest_eod_candidates = eod_cands
+                        self._eod_shadow_log_count += len(eod_cands)
+                        for c in eod_cands:
+                            logger.info(
+                                "EOD shadow: %s dir=%+.0f day_return=%.2f%% "
+                                "open=%.4f curr=%.4f stop=%.4f",
+                                c.symbol, c.direction, c.day_return_pct,
+                                c.open_price, c.current_price, c.suggested_stop,
+                            )
+                except Exception as _eod_err:
+                    logger.debug("EOD shadow scan err: %s", _eod_err)
+
+                # Ferrari v1: Mean-Reversion scan (intraday VWAP-fade).
+                # Always runs (logs). When ORGANISM_MEAN_REVERSION_LIVE_ENABLED=true,
+                # candidates flow into the entry pipeline below. Active
+                # 9:45-15:30 ET (skips opening-vol + EOD-flatten zones).
+                self._latest_mr_candidates = []
+                try:
+                    if FRAMEWORK_ROUTING_V2_ENABLED:  # 5c: see helper docstring
+                        mr_cands = self._v2_mr_candidates(features_by_symbol, regime)
+                    else:
+                        mr_cands = self._mean_reversion_scanner.scan(
+                            features_by_symbol, self._now_fn(),
+                        )
+                    if mr_cands:
+                        self._latest_mr_candidates = mr_cands
+                        self._mr_shadow_log_count += len(mr_cands)
+                        for c in mr_cands:
+                            logger.info(
+                                "MR shadow: %s dir=%+.0f dist=%.2f ATR "
+                                "vwap=%.4f curr=%.4f target=%.4f stop=%.4f "
+                                "rr=%.2f",
+                                c.symbol, c.direction, c.distance_atr,
+                                c.vwap, c.current_price, c.target_price,
+                                c.stop_price, c.expected_r_r,
+                            )
+                except Exception as _mr_err:
+                    logger.debug("MR shadow scan err: %s", _mr_err)
+
+                self._record_phase9_shadow_signals(
+                    features_by_symbol, regime=regime, now_iso=now_iso,
+                )
 
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
@@ -1226,10 +3210,140 @@ class OrganismLiveEngine:
                     )
                 self._consecutive_equity_zero = 0
                 self._peak_equity = max(self._peak_equity, equity)
+
+                # ── Daily session roll (always runs, regardless of MAX_DAILY_LOSS)
+                # Audit-D finding 7 (2026-05-01): _symbol_banned circuit breaker
+                # and _*_today counters used to reset only on container restart,
+                # never on calendar date change. Production: intraday restart
+                # cleared the bans for that day; otherwise counters accumulated
+                # across days. Now: detect ET calendar-date roll and reset.
+                try:
+                    from zoneinfo import ZoneInfo
+                    today = self._now_fn().astimezone(
+                        ZoneInfo("America/New_York")
+                    ).strftime("%Y-%m-%d")
+                except Exception:
+                    today = self._now_fn().strftime("%Y-%m-%d")
+
+                if today != self._daily_loss_date:
+                    # Date rolled — reset session counters and any daily-loss
+                    # halt state. Runs every tick regardless of MAX_DAILY_LOSS.
+                    if self._daily_loss_date != "":  # not first-ever tick
+                        logger.info(
+                            "Daily session roll: %s -> %s. Resetting "
+                            "orb/eod/mr_live_count_today, symbol_banned, "
+                            "ml_reversal_used.",
+                            self._daily_loss_date, today,
+                        )
+                    self._orb_live_count_today = 0
+                    self._eod_live_count_today = 0
+                    self._mr_live_count_today = 0
+                    self._symbol_banned.clear()
+                    self._ml_reversal_used.clear()
+                    # V4 Q-Q1 / R-F-3 (2026-05-02): per-symbol "today"
+                    # counters were declared with daily semantics in
+                    # live_engine.py:613-629 but never reset on date-roll.
+                    # Their consumers (symbol-ban thresholds at
+                    # _passes_entry_gates) ARE reset above via
+                    # _symbol_banned.clear(), creating ghost bans on Day 2:
+                    # yesterday's loss streaks gate today's entries even
+                    # though the ban itself was lifted. Reset alongside.
+                    for _attr in (
+                        "_symbol_daily_pnl",
+                        "_symbol_wins_today",
+                        "_symbol_closed_today",
+                        "_symbol_consecutive_losses",
+                        "_symbol_exit_type",
+                        "_symbol_exit_tick",
+                    ):
+                        _ctr = getattr(self, _attr, None)
+                        if _ctr is not None:
+                            _ctr.clear()
+                    # Audit-F finding 8 (2026-05-01): auto-clear daily-loss halt
+                    if getattr(self, "_daily_loss_halt", False):
+                        self.governance.resume_trading()
+                        self._daily_loss_halt = False
+                        logger.info(
+                            "Daily max-loss halt auto-cleared on date roll",
+                        )
+                    self._daily_starting_equity = equity
+                    self._daily_loss_date = today
+
+                # ── Daily max-loss circuit breaker ──────────────
+                if MAX_DAILY_LOSS > 0:
+                    daily_pnl = equity - self._daily_starting_equity
+                    if daily_pnl <= -MAX_DAILY_LOSS:
+                        self.governance.halt_trading()
+                        self._daily_loss_halt = True
+                        self._entries_blocked = True
+                        self._last_entries_blocked_reason = "daily_max_loss"
+                        logger.critical(
+                            "DAILY MAX-LOSS HALT: PnL=$%.2f exceeds -$%.0f "
+                            "limit. Trading halted. Auto-clears on next ET "
+                            "calendar day; /organism/resume to override.",
+                            daily_pnl, MAX_DAILY_LOSS,
+                        )
+                        # V9 UU-1 / Wave-41 (2026-05-03): use the canonical
+                        # cross-thread dispatcher (V5 S-J3-1 pattern).  The
+                        # previous bare `try/create_task/except: pass` had
+                        # the same failure mode wave-17a closed elsewhere:
+                        # `get_running_loop()` raises in the worker thread
+                        # this runs in, alerts silently lost.  Now: fail
+                        # at WARNING with a Prometheus counter bump.
+                        try:
+                            from backend.infra.alerting import (
+                                AlertCategory, AlertSeverity, send_alert,
+                                dispatch_alert_from_thread,
+                            )
+                            ok = dispatch_alert_from_thread(
+                                lambda: send_alert(
+                                    AlertCategory.RISK_VIOLATION,
+                                    AlertSeverity.CRITICAL,
+                                    "Daily Max-Loss Halt",
+                                    f"PnL=${daily_pnl:.2f} crossed "
+                                    f"-${MAX_DAILY_LOSS:.0f}. Trading halted.",
+                                )
+                            )
+                            if not ok:
+                                logger.warning(
+                                    "UU-1: daily-max-loss alert dropped "
+                                    "(no main loop ref). Operator may not page."
+                                )
+                        except Exception as _alert_err:
+                            logger.warning(
+                                "UU-1: daily-max-loss alert dispatch failed: %s",
+                                _alert_err,
+                            )
+
+                        # V8 BB-10 / Wave-30 (2026-05-03): compliance audit row.
+                        try:
+                            from backend.services.audit_service import (
+                                AuditAction, AuditEntity, fire_audit_log,
+                            )
+                            import asyncio as _aio_audit
+                            _aio_audit.create_task(fire_audit_log(
+                                self._sessionmaker,
+                                action=AuditAction.RISK_LIMIT_BREACH,
+                                entity=AuditEntity.RISK,
+                                entity_id="daily_max_loss_halt",
+                                actor="system:live_engine",
+                                payload={
+                                    "daily_pnl": float(daily_pnl),
+                                    "limit": float(MAX_DAILY_LOSS),
+                                    "starting_equity": float(self._daily_starting_equity),
+                                    "current_equity": float(equity),
+                                    "tick": self._tick_count,
+                                },
+                            ))
+                        except Exception as _audit_err:
+                            logger.warning(
+                                "BB-10: daily-loss audit log dispatch failed: %s",
+                                _audit_err,
+                            )
             else:
                 self._consecutive_equity_zero += 1
                 if self._consecutive_equity_zero >= self._EQUITY_ZERO_THRESHOLD:
-                    entries_blocked = True
+                    self._entries_blocked = True
                     self._last_entries_blocked_reason = "equity_zero"
                     logger.error(
                         "equity_returned_zero for %d consecutive ticks — "
@@ -1254,7 +3368,7 @@ class OrganismLiveEngine:
                 was_halted = self.governance.is_trading_halted
                 self.governance.trigger_drawdown_kill(drawdown)
                 if not was_halted and self.governance.is_trading_halted:
-                    entries_blocked = True
+                    self._entries_blocked = True
                     self._last_entries_blocked_reason = "drawdown_kill"
                     result.errors.append(
                         f"Drawdown kill triggered ({drawdown:.2%} >= "
@@ -1266,11 +3380,77 @@ class OrganismLiveEngine:
                         drawdown * 100,
                         len(current_positions),
                     )
+                    # V4 P-P0-5 (2026-05-02): drawdown-kill is the most
+                    # safety-critical event in the system. It was log-only
+                    # before — operators relied on dashboards. Wire a
+                    # CRITICAL alert through the canonical send_alert API.
+                    try:
+                        from backend.infra.alerting import (
+                            AlertCategory, AlertSeverity, send_alert,
+                        )
+                        import asyncio as _aio_dk
+                        _aio_dk.create_task(send_alert(
+                            AlertCategory.RISK_VIOLATION,
+                            AlertSeverity.CRITICAL,
+                            "Drawdown Kill Triggered",
+                            f"Drawdown {drawdown:.2%} >= "
+                            f"{self.governance._drawdown_limit:.0%} — entries "
+                            f"halted; {len(current_positions)} open positions "
+                            f"still managed for exit. Peak=${self._peak_equity:.2f}, "
+                            f"current=${equity:.2f}.",
+                            details={
+                                "drawdown_pct": float(drawdown),
+                                "limit_pct": float(self.governance._drawdown_limit),
+                                "peak_equity": float(self._peak_equity),
+                                "current_equity": float(equity),
+                                "open_positions": len(current_positions),
+                            },
+                        ))
+                    except Exception as _alert_err:
+                        logger.error(
+                            "Drawdown-kill alert dispatch failed: %s",
+                            _alert_err,
+                        )
+
+                    # V8 BB-10 / Wave-30 (2026-05-03): write a
+                    # compliance audit row for the drawdown-kill event.
+                    # V7 Track BB found audit_logs empty despite many
+                    # high-blast events fired alerts but never wrote
+                    # compliance rows. This is the canonical drawdown
+                    # event site.
+                    try:
+                        from backend.services.audit_service import (
+                            AuditAction, AuditEntity, fire_audit_log,
+                        )
+                        import asyncio as _aio_audit
+                        _aio_audit.create_task(fire_audit_log(
+                            self._sessionmaker,
+                            action=AuditAction.RISK_LIMIT_BREACH,
+                            entity=AuditEntity.RISK,
+                            entity_id="drawdown_kill",
+                            actor="system:live_engine",
+                            payload={
+                                "drawdown_pct": float(drawdown),
+                                "limit_pct": float(self.governance._drawdown_limit),
+                                "peak_equity": float(self._peak_equity),
+                                "current_equity": float(equity),
+                                "open_positions": len(current_positions),
+                                "tick": self._tick_count,
+                            },
+                        ))
+                    except Exception as _audit_err:
+                        logger.warning(
+                            "BB-10: drawdown-kill audit log dispatch failed: %s",
+                            _audit_err,
+                        )
+                    # CORE-011 fix: cancel pending entry orders at the broker
+                    # so they don't fill after the drawdown kill triggers.
+                    await self._cancel_pending_entry_orders()
 
             # Propagate any pre-existing governance halt (from manual halt
             # or prior drawdown cooldown) — separate from drawdown check
-            if self.governance.is_trading_halted and not entries_blocked:
-                entries_blocked = True
+            if self.governance.is_trading_halted and not self._entries_blocked:
+                self._entries_blocked = True
                 self._last_entries_blocked_reason = "governance_halt"
                 result.errors.append("Trading halted by governance — exits still active")
 
@@ -1286,17 +3466,74 @@ class OrganismLiveEngine:
                 # are artifacts of a previous bug.  Log and skip — they will
                 # be closed via manual liquidation or the close-shorts script.
                 pos_side = pos_data.get("side", "long")
-                if LONG_ONLY and pos_side != "long":
+                if LONG_ONLY and pos_side != "long" and not STRONG_SHORT_ENABLED:
                     logger.warning(
                         "LONG_ONLY: skipping exit check for SHORT position %s "
                         "(%s shares) — should not exist",
                         sym, pos_data.get("qty", "?"),
                     )
                     continue
-                # Skip symbols with pending exit orders (prevent duplicate exits)
-                if sym in self._pending_exit:
+                # V9 DD3-3 / Wave-43 (2026-05-03): consult _exit_cooldown
+                # on the exit path. The 3-tick `_pending_exit` TTL can
+                # expire BEFORE a slow broker fill arrives; without this
+                # gate, the next tick re-fires the exit for full broker
+                # qty -> oversell race. `_exit_cooldown` has a longer TTL
+                # (typically 6 ticks) so it catches the gap. We still
+                # let the V8 DD2-1 max-loss safety check below run since
+                # that path is a true breach.
+                if (
+                    sym in self._exit_cooldown
+                    and sym not in self._pending_exit
+                    and (self._tick_count - self._exit_cooldown[sym])
+                        < self._EXIT_COOLDOWN_TICKS
+                ):
                     logger.debug(
-                        "Skipping exit check for %s — pending exit from tick %d",
+                        "DD3-3: skipping routine exit for %s — exit_cooldown "
+                        "active (tick %d, set %d)",
+                        sym, self._tick_count, self._exit_cooldown[sym],
+                    )
+                    continue
+
+                # V8 / DD2-1 / Wave-32 (2026-05-03): hard safety net even when
+                # a pending exit is in flight.  The 3-tick `_pending_exit`
+                # cooldown was previously skipping ALL exit checks including
+                # max-loss; the unsold portion of a partial-TP / ML-reversal
+                # exit could blow through max_loss_pct during that 30s window.
+                # Now: routine exit logic still skipped, but max-loss STILL
+                # checked against broker price.
+                if sym in self._pending_exit:
+                    broker_price = float(pos_data.get("current_price", 0))
+                    avg_entry = float(pos_data.get("avg_entry_price", 0))
+                    if broker_price > 0 and avg_entry > 0:
+                        side = pos_data.get("side", "long")
+                        _dir = 1.0 if side == "long" else -1.0
+                        pnl_pct = (broker_price - avg_entry) / avg_entry * _dir
+                        if pnl_pct <= -_MAX_LOSS_PCT:
+                            qty = abs(float(pos_data.get("qty", 0)))
+                            sell_shares = int(qty)
+                            if sell_shares > 0:
+                                try:
+                                    await self._submit_exit_order(
+                                        sym, sell_shares,
+                                        "safety_net_pending_exit_breach",
+                                        direction=_dir,
+                                        broker_positions=current_positions,
+                                    )
+                                    self._exit_cooldown[sym] = self._tick_count
+                                    exits_submitted += 1
+                                    result.orders_submitted += 1
+                                    logger.warning(
+                                        "DD2-1 breach: %s pnl=%.2f%% past max_loss "
+                                        "during pending-exit window — safety net fired",
+                                        sym, pnl_pct * 100,
+                                    )
+                                except Exception as e:
+                                    result.errors.append(
+                                        f"DD2-1 safety net failed for {sym}: {e}"
+                                    )
+                    logger.debug(
+                        "Skipping routine exit check for %s — pending exit "
+                        "from tick %d (no breach)",
                         sym, self._pending_exit[sym],
                     )
                     continue
@@ -1324,6 +3561,7 @@ class OrganismLiveEngine:
                                         broker_positions=current_positions,
                                     )
                                     exits_submitted += 1
+                                    result.orders_submitted += 1
                                     if _PROMETHEUS_AVAILABLE:
                                         ORGANISM_SAFETY_NET_TRIGGERED.inc()
                                         ORGANISM_EXITS_SKIPPED_NO_DATA.inc()
@@ -1365,7 +3603,16 @@ class OrganismLiveEngine:
                 # Alpaca historical bar timestamps lag 2-3 min, causing
                 # bars_held to advance too slowly. Wall clock gives
                 # consistent 1-bar-per-minute counting.
-                _bar_ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
+                # V5 U-RF4 / Wave-17b (2026-05-03): route through
+                # `self._now_fn()` so replay sees the replay clock.
+                # The previous direct `datetime.now(UTC)` made every
+                # replay tick read wall clock — `bars_held` stayed at 0
+                # because the wall-clock minute hadn't advanced; horizon
+                # timeout, FTF stop tightening, and min-hold gates all
+                # behaved differently than in live. Originally flagged
+                # by V4 R-F-4 at line 1999; the fix never shipped and
+                # the bypass moved to this site.
+                _bar_ts = self._now_fn().astimezone(UTC).strftime("%Y-%m-%d %H:%M")
                 _prev_bar_ts = self._last_bar_times.get(sym, "")
                 _is_new_bar = (_bar_ts != _prev_bar_ts)
                 if _is_new_bar:
@@ -1396,6 +3643,7 @@ class OrganismLiveEngine:
                                     )
                                     self._exit_cooldown[sym] = self._tick_count
                                     exits_submitted += 1
+                                    result.orders_submitted += 1
                                     if _PROMETHEUS_AVAILABLE:
                                         ORGANISM_SAFETY_NET_TRIGGERED.inc()
                                     logger.warning(
@@ -1468,6 +3716,7 @@ class OrganismLiveEngine:
                             self._exit_cooldown[sym] = self._tick_count
                             self._pending_exit[sym] = self._tick_count
                             exits_submitted += 1
+                            result.orders_submitted += 1
                             result.activity.append(ActivityEvent(
                                 event_type="exit",
                                 symbol=sym,
@@ -1491,7 +3740,34 @@ class OrganismLiveEngine:
                             self._pending_exit[sym] = self._tick_count
             result.trades_closed = exits_submitted
 
-            # v4 (improve7): EOD FLATTEN — force close all positions at 15:58 ET
+            # v4 (improve7): EOD FLATTEN — force close all positions at 15:58 ET.
+            # V9 DD3-4 / Wave-44 (2026-05-03): also cancel any pending entry
+            # orders before flattening.  Previously a 15:57 entry could fill
+            # post-16:00 with no exit infrastructure registered for it (the
+            # _exit_levels entry never gets created because the fill arrives
+            # post-flatten loop).  Result: ghost position carries overnight.
+            if _eod_flatten_triggered and self._pending_entry:
+                for _pe_sym, _pe_oid in list(
+                    self._pending_entry_order_ids.items()
+                ):
+                    try:
+                        from backend.integrations.alpaca_stream import (
+                            get_stream_client,
+                        )
+                        _stream = get_stream_client() if get_stream_client else None
+                        if _stream is not None and hasattr(_stream, "cancel_order"):
+                            await _stream.cancel_order(_pe_oid)
+                            logger.info(
+                                "DD3-4: EOD flatten cancelled pending "
+                                "entry %s (order=%s)", _pe_sym, _pe_oid,
+                            )
+                    except Exception as _cancel_err:
+                        logger.warning(
+                            "DD3-4: EOD flatten failed to cancel pending "
+                            "entry %s order=%s: %s",
+                            _pe_sym, _pe_oid, _cancel_err,
+                        )
+
             if _eod_flatten_triggered and current_positions:
                 for sym, pos_data in list(current_positions.items()):
                     if sym in self._pending_exit:
@@ -1509,6 +3785,7 @@ class OrganismLiveEngine:
                             self._exit_cooldown[sym] = self._tick_count
                             self._pending_exit[sym] = self._tick_count
                             result.trades_closed += 1
+                            result.orders_submitted += 1
                             result.activity.append(ActivityEvent(
                                 event_type="exit",
                                 symbol=sym,
@@ -1525,10 +3802,21 @@ class OrganismLiveEngine:
                             self._exit_cooldown[sym] = self._tick_count
                             self._pending_exit[sym] = self._tick_count
 
+            # Overnight-straggler forced exit (audit 2026-06-09, 3.4).
+            if self._is_intraday and current_positions:
+                await self._force_exit_overnight_stragglers(
+                    current_positions, result, now_iso)
+
             # ── Steps 6-9 and 11 are gated: skip when entries are blocked ──
-            if entries_blocked:
+            if self._entries_blocked:
                 if _PROMETHEUS_AVAILABLE:
-                    ORGANISM_ENTRIES_BLOCKED.inc()
+                    # V11 prep / Wave-62 (YY-3 closure): include the reason
+                    # as a label dimension so dashboards can break down
+                    # halt cause without scraping logs.
+                    _reason_label = (
+                        self._last_entries_blocked_reason or "unknown"
+                    )
+                    ORGANISM_ENTRIES_BLOCKED.labels(reason=_reason_label).inc()
                     if current_positions:
                         ORGANISM_HALTED_WITH_POSITIONS.inc()
                 logger.info(
@@ -1546,13 +3834,13 @@ class OrganismLiveEngine:
                 # metric export — these ALWAYS run regardless of halt state.
 
             # ── SPY MA filter: block longs when SPY < SMA ──────
-            if not entries_blocked and self._spy_filter_enabled and LONG_ONLY:
+            if not self._entries_blocked and self._spy_filter_enabled and LONG_ONLY:
                 spy_df = features_by_symbol.get("SPY")
                 if spy_df is not None and len(spy_df) >= self._spy_ma_period:
                     spy_close = float(spy_df["close"].iloc[-1])
                     spy_sma = float(spy_df["close"].iloc[-self._spy_ma_period:].mean())
                     if spy_close < spy_sma:
-                        entries_blocked = True
+                        self._entries_blocked = True
                         self._last_entries_blocked_reason = "spy_ma_filter"
                         logger.info(
                             "SPY MA filter: SPY %.2f < SMA%d %.2f — blocking entries",
@@ -1567,7 +3855,7 @@ class OrganismLiveEngine:
                         ))
 
             # ── Opening 30-min block: no entries 9:30-10:00 AM ET ──
-            if not entries_blocked and self._is_intraday:
+            if not self._entries_blocked and self._is_intraday:
                 _now_open = self._now_fn()
                 try:
                     import zoneinfo
@@ -1576,7 +3864,7 @@ class OrganismLiveEngine:
                     _now_et = _now_open
                 _hhmm_open = _now_et.hour * 100 + _now_et.minute
                 if 930 <= _hhmm_open < 1000:
-                    entries_blocked = True
+                    self._entries_blocked = True
                     self._last_entries_blocked_reason = "opening_block"
                     logger.info(
                         "Opening block: %d ET — no entries first 30 min",
@@ -1591,7 +3879,7 @@ class OrganismLiveEngine:
             # ── Fix B: Regime sit-out gate ─────────────────────
             _regime_sit_out = False
             _sitout_ml = None
-            if not entries_blocked and LONG_ONLY and regime in ("high_vol", "stress"):
+            if not self._entries_blocked and LONG_ONLY and regime in ("high_vol", "stress"):
                 _sitout_ml = self.signal_gen.predict_batch(features_by_symbol)
                 _bearish = sum(1 for s in _sitout_ml.values() if s.direction < 0)
                 _bullish = sum(1 for s in _sitout_ml.values() if s.direction > 0)
@@ -1630,7 +3918,7 @@ class OrganismLiveEngine:
 
             # ── A5 (improve8): Block trending_down main-book after 10:00 ET
             _trending_down_block = False
-            if not entries_blocked and LONG_ONLY and regime == "trending_down":
+            if not self._entries_blocked and LONG_ONLY and regime == "trending_down":
                 try:
                     import zoneinfo
                     _now_td = self._now_fn().astimezone(zoneinfo.ZoneInfo("America/New_York"))
@@ -1646,7 +3934,7 @@ class OrganismLiveEngine:
 
             # ── Fix E: Global entries-per-hour throttle ───────
             _throttled = False
-            if not entries_blocked and not _regime_sit_out:
+            if not self._entries_blocked and not _regime_sit_out:
                 now_ts = self._time_fn()
                 self._entry_timestamps = [
                     t for t in self._entry_timestamps if now_ts - t < 3600
@@ -1659,7 +3947,7 @@ class OrganismLiveEngine:
                         "Entry throttle: %d entries in last hour (max %d, %s) — "
                         "blocking new entries this tick",
                         len(self._entry_timestamps), _effective_max,
-                        "learning" if self._is_learning_mode else "production",
+                        self._trading_phase.get("phase", "unknown"),
                     )
                     result.activity.append(ActivityEvent(
                         event_type="skip",
@@ -1670,7 +3958,7 @@ class OrganismLiveEngine:
             # ── C2 (improve8): Burst cap — 15-min rolling window ──
             _burst_capped = False
             _burst_remaining = self._MAX_ENTRIES_15M
-            if not entries_blocked and not _regime_sit_out and not _throttled:
+            if not self._entries_blocked and not _regime_sit_out and not _throttled:
                 now_ts_burst = self._time_fn()
                 self._entry_timestamps_15m = [
                     t for t in self._entry_timestamps_15m if now_ts_burst - t < 900
@@ -1693,7 +3981,7 @@ class OrganismLiveEngine:
                 self._last_entry_bar = _current_minute
 
             # ── Steps 6-9: Entry-side logic (gated) ─────────────
-            if not entries_blocked and not _regime_sit_out and not _throttled and not _burst_capped and _is_entry_bar:
+            if not self._entries_blocked and not _regime_sit_out and not _throttled and not _burst_capped and _is_entry_bar:
 
                 # 6. CHECK PYRAMIDS
                 for sym, pos_data in current_positions.items():
@@ -1712,34 +4000,155 @@ class OrganismLiveEngine:
                             continue  # Don't pyramid a symbol with pending exit
                         if sym in self._pending_entry:
                             continue  # Already submitted an order recently
+                        # Audit-H finding H-6 (2026-05-02): pyramid adds used
+                        # to bypass the entry-side risk gates (liquidity, fitness,
+                        # symbol_banned circuit-breaker, daily-loss halt). A
+                        # symbol that was banned mid-day for repeated losses
+                        # could still receive pyramid adds. Now: enforce the
+                        # same gates here.
+                        if self._entries_blocked:  # daily-loss halt etc.
+                            logger.info(
+                                "Pyramid add blocked: entries blocked (%s)",
+                                self._last_entries_blocked_reason,
+                            )
+                            continue
+                        # Audit 2026-06-09 finding 3.5: route adds through the
+                        # shared quality gates (fitness/liquidity/ban) in
+                        # pyramid mode; gate params mirror the alpha path.
+                        _pyr_gate_ok, _pyr_gate_reason = self._passes_entry_gates(
+                            sym, float(getattr(pyr, "direction", 1.0) or 1.0),
+                            features_by_symbol, open_symbols, set(),
+                            fitness_gate=0.0 if self._is_learning_mode else 0.45,
+                            min_trades_for_fitness=10, for_pyramid_add=True,
+                        )
+                        if not _pyr_gate_ok:
+                            logger.info("Pyramid add blocked: %s failed %s gate",
+                                        sym, _pyr_gate_reason)
+                            continue
+                        # Audit-H H-7 (2026-05-02): orphan-adopted positions
+                        # are reconciliation artifacts — should not be
+                        # actively managed via pyramid adds.
+                        meta = self._entry_metadata.get(sym, {})
+                        if meta.get("entry_source") == "reconciliation_orphan":
+                            logger.info(
+                                "Pyramid add blocked: %s is orphan-adopted "
+                                "(reconciliation artifact)", sym,
+                            )
+                            continue
                         try:
-                            await self._submit_entry_order(
+                            _pyr_entry_source = str(
+                                meta.get("entry_source") or "alpha"
+                            )
+                            _pyr_strategy_id = infer_strategy_id(
+                                _pyr_entry_source,
+                                meta.get("strategy_id", ""),
+                            )
+                            pyr_order_result = await self._submit_entry_order(
                                 sym,
                                 action.shares_to_add,
                                 confidence=0.7,
                                 reason="pyramid_add",
+                                strategy_id=_pyr_strategy_id,
+                                entry_source=_pyr_entry_source,
                             )
                             self._pending_entry[sym] = self._tick_count
+                            # CORE-011: track order_id for broker-level cancellation
+                            if isinstance(pyr_order_result, dict) and pyr_order_result.get("order_id"):
+                                self._pending_entry_order_ids[sym] = pyr_order_result["order_id"]
                             result.orders_submitted += 1
+                            _entry_ts = self._time_fn()
+                            self._entry_timestamps.append(_entry_ts)
+                            self._entry_timestamps_15m.append(_entry_ts)
 
-                            # Record the pyramid layer so layer_count increments
-                            # and the pyramider won't re-trigger the same level.
-                            pyr.layers.append(PyramidLevel(
-                                shares=action.shares_to_add,
-                                entry_price=current_price,
-                                bar_added=self._tick_count,
-                                level=pyr.layer_count - 1,  # just appended
-                            ))
-                            # Re-anchor exit levels to new weighted avg entry
-                            exit_lvl = self._exit_levels.get(sym)
-                            if exit_lvl is not None:
-                                self.exit_engine.update_levels_for_pyramid(
-                                    exit_lvl, pyr.avg_entry, regime,
-                                )
+                            # H5 FIX: Do NOT record pyramid layer here.
+                            # Layer state, avg_entry, and exit-level anchors are
+                            # deferred until broker fill is confirmed via the
+                            # avg_entry_price sync in _reconcile_fills(). This
+                            # prevents phantom layers on rejected/canceled orders.
+                            # The pending_entry tracking above prevents the
+                            # pyramider from re-triggering on the next tick.
                         except Exception as e:
                             result.errors.append(
                                 f"Pyramid order failed for {sym}: {e}"
                             )
+
+                    # EXIT-001 fix: process close_partial and tighten_stop
+                    # actions that were previously silently dropped.
+                    elif action.action == "close_partial" and action.shares_to_add < 0:
+                        # EXPERIMENT 1A: chop-regime minimum-hold gate for
+                        # pyramid cuts. In chop, suppress pyramid_cut exits
+                        # until the trade has been held for at least 10 BARS
+                        # (not ticks!).
+                        #
+                        # V12 W72 / DD5-1: pre-V12 the comparison was
+                        # ``self._tick_count - entry_tick``, which counts
+                        # SCHEDULER TICKS not BARS.  At a 10s scheduler
+                        # interval and 60s bars, ticks ≫ bars, so the
+                        # gate fired far too early — V11 DD5-1 + the
+                        # external auditor both confirmed it was inert.
+                        # Now: bars-held = wall-clock minutes since entry.
+                        _CHOP_MIN_HOLD_BARS = 10
+                        _meta = self._entry_metadata.get(sym, {})
+                        _entry_time = _meta.get("entry_time")
+                        _suppress, _bars_held = _should_suppress_chop_cut(
+                            regime=regime,
+                            now_ts=self._time_fn(),
+                            entry_time=_entry_time,
+                            chop_min_hold_bars=_CHOP_MIN_HOLD_BARS,
+                        )
+                        if _suppress:
+                            _unrealized = pyr.unrealized_pnl(current_price) if pyr else 0.0
+                            logger.info(
+                                "Exp1A: pyramid_cut suppressed (chop min-hold): "
+                                "%s bars_held=%d/%d regime=%s r=%.1fR "
+                                "unrealized=$%.2f reason=%s",
+                                sym, _bars_held, _CHOP_MIN_HOLD_BARS,
+                                regime, pyr.r_multiple if pyr else 0.0,
+                                _unrealized, action.reason,
+                            )
+                            # Skip the pyramid cut — let the trade breathe
+                            continue
+
+                        shares_to_close = abs(action.shares_to_add)
+                        direction = float(pos_data.get("direction", 1.0)) if isinstance(pos_data, dict) else 1.0
+                        try:
+                            await self._submit_exit_order(
+                                sym,
+                                shares_to_close,
+                                reason=f"pyramid_{action.reason}",
+                                direction=direction,
+                            )
+                            self._pending_exit[sym] = self._tick_count
+                            result.orders_submitted += 1
+                            logger.info(
+                                "Pyramider close_partial: %s %d shares (%s)",
+                                sym, shares_to_close, action.reason,
+                            )
+                        except Exception as e:
+                            result.errors.append(
+                                f"Pyramid close_partial failed for {sym}: {e}"
+                            )
+
+                    elif action.action == "tighten_stop" and action.new_stop > 0:
+                        exit_lvl = self._exit_levels.get(sym)
+                        if exit_lvl is not None:
+                            old_stop = exit_lvl.stop_loss
+                            # Only tighten — never widen the stop
+                            direction = exit_lvl.direction
+                            if (direction > 0 and action.new_stop > old_stop) or \
+                               (direction < 0 and action.new_stop < old_stop):
+                                exit_lvl.stop_loss = action.new_stop
+                                exit_lvl.trailing_stop = action.new_stop
+                                logger.info(
+                                    "Pyramider tighten_stop: %s %.4f -> %.4f (%s)",
+                                    sym, old_stop, action.new_stop, action.reason,
+                                )
+                            else:
+                                logger.debug(
+                                    "Pyramider tighten_stop skipped (not tighter): "
+                                    "%s new=%.4f old=%.4f",
+                                    sym, action.new_stop, old_stop,
+                                )
 
                 # 7. SCAN FOR NEW ENTRIES
                 # Breakout scan
@@ -1757,11 +4166,10 @@ class OrganismLiveEngine:
                 # ML predictions — reuse sit-out batch if available
                 ml_signals = _sitout_ml if _sitout_ml else self.signal_gen.predict_batch(features_by_symbol)
 
-                # Alpha scan
-                candidates = self.alpha_scanner.scan(
-                    features_by_symbol, ml_signals, regime,
-                    ml_is_trained=self.signal_gen.is_trained,
-                    learning_mode=self._is_learning_mode,
+                # Alpha scan (Phase 1 step 5: routed via the thin-seam helper —
+                # byte-identical when the framework flag is off).
+                candidates = self._scan_entry_candidates(
+                    features_by_symbol, ml_signals, regime
                 )
 
                 # Build candidate list
@@ -1795,6 +4203,24 @@ class OrganismLiveEngine:
                 self._last_eff_conf_gate = _MAIN_CONF_BASELINE
                 self._last_burst_remaining = _burst_remaining
 
+                # Unified confidence threshold — used by BOTH alpha and
+                # pure-breakout paths for gate parity.
+                #
+                # INCIDENT RECOVERY (2026-03-29): In learning mode, the
+                # confidence formula (0.65*breakout + 0.35*tension) has a
+                # realistic max of ~0.43.  The 0.40/0.45 gates are
+                # mathematically unreachable under normal conditions,
+                # which caused 10+ days of zero trades.  Learning mode
+                # now uses the exploration floor (0.25) as its main-book
+                # gate so trades can accumulate for ML training.
+                # Production mode thresholds remain unchanged.
+                if self._is_learning_mode:
+                    _MIN_MAIN_CONF = _EXPL_CONF_GATE  # 0.25
+                elif regime in ("chop", "high_vol", "trending_down"):
+                    _MIN_MAIN_CONF = _MAIN_CONF_DEFENSIVE  # 0.45
+                else:
+                    _MIN_MAIN_CONF = _MAIN_CONF_BASELINE  # 0.40
+
                 # Rejection counters dict — cleaner than individual vars
                 _rej_counts = {
                     "open_position": 0, "exit_cooldown": 0,
@@ -1802,10 +4228,25 @@ class OrganismLiveEngine:
                     "long_only": 0, "sector_gate": 0,
                     "fitness_gate": 0, "liquidity": 0,
                     "circuit_breaker": 0, "confidence_gate": 0,
+                    "below_expl_conf": 0, "below_main_conf": 0,
+                    "defensive_filter": 0, "direction_zero": 0,
+                    "sizer_invalid": 0,
                 }
 
                 cand_dicts = []
-                for c in candidates:
+                _defensive_filtered_cand_dicts: list[dict[str, Any]] = []
+                # M3-4: When DISABLE_ALPHA_BREAKOUT, skip the alpha+breakout
+                # candidate-build phase entirely. Slots and ranking competition
+                # belong solely to ORB/EOD. Diagnostic mode for evaluating the
+                # new strategies in isolation.
+                # M3-5 fix: also skip alpha when alpha_breakout_late_blocked
+                # (>=15:45 ET). EOD/ORB are not subject to this time rule.
+                _ab_disabled = (
+                    DISABLE_ALPHA_BREAKOUT
+                    or getattr(self, "_alpha_breakout_late_blocked", False)
+                )
+                _candidates_iter = [] if _ab_disabled else candidates
+                for c in _candidates_iter:
                     # Shared entry gates (alpha + breakout use same helper)
                     _gate_ok, _gate_reason = self._passes_entry_gates(
                         c.symbol, c.direction, features_by_symbol,
@@ -1830,7 +4271,7 @@ class OrganismLiveEngine:
                                 _MAIN_FITNESS_GATE,
                             )
                         elif _gate_reason == "liquidity":
-                            logger.info("Liquidity gate blocked %s", c.symbol)
+                            logger.debug("Liquidity gate blocked %s", c.symbol)
                         continue
 
                     # B3 (improve8): Data-source provenance — determine freshness
@@ -1845,11 +4286,21 @@ class OrganismLiveEngine:
                     bs = breakout_by_sym.get(c.symbol)
                     breakout_score = bs.composite_score if bs else 0.0
                     tension = _tension_lookup.get(c.symbol, 0.0)
+                    # Fallback: compute tension proxy from feature data when
+                    # market_scanner has no results (outside hours, API down,
+                    # or replay where MarketScanner is disabled). Source of
+                    # truth in ml_features.compute_tension_proxy() so live
+                    # and replay paths share the same formula.
+                    if tension == 0.0:
+                        feat_df = features_by_symbol.get(c.symbol)
+                        if feat_df is not None and len(feat_df) >= 1:
+                            from backend.organism.ml_features import compute_tension_proxy
+                            tension = compute_tension_proxy(feat_df)
                     # Additive confidence — preserves ranking granularity
-                    if self._is_learning_mode:
-                        # improve9: ML weight = 0 in learning mode. ML is
-                        # untrained and anti-predictive (high conf = worse
-                        # outcomes on Mar 6). Use only observable signals.
+                    if self._ml_isolation_mode:
+                        # improve9 / Phase 2: ML weight = 0 while the
+                        # brain is bootstrapping or guarded by realized
+                        # expectancy. Use only observable signals.
                         confidence = (
                             0.65 * breakout_score
                             + 0.35 * min(tension, 1.0)
@@ -1861,45 +4312,106 @@ class OrganismLiveEngine:
                             + 0.30 * breakout_score
                             + 0.20 * min(tension, 1.0)
                         )
-                    # A2 (improve8): Two-tier confidence gate
-                    # Main-book: baseline 0.40, higher in defensive regimes
-                    # Learning-mode refinement: only apply defensive gate
-                    # when regime label confidence >= 0.50; otherwise use
-                    # baseline to avoid over-constraining on noisy regime.
-                    if (
-                        not self._is_learning_mode
-                        or (regime in ("chop", "high_vol", "trending_down")
-                            and _regime_conf >= 0.50)
-                    ):
-                        _MIN_MAIN_CONF = (
-                            _MAIN_CONF_DEFENSIVE
-                            if regime in ("chop", "high_vol", "trending_down")
-                            else _MAIN_CONF_BASELINE
+                        # RC-1.5 shadow-mode telemetry: compute what the
+                        # proposed RC-2 ML-weight composite (0.20/0.50/0.30)
+                        # would produce. Logging only — does not gate.
+                        _shadow_composite = (
+                            0.20 * ml_conf
+                            + 0.50 * breakout_score
+                            + 0.30 * min(tension, 1.0)
                         )
-                    else:
-                        _MIN_MAIN_CONF = _MAIN_CONF_BASELINE
-
-                    # B1 (improve8): Heuristic expected_return → exploration only
-                    # Exception: in learning mode, allow heuristic through main-book
-                    # (A4 risk caps protect sizing). Otherwise engine can never
-                    # accumulate 200 trades to train ML.
-                    _is_heuristic = (
-                        c.expected_return_source == "heuristic"
-                        and not self._is_learning_mode
+                        # Log only when the two would disagree on the gate
+                        # decision — keeps log noise manageable.
+                        _live_pass = confidence >= _MIN_MAIN_CONF
+                        _shadow_pass = _shadow_composite >= _MIN_MAIN_CONF
+                        if _live_pass != _shadow_pass:
+                            logger.info(
+                                "RC-1.5 shadow: composite gate disagreement %s "
+                                "live_composite=%.3f shadow_composite=%.3f "
+                                "gate=%.2f live_pass=%s shadow_pass=%s "
+                                "ml=%.3f breakout=%.3f tension=%.3f regime=%s",
+                                c.symbol, confidence, _shadow_composite,
+                                _MIN_MAIN_CONF, _live_pass, _shadow_pass,
+                                ml_conf, breakout_score, min(tension, 1.0), regime,
+                            )
+                    # EXPERIMENT 3 INSTRUMENTATION: side-by-side confidence
+                    # comparison to detect ML contamination in chop.
+                    # Logs the live production confidence alongside what the
+                    # pure breakout+tension (learning-mode) formula would
+                    # produce. Does NOT change any gating decision — read-only.
+                    _conf_bt_only = (
+                        0.65 * breakout_score
+                        + 0.35 * min(tension, 1.0)
+                    )
+                    _conf_ml_component = (
+                        (c.ml_signal.confidence if c.ml_signal else 0.0)
+                        if not self._ml_isolation_mode
+                        else 0.0
+                    )
+                    # Will the candidate pass the main-book gate?
+                    # (computed here for logging; actual gate is below)
+                    _would_pass_live = confidence >= _MIN_MAIN_CONF
+                    _would_pass_bt_only = _conf_bt_only >= _MIN_MAIN_CONF
+                    logger.debug(
+                        "Exp3: confidence side-by-side: %s regime=%s "
+                        "conf_live=%.4f conf_bt_only=%.4f ml_component=%.4f "
+                        "gate_pass_live=%s gate_pass_bt_only=%s "
+                        "breakout=%.4f tension=%.4f learning_mode=%s "
+                        "ml_isolation_mode=%s",
+                        c.symbol, regime,
+                        confidence, _conf_bt_only, _conf_ml_component,
+                        _would_pass_live, _would_pass_bt_only,
+                        breakout_score, tension, self._is_learning_mode,
+                        self._ml_isolation_mode,
                     )
 
-                    # Use effective_confidence for gating (B2 improve8)
-                    # Hardening: in learning mode, ML is untrained and
-                    # effective_confidence is unreliable — use the pure
-                    # breakout+tension confidence computed above instead.
-                    if self._is_learning_mode:
-                        _eff_conf = confidence
-                    else:
+                    # A2 (improve8): Two-tier confidence gate
+                    # Main-book: baseline 0.40, higher in defensive regimes
+                    # B1 parity: _MIN_MAIN_CONF is now computed once above
+                    # both paths (unified threshold).
+
+                    # B1 (improve8): Heuristic expected_return → exploration only
+                    # Exception: in bootstrap learning or guarded production,
+                    # allow heuristic through main-book (fixed risk caps
+                    # protect sizing). Otherwise a guarded losing brain
+                    # would have ML disabled but no non-ML entry route.
+                    _heuristic_main_book_allowed = (
+                        self._is_learning_mode
+                        or self._is_guarded_production_mode
+                    )
+                    _is_heuristic = (
+                        c.expected_return_source == "heuristic"
+                        and not _heuristic_main_book_allowed
+                    )
+
+                    # Track 1 fix (RC-1.5 curated): gate on composite confidence,
+                    # not ml_signal.effective_confidence. Forensic analysis
+                    # showed 132 of 182 live trades were alpha-only entries
+                    # with composite < 0.45 that passed the gate via ML's
+                    # uncalibrated self-confidence (corr(ml_pred, actual)=0.056).
+                    # Those 132 trades = -$105.88 of -$108.00 cumulative loss.
+                    #
+                    # Surgical fix #2 (Ferrari v1 ML leakage audit): the
+                    # composite ALSO carries 50% ML weight at the gate.
+                    # Audit found corr(confidence, correct_direction) =
+                    # -0.112 on resolved trades — ML in the composite is
+                    # anti-predictive on the gate. When DROP_ML_FROM_GATE
+                    # (default true), reuse H2's learning-mode formula
+                    # (0.65×breakout + 0.35×tension) for the gate decision.
+                    # Keep `confidence` (with ML) for ranking_score so
+                    # the relative ordering of candidates still benefits
+                    # from any ML signal that does exist; only the
+                    # pass/fail threshold drops the ML weight.
+                    if (
+                        self._ml_isolation_mode
+                        or (DROP_ML_FROM_GATE and not self._is_learning_mode)
+                    ):
                         _eff_conf = (
-                            c.ml_signal.effective_confidence
-                            if c.ml_signal and c.ml_signal.effective_confidence > 0
-                            else confidence
+                            0.65 * breakout_score
+                            + 0.35 * min(tension, 1.0)
                         )
+                    else:
+                        _eff_conf = confidence
 
                     _route_exploration = False
                     if _is_heuristic:
@@ -1910,19 +4422,21 @@ class OrganismLiveEngine:
                     elif _data_source != "streaming" and self._streaming_provider is not None:
                         # B3: Main-book requires streaming data; rest/stale → exploration
                         _route_exploration = True
-                    elif _eff_conf < _EXPL_CONF_GATE:
+                    elif self._conf_gates_on() and _eff_conf < _EXPL_CONF_GATE:
                         # Below exploration gate → reject outright
                         _rej_counts["confidence_gate"] += 1
+                        _rej_counts["below_expl_conf"] += 1
                         logger.info(
                             "Confidence reject: %s (eff_conf=%.2f < %.2f)",
                             c.symbol, _eff_conf, _EXPL_CONF_GATE,
                         )
                         continue
-                    elif _eff_conf < _MIN_MAIN_CONF:
+                    elif self._conf_gates_on() and _eff_conf < _MIN_MAIN_CONF:
                         _route_exploration = True
 
                     if _route_exploration:
                         _rej_counts["confidence_gate"] += 1
+                        _rej_counts["below_main_conf"] += 1
                         # improve9 A7: Log exploration-eligible candidates
                         # instead of routing to dead queue. The exploration
                         # queue was dead code — no executor ever processed it.
@@ -1932,26 +4446,66 @@ class OrganismLiveEngine:
                             c.symbol, _eff_conf, _is_heuristic, regime,
                         )
                         continue
-                    cand_dicts.append({
+                    _cand_dict = {
                         "symbol": c.symbol,
                         "direction": c.direction,
                         "predicted_return": (
                             c.ml_signal.predicted_return if c.ml_signal else 0.01
                         ),
+                        # Audit 2026-06-11 (measurement integrity): preserve
+                        # the SIGNED ML prediction and whether ML actually
+                        # produced it — the sizer abs()es predicted_return,
+                        # destroying the sign before it reaches the trade
+                        # record.
+                        "predicted_return_signed": (
+                            float(c.ml_signal.predicted_return)
+                            if c.ml_signal else None
+                        ),
+                        "ml_spoke": bool(
+                            c.ml_signal is not None
+                            and abs(c.ml_signal.predicted_return) > 1e-9
+                        ),
                         "confidence": confidence,
+                        # V8 DD2-2 / Wave-33: carry raw_confidence so calibration
+                        # outcome-recording bins on the same axis as
+                        # calibrate_confidence's lookup.
+                        "ml_raw_confidence": (
+                            c.ml_signal.raw_confidence if c.ml_signal else None
+                        ),
                         "effective_confidence": _eff_conf,
                         "breakout_score": breakout_score,
                         "expected_return_source": c.expected_return_source,
-                    })
+                        "ranking_score": c.composite_score, "fw_strategy": "momentum",
+                        # Exp3 instrumentation: side-by-side confidence
+                        "confidence_bt_only": _conf_bt_only,
+                        "confidence_ml_component": _conf_ml_component,
+                        "gate_pass_bt_only": _would_pass_bt_only,
+                    }
+                    if self._record_defensive_filtered_candidate(
+                        _cand_dict, regime, _defensive_filtered_cand_dicts,
+                    ):
+                        _rej_counts["defensive_filter"] += 1
+                        _rej_counts["confidence_gate"] += 1
+                        continue
+                    if self._record_directionless_candidate(
+                        _cand_dict, _defensive_filtered_cand_dicts,
+                    ):
+                        _rej_counts["direction_zero"] += 1
+                        continue
+                    cand_dicts.append(_cand_dict)
                     _planned_entries.add(c.symbol)
 
                 # Pure breakout signals not in alpha candidates (capped at 2)
                 # Uses shared _passes_entry_gates helper — identical gate
                 # logic to alpha path.
+                # M3-4: skip when DISABLE_ALPHA_BREAKOUT.
                 alpha_syms = {d["symbol"] for d in cand_dicts}
                 _breakout_added = 0
                 _MAX_PURE_BREAKOUT = 2
-                for bs in breakout_signals:
+                _breakout_iter = [] if _ab_disabled else (  # 5c: see helper doc
+                    self._v2_breakout_raws(features_by_symbol, regime)
+                    if FRAMEWORK_ROUTING_V2_ENABLED else breakout_signals)
+                for bs in _breakout_iter:
                     if _breakout_added >= _MAX_PURE_BREAKOUT:
                         break
                     if bs.symbol in alpha_syms:
@@ -1971,52 +4525,545 @@ class OrganismLiveEngine:
                         continue
                     # Confidence threshold
                     _bo_conf = min(bs.composite_score, 1.0)
-                    if _bo_conf < _MAIN_CONF_BASELINE:
+                    # B1 parity: use unified threshold (same as alpha path)
+                    if self._conf_gates_on() and _bo_conf < _MIN_MAIN_CONF:
                         continue
                     # ML negative-direction veto — production only.
                     # In learning mode ML is untrained and anti-predictive;
                     # vetoing breakout signals on ML direction blocks valid
                     # entries from accumulating training data.
                     ml_sig = ml_signals.get(bs.symbol)
-                    if not self._is_learning_mode and ml_sig and ml_sig.direction < 0:
+                    if not self._ml_isolation_mode and ml_sig and ml_sig.direction < 0:
                         continue
-                    # Predicted return: use ML when available (minimal 0.3%
-                    # floor to avoid zero), otherwise scale from breakout
-                    # score (0.5%-2.0% range avoids flat over-estimation).
-                    if ml_sig and not self._is_learning_mode:
-                        pred_ret = max(ml_sig.predicted_return, 0.003)
+                    # Surgical fix (Ferrari v1, ML leakage audit): the
+                    # 0.003 floor was masking weak ML signals — 49% of
+                    # 482 logged trades had pred_ret == 0.003 or 0.0
+                    # exactly. corr(predicted_return, actual_return) over
+                    # resolved trades = 0.034.
+                    # Pass through real ML estimates (sign-stripped since
+                    # direction is handled separately); fall back to
+                    # breakout-derived when ML is silent.
+                    # Day-1 production (May 1) revealed ML sometimes emits
+                    # extremely tiny non-zero values (2e-5, 5e-6) that
+                    # passed the original >1e-6 threshold but are
+                    # functionally noise — Kelly was sizing on signals
+                    # below the natural 1-min bar noise floor (~0.1%).
+                    # Threshold raised to 1e-4 (0.01% expected return) so
+                    # tiny "ghost" outputs fall through to the heuristic.
+                    # V8 DD2-8 / Wave-35 (2026-05-03): gate on ml_sig.direction
+                    # matching the long entry direction.  Previously the
+                    # abs(predicted_return) check let neutral-ML (direction==0)
+                    # or short-ML (direction<0) signals with negative
+                    # predicted_return still feed Kelly a positive expected
+                    # return for a LONG entry.
+                    if (
+                        ml_sig and not self._ml_isolation_mode
+                        and ml_sig.direction > 0
+                        and abs(ml_sig.predicted_return) > 1e-4
+                    ):
+                        pred_ret = abs(ml_sig.predicted_return)
                     else:
                         pred_ret = 0.005 + 0.015 * bs.composite_score
                     # Determine expected_return_source for breakout
                     _bo_ret_source = "heuristic"
                     if (
-                        ml_sig and not self._is_learning_mode
+                        ml_sig and not self._ml_isolation_mode
                         and ml_sig.direction > 0
                         and abs(ml_sig.predicted_return) > 1e-6
                     ):
                         _bo_ret_source = "calibrated_breakout"
-                    cand_dicts.append({
+                    _cand_dict = {
                         "symbol": bs.symbol,
                         "direction": 1.0,
                         "predicted_return": pred_ret,
+                        # Audit 2026-06-11 (measurement integrity): signed
+                        # ML value + provenance for the trade record.
+                        "predicted_return_signed": (
+                            float(ml_sig.predicted_return)
+                            if _bo_ret_source == "calibrated_breakout"
+                            else None
+                        ),
+                        "ml_spoke": _bo_ret_source == "calibrated_breakout",
                         "confidence": _bo_conf,
                         "effective_confidence": _bo_conf,
                         "breakout_score": bs.composite_score,
                         "expected_return_source": _bo_ret_source,
-                    })
+                        "ranking_score": bs.composite_score * _bo_conf, "fw_strategy": "breakout",
+                    }
+                    if self._record_defensive_filtered_candidate(
+                        _cand_dict, regime, _defensive_filtered_cand_dicts,
+                    ):
+                        _rej_counts["defensive_filter"] += 1
+                        _rej_counts["confidence_gate"] += 1
+                        continue
+                    cand_dicts.append(_cand_dict)
                     _planned_entries.add(bs.symbol)
                     _breakout_added += 1
 
-                cand_dicts.sort(
-                    key=lambda x: x["breakout_score"] * x["confidence"],
-                    reverse=True,
-                )
+                # M2-B: ORB Stocks-in-Play LIVE entry path (feature-flagged).
+                # When ORGANISM_ORB_LIVE_ENABLED=true and the shadow scan
+                # produced triggered breakouts, route them into cand_dicts
+                # alongside alpha + breakout. Same composite gate, same Kelly,
+                # same risk controls. entry_source distinguishes ORB in
+                # trade_history for downstream A/B analysis.
+                _MAX_ORB_PER_TICK = 2
+                _orb_added = 0
+                if (
+                    ORB_LIVE_ENABLED
+                    and self._latest_orb_triggered
+                    and not self._ml_isolation_mode
+                ):
+                    _existing_syms = {d["symbol"] for d in cand_dicts}
+                    for orbc in self._latest_orb_triggered:
+                        if _orb_added >= _MAX_ORB_PER_TICK:
+                            break
+
+                        # M3-2: Inverse-ETF translation. SPY-1 → SH+1, QQQ-1 → PSQ+1.
+                        # Lets us act on bearish patterns within long-only safety.
+                        _orb_sym = orbc.symbol
+                        _orb_dir = orbc.direction
+                        _translated = False
+                        if (
+                            INVERSE_ETF_TRANSLATION_ENABLED
+                            and _orb_dir < 0
+                            and _orb_sym in INVERSE_ETF_MAP
+                        ):
+                            _new_sym = INVERSE_ETF_MAP[_orb_sym]
+                            if _new_sym in features_by_symbol:
+                                logger.info(
+                                    "ORB inverse-ETF translation: %s short → %s long",
+                                    _orb_sym, _new_sym,
+                                )
+                                _orb_sym = _new_sym
+                                _orb_dir = 1.0  # now long the inverse
+                                _translated = True
+
+                        if _orb_sym in _existing_syms:
+                            continue
+
+                        # M3-1: Strong-signal-shorting. If still-short and
+                        # STRONG_SHORT_ENABLED, allow if signal exceptional.
+                        _allow_short = False
+                        if (
+                            STRONG_SHORT_ENABLED
+                            and _orb_dir < 0
+                            and orbc.rv_ratio >= STRONG_SHORT_RV_MIN
+                        ):
+                            _allow_short = True
+                            logger.info(
+                                "ORB strong-short qualified: %s rv=%.2f >= %.2f",
+                                _orb_sym, orbc.rv_ratio, STRONG_SHORT_RV_MIN,
+                            )
+
+                        # Shared entry gates (sector, fitness, liquidity, etc.)
+                        _gate_ok, _gate_reason = self._passes_entry_gates(
+                            _orb_sym, _orb_dir, features_by_symbol,
+                            open_symbols, _planned_entries,
+                            fitness_gate=_MAIN_FITNESS_GATE,
+                            min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                            allow_short=_allow_short,
+                        )
+                        if not _gate_ok:
+                            logger.info(
+                                "ORB live: %s blocked by gate=%s",
+                                _orb_sym, _gate_reason,
+                            )
+                            continue
+                        # ORB composite: blend ML self-conf, breakout-quality
+                        # proxy (0.55 because ORB IS a breakout), and
+                        # rv_ratio-derived "tension."
+                        # NO ML direction veto for ORB. Track 1 found
+                        # corr(ML pred, actual) = 0.056 — essentially noise.
+                        # ORB is a PATTERN-based signal independent of ML;
+                        # vetoing on uncalibrated ML direction defeats the
+                        # purpose of having an uncorrelated edge source.
+                        # Diagnostic on Apr 16-20 data showed 1,049 ORB
+                        # candidates blocked here — this gate was a bug.
+                        ml_sig = ml_signals.get(_orb_sym)  # use translated symbol's ML
+                        ml_conf = ml_sig.confidence if ml_sig else 0.0
+                        _orb_breakout_proxy = 0.55  # ORB breakout = quality breakout
+                        # Audit-A v2 T1 (2026-05-02): Phase 5 raised the
+                        # helper tension cap 0.80→1.0; this inline ORB
+                        # version was missed. With DROP_ML_FROM_GATE=True,
+                        # tension carries 35% gate weight — saturating at
+                        # 0.80 made high-RV days indistinguishable from
+                        # moderate ones at the gate threshold.
+                        _orb_tension = min(orbc.rv_ratio / 4.0, 1.0)
+                        _orb_composite = (
+                            0.50 * ml_conf
+                            + 0.30 * _orb_breakout_proxy
+                            + 0.20 * _orb_tension
+                        )
+                        # M3-1: strong-signal-shorting also requires elevated
+                        # composite (not just RV) — both must be exceptional.
+                        if _allow_short and _orb_composite < STRONG_SHORT_COMPOSITE_MIN:
+                            logger.info(
+                                "ORB strong-short rejected: %s composite=%.3f "
+                                "< %.2f (rv=%.2f passed but composite weak)",
+                                _orb_sym, _orb_composite,
+                                STRONG_SHORT_COMPOSITE_MIN, orbc.rv_ratio,
+                            )
+                            continue
+                        # Audit-B finding 1 (2026-05-01): DROP_ML_FROM_GATE
+                        # was only applied to alpha+breakout; ORB still gated
+                        # on the raw 50%-ML composite. Mirror the alpha+breakout
+                        # surgical fix #2 here. ML is anti-predictive at the
+                        # gate per Phase 1 audit (corr -0.112 on resolved trades);
+                        # use a recomposite that pushes ML's weight to breakout.
+                        # Keep _orb_composite (with ML) for ranking_score below.
+                        if DROP_ML_FROM_GATE:
+                            _orb_eff_conf = (
+                                0.65 * _orb_breakout_proxy + 0.35 * _orb_tension
+                            )
+                        else:
+                            _orb_eff_conf = _orb_composite
+                        if _orb_eff_conf < _MIN_MAIN_CONF:
+                            logger.info(
+                                "ORB live: %s eff_conf=%.3f below gate=%.2f "
+                                "(composite=%.3f, drop_ml=%s)",
+                                _orb_sym, _orb_eff_conf, _MIN_MAIN_CONF,
+                                _orb_composite, DROP_ML_FROM_GATE,
+                            )
+                            continue
+                        # Predicted return: use ML when available
+                        if ml_sig and abs(ml_sig.predicted_return) > 1e-6:
+                            _orb_pred_ret = ml_sig.predicted_return * _orb_dir
+                            if _orb_pred_ret < 0:
+                                _orb_pred_ret = 0.005  # min positive floor
+                            _orb_ret_source = "calibrated_breakout"
+                        else:
+                            _orb_pred_ret = 0.005  # 0.5% default for ORB
+                            _orb_ret_source = "heuristic"
+
+                        cand_dicts.append({
+                            "symbol": _orb_sym,
+                            "direction": _orb_dir,
+                            "predicted_return": _orb_pred_ret,
+                            "confidence": _orb_composite,
+                            "effective_confidence": _orb_composite,
+                            "breakout_score": _orb_breakout_proxy,
+                            "expected_return_source": _orb_ret_source,
+                            "ranking_score": _orb_composite * orbc.rv_ratio, "fw_strategy": "orb",
+                            # ORB-specific fields for telemetry / sizing
+                            "orb_high": orbc.orb_high,
+                            "orb_low": orbc.orb_low,
+                            "orb_suggested_stop": orbc.suggested_stop,
+                            "rv_ratio": orbc.rv_ratio,
+                            "entry_source_override": (
+                                "orb_sip_inverse" if _translated else "orb_sip"
+                            ),
+                        })
+                        _planned_entries.add(_orb_sym)
+                        self._orb_scanner.mark_fired(orbc.symbol)  # original symbol
+                        self._orb_live_count_today += 1
+                        _orb_added += 1
+                        logger.info(
+                            "ORB LIVE entry candidate: %s dir=%+.0f rv=%.2f "
+                            "composite=%.3f translated=%s strong_short=%s "
+                            "→ entered cand_dicts",
+                            _orb_sym, _orb_dir, orbc.rv_ratio,
+                            _orb_composite, _translated, _allow_short,
+                        )
+
+                # M2-C: EOD Momentum LIVE entry path (feature-flagged).
+                # Mirror of ORB pattern: triggered EOD candidates flow into
+                # cand_dicts when ORGANISM_EOD_LIVE_ENABLED=true. Same
+                # composite gate, same Kelly, same entry-source tagging.
+                _MAX_EOD_PER_TICK = 2
+                _eod_added = 0
+                if (
+                    EOD_LIVE_ENABLED
+                    and self._latest_eod_candidates
+                    and not self._ml_isolation_mode
+                ):
+                    _existing_syms = {d["symbol"] for d in cand_dicts}
+                    for eodc in self._latest_eod_candidates:
+                        if _eod_added >= _MAX_EOD_PER_TICK:
+                            break
+
+                        # M3-2: Inverse-ETF translation for EOD shorts
+                        _eod_sym = eodc.symbol
+                        _eod_dir = eodc.direction
+                        _eod_translated = False
+                        if (
+                            INVERSE_ETF_TRANSLATION_ENABLED
+                            and _eod_dir < 0
+                            and _eod_sym in INVERSE_ETF_MAP
+                        ):
+                            _new_sym = INVERSE_ETF_MAP[_eod_sym]
+                            if _new_sym in features_by_symbol:
+                                logger.info(
+                                    "EOD inverse-ETF translation: %s short → %s long",
+                                    _eod_sym, _new_sym,
+                                )
+                                _eod_sym = _new_sym
+                                _eod_dir = 1.0
+                                _eod_translated = True
+
+                        if _eod_sym in _existing_syms:
+                            continue
+
+                        # M3-1: Strong-signal-shorting gate for EOD
+                        _eod_allow_short = False
+                        if (
+                            STRONG_SHORT_ENABLED
+                            and _eod_dir < 0
+                            and abs(eodc.day_return_pct) >= STRONG_SHORT_DAYRET_MIN
+                        ):
+                            _eod_allow_short = True
+                            logger.info(
+                                "EOD strong-short qualified: %s |day_return|=%.2f%% >= %.2f%%",
+                                _eod_sym, abs(eodc.day_return_pct),
+                                STRONG_SHORT_DAYRET_MIN,
+                            )
+
+                        # Shared entry gates
+                        _gate_ok, _gate_reason = self._passes_entry_gates(
+                            _eod_sym, _eod_dir, features_by_symbol,
+                            open_symbols, _planned_entries,
+                            fitness_gate=_MAIN_FITNESS_GATE,
+                            min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                            allow_short=_eod_allow_short,
+                        )
+                        if not _gate_ok:
+                            logger.info(
+                                "EOD live: %s blocked by gate=%s",
+                                _eod_sym, _gate_reason,
+                            )
+                            continue
+                        # No ML direction veto for EOD (same reasoning as ORB:
+                        # ML is uncalibrated noise; pattern-based EOD signal
+                        # should not be subordinated to ML direction).
+                        ml_sig = ml_signals.get(_eod_sym)
+                        ml_conf = ml_sig.confidence if ml_sig else 0.0
+                        _eod_breakout_proxy = 0.50
+                        # Audit-A v2 T1 (2026-05-02): cap raised 0.80→1.0
+                        # to match helper. Same reason as ORB above.
+                        _eod_tension = min(abs(eodc.day_return_pct) / 1.5, 1.0)
+                        _eod_composite = (
+                            0.50 * ml_conf
+                            + 0.30 * _eod_breakout_proxy
+                            + 0.20 * _eod_tension
+                        )
+                        if _eod_allow_short and _eod_composite < STRONG_SHORT_COMPOSITE_MIN:
+                            logger.info(
+                                "EOD strong-short rejected: %s composite=%.3f < %.2f",
+                                _eod_sym, _eod_composite,
+                                STRONG_SHORT_COMPOSITE_MIN,
+                            )
+                            continue
+                        # Audit-B finding 1 (2026-05-01): mirror alpha+breakout
+                        # surgical fix #2 — drop ML from EOD gate. Same diagnosis:
+                        # ML confidence is anti-predictive at the gate. Keep
+                        # _eod_composite (with ML) for ranking below.
+                        if DROP_ML_FROM_GATE:
+                            _eod_eff_conf = (
+                                0.65 * _eod_breakout_proxy + 0.35 * _eod_tension
+                            )
+                        else:
+                            _eod_eff_conf = _eod_composite
+                        if _eod_eff_conf < _MIN_MAIN_CONF:
+                            logger.info(
+                                "EOD live: %s eff_conf=%.3f below gate=%.2f "
+                                "(composite=%.3f, drop_ml=%s)",
+                                _eod_sym, _eod_eff_conf, _MIN_MAIN_CONF,
+                                _eod_composite, DROP_ML_FROM_GATE,
+                            )
+                            continue
+                        # Surgical fix mirror (Audit-A finding 1, 2026-05-01):
+                        # Same bug class as the breakout path's predicted_return
+                        # floor that was removed in ba76256. The 0.003 floor was
+                        # masking weak ML signals. Threshold raised to 1e-4 to
+                        # skip ghost ML outputs (sub-noise-floor); fall back to
+                        # day-return-derived heuristic when ML is silent.
+                        if ml_sig and abs(ml_sig.predicted_return) > 1e-4:
+                            _eod_pred_ret = abs(ml_sig.predicted_return)
+                            _eod_ret_source = "calibrated_breakout"
+                        else:
+                            # Day-return magnitude is the natural continuation
+                            # signal for EOD. Audit-A v2 T2 (2026-05-02):
+                            # the original Phase 1 fallback had `min(0.020, ...)`
+                            # which capped 7%-day-return candidates at the same
+                            # value as 2.1%-day-return ones — the same bug class
+                            # we just removed from the breakout path. Now: pass
+                            # through magnitude with a 0.5% floor (so we don't
+                            # zero-size on tiny drifts) and NO upper cap.
+                            _eod_pred_ret = max(
+                                0.005,
+                                abs(eodc.day_return_pct) / 100.0,
+                            )
+                            _eod_ret_source = "heuristic"
+                        cand_dicts.append({
+                            "symbol": _eod_sym,
+                            "direction": _eod_dir,
+                            "predicted_return": _eod_pred_ret,
+                            "confidence": _eod_composite,
+                            "effective_confidence": _eod_composite,
+                            "breakout_score": _eod_breakout_proxy,
+                            "expected_return_source": _eod_ret_source,
+                            "ranking_score": _eod_composite * abs(eodc.day_return_pct), "fw_strategy": "eod",
+                            "eod_open_price": eodc.open_price,
+                            "eod_day_return_pct": eodc.day_return_pct,
+                            "entry_source_override": (
+                                "eod_momentum_inverse" if _eod_translated
+                                else "eod_momentum"
+                            ),
+                        })
+                        _planned_entries.add(_eod_sym)
+                        self._eod_scanner.mark_fired(eodc.symbol)
+                        self._eod_live_count_today += 1
+                        _eod_added += 1
+                        logger.info(
+                            "EOD LIVE entry candidate: %s dir=%+.0f "
+                            "day_return=%.2f%% composite=%.3f translated=%s "
+                            "strong_short=%s → cand_dicts",
+                            _eod_sym, _eod_dir,
+                            eodc.day_return_pct, _eod_composite,
+                            _eod_translated, _eod_allow_short,
+                        )
+
+                # Ferrari v1: Mean-Reversion LIVE entry path (feature-flagged).
+                # When ORGANISM_MEAN_REVERSION_LIVE_ENABLED=true, MR candidates
+                # produced by this tick's shadow scan flow into cand_dicts
+                # alongside alpha+breakout/ORB/EOD. Same Kelly/sizing/risk
+                # controls. The MR scanner enforces long_only via its
+                # constructor (LONG_ONLY env), so no inverse-ETF translation
+                # is needed (and the strategy does not benefit from shorts
+                # in our universe).
+                _MAX_MR_PER_TICK = 2
+                _mr_added = 0
+                if (
+                    MEAN_REVERSION_LIVE_ENABLED
+                    and self._latest_mr_candidates
+                    and not self._ml_isolation_mode
+                ):
+                    _existing_syms = {d["symbol"] for d in cand_dicts}
+                    for mrc in self._latest_mr_candidates:
+                        if _mr_added >= _MAX_MR_PER_TICK:
+                            break
+                        if mrc.symbol in _existing_syms:
+                            continue
+
+                        # Shared entry gates (sector, fitness, liquidity, etc.)
+                        # MR is long-only by scanner construction; no
+                        # allow_short bypass needed.
+                        _gate_ok, _gate_reason = self._passes_entry_gates(
+                            mrc.symbol, mrc.direction, features_by_symbol,
+                            open_symbols, _planned_entries,
+                            fitness_gate=_MAIN_FITNESS_GATE,
+                            min_trades_for_fitness=_MIN_TRADES_FOR_FITNESS_GATE,
+                            allow_short=False,
+                        )
+                        if not _gate_ok:
+                            logger.info(
+                                "MR live: %s blocked by gate=%s",
+                                mrc.symbol, _gate_reason,
+                            )
+                            continue
+
+                        # MR composite: distance-derived. Mean-reversion is a
+                        # statistical signal (not a directional prediction),
+                        # so we do NOT include ML confidence. Composite is
+                        # purely signal-strength-derived:
+                        #   2.5 ATR → 0.675, 4.0 ATR → 0.90, 5.0 ATR → 1.0.
+                        # Audit-A v2 T3 (2026-05-02): removed the dead
+                        # `max(0.45, ...)` floor that was making the next
+                        # gate-check structurally unreachable. With current
+                        # min_displacement_atr=4.0, composites start at 0.90,
+                        # so the gate filter at _MIN_MAIN_CONF=0.45 is in
+                        # principle never triggered — but kept for paranoia
+                        # in case the threshold gets relaxed.
+                        _mr_composite = min(
+                            1.0,
+                            0.30 + 0.15 * mrc.abs_distance_atr,
+                        )
+
+                        if _mr_composite < _MIN_MAIN_CONF:
+                            logger.info(
+                                "MR live: %s composite=%.3f below gate=%.2f",
+                                mrc.symbol, _mr_composite, _MIN_MAIN_CONF,
+                            )
+                            continue
+
+                        # Predicted return: derived from target_price
+                        # (target_price - current_price)/current_price * direction.
+                        # This IS the strategy's expected gross return; no
+                        # ML estimate involved. Honest, signal-derived.
+                        if mrc.current_price > 0:
+                            _mr_pred_ret = abs(
+                                (mrc.target_price - mrc.current_price)
+                                / mrc.current_price
+                            )
+                        else:
+                            _mr_pred_ret = 0.005  # safety fallback
+                        _mr_ret_source = "mean_reversion"
+
+                        cand_dicts.append({
+                            "symbol": mrc.symbol,
+                            "direction": mrc.direction,
+                            "predicted_return": _mr_pred_ret,
+                            "confidence": _mr_composite,
+                            "effective_confidence": _mr_composite,
+                            # MR is not a breakout; report neutral 0.5 for
+                            # any downstream consumer expecting this field.
+                            "breakout_score": 0.5,
+                            "expected_return_source": _mr_ret_source,
+                            # Rank by composite × distance — strongest
+                            # displacement first.
+                            "ranking_score": (
+                                _mr_composite * mrc.abs_distance_atr
+                            ), "fw_strategy": "mean_reversion",
+                            # MR-specific fields for telemetry / sizing
+                            "mr_vwap": mrc.vwap,
+                            "mr_target_price": mrc.target_price,
+                            "mr_stop_price": mrc.stop_price,
+                            "mr_distance_atr": mrc.distance_atr,
+                            "mr_expected_r_r": mrc.expected_r_r,
+                            "entry_source_override": "mean_reversion",
+                        })
+                        _planned_entries.add(mrc.symbol)
+                        self._mean_reversion_scanner.mark_fired(
+                            mrc.symbol, self._now_fn(),
+                        )
+                        self._mr_live_count_today += 1
+                        _mr_added += 1
+                        logger.info(
+                            "MR LIVE entry candidate: %s dir=%+.0f "
+                            "dist=%.2fATR composite=%.3f rr=%.2f → cand_dicts",
+                            mrc.symbol, mrc.direction,
+                            mrc.abs_distance_atr, _mr_composite,
+                            mrc.expected_r_r,
+                        )
+
+                cand_dicts = self._rank_candidates(cand_dicts, regime)
 
                 open_slots = MAX_OPEN_POSITIONS - len(open_symbols)
                 cand_dicts = cand_dicts[: max(0, open_slots)]
                 # C2 (improve8): Max 2 new symbols per tick
                 cand_dicts = cand_dicts[:2]
-                # Also cap by burst remaining
+                # Cap by remaining hourly and burst capacity after any
+                # same-tick pyramid adds. The pre-loop throttle gate blocks
+                # future ticks, but without this per-batch cap multiple
+                # same-tick entries can slip through before their timestamps
+                # are visible to the next tick.
+                _entry_cap_ts = self._time_fn()
+                self._entry_timestamps = [
+                    t for t in self._entry_timestamps if _entry_cap_ts - t < 3600
+                ]
+                self._entry_timestamps_15m = [
+                    t for t in self._entry_timestamps_15m if _entry_cap_ts - t < 900
+                ]
+                _hourly_remaining = max(
+                    0,
+                    self._dynamic_max_entries_per_hour - len(self._entry_timestamps),
+                )
+                _burst_remaining = max(
+                    0,
+                    self._MAX_ENTRIES_15M - len(self._entry_timestamps_15m),
+                )
+                self._last_burst_remaining = _burst_remaining
+                cand_dicts = cand_dicts[:_hourly_remaining]
+                # Also cap by burst remaining.
                 cand_dicts = cand_dicts[:max(0, _burst_remaining)]
 
                 # 7b. MISSINGNESS GATE — block entries when feature data is
@@ -2041,21 +5088,23 @@ class OrganismLiveEngine:
                     _filtered.append(cd)
                 cand_dicts = _filtered
                 result.signals_generated = len(cand_dicts)
+                self._last_live_candidates_pre_sizing = len(cand_dicts)
 
                 # Store gate-level rejection counts for telemetry
                 _rej_counts["missingness"] = _rej_missingness
                 self._last_gate_rejections = dict(_rej_counts)
 
-                # Log signal activity
-                for cd in cand_dicts[:10]:
-                    result.activity.append(ActivityEvent(
-                        event_type="signal",
-                        symbol=cd["symbol"],
-                        message=f"{'BUY' if cd['direction'] > 0 else 'SELL'} signal: {cd['symbol']} "
-                                f"(confidence={cd['confidence']:.2f}, breakout={cd['breakout_score']:.2f})",
-                        details=cd,
-                        timestamp=now_iso,
-                    ))
+                self._record_candidate_evidence(
+                    cand_dicts + _defensive_filtered_cand_dicts,
+                    regime=regime,
+                    now_iso=now_iso,
+                )
+
+                self._record_signal_activity(
+                    result,
+                    cand_dicts,
+                    now_iso=now_iso,
+                )
 
                 # 8. SIZE POSITIONS (Kelly)
                 drawdown = (
@@ -2071,36 +5120,25 @@ class OrganismLiveEngine:
                         if self._streaming_provider is not None
                         else None
                     ),
-                    trade_count=len(self._all_trades),
+                    # V4 R-F-8 (2026-05-02): Kelly's trade_count gates
+                    # learning-mode-vs-production sizing; reconciliation
+                    # bookkeeping should not advance the regime-promote.
+                    trade_count=len(self._strategy_trades()),
+                    fixed_risk_mode=self._fixed_risk_sizing_mode,
+                    rank_policy=self._rank_policy_effective(),
                 )
                 self._last_kelly_sizes = sizes
 
                 # Wire sizer-level rejections into gate telemetry
-                _sizer_rejects = getattr(self.kelly_sizer, "_exploration_rejects", [])
-                _rej_cost_gate = sum(1 for r in _sizer_rejects if r.get("reason") == "weight_too_small")
-                _rej_min_notional = sum(1 for r in _sizer_rejects if r.get("reason") == "below_min_notional")
-                self._last_gate_rejections["cost_gate"] = _rej_cost_gate
-                self._last_gate_rejections["min_notional"] = _rej_min_notional
+                self._record_sizer_rejections()
+                self._last_no_order_reason = self._infer_no_order_reason(
+                    result,
+                    sizes_count=len(sizes),
+                )
 
                 # 8b. INTRADAY SEASONALITY FILTER — reduce allocation
                 # during first/last 15 min (highest volatility, worst fills)
-                if self._is_intraday and sizes:
-                    _now = self._now_fn()
-                    try:
-                        import zoneinfo
-                        now_et = _now.astimezone(zoneinfo.ZoneInfo("America/New_York"))
-                    except Exception:
-                        now_et = _now
-                    hhmm = now_et.hour * 100 + now_et.minute
-                    if 1545 <= hhmm <= 1600:
-                        for sz in sizes:
-                            sz.shares = max(1, int(sz.shares * 0.6))
-                            sz.notional = sz.notional * 0.6
-                            sz.target_weight = sz.target_weight * 0.6
-                        logger.info(
-                            "Seasonality filter: reduced allocation 40%% (time=%d)",
-                            hhmm,
-                        )
+                self._apply_intraday_seasonality_filter(sizes)
 
                 # 9. SUBMIT ENTRY ORDERS
                 # Re-check positions right before ordering to catch partial
@@ -2111,7 +5149,43 @@ class OrganismLiveEngine:
                 except Exception:
                     fresh_open = open_symbols
 
+                # V12 W72 / DD5-2: route through the canonical helper from
+                # backend.organism.regime instead of carrying a private
+                # parallel set.  Pre-V12 this was
+                # ``_INVERSE_ETFS_CHOP_SUPPRESSED = {"PSQ", "SH"}`` which
+                # silently diverged from regime.py's
+                # ``_INVERSE_ETFS = {"SH", "PSQ", "DOG", "RWM"}`` —
+                # DOG and RWM were never suppressed in chop even though
+                # they exhibit the same regime-flip pattern.  Wave-60
+                # added ``is_inverse_etf()`` as the single source of
+                # truth; this commit deletes the parallel set so all
+                # callers agree.
+                from backend.organism.regime import is_inverse_etf as _is_inverse_etf
+
                 for sz in sizes:
+                    # EXPERIMENT 2: suppress inverse ETF entries in chop.
+                    # Evidence: Apr 7-10 baseline shows PSQ/SH have 0% win
+                    # rate across 6 trades (-$28.54) in chop. 4/6 never went
+                    # green. The improve9 inverse-ETF logic was intended for
+                    # trending_down hedging, not chop entries.
+                    if (
+                        _is_inverse_etf(sz.symbol)
+                        and regime == "chop"
+                    ):
+                        logger.info(
+                            "Exp2: inverse ETF entry suppressed in chop: "
+                            "%s regime=%s confidence=%.3f reason=inverse_etf_suppressed_chop",
+                            sz.symbol, regime, sz.confidence,
+                        )
+                        result.activity.append(ActivityEvent(
+                            event_type="skip",
+                            symbol=sz.symbol,
+                            message=f"Exp2: {sz.symbol} entry suppressed — inverse ETF in chop regime",
+                            details={"reason": "inverse_etf_suppressed_chop", "regime": str(regime)},
+                            timestamp=now_iso,
+                        ))
+                        continue
+
                     # Skip if position already exists (e.g. from partial fill
                     # on a cancelled order that the earlier check missed)
                     # Also enforce MAX_OPEN_POSITIONS within this tick
@@ -2124,27 +5198,78 @@ class OrganismLiveEngine:
                     initial_shares = self.pyramider.initial_shares(sz.shares)
                     if initial_shares < 1:
                         initial_shares = sz.shares
+
+                    # ── Per-trade notional cap ──────────────────
+                    if MAX_NOTIONAL_PER_TRADE > 0:
+                        _current_price = float(
+                            features_by_symbol.get(sz.symbol, pd.DataFrame({"close": [0]}))
+                            ["close"].iloc[-1]
+                        ) if sz.symbol in features_by_symbol else 0
+                        if _current_price > 0:
+                            _notional = initial_shares * _current_price
+                            if _notional > MAX_NOTIONAL_PER_TRADE:
+                                # Audit-H finding H-3 (2026-05-02): the previous
+                                # `max(1, int(...))` floor produced 1 share even
+                                # when the cap couldn't fit a single share at
+                                # the current price. A $50 cap on a $1000 stock
+                                # → 1 share = $1000 of risk = 20× over cap.
+                                # Now: if cap < 1 share, SKIP the trade (better
+                                # to miss an entry than to violate notional cap
+                                # by 20×).
+                                _capped = int(MAX_NOTIONAL_PER_TRADE / _current_price)
+                                if _capped < 1:
+                                    logger.warning(
+                                        "Notional cap blocks entry: %s "
+                                        "current_price=$%.2f exceeds cap "
+                                        "$%.0f (1 share would be %.1fx over). "
+                                        "Skipping entry.",
+                                        sz.symbol, _current_price,
+                                        MAX_NOTIONAL_PER_TRADE,
+                                        _current_price / MAX_NOTIONAL_PER_TRADE,
+                                    )
+                                    continue
+                                logger.info(
+                                    "Notional cap: %s capped %d→%d shares "
+                                    "($%.0f→$%.0f, limit=$%.0f)",
+                                    sz.symbol, initial_shares, _capped,
+                                    _notional, _capped * _current_price,
+                                    MAX_NOTIONAL_PER_TRADE,
+                                )
+                                initial_shares = _capped
+
                     try:
+                        _entry_source, _strategy_id = self._entry_identity_from_size(sz)
                         order_result = await self._submit_entry_order(
                             sz.symbol,
                             initial_shares,
                             direction=sz.direction,
                             confidence=sz.confidence,
                             reason="organism_entry",
+                            strategy_id=_strategy_id,
+                            entry_source=_entry_source,
                         )
 
-                        # Use filled qty from broker response when available
-                        # (partial fills may occur)
+                        # V4 H-2 / Wave-16c (2026-05-02): the sync
+                        # `submit_symbol_order` response intentionally
+                        # carries no fill data — the broker submission
+                        # is async (sync response → outbox → broker →
+                        # WS `_on_trade_update` → DB row). The previous
+                        # `order_result.get("filled_qty")` read was dead
+                        # code: `filled_qty` is never present in the
+                        # sync result. Partial fills are correctly
+                        # handled in `_reconcile_fills` from the DB
+                        # `orders.filled_qty` column. Use `initial_shares`
+                        # as the optimistic fill estimate; reconciliation
+                        # will adjust on the next tick.
                         filled_shares = initial_shares
-                        if isinstance(order_result, dict):
-                            filled_qty = order_result.get("filled_qty")
-                            if filled_qty:
-                                filled_shares = max(1, int(float(filled_qty)))
 
                         result.orders_submitted += 1
                         fresh_open.add(sz.symbol)  # Track to enforce MAX_OPEN_POSITIONS within tick
                         # Mark as pending so we don't re-submit next tick
                         self._pending_entry[sz.symbol] = self._tick_count
+                        # CORE-011: track order_id for broker-level cancellation
+                        if isinstance(order_result, dict) and order_result.get("order_id"):
+                            self._pending_entry_order_ids[sz.symbol] = order_result["order_id"]
                         # Fix E: Record entry timestamp for hourly throttle
                         _entry_ts = self._time_fn()
                         self._entry_timestamps.append(_entry_ts)
@@ -2202,24 +5327,48 @@ class OrganismLiveEngine:
                                 lowest_price=price,
                             )
 
-                            # Track entry metadata for TradeRecord
-                            # Determine entry source from breakout score
-                            _entry_source = "alpha"
-                            if sz.breakout_score >= 0.55 and (
-                                not hasattr(sz, 'predicted_return') or abs(sz.predicted_return) < 0.003
-                            ):
-                                _entry_source = "breakout"
-                            elif sz.breakout_score >= 0.4:
-                                _entry_source = "alpha+breakout"
+                            # Track entry metadata for TradeRecord.
                             self._entry_metadata[sz.symbol] = {
                                 "entry_price": price,
                                 "entry_tick": self._tick_count,
                                 "entry_time": self._time_fn(),
+                                "entry_submitted_at": (
+                                    self._now_fn().astimezone(UTC).isoformat()
+                                ),
+                                "entry_order_id": (
+                                    str(order_result.get("order_id"))
+                                    if (
+                                        isinstance(order_result, dict)
+                                        and order_result.get("order_id")
+                                    )
+                                    else ""
+                                ),
                                 "direction": sz.direction,
                                 "filled_shares": filled_shares,
                                 "predicted_return": predicted_return,
+                                # Audit 2026-06-11 (measurement integrity):
+                                # recover the SIGNED prediction + provenance
+                                # from the original candidate (the sizer
+                                # abs()es predicted_return).
+                                "predicted_return_signed": next(
+                                    (
+                                        c.get("predicted_return_signed")
+                                        for c in cand_dicts
+                                        if c.get("symbol") == sz.symbol
+                                    ),
+                                    None,
+                                ),
+                                "ml_spoke": next(
+                                    (
+                                        bool(c.get("ml_spoke"))
+                                        for c in cand_dicts
+                                        if c.get("symbol") == sz.symbol
+                                    ),
+                                    False,
+                                ),
                                 "confidence": sz.confidence,
                                 "entry_source": _entry_source,
+                                "strategy_id": _strategy_id,
                                 "regime_at_entry": regime,
                             }
 
@@ -2227,6 +5376,11 @@ class OrganismLiveEngine:
                         result.errors.append(
                             f"Entry order failed for {sz.symbol}: {e}"
                         )
+
+                self._last_no_order_reason = self._infer_no_order_reason(
+                    result,
+                    sizes_count=len(sizes),
+                )
 
                 # 9b. EXPLORATION BUCKET — REMOVED (improve9 hardening)
                 # The exploration execution path submitted live orders for
@@ -2238,7 +5392,7 @@ class OrganismLiveEngine:
             await self._reconcile_fills(features_by_symbol)
 
             # ── Step 11: Retrain/evolve (gated) ────────────────
-            if not entries_blocked:
+            if not self._entries_blocked:
                 # 11. PERIODIC RETRAIN + EVOLVE (non-blocking background training)
                 self._bars_since_retrain += 1
 
@@ -2277,6 +5431,7 @@ class OrganismLiveEngine:
                             breakout_scanner=self.breakout_scanner,
                             kelly_sizer=self.kelly_sizer,
                             exit_engine=self.exit_engine,
+                            total_trades=len(self._all_trades),
                         )
                         self._bg_training_metadata = {
                             "status": "completed",
@@ -2284,6 +5439,10 @@ class OrganismLiveEngine:
                             "duration_s": train_result.duration_s,
                             "last_trained_tick": self._tick_count,
                         }
+                        # Persist evaluation event into learner history (J5)
+                        _bg_eval_event = self._bg_trainer.get_last_evaluation_event()
+                        if _bg_eval_event:
+                            self.learner.state.evaluation_events.append(_bg_eval_event)
                         self.governance.record_change()
                         result.activity.append(ActivityEvent(
                             event_type="retrain",
@@ -2298,15 +5457,15 @@ class OrganismLiveEngine:
                             },
                             timestamp=now_iso,
                         ))
-                    elif done and train_result:
-                        # Background training failed — log error and fall back
-                        # to synchronous training so the model still gets updated
+                    elif done and train_result and train_result.error:
+                        # True training error — fall back to synchronous retrain.
+                        # No evaluation event: training failed before quality gate.
                         logger.warning(
-                            "Background training rejected/failed: %s — falling back to sync",
+                            "Background training failed: %s — falling back to sync",
                             train_result.error,
                         )
                         self._bg_training_metadata = {
-                            "status": "rejected",
+                            "status": "error",
                             "error": train_result.error,
                             "last_trained_tick": self._tick_count,
                         }
@@ -2315,6 +5474,37 @@ class OrganismLiveEngine:
                             logger.info("Synchronous fallback retrain completed")
                         except Exception as e:
                             logger.warning("Sync retrain fallback also failed: %s", e)
+                    elif done and train_result:
+                        # Quality-gate rejection — model trained but didn't pass
+                        # the acceptance bar. Do NOT fall back to sync retrain;
+                        # let the next scheduled retrain attempt naturally.
+                        logger.info(
+                            "Background training model rejected: %s",
+                            train_result.rejection_reason,
+                        )
+                        self._bg_training_metadata = {
+                            "status": "rejected",
+                            "rejection_reason": train_result.rejection_reason,
+                            "train_metrics": train_result.train_metrics,
+                            "duration_s": train_result.duration_s,
+                            "last_trained_tick": self._tick_count,
+                        }
+                        # Persist evaluation event into learner history (J5)
+                        _bg_eval_event = self._bg_trainer.get_last_evaluation_event()
+                        if _bg_eval_event:
+                            self.learner.state.evaluation_events.append(_bg_eval_event)
+                        result.activity.append(ActivityEvent(
+                            event_type="retrain",
+                            message=f"Background model rejected by quality gate "
+                                    f"(duration={train_result.duration_s:.1f}s)",
+                            details={
+                                "background": True,
+                                "rejection_reason": train_result.rejection_reason,
+                                "train_metrics": train_result.train_metrics,
+                                "duration_s": train_result.duration_s,
+                            },
+                            timestamp=now_iso,
+                        ))
                 elif self._bars_since_retrain >= _retrain_threshold:
                     self._bars_since_retrain = 0
                     try:
@@ -2325,6 +5515,9 @@ class OrganismLiveEngine:
                             signal_gen=self.signal_gen,
                             evolution_engine=self.evolution_engine,
                             evolved_params=self.evolved_params,
+                            # V4 R-F-8 (2026-05-02): evolution-freeze
+                            # threshold is a strategy-trade count.
+                            total_trades=len(self._strategy_trades()),
                         )
                         self._bg_training_metadata["status"] = "training"
                         self._bg_training_started_tick = self._tick_count
@@ -2378,14 +5571,11 @@ class OrganismLiveEngine:
             logger.exception("Organism live tick failed")
             result.errors.append(f"Live tick error: {e}")
 
-        # Update equity curve
-        try:
-            eq = await self._get_equity()
-            self._equity_curve.append(eq)
-        except Exception:
-            pass
+        # V13.1 cleanup: extracted post-tick equity retention.
+        await self._stage_update_equity_curve()
 
-        result.duration_s = time.time() - t0
+        # V6 X-2 / Wave-20b (2026-05-03): use injected clock for delta.
+        result.duration_s = self._time_fn() - t0
 
         # ── Phase 3.5: Export Prometheus metrics ─────────────────
         if _PROMETHEUS_AVAILABLE:
@@ -2430,6 +5620,12 @@ class OrganismLiveEngine:
         self._check_tick_invariants(
             broker_positions=getattr(self, "_last_positions", None),
         )
+
+        # ── C1-C5: Away-mode watchdog checks ─────────────────────
+        try:
+            self._update_watchdog_state(result)
+        except Exception:
+            pass  # Watchdog must never break the tick loop
 
         return result
 
@@ -2640,6 +5836,9 @@ class OrganismLiveEngine:
             passed_fitness_gate=_above_alpha - rej.get("fitness_gate", 0),
             passed_cooldown=_above_alpha - rej.get("exit_cooldown", 0) - rej.get("pending_entry", 0),
             passed_position_limit=_above_alpha - rej.get("open_position", 0),
+            live_candidates_pre_sizing=getattr(
+                self, "_last_live_candidates_pre_sizing", 0
+            ),
             kelly_sized=len(snap.kelly_details),
             orders_submitted=result.orders_submitted,
             # Gate-level rejection counters
@@ -2654,12 +5853,28 @@ class OrganismLiveEngine:
             rejected_by_missingness=rej.get("missingness", 0),
             rejected_by_cost_gate=rej.get("cost_gate", 0),
             rejected_by_min_notional=rej.get("min_notional", 0),
+            rejected_by_direction_zero=rej.get("direction_zero", 0),
+            rejected_by_below_main_conf=rej.get("below_main_conf", 0),
+            rejected_by_below_expl_conf=rej.get("below_expl_conf", 0),
+            rejected_by_defensive_filter=rej.get("defensive_filter", 0),
+            rejected_by_sizer_invalid=rej.get("sizer_invalid", 0),
             entries_blocked_reason=getattr(self, "_last_entries_blocked_reason", ""),
+            no_order_reason=(
+                getattr(self, "_last_no_order_reason", "")
+                or self._infer_no_order_reason(result)
+            ),
             learning_mode=self._is_learning_mode,
             effective_max_entries_per_hour=self._dynamic_max_entries_per_hour,
             effective_fitness_gate=getattr(self, "_last_eff_fitness_gate", 0.45),
             effective_confidence_gate=getattr(self, "_last_eff_conf_gate", 0.30),
             burst_cap_remaining=getattr(self, "_last_burst_remaining", 4),
+            trading_phase=str(self._trading_phase.get("phase", "")),
+            guarded_mode=self._is_guarded_production_mode,
+            ml_isolation_mode=self._ml_isolation_mode,
+            fixed_risk_sizing=self._fixed_risk_sizing_mode,
+            promotion_blockers=list(
+                self._trading_phase.get("promotion_blockers", [])
+            ),
         )
 
         return snap
@@ -2702,6 +5917,16 @@ class OrganismLiveEngine:
                             "direction": getattr(lvl, "direction", 1.0),
                             "predicted_return": 0.01,
                             "confidence": 0.5,
+                            "strategy_id": "alpha_baseline",
+                            # Audit 2026-06-11 (measurement integrity): the
+                            # stub previously omitted these, emitting rows
+                            # with empty source/regime that polluted the
+                            # per-source attribution as 'unknown'.
+                            "entry_source": "stub_recovered",
+                            "regime_at_entry": getattr(
+                                self, "_last_regime", "unknown"
+                            ) or "unknown",
+                            "ml_spoke": False,
                         }
 
             # INV-2: _tick_count must be positive after first tick
@@ -2737,8 +5962,21 @@ class OrganismLiveEngine:
                     del self._pending_entry[sym]
 
             # INV-5: Run continuous diagnostics every 100 ticks
+            # Audit-J finding J-2 (2026-05-02): keep a strong reference so
+            # the task can't be GC'd mid-run. Stored on a set so multiple
+            # in-flight diag tasks don't overwrite each other; remove on
+            # done callback. Errors are also captured here.
             if self._tick_count > 0 and self._tick_count % 100 == 0:
-                asyncio.create_task(self._run_continuous_diagnostics())
+                if not hasattr(self, "_diag_tasks"):
+                    self._diag_tasks: set[asyncio.Task] = set()
+                _diag_t = asyncio.create_task(self._run_continuous_diagnostics())
+                self._diag_tasks.add(_diag_t)
+                _diag_t.add_done_callback(self._diag_tasks.discard)
+                _diag_t.add_done_callback(
+                    lambda t: t.exception() and logger.error(
+                        "Continuous diagnostics task error: %s", t.exception()
+                    )
+                )
 
             # INV-6 (A6 improve8): Broker has position but no tracking
             if _broker_syms:
@@ -2778,195 +6016,130 @@ class OrganismLiveEngine:
             logger.debug("Continuous diagnostics error (non-fatal): %s", e)
 
     # ═════════════════════════════════════════════════════════════
+    #  C1-C5: AWAY-MODE WATCHDOG
+    # ═════════════════════════════════════════════════════════════
+
+    def _update_watchdog_state(self, result: LiveTickResult) -> None:
+        """Update all watchdog states at the end of each tick."""
+        # C1: No-trade watchdog
+        # Apr-7 P0: drive from the authoritative monotonic counter
+        # (`_total_orders_submitted`) so the watchdog can never disagree
+        # with real broker submissions even if result.orders_submitted
+        # is missed at a callsite.
+        if self._total_orders_submitted > self._watchdog_last_total_orders:
+            self._watchdog_last_order_tick = self._tick_count
+            self._watchdog_last_total_orders = self._total_orders_submitted
+            self._watchdog_zero_candidates_ticks = 0
+        elif result.orders_submitted > 0:
+            # Belt-and-suspenders: any local bump also counts
+            self._watchdog_last_order_tick = self._tick_count
+            self._watchdog_zero_candidates_ticks = 0
+        elif result.signals_generated == 0:
+            self._watchdog_zero_candidates_ticks += 1
+
+        ticks_since_order = self._tick_count - self._watchdog_last_order_tick
+        # ~360 ticks = 1 hour at 10s interval
+        if ticks_since_order > 2160:  # ~6 hours with no orders
+            self._watchdog_state = "WARNING_NO_TRADES"
+            if ticks_since_order > 2160 * 2:  # ~12+ hours
+                self._watchdog_state = "CRITICAL_MULTI_SESSION"
+                logger.critical(
+                    "C1 WATCHDOG: No orders for %d ticks (>12h) — system may be inert",
+                    ticks_since_order,
+                )
+                # V6 V-T-6 / Wave-21 (2026-05-03): alert on C1 watchdog
+                # critical state. Was log-only; operators couldn't see
+                # the system going inert.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
+                    )
+                    _t = ticks_since_order
+                    dispatch_alert_from_thread(
+                        lambda: send_alert(
+                            AlertCategory.SYSTEM_ERROR,
+                            AlertSeverity.CRITICAL,
+                            "C1 Watchdog: System Inert",
+                            f"No orders submitted for {_t} ticks (>12h). "
+                            f"System may be inert; investigate signal pipeline.",
+                            details={"ticks_since_order": _t},
+                        )
+                    )
+                except Exception:
+                    pass
+            else:
+                logger.warning(
+                    "C1 WATCHDOG: No orders for %d ticks (>6h)",
+                    ticks_since_order,
+                )
+        else:
+            self._watchdog_state = "OK"
+
+        # C3: Universe drift (every ~360 ticks to avoid overhead)
+        if self._tick_count % 360 == 0:
+            self._watchdog_universe_drift = self._check_universe_drift()
+            if self._watchdog_universe_drift.get("protected_missing"):
+                logger.warning(
+                    "C3 WATCHDOG: Protected symbols missing from active universe: %s",
+                    self._watchdog_universe_drift["protected_missing"],
+                )
+
+        # C4: Brain save staleness
+        ticks_since_save = self._tick_count - self._watchdog_last_brain_save_tick
+        if ticks_since_save > 1080:  # ~3 hours
+            logger.warning(
+                "C4 WATCHDOG: Brain not saved for %d ticks (>3h) — last save at tick %d",
+                ticks_since_save, self._watchdog_last_brain_save_tick,
+            )
+
+        # C5: Attach unified watchdog state to tick result
+        result.watchdog = self.get_watchdog_state()
+
+    def _check_universe_drift(self) -> dict[str, Any]:
+        """C3: Check if runtime universe diverges from configured base."""
+        base = set(s.strip().upper() for s in LIVE_UNIVERSE_CSV.split(",") if s.strip())
+        active = set(self._universe)
+        missing = base - active
+        added = active - base
+        protected_missing = set(PROTECTED_SYMBOLS) - active
+        return {
+            "base_size": len(base),
+            "active_size": len(active),
+            "missing_from_base": sorted(missing),
+            "added_beyond_base": sorted(added),
+            "protected_missing": sorted(protected_missing),
+            "drift_detected": bool(missing or protected_missing),
+        }
+
+    def get_watchdog_state(self) -> dict[str, Any]:
+        """C5: Return unified watchdog state for all away-mode monitors."""
+        return {
+            "no_trade": {
+                "state": self._watchdog_state,
+                "ticks_since_last_order": self._tick_count - self._watchdog_last_order_tick,
+                "zero_candidate_ticks": self._watchdog_zero_candidates_ticks,
+            },
+            "equity_fallback": {
+                "total_fallback_count": self._watchdog_equity_fallback_count,
+                "current_streak": self._watchdog_equity_fallback_streak,
+            },
+            "universe_drift": self._watchdog_universe_drift,
+            "brain_save": {
+                "ticks_since_last_save": self._tick_count - self._watchdog_last_brain_save_tick,
+                "healthy": (self._tick_count - self._watchdog_last_brain_save_tick) < 1080,
+            },
+        }
+
+    # ═════════════════════════════════════════════════════════════
     #  DATA PIPELINE
     # ═════════════════════════════════════════════════════════════
 
-    async def _fetch_and_compute_features(
-        self,
-    ) -> dict[str, pd.DataFrame]:
-        """Fetch latest bars and compute ML features for the universe.
-
-        Uses VersionedFeatureStore when available (Phase 3.3),
-        falling back to raw compute_ml_features otherwise.
-        Phase 5: Handles larger dynamic universe with concurrency control.
-        """
-        features_by_symbol: dict[str, pd.DataFrame] = {}
-        spy_df = None
-        _concurrency = asyncio.Semaphore(10)  # Max 10 parallel bar fetches
-        _streaming_active = self._streaming_provider is not None
-
-        # Fetch SPY first (needed for cross-asset features)
-        # When streaming, SPY is already buffered so this is instant
-        spy_df = await self._fetch_bars("SPY")
-
-        def _compute_features_sync(
-            raw_df: pd.DataFrame, sym: str, spy_ref: pd.DataFrame | None,
-        ) -> pd.DataFrame:
-            """CPU-bound feature computation — runs in thread when streaming."""
-            if self._feature_store is not None:
-                feats, _snapshot = self._feature_store.compute_features(
-                    raw_df, symbol=sym,
-                )
-                feats_ml = compute_ml_features(
-                    raw_df,
-                    spy_df=spy_ref if sym != "SPY" else None,
-                    bars_per_day=self._bars_per_day,
-                )
-                feats = feats.reset_index(drop=True)
-                feats_ml = feats_ml.reset_index(drop=True)
-                n_min = min(len(feats), len(feats_ml))
-                feats = feats.iloc[-n_min:].reset_index(drop=True)
-                feats_ml = feats_ml.iloc[-n_min:].reset_index(drop=True)
-                for col in feats.columns:
-                    if col not in feats_ml.columns:
-                        feats_ml[col] = feats[col].values
-                feats = feats_ml
-            else:
-                feats = compute_ml_features(
-                    raw_df,
-                    spy_df=spy_ref if sym != "SPY" else None,
-                    bars_per_day=self._bars_per_day,
-                )
-                feats = feats.reset_index(drop=True)
-
-            # Preserve OHLCV columns
-            n_feats = len(feats)
-            for col in ["open", "high", "low", "close", "volume"]:
-                if col in raw_df.columns and col not in feats.columns:
-                    feats[col] = raw_df[col].values[-n_feats:]
-
-            # Phase 4.2: Multi-timeframe features
-            feats = add_multi_timeframe_features(feats)
-            return feats
-
-        async def _fetch_one(sym: str) -> tuple[str, pd.DataFrame | None]:
-            async with _concurrency:
-                try:
-                    if sym == "SPY" and spy_df is not None:
-                        raw_df = spy_df
-                    else:
-                        raw_df = await self._fetch_bars(sym)
-
-                    if raw_df is None or len(raw_df) < MIN_BARS:
-                        return sym, None
-
-                    # When streaming is active, offload CPU-bound work
-                    # to a thread so the event loop stays responsive
-                    if _streaming_active:
-                        feats = await asyncio.to_thread(
-                            _compute_features_sync, raw_df, sym, spy_df,
-                        )
-                    else:
-                        feats = _compute_features_sync(raw_df, sym, spy_df)
-
-                    return sym, feats
-                except Exception as e:
-                    logger.warning("Failed to fetch/compute %s: %s", sym, e)
-                    return sym, None
-
-        # Fetch all universe symbols concurrently (semaphore-limited)
-        tasks = [_fetch_one(sym) for sym in self._universe]
-        results = await asyncio.gather(*tasks)
-        for sym, feats in results:
-            if feats is not None:
-                features_by_symbol[sym] = feats
-
-        # Also fetch features for open position symbols that aren't in
-        # the universe.  Without this, exit checks are silently skipped
-        # for positions whose symbols rotated out of the universe.
-        try:
-            current_positions = await self._positions_service.get_all_positions()
-            position_syms_missing = [
-                sym for sym in current_positions
-                if sym not in features_by_symbol
-            ]
-            if position_syms_missing:
-                pos_tasks = [_fetch_one(sym) for sym in position_syms_missing]
-                pos_results = await asyncio.gather(*pos_tasks)
-                for sym, feats in pos_results:
-                    if feats is not None:
-                        features_by_symbol[sym] = feats
-                logger.info(
-                    "Fetched features for %d position symbols outside universe: %s",
-                    len(position_syms_missing),
-                    position_syms_missing,
-                )
-        except Exception as e:
-            logger.warning("Failed to fetch position symbol features: %s", e)
-
-        return features_by_symbol
-
-    async def _fetch_bars(self, symbol: str) -> pd.DataFrame | None:
-        """Fetch historical bars for a single symbol.
-
-        When a streaming provider is active, returns bars from the
-        in-memory ring buffer (zero latency).  Falls back to REST
-        if streaming has no data for this symbol.
-
-        Handles both sync clients (AlpacaClient) and async clients
-        (AlpacaDataClient) transparently.
-        """
-        # ── Streaming fast-path ──────────────────────────────────
-        if self._streaming_provider is not None:
-            try:
-                df = self._streaming_provider.get_bars(symbol, LIVE_LOOKBACK)
-                if df is not None and not df.empty and len(df) >= MIN_BARS:
-                    return df
-                # Fall through to REST if streaming buffer insufficient
-            except Exception as e:
-                logger.debug("Streaming fallback for %s: %s", symbol, e)
-
-        try:
-            if hasattr(self._data_client, "get_historical_bars_df"):
-                method = self._data_client.get_historical_bars_df
-                if asyncio.iscoroutinefunction(method):
-                    df = await method(
-                        symbol,
-                        lookback=LIVE_LOOKBACK,
-                        timeframe=LIVE_TIMEFRAME,
-                    )
-                else:
-                    df = await asyncio.to_thread(
-                        method,
-                        symbol,
-                        lookback=LIVE_LOOKBACK,
-                        timeframe=LIVE_TIMEFRAME,
-                    )
-            elif hasattr(self._data_client, "get_historical_data"):
-                method = self._data_client.get_historical_data
-                if asyncio.iscoroutinefunction(method):
-                    df = await method(
-                        symbol,
-                        timeframe=LIVE_TIMEFRAME,
-                        limit=LIVE_LOOKBACK,
-                    )
-                else:
-                    df = await asyncio.to_thread(
-                        method,
-                        symbol,
-                        timeframe=LIVE_TIMEFRAME,
-                        limit=LIVE_LOOKBACK,
-                    )
-            else:
-                return None
-
-            if df is None or df.empty:
-                return None
-
-            # Normalize columns
-            col_map = {
-                "Open": "open",
-                "High": "high",
-                "Low": "low",
-                "Close": "close",
-                "Volume": "volume",
-            }
-            df = df.rename(columns=col_map)
-            return df
-
-        except Exception as e:
-            logger.warning("Bar fetch failed for %s: %s", symbol, e)
-            return None
+    # _fetch_and_compute_features / _fetch_bars extracted to
+    # backend/organism/live_engine_data.py::_DataFeederMixin (2026-06-08
+    # decomposition). Still methods of OrganismLiveEngine via inheritance —
+    # getsource, instance-attribute monkeypatching in tests, and all call sites
+    # are unchanged.
 
     # ═════════════════════════════════════════════════════════════
     #  ORDER SUBMISSION
@@ -2975,6 +6148,79 @@ class OrganismLiveEngine:
     # Slippage cap for marketable limit orders (0.1% above ask / below bid)
     _ENTRY_SLIPPAGE_CAP = 0.001
 
+    def _entry_identity_from_size(self, size: Any) -> tuple[str, str]:
+        """Return canonical ``(entry_source, strategy_id)`` for a sized entry."""
+        override = getattr(size, "entry_source_override", None)
+        if override:
+            entry_source = str(override)
+        else:
+            entry_source = "alpha"
+            breakout_score = float(getattr(size, "breakout_score", 0.0) or 0.0)
+            predicted_return = abs(float(getattr(size, "predicted_return", 0.0) or 0.0))
+            if breakout_score >= 0.55 and predicted_return < 0.003:
+                entry_source = "breakout"
+            elif breakout_score >= 0.4:
+                entry_source = "alpha+breakout"
+        return entry_source, infer_strategy_id(
+            entry_source,
+            getattr(size, "strategy_id", ""),
+        )
+
+    def _authorize_live_entry_order(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        confidence: float,
+        strategy_id: str,
+        entry_source: str,
+        reason: str,
+        evidence_tier: int,
+        shadow_only: bool,
+    ) -> None:
+        """Hard governor checkpoint before any live entry order is submitted."""
+        governor = getattr(self, "_strategy_governor", None)
+        if governor is None:
+            governor = StrategyGovernor()
+            self._strategy_governor = governor
+        signal = CandidateSignal(
+            signal_id=(
+                f"live-{getattr(self, '_session_id', 'unknown')}-"
+                f"t{getattr(self, '_tick_count', 0)}-{symbol}-{strategy_id}"
+            ),
+            strategy_id=strategy_id,
+            engine_version=f"{strategy_id}.live_v1",
+            symbol=symbol,
+            side=side,
+            timeframe="1Min",
+            created_at=self._now_fn(),
+            intended_horizon_bars=1,
+            regime=str(getattr(self, "_last_regime", "unknown")),
+            evidence_tier=evidence_tier,
+            shadow_only=shadow_only,
+            confidence=confidence,
+            risk_budget_bps=0.0,
+            features={
+                "entry_source": entry_source,
+                "reason": reason,
+            },
+        )
+        decision = governor.authorize_signal(signal, live_intent=True)
+        if not decision.allowed:
+            logger.warning(
+                "StrategyGovernor blocked live entry: symbol=%s strategy_id=%s "
+                "reason=%s entry_source=%s order_reason=%s",
+                symbol,
+                strategy_id,
+                decision.reason,
+                entry_source,
+                reason,
+            )
+            raise RuntimeError(
+                "StrategyGovernor blocked live entry "
+                f"{symbol}/{strategy_id}: {decision.reason}"
+            )
+
     async def _submit_entry_order(
         self,
         symbol: str,
@@ -2982,6 +6228,10 @@ class OrganismLiveEngine:
         direction: float = 1.0,
         confidence: float = 0.6,
         reason: str = "organism_entry",
+        strategy_id: str = "alpha_baseline",
+        entry_source: str = "alpha",
+        evidence_tier: int = 0,
+        shadow_only: bool = False,
     ) -> dict[str, Any]:
         """Submit an entry order via OrderService.
 
@@ -2992,10 +6242,37 @@ class OrganismLiveEngine:
         direction >= 0 → buy, direction < 0 → sell (short).
         """
         side = "sell" if direction < 0 else "buy"
+        strategy_id = infer_strategy_id(entry_source, strategy_id)
+        self._authorize_live_entry_order(
+            symbol=symbol,
+            side="short" if direction < 0 else "long",
+            confidence=confidence,
+            strategy_id=strategy_id,
+            entry_source=entry_source,
+            reason=reason,
+            evidence_tier=evidence_tier,
+            shadow_only=shadow_only,
+        )
         idem_key = (
             f"organism_{symbol}"
-            f"_{datetime.now(UTC).strftime('%Y%m%d')}"
+            # Audit-K finding K-6 (2026-05-02): use ET trading-day not UTC.
+            # UTC date rolls at 8 PM ET, so an evening order's idempotency
+            # key would be "tomorrow's date" — across a session boundary
+            # the key still uniquely-identifies the order, but the date
+            # component is misleading for log-analysis and forensics.
+            # V5 U-1 / Wave-19 (2026-05-03): route through self._now_fn()
+            # so replay's idempotency keys carry the replay date, not
+            # the deploy wall-clock. (Marker backfill: V6 W found this
+            # site shipped without source attribution — adding now.)
+            f"_{self._now_fn().astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
+            # Audit 2026-06-09 finding 3.5: include intent + side + qty.
+            # Previously a fresh entry and a pyramid add for the same symbol
+            # in the same tick produced IDENTICAL keys (one silently deduped),
+            # and conversely the key couldn't distinguish legitimately
+            # different same-tick intents. ``reason`` is "pyramid_add" for
+            # adds and the entry reason otherwise.
+            f"_{reason}_{side}_q{shares}"
         )
 
         # Try to compute a marketable limit price from live quote
@@ -3017,7 +6294,7 @@ class OrganismLiveEngine:
             except Exception:
                 pass  # Fallback to market order
 
-        return await self._order_service.submit_symbol_order(
+        _entry_result = await self._order_service.submit_symbol_order(
             symbol=symbol,
             side=side,
             qty=shares,
@@ -3030,8 +6307,19 @@ class OrganismLiveEngine:
                 "reason": reason,
                 "confidence": round(confidence, 4),
                 "tick": self._tick_count,
+                "entry_source": entry_source,
+                "strategy_id": strategy_id,
+                "evidence_tier": int(evidence_tier),
             },
         )
+        # Apr-7 P0: authoritative monotonic counter — survives result
+        # field drift. Counts every entry/pyramid order that broker-submit
+        # did not raise on (blocked/rejected dicts are still submissions).
+        try:
+            self._total_orders_submitted += 1
+        except Exception:
+            pass
+        return _entry_result
 
     async def _submit_exit_order(
         self,
@@ -3051,6 +6339,15 @@ class OrganismLiveEngine:
         """
         # Track exit reason for trade attribution
         self._last_exit_reason[symbol] = reason
+        # Audit 2026-06-11 (measurement integrity): mark positions that
+        # scale out in pieces. Per-leg exit accounting does not exist yet —
+        # the eventual single trade row records full size at the FINAL exit
+        # price — so flag the row as approximate for analysis.
+        if "partial" in reason and symbol in self._entry_metadata:
+            try:
+                self._entry_metadata[symbol]["had_partial_exits"] = True
+            except Exception:
+                pass
         side = "buy" if direction < 0 else "sell"
 
         # LONG_ONLY guard: never submit a sell (short-creating) exit when
@@ -3102,8 +6399,22 @@ class OrganismLiveEngine:
         # duplicate exit orders across rapid 10s ticks.
         idem_key = (
             f"organism_exit_{symbol}"
-            f"_{datetime.now(UTC).strftime('%Y%m%d')}"
+            # Audit-K finding K-6 (2026-05-02): use ET trading-day not UTC.
+            # UTC date rolls at 8 PM ET, so an evening order's idempotency
+            # key would be "tomorrow's date" — across a session boundary
+            # the key still uniquely-identifies the order, but the date
+            # component is misleading for log-analysis and forensics.
+            # V5 U-2 / Wave-19 (2026-05-03): route through self._now_fn()
+            # so replay's exit idempotency keys carry the replay date.
+            # (Marker backfill: V6 W found this site shipped without
+            # source attribution — adding now.)
+            f"_{self._now_fn().astimezone(ZoneInfo('America/New_York')).strftime('%Y%m%d')}"
             f"_{self._session_id}_t{self._tick_count}"
+            # Audit 2026-06-09 finding 3.5: include intent + qty so distinct
+            # same-tick exit intents (e.g. a pyramid partial-cut AND a full
+            # stop-loss exit) are not silently deduplicated, while identical
+            # intents still dedup.
+            f"_{reason}_q{shares}"
         )
         result = await self._order_service.submit_symbol_order(
             symbol=symbol,
@@ -3119,11 +6430,21 @@ class OrganismLiveEngine:
                 "tick": self._tick_count,
             },
         )
-        # Capture fill price for trade attribution
-        if isinstance(result, dict):
-            fp = result.get("avg_fill_price")
-            if fp and float(fp) > 0:
-                self._last_exit_fill_price[symbol] = float(fp)
+        # Apr-7 P0: authoritative monotonic counters. Only reach here
+        # after LONG_ONLY guard and a real broker submit attempt.
+        try:
+            self._total_orders_submitted += 1
+            self._total_exits_submitted += 1
+        except Exception:
+            pass
+        # V4 H-2 / Wave-16c (2026-05-02): the sync `submit_symbol_order`
+        # response carries no `avg_fill_price` (the broker submission
+        # is async — sync response → outbox → broker → WS
+        # `_on_trade_update` → DB `orders.avg_fill_price` column). The
+        # previous read was dead code; `_reconcile_fills` already does
+        # the right thing via `_lookup_exit_fill_from_db()`. Keep the
+        # `_last_exit_fill_price` map populated only by the actual
+        # fill-arrival path (handled at reconciliation time).
         return result
 
     # ═════════════════════════════════════════════════════════════
@@ -3161,6 +6482,84 @@ class OrganismLiveEngine:
         current_symbols = set(current_positions.keys())
         tracked_symbols = set(self._entry_metadata.keys())
 
+        # Sync entry prices from broker for tracked positions:
+        # The broker's avg_entry_price is the true cost-weighted fill
+        # average across all pyramid legs, which is authoritative over
+        # the bar-close estimate stored at order-submission time.
+        for sym in current_symbols & tracked_symbols:
+            broker_avg = float(current_positions[sym].get("avg_entry_price", 0))
+            if broker_avg > 0:
+                meta = self._entry_metadata.get(sym)
+                if meta and abs(meta.get("entry_price", 0) - broker_avg) > 0.001:
+                    meta["entry_price"] = broker_avg
+                pyr = self._pyramid_positions.get(sym)
+                if pyr and pyr.layers:
+                    broker_qty = abs(float(current_positions[sym].get("qty", 0)))
+                    if broker_qty > 0 and (
+                        abs(pyr.avg_entry - broker_avg) > 0.001
+                        or pyr.total_shares != int(broker_qty)
+                    ):
+                        old_shares = pyr.total_shares
+                        # V10 DD4-2 / Wave-53 (2026-05-03): preserve the L0
+                        # original entry_price for R-multiple math.  The
+                        # prior implementation collapsed all layers and set
+                        # `entry_price = broker_avg`, which inflated the
+                        # +3R Layer 2 trigger by ~0.5R for any position
+                        # that filled L1 — empirically 0/498 trades reached
+                        # Layer 2 since deploy.  Now: keep layers[0].entry
+                        # for R-mult; if broker qty increased over old, add
+                        # a NEW layer at the increment with its actual fill
+                        # price, NOT a synthetic broker_avg.
+                        l0_entry = pyr.layers[0].entry_price
+                        l0_shares = pyr.layers[0].shares
+                        l0_bar = pyr.layers[0].bar_added
+                        if int(broker_qty) > old_shares:
+                            # Pyramid add filled.  Compute the implied add-
+                            # fill price from broker_avg + qty math:
+                            # broker_avg * broker_qty = l0_entry * l0_shares
+                            # + add_fill_price * (broker_qty - l0_shares)
+                            added = int(broker_qty) - l0_shares
+                            if added > 0:
+                                add_fill = (
+                                    (broker_avg * broker_qty - l0_entry * l0_shares)
+                                    / added
+                                )
+                            else:
+                                add_fill = broker_avg
+                            highest_level = max(lay.level for lay in pyr.layers)
+                            new_level = min(2, highest_level + 1)
+                            pyr.layers = [
+                                PyramidLevel(
+                                    shares=l0_shares,
+                                    entry_price=l0_entry,
+                                    bar_added=l0_bar,
+                                    level=0,
+                                ),
+                                PyramidLevel(
+                                    shares=added,
+                                    entry_price=add_fill,
+                                    bar_added=l0_bar,  # approx; bar_added is for telemetry
+                                    level=new_level,
+                                ),
+                            ]
+                        else:
+                            # Partial close / share mismatch without growth.
+                            # Truncate L0 to broker_qty; preserve entry.
+                            pyr.layers = [PyramidLevel(
+                                shares=int(broker_qty),
+                                entry_price=l0_entry,
+                                bar_added=l0_bar,
+                                level=0,
+                            )]
+                        # H5: Reanchor exit levels from confirmed fill,
+                        # not speculative order-time state
+                        exit_lvl = self._exit_levels.get(sym)
+                        if exit_lvl is not None and int(broker_qty) != old_shares:
+                            self.exit_engine.update_levels_for_pyramid(
+                                exit_lvl, broker_avg,
+                                self._last_regime if self._last_regime != "unknown" else "chop",
+                            )
+
         # Detect closed positions — but skip recently-entered positions
         # whose orders may not have settled at the broker yet.
         candidates = tracked_symbols - current_symbols
@@ -3188,20 +6587,29 @@ class OrganismLiveEngine:
             if meta is None:
                 continue
 
-            # Use real fill price from exit order when available
+            # Use real fill price from exit order when available.
+            # Audit 2026-06-11 (measurement integrity): tag WHICH rung of
+            # the fallback ladder priced this exit. Rows priced from a bar
+            # close or quote (not a broker fill) diverge from realized PnL
+            # and must be identifiable downstream.
             real_fill = self._last_exit_fill_price.pop(sym, None)
             exit_price: float | None = None
+            _price_source = ""
             if real_fill and real_fill > 0:
                 exit_price = real_fill
+                _price_source = "fill"
             else:
                 # Try DB-based fill price (actual filled exit order)
                 exit_price = await self._lookup_exit_fill_from_db(sym)
+                if exit_price is not None:
+                    _price_source = "db_fill"
                 if exit_price is None:
                     # Get last known price for exit — never fall back to entry_price
                     # (that would create phantom 0-PnL trades).
                     feat_df = features_by_symbol.get(sym)
                     if feat_df is not None and len(feat_df) > 0:
                         exit_price = float(feat_df["close"].iloc[-1])
+                        _price_source = "bar_close"
                     else:
                         # Try latest quote from streaming data provider
                         quote = self._data_client.get_latest_quote(sym)
@@ -3209,6 +6617,7 @@ class OrganismLiveEngine:
                         ask = quote.get("ask")
                         if bid and ask and bid > 0 and ask > 0:
                             exit_price = (bid + ask) / 2.0
+                            _price_source = "quote_mid"
                             logger.info(
                                 "Using quote midpoint for %s exit price: $%.2f "
                                 "(no bar features available)",
@@ -3216,8 +6625,10 @@ class OrganismLiveEngine:
                             )
                         elif bid and bid > 0:
                             exit_price = bid
+                            _price_source = "quote_bid"
                         elif ask and ask > 0:
                             exit_price = ask
+                            _price_source = "quote_ask"
 
             if exit_price is None:
                 logger.warning(
@@ -3233,11 +6644,23 @@ class OrganismLiveEngine:
                 continue
 
             direction = meta.get("direction", 1.0)
-            entry_price = meta["entry_price"]
             shares = 0
             pyr = self._pyramid_positions.get(sym)
-            if pyr:
-                shares = sum(l.shares for l in pyr.layers)
+            if pyr and pyr.total_shares > 0:
+                shares = pyr.total_shares
+                # Use cost-weighted average entry from all pyramid legs
+                # instead of stale first-fill price from metadata
+                entry_price = pyr.avg_entry
+            else:
+                entry_price = meta["entry_price"]
+
+            entry_fill = await self._lookup_entry_fill_from_db(sym, meta)
+            if entry_fill is not None:
+                db_entry_price, db_entry_qty = entry_fill
+                if db_entry_price > 0:
+                    entry_price = db_entry_price
+                if db_entry_qty > 0:
+                    shares = int(round(db_entry_qty))
 
             if shares == 0:
                 # Fallback to tracked filled_shares from entry metadata
@@ -3265,18 +6688,51 @@ class OrganismLiveEngine:
             _mae = 0.0
             _bars_held = 0
             _regime_at_entry = meta.get("regime_at_entry", "unknown")
-            _regime_at_exit = getattr(self.regime_detector, "current_regime", "unknown")
+            _regime_at_exit = self._last_regime if self._last_regime != "unknown" else getattr(self.regime_detector, "current_regime", "unknown")
             if _exit_lvl is not None:
                 _bars_held = _exit_lvl.bars_held
                 # MFE: max favorable excursion in dollars
                 _highest = _exit_lvl.highest_favorable
                 _mfe = (_highest - entry_price) * direction * shares
-                # MAE: max adverse excursion (worst unrealized loss)
-                # Use stop_loss distance as proxy for MAE (conservative)
-                _stop_dist = abs(entry_price - _exit_lvl.stop_loss)
-                _mae = _stop_dist * shares
+                # MAE (audit 2026-06-11): use the REAL tracked worst-adverse
+                # price when available; fall back to the legacy
+                # stop-distance proxy only for positions whose levels
+                # predate the worst_adverse tracker.
+                _worst = getattr(_exit_lvl, "worst_adverse", 0.0)
+                if _worst and _worst > 0:
+                    _mae = max(
+                        0.0, (entry_price - _worst) * direction * shares
+                    )
+                else:
+                    _stop_dist = abs(entry_price - _exit_lvl.stop_loss)
+                    _mae = _stop_dist * shares
             _entry_time = meta.get("entry_time", 0)
             _time_in_trade = self._time_fn() - _entry_time if _entry_time > 0 else 0.0
+
+            _exit_reason = self._last_exit_reason.pop(sym, "live_close")
+            # Tag reconciliation adjustments: position disappeared from
+            # broker without a normal exit order.  These are cross-session
+            # carryover cleanups or orphan metadata, not strategy trades.
+            _is_reconciliation = False
+            if _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
+                _exit_reason = "reconciliation_adjustment"
+                _is_reconciliation = True
+                logger.warning(
+                    "Reconciliation adjustment: %s had stale entry metadata "
+                    "(entry=$%.2f) with no broker position or exit fill — "
+                    "tagging as non-strategy PnL",
+                    sym, entry_price,
+                )
+            # Audit-G BUG-G (2026-05-01): also flag orphan-adopted positions
+            # so their exit trades don't pollute learning. The orphan
+            # adoption code sets entry_source="reconciliation_orphan".
+            elif meta.get("entry_source") == "reconciliation_orphan":
+                _is_reconciliation = True
+                logger.info(
+                    "Orphan-adopted position closed: %s pnl=$%.2f "
+                    "(non-strategy artifact)",
+                    sym, pnl,
+                )
 
             trade = TradeRecord(
                 symbol=sym,
@@ -3287,31 +6743,68 @@ class OrganismLiveEngine:
                 exit_bar=self._tick_count,
                 shares=shares,
                 pnl=pnl,
-                exit_reason=self._last_exit_reason.pop(sym, "live_close"),
+                exit_reason=_exit_reason,
                 predicted_return=meta.get("predicted_return", 0),
                 actual_return=actual_return,
                 confidence=meta.get("confidence", 0),
                 is_exploration=_is_exploration,
+                # Audit-G BUG-G (2026-05-01): first-class flag for reconciliation
+                # artifacts. Filtered by all 5+ learning consumers below.
+                is_reconciliation_artifact=_is_reconciliation,
                 entry_source=meta.get("entry_source", ""),
+                strategy_id=meta.get(
+                    "strategy_id",
+                    infer_strategy_id(meta.get("entry_source", "")),
+                ),
                 regime_at_entry=_regime_at_entry,
                 regime_at_exit=_regime_at_exit,
                 mfe=round(_mfe, 2),
                 mae=round(_mae, 2),
                 bars_held_at_exit=_bars_held,
                 time_in_trade_seconds=round(_time_in_trade, 1),
+                closed_at=datetime.fromtimestamp(self._time_fn(), tz=UTC).isoformat() if self._time_fn() > 0 else "",
+                # Audit 2026-06-11 (measurement integrity): fidelity fields.
+                predicted_return_signed=meta.get("predicted_return_signed"),
+                ml_spoke=bool(meta.get("ml_spoke", False)),
+                price_source=_price_source,
+                had_partial_exits=bool(meta.get("had_partial_exits", False)),
             )
             self._all_trades.append(trade)
-            self.learner.record_trade(trade)
+            # Audit-G BUG-G: do NOT feed reconciliation artifacts into the
+            # learner. learner.record_trade() updates Kelly stats,
+            # ML calibration, and trade history used by every learning
+            # consumer downstream. Reconciliation_adjustment is bookkeeping,
+            # not strategy outcome.
+            if not _is_reconciliation:
+                self.learner.record_trade(trade)
+            else:
+                logger.info(
+                    "Skipped learner.record_trade for reconciliation_adjustment: "
+                    "%s pnl=$%.2f (non-strategy artifact)",
+                    sym, pnl,
+                )
 
             # B1 (improve9): Canonical symbol trade count — increment
             # at the source so it stays consistent regardless of whether
             # evolution is frozen (B5) or running.
-            self.evolved_params.symbol_trade_counts[sym] = (
-                self.evolved_params.symbol_trade_counts.get(sym, 0) + 1
-            )
+            # Audit-G BUG-G: skip reconciliation artifacts so fitness gate
+            # isn't polluted (symbol_trade_counts feeds the fitness gate).
+            if not _is_reconciliation:
+                self.evolved_params.symbol_trade_counts[sym] = (
+                    self.evolved_params.symbol_trade_counts.get(sym, 0) + 1
+                )
+                # V12 W72 / DD5-3: parallel SEPARATE runtime accumulator.
+                # This must NOT just snapshot evolved_params — the whole
+                # point is to advance during evolution freeze when
+                # evolved_params is intentionally pinned.
+                self._symbol_trade_counts_runtime[sym] = (
+                    self._symbol_trade_counts_runtime.get(sym, 0) + 1
+                )
 
             # v5 (improve8): Session-aware symbol loss gating
-            if not _is_exploration:
+            # Audit-G BUG-G: skip reconciliation artifacts to avoid
+            # symbol-ban triggers from non-strategy PnL.
+            if not _is_exploration and not _is_reconciliation:
                 self._symbol_daily_pnl[sym] = self._symbol_daily_pnl.get(sym, 0.0) + pnl
                 self._symbol_closed_today[sym] = self._symbol_closed_today.get(sym, 0) + 1
                 if pnl <= 0:
@@ -3367,19 +6860,28 @@ class OrganismLiveEngine:
             self._symbol_exit_tick[sym] = self._tick_count
 
             # Record for regime-stratified Kelly (skip exploration to prevent
-            # micro-size trades from polluting main Kelly statistics)
-            if not _is_exploration:
+            # micro-size trades from polluting main Kelly statistics).
+            # Audit-G v2 GAP-3 (2026-05-02): also skip reconciliation artifacts
+            # so non-strategy PnL doesn't pollute regime Kelly stats persisted
+            # to brain manifest.
+            if not _is_exploration and not _is_reconciliation:
                 exit_lvl = self._exit_levels.get(sym)
                 regime_at_trade = (
                     exit_lvl.regime_at_entry if exit_lvl else "unknown"
                 )
                 self.kelly_sizer.record_trade(regime_at_trade, pnl)
 
-            # Record for ML calibration
-            if meta.get("confidence") is not None:
+            # Record for ML calibration.
+            # Audit-G v2 GAP-3: skip reconciliation artifacts (their
+            # confidence=0.5 default would skew calibration map).
+            # V8 DD2-2 / Wave-33: pass raw_confidence (when available) so
+            # outcome-binning matches calibrate_confidence's lookup axis.
+            if meta.get("confidence") is not None and not _is_reconciliation:
                 was_correct = actual_return > 0
                 self.signal_gen.record_prediction_outcome(
-                    meta["confidence"], was_correct
+                    meta["confidence"],
+                    was_correct,
+                    raw_confidence=meta.get("ml_raw_confidence"),
                 )
 
             # Clean up tracking state
@@ -3397,10 +6899,15 @@ class OrganismLiveEngine:
                 pnl,
             )
 
-        # Save brain immediately after recording fills to prevent data loss
+        # Save brain immediately after recording fills to prevent data loss.
+        # V4 Q-Q15 (2026-05-02): the Phase-1 fix at line 3823 wrapped
+        # `_save_brain` in `asyncio.to_thread` to keep the tick loop
+        # responsive during the 30-60ms write. This second call site
+        # in `_reconcile_fills` was missed — every closing fill was
+        # blocking the event loop synchronously.
         if closed:
             try:
-                self._save_brain()
+                await asyncio.to_thread(self._save_brain)
                 logger.info("Brain saved after %d fill(s) recorded", len(closed))
             except Exception as e:
                 logger.warning("Post-fill brain save failed: %s", e)
@@ -3435,13 +6942,19 @@ class OrganismLiveEngine:
                 )
                 continue
 
-            # Re-create entry metadata so reconciliation can track it
+            # Re-create entry metadata so reconciliation can track it.
+            # Audit-G BUG-G (2026-05-01): tag orphan-adopted positions with
+            # entry_source="reconciliation_orphan". When the adopted position
+            # exits, the resulting trade gets the orphan tag — feeds the
+            # is_reconciliation_artifact filter and skips learning consumers.
             self._entry_metadata[sym] = {
                 "entry_price": avg_entry,
                 "entry_tick": self._tick_count,
                 "direction": direction,
                 "predicted_return": 0.01,
                 "confidence": 0.5,
+                "entry_source": "reconciliation_orphan",
+                "strategy_id": "reconciliation_artifact",
             }
 
             # Try to create exit levels for proper management
@@ -3471,7 +6984,14 @@ class OrganismLiveEngine:
                                 level=0,
                             )
                         ],
-                        target_total_shares=int(qty * 1.5),
+                        # Audit-H finding H-7 (2026-05-02): orphan adoption
+                        # used to set target=qty*1.5, which made pyramider
+                        # try to ADD shares to a reconciliation artifact.
+                        # The pyramid-block guard at the add site (H-7 fix)
+                        # also catches this; here we set target=qty so the
+                        # pyramider sees layer_count == target and never
+                        # signals add. Defense in depth.
+                        target_total_shares=int(qty),
                         atr_at_entry=atr,
                         initial_stop=exit_lvl.stop_loss,
                         current_stop=exit_lvl.stop_loss,
@@ -3489,175 +7009,55 @@ class OrganismLiveEngine:
                 avg_entry,
             )
 
-    async def _lookup_exit_fill_from_db(self, symbol: str) -> float | None:
-        """Look up actual exit fill price from DB for a recently closed position.
-
-        Queries the most recent filled sell order for this symbol with
-        organism source attribution.  Returns the avg_fill_price if found,
-        or None if no DB session is available or no matching order exists.
-        """
-        if not self._sessionmaker:
-            return None
-        try:
-            from sqlalchemy import select, text as sa_text
-            from backend.infra.schemas import Order
-
-            async with self._sessionmaker() as session:
-                stmt = (
-                    select(Order.avg_fill_price)
-                    .where(
-                        Order.symbol == symbol,
-                        Order.side == "sell",
-                        Order.status == "filled",
-                        sa_text("attributes->>'source' = 'organism'"),
-                    )
-                    .order_by(Order.updated_at.desc())
-                    .limit(1)
+            # V6 V-T-7 / Wave-21 (2026-05-03): orphan-adoption silently
+            # mutates entry_metadata; operators couldn't see when this
+            # happens. Wire an INFO-severity alert (not WARNING — orphan
+            # adoption is a recovery path, not an error). Worker-thread-
+            # safe dispatcher in case `_reconcile_fills` runs via
+            # to_thread (it doesn't today, but defense in depth).
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
                 )
-                result = await session.execute(stmt)
-                row = result.scalar_one_or_none()
-                if row is not None and float(row) > 0:
-                    price = float(row)
-                    logger.info(
-                        "DB fill price for %s exit: $%.2f", symbol, price,
+                _sym = sym
+                _dir_label = "LONG" if direction > 0 else "SHORT"
+                _qty_int = int(qty)
+                _entry = avg_entry
+                dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.INFO,
+                        "Orphan Position Adopted",
+                        f"Reconciliation re-tracked broker position "
+                        f"{_sym} {_dir_label} {_qty_int} shares @ ${_entry:.2f}. "
+                        f"Position will be excluded from learning per audit-G v2.",
+                        details={
+                            "symbol": _sym,
+                            "direction": _dir_label,
+                            "qty": _qty_int,
+                            "avg_entry": float(_entry),
+                            "tag": "reconciliation_orphan",
+                        },
                     )
-                    return price
-        except Exception as e:
-            logger.debug("DB exit fill lookup failed for %s: %s", symbol, e)
-        return None
+                )
+            except Exception:
+                pass
+
+    # _lookup_entry_fill_from_db / _lookup_exit_fill_from_db were extracted to
+    # backend/organism/live_engine_fills.py::_FillLookupMixin (2026-06-08
+    # decomposition). They remain methods of OrganismLiveEngine via inheritance,
+    # so inspect.getsource(OrganismLiveEngine._lookup_*_fill_from_db) and all
+    # behavioural call sites are unchanged.
 
     # ═════════════════════════════════════════════════════════════
     #  POSITION STATE RECONSTRUCTION (Phase 2.5)
     # ═════════════════════════════════════════════════════════════
 
-    async def _reconstruct_position_state(self) -> None:
-        """On startup, reconstruct exit levels and pyramid state
-        from live broker positions.
-
-        This handles the case where the engine restarts mid-trade.
-        """
-        try:
-            positions = await self._positions_service.get_all_positions()
-        except Exception as e:
-            logger.warning("Cannot reconstruct positions: %s", e)
-            return
-
-        if not positions:
-            return
-
-        for sym, pos_data in positions.items():
-            qty = abs(float(pos_data.get("qty", 0)))
-            avg_entry = float(pos_data.get("avg_entry_price", 0))
-            side = pos_data.get("side", "long")
-            direction = 1.0 if side == "long" else -1.0
-
-            if qty <= 0 or avg_entry <= 0:
-                continue
-
-            # Skip symbols that already have exit levels restored from
-            # the brain — those have richer state (trailing stop progress,
-            # partial_tp_taken, stress_tightened) that would be lost if we
-            # overwrite with fresh conservative defaults.
-            if sym in self._exit_levels:
-                logger.debug(
-                    "Skipping reconstruction for %s — exit levels "
-                    "already restored from brain",
-                    sym,
-                )
-                continue
-
-            # Create basic exit levels (conservative defaults)
-            try:
-                feat_df = None
-                if hasattr(self._data_client, "get_historical_data"):
-                    raw = await asyncio.to_thread(
-                        self._data_client.get_historical_data,
-                        sym, timeframe=LIVE_TIMEFRAME, limit=100,
-                    )
-                    if raw is not None and not raw.empty:
-                        col_map = {
-                            "Open": "open", "High": "high",
-                            "Low": "low", "Close": "close",
-                            "Volume": "volume",
-                        }
-                        feat_df = raw.rename(columns=col_map)
-
-                if feat_df is not None and len(feat_df) > 10:
-                    exit_lvl = self.exit_engine.create_exit_levels(
-                        symbol=sym,
-                        direction=direction,
-                        entry_price=avg_entry,
-                        predicted_return=0.02,
-                        features_df=feat_df,
-                        regime=RegimeLabel.UNKNOWN,
-                        prediction_horizon=PREDICTION_HORIZON,
-                    )
-                else:
-                    # Fallback: create exit levels with a 2% ATR estimate.
-                    # Better than nothing — ensures max-loss safety net is
-                    # enforced through normal check_exit() rather than only
-                    # through the emergency safety net added in the tick loop.
-                    fallback_atr = avg_entry * 0.02
-                    fallback_df = pd.DataFrame({
-                        "close": [avg_entry] * 20,
-                        "high": [avg_entry * 1.01] * 20,
-                        "low": [avg_entry * 0.99] * 20,
-                    })
-                    exit_lvl = self.exit_engine.create_exit_levels(
-                        symbol=sym,
-                        direction=direction,
-                        entry_price=avg_entry,
-                        predicted_return=0.02,
-                        features_df=fallback_df,
-                        regime=RegimeLabel.UNKNOWN,
-                        prediction_horizon=PREDICTION_HORIZON,
-                    )
-                    logger.warning(
-                        "Using fallback ATR ($%.2f) for %s — "
-                        "no historical data available",
-                        fallback_atr, sym,
-                    )
-
-                self._exit_levels[sym] = exit_lvl
-
-                atr = exit_lvl.atr_at_entry
-                self._pyramid_positions[sym] = PyramidPosition(
-                    symbol=sym,
-                    direction=direction,
-                    layers=[
-                        PyramidLevel(
-                            shares=int(qty),
-                            entry_price=avg_entry,
-                            bar_added=0,
-                            level=0,
-                        )
-                    ],
-                    target_total_shares=int(qty * 1.5),
-                    atr_at_entry=atr,
-                    initial_stop=exit_lvl.stop_loss,
-                    current_stop=exit_lvl.stop_loss,
-                    highest_price=avg_entry,
-                    lowest_price=avg_entry,
-                )
-
-                self._entry_metadata[sym] = {
-                    "entry_price": avg_entry,
-                    "entry_tick": 0,
-                    "direction": direction,
-                    "predicted_return": 0.02,
-                    "confidence": 0.5,
-                }
-
-                logger.info(
-                    "Reconstructed position state for %s: "
-                    "%d shares @ $%.2f",
-                    sym,
-                    int(qty),
-                    avg_entry,
-                )
-
-            except Exception as e:
-                logger.warning("Cannot reconstruct %s: %s", sym, e)
+    # _reconstruct_position_state extracted to
+    # backend/organism/live_engine_state.py::_StateReconstructionMixin
+    # (2026-06-08 decomposition). Still a method of OrganismLiveEngine via
+    # inheritance — getsource and all call sites are unchanged.
 
     # ═════════════════════════════════════════════════════════════
     #  RETRAIN & EVOLVE
@@ -3688,8 +7088,17 @@ class OrganismLiveEngine:
         # (signal weights, exit params, regime scales, breakout weights, etc.)
         # is too wide for the sample size during bootstrap.
         _EVOLUTION_FREEZE_TRADES = 300
-        recent_trades = self._all_trades[-200:]  # last 200 trades
-        _total_trades = len(self._all_trades)
+        # Audit-G v2 GAP-4 (2026-05-02): filter reconciliation artifacts
+        # before passing to evolution engine. Otherwise non-strategy PnL
+        # (orphan adoptions, stale-metadata cleanups) drives signal/exit/
+        # regime weight evolution. With 498 trades > 300 freeze threshold,
+        # this is actively polluting evolved_params right now.
+        _filtered_trades = [
+            t for t in self._all_trades
+            if not getattr(t, "is_reconciliation_artifact", False)
+        ]
+        recent_trades = _filtered_trades[-200:]  # last 200 strategy trades
+        _total_trades = len(_filtered_trades)
 
         if recent_trades and _total_trades >= _EVOLUTION_FREEZE_TRADES:
             fi = self.signal_gen._get_feature_importance()
@@ -3758,46 +7167,10 @@ class OrganismLiveEngine:
     #  BRAIN PERSISTENCE
     # ═════════════════════════════════════════════════════════════
 
-    async def _persist_telemetry_to_db(self) -> None:
-        """Write latest telemetry snapshot to DB (every 6th tick ≈ 1/min)."""
-        if self._sessionmaker is None:
-            return
-        snap = self._telemetry.latest
-        if snap is None:
-            return
-        try:
-            from backend.infra.schemas import TickTelemetry
-            from backend.infra.database import get_session_context
-
-            # Top candidates summary (compact)
-            top_cands = [
-                {"sym": ad.symbol, "score": round(ad.composite_score, 4), "dir": ad.direction}
-                for ad in snap.alpha_details[:5]
-            ]
-            # Exit decisions summary
-            exit_decs = [
-                {"sym": ed.symbol, "bars": ed.bars_held, "pnl": round(ed.pnl_pct, 4),
-                 "nearest": ed.nearest_exit}
-                for ed in snap.exit_details
-            ]
-
-            async with get_session_context() as session:
-                row = TickTelemetry(
-                    tick_number=snap.tick_number,
-                    regime=snap.regime,
-                    equity=snap.equity,
-                    drawdown_pct=snap.drawdown_pct,
-                    open_positions=snap.open_positions,
-                    entries_blocked_reason=snap.filtering.entries_blocked_reason,
-                    orders_submitted=snap.filtering.orders_submitted,
-                    gate_rejections=snap.filtering.to_dict().get("rejections", {}),
-                    top_candidates=top_cands,
-                    exit_decisions=exit_decs,
-                )
-                session.add(row)
-                await session.commit()
-        except Exception as e:
-            logger.debug("Telemetry DB write skipped: %s", e)
+    # _persist_telemetry_to_db extracted to
+    # backend/organism/live_engine_telemetry.py::_TelemetryRecordingMixin
+    # (2026-06-08 decomposition). Still a method of OrganismLiveEngine via
+    # inheritance — getsource and all call sites are unchanged.
 
     async def _cleanup_old_telemetry(self) -> None:
         """Delete telemetry rows older than 7 days."""
@@ -3805,7 +7178,11 @@ class OrganismLiveEngine:
             return
         try:
             from backend.infra.schemas import TickTelemetry
-            from backend.infra.database import get_session_context
+            # V4 N-C-2 (2026-05-02): canonical module is `backend.infra.db`;
+            # `backend.infra.database` does not exist — the ImportError was
+            # silently swallowed by `except Exception`, dropping every
+            # tick_telemetry write since this code path was added.
+            from backend.infra.db import get_session_context
 
             import sqlalchemy as sa
             cutoff = self._now_fn() - timedelta(days=7)
@@ -3818,21 +7195,114 @@ class OrganismLiveEngine:
         except Exception as e:
             logger.debug("Telemetry cleanup skipped: %s", e)
 
-    def _save_brain(self) -> None:
-        """Save full brain state to disk (with walk-forward gate)."""
-        try:
-            # Walk-forward gate: skip save if regression detected
-            should_save, reason = self.brain.walk_forward_gate(
-                self._all_trades[-100:],  # evaluate on last 100 trades
-                min_trades=10,
-                regression_threshold=0.95,
-            )
-            if not should_save:
-                logger.warning(
-                    "Brain save SKIPPED by walk-forward gate: %s", reason
-                )
-                return
+    def _build_extra_counters(self) -> dict[str, Any]:
+        """Build the canonical `extra_counters` dict used by all save paths.
 
+        Audit-D findings 7, 11, 18 (2026-05-01): the prior approach inlined
+        the extra_counters dict at 3 different save sites with subtly
+        different field sets. The standalone-persist path wrote
+        `pending_entry_order_ids`; the regular save sites omitted it; on
+        restart the omitting save would overwrite the field with nothing.
+        Result: read-as-empty-dict in production.
+
+        Centralizing here ensures every save path includes every field.
+        New fields beyond the original ones (audit-D additions):
+          - pending_entry_order_ids: was being wiped by sibling save
+          - pending_exit, exit_cooldown: lost on restart, allowed
+            duplicate exits in first ticks after restart
+          - symbol_banned: critical circuit breaker reset on restart
+          - daily counters + session_date: needed for date-roll reset
+        """
+        return {
+            # ── Original fields (preserved) ────────────────
+            "tick_count": self._tick_count,
+            "bars_since_retrain": self._bars_since_retrain,
+            "universe_selector": self.universe_selector.to_dict(),
+            "exit_levels": {
+                sym: lvl.to_dict()
+                for sym, lvl in self._exit_levels.items()
+            },
+            "entry_metadata": dict(self._entry_metadata),
+            "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
+            "ml_calibration": self.signal_gen.calibration_to_dict(),
+            "entry_timestamps": list(self._entry_timestamps),
+            "pending_entry": dict(self._pending_entry),
+            # ── Audit-D additions (2026-05-01) ──────────────
+            "pending_entry_order_ids": dict(self._pending_entry_order_ids),
+            "pending_exit": dict(self._pending_exit),
+            "exit_cooldown": dict(self._exit_cooldown),
+            "symbol_banned": list(self._symbol_banned),
+            "ml_reversal_used": list(self._ml_reversal_used),
+            "orb_live_count_today": self._orb_live_count_today,
+            "eod_live_count_today": self._eod_live_count_today,
+            "mr_live_count_today": self._mr_live_count_today,
+            "daily_session_date": self._daily_loss_date,
+            # Audit-D finding D-20 (2026-05-02): pyramid_positions persistence.
+            # Was previously local-only; pyramid stop/target/layer state was
+            # lost on restart. Reconstruction code in apply_to_learner
+            # rehydrates these via PyramidPosition.from_persistence.
+            "pyramid_positions": {
+                sym: pyr.to_persistence()
+                for sym, pyr in self._pyramid_positions.items()
+            },
+            # V10 DD4-1 / Wave-53 (2026-05-03): persist symbol_trade_counts
+            # and symbol_fitness via extra_counters (essential-save path),
+            # not just evolved_params.json (full-save promotion-gated path).
+            # Previously the production fitness gate was defeated because
+            # evolved_params.json wasn't being updated between deploys —
+            # only 62 counts on disk vs 491 trades in CSV.
+            #
+            # V12 W72 / DD5-3 (2026-05-03): write the SEPARATE runtime
+            # accumulator (``self._symbol_trade_counts_runtime``), not
+            # an identity copy of ``evolved_params.symbol_trade_counts``.
+            # The pre-V12 ``dict(getattr(self.evolved_params,
+            # "symbol_trade_counts", ...))`` was just a snapshot — both
+            # values incremented together so the "runtime" qualifier was
+            # meaningless.  Now the runtime counter advances during the
+            # 300-trade evolution freeze (B5) when evolved_params is
+            # pinned, giving operators a true live count.
+            "symbol_trade_counts_runtime": dict(
+                self._symbol_trade_counts_runtime
+            ),
+            "symbol_fitness_runtime": dict(
+                getattr(self.evolved_params, "symbol_fitness", {}) or {}
+            ),
+        }
+
+    def force_save_brain(self) -> dict:
+        """Admin-only recovery path: persist the full brain bypassing the
+        walk-forward gate.
+
+        This method is the ONLY way to write ML joblibs + reference features
+        + evolved params + fully synced manifest from the live process when
+        the walk-forward gate has been blocking normal tick-driven saves.
+
+        It deliberately does NOT:
+          - submit orders
+          - call walk_forward_gate
+          - re-train any model
+          - touch scheduler state
+
+        It returns a verification dict with live gen/trades/best_sharpe/
+        ml_is_trained/feature_count so callers (admin route) can confirm
+        the save landed against the expected live object graph.
+        """
+        logger.warning(
+            "FORCE SAVE requested at tick %d — bypassing walk-forward gate",
+            self._tick_count,
+        )
+        try:
+            # Mirror _save_brain: always persist exit_levels + entry_metadata
+            exit_levels_snapshot = {
+                sym: lvl.to_dict()
+                for sym, lvl in self._exit_levels.items()
+            }
+            entry_metadata_snapshot = dict(self._entry_metadata)
+            self._persist_exit_levels_standalone(
+                exit_levels_snapshot, entry_metadata_snapshot
+            )
+
+            # Full save — bypass the gate, same kwargs block as _save_brain
             self.brain.save(
                 signal_gen=self.signal_gen,
                 learner=self.learner,
@@ -3840,25 +7310,213 @@ class OrganismLiveEngine:
                 all_trades=self._all_trades,
                 epoch_metrics=self._epoch_metrics,
                 peak_equity=self._peak_equity,
-                extra_counters={
-                    "tick_count": self._tick_count,
-                    "bars_since_retrain": self._bars_since_retrain,
-                    "universe_selector": self.universe_selector.to_dict(),
-                    "exit_levels": {
-                        sym: lvl.to_dict()
-                        for sym, lvl in self._exit_levels.items()
-                    },
-                    "entry_metadata": dict(self._entry_metadata),
-                    "regime_kelly_stats": self.kelly_sizer.regime_stats_to_dict(),
-                    "ml_calibration": self.signal_gen.calibration_to_dict(),
-                    "entry_timestamps": list(self._entry_timestamps),
-                },
+                extra_counters=self._build_extra_counters(),
                 evolved_params=self.evolved_params.to_dict(),
                 governance_controller=self.governance,
                 regime_detector=self.regime_detector,
+                force=True,
             )
+            # C4 watchdog: truth-source update
+            self._watchdog_last_brain_save_tick = self._tick_count
+
+            best_sharpe = self.learner.state.best_sharpe
+            if not np.isfinite(best_sharpe):
+                best_sharpe = None
+            return {
+                "success": True,
+                "forced": True,
+                "tick": self._tick_count,
+                "generation": self.learner.state.generation,
+                "total_trades": self.learner.state.total_trades,
+                "cumulative_pnl": self.learner.state.cumulative_pnl,
+                "best_sharpe": best_sharpe,
+                "ml_is_trained": getattr(self.signal_gen, "_is_trained", False),
+                "feature_count": len(
+                    getattr(self.signal_gen, "_feature_cols", []) or []
+                ),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        except Exception as e:
+            logger.error("force_save_brain failed: %s", e, exc_info=True)
+            return {
+                "success": False,
+                "forced": True,
+                "error": str(e),
+                "tick": self._tick_count,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+    def _save_brain(self) -> None:
+        """Save full brain state to disk (with walk-forward gate).
+
+        V10 WW-3 / Wave-56 (2026-05-03): track ticks-since-last-full-save
+        as a Prometheus-friendly attribute.  When the walk-forward gate
+        blocks full saves for extended windows, evolved_params on disk
+        drifts behind in-memory state.  Operators can scrape
+        `_ticks_since_full_save` to detect long block windows.
+        """
+        try:
+            # F4 — forensic guard: detect unexpected object replacement
+            if (
+                id(self.signal_gen) != self._forensic_signal_gen_id
+                or id(self.learner) != self._forensic_learner_id
+            ):
+                import traceback as _tb
+                logger.critical(
+                    "FORENSIC GUARD: live engine's learner/signal_gen object "
+                    "identity changed since __init__. "
+                    "signal_gen id=%d (was %d), learner id=%d (was %d). "
+                    "Stack:\n%s",
+                    id(self.signal_gen), self._forensic_signal_gen_id,
+                    id(self.learner), self._forensic_learner_id,
+                    "".join(_tb.format_stack()),
+                )
+                # Do not abort here — the guarded helper will block any
+                # unsafe write. But the CRITICAL log captures the caller.
+                # V5 S-J3-1 / Wave-17a (2026-05-03): wave-8c's J-3 fix
+                # routed every alert to logger.warning because
+                # get_running_loop() always raises in worker threads
+                # (this code runs via asyncio.to_thread). Use the
+                # canonical cross-thread dispatcher which schedules on
+                # the captured main loop via run_coroutine_threadsafe.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
+                    )
+                    ok = dispatch_alert_from_thread(
+                        lambda: send_alert(
+                            AlertCategory.SYSTEM_ERROR, AlertSeverity.CRITICAL,
+                            "Forensic Guard: Object Identity Changed",
+                            "Live engine learner/signal_gen replaced unexpectedly.",
+                        )
+                    )
+                    if not ok:
+                        logger.warning(
+                            "Forensic-guard alert dropped (no main loop ref)"
+                        )
+                except Exception:
+                    pass
+
+            # F4 — regression detection: if learner state regressed to
+            # fresh while disk says trained, abort to preserve disk truth.
+            _learner_state = getattr(self.learner, "state", None)
+            if (
+                _learner_state is not None
+                and getattr(_learner_state, "total_trades", 0) == 0
+            ):
+                try:
+                    from backend.organism.brain_persistence import (
+                        _read_json, MANIFEST_FILE,
+                    )
+                    _disk = _read_json(self.brain.brain_dir / MANIFEST_FILE)
+                    _disk_trades = _disk.get("total_trades", 0) or 0
+                    if _disk_trades > 0:
+                        import traceback as _tb2
+                        logger.critical(
+                            "FORENSIC GUARD: live learner.state.total_trades=0 "
+                            "but disk manifest shows total_trades=%d. Learner "
+                            "state regressed. Skipping save to avoid wiping "
+                            "disk. Stack:\n%s",
+                            _disk_trades,
+                            "".join(_tb2.format_stack()),
+                        )
+                        return  # Abort save entirely
+                except Exception:
+                    pass  # If we can't read disk, let the guarded helper decide
+
+            # CORE-013 fix: always persist exit_levels and entry_metadata
+            # even when the walk-forward gate blocks the full brain save.
+            # These are safety-critical (trailing stops, partial TP flags)
+            # and must survive restarts regardless of Sharpe regression.
+            exit_levels_snapshot = {
+                sym: lvl.to_dict()
+                for sym, lvl in self._exit_levels.items()
+            }
+            entry_metadata_snapshot = dict(self._entry_metadata)
+            self._persist_exit_levels_standalone(
+                exit_levels_snapshot, entry_metadata_snapshot
+            )
+
+            # Walk-forward gate: skip full save if regression detected.
+            # V4 R-F-7 (2026-05-02): evaluate on last-100 strategy trades,
+            # not last-100 raw _all_trades. Reconciliation artifacts
+            # have synthetic confidence/predicted_return and zero
+            # bars_held — they corrupt the Sharpe-ratio gate statistics
+            # and cause spurious "regression detected" save blocks
+            # (audit-P P-P0-6 traced 46 such firings since 2026-04-20).
+            should_save, reason = self.brain.walk_forward_gate(
+                self._strategy_trades()[-100:],
+                min_trades=10,
+                regression_threshold=0.95,
+                learner=self.learner,
+            )
+            if not should_save:
+                # Work order 2026-07-23 Task 1 — BOUNDED walk-forward skip.
+                # A guard that can gate every full save forever is a
+                # persistence bug: below the ceiling we take the essential
+                # (in-place, promotion-gated) save and return, exactly as
+                # before; at the ceiling we fall through to force ONE full
+                # save so ML joblibs / evolved_params / transfer knowledge /
+                # the .save_complete sentinel cannot drift behind in-memory
+                # state indefinitely. This changes only WHEN state persists.
+                self._consecutive_wf_skips += 1
+                if self._consecutive_wf_skips < self._max_wf_save_skips:
+                    logger.warning(
+                        "Full brain save SKIPPED by walk-forward gate "
+                        "(%d/%d consecutive): %s — persisting all runtime "
+                        "truth (ML models + evolved_params gated)",
+                        self._consecutive_wf_skips, self._max_wf_save_skips,
+                        reason,
+                    )
+                    self.brain.save_essential_state(
+                        signal_gen=self.signal_gen,
+                        learner=self.learner,
+                        all_trades=self._all_trades,
+                        equity_curve=self._equity_curve,
+                        epoch_metrics=self._epoch_metrics,
+                        peak_equity=self._peak_equity,
+                        extra_counters=self._build_extra_counters(),
+                        governance_controller=self.governance,
+                        regime_detector=self.regime_detector,
+                    )
+                    self._watchdog_last_brain_save_tick = self._tick_count
+                    return
+                logger.warning(
+                    "Walk-forward gate has blocked %d consecutive full brain "
+                    "saves — forcing a gated full save (gated_save=true) to "
+                    "bound restart state-loss. Gate reason: %s",
+                    self._consecutive_wf_skips, reason,
+                )
+
+            # Full brain save. When reached via the bounded-skip ceiling,
+            # `force=True` is AUDIT-ONLY: save() performs the identical atomic
+            # full save either way and force alone does NOT bypass the
+            # trained-overwrite guard (that needs force+allow_reset+reason), so
+            # a gated save can still never wipe a trained brain with fresh
+            # state. It only tags the save as a bounded gated save.
+            gated_save = not should_save
+            self.brain.save(
+                signal_gen=self.signal_gen,
+                learner=self.learner,
+                equity_curve=self._equity_curve,
+                all_trades=self._all_trades,
+                epoch_metrics=self._epoch_metrics,
+                peak_equity=self._peak_equity,
+                extra_counters=self._build_extra_counters(),
+                evolved_params=self.evolved_params.to_dict(),
+                governance_controller=self.governance,
+                regime_detector=self.regime_detector,
+                force=gated_save,
+            )
+            # C4: Update brain save watchdog tick; reset the skip counter now
+            # that a full save (clean or gated) has landed.
+            self._consecutive_wf_skips = 0
+            self._watchdog_last_brain_save_tick = self._tick_count
             logger.info(
-                "Brain saved at tick %d (%s)", self._tick_count, reason
+                "Brain saved at tick %d (%s%s)",
+                self._tick_count, reason,
+                ", gated_save=true" if gated_save else "",
             )
 
             # Phase 4.7 — Record run into transfer knowledge
@@ -3880,21 +7538,180 @@ class OrganismLiveEngine:
         except Exception as e:
             logger.error("Brain save failed: %s", e)
 
+    def _persist_exit_levels_standalone(
+        self,
+        exit_levels: dict[str, Any],
+        entry_metadata: dict[str, Any],
+    ) -> None:
+        """CORE-013: Persist exit_levels and entry_metadata independently.
+
+        Called before the walk-forward gate so these safety-critical fields
+        survive even when the gate blocks the full brain save.
+        """
+        import json
+        try:
+            ec_path = self.brain.brain_dir / "extra_counters.json"
+            if ec_path.is_file():
+                with open(ec_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                data = {}
+            data["exit_levels"] = exit_levels
+            data["entry_metadata"] = entry_metadata
+            data["pending_entry_order_ids"] = dict(getattr(self, "_pending_entry_order_ids", {}))
+            with open(ec_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=str)
+        except Exception as e:
+            logger.error("Failed to persist exit_levels standalone: %s", e)
+
+    async def _cancel_pending_entry_orders(self) -> None:
+        """CORE-011: Cancel open entry orders at the broker on drawdown kill.
+
+        Iterates ``_pending_entry_order_ids`` and calls
+        ``_order_service.cancel_order()`` for each.  Failures are logged
+        but never crash the tick loop.  Exit/reduce-only orders are not
+        tracked here and are therefore never cancelled.
+        """
+        if not self._pending_entry and not self._pending_entry_order_ids:
+            return
+
+        # Audit-H findings H-4 + H-5 (2026-05-02): track cancel-disposition
+        # so we don't blanket-clear local state when broker said the order
+        # was already filled (in which case the position is real and
+        # reconciliation will adopt it). Also: if cancel was deferred
+        # (broker_order_id not yet available), don't clear local state —
+        # caller will retry next tick.
+        cancelled = []
+        failed = []
+        deferred = []
+        filled_during_cancel = []
+        for sym, order_id in list(self._pending_entry_order_ids.items()):
+            try:
+                _result = await self._order_service.cancel_order(order_id)
+                _status = (_result or {}).get("status", "cancelled")
+                if _status == "deferred":
+                    deferred.append(sym)
+                elif _status == "filled_during_cancel":
+                    filled_during_cancel.append(sym)
+                else:
+                    cancelled.append(sym)
+            except Exception as e:
+                failed.append(sym)
+                logger.error(
+                    "Drawdown kill: failed to cancel order %s for %s: %s",
+                    order_id, sym, e,
+                )
+
+        # Clear local bookkeeping ONLY for cancellations that actually
+        # succeeded. Defer / filled-during-cancel symbols stay in the
+        # tracking maps so the next tick handles them correctly.
+        for sym in cancelled + failed:
+            self._pending_entry.pop(sym, None)
+            self._pending_entry_order_ids.pop(sym, None)
+        cleared_symbols = list(cancelled + failed)
+
+        # V4 Wave-16b (2026-05-02): also clear `_pending_entry` symbols
+        # that lack an order_id (submission succeeded but the result
+        # didn't carry one — e.g. an outbox-only path). Without this
+        # cleanup, the symbol stays blocked from re-entry forever after
+        # drawdown-kill: the next tick still sees it in `_pending_entry`
+        # and skips. The early-clear path at line ~1455 only handles
+        # tracked broker IDs; orphaned entries need this catch-all.
+        _orphan_entries = [
+            sym for sym in list(self._pending_entry)
+            if sym not in self._pending_entry_order_ids
+        ]
+        for sym in _orphan_entries:
+            self._pending_entry.pop(sym, None)
+        if _orphan_entries:
+            logger.info(
+                "Drawdown kill: cleared %d orphan pending entries "
+                "(no broker order_id tracked): %s",
+                len(_orphan_entries), _orphan_entries,
+            )
+
+        if cancelled:
+            logger.warning(
+                "Drawdown kill: cancelled %d broker entry orders: %s",
+                len(cancelled), cancelled,
+            )
+        if failed:
+            logger.warning(
+                "Drawdown kill: %d cancel attempts failed: %s "
+                "(local bookkeeping still cleared)",
+                len(failed), failed,
+            )
+        if deferred:
+            logger.warning(
+                "Drawdown kill: %d cancels deferred (broker_order_id not yet "
+                "available — outbox race): %s. Local state preserved for "
+                "next-tick retry.",
+                len(deferred), deferred,
+            )
+        if filled_during_cancel:
+            logger.warning(
+                "Drawdown kill: %d orders filled during cancel attempt: %s. "
+                "Reconciliation will adopt these positions; local state preserved.",
+                len(filled_during_cancel), filled_during_cancel,
+            )
+        if cleared_symbols and not cancelled and not failed:
+            logger.warning(
+                "Drawdown kill: cleared %d pending entries (no order IDs to cancel): %s",
+                len(cleared_symbols), cleared_symbols,
+            )
+
     # ═════════════════════════════════════════════════════════════
     #  HELPERS
     # ═════════════════════════════════════════════════════════════
 
     async def _get_equity(self) -> float:
-        """Get current portfolio equity from broker."""
+        """Get current portfolio equity from broker.
+
+        Falls back to last-known-good equity if the broker returns zero
+        or errors, bounded by a staleness window.
+        """
+        value = 0.0
         try:
-            value = await self._positions_service.get_total_portfolio_value()
-            return float(value) if value else 0.0
+            raw = await self._positions_service.get_total_portfolio_value()
+            value = float(raw) if raw else 0.0
         except Exception:
             try:
                 bp = await self._positions_service.get_buying_power()
-                return float(bp) if bp else 0.0
+                value = float(bp) if bp else 0.0
             except Exception:
-                return 0.0
+                pass
+
+        if value > 0:
+            self._last_valid_equity = value
+            self._last_valid_equity_tick = self._tick_count
+            # C2: Reset fallback streak on fresh equity
+            self._watchdog_equity_fallback_streak = 0
+            return value
+
+        # Fallback: use last-known-good equity within staleness window
+        ticks_since = self._tick_count - self._last_valid_equity_tick
+        if self._last_valid_equity > 0 and ticks_since <= self._EQUITY_FALLBACK_MAX_TICKS:
+            # C2: Track equity fallback usage
+            self._watchdog_equity_fallback_count += 1
+            self._watchdog_equity_fallback_streak += 1
+            if self._watchdog_equity_fallback_streak > 25:
+                logger.critical(
+                    "C2 WATCHDOG: Equity fallback streak=%d — broker API may be down",
+                    self._watchdog_equity_fallback_streak,
+                )
+            elif self._watchdog_equity_fallback_streak > 10:
+                logger.warning(
+                    "C2 WATCHDOG: Equity fallback streak=%d — broker API returning zero",
+                    self._watchdog_equity_fallback_streak,
+                )
+            logger.warning(
+                "Broker returned zero equity — using last-known-good $%.2f "
+                "(%d ticks stale, max %d)",
+                self._last_valid_equity, ticks_since, self._EQUITY_FALLBACK_MAX_TICKS,
+            )
+            return self._last_valid_equity
+
+        return 0.0
 
     def status(self) -> dict[str, Any]:
         """Return organism engine status for API/monitoring."""
@@ -3916,6 +7733,9 @@ class OrganismLiveEngine:
         win_rate = len(winning) / total_trades if total_trades > 0 else 0.0
         avg_win = sum(t.pnl for t in winning) / len(winning) if winning else 0.0
         avg_loss = sum(t.pnl for t in losing) / len(losing) if losing else 0.0
+        strategy_trades = self._strategy_trades()
+        from backend.organism.strategy_expectancy import compute_from_trades
+        strategy_expectancy = compute_from_trades(strategy_trades)
 
         # ML model metrics
         ml_accuracy = 0.0
@@ -3929,6 +7749,7 @@ class OrganismLiveEngine:
         if hasattr(self.learner, "generation_metrics"):
             training_history = list(self.learner.generation_metrics)
 
+        trading_phase = self._trading_phase
         return {
             "initialized": self._initialized,
             "tick_count": self._tick_count,
@@ -3938,7 +7759,7 @@ class OrganismLiveEngine:
             "evolved_generation": self.evolved_params.evolution_generation,
             "evolved_adaptations": self.evolved_params.total_adaptations,
             "peak_equity": self._peak_equity,
-            "current_equity": self._equity_curve[-1] if self._equity_curve else 0.0,
+            "current_equity": self._equity_curve[-1] if self._equity_curve else None,
             "governance": self.governance.to_dict(),
             "universe_size": len(self._universe),
             "universe_symbols": list(self._universe),
@@ -3950,6 +7771,16 @@ class OrganismLiveEngine:
             "losing_trades": len(losing),
             "avg_win": round(avg_win, 2),
             "avg_loss": round(avg_loss, 2),
+            "strategy_total_trades": len(strategy_trades),
+            "strategy_cumulative_pnl": round(
+                float(strategy_expectancy.get("total_pnl", 0.0)),
+                2,
+            ),
+            "strategy_win_rate": strategy_expectancy.get("win_rate", 0.0),
+            "strategy_sharpe_ratio_per_trade": strategy_expectancy.get(
+                "sharpe_ratio_per_trade",
+                0.0,
+            ),
             "ml_accuracy": round(ml_accuracy, 4),
             "ml_trained": self.signal_gen.is_trained,
             "training_history": training_history,
@@ -3957,6 +7788,18 @@ class OrganismLiveEngine:
             "shorts_enabled": self.evolved_params.shorts_enabled,
             "data_stale": self._data_stale,
             "learning_mode": self._is_learning_mode,
+            "trading_phase": trading_phase.get("phase", ""),
+            "guarded_mode": trading_phase.get("is_guarded", False),
+            "ml_influence_enabled": trading_phase.get(
+                "ml_influence_enabled",
+                not self._ml_isolation_mode,
+            ),
+            "fixed_risk_sizing": trading_phase.get(
+                "fixed_risk_sizing",
+                self._fixed_risk_sizing_mode,
+            ),
+            "promotion_blockers": trading_phase.get("promotion_blockers", []),
+            "watchdog": self.get_watchdog_state(),
             **scanner_info,
         }
 
@@ -4039,6 +7882,15 @@ class OrganismLiveEngine:
     ) -> list[TradingSignal]:
         """Generate TradingSignal objects for the multi-strategy runner.
 
+        Audit-M finding M-3 (2026-05-02): this method has zero production
+        callers. The multi-strategy runner is mutually exclusive with the
+        organism engine (lifespan logs "Multi-strategy live scheduler
+        skipped — organism engine is active"). The method is exercised
+        only by tests/test_audit_patch_queue_b2.py as a regression check
+        for ML confidence leakage. Kept for that test coverage; do NOT
+        wire into a new production flow without a fresh audit.
+
+
         This lets the organism participate as one strategy source
         alongside the existing 10 strategies.
         """
@@ -4046,15 +7898,24 @@ class OrganismLiveEngine:
         candidates = self.alpha_scanner.scan(
             features_by_symbol, ml_signals, regime,
             ml_is_trained=self.signal_gen.is_trained,
-            learning_mode=self._is_learning_mode,
+            learning_mode=self._ml_isolation_mode,
         )
 
         signals = []
-        now = datetime.now(UTC)
+        # V6 W-finding / X-4 / Wave-20b (2026-05-03): use injected clock so
+        # `TradingSignal.timestamp` is replay-deterministic. Three V6 tracks
+        # (Z3, W, X) converged on this site; X reproduced it as a real
+        # determinism bug (pollutes every per-tick hash in replay).
+        now = self._now_fn()
         for c in candidates:
             if LONG_ONLY and not self.evolved_params.shorts_enabled and c.direction < 0:
                 continue
-            confidence = c.ml_signal.confidence if c.ml_signal else 0.3
+            # ML isolation mode: use composite_score (observable factors,
+            # no ML). Full production: use ML confidence if available.
+            if self._ml_isolation_mode:
+                confidence = c.composite_score
+            else:
+                confidence = c.ml_signal.confidence if c.ml_signal else 0.3
             target_exposure = 0.25 * c.direction * confidence
             target_exposure = max(-1.0, min(1.0, target_exposure))
 

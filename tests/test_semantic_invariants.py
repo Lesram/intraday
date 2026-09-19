@@ -20,8 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # ── S1: Learning mode confidence gate ignores ML ──────────────────────
 
 class TestLearningModeConfidenceIgnoresML:
-    """Verify that in learning mode, confidence = 0.65*breakout + 0.35*tension
-    with zero ML weight."""
+    """Verify ML-isolated confidence = 0.65*breakout + 0.35*tension."""
 
     def test_confidence_weights_learning_sum_to_one(self):
         """Learning confidence weights must sum to 1.0."""
@@ -31,18 +30,18 @@ class TestLearningModeConfidenceIgnoresML:
         ml_w = 0.0
         assert abs((breakout_w + tension_w + ml_w) - 1.0) < 1e-9
 
-    def test_learning_confidence_formula_in_source(self):
+    def test_ml_isolation_confidence_formula_in_source(self):
         """AST check: live_engine.py contains '0.65 * breakout_score' inside
-        a branch conditioned on _is_learning_mode."""
+        a branch conditioned on _ml_isolation_mode."""
         source = (ROOT / "backend" / "organism" / "live_engine.py").read_text()
         tree = ast.parse(source)
 
         found_learning_branch = False
         for node in ast.walk(tree):
             if isinstance(node, ast.If):
-                # Look for if self._is_learning_mode: ... 0.65 ...
+                # Look for if self._ml_isolation_mode: ... 0.65 ...
                 src_segment = ast.get_source_segment(source, node)
-                if src_segment and "_is_learning_mode" in src_segment and "0.65" in src_segment:
+                if src_segment and "_ml_isolation_mode" in src_segment and "0.65" in src_segment:
                     found_learning_branch = True
                     # Verify ML is NOT in the learning branch formula
                     assert "ml_signal" not in src_segment.split("0.65")[1].split("\n")[0], \
@@ -50,7 +49,7 @@ class TestLearningModeConfidenceIgnoresML:
                     break
 
         assert found_learning_branch, \
-            "Could not find _is_learning_mode branch with 0.65 weight in live_engine.py"
+            "Could not find _ml_isolation_mode branch with 0.65 weight in live_engine.py"
 
     def test_runtime_snapshot_confirms_zero_ml(self):
         """Runtime snapshot must declare ml=0 for learning weights."""
@@ -209,11 +208,16 @@ class TestBreakoutSharedGates:
     """Verify pure breakout path uses the shared _passes_entry_gates helper."""
 
     def test_breakout_path_uses_shared_helper(self):
-        """Breakout section must call _passes_entry_gates (same as alpha)."""
+        """Breakout section must call _passes_entry_gates (same as alpha).
+
+        Audit-M follow-up (2026-05-02): the previous search-anchor
+        ``"pure breakout"`` is too generic and matches comments in the
+        ALPHA path's Exp3 instrumentation. Now: anchor on the unique
+        ``_MAX_PURE_BREAKOUT`` constant which appears only in the actual
+        pure-breakout block.
+        """
         source = (ROOT / "backend" / "organism" / "live_engine.py").read_text()
-        breakout_start = source.lower().find("pure breakout")
-        if breakout_start == -1:
-            breakout_start = source.find("_MAX_PURE_BREAKOUT")
+        breakout_start = source.find("_MAX_PURE_BREAKOUT")
         assert breakout_start != -1, "Could not find pure breakout section"
         breakout_section = source[breakout_start:breakout_start + 3000]
         assert "_passes_entry_gates" in breakout_section, \
@@ -243,18 +247,18 @@ class TestBreakoutSharedGates:
             breakout_start = source.find("_MAX_PURE_BREAKOUT")
         assert breakout_start != -1
         breakout_section = source[breakout_start:breakout_start + 3000]
-        assert "_MAIN_CONF_BASELINE" in breakout_section, \
-            "Breakout path must check _MAIN_CONF_BASELINE confidence threshold"
+        assert "_MIN_MAIN_CONF" in breakout_section, \
+            "Breakout path must check unified _MIN_MAIN_CONF confidence threshold"
 
     def test_ml_veto_gated_by_learning_mode(self):
-        """ML negative-direction veto must only apply in production mode."""
+        """ML negative-direction veto must only apply when ML influence is enabled."""
         source = (ROOT / "backend" / "organism" / "live_engine.py").read_text()
         breakout_start = source.lower().find("pure breakout")
         assert breakout_start != -1
         breakout_section = source[breakout_start:breakout_start + 3000]
-        # The ML veto must be conditioned on NOT learning mode
-        assert "not self._is_learning_mode" in breakout_section, \
-            "ML direction veto in breakout path must be gated by not _is_learning_mode"
+        # The ML veto must be conditioned on ML influence being enabled.
+        assert "not self._ml_isolation_mode" in breakout_section, \
+            "ML direction veto in breakout path must be gated by ML isolation"
 
 
 # ── S7: Kelly sizer learning-mode ordering ────────────────────────────

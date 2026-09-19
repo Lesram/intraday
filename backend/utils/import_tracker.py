@@ -67,7 +67,8 @@ class ImportErrorTracker:
             'timestamp': datetime.now().isoformat(),
             'traceback': traceback.format_exc(),
             'python_path': sys.path.copy(),
-            'environment': dict(os.environ)
+            'python_version': sys.version,
+            'platform': sys.platform,
         }
 
         self.failed_imports[module_name] = failure_info

@@ -131,25 +131,24 @@ algotrading_platform/
 ## �️ Local Development & Quality Checks
 
 ### Prerequisites
-- Python 3.11+
-- PostgreSQL 15+ (for integration tests)
-- Redis 7+ (for caching tests)
+<!-- V7 GG-9 / Wave-26 (2026-05-03): pinned to 3.12 (Docker uses 3.12). -->
+- Python 3.12 (matches Dockerfile)
+- PostgreSQL 16 (matches docker-compose)
+- Redis 7
 
 ### Quick Setup
+<!-- V7 GG-9 / Wave-26 (2026-05-03): clone target was wrong
+(`algotrading_platform`); on disk the repo is `intra`. Fixed. -->
 ```bash
 # 1. Clone and setup environment
-git clone https://github.com/Lesram/intraday.git
-cd algotrading_platform
-python -m venv venv
+git clone https://github.com/Lesram/intraday.git intra
+cd intra
+python3.12 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # 2. Install dependencies
-pip install -r requirements.lock  # Pinned versions for CI
-# OR for development:
 pip install -r requirements.txt
-
-# 3. Install development tools
-pip install -e .[dev]  # Installs ruff, mypy, pytest, etc.
+pip install -r requirements-dev.txt  # for dev: ruff, mypy, pytest, etc.
 ```
 
 ### Quality Checks (Run Before Commit)
@@ -198,8 +197,11 @@ git commit -m "Your changes"  # Triggers: ruff, mypy, bandit
 
 ### CI Pipeline Simulation
 ```bash
+# V7 GG-9 / Wave-26 (2026-05-03): script path corrected (was
+# `./scripts/run_ci_locally.sh` which doesn't exist; actual path
+# is under scripts/ci/).
 # Simulate full CI pipeline locally
-./scripts/run_ci_locally.sh  # Runs all quality gates
+./scripts/ci/run_ci_locally.sh  # Runs all quality gates
 
 # Or step by step:
 ruff check --no-fix . --output-format=github

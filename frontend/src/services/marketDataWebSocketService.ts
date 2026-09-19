@@ -24,10 +24,24 @@ import type {
 } from '../types/marketData';
 
 /**
- * Default configuration
+ * Default configuration.
+ *
+ * V4 O-6 (2026-05-02): respect VITE_WS_BASE_URL override; otherwise use
+ * the current page origin (no explicit :8000 fallback). Behind a
+ * reverse proxy the WS routes on the same host:port as the FE.
  */
+function _resolveDefaultWsUrl(): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const override = (import.meta as any).env?.VITE_WS_BASE_URL;
+  if (override) {
+    return `${String(override).replace(/\/$/, '')}/api/v1/market-data/ws`;
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/api/v1/market-data/ws`;
+}
+
 const DEFAULT_CONFIG: Required<MarketDataConfig> = {
-  wsUrl: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port || '8000'}/api/v1/market-data/ws`,
+  wsUrl: _resolveDefaultWsUrl(),
   reconnectInterval: 1000, // Start at 1 second
   maxReconnectAttempts: 10,
   heartbeatInterval: 30000 // 30 seconds

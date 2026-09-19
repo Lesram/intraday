@@ -1,0 +1,81 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+
+  "todays_confidence_distribution": {
+    "gate_floor": 0.25,
+    "main_threshold": 0.40,
+    "defensive_threshold": 0.45,
+    "total_candidates_reaching_scoring": 27,
+    "max_eff_conf": 0.20,
+    "max_eff_conf_symbol": "XOM",
+    "distribution": {
+      "0.00": "~18 candidates (67%)",
+      "0.01-0.14": "~2 candidates",
+      "0.15-0.19": "~5 candidates (WMT 0.18, WMT 0.17, WMT 0.16, WMT 0.15, XLE 0.15)",
+      "0.20-0.24": "~2 candidates (XOM 0.20, IWM 0.14 — note: IWM is below this band)",
+      "0.25+": "0 candidates"
+    },
+    "mean_eff_conf": 0.04,
+    "median_eff_conf": 0.00
+  },
+
+  "near_miss_analysis": {
+    "band_0.20_to_0.25": {
+      "candidates": [
+        {"symbol": "XOM", "eff_conf": 0.20, "regime": "trending_down", "daily_return": "+1.29%", "verdict": "WINNER"}
+      ],
+      "count": 1,
+      "win_rate": "1/1 = 100%",
+      "note": "Only 1 candidate in the near-miss band today. XOM would have been a winner."
+    },
+    "band_0.15_to_0.20": {
+      "candidates": [
+        {"symbol": "WMT", "eff_conf": 0.18, "regime": "trending_up", "daily_return": "+1.49%", "verdict": "WINNER"},
+        {"symbol": "WMT", "eff_conf": 0.17, "regime": "trending_up", "daily_return": "+1.49%", "verdict": "WINNER"},
+        {"symbol": "WMT", "eff_conf": 0.16, "regime": "trending_up", "daily_return": "+1.49%", "verdict": "WINNER"},
+        {"symbol": "WMT", "eff_conf": 0.15, "regime": "trending_down", "daily_return": "+1.49%", "verdict": "WINNER"},
+        {"symbol": "XLE", "eff_conf": 0.15, "regime": "trending_down", "daily_return": "+0.93%", "verdict": "WINNER"}
+      ],
+      "count": 5,
+      "unique_symbols": 2,
+      "win_rate": "2/2 unique symbols = 100%",
+      "note": "All near-miss candidates in this band were winners today. BUT this is a single sell-off day where defensives rallied — not generalizable."
+    },
+    "extended_band_0.10_to_0.15": {
+      "note": "IWM (0.14, trending_down) would have been a LOSER (-2.15%). This band is mixed."
+    }
+  },
+
+  "two_day_comparison": {
+    "march_11": {
+      "near_miss_0.20_to_0.25": "1 winner (XLE +1.21%), 1 loser (TSLA -1.11%) = 50%",
+      "overall_counterfactual": "2/10 winners = 20%"
+    },
+    "march_12": {
+      "near_miss_0.20_to_0.25": "1 winner (XOM +1.29%) = 100%",
+      "near_miss_0.15_to_0.20": "2 unique winners (WMT, XLE) = 100%",
+      "overall_losers_in_universe": "AMD -3.46%, TSLA -3.14%, META -2.55%, LLY -2.26% — all had eff_conf=0.00, correctly rejected"
+    }
+  },
+
+  "gate_sensitivity_verdict": "TOO_SOON_TO_TELL",
+
+  "reasoning": [
+    "Today's near-miss winners (WMT, XOM, XLE) are all defensive/energy names in a sell-off. This is a specific market condition, not a general pattern.",
+    "Yesterday's near-miss band was 50/50. Today's was 100% winners. Two data points cannot establish statistical significance.",
+    "The dominant issue is NOT the gate threshold — it's the confidence FORMULA. With breakout+tension producing near-zero for 67% of candidates, the gate is irrelevant. Lowering it from 0.25 to 0.15 would have captured WMT (eff_conf=0.18) but nothing else meaningful.",
+    "The structural problem (inverse ETFs always score 0.00, defensive rotations score near-zero) is upstream of the gate threshold.",
+    "Lowering the gate to 0.15 would have produced 1-2 additional trades on 3/12 (both winners) but could produce 5-10 losers on a different day. Two days is insufficient evidence."
+  ],
+
+  "if_gate_were_lowered_to_0.15": {
+    "additional_trades_march_12": ["WMT (eff_conf=0.18, +1.49%)", "XLE (eff_conf=0.15, +0.93%)", "WMT (eff_conf=0.17, +1.49%)"],
+    "net_effect_march_12": "2 unique winning trades added",
+    "additional_trades_march_11": "TSLA (eff_conf=0.22, -1.11%), NVDA (eff_conf=0.17, -0.74%), GOOGL (eff_conf=0.13, -0.37%)",
+    "net_effect_march_11": "3 additional losing trades",
+    "combined_two_day_net": "2 winners + 3 losers = 40% win rate — no improvement over current 43% lifetime"
+  },
+
+  "recommendation": "KEEP_GATE_UNCHANGED at 0.25. The evidence does not support lowering it. The real fix is upstream in the confidence formula and scanner, not in the gate threshold."
+}

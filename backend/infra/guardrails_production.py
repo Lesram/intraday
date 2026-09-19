@@ -278,11 +278,14 @@ class TransactionalGuardrails:
             )
 
     def _validate_trading_hours(self) -> None:
-        """Validate current time against trading hours (ET)"""
-        # Simple validation - extend for market holidays, etc.
+        """Validate current time against trading hours (ET).
+
+        Audit-K finding K-2 (2026-05-02): hard-coded UTC-5 was wrong
+        half the year (EDT is UTC-4). Use ZoneInfo for DST-aware ET.
+        """
+        from zoneinfo import ZoneInfo
         now = datetime.now(UTC)
-        # Convert to ET (approximate - doesn't handle DST properly)
-        et_hour = (now.hour - 5) % 24  # UTC-5 for EST
+        et_hour = now.astimezone(ZoneInfo("America/New_York")).hour
 
         if not (self.trading_start_hour <= et_hour < self.trading_end_hour):
             raise GuardrailViolation(

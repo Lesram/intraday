@@ -24,6 +24,33 @@ from backend.utils.logger import get_structured_logger
 logger = get_structured_logger(__name__)
 
 
+# V13 W95 (Lens 4): Prometheus observability for the outbox prune loop.
+# `outbox_pruned_total` increments by every batch's pruned-row count;
+# `outbox_prune_last_run_timestamp_seconds` lets alerts fire if the
+# loop hasn't run in >36h.  Both are guarded against duplicate
+# registration (test envs reimport this module).
+try:
+    from prometheus_client import Counter as _PCounter, Gauge as _PGauge
+    try:
+        OUTBOX_PRUNED_TOTAL = _PCounter(
+            "outbox_pruned_total",
+            "V13 W95: total outbox events pruned (BB5-F1 retention).",
+        )
+    except ValueError:  # already registered (re-import in tests)
+        OUTBOX_PRUNED_TOTAL = None
+    try:
+        OUTBOX_PRUNE_LAST_RUN_TS = _PGauge(
+            "outbox_prune_last_run_timestamp_seconds",
+            "V13 W95: unix timestamp of the most-recent outbox prune "
+            "completion.  Alert if (now - this) > 36h.",
+        )
+    except ValueError:
+        OUTBOX_PRUNE_LAST_RUN_TS = None
+except ImportError:  # prometheus_client not installed
+    OUTBOX_PRUNED_TOTAL = None
+    OUTBOX_PRUNE_LAST_RUN_TS = None
+
+
 def serialize_datetime_recursive(obj: Any) -> Any:
     """
     Recursively convert datetime objects to ISO strings for JSON serialization.
@@ -126,7 +153,120 @@ class OutboxWorker:
                 pass
             self._task = None
 
+        # V12 W74 (BB5-F1): also stop the prune task if it is running.
+        prune_task = getattr(self, "_prune_task", None)
+        if prune_task is not None:
+            prune_task.cancel()
+            try:
+                await prune_task
+            except asyncio.CancelledError:
+                pass
+            self._prune_task = None
+
         logger.info("OutboxWorker stopped")
+
+    async def prune_old_events(
+        self,
+        *,
+        max_age_days: int = 30,
+        statuses: tuple[str, ...] = ("sent", "failed"),
+        batch_size: int = 1000,
+        now: datetime | None = None,
+    ) -> int:
+        """V12 W74 (BB5-F1): retention prune for outbox_events.
+
+        External auditor counted 1398 rows spanning 60 days with no
+        auto-prune.  Without retention the table grows unbounded —
+        partial-failure DLQ rows from a year ago still take up space
+        in every query plan.
+
+        Deletes events older than ``max_age_days`` whose status is in
+        ``statuses``.  PENDING events are NEVER pruned regardless of
+        age — they represent unfinished work.  Returns the count of
+        rows pruned.
+
+        Run in batches of ``batch_size`` so a backlog cleanup doesn't
+        hold one giant transaction.
+        """
+        from sqlalchemy import delete, select
+
+        from backend.infra.schemas import OutboxEvent
+
+        cutoff = (now or datetime.now(UTC)) - timedelta(days=max_age_days)
+        total_pruned = 0
+        while True:
+            async with self.sessionmaker() as session:
+                # Subquery to grab a batch of IDs to delete (avoids
+                # hitting the LIMIT-on-DELETE quirk on Postgres).
+                ids_q = (
+                    select(OutboxEvent.id)
+                    .where(OutboxEvent.status.in_(statuses))
+                    .where(OutboxEvent.created_at < cutoff)
+                    .limit(batch_size)
+                )
+                ids_result = await session.execute(ids_q)
+                ids = [r[0] for r in ids_result.all()]
+                if not ids:
+                    break
+                await session.execute(
+                    delete(OutboxEvent).where(OutboxEvent.id.in_(ids))
+                )
+                await session.commit()
+                total_pruned += len(ids)
+                if len(ids) < batch_size:
+                    break
+        if total_pruned > 0:
+            logger.info(
+                "BB5-F1 outbox prune: removed %d events older than %d days "
+                "(statuses=%s)",
+                total_pruned, max_age_days, list(statuses),
+            )
+        # V13 W95: emit metrics regardless of pruned count so the
+        # last-run timestamp updates even on no-op runs.
+        if OUTBOX_PRUNED_TOTAL is not None and total_pruned > 0:
+            try:
+                OUTBOX_PRUNED_TOTAL.inc(total_pruned)
+            except Exception as _e:  # noqa: BLE001
+                logger.debug("V13 W95: prune metric emit suppressed: %s", _e)
+        if OUTBOX_PRUNE_LAST_RUN_TS is not None:
+            try:
+                OUTBOX_PRUNE_LAST_RUN_TS.set(time.time())
+            except Exception as _e:  # noqa: BLE001
+                logger.debug("V13 W95: prune metric emit suppressed: %s", _e)
+        return total_pruned
+
+    async def start_prune_loop(
+        self,
+        *,
+        max_age_days: int = 30,
+        interval_seconds: float = 24 * 60 * 60,  # 24h
+    ) -> None:
+        """V12 W74 (BB5-F1): kick off the periodic prune task.
+
+        Idempotent — calling twice will not start a second loop.  Use
+        ``stop()`` to cancel.
+        """
+        if getattr(self, "_prune_task", None) is not None:
+            logger.debug("Outbox prune loop already running")
+            return
+
+        async def _loop() -> None:
+            while self._running:
+                try:
+                    await self.prune_old_events(max_age_days=max_age_days)
+                except Exception as e:
+                    logger.warning("Outbox prune loop error: %s", e)
+                # Sleep in 60s slices so cancellation is responsive.
+                slept = 0.0
+                while self._running and slept < interval_seconds:
+                    await asyncio.sleep(min(60.0, interval_seconds - slept))
+                    slept += 60.0
+
+        self._prune_task = asyncio.create_task(_loop())
+        logger.info(
+            "BB5-F1: outbox prune loop started (retention=%dd, interval=%ds)",
+            max_age_days, int(interval_seconds),
+        )
 
     async def _dispatcher(self):
         """
@@ -159,6 +299,30 @@ class OutboxWorker:
                            error=str(e),
                            error_type=type(e).__name__,
                            exc_info=True)
+
+                # V6 V-T-4 / Wave-21 (2026-05-03): outbox worker errors
+                # were log-only — operators saw no Slack/PagerDuty when
+                # the broker submission pipeline broke. Wire a HIGH-
+                # severity alert. Worker runs in the main loop so we
+                # can use canonical send_alert; still gate on dispatcher
+                # for safety.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
+                    )
+                    _err = e
+                    dispatch_alert_from_thread(
+                        lambda: send_alert(
+                            AlertCategory.SYSTEM_ERROR,
+                            AlertSeverity.WARNING,
+                            "Outbox Dispatcher Error",
+                            f"Outbox loop raised: {_err}",
+                            details={"error_type": type(_err).__name__},
+                        )
+                    )
+                except Exception:
+                    pass
 
                 # Back off on errors to avoid tight error loops
                 await asyncio.sleep(self.poll_interval * 2)
@@ -848,6 +1012,28 @@ async def start_outbox_worker(sessionmaker) -> OutboxWorker:
     """
     worker = await create_outbox_worker(sessionmaker)
     await worker.start()
+    # V12 W80 (BB5-F1): also start the periodic prune loop.  The
+    # prune helper was added in W74 but never wired into the
+    # production startup path — the V12 external auditor caught
+    # this exactly: helper-plus-passing-test, one layer above the
+    # actual wiring gap, leaving the live outbox at 1398 rows.
+    # Retention default 30 days; interval 24h; both env-overrideable.
+    try:
+        max_age_days = int(os.environ.get(
+            "OUTBOX_RETENTION_DAYS", "30",
+        ))
+    except (ValueError, TypeError):
+        max_age_days = 30
+    try:
+        interval_seconds = float(os.environ.get(
+            "OUTBOX_PRUNE_INTERVAL_SECONDS", str(24 * 60 * 60),
+        ))
+    except (ValueError, TypeError):
+        interval_seconds = 24 * 60 * 60
+    await worker.start_prune_loop(
+        max_age_days=max_age_days,
+        interval_seconds=interval_seconds,
+    )
     return worker
 
 

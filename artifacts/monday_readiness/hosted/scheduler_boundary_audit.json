@@ -1,0 +1,25 @@
+{
+  "task": "main scheduler bridge deployment boundary audit",
+  "base_main_sha": "32a3474736bf7f5b3fa2a4308d626b7c3fe75755",
+  "bridge_sha": "6d6a4e337dc8dc46b55d6dd1995dede44d9b5ada",
+  "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "repository_secret_names": [],
+  "environment_secret_names": {
+    "copilot": []
+  },
+  "repository_owner_type": "User",
+  "organization_secrets_endpoint": "not applicable to personal repository (HTTP422)",
+  "automatic_platform_path": "staging.yml pushes every main commit, builds/pushes with automatic GITHUB_TOKEN before KUBE_CONFIG_STAGING-dependent deployment",
+  "repair": "Exact four scheduler/guard workflow paths are ignored for staging push; runtime pushes/manual/labeled triggers preserved",
+  "manual_platform_path": "canary-deployment.yml workflow_dispatch only; no dispatch performed",
+  "residual_nonplatform_write": "Unchanged ci.yml may publish HTML coverage to gh-pages on main; it is parked and not a platform deployment",
+  "local_guard_cases": [
+    "valid passes",
+    "missing required scheduler exclusion fails",
+    "runtime source exclusion fails",
+    "additional duplicate occurrence of existing lint error fails"
+  ],
+  "hosted_guard_run": "https://github.com/Lesram/intraday/actions/runs/35465270266",
+  "staging_lint_baseline": "4 unchanged errors; no new diagnostics allowed; full details in hosted bridge validation artifact",
+  "notifications": "No issue or external test notification sent by this worker; manual source validation uses notify_issues=false"
+}

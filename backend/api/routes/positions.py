@@ -23,24 +23,39 @@ router = APIRouter(prefix="/positions", tags=["Positions"])
 def _compute_etag(data: Any) -> str:
     """Compute ETag from response data for cache validation (L-08)."""
     content = json.dumps(data, sort_keys=True, default=str)
-    return f'"{hashlib.md5(content.encode()).hexdigest()}"'
+    return f'"{hashlib.sha256(content.encode()).hexdigest()}"'
 
 
 class PositionDTO(BaseModel):
-    """§13.4 FIX: Position DTO aligned with frontend Position interface."""
+    """Position DTO aligned with the frontend Position interface.
+
+    V4 O-2 (2026-05-02): same fix as PositionResponse in api/portfolio.py.
+    populate_by_name=True only governs *input* parsing; output keys were
+    snake_case while the frontend reads camelCase. Add explicit
+    serialization aliases so the JSON keys match what the frontend reads.
+    """
+
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str
     quantity: float = Field(default=0.0, alias="qty")
-    average_entry_price: float = Field(default=0.0, alias="avg_price")
-    current_price: float = Field(default=0.0, alias="market_price")
-    market_value: float | None = None
-    unrealized_pl: float | None = None
-    unrealized_pl_percent: float = 0.0
-    cost_basis: float = 0.0
+    average_entry_price: float = Field(
+        default=0.0,
+        alias="avg_price",
+        serialization_alias="averagePrice",
+    )
+    current_price: float = Field(
+        default=0.0,
+        alias="market_price",
+        serialization_alias="currentPrice",
+    )
+    market_value: float | None = Field(default=None, serialization_alias="marketValue")
+    unrealized_pl: float | None = Field(default=None, serialization_alias="unrealizedPnL")
+    unrealized_pl_percent: float = Field(default=0.0, serialization_alias="unrealizedPnLPercent")
+    cost_basis: float = Field(default=0.0, serialization_alias="costBasis")
     side: str = "long"
-    opened_at: str = ""
-    updated_at: datetime | str = ""
+    opened_at: str = Field(default="", serialization_alias="openedAt")
+    updated_at: datetime | str = Field(default="", serialization_alias="updatedAt")
 
 
 async def get_alpaca_positions(request: Request) -> list[PositionDTO]:
@@ -88,7 +103,11 @@ async def get_database_positions() -> list[PositionDTO]:
     return []
 
 
-@router.get("/", response_model=list[PositionDTO])
+@router.get(
+    "/",
+    response_model=list[PositionDTO],
+    response_model_by_alias=True,
+)
 async def get_positions(
     request: Request,
     response: Response,
@@ -122,8 +141,10 @@ async def get_positions(
             # Return empty list if database unavailable - NO MOCK DATA
             positions = []
 
-    # L-08: Add ETag support for cache validation on frequently-polled endpoint
-    positions_data = [p.model_dump() for p in positions]
+    # L-08: Add ETag support for cache validation on frequently-polled endpoint.
+    # V4 O-2 (2026-05-02): dump by_alias so the ETag is computed on the
+    # same camelCase shape the response carries.
+    positions_data = [p.model_dump(by_alias=True) for p in positions]
     etag = _compute_etag(positions_data)
     response.headers["ETag"] = etag
     response.headers["Cache-Control"] = "private, max-age=1"
@@ -206,9 +227,13 @@ async def preview_import(
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    # Call the inner function with proper dependency injection
-    from backend.infra.db import get_db_session as get_session
-    async for db in get_session():
+    # V4 N-H-4 (2026-05-02): the previous `async for db in get_session()`
+    # idiom against an async generator does not run the generator's
+    # finally/cleanup if the function returns mid-iteration — the
+    # generator is left orphaned and the session may leak. Use the
+    # canonical `async with get_session_context() as db` instead.
+    from backend.infra.db import get_session_context
+    async with get_session_context() as db:
         try:
             alpaca_client = AlpacaBrokerClient()
             import_service = PositionImportService(db, alpaca_client)
@@ -238,11 +263,12 @@ async def import_positions_endpoint(
 
     Already imported positions are skipped automatically.
     """
-    from backend.infra.db import get_db_session as get_session
+    # V4 N-H-4 (2026-05-02): see /import-preview above.
+    from backend.infra.db import get_session_context
     from backend.integrations.alpaca_broker import AlpacaBrokerClient
     from backend.services.position_import_service import PositionImportService
 
-    async for db in get_session():
+    async with get_session_context() as db:
         try:
             alpaca_client = AlpacaBrokerClient()
             import_service = PositionImportService(db, alpaca_client)

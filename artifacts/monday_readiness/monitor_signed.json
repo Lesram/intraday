@@ -1,0 +1,24 @@
+{
+  "label": "monitor_signed",
+  "exit_code": 0,
+  "seconds": 1.64,
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--timeout=30",
+    "--tb=short",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/artifacts/monday_readiness/monitor_signed.xml",
+    "tests/test_paper_monitor_access.py"
+  ],
+  "network_denied": true,
+  "real_checkout_writes_denied": true,
+  "real_env_and_brain_reads_denied": true
+}

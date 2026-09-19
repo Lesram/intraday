@@ -1,22 +1,13 @@
 """
 Machine Learning module package.
-Contains sentiment analysis, drift detection, and model management components.
+
+V9 Z7-1 / Wave-48 (2026-05-03): the prior re-export of
+`staleness_detector` (M-47) pointed at an orphan module that wave-38
+deleted; the leftover import here broke `from backend.ml import ...`
+in any callers (lifecycle_scheduler, active_model_pointer, etc.).
+
+This module is intentionally minimal — submodules are imported
+directly (`from backend.ml.model_manager import ...`).
 """
 
-from .staleness_detector import (
-    ModelStalenessDetector,
-    StalenessMetrics,
-    StalenessLevel,
-    StalenessReason,
-    get_staleness_detector,
-)
-
-__all__ = [
-    "SocialSentimentAnalyzer",
-    # Model Staleness Detection (M-47)
-    "ModelStalenessDetector",
-    "StalenessMetrics",
-    "StalenessLevel",
-    "StalenessReason",
-    "get_staleness_detector",
-]
+__all__: list[str] = []

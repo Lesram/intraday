@@ -1,0 +1,27 @@
+{
+  "source_sha": "b9b87be6552071ac4bf92c85de114b6626be73bb",
+  "recorded_at": "2026-09-19T19:07:03.353993+00:00",
+  "local_full_pack": {
+    "exit_code": 0,
+    "passed": 216,
+    "ordinary": 168,
+    "replay": 28,
+    "semantic": 20
+  },
+  "targeted_passed": 468,
+  "runtime_environment_delta_keys": [],
+  "data_mounts_preserved": true,
+  "frozen_surface": "verified unchanged",
+  "historical_runtime_delta": "Previously accepted July-29 shadow telemetry default derives from BRAIN_DIR; explicit paper env preserves value",
+  "build_tag": "intra-api:monday-b9b87be",
+  "hosted_workflows": "dead82a hosted operational-safety passed; scheduled postclose/nightly repairs undergoing final validation",
+  "deployment": "applied and verified; see deployment_verification.json",
+  "remaining_gates": [
+    "Final backup alert patch/review/host installation",
+    "Final immutable-source scheduled postclose pass and main bridge merge",
+    "Latest PR required check and evidence packaging",
+    "Accounting activation/cohort approval",
+    "Monday natural session observation"
+  ],
+  "targeted_count_note": "Initial total corrected against JUnit:156+41+80+20+111+37+23=468. LaterCI122andops69increase coverage; report groups separately to avoid double-counting reruns."
+}

@@ -1,0 +1,41 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "ml_status": {
+    "is_trained": false,
+    "generation": 0,
+    "feature_count": 0,
+    "model_metrics_history": [],
+    "retrain_count": 0,
+    "drift_events": 0
+  },
+
+  "model_lifecycle_events_today": 0,
+  "model_monitoring_snapshots_today": 0,
+  "model_registry_entries": 0,
+
+  "learner_new_accepted_model_today": false,
+  "background_trainer_accepted_today": false,
+  "background_trainer_rejected_today": false,
+
+  "calibration": {
+    "bins": [[0,0],[0,0],[0,0],[0,0],[0,0]],
+    "map": [1.0, 1.0, 1.0, 1.0, 1.0],
+    "note": "All calibration bins empty — ML has never been trained. Calibration map is identity (1.0)."
+  },
+
+  "transfer_learning": {
+    "snapshots_today": 4,
+    "latest_snapshot": {
+      "run_id": 3,
+      "regime": "unknown",
+      "total_trades": 142,
+      "win_rate": 0.4014,
+      "sharpe": 0.0,
+      "direction_accuracy": 0.4014
+    }
+  },
+
+  "conclusion": "Model-quality data is NOT sufficient for conclusions. ML is untrained (learning mode, 142/300 trades to freeze threshold). No model lifecycle events occurred today. The organism is operating on pure breakout+tension heuristic confidence."
+}

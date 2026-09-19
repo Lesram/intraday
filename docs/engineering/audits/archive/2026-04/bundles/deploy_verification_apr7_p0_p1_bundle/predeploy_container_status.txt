@@ -1,0 +1,4 @@
+CONTAINER ID   IMAGE                COMMAND                  CREATED       STATUS                  PORTS                                         NAMES
+e3ec7a043ae7   intra-api            "/app/docker-entrypo…"   4 days ago    Up 19 hours (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp   intra-api-1
+846af9db3474   redis:7-alpine       "docker-entrypoint.s…"   3 weeks ago   Up 20 hours (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   intra-redis-1
+abf231b5d25f   postgres:16-alpine   "docker-entrypoint.s…"   4 weeks ago   Up 20 hours (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp   trading_platform_db_paper

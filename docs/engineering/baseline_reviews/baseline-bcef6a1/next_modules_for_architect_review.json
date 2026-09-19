@@ -1,0 +1,50 @@
+[
+  {
+    "priority": 1,
+    "file": "backend/organism/live_engine.py",
+    "lines": 4139,
+    "reason": "Core tick loop and all 13 entry gates. Primary control point for every trade. 3-day zero-trade streak traces to confidence gate (line ~1790, floor=0.25). Review gate ordering, confidence computation (lines 1875-1882), and entry_source classification (lines 2223-2240). This is Tranche A priority 1."
+  },
+  {
+    "priority": 2,
+    "file": "backend/organism/alpha_scanner.py",
+    "lines": 396,
+    "reason": "Composite alpha scoring. The confidence formula (0.65*breakout + 0.35*tension in learning mode) is the root cause of INV-008 — structural inability to score inverse ETFs and defensive rotations. Review weight allocation (lines 118-141) and regime alignment (lines 319-362). Closest candidate was PSQ at eff_conf=0.20 vs gate=0.25."
+  },
+  {
+    "priority": 3,
+    "file": "backend/organism/adaptive_exits.py",
+    "lines": 720,
+    "reason": "Stop loss exits accounted for -$489 (36.3% of total loss). ATR multipliers (trending_up=3.5, high_vol=4.0) determine stop distance. Horizon timeout=18 bars in learning mode. Review whether these parameters are appropriate for the 22-symbol 1-min universe. ExitLevels tracking (lines 30-63) provides MFE/MAE data."
+  },
+  {
+    "priority": 4,
+    "file": "backend/organism/kelly_sizer.py",
+    "lines": 643,
+    "reason": "Learning-mode sizing: equity*0.001/stop_distance. Max 8 positions, 10% per position. Risk-budget 0.10% equity per trade. With $111K equity, max risk per trade is ~$111. Review whether sizing is appropriately conservative for the learning phase."
+  },
+  {
+    "priority": 5,
+    "file": "backend/organism/breakout_scanner.py",
+    "lines": 477,
+    "reason": "Six breakout patterns feeding into the confidence formula's breakout_readiness component (65% weight). During the 3-day sell-off, breakout scores were near zero for the entire universe. Review whether the breakout patterns can capture non-traditional setups (sector rotations, mean-reversion entries)."
+  },
+  {
+    "priority": 6,
+    "file": "backend/organism/sector_map.py",
+    "lines": 96,
+    "reason": "Static GICS sector mapping. Low complexity but critical for sector exposure gate (max 2 per sector). Verify all 22 universe symbols are correctly mapped. Quick review."
+  },
+  {
+    "priority": 7,
+    "file": "backend/organism/regime.py",
+    "lines": 680,
+    "reason": "Regime detector has known lag issue (INV-003). SMA(200) + EMA smoothing creates 15-20 bar detection lag. Cross-session state persistence may contaminate fresh sessions. Not Tranche A but directly affects confidence scoring via regime alignment weight."
+  },
+  {
+    "priority": 8,
+    "file": "backend/organism/continuous_learner.py",
+    "lines": 529,
+    "reason": "ML training orchestration. 23 attempts, 0 accepted. Job #22 came closest (score=0.355 vs 0.35 threshold). Review quality gate criteria and whether calibration_monotonicity requirement is too strict for the current data volume."
+  }
+]

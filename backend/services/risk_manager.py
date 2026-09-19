@@ -116,7 +116,7 @@ class RiskManager:
             active_limits=limits,
             emergency_status=emergency_stop,
             summary=summary,
-            last_updated=datetime.utcnow(),
+            last_updated=datetime.now(UTC),
         )
 
     async def calculate_and_update_metrics(self, user_id: UUID) -> list[RiskMetric]:
@@ -177,7 +177,14 @@ class RiskManager:
             return None
 
         # Calculate today's P&L
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        # Audit-K finding K-3 (2026-05-02): use ET trading-day boundary,
+        # not UTC midnight. UTC midnight = 7-8 PM ET, so an evening trade
+        # was bucketed into the next "trading day" for daily P&L.
+        from zoneinfo import ZoneInfo
+        _et_now = datetime.now(UTC).astimezone(ZoneInfo("America/New_York"))
+        today_start = _et_now.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).astimezone(UTC)
 
         # Query today's realized P&L from trades table
         try:
@@ -326,7 +333,14 @@ class RiskManager:
             return None
 
         # Count today's orders
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        # Audit-K finding K-3 (2026-05-02): use ET trading-day boundary,
+        # not UTC midnight. UTC midnight = 7-8 PM ET, so an evening trade
+        # was bucketed into the next "trading day" for daily P&L.
+        from zoneinfo import ZoneInfo
+        _et_now = datetime.now(UTC).astimezone(ZoneInfo("America/New_York"))
+        today_start = _et_now.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).astimezone(UTC)
         result = await self.db.execute(
             select(Order).where(
                 and_(Order.user_id == str(user_id), Order.created_at >= today_start)
@@ -461,7 +475,7 @@ class RiskManager:
             db_metric.limit_value = limit_value
             db_metric.percent_used = percent_used
             db_metric.status = status.value
-            db_metric.last_updated = datetime.utcnow()
+            db_metric.last_updated = datetime.now(UTC)
         else:
             # Create new
             db_metric = DBRiskMetric(
@@ -471,8 +485,8 @@ class RiskManager:
                 limit_value=limit_value,
                 percent_used=percent_used,
                 status=status.value,
-                last_updated=datetime.utcnow(),
-                created_at=datetime.utcnow(),
+                last_updated=datetime.now(UTC),
+                created_at=datetime.now(UTC),
             )
             self.db.add(db_metric)
 
@@ -515,7 +529,7 @@ class RiskManager:
             severity=severity.value,
             message=message,
             resolved=False,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         self.db.add(violation)
@@ -553,7 +567,7 @@ class RiskManager:
         self, user_id: UUID, hours: int = 24
     ) -> list[RiskViolation]:
         """Get recent violations"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         result = await self.db.execute(
             select(DBRiskViolation)
             .where(
@@ -604,8 +618,8 @@ class RiskManager:
                 warning_threshold=request.warning_threshold,
                 critical_threshold=request.critical_threshold,
                 enabled=request.enabled,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
                 updated_by=updated_by,
             )
             self.db.add(db_limit)
@@ -615,7 +629,7 @@ class RiskManager:
             db_limit.warning_threshold = request.warning_threshold
             db_limit.critical_threshold = request.critical_threshold
             db_limit.enabled = request.enabled
-            db_limit.updated_at = datetime.utcnow()
+            db_limit.updated_at = datetime.now(UTC)
             db_limit.updated_by = updated_by
 
         await self.db.commit()
@@ -663,6 +677,31 @@ class RiskManager:
         logger.critical(
             f"EMERGENCY STOP triggered by {triggered_by} for user {user_id}: {request.reason}"
         )
+        # V10 YY-1 / Wave-52 (2026-05-03): wire operator alert.  This
+        # logger.critical at the entry of emergency_stop() previously
+        # had no Slack/PagerDuty dispatch.
+        try:
+            from backend.infra.alerting import (
+                AlertCategory, AlertSeverity, send_alert,
+                dispatch_alert_from_thread,
+            )
+            _reason = request.reason
+            _by = triggered_by
+            _uid = user_id
+            dispatch_alert_from_thread(
+                lambda: send_alert(
+                    AlertCategory.SYSTEM_ERROR,
+                    AlertSeverity.CRITICAL,
+                    "Emergency Stop Triggered",
+                    f"User {_uid} triggered emergency stop "
+                    f"by {_by}.  Reason: {_reason}",
+                )
+            )
+        except Exception as _alert_err:
+            logger.warning(
+                "YY-1: emergency-stop-triggered alert dispatch failed: %s",
+                _alert_err,
+            )
 
         strategies_stopped = 0
         orders_cancelled = 0
@@ -699,7 +738,7 @@ class RiskManager:
                 strategies_stopped=strategies_stopped,
                 orders_cancelled=orders_cancelled,
                 status=EmergencyStopStatus.ACTIVE.value,
-                triggered_at=datetime.utcnow(),
+                triggered_at=datetime.now(UTC),
             )
             self.db.add(db_stop)
 
@@ -738,7 +777,7 @@ class RiskManager:
             raise ValueError(f"Emergency stop {stop_id} not found or already resolved")
 
         db_stop.status = EmergencyStopStatus.RESOLVED.value
-        db_stop.resolved_at = datetime.utcnow()
+        db_stop.resolved_at = datetime.now(UTC)
         db_stop.resolved_by = resolved_by
 
         await self.db.commit()

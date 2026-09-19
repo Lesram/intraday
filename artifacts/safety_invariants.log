@@ -1,0 +1,7 @@
+.............................                                            [100%]
+=============================== warnings summary ===============================
+tests/test_safety_invariants.py::TestSafetyInvariants::test_insufficient_features_still_processes_exits
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+29 passed, 1 warning in 1.35s

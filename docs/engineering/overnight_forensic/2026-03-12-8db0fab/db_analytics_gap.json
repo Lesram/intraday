@@ -1,0 +1,48 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+
+  "finding": "realized_trades DB table has 0 rows despite 158 organism trades",
+
+  "root_cause": "NOT_WIRED",
+
+  "evidence": {
+    "table_exists": true,
+    "schema": "backend/infra/schemas.py:832-911 — RealizedTrade model with full schema (id, symbol, qty, open_price, close_price, realized_pnl, open_order_id, close_order_id, etc.)",
+
+    "write_path_exists_in": "backend/services/lot_tracker_service.py:160-178 — close_lots_fifo() creates RealizedTrade rows",
+
+    "organism_close_path": {
+      "file": "backend/organism/live_engine.py:3300-3360",
+      "flow": "_close_position() → creates TradeRecord → appends to self._all_trades → calls self.learner.record_trade() → brain persistence saves to CSV",
+      "calls_lot_tracker": false,
+      "calls_realized_trades": false
+    },
+
+    "lot_tracker_caller": {
+      "file": "backend/services/lot_tracker_service.py",
+      "invoked_by": "Position reconciliation and manual close endpoints — NOT by the organism tick loop",
+      "requires": "open position_lots in DB (which the organism does not create)"
+    },
+
+    "organism_references_to_lot_tracker": 0,
+    "grep_evidence": "grep -rn 'lot_tracker|close_lots_fifo|realized_trade' backend/organism/ returned 0 results"
+  },
+
+  "explanation": "The realized_trades table and lot_tracker_service were built for a manual/API-driven trading workflow. The organism's tick loop has its own independent trade close path that writes to brain CSV (trade_history.csv) but never touches the DB realized_trades table. These are two parallel, disconnected systems.",
+
+  "is_this_a_bug": "NO — it's a design gap. The organism was designed to be self-contained with brain persistence. The DB tables were designed for a different workflow. They were never connected.",
+
+  "impact": {
+    "dashboard": "Any dashboard querying realized_trades will show 0 trades",
+    "api_analytics": "GET /api/v1/trades/analytics returns empty results",
+    "brain_csv": "trade_history.csv has all 142 trades (158 in memory) — this IS the organism's trade record",
+    "severity": "MEDIUM — analytics gap but not a correctness issue"
+  },
+
+  "fix_complexity": "LOW-MEDIUM",
+  "fix_description": "Add a DB write in live_engine._close_position() after creating TradeRecord. Could INSERT directly into realized_trades or call lot_tracker_service. Requires mapping organism fields to DB schema (TradeRecord.entry_price → RealizedTrade.open_price, etc.).",
+  "fix_risk": "LOW — additive write, no logic change. Needs DB session access in live_engine (already available via self._db_session or service injection).",
+
+  "blocker": false
+}

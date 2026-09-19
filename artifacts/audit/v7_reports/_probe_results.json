@@ -1,0 +1,238 @@
+{
+  "summary": {
+    "total": 38,
+    "PASS": 22,
+    "WARN": 9,
+    "FAIL": 7
+  },
+  "results": [
+    {
+      "category": "1.bar_integrity",
+      "probe": "duplicate_timestamps",
+      "verdict": "PASS",
+      "note": "computed; rows=251, last-row nan_ratio=0.000"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "out_of_order_timestamps",
+      "verdict": "WARN",
+      "note": "silently accepted; engine has no monotonicity guard. rows=250"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "missing_timestamp_none",
+      "verdict": "FAIL",
+      "note": "raised TypeError: Invalid value '0.0' for dtype 'datetime64[us, UTC]'"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "nan_close",
+      "verdict": "PASS",
+      "note": "missingness=0.400; engine should gate on this"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "inf_volume",
+      "verdict": "PASS",
+      "note": "inf replaced; vol_sma_ratio=0.000"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "negative_volume",
+      "verdict": "WARN",
+      "note": "silently accepted negative volume \u2192 vol_sma_ratio=-22.222"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "zero_volume_all_bars",
+      "verdict": "PASS",
+      "note": "divide-by-zero protected; vol_sma_ratio=0.000"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "negative_price",
+      "verdict": "WARN",
+      "note": "accepted (log_ret_1d=0.0); upstream should reject"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "50pct_gap_up",
+      "verdict": "PASS",
+      "note": "computed; gap_pct=0.500"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "100_frozen_bars",
+      "verdict": "PASS",
+      "note": "computed; rsi_14=0.000, atr_14=0.003"
+    },
+    {
+      "category": "1.bar_integrity",
+      "probe": "single_bar_df",
+      "verdict": "PASS",
+      "note": "computed with len=1; cols=86"
+    },
+    {
+      "category": "4.feature_pipeline",
+      "probe": "all_nan_close_column",
+      "verdict": "WARN",
+      "note": "computed but features are 0/NaN-filled; len=250"
+    },
+    {
+      "category": "4.feature_pipeline",
+      "probe": "column_capitalised",
+      "verdict": "PASS",
+      "note": "raised KeyError as expected: 'close'"
+    },
+    {
+      "category": "5.ml_inference",
+      "probe": "predict_before_training",
+      "verdict": "PASS",
+      "note": "returns neutral MLSignal (direction=0, conf=0)"
+    },
+    {
+      "category": "5.ml_inference",
+      "probe": "single_vs_multi_row",
+      "verdict": "PASS",
+      "note": "single=0/0.000 vs multi=0/0.000"
+    },
+    {
+      "category": "5.ml_inference",
+      "probe": "missing_one_feature_col",
+      "verdict": "PASS",
+      "note": "untrained \u2192 neutral; trained path zero-pads when <20% missing"
+    },
+    {
+      "category": "5.ml_inference",
+      "probe": "extreme_outlier_feature",
+      "verdict": "PASS",
+      "note": "untrained returns neutral; np.nan_to_num handles inf in trained path"
+    },
+    {
+      "category": "6.order_validate",
+      "probe": "negative_qty",
+      "verdict": "PASS",
+      "note": "rejected: ['invalid_qty: must be positive']"
+    },
+    {
+      "category": "6.order_validate",
+      "probe": "zero_qty",
+      "verdict": "PASS",
+      "note": "{'valid': False, 'errors': ['invalid_qty: must be positive']}"
+    },
+    {
+      "category": "6.order_validate",
+      "probe": "special_chars_symbol",
+      "verdict": "PASS",
+      "note": "{'valid': False, 'errors': ['invalid_symbol: invalid characters']}"
+    },
+    {
+      "category": "6.order_validate",
+      "probe": "lowercase_symbol",
+      "verdict": "PASS",
+      "note": "valid=True errors=[]"
+    },
+    {
+      "category": "6.order_validate",
+      "probe": "submit_symbol_order_validation_gap",
+      "verdict": "FAIL",
+      "note": "submit_symbol_order does NOT call validate_order \u2014 negative/zero/symbol-injection qty go straight to outbox"
+    },
+    {
+      "category": "9.numerical",
+      "probe": "entry_price_zero",
+      "verdict": "PASS",
+      "note": "Python raises ZeroDivisionError; check live_engine guards"
+    },
+    {
+      "category": "9.numerical",
+      "probe": "near_zero_entry_with_float",
+      "verdict": "WARN",
+      "note": "actual_return=1.010e+302 (no guard for entry_price ~0)"
+    },
+    {
+      "category": "9.numerical",
+      "probe": "sharpe_near_zero_variance",
+      "verdict": "WARN",
+      "note": "std=0.000e+00 sharpe=inf \u2014 caller must guard"
+    },
+    {
+      "category": "9.numerical",
+      "probe": "float64_overflow",
+      "verdict": "WARN",
+      "note": "silent inf overflow: inf"
+    },
+    {
+      "category": "10.config",
+      "probe": "empty_universe_csv",
+      "verdict": "WARN",
+      "note": "ORGANISM_LIVE_SYMBOLS='' parses to empty list \u2014 engine will run with 0 symbols"
+    },
+    {
+      "category": "10.config",
+      "probe": "duplicate_symbols_csv",
+      "verdict": "FAIL",
+      "note": "duplicates accepted as-is: ['AAPL', 'AAPL', 'AAPL'] (no dedup)"
+    },
+    {
+      "category": "10.config",
+      "probe": "negative_max_notional",
+      "verdict": "FAIL",
+      "note": "_env_float accepts -100 verbatim; MAX_NOTIONAL_PER_TRADE=-100.0; guard `if > 0` disables the feature silently (no validation/alert)"
+    },
+    {
+      "category": "10.config",
+      "probe": "invalid_log_level",
+      "verdict": "PASS",
+      "note": "raised ValueError: Unknown level: 'BANANA'"
+    },
+    {
+      "category": "3.ws",
+      "probe": "malformed_json",
+      "verdict": "PASS",
+      "note": "listen() catches JSONDecodeError + continue (no hang)"
+    },
+    {
+      "category": "3.ws",
+      "probe": "filled_qty_null_field",
+      "verdict": "FAIL",
+      "note": "process_trade_update calls `float(order_data.get('filled_qty', 0))` \u2014 if broker sends filled_qty=null (JSON null \u2192 Python None), .get returns None and float(None) raises TypeError. The outer except Exception catches it and DROPS the message silently \u2014 fill never lands in DB \u2192 state divergence"
+    },
+    {
+      "category": "3.ws",
+      "probe": "unbounded_queue",
+      "verdict": "WARN",
+      "note": "update_queue is unbounded; the comment says 'must NEVER be dropped' but a stuck processor \u2192 memory unbounded growth"
+    },
+    {
+      "category": "2.broker",
+      "probe": "5xx_infinite_retry",
+      "verdict": "PASS",
+      "note": "_make_request_with_retry has bounded retries (max_retries=3)"
+    },
+    {
+      "category": "2.broker",
+      "probe": "200_empty_body",
+      "verdict": "FAIL",
+      "note": "place_order calls response.json() unconditionally on 200 \u2014 empty body raises JSONDecodeError \u2192 outer except wraps into 502"
+    },
+    {
+      "category": "8.state",
+      "probe": "concurrent_writer_lock",
+      "verdict": "PASS",
+      "note": "brain_persistence uses some lock primitive"
+    },
+    {
+      "category": "7.time",
+      "probe": "bar_ts_uses_utc",
+      "verdict": "PASS",
+      "note": "_last_bar_times keyed on UTC string \u2014 DST-immune"
+    },
+    {
+      "category": "6.order_validate",
+      "probe": "idem_key_collision_with_diff_content",
+      "verdict": "FAIL",
+      "note": "cache returns existing result WITHOUT verifying body matches (symbol/side/qty)"
+    }
+  ]
+}

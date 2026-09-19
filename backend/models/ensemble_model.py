@@ -415,8 +415,15 @@ class LSTMModel:
             # Prepare data
             from sklearn.preprocessing import StandardScaler
 
+            # Audit 2026-06-09 (plan 2.4): fit the scaler on the TRAIN
+            # portion only (first 80%), then transform the full series.
+            # Previously fit on all rows, leaking the validation period's
+            # mean/std into training-time scaling.
+            values = data[[target_column]].values
+            train_rows = int(len(values) * 0.8)
             self.scaler = StandardScaler()
-            scaled_data = self.scaler.fit_transform(data[[target_column]].values)
+            self.scaler.fit(values[:max(1, train_rows)])
+            scaled_data = self.scaler.transform(values)
 
             # Create sequences
             X, y = self.prepare_sequences(scaled_data)
@@ -512,16 +519,20 @@ class XGBoostModel:
         try:
             from sklearn.preprocessing import StandardScaler
 
-            # Scale features
-            self.scaler = StandardScaler()
-            features_scaled = self.scaler.fit_transform(features)
-
-            # Time series split for training
+            # Audit 2026-06-09 (plan 2.4): the scaler was previously fit on
+            # the FULL feature set before the TimeSeriesSplit — validation
+            # rows leaked their mean/std into training-fold scaling (classic
+            # preprocessing leakage). Now: fit the scaler on each TRAIN fold
+            # only; the final scaler is refit on the winning fold's train
+            # rows so predict() scaling matches what the kept model saw.
+            features_arr = features.values
             tss = TimeSeriesSplit(n_splits=3)
             best_score = float("inf")
 
-            for train_idx, val_idx in tss.split(features_scaled):
-                X_train, X_val = features_scaled[train_idx], features_scaled[val_idx]
+            for train_idx, val_idx in tss.split(features_arr):
+                fold_scaler = StandardScaler()
+                X_train = fold_scaler.fit_transform(features_arr[train_idx])
+                X_val = fold_scaler.transform(features_arr[val_idx])
                 y_train, y_val = target.iloc[train_idx], target.iloc[val_idx]
 
                 model = xgb.XGBRegressor(
@@ -548,6 +559,8 @@ class XGBoostModel:
                 if score < best_score:
                     best_score = score
                     self.model = model
+                    # Keep the scaler that matches the kept model (2.4).
+                    self.scaler = fold_scaler
 
             # Store feature importance
             if self.model:
@@ -730,7 +743,7 @@ class EnsembleModel:
         if cached and cached[0] == info.path:
             model_obj = cached[1]
         else:
-            model_obj = secure_load_from_path(info.path, allow_unsigned=True)
+            model_obj = secure_load_from_path(info.path)
             self._active_artifact_cache[cache_key] = (info.path, model_obj)
 
         if not hasattr(model_obj, "predict"):

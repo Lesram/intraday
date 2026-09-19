@@ -1,0 +1,75 @@
+{
+  "ml_predictions_available": true,
+  "total_trades": 12,
+  "total_trades_with_predictions": 12,
+  "predicted_return_direction_match_rate": 0.1667,
+  "ranking_quality_available": false,
+  "ranking_quality_note": "Per-tick candidate ranking data requires engine decision logs, not available in trade history.",
+  "high_confidence_trades": 12,
+  "high_confidence_win_rate": 0.1667,
+  "low_confidence_trades": 0,
+  "low_confidence_win_rate": null,
+  "confidence_correlated_with_outcome": null,
+  "confidence_quintiles": [
+    {
+      "quintile": 1,
+      "count": 2,
+      "confidence_range": [
+        0.5511,
+        0.5564
+      ],
+      "avg_confidence": 0.5537,
+      "win_rate": 0.0,
+      "avg_pnl": -1.62,
+      "total_pnl": -3.25
+    },
+    {
+      "quintile": 2,
+      "count": 2,
+      "confidence_range": [
+        0.563,
+        0.5959
+      ],
+      "avg_confidence": 0.5795,
+      "win_rate": 0.5,
+      "avg_pnl": -4.08,
+      "total_pnl": -8.17
+    },
+    {
+      "quintile": 3,
+      "count": 3,
+      "confidence_range": [
+        0.5999,
+        0.6175
+      ],
+      "avg_confidence": 0.606,
+      "win_rate": 0.3333,
+      "avg_pnl": -0.35,
+      "total_pnl": -1.04
+    },
+    {
+      "quintile": 4,
+      "count": 2,
+      "confidence_range": [
+        0.6254,
+        0.6714
+      ],
+      "avg_confidence": 0.6484,
+      "win_rate": 0.0,
+      "avg_pnl": -1.43,
+      "total_pnl": -2.85
+    },
+    {
+      "quintile": 5,
+      "count": 3,
+      "confidence_range": [
+        0.7012,
+        0.7637
+      ],
+      "avg_confidence": 0.723,
+      "win_rate": 0.0,
+      "avg_pnl": -2.83,
+      "total_pnl": -8.49
+    }
+  ]
+}

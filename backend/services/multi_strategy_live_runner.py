@@ -112,6 +112,26 @@ class MultiStrategyLiveRunner:
             "microstructure": MicrostructureAlphaStrategy(rm),
         }
 
+    @staticmethod
+    def _halted_by_governance(governance: Any) -> bool:
+        """Hard kill-switch check covering ALL multi-strategy execution paths.
+
+        Audit 2026-06-09 finding 3.1: this runner previously bypassed the
+        organism kill switch entirely (only the soft ``trading_allowed``
+        pre-execution hook was consulted by callers). Every entry point into
+        ``run_once`` now passes through this check. Falls back to the
+        ``ORGANISM_HALT_TRADING`` env var when no governance instance is
+        available, so a halt is honored even if the organism is disabled.
+        """
+        if governance is not None:
+            try:
+                if bool(governance.is_trading_halted):
+                    return True
+            except Exception:
+                # Fail closed: an unreadable governance state means halt.
+                return True
+        return os.getenv("ORGANISM_HALT_TRADING", "0").lower() in ("1", "true", "yes")
+
     async def run_once(
         self,
         *,
@@ -123,7 +143,21 @@ class MultiStrategyLiveRunner:
         strategy_engine: StrategyEngine | None = None,
         portfolio_state: dict[str, Any] | None = None,
         idempotency_key: str | None = None,
+        governance: Any = None,
     ) -> MultiStrategyRunResult:
+        # ── Kill switch (audit 2026-06-09, finding 3.1) ───────────────
+        if self._halted_by_governance(governance):
+            logger.critical(
+                "HALT ACTIVE: multi-strategy execution blocked by governance "
+                "kill switch — no signals generated, no orders submitted"
+            )
+            return MultiStrategyRunResult(
+                symbols=list(symbols or []),
+                engine_signals_count=0,
+                engine_signals=[],
+                submitted=[],
+                timestamp=datetime.now(UTC).isoformat(),
+            )
         if not symbols:
             return MultiStrategyRunResult(
                 symbols=[],

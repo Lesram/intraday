@@ -1,0 +1,177 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+  "audit_question": "Did the scanner/gates miss genuinely good opportunities today, or were those winners not valid under the current strategy?",
+
+  "target_symbols": [
+    {
+      "symbol": "CRM",
+      "daily_change_pct": 2.65,
+      "in_universe": true,
+      "was_candidate": false,
+      "rejection_count": 0,
+      "max_eff_conf": null,
+      "rejection_reason": "NEVER_BECAME_CANDIDATE",
+      "classification": "MISSED_BY_SCANNER",
+      "evidence": "CRM does not appear in ANY rejection log for 2026-03-12. The alpha scanner did not produce CRM as a top-5 candidate on any tick. CRM's +2.65% was a gradual defensive rotation move, not a breakout pattern — comp_breakout_readiness and comp_squeeze_momentum were likely near-zero.",
+      "counterfactual": "NOT_COMPUTABLE — no rejection timestamp available. Full-day return was +2.65% from prev close.",
+      "verdict": "The scanner is structurally blind to gradual sector-rotation moves. CRM's rally was a defensive rotation, not a breakout."
+    },
+    {
+      "symbol": "SH",
+      "daily_change_pct": 1.58,
+      "in_universe": true,
+      "was_candidate": true,
+      "rejection_count": 8,
+      "max_eff_conf": 0.00,
+      "regimes_seen": ["trending_up", "trending_down"],
+      "rejection_reasons": [
+        "Confidence reject: SH (eff_conf=0.00 < 0.25) — 2 occurrences at 15:16-15:17 UTC (trending_up)",
+        "Entry below main-book threshold: SH (eff_conf=0.00, regime=trending_down) — 6 occurrences at 15:20-15:30 UTC"
+      ],
+      "classification": "MISSED_BY_CONFIDENCE",
+      "evidence": "SH was produced as a candidate 8 times. Every time, eff_conf=0.00 because breakout_readiness=0 and squeeze_momentum=0. Inverse ETFs don't exhibit breakout patterns — they move inversely to the market in a gradual fashion. The confidence formula (0.65*breakout + 0.35*tension) will ALWAYS produce near-zero for SH unless the market crashes sharply enough to trigger a tension score.",
+      "structural_issue": "The confidence formula has NO component that can detect inverse-ETF worthiness. Regime alignment contributes 5% to alpha score but does NOT flow into the confidence formula at all.",
+      "counterfactual_estimate": {
+        "note": "SH opened at ~36.67, closed at 37.25. Best candidate timestamp: 15:16 UTC (10:16 ET)",
+        "from_1016_et_to_close_pct": "+1.58%",
+        "mfe_estimate": "+1.7% (SH peaked near EOD as SPY hit lows)",
+        "mae_estimate": "-0.2% (brief morning dip before steady rise)"
+      },
+      "verdict": "GENUINE MISSED OPPORTUNITY — SH would have been a clean winner. But the current confidence formula structurally cannot detect inverse ETF opportunities."
+    },
+    {
+      "symbol": "PSQ",
+      "daily_change_pct": 1.76,
+      "in_universe": true,
+      "was_candidate": true,
+      "rejection_count": 3,
+      "max_eff_conf": 0.00,
+      "regimes_seen": ["trending_down"],
+      "rejection_reasons": [
+        "Entry below main-book threshold: PSQ (eff_conf=0.00, regime=trending_down) — 3 occurrences at 15:21-15:23 UTC"
+      ],
+      "classification": "MISSED_BY_CONFIDENCE",
+      "evidence": "Same structural issue as SH. PSQ only appeared during trending_down window. eff_conf=0.00 every time. The regime flip correctly interprets trending_down as favorable for PSQ, but the confidence formula doesn't incorporate this.",
+      "counterfactual_estimate": {
+        "from_1021_et_to_close_pct": "+1.76%",
+        "mfe_estimate": "+1.9%",
+        "mae_estimate": "-0.1%"
+      },
+      "verdict": "GENUINE MISSED OPPORTUNITY — same structural issue as SH."
+    },
+    {
+      "symbol": "WMT",
+      "daily_change_pct": 1.49,
+      "in_universe": true,
+      "was_candidate": true,
+      "rejection_count": 12,
+      "max_eff_conf": 0.18,
+      "regimes_seen": ["trending_up", "trending_down"],
+      "rejection_reasons": [
+        "Confidence reject: WMT (eff_conf=0.00 < 0.25) — multiple",
+        "Confidence reject: WMT (eff_conf=0.17 < 0.25) — at 15:18 UTC",
+        "Entry below main-book threshold: WMT (eff_conf=0.16, regime=trending_up)",
+        "Entry below main-book threshold: WMT (eff_conf=0.18, regime=trending_up)",
+        "Entry below main-book threshold: WMT (eff_conf=0.15, regime=trending_down) — at 16:39 UTC",
+        "Entry below main-book threshold: WMT (eff_conf=0.00, regime=trending_down)"
+      ],
+      "classification": "MISSED_BY_CONFIDENCE",
+      "evidence": "WMT was the closest to passing the confidence gate today (max eff_conf=0.18, gate=0.25, gap=0.07). It appeared 12 times as a candidate. The breakout_readiness and tension were non-zero but insufficient. WMT's +1.49% was a defensive rotation, partially detectable by the breakout scanner.",
+      "counterfactual_estimate": {
+        "best_timestamp": "15:18 UTC (10:18 ET, eff_conf=0.17)",
+        "from_1018_et_to_close_pct": "+1.2% (estimated, WMT continued rising)",
+        "mfe_estimate": "+1.6%",
+        "mae_estimate": "-0.3%"
+      },
+      "verdict": "LIKELY MISSED OPPORTUNITY — WMT was closest to the gate and would have been a winner. But 0.07 gap from gate is not trivially close."
+    },
+    {
+      "symbol": "XOM",
+      "daily_change_pct": 1.29,
+      "in_universe": true,
+      "was_candidate": true,
+      "rejection_count": 7,
+      "max_eff_conf": 0.20,
+      "regimes_seen": ["trending_up", "trending_down"],
+      "rejection_reasons": [
+        "Confidence reject: XOM (eff_conf=0.00 < 0.25) — at 15:19 UTC",
+        "Entry below main-book threshold: XOM (eff_conf=0.00, regime=trending_down) — 3 occurrences",
+        "Entry below main-book threshold: XOM (eff_conf=0.20, regime=trending_down) — at 15:23 UTC"
+      ],
+      "classification": "MISSED_BY_CONFIDENCE",
+      "evidence": "XOM appeared as candidate 7 times today (improvement over 3/11 when XOM never appeared). Max eff_conf=0.20, gap of 0.05 from gate. Energy sector rally continued from 3/11.",
+      "note_vs_march_11": "On 3/11, XOM was NEVER a candidate despite +2.43%. Today it WAS produced as candidate — the scanner may have improved or XOM's intraday pattern was more breakout-like today.",
+      "counterfactual_estimate": {
+        "best_timestamp": "15:23 UTC (10:23 ET, eff_conf=0.20)",
+        "from_1023_et_to_close_pct": "+0.8% (estimated)",
+        "mfe_estimate": "+1.4%",
+        "mae_estimate": "-0.2%"
+      },
+      "verdict": "LIKELY MISSED OPPORTUNITY — XOM near-missed the gate (0.05 gap) and continued rising."
+    },
+    {
+      "symbol": "COST",
+      "daily_change_pct": 1.12,
+      "in_universe": true,
+      "was_candidate": true,
+      "rejection_count": 15,
+      "max_eff_conf": null,
+      "rejection_reason": "LIQUIDITY_GATE",
+      "regimes_seen": ["trending_up", "trending_down"],
+      "rejection_reasons": [
+        "Liquidity gate blocked COST — 10+ occurrences across session (15:16-17:14 UTC)"
+      ],
+      "classification": "MISSED_BY_LIQUIDITY",
+      "evidence": "COST was blocked by the liquidity gate every time it appeared. The gate requires min 10,000 shares avg volume over last 20 bars. COST trades at ~$1,000/share, so dollar volume is high but share volume is low. This is a known edge case with high-priced stocks.",
+      "structural_issue": "Liquidity gate uses share volume, not dollar volume. COST at $1,000 with 8,000 shares/bar = $8M/bar — more than liquid enough. But the gate sees < 10,000 shares and blocks.",
+      "counterfactual_estimate": {
+        "full_day_return": "+1.12%",
+        "note": "Never reached confidence scoring, so no timestamp to compute from"
+      },
+      "verdict": "MISSED_BY_LIQUIDITY (structural) — COST is genuinely liquid by dollar volume but fails the share-count gate. This is a known gap."
+    },
+    {
+      "symbol": "XLE",
+      "daily_change_pct": 0.93,
+      "in_universe": true,
+      "was_candidate": true,
+      "rejection_count": 7,
+      "max_eff_conf": 0.15,
+      "regimes_seen": ["trending_down"],
+      "rejection_reasons": [
+        "Entry below main-book threshold: XLE (eff_conf=0.00, regime=trending_down) — 5 occurrences",
+        "Entry below main-book threshold: XLE (eff_conf=0.15, regime=trending_down) — at 15:21 UTC",
+        "Confidence reject: XLE (eff_conf=0.00 < 0.25)"
+      ],
+      "classification": "MISSED_BY_CONFIDENCE",
+      "evidence": "XLE continued its energy rally from 3/11. Max eff_conf=0.15, gap of 0.10 from gate. Moderately far from passing.",
+      "counterfactual_estimate": {
+        "from_1021_et_to_close_pct": "+0.93% (full day return)",
+        "mfe_estimate": "+1.1%",
+        "mae_estimate": "-0.2%"
+      },
+      "verdict": "MILD MISSED OPPORTUNITY — XLE was a winner but the gap to the confidence gate was large (0.10). Second consecutive day of energy near-misses."
+    }
+  ],
+
+  "summary": {
+    "total_target_symbols": 7,
+    "all_in_universe": true,
+    "classifications": {
+      "MISSED_BY_SCANNER": 1,
+      "MISSED_BY_CONFIDENCE": 5,
+      "MISSED_BY_LIQUIDITY": 1,
+      "CORRECTLY_REJECTED": 0,
+      "MISSED_BY_REGIME": 0,
+      "MISSED_BY_UNIVERSE": 0
+    },
+    "genuine_missed_opportunities": ["SH (+1.58%)", "PSQ (+1.76%)", "WMT (+1.49%)", "XOM (+1.29%)"],
+    "structural_gaps_identified": [
+      "Inverse ETFs (SH, PSQ) will NEVER pass the confidence formula because breakout_readiness and squeeze_momentum are always near-zero for them",
+      "CRM-style defensive rotations are invisible to the breakout scanner",
+      "COST is blocked by share-volume liquidity gate despite adequate dollar liquidity"
+    ],
+    "key_finding": "5 of 7 today's winners WERE produced as candidates but failed at confidence. The scanner IS detecting them — the problem is that the confidence formula (0.65*breakout + 0.35*tension) cannot produce adequate scores for gradual moves, defensive rotations, or inverse ETFs."
+  }
+}

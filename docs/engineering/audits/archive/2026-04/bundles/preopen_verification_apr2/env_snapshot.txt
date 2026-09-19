@@ -1,0 +1,11 @@
+=== ENVIRONMENT ===
+ALPACA_PAPER=true
+PYTHONPATH=/app
+OTEL_SERVICE_NAME=algotrading-api-paper
+REDIS_URL=redis://:changeme_redis@redis:6379/0
+OTEL_ENABLED=true
+USE_MOCK_BROKER=false
+OTEL_SERVICE_VERSION=1.0.0
+DATABASE_URL=postgresql+asyncpg://trading:***@postgres:5432/algotrading
+APP_ENVIRONMENT=development
+USE_MOCK_DATA=false

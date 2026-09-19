@@ -1,0 +1,2 @@
+=== POST-DEPLOY HEALTH ===
+{"status":"ok","version":"1.0.0","timestamp":"2026-04-03T06:16:05.560465+00:00"}

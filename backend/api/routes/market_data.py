@@ -95,6 +95,9 @@ async def market_data_websocket(
 
         # Decode and validate JWT token
         payload = decode_token(token)
+        if "paper_monitor" in payload.get("roles", []):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
         user_id = payload.get("sub") or payload.get("user_id")
 
         if not user_id:
@@ -345,7 +348,7 @@ async def get_historical_bars(
     """
     try:
         # ✅ REAL DATA: Fetch with yfinance fallback (FREE, unlimited, 15-min delayed)
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
         import os
 
         from alpaca.data.historical import StockHistoricalDataClient
@@ -391,7 +394,7 @@ async def get_historical_bars(
             alpaca_timeframe = timeframe_map.get(timeframe, TimeFrame(5, TimeFrameUnit.Minute))
 
             # Calculate date range
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             if start:
                 start_date = datetime.fromisoformat(start.replace('Z', '+00:00'))
             else:

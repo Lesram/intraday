@@ -1,0 +1,20 @@
+total 1952
+drwxrwxrwx@  17 marselkei  staff     544 Apr 19 10:28 .
+drwxr-xr-x  198 marselkei  staff    6336 Apr 23 19:39 ..
+-rw-rw-rw-@   1 marselkei  staff       0 Apr 15 19:43 .brain.lock
+drwxr-xr-x    3 marselkei  staff      96 Apr 23 13:05 diagnostics
+-rw-r--r--    1 marselkei  staff  267698 Apr 23 12:57 equity_curve.csv
+-rw-r--r--    1 marselkei  staff   95499 Apr 23 12:57 evaluation_event_history.json
+-rw-r--r--    1 marselkei  staff    3717 Apr 15 19:43 evolved_params.json
+-rw-r--r--    1 marselkei  staff    9935 Apr 23 12:57 extra_counters.json
+-rw-r--r--    1 marselkei  staff     297 Apr 23 12:57 governance_state.json
+-rw-r--r--    1 marselkei  staff     302 Apr 23 12:57 learning_state.json
+-rw-r--r--    1 marselkei  staff     249 Apr 23 12:57 manifest.json
+-rw-r--r--    1 marselkei  staff  248507 Apr 15 19:43 ml_classifier.joblib
+-rw-r--r--    1 marselkei  staff  168098 Apr 15 19:43 ml_regressor.joblib
+-rw-r--r--    1 marselkei  staff    3159 Apr 23 12:57 ml_state.json
+-rw-r--r--    1 marselkei  staff   20126 Apr 15 19:43 reference_feats.csv
+-rw-r--r--    1 marselkei  staff     178 Apr 23 12:57 regime_state.json
+-rw-r--r--    1 marselkei  staff   52712 Apr 23 12:57 trade_history.csv
+
+NOTE: identical to predeploy_brain_listing.txt — no force-save performed.

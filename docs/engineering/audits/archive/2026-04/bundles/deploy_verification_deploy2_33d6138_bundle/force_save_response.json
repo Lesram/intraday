@@ -1,0 +1,4 @@
+{
+  "called": false,
+  "reason": "HARD STOP at preflight — deploy did not proceed; force-save is a post-deploy verification step."
+}

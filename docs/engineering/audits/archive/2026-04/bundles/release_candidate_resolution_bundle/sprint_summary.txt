@@ -1,0 +1,9 @@
+live_commit=ce06d41
+repo_head_before_sprint=33d6138
+repo_head_after_sprint=eb90fa3
+worktree_before_sprint=dirty (4 files, backward reverts)
+worktree_after_sprint=clean
+commits_added_this_sprint=0ac6e2d eb90fa3
+focused_tests_passing=10/10
+release_candidate_commit=eb90fa3
+rc_scope=G1/G2/G3 + Exp4 + H1/H2 + CAP/HALT + H5 + alerts + canonical-drawdown + compose-align

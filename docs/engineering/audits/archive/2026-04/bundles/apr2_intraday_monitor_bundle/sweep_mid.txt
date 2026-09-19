@@ -1,0 +1,29 @@
+=== MID-SESSION SWEEP 153429 UTC ===
+{"status":"ok","version":"1.0.0","timestamp":"2026-04-02T15:34:29.388068+00:00"}
+--- MANIFEST ---
+{
+  "brain_format_version": 2,
+  "saved_at": "2026-04-02T15:34:28.325554+00:00",
+  "generation": 2,
+  "total_runs": 97,
+  "total_trades": 169,
+  "cumulative_pnl": -633.23,
+  "best_sharpe": 1.7295,
+  "ml_is_trained": true,
+  "feature_count": 79
+}
+--- ACCOUNT ---
+equity=111702.54 status=ACTIVE
+--- POSITIONS ---
+FLAT
+--- ORDERS ---
+Orders: 22
+--- TRADE CSV ---
+8
+trades persisted for Apr 2
+--- SAVE EVENTS ---
+     224
+save events so far
+--- ERRORS ---
+     186
+errors

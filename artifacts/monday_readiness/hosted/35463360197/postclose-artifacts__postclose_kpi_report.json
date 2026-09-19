@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-09-19T19:18:33.233396+00:00",
+  "status": "fail",
+  "source_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "run_id": "35463360197",
+  "run_attempt": "1",
+  "scope": "CI evidence only; no live account or strategy-edge certification",
+  "breaches": [
+    "An upstream workflow step did not succeed",
+    "Full artifact generation did not succeed",
+    "test_summary.json: required status is not pass",
+    "replay_summary.json: required status is not pass",
+    "replay_summary.json: execution failure",
+    "task_report.json: required status is not pass",
+    "task_report.json: recorded failures",
+    "test_summary.json: failed, incomplete or zero-test suite",
+    "replay_summary.json: failed, incomplete or zero-test suite"
+  ],
+  "notification": "workflow-managed; no send attempted by checker"
+}

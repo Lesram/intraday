@@ -1,0 +1,45 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "organism_universe": ["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","AMD","AVGO","CRM","COST","WMT","LLY","XOM","CAT","SPY","QQQ","IWM","XLK","XLE","SH","PSQ"],
+  "universe_size": 22,
+
+  "benchmark_universe_status": [
+    {"symbol": "HIMS", "status": "OUT_OF_UNIVERSE", "change_pct": 11.94, "directionally_relevant": true, "note": "Long opportunity +12% — mid-cap healthcare, high vol. Would need universe expansion."},
+    {"symbol": "PATH", "status": "OUT_OF_UNIVERSE", "change_pct": 3.17, "directionally_relevant": true, "note": "Long opportunity +3.2% — mid-cap software, very high vol. Plausible add."},
+    {"symbol": "INTC", "status": "OUT_OF_UNIVERSE", "change_pct": 2.49, "directionally_relevant": true, "note": "Long opportunity +2.5% — large-cap semi, high vol. Strong universe candidate."},
+    {"symbol": "XOM", "status": "IN_UNIVERSE", "change_pct": 2.43, "directionally_relevant": true, "note": "In universe but organism never logged a rejection for XOM — was it even a candidate?"},
+    {"symbol": "XLE", "status": "IN_UNIVERSE", "change_pct": 2.43, "directionally_relevant": true, "note": "Rejected at eff_conf=0.21 (trending_down) and 0.14 (high_vol). NEAR MISS."},
+    {"symbol": "MU", "status": "OUT_OF_UNIVERSE", "change_pct": 1.93, "directionally_relevant": true, "note": "Long opportunity +1.9% — large-cap semi, 30M vol. Strong universe candidate."},
+    {"symbol": "ORCL", "status": "OUT_OF_UNIVERSE", "change_pct": -1.96, "directionally_relevant": false, "note": "Short-only opportunity (-2%) — long-only organism cannot trade. SH/PSQ don't help for single-stock shorts."},
+    {"symbol": "TSLA", "status": "IN_UNIVERSE", "change_pct": 1.38, "directionally_relevant": true, "note": "Rejected at eff_conf=0.22 (trending_down) and 0.15 (high_vol). But intraday path was bad — peaked early then fell."},
+    {"symbol": "NFLX", "status": "OUT_OF_UNIVERSE", "change_pct": -2.59, "directionally_relevant": false, "note": "Short-only opportunity — not tradable by long-only organism."},
+    {"symbol": "SOFI", "status": "OUT_OF_UNIVERSE", "change_pct": 0.76, "directionally_relevant": true, "note": "Marginal long opportunity +0.8%. Mid-cap fintech."},
+    {"symbol": "SNOW", "status": "IN_UNIVERSE", "change_pct": 1.00, "directionally_relevant": true, "note": "Rejected at eff_conf=0.00 (8 times). Breakout score was zero despite +1% close-to-close."},
+    {"symbol": "AMZN", "status": "IN_UNIVERSE", "change_pct": -1.42, "directionally_relevant": false, "note": "Short-only opportunity (-1.4%) — correct to stay out with long-only constraint."},
+    {"symbol": "CRM", "status": "IN_UNIVERSE", "change_pct": -1.16, "directionally_relevant": false, "note": "Short-only opportunity (-1.2%) — correct to stay out."},
+    {"symbol": "WMT", "status": "IN_UNIVERSE", "change_pct": -1.45, "directionally_relevant": false, "note": "Short-only opportunity (-1.5%) — correct to stay out."},
+    {"symbol": "AMD", "status": "IN_UNIVERSE", "change_pct": -0.14, "directionally_relevant": false, "note": "Nearly flat (-0.14%). Not an opportunity."},
+    {"symbol": "SOXL", "status": "OUT_OF_UNIVERSE", "change_pct": 1.06, "directionally_relevant": true, "note": "Leveraged semi ETF. Not appropriate for seed universe (leverage decay risk)."},
+    {"symbol": "NIO", "status": "OUT_OF_UNIVERSE", "change_pct": -3.87, "directionally_relevant": false, "note": "Short-only opportunity. Also low-price (<$6), highly speculative."},
+    {"symbol": "PLTR", "status": "OUT_OF_UNIVERSE", "change_pct": 0.15, "directionally_relevant": false, "note": "Flat day. Not an opportunity."},
+    {"symbol": "AAL", "status": "OUT_OF_UNIVERSE", "change_pct": -0.72, "directionally_relevant": false, "note": "Short-only opportunity. Low-price airline."},
+    {"symbol": "COIN", "status": "OUT_OF_UNIVERSE", "change_pct": 0.57, "directionally_relevant": true, "note": "Marginal long +0.6%. High range (5.4%) but modest close-to-close."}
+  ],
+
+  "universe_miss_summary": {
+    "actionable_long_opportunities_outside_universe": [
+      {"symbol": "HIMS", "change_pct": 11.94, "quality": "HIGH — but mid-cap, might be noisy"},
+      {"symbol": "PATH", "change_pct": 3.17, "quality": "MEDIUM — mid-cap software"},
+      {"symbol": "INTC", "change_pct": 2.49, "quality": "HIGH — large-cap semi, liquid, stable"},
+      {"symbol": "MU", "change_pct": 1.93, "quality": "HIGH — large-cap semi, liquid, stable"}
+    ],
+    "actionable_long_in_universe_but_rejected": [
+      {"symbol": "XOM", "change_pct": 2.43, "note": "NOT EVEN LOGGED as rejected — may not have been a candidate at all"},
+      {"symbol": "XLE", "change_pct": 2.43, "note": "Rejected at eff_conf=0.14-0.21 — genuine near-miss"},
+      {"symbol": "TSLA", "change_pct": 1.38, "note": "Rejected at eff_conf=0.15-0.22 — but intraday path was poor for a long"},
+      {"symbol": "SNOW", "change_pct": 1.00, "note": "Rejected at eff_conf=0.00 — breakout scanner saw nothing"}
+    ]
+  }
+}

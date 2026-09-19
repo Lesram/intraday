@@ -1,0 +1,35 @@
+commit ab54b2f18f832e5e594ab1f1deb722543db457aa
+Author: Marsel Kamberaj <marselkei@Marsels-MacBook-Pro.local>
+Date:   Fri Apr 10 18:34:16 2026 -0700
+
+    experiment(exits): chop-regime minimum-hold gate for pyramid_cut [Exp 1A]
+    
+    In chop regime, suppress pyramid_cut exits (close_partial from the
+    pyramider) until the trade has been held for at least 10 bars.
+    
+    Hypothesis: the Apr 7-10 baseline shows 24/32 trades exit via
+    pyramid_cut, ALL losers (-$63.80 total), while 78% of entries go
+    green (MFE > 0) and the 5 timeout exits (18-30 bars) are ALL
+    winners (+$18.68). Premature cuts in chop destroy edge that would
+    have been captured by holding. A 10-bar minimum hold gives breakout
+    entries time to work in a range-bound market instead of getting cut
+    on temporary adverse excursions.
+    
+    Scope:
+    - Only affects pyramid_cut (close_partial) exits in chop regime
+    - stop_loss, horizon_timeout, max_holding_period unchanged
+    - Non-chop pyramid_cut behavior unchanged
+    - No entry logic changes
+    - No sizing changes
+    
+    Instrumentation: logs "Exp1A: pyramid_cut suppressed (chop min-hold)"
+    with symbol, bars_held, regime, R-multiple, unrealized PnL, and the
+    suppressed reason when a cut would have fired but is held back.
+    
+    8 new tests. All 115 tests pass (8 Exp1A + 107 organism regression).
+    
+    Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+ backend/organism/live_engine.py           |  27 ++++
+ tests/test_experiment_1a_chop_min_hold.py | 225 ++++++++++++++++++++++++++++++
+ 2 files changed, 252 insertions(+)

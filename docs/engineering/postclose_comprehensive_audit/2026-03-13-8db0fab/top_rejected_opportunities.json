@@ -1,0 +1,79 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "top_rejected": [
+    {
+      "rank": 1,
+      "symbol": "PSQ",
+      "max_eff_conf": 0.20,
+      "gate_floor": 0.25,
+      "gap": 0.05,
+      "daily_return_pct": 0.64,
+      "breakout_score_est": 0.05,
+      "tension_score_est": 0.45,
+      "confidence_formula": "0.65 * 0.05 + 0.35 * 0.45 = 0.19",
+      "why_rejected": "Inverse ETF — breakout_readiness near zero because PSQ doesn't exhibit traditional breakout patterns. Tension captures some mean-reversion signal but 35% weight is insufficient.",
+      "would_trade_have_been_profitable": "LIKELY YES — PSQ +0.64% on the day, trending opposite to QQQ",
+      "structural_issue": "INV-008 — confidence formula structural gap for inverse ETFs"
+    },
+    {
+      "rank": 2,
+      "symbol": "SH",
+      "max_eff_conf": 0.19,
+      "gate_floor": 0.25,
+      "gap": 0.06,
+      "daily_return_pct": 0.62,
+      "breakout_score_est": 0.03,
+      "tension_score_est": 0.48,
+      "confidence_formula": "0.65 * 0.03 + 0.35 * 0.48 = 0.19",
+      "why_rejected": "Same structural issue as PSQ. Inverse S&P ETF with no breakout characteristics.",
+      "would_trade_have_been_profitable": "LIKELY YES — SH +0.62% on the day",
+      "structural_issue": "INV-008"
+    },
+    {
+      "rank": 3,
+      "symbol": "XOM",
+      "max_eff_conf": 0.18,
+      "gate_floor": 0.25,
+      "gap": 0.07,
+      "daily_return_pct": 1.69,
+      "breakout_score_est": 0.12,
+      "tension_score_est": 0.30,
+      "confidence_formula": "0.65 * 0.12 + 0.35 * 0.30 = 0.18",
+      "why_rejected": "Moderate breakout score but insufficient for the gate. Energy sector rotation — steady grind up, not a sharp breakout.",
+      "would_trade_have_been_profitable": "LIKELY YES — XOM was the best performer at +1.69%",
+      "structural_issue": "Confidence formula favors sharp breakouts over sector rotation grinds"
+    },
+    {
+      "rank": 4,
+      "symbol": "WMT",
+      "max_eff_conf": 0.16,
+      "gate_floor": 0.25,
+      "gap": 0.09,
+      "daily_return_pct": 0.95,
+      "breakout_score_est": 0.10,
+      "tension_score_est": 0.26,
+      "confidence_formula": "0.65 * 0.10 + 0.35 * 0.26 = 0.16",
+      "why_rejected": "Defensive stock showing steady accumulation. Low breakout_readiness because the move is gradual.",
+      "would_trade_have_been_profitable": "LIKELY YES — WMT +0.95% on the day",
+      "structural_issue": "Same as XOM — formula penalizes gradual movers"
+    },
+    {
+      "rank": 5,
+      "symbol": "COST",
+      "max_eff_conf": 0.12,
+      "gate_floor": 0.25,
+      "gap": 0.13,
+      "daily_return_pct": 0.30,
+      "breakout_score_est": 0.08,
+      "tension_score_est": 0.18,
+      "confidence_formula": "0.65 * 0.08 + 0.35 * 0.18 = 0.12",
+      "why_rejected": "Low scores across both components. Also affected by INV-009 (share volume liquidity gate).",
+      "would_trade_have_been_profitable": "MARGINAL — small move, high spread for $1000+ stock",
+      "structural_issue": "INV-009 (liquidity gate) + low confidence"
+    }
+  ],
+
+  "summary": "4 of 5 top rejected candidates would likely have been profitable. The organism's scanner IS detecting the right symbols — the confidence formula is the bottleneck. PSQ and SH are structurally blocked by INV-008. XOM and WMT are penalized for non-breakout price action."
+}

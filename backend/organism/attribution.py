@@ -14,7 +14,7 @@ Pipeline:
 
 from __future__ import annotations
 
-import uuid
+# M-11 (audit-2026-05-02): removed unused `import uuid`
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any

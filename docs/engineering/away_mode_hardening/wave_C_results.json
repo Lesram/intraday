@@ -1,0 +1,67 @@
+{
+  "wave": "C",
+  "title": "Observability / Watchdogs / Self-Diagnosis",
+  "fixes": {
+    "C1_no_trade_watchdog": {
+      "status": "FIXED",
+      "files_changed": ["backend/organism/live_engine.py"],
+      "description": "Tracks ticks since last order submission and zero-candidate ticks. States: OK → WARNING_NO_TRADES (6hr) → CRITICAL_MULTI_SESSION (12hr). Resets on any order.",
+      "tests": [
+        "test_watchdog_ok_when_orders_generated",
+        "test_watchdog_warning_after_long_inertness",
+        "test_watchdog_critical_after_very_long_inertness",
+        "test_watchdog_resets_on_order",
+        "test_zero_candidates_counter_increments",
+        "test_zero_candidates_resets_on_order"
+      ]
+    },
+    "C2_equity_fallback_watchdog": {
+      "status": "FIXED",
+      "files_changed": ["backend/organism/live_engine.py"],
+      "description": "Counts total equity fallback uses and tracks consecutive fallback streak. WARNING at 10+ consecutive, CRITICAL at 25+. Streak resets when fresh equity obtained.",
+      "tests": [
+        "test_equity_fallback_counter_increments",
+        "test_equity_fallback_streak_resets",
+        "test_equity_fallback_streak_warning",
+        "test_equity_fallback_streak_critical"
+      ]
+    },
+    "C3_universe_drift_watchdog": {
+      "status": "FIXED",
+      "files_changed": ["backend/organism/live_engine.py"],
+      "description": "Periodic check comparing active universe against configured base. Reports missing symbols, added symbols, and missing protected symbols. WARNING on drift.",
+      "tests": [
+        "test_universe_drift_detected",
+        "test_protected_missing_flagged",
+        "test_no_drift_when_matching",
+        "test_added_beyond_base_tracked"
+      ]
+    },
+    "C4_brain_save_watchdog": {
+      "status": "FIXED",
+      "files_changed": ["backend/organism/live_engine.py"],
+      "description": "Tracks ticks since last successful brain save. Healthy if < 1080 ticks (3hr). WARNING logged if stale.",
+      "tests": [
+        "test_brain_save_watchdog_healthy",
+        "test_brain_save_watchdog_stale",
+        "test_brain_save_tick_updated_on_save"
+      ]
+    },
+    "C5_unified_watchdog_state": {
+      "status": "FIXED",
+      "files_changed": ["backend/organism/live_engine.py"],
+      "description": "get_watchdog_state() returns unified dict with all 4 watchdog sections. Exposed in LiveTickResult.to_dict() and engine.status().",
+      "tests": [
+        "test_get_watchdog_state_returns_all_sections",
+        "test_no_trade_section_has_required_fields",
+        "test_equity_fallback_section_has_required_fields",
+        "test_brain_save_section_has_required_fields",
+        "test_watchdog_in_live_tick_result_to_dict",
+        "test_watchdog_in_status_dict"
+      ]
+    }
+  },
+  "tests_added": 23,
+  "tests_passing": 23,
+  "regressions": 0
+}

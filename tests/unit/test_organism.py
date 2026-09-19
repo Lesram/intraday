@@ -412,7 +412,7 @@ class TestRegimeDetector:
         return pd.DataFrame({
             "close": close,
             "sma_50": sma_50,
-            "atr_ratio": np.full(n, 0.02),
+            "atr_14_ratio": np.full(n, 0.02),
             "volume": np.full(n, 3_000_000),
         })
 
@@ -425,7 +425,7 @@ class TestRegimeDetector:
         return pd.DataFrame({
             "close": close,
             "sma_50": sma_50,
-            "atr_ratio": np.full(n, 0.01),
+            "atr_14_ratio": np.full(n, 0.01),
             "volume": np.full(n, 2_000_000),
         })
 
@@ -449,7 +449,7 @@ class TestRegimeDetector:
         up_sma = np.convolve(up_close, np.ones(50)/50, mode='full')[:n]
         features_up = pd.DataFrame({
             "close": up_close, "sma_50": up_sma,
-            "atr_ratio": np.full(n, 0.02),
+            "atr_14_ratio": np.full(n, 0.02),
             "volume": np.full(n, 3_000_000),
         })
 
@@ -457,7 +457,7 @@ class TestRegimeDetector:
         down_sma = np.convolve(down_close, np.ones(50)/50, mode='full')[:n]
         features_down = pd.DataFrame({
             "close": down_close, "sma_50": down_sma,
-            "atr_ratio": np.full(n, 0.05),  # high vol too
+            "atr_14_ratio": np.full(n, 0.05),  # high vol too
             "volume": np.full(n, 6_000_000),  # volume anomaly
         })
 
@@ -546,7 +546,7 @@ class TestOrganismRunner:
         features = pd.DataFrame({
             "close": close,
             "sma_50": np.convolve(close, np.ones(50) / 50, mode="full")[:n],
-            "atr_ratio": np.full(n, 0.02),
+            "atr_14_ratio": np.full(n, 0.02),
             "volume": np.full(n, 3_000_000),
         })
         result = runner.pre_execution_hook(

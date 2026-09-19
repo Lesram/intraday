@@ -40,7 +40,13 @@ class DiagnosticReportStore:
     (matches brain_persistence.py pattern).
     """
 
-    def __init__(self, brain_dir: str = "organism_brain") -> None:
+    def __init__(self, brain_dir: str | None = None) -> None:
+        # Punchlist 2026-07-24 item 3: a literal "organism_brain" default
+        # bypassed ORGANISM_BRAIN_DIR, so a bare-constructed store wrote the
+        # REAL brain volume even under the test-suite redirect. Lazy env read
+        # (not import-time) so a late-set env is still honored.
+        if brain_dir is None:
+            brain_dir = os.environ.get("ORGANISM_BRAIN_DIR", "organism_brain")
         self._dir = Path(brain_dir) / "diagnostics"
         self._path = self._dir / "history.json"
         self._lock = asyncio.Lock()
@@ -91,7 +97,7 @@ class DiagnosticReportStore:
                 "Loaded %d diagnostic reports from %s",
                 len(self._reports), self._path,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("Failed to load diagnostic history: %s", e)
             self._reports = []
 
@@ -111,12 +117,12 @@ class DiagnosticReportStore:
             with os.fdopen(fd, "w") as f:
                 json.dump(payload, f, indent=2)
             os.replace(tmp_path, str(self._path))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("Failed to persist diagnostic history: %s", e)
             # Clean up tmp file if rename failed
             try:
                 os.unlink(tmp_path)
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
 
 
@@ -188,8 +194,76 @@ class ScheduledDiagnosticRunner:
                 trigger, summary["passed"], summary["total"],
                 summary["critical_failures"], summary["warnings"],
             )
-        except Exception as e:
+            if trigger == "post_close":
+                self._log_costed_book(engine)
+                self._log_shadow_exit_delta(engine)
+        except Exception as e:  # noqa: BLE001
             logger.error("Scheduled diagnostics [%s] failed: %s", trigger, e)
+
+    @staticmethod
+    def _log_costed_book(engine: Any) -> None:
+        """Task A: log a COSTED book summary each post-close so the daily
+        scoreboard reflects realistic costs (the recorded P&L is bar-close mids
+        with no spread/slippage). Best-effort; no-op if history is unreadable."""
+        try:
+            import os
+
+            import pandas as pd
+
+            from backend.organism.costing import costed_summary
+
+            brain_dir = getattr(getattr(engine, "brain", None), "brain_dir", None) \
+                or os.environ.get("ORGANISM_BRAIN_DIR", "organism_brain")
+            path = os.path.join(str(brain_dir), "trade_history.csv")
+            if not os.path.exists(path):
+                return
+            df = pd.read_csv(path)
+            if "is_reconciliation_artifact" in df.columns:
+                df = df[~df["is_reconciliation_artifact"].astype(str).str.lower().isin(["true", "1"])]
+            s = costed_summary(df)
+            if not s.get("n"):
+                return
+            logger.info(
+                "Costed book @%.1fbps: n=%d gross=$%.2f NET=$%.2f exp=$%.4f "
+                "PF=%s t=%.2f win=%.1f%% (recorded P&L is bar-close mids; this "
+                "is the honest scoreboard).",
+                s["cost_bps"], s["n"], s["gross_pnl"], s["net_pnl"], s["expectancy"],
+                s["profit_factor"], s["t_stat"], 100 * (s["win_rate"] or 0),
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Costed-book summary failed: %s", e)
+
+    @staticmethod
+    def _log_shadow_exit_delta(engine: Any) -> None:
+        """Task S bridge: fold the retracement shadow-vs-real delta into the
+        post-close report so Gate-2 evidence builds visibly each afternoon.
+        Best-effort; no-op when the shadow is off or has no data."""
+        try:
+            recorder = getattr(engine, "_shadow_exit", None)
+            if recorder is None:
+                return
+            from backend.organism.experimental.shadow_exit import (
+                summarize_shadow_telemetry,
+            )
+            s = summarize_shadow_telemetry(recorder.path)
+            if not s.get("n"):
+                logger.info("Shadow exit: no closed-position rows yet.")
+                return
+            ov = s["overall"]
+            engine._last_shadow_summary = s
+            by_reg = "; ".join(
+                f"{r}: sum=${st['sum']} t={st['t_stat']} (n={st['n']})"
+                for r, st in s.get("by_regime", {}).items()
+            )
+            logger.info(
+                "Shadow vs real (retracement) — closed=%d, shadow-diverged=%d | "
+                "cumulative delta $%.2f, mean $%.4f, t=%.2f | by_regime: %s | "
+                "Gate-2: flip live exits only when this delta is positive at t>=2.",
+                s["n"], s["n_triggered"], ov["sum"], ov["mean"], ov["t_stat"],
+                by_reg or "(none triggered yet)",
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Shadow exit delta summary failed: %s", e)
 
     async def _evaluate_and_alert(self, report: Any, trigger: str) -> None:
         """Map diagnostic results to alerts via the existing alert system."""

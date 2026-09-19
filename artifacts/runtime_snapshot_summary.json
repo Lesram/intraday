@@ -1,0 +1,13 @@
+{
+  "overall": "pass",
+  "exit_code": 0,
+  "timed_out": false,
+  "error": "",
+  "output_file": "artifacts/runtime_snapshot.log",
+  "output_tail": "Defaults snapshot written to /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/artifacts/runtime_defaults_snapshot.json\nResolved config snapshot written to /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/artifacts/resolved_config_snapshot.json\nLive process snapshot written to /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/artifacts/live_process_runtime_snapshot.json\nLegacy snapshot written to /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/artifacts/runtime_config_snapshot.json\n",
+  "errors": [],
+  "scope": "Authenticated actual paper runtime after deployment; isolated full-pack snapshot preserved separately",
+  "snapshot_script_source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "application_image_source_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "application_code_and_compose_parity": true
+}

@@ -975,9 +975,10 @@ class TestTrainingService:
         )
         job_id = service.submit_training_job(request)
         service.train_model(job_id)
-        
-        model = service.load_model(job_id)
-        
+
+        with patch("backend.ml.training.secure_load", side_effect=lambda f: pickle.load(f)):
+            model = service.load_model(job_id)
+
         assert model is not None
 
     def test_load_model_job_not_found(self, service):

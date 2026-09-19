@@ -1,0 +1,10 @@
+{
+  "source": "alpaca_broker boot log 2026-04-23T06:45:16Z",
+  "account_number": "PA3RLEN7T0N4",
+  "cash": "111541.68",
+  "portfolio_value": "111541.68",
+  "buying_power": "446187.8",
+  "is_paper": true,
+  "api_response_code": 200,
+  "status_inferred": "ACTIVE (200 OK on /v2/account + /v2/positions; no blocked/suspended warnings in logs)"
+}

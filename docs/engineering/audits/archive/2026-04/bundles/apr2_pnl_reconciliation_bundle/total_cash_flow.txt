@@ -1,0 +1,10 @@
+Total bought (cash out): $73,667.20
+Total sold (cash in):    $73,712.65
+Net cash flow:           $+45.45
+
+This is the true broker-realized PnL: the difference between
+total sell proceeds and total buy costs for all Apr 2 orders.
+
+Equity change (pre→post):  $+45.34
+Net cash flow:             $+45.45
+Gap:                       $-0.11

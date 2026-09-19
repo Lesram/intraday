@@ -1,0 +1,4 @@
+intra-api-1	Up 42 hours (healthy)	intra-api
+intra-redis-1	Up 42 hours (healthy)	redis:7-alpine
+trading_platform_db_paper	Up 42 hours (healthy)	postgres:16-alpine
+StartedAt=2026-04-07T07:37:02.289008176Z RestartCount=0 Health=healthy

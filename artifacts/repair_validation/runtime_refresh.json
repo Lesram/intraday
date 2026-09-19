@@ -1,0 +1,9 @@
+{
+  "source_sha": "d6c5534be6faa5205852a1ce0f52d5610469f188",
+  "refreshed_at": "2026-09-19T18:17:34.568411+00:00",
+  "status": "pass",
+  "container": "intra-api-1",
+  "authenticated_live_api_reachable": false,
+  "limitation": "Snapshot creation passed; authenticated application values are unavailable. Empty-source consistency notes are not evidence of live verification.",
+  "test_snapshot_archive": "artifacts/repair_validation/isolated_snapshots/"
+}

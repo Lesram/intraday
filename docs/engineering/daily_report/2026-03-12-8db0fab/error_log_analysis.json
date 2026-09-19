@@ -1,0 +1,70 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+
+  "error_summary": {
+    "total_errors": 11,
+    "total_warnings": 443,
+    "categories": {
+      "alpaca_position_disconnects": {
+        "count": 9,
+        "severity": "MEDIUM",
+        "timestamps_utc": [
+          "17:44:42", "18:02:31", "18:21:56", "18:54:58",
+          "19:10:48", "19:13:05", "19:20:57", "19:26:32", "19:56:30"
+        ],
+        "error_message": "Failed to get all positions: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+        "source": "backend.services.positions_service:get_all_positions:133",
+        "impact": "Each occurrence causes the tick to fail or timeout. Scheduler recovers on next tick.",
+        "root_cause": "Alpaca paper API drops HTTP connections intermittently. The SDK's connection is not pooled or retried.",
+        "recommendation": "Add retry with exponential backoff in positions_service.get_all_positions(). Consider caching positions for 1-2 ticks."
+      },
+      "scheduler_timeouts": {
+        "count": 2,
+        "severity": "MEDIUM",
+        "timestamps_utc": ["17:50:44", "19:34:21"],
+        "error_message": "TimeoutError in _run_loop → _live_tick_inner → _fetch_and_compute_features → get_all_positions",
+        "impact": "Tick streak=1 both times, recovered immediately. No trades were pending so no damage.",
+        "root_cause": "Position fetch hangs past asyncio timeout deadline due to Alpaca disconnect",
+        "recommendation": "Same as above — retry logic in positions_service"
+      },
+      "websocket_disconnects": {
+        "count": 3,
+        "severity": "LOW",
+        "details": [
+          "2 market_data_stream keepalive ping timeouts",
+          "1 trade_updates stream reconnection (successful)"
+        ],
+        "impact": "Brief data gaps, auto-reconnected. Stale data warnings follow.",
+        "recommendation": "No action needed — reconnection logic works correctly"
+      },
+      "stale_data_warnings": {
+        "count": 355,
+        "severity": "LOW",
+        "affected_symbols": "All 22 (15-17 warnings each)",
+        "note": "Occur during pre-market hours and after WebSocket reconnections. Expected behavior.",
+        "recommendation": "No action needed"
+      }
+    }
+  },
+
+  "regime_anomaly": {
+    "severity": "HIGH",
+    "finding": "Regime detector reported 'trending_up' for 65 out of 73 visible ticks while SPY fell -1.52%",
+    "impact": "Inverse ETF regime-flip logic cannot activate if regime is wrong. Trending-down block only activated briefly.",
+    "possible_causes": [
+      "Regime lookback window may be too long (multi-day trend overrides intraday sell-off)",
+      "Regime uses features that don't reflect same-day price action",
+      "The regime model may use a different timeframe than the 5-min bars"
+    ],
+    "recommendation": "Investigate regime detection input features and lookback. This is the highest-priority investigation item."
+  },
+
+  "entries_blocked_analysis": {
+    "blocked_ticks": 22,
+    "total_visible_ticks": 46,
+    "blocked_percentage": "47.8%",
+    "block_reason": "halt/drawdown/insufficient data",
+    "note": "Nearly half of visible ticks never even reach candidate evaluation. This may include pre-market, post-close, and warmup ticks — needs investigation to confirm."
+  }
+}

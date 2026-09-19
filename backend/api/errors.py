@@ -6,7 +6,7 @@ Provides standardized error response envelopes and business logic errors.
 import logging
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import APIRouter, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -155,20 +155,67 @@ def install_error_handlers(app: FastAPI) -> None:
         Handle HTTP exceptions.
         - Platform app (factory-created): standardized envelope
         - Non-platform app: FastAPI default {"detail": ...}
+
+        Audit-I finding I-5 (2026-05-02): 70+ routes use
+        `HTTPException(detail=str(e))` which short-circuits the M-23
+        catch-all sanitizer. Stack traces, file paths, class names, and
+        DB-schema fragments leak through. We now sanitize HTTPException
+        detail centrally: detect leaky patterns and replace with a
+        generic message + correlation ID. The full detail is logged
+        server-side for debugging.
         """
+        import re as _re
+        import uuid as _uuid
+
         is_platform_app = getattr(getattr(request, "app", None), "state", None)
         is_platform_app = getattr(is_platform_app, "is_platform_app", False)
+
+        # Sanitize detail if it looks like a raw exception or stack trace.
+        # Audit-I finding I-5 round 2 (2026-05-02): extended sanitization
+        # to ALL status codes (not just 5xx). 4xx responses can also leak
+        # internals via `HTTPException(detail=str(e))` patterns — e.g.,
+        # a 422 from a route that did `except Exception as e: raise
+        # HTTPException(422, detail=str(e))` could leak DB schema names
+        # or stack traces. Generic strings (validation hints, "not found")
+        # don't match the leaky patterns and pass through unchanged.
+        sanitized_detail = exc.detail
+        if isinstance(exc.detail, str):
+            leaky_patterns = [
+                r"<class '[^']+'>",          # class repr
+                r"Traceback \(most recent",  # stack trace marker
+                r"/Users/|/app/|/var/|/etc/",# file paths
+                r"line \d+, in ",             # stack frame
+                r"sqlalchemy|psycopg|asyncpg",# DB internals
+                r"\.py['\":]",                 # python file refs
+            ]
+            looks_leaky = any(_re.search(p, exc.detail) for p in leaky_patterns)
+            # 5xx: also sanitize on length heuristic (long detail suggests
+            # accidental str(e) of a verbose exception).
+            if looks_leaky or (
+                500 <= exc.status_code < 600 and len(exc.detail) > 500
+            ):
+                error_id = str(_uuid.uuid4())[:8]
+                logging.warning(
+                    f"Sanitized leaky HTTPException [{error_id}] "
+                    f"status={exc.status_code} "
+                    f"in {request.method} {request.url}: {exc.detail[:300]}"
+                )
+                sanitized_detail = (
+                    f"Request failed. Reference ID: {error_id}"
+                    if exc.status_code < 500
+                    else f"An internal error occurred. Reference ID: {error_id}"
+                )
 
         if is_platform_app:
             return create_error_response(
                 error_type="http_error",
-                detail=exc.detail,
+                detail=sanitized_detail,
                 status_code=exc.status_code,
             )
         else:
             return JSONResponse(
                 status_code=exc.status_code,
-                content={"detail": exc.detail},
+                content={"detail": sanitized_detail},
             )
 
     @app.exception_handler(Exception)
@@ -304,26 +351,50 @@ def format_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any
 
     return formatted_errors
 
-# Test error endpoints router
-from fastapi import APIRouter
+# Test error endpoints router — only registered in development mode (COMP-305 fix)
+import os
 
-router = APIRouter(prefix="/test", tags=["test-errors"])
+_test_router = APIRouter(prefix="/test", tags=["test-errors"])
 
-@router.get("/http-401")
+
+@_test_router.get("/http-401")
 def http_401():
     raise HTTPException(401, detail="Authentication required")
 
-@router.get("/http-403")
+
+@_test_router.get("/http-403")
 def http_403():
     raise HTTPException(403, detail="Forbidden")
 
-@router.get("/http-422")
+
+@_test_router.get("/http-422")
 def http_422():
     raise HTTPException(422, detail="Invalid request")
 
-@router.get("/http-500")
+
+@_test_router.get("/http-500")
 def http_500():
     raise HTTPException(500, detail="Server error")
+
+
+# V11 AAA-F1 / Wave-68 (2026-05-03): debug-endpoint gate hardened.
+# The previous gate exposed /test/http-* in any APP_ENVIRONMENT ==
+# "development" container — which paper trading runs as (per the
+# memory note "paper compose gotcha: APP_ENVIRONMENT must be
+# `development`, not `paper`").  Result: deployed paper API exposes
+# unauthenticated 401/403/422/500 endpoints that are also
+# advertised in /openapi.json.
+#
+# Tightened: require BOTH (a) APP_ENVIRONMENT is dev/local AND
+# (b) explicit `EXPOSE_TEST_ERROR_ENDPOINTS=1` env opt-in.  Paper
+# and production never set the opt-in.
+_app_env = os.getenv("APP_ENVIRONMENT", "development")
+_expose_debug = os.getenv("EXPOSE_TEST_ERROR_ENDPOINTS", "").strip() == "1"
+if _app_env in ("development", "dev", "local") and _expose_debug:
+    router = _test_router
+else:
+    # Empty stub router — no /test/* paths registered.
+    router = APIRouter(prefix="/test", tags=["test-errors"])
 
 
 # Helper functions for common error creation

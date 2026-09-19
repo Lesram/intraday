@@ -37,12 +37,16 @@ def register_routes(app) -> None:
     from backend.api.routes.observability import router as observability_router
     from backend.api.routes.optimizations import router as optimizations_router
     from backend.api.routes.orders import router as orders_router
+    from backend.api.routes.paper_monitor import router as paper_monitor_router
     from backend.api.routes.positions import router as positions_router
     from backend.api.routes.risk import router as risk_router
     from backend.api.routes.scanner import router as scanner_router
     from backend.api.routes.settings import router as settings_router
     from backend.api.routes.signals import router as signals_router
     from backend.api.routes.strategy import router as strategy_router
+    from backend.api.routes.strategy_health import router as strategy_health_router
+    from backend.api.routes.deploy_health import router as deploy_health_router
+    from backend.api.routes.data_integrity_health import router as data_integrity_health_router
     from backend.api.routes.system import router as system_router
     from backend.api.routes.trades import router as trades_router
     from backend.api.routes.watchlists import router as watchlists_router
@@ -59,12 +63,26 @@ def register_routes(app) -> None:
     protected.include_router(positions_router, tags=["Positions"])
     protected.include_router(risk_router, tags=["Risk Management"])
     protected.include_router(orders_router, tags=["Orders"])
+    protected.include_router(paper_monitor_router, tags=["Paper monitoring"])
     protected.include_router(trades_router, tags=["Trades"])
     protected.include_router(signals_router, tags=["Signals"])
     protected.include_router(multi_strategy_live_router, tags=["Multi-Strategy Live"])
     protected.include_router(auto_breakout_scanner_router, tags=["Auto Breakout"])
     protected.include_router(models_router, tags=["Models"])
     protected.include_router(strategy_router, tags=["Strategy"])
+    # V12 W71 (EXT-1): /api/v1/health/strategy — expectancy gate.
+    # External auditor's #1 finding: 11 audits validated correctness
+    # without ever exposing realized PnL/Sharpe/win-rate.  Protected
+    # because PnL leak to public is an info-disclosure risk.
+    protected.include_router(strategy_health_router, tags=["Health"])
+    # V12 W78 (EXT-8): /api/v1/health/deploy — source SHA, migration
+    # head, build time, runtime config hash.  Operators can detect
+    # build/config skew across fleet without ssh'ing into containers.
+    protected.include_router(deploy_health_router, tags=["Health"])
+    # V13 W95 (Lens 4): /api/v1/health/data-integrity — realized_trades
+    # vs brain.total_trades reconciliation.  Surfaces V12 EXT-3 drift
+    # programmatically.
+    protected.include_router(data_integrity_health_router, tags=["Health"])
     protected.include_router(backtest_router, tags=["Backtesting"])
     protected.include_router(optimizations_router, tags=["Optimizations"])
     protected.include_router(indicators_router, tags=["Indicators"])
@@ -83,8 +101,8 @@ def register_routes(app) -> None:
         protected.include_router(organism_router, tags=["Living Organism"])
     except ImportError:
         logger.info("Organism module not available — skipping organism routes")
-    except Exception as e:
-        logger.warning(f"Failed to load organism routes: {e}")
+    except Exception as e:  # noqa: BLE001 -- keep optional module failures from blocking API startup
+        logger.warning("Failed to load organism routes: %s", e)
 
     # ── Mount ────────────────────────────────────────────────────────
     api_router.include_router(protected)

@@ -662,11 +662,31 @@ class MetricsRegistry:
         Args:
             time_ms: Database response time in milliseconds
         """
+        # V7 EE-8 / Wave-25 (2026-05-03): the previous code called
+        # `self.create_gauge(...)` which doesn't exist on
+        # MetricsRegistry — every readyz tick fired AttributeError
+        # ("'MetricsRegistry' object has no attribute 'create_gauge'")
+        # at WARNING level. The readyz_db_ms / readyz_broker_ms gauges
+        # live outside the allow-listed business metrics; declare them
+        # directly on the global prometheus_client REGISTRY (same
+        # pattern wave-12e used for ORGANISM_* metrics).
+        global _READYZ_DB_GAUGE
         try:
-            gauge = self.create_gauge("readyz_db_ms", "Database response time for readiness checks (ms)")
-            gauge.set(time_ms)
-        except Exception as e:
-            logger.warning(f"Failed to record readyz_db_ms metric: {e}")
+            _READYZ_DB_GAUGE  # type: ignore[name-defined]
+        except NameError:
+            try:
+                _READYZ_DB_GAUGE = Gauge(
+                    "readyz_db_ms",
+                    "Database response time for readiness checks (ms)",
+                )
+            except ValueError:
+                # Already registered (multi-import); fetch from REGISTRY.
+                _READYZ_DB_GAUGE = None
+        if _READYZ_DB_GAUGE is not None:
+            try:
+                _READYZ_DB_GAUGE.set(time_ms)
+            except Exception as e:
+                logger.warning(f"Failed to record readyz_db_ms metric: {e}")
 
     def record_readyz_broker_time(self, time_ms: float) -> None:
         """
@@ -675,11 +695,22 @@ class MetricsRegistry:
         Args:
             time_ms: Broker response time in milliseconds
         """
+        global _READYZ_BROKER_GAUGE
         try:
-            gauge = self.create_gauge("readyz_broker_ms", "Broker response time for readiness checks (ms)")
-            gauge.set(time_ms)
-        except Exception as e:
-            logger.warning(f"Failed to record readyz_broker_ms metric: {e}")
+            _READYZ_BROKER_GAUGE  # type: ignore[name-defined]
+        except NameError:
+            try:
+                _READYZ_BROKER_GAUGE = Gauge(
+                    "readyz_broker_ms",
+                    "Broker response time for readiness checks (ms)",
+                )
+            except ValueError:
+                _READYZ_BROKER_GAUGE = None
+        if _READYZ_BROKER_GAUGE is not None:
+            try:
+                _READYZ_BROKER_GAUGE.set(time_ms)
+            except Exception as e:
+                logger.warning(f"Failed to record readyz_broker_ms metric: {e}")
 
 
 def normalize_route(path: str) -> str:

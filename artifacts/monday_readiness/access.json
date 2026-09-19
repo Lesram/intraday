@@ -1,0 +1,30 @@
+{
+  "label": "access",
+  "exit_code": 0,
+  "seconds": 4.32,
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--timeout=30",
+    "--tb=short",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/artifacts/monday_readiness/access.xml",
+    "tests/test_paper_monitor_access.py",
+    "tests/test_v12_w78_deploy_health.py",
+    "tests/test_v13_w95_data_integrity.py",
+    "tests/test_security_boundaries.py",
+    "tests/test_v13_security_cleanup.py",
+    "tests/test_infra_security_comprehensive.py",
+    "tests/test_websocket_and_signal_service.py"
+  ],
+  "network_denied": true,
+  "real_checkout_writes_denied": true,
+  "real_env_and_brain_reads_denied": true
+}

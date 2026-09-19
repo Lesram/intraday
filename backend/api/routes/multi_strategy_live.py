@@ -6,12 +6,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from backend.api.routes.signals import get_market_data_client, get_order_service
+from backend.infra.security import require_admin
 from backend.services.multi_strategy_live_runner import MultiStrategyLiveRunner
 from backend.strategies.engine import StrategyEngine
 from backend.services.auto_breakout_scanner import get_latest_breakout_scan
 
 
-router = APIRouter(prefix="/multi-strategy-live", tags=["Multi-Strategy Live"])
+# Audit 2026-06-09 finding 3.1: this router can submit live orders and was
+# previously UNAUTHENTICATED. Admin-only, matching organism/routes.py.
+router = APIRouter(
+    prefix="/multi-strategy-live",
+    tags=["Multi-Strategy Live"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 class MultiStrategyRunOnceRequest(BaseModel):
@@ -89,6 +96,8 @@ async def run_multi_strategy_once(
         strategy_engine=engine,
         portfolio_state=None,
         idempotency_key=payload.idempotency_key,
+        # Audit 2026-06-09 finding 3.1: hard kill-switch coverage.
+        governance=getattr(request.app.state, "organism_governance", None),
     )
 
     # Update policy after the run

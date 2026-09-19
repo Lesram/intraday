@@ -1,0 +1,12 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+  "entries_today": 0,
+  "entry_breakdown_by_source": {
+    "alpha": 0,
+    "breakout": 0,
+    "inverse_etf": 0,
+    "unknown": 0
+  },
+  "note": "Zero entries. All candidates rejected at confidence gate. See daily_kpi_summary.json for full gate audit."
+}

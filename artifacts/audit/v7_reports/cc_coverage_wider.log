@@ -1,0 +1,352 @@
+/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/_hypothesis_pytestplugin.py:481: UserWarning: Skipping collection of '.hypothesis' directory - this usually means you've explicitly set the `norecursedirs` pytest config option, replacing rather than extending the default ignores.
+  warnings.warn(
+......................................................xx.........xx..... [  5%]
+........................................................................ [ 11%]
+..........................................................F...FFF.FFFFF. [ 16%]
+.................................................F....FFFF.........FFF.. [ 22%]
+......................F.......FFFFF.....F.F............................. [ 27%]
+........................................................................ [ 33%]
+.....F.F.............FF..FFFFFF......................................... [ 38%]
+........................................................................ [ 44%]
+......................................................................F. [ 50%]
+........................................................................ [ 55%]
+..ss.................................................................... [ 61%]
+........................................................................ [ 66%]
+........................................................................ [ 72%]
+........................................................................ [ 77%]
+........................................................................ [ 83%]
+........................................................................ [ 89%]
+........................................................................ [ 94%]
+......................................................................   [100%]
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.12.12-final-0 _______________
+
+Name                                                    Stmts   Miss  Cover
+---------------------------------------------------------------------------
+backend/__init__.py                                         0      0   100%
+backend/analytics/__init__.py                               2      2     0%
+backend/analytics/order_flow.py                           255    255     0%
+backend/analytics/realtime_risk_analytics.py              516    516     0%
+backend/api/__init__.py                                     0      0   100%
+backend/api/auth.py                                        25     25     0%
+backend/api/dependencies.py                                14      7    50%
+backend/api/errors.py                                     136     63    54%
+backend/api/factory.py                                    168     67    60%
+backend/api/hateoas.py                                     59     59     0%
+backend/api/health.py                                      57      5    91%
+backend/api/lifespan.py                                   387    275    29%
+backend/api/main.py                                        20     20     0%
+backend/api/middleware/__init__.py                          3      0   100%
+backend/api/middleware/deduplication.py                    99     52    47%
+backend/api/middleware/rate_limit.py                      103     27    74%
+backend/api/middleware_setup.py                            55     12    78%
+backend/api/pagination.py                                  72     72     0%
+backend/api/portfolio.py                                  168    115    32%
+backend/api/routes/__init__.py                              2      0   100%
+backend/api/routes/admin_trading.py                        33      0   100%
+backend/api/routes/audit.py                                95     36    62%
+backend/api/routes/auth.py                                281    173    38%
+backend/api/routes/auto_breakout_scanner.py                41      7    83%
+backend/api/routes/backtest.py                            129    103    20%
+backend/api/routes/chart_templates.py                     122     65    47%
+backend/api/routes/drawings.py                            149     89    40%
+backend/api/routes/health.py                              105     76    28%
+backend/api/routes/indicators.py                          276    236    14%
+backend/api/routes/lots.py                                103     41    60%
+backend/api/routes/market_data.py                         231    186    19%
+backend/api/routes/models.py                              734    661    10%
+backend/api/routes/monitoring.py                           79     55    30%
+backend/api/routes/multi_strategy_live.py                  58     36    38%
+backend/api/routes/observability.py                        45     21    53%
+backend/api/routes/optimizations.py                       157    117    25%
+backend/api/routes/orders.py                              611    492    19%
+backend/api/routes/position_import.py                      78     78     0%
+backend/api/routes/positions.py                           189    119    37%
+backend/api/routes/risk.py                                127     95    25%
+backend/api/routes/scanner.py                             451    344    24%
+backend/api/routes/settings.py                            148     85    43%
+backend/api/routes/signals.py                             299    222    26%
+backend/api/routes/strategy.py                            278    180    35%
+backend/api/routes/system.py                              117     92    21%
+backend/api/routes/trades.py                              125     29    77%
+backend/api/routes/watchlists.py                          147    116    21%
+backend/api/routes_setup.py                                79      6    92%
+backend/api/schemas/__init__.py                             0      0   100%
+backend/api/schemas/signals.py                             67     35    48%
+backend/api/schemas/watchlists.py                          29      0   100%
+backend/api/socketio_server.py                            190    157    17%
+backend/api/test_utils/__init__.py                          0      0   100%
+backend/api/test_utils/auth.py                             35     35     0%
+backend/api/websocket_manager.py                          491    409    17%
+backend/brokers/__init__.py                                 0      0   100%
+backend/brokers/alpaca_production.py                      365    365     0%
+backend/brokers/broker_failover.py                        254    254     0%
+backend/config.py                                          11     11     0%
+backend/config/__init__.py                                  8      4    50%
+backend/config/base_settings.py                           911    374    59%
+backend/config/config.py                                   69     69     0%
+backend/config/coordinator.py                             152     76    50%
+backend/config/settings.py                                517    203    61%
+backend/config/unified.py                                  97     21    78%
+backend/data/__init__.py                                    0      0   100%
+backend/data/alpaca_client.py                             383    322    16%
+backend/data/market_data.py                               140    140     0%
+backend/data/models.py                                     69     69     0%
+backend/data/social_sentiment.py                          408    408     0%
+backend/data/strategy_templates.py                         41     41     0%
+backend/database.py                                       356    356     0%
+backend/database/__init__.py                              201     17    92%
+backend/database/connection.py                             80     61    24%
+backend/database/database_config.py                       126     84    33%
+backend/database/models.py                                 36     29    19%
+backend/database/models_production.py                      15     15     0%
+backend/database/optimization.py                          267    267     0%
+backend/database/production.py                            129    129     0%
+backend/database/repositories/__init__.py                   3      0   100%
+backend/database/repositories/execution_repository.py      31     23    26%
+backend/database/repositories/order_repository.py           1      0   100%
+backend/database/unified_config.py                        192    192     0%
+backend/deployment/__init__.py                              0      0   100%
+backend/deployment/validator.py                           205    205     0%
+backend/features/__init__.py                                0      0   100%
+backend/features/alignment.py                              81     41    49%
+backend/features/feature_engineering.py                   528    462    12%
+backend/features/technical_indicators.py                  148     91    39%
+backend/features/types.py                                  64     35    45%
+backend/features/validators.py                            124    114     8%
+backend/infra/__init__.py                                   0      0   100%
+backend/infra/alerting.py                                 201     65    68%
+backend/infra/broker.py                                    31     31     0%
+backend/infra/cache.py                                    118     84    29%
+backend/infra/db.py                                       151    105    30%
+backend/infra/guardrails.py                               174      6    97%
+backend/infra/guardrails_production.py                    128    128     0%
+backend/infra/logging.py                                  216    184    15%
+backend/infra/metrics.py                                  269    153    43%
+backend/infra/object_pool.py                              178    178     0%
+backend/infra/observability.py                            249    137    45%
+backend/infra/observability_contracts.py                   59     43    27%
+backend/infra/order_guardrails.py                         147    147     0%
+backend/infra/outbox.py                                   265    205    23%
+backend/infra/outbox_worker.py                            330    226    32%
+backend/infra/performance.py                              286    286     0%
+backend/infra/production.py                               261     90    66%
+backend/infra/repositories.py                              24     24     0%
+backend/infra/repositories/__init__.py                     15      3    80%
+backend/infra/repositories/audits.py                      139    112    19%
+backend/infra/repositories/executions.py                  109     83    24%
+backend/infra/repositories/models.py                      123     95    23%
+backend/infra/repositories/orders.py                      172    142    17%
+backend/infra/repositories/positions.py                   136    108    21%
+backend/infra/repositories/signals.py                     132    106    20%
+backend/infra/repositories/strategies.py                  153    126    18%
+backend/infra/resilience.py                               294    192    35%
+backend/infra/schemas.py                                  395      5    99%
+backend/infra/security.py                                 308    201    35%
+backend/infra/security_hardening.py                       302    302     0%
+backend/infra/unified_database.py                         172    172     0%
+backend/infra/users.py                                    307    260    15%
+backend/infra/validation.py                                88     88     0%
+backend/integrations/__init__.py                            4      0   100%
+backend/integrations/alpaca_broker.py                     386    250    35%
+backend/integrations/alpaca_data.py                       143    120    16%
+backend/integrations/alpaca_market_data_stream.py         319    284    11%
+backend/integrations/alpaca_outbox.py                      84     67    20%
+backend/integrations/alpaca_stream.py                     415    322    22%
+backend/integrations/alpaca_stream_production.py          273    273     0%
+backend/ml/__init__.py                                      2      0   100%
+backend/ml/active_model_pointer.py                         49     49     0%
+backend/ml/data_processing.py                             310    310     0%
+backend/ml/drift.py                                        77     12    84%
+backend/ml/ensemble_framework.py                          275     45    84%
+backend/ml/feature_engineering.py                         399    399     0%
+backend/ml/lifecycle.py                                   133    133     0%
+backend/ml/lifecycle_scheduler.py                         116    116     0%
+backend/ml/model_management.py                            314    314     0%
+backend/ml/model_manager.py                               940    752    20%
+backend/ml/model_selection.py                              86     86     0%
+backend/ml/monitoring.py                                   16      2    88%
+backend/ml/pipeline.py                                    260    260     0%
+backend/ml/prediction_service.py                          373    373     0%
+backend/ml/sentiment.py                                     2      2     0%
+backend/ml/staleness_detector.py                          227    155    32%
+backend/ml/training.py                                    343    343     0%
+backend/ml/validation.py                                  694    694     0%
+backend/mlops/__init__.py                                   2      2     0%
+backend/mlops/deployment.py                               472    472     0%
+backend/mlops/experiment_tracking.py                      522    522     0%
+backend/mlops/feature_store.py                            462    462     0%
+backend/mlops/governance.py                               455    455     0%
+backend/mlops/model_optimization.py                       391    391     0%
+backend/mlops/model_serving.py                            433    433     0%
+backend/mlops/monitoring.py                               481    481     0%
+backend/mlops/noop.py                                      20     20     0%
+backend/mlops/pipeline.py                                 525    525     0%
+backend/mlops/registry.py                                 399    399     0%
+backend/models/__init__.py                                  0      0   100%
+backend/models/backtest.py                                130     11    92%
+backend/models/ensemble_model.py                          883    883     0%
+backend/models/ml_models.py                               196      0   100%
+backend/models/order_integrity.py                         268    268     0%
+backend/models/risk.py                                    106      3    97%
+backend/models/user.py                                      8      8     0%
+backend/monitoring/__init__.py                              0      0   100%
+backend/monitoring/enhanced_slo_manager.py                270    270     0%
+backend/monitoring/memory_monitor.py                      234    234     0%
+backend/monitoring/per_route_sli.py                       136    136     0%
+backend/monitoring/slo_alerts.py                          143    143     0%
+backend/monitoring/slo_dashboard.py                       177    177     0%
+backend/monitoring/slo_metrics.py                         187    120    36%
+backend/monitoring/slo_monitor.py                         135    135     0%
+backend/observability/__init__.py                           6      6     0%
+backend/observability/metrics.py                            6      6     0%
+backend/observability/tracing.py                          294    294     0%
+backend/optimization/__init__.py                            0      0   100%
+backend/optimization/portfolio_optimizer.py               529    529     0%
+backend/organism/__init__.py                                0      0   100%
+backend/organism/adaptive_exits.py                        307     69    78%
+backend/organism/alpha_scanner.py                         182     44    76%
+backend/organism/attribution.py                           208    208     0%
+backend/organism/background_trainer.py                    257    150    42%
+backend/organism/brain_persistence.py                     914    339    63%
+backend/organism/breakout_scanner.py                      212     30    86%
+backend/organism/composite_indicators.py                  206     17    92%
+backend/organism/continuous_learner.py                    244    103    58%
+backend/organism/decision_telemetry.py                    208      1    99%
+backend/organism/diagnostic_checks.py                     521    125    76%
+backend/organism/diagnostic_scheduler.py                  106     20    81%
+backend/organism/diagnostics.py                            88      0   100%
+backend/organism/ensemble_models.py                       187    132    29%
+backend/organism/eod_scanner.py                           146     29    80%
+backend/organism/feature_store.py                         129    129     0%
+backend/organism/governance.py                            158     85    46%
+backend/organism/kelly_sizer.py                           295     60    80%
+backend/organism/live_engine.py                          2450   1926    21%
+backend/organism/market_scanner.py                        227    168    26%
+backend/organism/mean_reversion_scanner.py                209    140    33%
+backend/organism/ml_features.py                           244     53    78%
+backend/organism/ml_signal.py                             387    171    56%
+backend/organism/multi_timeframe.py                        72     60    17%
+backend/organism/nightly_scheduler.py                      69     69     0%
+backend/organism/orb_scanner.py                           251    189    25%
+backend/organism/promotion.py                             161    161     0%
+backend/organism/pyramider.py                             137     43    69%
+backend/organism/regime.py                                302     81    73%
+backend/organism/replay_simulator.py                      390    313    20%
+backend/organism/routes.py                                435    324    26%
+backend/organism/runner.py                                 60     60     0%
+backend/organism/scheduler.py                             169    169     0%
+backend/organism/sector_map.py                             15      0   100%
+backend/organism/self_evolution.py                        451    245    46%
+backend/organism/streaming_data_provider.py               157    157     0%
+backend/organism/trading_phase.py                          18      0   100%
+backend/organism/training.py                              155    155     0%
+backend/organism/transfer_learning.py                     230    171    26%
+backend/organism/universe_selector.py                     155     29    81%
+backend/organism/walk_forward.py                          217    159    27%
+backend/research/__init__.py                                0      0   100%
+backend/research/optuna_meta_research_engine.py           563    563     0%
+backend/risk/__init__.py                                    0      0   100%
+backend/risk/advanced_risk.py                             363     15    96%
+backend/risk/advanced_risk_manager.py                     373    373     0%
+backend/risk/black_swan_protection.py                     213    213     0%
+backend/risk/correlation_breakdown.py                     215    215     0%
+backend/risk/margin_calculator.py                          50     50     0%
+backend/risk/math.py                                       89     89     0%
+backend/risk/metrics.py                                   150    150     0%
+backend/risk/position_limits.py                            63     63     0%
+backend/risk/risk_calculator.py                            65     65     0%
+backend/risk/risk_manager.py                              695    591    15%
+backend/risk/types.py                                     168     64    62%
+backend/risk/volatility_checker.py                         87     87     0%
+backend/security/__init__.py                                0      0   100%
+backend/security/api_hardening.py                         295    295     0%
+backend/services/__init__.py                                1      0   100%
+backend/services/audit_service.py                         208     79    62%
+backend/services/auto_breakout_scanner.py                 117     83    29%
+backend/services/auto_breakout_scanner_scheduler.py        60     46    23%
+backend/services/backtest_service.py                     1190    734    38%
+backend/services/cache.py                                 250    133    47%
+backend/services/indicators.py                            390    328    16%
+backend/services/lot_tracker_service.py                    78     62    21%
+backend/services/market_data_service.py                   255    198    22%
+backend/services/multi_strategy_live_runner.py            179    145    19%
+backend/services/multi_strategy_live_scheduler.py         137    119    13%
+backend/services/observability_service.py                 180     85    53%
+backend/services/order_service.py                         715    443    38%
+backend/services/portfolio_service.py                     140    120    14%
+backend/services/portfolio_sync_service.py                 48     48     0%
+backend/services/position_import_service.py                82     82     0%
+backend/services/position_reconciliation_service.py        74     61    18%
+backend/services/positions_service.py                      82     66    20%
+backend/services/quote_manager.py                         157     50    68%
+backend/services/risk_manager.py                          292    247    15%
+backend/services/scheduled_reconciliation.py               83     83     0%
+backend/services/signal_service.py                         27     27     0%
+backend/services/slippage_model.py                        145    145     0%
+backend/services/strategy_service.py                      285    251    12%
+backend/services/symbol_validator.py                       81     81     0%
+backend/services/trade_analytics_service.py               187    147    21%
+backend/services/trade_service.py                         206     82    60%
+backend/services/trading_execution_mode.py                 73      6    92%
+backend/settings.py                                        15     15     0%
+backend/strategies/__init__.py                              3      0   100%
+backend/strategies/advanced_strategies.py                 498    445    11%
+backend/strategies/basic.py                                81      2    98%
+backend/strategies/engine.py                              326    284    13%
+backend/strategies/living_policy.py                       197    197     0%
+backend/strategies/parity_checker.py                      200    145    28%
+backend/strategies/trading_strategies.py                  475    374    21%
+backend/strategies/types.py                                66     29    56%
+backend/strategies/versioning.py                          153     94    39%
+backend/utils/__init__.py                                   3      0   100%
+backend/utils/helpers.py                                  201      5    98%
+backend/utils/import_tracker.py                           114    114     0%
+backend/utils/logger.py                                   192    101    47%
+backend/utils/logging.py                                   90     40    56%
+backend/utils/market_hours.py                             130     12    91%
+backend/utils/port_management.py                          146    146     0%
+backend/utils/secure_pickle.py                             81     11    86%
+backend/utils/utilities.py                                374    374     0%
+backend/utils/validators.py                               157    127    19%
+backend/websocket.py                                      145    103    29%
+---------------------------------------------------------------------------
+TOTAL                                                   58381  43065    26%
+=========================== short test summary info ============================
+FAILED tests/test_apr7_p0_p1_fixes.py::test_submit_entry_order_counters_increment
+FAILED tests/test_apr8_patch_a_force_save.py::test_force_save_brain_calls_brain_save_force_true
+FAILED tests/test_apr8_patch_a_force_save.py::test_force_save_brain_bypasses_walk_forward_gate
+FAILED tests/test_apr8_patch_a_force_save.py::test_force_save_brain_updates_watchdog_tick
+FAILED tests/test_apr8_patch_a_force_save.py::test_force_save_brain_graceful_exception
+FAILED tests/test_apr8_patch_a_force_save.py::test_force_save_brain_nonfinite_sharpe_returns_none
+FAILED tests/test_apr8_patch_a_force_save.py::test_route_rejects_without_force_query
+FAILED tests/test_apr8_patch_a_force_save.py::test_route_calls_force_save_brain_when_forced
+FAILED tests/test_apr8_patch_a_force_save.py::test_route_returns_409_when_engine_inactive
+FAILED tests/test_audit_patch_queue_b1.py::TestConfidenceGateFullParity::test_unified_threshold_uses_regime_conf_guard
+FAILED tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_current_equity_none_when_no_ticks
+FAILED tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_current_equity_from_broker_after_ticks
+FAILED tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_cumulative_pnl_correct
+FAILED tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_equity_not_cumulative_pnl
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_ignores_ml_confidence
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_learning_mode_uses_composite_score
+FAILED tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_production_mode_uses_ml_confidence
+FAILED tests/test_audit_patch_queue_c2.py::TestTradeForensicFields::test_apply_to_learner_restores_forensic_fields
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_rejects_negative_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_accepts_positive_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_poor_model_rejected
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_model_accepted
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_but_negative_edge_rejected
+FAILED tests/test_audit_patch_queue_d2.py::TestModelAcceptancePrecisionGate::test_acceptance_positive_edge_weak_precision_rejected
+FAILED tests/test_audit_patch_queue_d2.py::TestModelAcceptancePrecisionGate::test_acceptance_old_model_comparison_still_works
+FAILED tests/test_audit_patch_queue_h1.py::TestAcceptanceGateCalibration::test_inverted_calibration_rejected_with_sufficient_data
+FAILED tests/test_audit_patch_queue_h1.py::TestAcceptanceGateCalibration::test_weak_calibration_requires_higher_score
+FAILED tests/test_audit_patch_queue_h2.py::TestLearnerDelegatesToSharedGate::test_learner_rejects_inverted_calibration
+FAILED tests/test_audit_patch_queue_h2.py::TestLearnerDelegatesToSharedGate::test_learner_raises_threshold_for_insufficient_cal
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_good_model
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_inverted_calibration
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_insufficient_calibration_low_score
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_insufficient_calibration_high_score
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_no_edge
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_low_precision
+FAILED tests/test_away_mode_wave_a.py::TestA4PendingEntryPersistence::test_pending_entry_in_brain_save_extra_counters
+36 failed, 1252 passed, 2 skipped, 4 xfailed in 26.55s

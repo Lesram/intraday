@@ -1,0 +1,15 @@
+{
+  "status": "fail",
+  "passed": 0,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "total": 0,
+  "tests": [],
+  "exit_code": -9,
+  "timed_out": true,
+  "error": "command timed out after 300s; invalid pytest evidence: [Errno 2] No such file or directory: '/home/runner/work/intraday/intraday/artifacts/replay_simulator.junit.xml'",
+  "output_file": "artifacts/replay_simulator.log",
+  "output_tail": "...................",
+  "junit_file": "artifacts/replay_simulator.junit.xml"
+}

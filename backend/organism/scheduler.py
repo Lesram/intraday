@@ -119,9 +119,10 @@ class OrganismScheduler:
             DiagnosticReportStore,
             ScheduledDiagnosticRunner,
         )
-        self._diag_store = DiagnosticReportStore(
-            brain_dir=brain_dir or "organism_brain",
-        )
+        # Punchlist 2026-07-24 item 3: pass through as-is — a None brain_dir
+        # resolves inside DiagnosticReportStore via ORGANISM_BRAIN_DIR (the
+        # old literal fallback here bypassed the env redirect).
+        self._diag_store = DiagnosticReportStore(brain_dir=brain_dir)
         self._diag_runner = ScheduledDiagnosticRunner(store=self._diag_store)
 
     # ── public API ───────────────────────────────────────────────

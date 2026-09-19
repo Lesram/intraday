@@ -1,0 +1,41 @@
+=== Running container signature verification (ce06d41, NOT 33d6138) ===
+captured_at=2026-04-24T02:42:29Z
+
+### Exp1A: chop min-hold gate ###
+1936:                        _CHOP_MIN_HOLD_BARS = 10
+1941:                        if _is_chop and _bars_held < _CHOP_MIN_HOLD_BARS:
+1947:                                sym, _bars_held, _CHOP_MIN_HOLD_BARS,
+
+### Exp2: PSQ/SH suppressed in chop ###
+/app/backend/organism/live_engine.py:2437:                            "%s regime=%s confidence=%.3f reason=inverse_etf_suppressed_chop",
+/app/backend/organism/live_engine.py:2444:                            details={"reason": "inverse_etf_suppressed_chop", "regime": str(regime)},
+
+### Exp3 prep: dual-confidence logging ###
+2170:                        "gate_pass_live=%s gate_pass_bt_only=%s "
+2248:                        "confidence_bt_only": _conf_bt_only,
+2249:                        "confidence_ml_component": _conf_ml_component,
+
+### Exp4: chop trailing giveback (should be MISSING in ce06d41) ###
+
+### G1: exit-level restore warning ###
+812:                            ftf_stop_tightened=bool(lvl_data.get("ftf_stop_tightened", False)),
+
+### G2: cooldown-on-success-only ###
+
+### G3: NaN/Inf pyramid guard ###
+
+### H1: prod risk-budget cap ###
+
+### H2: feature drift guard ###
+
+### CAP/HALT ###
+/app/backend/organism/kelly_sizer.py:498:                _max_notional = portfolio_value * 0.05
+/app/backend/organism/kelly_sizer.py:499:                _notional_capped_shares = int(_max_notional / current_price)
+grep: /app/backend/organism/__pycache__/kelly_sizer.cpython-312.pyc: binary file matches
+
+### H5: governance settings API enforcement ###
+
+### Alert wiring ###
+/app/backend/infra/alerting.py:10:- SLACK_WEBHOOK_URL: Slack incoming webhook URL
+/app/backend/infra/alerting.py:186:            slack_webhook_url=os.getenv("SLACK_WEBHOOK_URL"),
+grep: /app/backend/infra/__pycache__/alerting.cpython-312.pyc: binary file matches

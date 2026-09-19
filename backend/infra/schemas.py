@@ -3,8 +3,13 @@ SQLAlchemy 2.0 models for the trading platform.
 All models use async patterns and include proper indexes for performance.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
+
+
+def _utcnow_aware() -> datetime:
+    """K-9: tz-aware UTC factory (replaces deprecated datetime.utcnow)."""
+    return datetime.now(UTC)
 from typing import Any
 import uuid
 
@@ -64,6 +69,13 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=True, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
+    # V4 N-M-1 (2026-05-02): users.created_at and users.updated_at are
+    # declared `timezone=False` (naive) while the rest of the schema is
+    # `timezone=True`. Comparing against tz-aware Python datetime values
+    # raises TypeError. Not changing the type here because an ALTER
+    # COLUMN of an active-auth table is high-risk and the values are
+    # currently never compared against tz-aware in production. Tracked
+    # for a planned migration during a maintenance window.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), nullable=True, server_default=sa.text("CURRENT_TIMESTAMP")
     )
@@ -185,7 +197,7 @@ class Execution(Base):
     fill_qty: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False)
     fill_price: Mapped[Decimal] = mapped_column(DECIMAL(18, 6), nullable=False)
     ts: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False
     )
     venue: Mapped[str] = mapped_column(String(50), nullable=False)
 
@@ -483,10 +495,16 @@ class AuditLog(Base):
     )
 
     # Audit details
+    # V13 W95 (Lens 4): `ts` had both `index=True` AND a named
+    # Index("ix_audit_logs_ts", "ts") in __table_args__ below; removed
+    # `index=True` so the explicit named index is the single canonical
+    # declaration.  `action` and `entity` retain `index=True` because
+    # the composite indexes that include them (`*_ts`) start with a
+    # different column and don't substitute for a single-column index
+    # on the column itself.
     ts: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        index=True,
         server_default=sa.text("CURRENT_TIMESTAMP"),
     )
     actor: Mapped[str] = mapped_column(
@@ -545,15 +563,17 @@ class OutboxEvent(Base):
     attempts: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
     # Backoff scheduling
+    # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
     next_attempt_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow, index=True
+        DateTime(timezone=True), nullable=False, default=_utcnow_aware, index=True
     )
 
     # Audit timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow,
+        # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
+        default=_utcnow_aware,
         server_default=sa.text("CURRENT_TIMESTAMP"),
     )
 
@@ -774,9 +794,14 @@ class PositionLot(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
-    # User and symbol
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    # User and symbol.
+    # V4 N-H-1 (2026-05-02): the DB stores user_id as varchar(100)
+    # (username), and the API supplies `current_user.username` to
+    # LotTracker — the previous ORM declaration `Integer + FK to users.id`
+    # was a no-op (the FK never matched the DB column type). Align ORM
+    # with DB truth so future autogenerate diffs are clean.
+    user_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, index=True
     )
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
 
@@ -797,7 +822,7 @@ class PositionLot(Base):
 
     # Timestamps
     open_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -813,7 +838,7 @@ class PositionLot(Base):
 
     # Status
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="open", index=True
+        String(20), nullable=False, default="open"
     )  # 'open', 'closed'
 
     # Relationships
@@ -842,9 +867,9 @@ class RealizedTrade(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
-    # User and symbol
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    # User and symbol — V4 N-H-1 (2026-05-02): see PositionLot above.
+    user_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, index=True
     )
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
 
@@ -881,10 +906,10 @@ class RealizedTrade(Base):
 
     # Timestamps
     open_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False
     )
     close_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

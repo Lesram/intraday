@@ -1,0 +1,9 @@
+{
+  "backup_path": "/Users/marselkei/Library/Application Support/Intra/backups/paper-pre-readiness-20260919T183121Z.dump",
+  "bytes": 1341585,
+  "dump_exit": 0,
+  "archive_catalog_exit": 0,
+  "archive_catalog_entries": 270,
+  "source": "paper PostgreSQL, read-only pg_dump",
+  "restoration_verified": false
+}

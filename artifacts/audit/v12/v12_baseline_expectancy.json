@@ -1,0 +1,18 @@
+{
+  "csv_exists": true,
+  "csv_mtime": 1777834482.600263,
+  "csv_path": "organism_brain/trade_history.csv",
+  "last_25_mean_pnl": 2.7512,
+  "last_25_win_rate": 0.4,
+  "last_50_mean_pnl": -0.4642,
+  "last_50_win_rate": 0.34,
+  "max_drawdown": -985.93,
+  "mean_pnl": -1.2749,
+  "median_pnl": -0.935,
+  "n_losses": 328,
+  "n_trades": 498,
+  "n_wins": 168,
+  "sharpe_ratio_per_trade": -1.0573,
+  "total_pnl": -634.9,
+  "win_rate": 0.3373
+}

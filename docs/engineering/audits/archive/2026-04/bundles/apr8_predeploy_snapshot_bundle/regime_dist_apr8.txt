@@ -1,0 +1,4 @@
+   1930 chop
+     17 chop)",
+     15 stress
+    106 unknown,

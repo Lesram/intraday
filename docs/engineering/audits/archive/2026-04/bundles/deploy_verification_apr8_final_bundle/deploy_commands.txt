@@ -1,0 +1,92 @@
+=== DEPLOY START 2026-04-09T01:24:25Z ===
+docker compose -f docker-compose.paper.yml up -d --build api
+ Image intra-api Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 513B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 3.49kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [builder 1/5] FROM docker.io/library/python:3.12-slim@sha256:ccc7089399c8bb65dd1fb3ed6d55efa538a3f5e7fca3f5988ac3b5b87e593bf0
+#5 resolve docker.io/library/python:3.12-slim@sha256:ccc7089399c8bb65dd1fb3ed6d55efa538a3f5e7fca3f5988ac3b5b87e593bf0 done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 49.19MB 3.4s done
+#6 DONE 3.7s
+
+#7 [builder 3/5] RUN python -m venv /opt/venv
+#7 CACHED
+
+#8 [runtime  4/10] COPY --from=builder /opt/venv /opt/venv
+#8 CACHED
+
+#9 [builder 4/5] COPY requirements.txt requirements.lock ./
+#9 CACHED
+
+#10 [builder 5/5] RUN pip install --upgrade pip wheel setuptools &&     pip install -r requirements.lock
+#10 CACHED
+
+#11 [runtime  3/10] RUN useradd -u 10001 -r -g 0 -d /app -s /sbin/nologin -c "Application User" appuser
+#11 CACHED
+
+#12 [runtime  5/10] RUN mkdir -p /app /app/logs /app/tmp &&     chown -R appuser:root /app &&     chmod -R g=u /app
+#12 CACHED
+
+#13 [runtime  2/10] RUN apt-get update && apt-get install -y --no-install-recommends     libpq5     curl     bash     && rm -rf /var/lib/apt/lists/*     && apt-get clean
+#13 CACHED
+
+#14 [builder 2/5] RUN apt-get update && apt-get install -y --no-install-recommends     gcc     g++     libpq-dev     python3-dev     build-essential     && rm -rf /var/lib/apt/lists/*
+#14 CACHED
+
+#15 [runtime  6/10] WORKDIR /app
+#15 CACHED
+
+#16 [runtime  7/10] COPY --chown=appuser:root . .
+#16 DONE 10.7s
+
+#17 [runtime  8/10] RUN mkdir -p logs tmp data
+#17 DONE 0.3s
+
+#18 [runtime  9/10] COPY --chown=appuser:root docker-entrypoint.sh /app/docker-entrypoint.sh
+#18 DONE 0.0s
+
+#19 [runtime 10/10] RUN chmod +x /app/docker-entrypoint.sh
+#19 DONE 0.1s
+
+#20 exporting to image
+#20 exporting layers
+#20 exporting layers 42.6s done
+#20 exporting manifest sha256:40cfd63e12b607c05c34c63d84ff8715ddce7c8e131253ad1bef7219fb2c16ab
+#20 exporting manifest sha256:40cfd63e12b607c05c34c63d84ff8715ddce7c8e131253ad1bef7219fb2c16ab done
+#20 exporting config sha256:83a120c5af06508c82299368f496de0ed8b8d51c3c7279efd772738092bf1d94 done
+#20 exporting attestation manifest sha256:33a5c8d3cfaa3964e7160010d4dd557288297e03780422ea183c12a41c3d6fcd done
+#20 exporting manifest list sha256:56f064820e00d16099c067ef153c5c20c42d940db688753e61d22cdb2483eeef done
+#20 naming to docker.io/library/intra-api:latest done
+#20 unpacking to docker.io/library/intra-api:latest
+#20 unpacking to docker.io/library/intra-api:latest 9.7s done
+#20 DONE 52.3s
+
+#21 resolving provenance for metadata file
+#21 DONE 0.0s
+ Image intra-api Built 
+ Container trading_platform_db_paper Running 
+ Container intra-redis-1 Running 
+ Container intra-api-1 Recreate 
+ Container intra-api-1 Recreated 
+ Container trading_platform_db_paper Waiting 
+ Container intra-redis-1 Waiting 
+ Container intra-redis-1 Healthy 
+ Container trading_platform_db_paper Healthy 
+ Container intra-api-1 Starting 
+ Container intra-api-1 Started 
+=== DEPLOY END 2026-04-09T01:25:37Z ===

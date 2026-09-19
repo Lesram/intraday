@@ -1,0 +1,11 @@
+{
+  "brain_format_version": 2,
+  "saved_at": "2026-04-16T02:43:08.938155+00:00",
+  "total_runs": 607,
+  "generation": 70,
+  "total_trades": 258,
+  "cumulative_pnl": -562.88,
+  "best_sharpe": 3.4363,
+  "ml_is_trained": true,
+  "feature_count": 79
+}

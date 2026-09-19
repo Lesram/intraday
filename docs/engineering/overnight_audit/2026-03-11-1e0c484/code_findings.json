@@ -1,0 +1,86 @@
+[
+  {
+    "id": "F1",
+    "severity": "RESOLVED",
+    "prior_severity": "HIGH",
+    "file": ".env",
+    "category": "runtime_config_drift",
+    "description": "MAX_OPEN_POSITIONS=15 from .env overrode code default of 8. RESOLVED: .env now set to 8, matching code default.",
+    "evidence": "Container env: ORGANISM_MAX_POSITIONS=8. Module constant: MAX_OPEN_POSITIONS=8. Verified via docker exec.",
+    "status": "fixed_in_preopen_convergence"
+  },
+  {
+    "id": "F2",
+    "severity": "RESOLVED",
+    "prior_severity": "HIGH",
+    "file": "backend/organism/live_engine.py",
+    "lines": "1698-1704",
+    "category": "false_positive_corrected",
+    "description": "Prior audit said bar_boundary_entry_only was NOT enforced in the entry code path. This was a FALSE POSITIVE. The entry path IS gated by _is_entry_bar at line 1704. The prior grep for 'BAR_BOUNDARY' missed this because the implementation uses _is_entry_bar (wall-clock minute boundary) not a named BAR_BOUNDARY constant.",
+    "evidence": "Line 1698: _current_minute = self._now_fn().strftime('%Y-%m-%d %H:%M'). Line 1699: _is_entry_bar = (_current_minute != getattr(self, '_last_entry_bar', '')). Line 1704: 'if not entries_blocked and ... and _is_entry_bar:' gates ALL entry-side logic (steps 6-9).",
+    "status": "false_positive_in_prior_audit"
+  },
+  {
+    "id": "F3",
+    "severity": "RESOLVED",
+    "prior_severity": "HIGH",
+    "file": ".env",
+    "lines": "ORGANISM_LIVE_SYMBOLS",
+    "category": "runtime_config_drift",
+    "description": ".env universe had 30 symbols (missing SH/PSQ inverse ETFs, added 10 volatile extras). RESOLVED: .env now set to 22-symbol code default with SH/PSQ.",
+    "evidence": "Container env: ORGANISM_LIVE_SYMBOLS matches code default exactly (22 symbols with SH,PSQ).",
+    "status": "fixed_in_preopen_convergence"
+  },
+  {
+    "id": "F4",
+    "severity": "MEDIUM",
+    "file": "backend/organism/live_engine.py",
+    "lines": "2221-2240, 3348",
+    "category": "forensics_gap",
+    "description": "entry_source was empty for all 142 trades in the prior session. The code at line 2223 sets _entry_source correctly ('alpha'/'breakout'/'alpha+breakout'), and line 3348 reads it from metadata. The issue was that the deployed container at the time predated the entry_source code. Now that the container is rebuilt from 1e0c484 (which includes this code), new trades should populate entry_source correctly.",
+    "evidence": "Container rebuilt from 1e0c484 which includes entry_source logic at live_engine.py:2221-2240.",
+    "impact_tomorrow": "New trades should have correct entry_source attribution. Historical trades from prior session remain 'unknown'.",
+    "recommended_action": "Monitor first few trades tomorrow to confirm entry_source is populated."
+  },
+  {
+    "id": "F5",
+    "severity": "RESOLVED",
+    "prior_severity": "MEDIUM",
+    "file": "backend/organism/ml_signal.py",
+    "category": "state_inconsistency",
+    "description": "Prior audit noted ml_trained=true in API but false in bundle. After container rebuild, API now reports ml_trained=false (brain loaded fresh from disk). Bundle and API are aligned.",
+    "evidence": "API engine.ml_trained=false, consistent with brain state (no model trained yet in this session).",
+    "status": "resolved_by_rebuild"
+  },
+  {
+    "id": "F6",
+    "severity": "RESOLVED",
+    "prior_severity": "MEDIUM",
+    "file": "backend/organism/continuous_learner.py",
+    "category": "deployment_gap",
+    "description": "J4+J5 patches (evaluation-event history) were uncommitted. Now committed at 1e0c484 and deployed via container rebuild.",
+    "evidence": "Commit 1e0c484 includes J2-J5 patches. Container rebuilt from this commit.",
+    "status": "deployed"
+  },
+  {
+    "id": "F7",
+    "severity": "LOW",
+    "file": "backend/organism/live_engine.py",
+    "lines": "304",
+    "category": "design_observation",
+    "description": "BreakoutScanner(top_n=MAX_OPEN_POSITIONS=8) while AlphaScanner(top_n=ALPHA_TOP_N=5). Ratio is now 8:5 (was 15:5 with old config). This is a closer balance than before.",
+    "evidence": "MAX_OPEN_POSITIONS=8 (env), ALPHA_TOP_N=5 (env). Line 303: AlphaScanner(top_n=5). Line 304: BreakoutScanner(top_n=8).",
+    "impact_tomorrow": "Breakout candidates slightly outnumber alpha candidates (8:5). Reasonable design choice.",
+    "recommended_action": "No action needed."
+  },
+  {
+    "id": "F8",
+    "severity": "LOW",
+    "file": "tests/test_audit_patch_queue_h1.py, tests/test_audit_patch_queue_h2.py",
+    "category": "stale_tests",
+    "description": "19 test failures in H1/H2/C2/D1/D2 suites — all caused by _validate_new_model return type change from bool to tuple[bool,str] in I1 patch. Tests compare (bool, str) == bool which fails. Not a code bug — stale test assertions.",
+    "evidence": "All 19 failures assert 'learner_decision == gate_decision' where learner returns tuple and gate returns bool. J2-J5 and I1 tests (which use correct assertions) all pass.",
+    "impact_tomorrow": "No trading impact. Tests are stale, not broken code.",
+    "recommended_action": "Update H1/H2/C2/D1/D2 test assertions to compare tuple results. Low priority."
+  }
+]

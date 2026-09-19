@@ -147,9 +147,19 @@ class PromotionController:
         *,
         sessionmaker: async_sessionmaker[AsyncSession],
         governance: GovernanceController,
+        now_fn=None,
     ) -> None:
+        # V5 U-6 / Wave-19 (2026-05-03): clock injection for replay
+        # determinism. Stage stamps and min-duration check both consult
+        # this clock; without injection, replay reads wall clock and
+        # promotion stages elapse instantly relative to replay's clock.
         self._sessionmaker = sessionmaker
         self._governance = governance
+        if now_fn is None:
+            from datetime import UTC as _UTC, datetime as _dt
+            self._now_fn = lambda: _dt.now(_UTC)
+        else:
+            self._now_fn = now_fn
         self._state: PromotionState | None = None
         self._last_known_good: dict[str, float] | None = None
 
@@ -215,7 +225,7 @@ class PromotionController:
             stage=PromotionStage.SHADOW,
             weights=weights,
             regime_weights=regime_weights or {},
-            entered_stage_at=datetime.now(UTC).isoformat(),
+            entered_stage_at=self._now_fn().isoformat(),
         )
 
         await self._persist_transition("begin_promotion", {})
@@ -242,7 +252,7 @@ class PromotionController:
 
         # Check minimum time in stage
         entered = datetime.fromisoformat(self._state.entered_stage_at)
-        elapsed = (datetime.now(UTC) - entered).total_seconds()
+        elapsed = (self._now_fn() - entered).total_seconds()
         min_duration = self.MIN_STAGE_DURATION.get(self._state.stage.value, 3600)
 
         if elapsed < min_duration:
@@ -258,7 +268,7 @@ class PromotionController:
         if current_idx < len(stages) - 1:
             next_stage = stages[current_idx + 1]
             self._state.stage = next_stage
-            self._state.entered_stage_at = datetime.now(UTC).isoformat()
+            self._state.entered_stage_at = self._now_fn().isoformat()
             self._state.metrics_in_stage = dict(live_metrics)
             await self._persist_transition("advance", {"to": next_stage.value, "metrics": live_metrics})
             logger.info(
@@ -275,7 +285,7 @@ class PromotionController:
 
         self._state.stage = PromotionStage.ROLLED_BACK
         self._state.rollback_count += 1
-        self._state.entered_stage_at = datetime.now(UTC).isoformat()
+        self._state.entered_stage_at = self._now_fn().isoformat()
 
         await self._persist_transition("rollback", {"trigger": trigger.to_dict()})
 
@@ -340,7 +350,7 @@ class PromotionController:
         self, metrics: dict[str, float]
     ) -> RollbackTrigger | None:
         """Check live metrics against rollback thresholds."""
-        now = datetime.now(UTC).isoformat()
+        now = self._now_fn().isoformat()
 
         dd = metrics.get("drawdown", 0.0)
         if dd > self.ROLLBACK_THRESHOLDS["max_drawdown"]:

@@ -1,0 +1,17 @@
+{
+  "at": "2026-09-19T19:13:22.143247+00:00",
+  "roles": [
+    "paper_monitor"
+  ],
+  "credential_mode": "0o600",
+  "checks": {
+    "/api/v1/auth/me": 200,
+    "/api/v1/paper-monitor/organism/status": 200,
+    "/api/v1/paper-monitor/deploy": 200,
+    "/api/v1/paper-monitor/data-integrity": 200,
+    "/api/v1/paper-monitor/edge": 200,
+    "/api/v1/organism/status": 403,
+    "/api/v1/health/deploy": 403
+  },
+  "mutation_requests": 0
+}

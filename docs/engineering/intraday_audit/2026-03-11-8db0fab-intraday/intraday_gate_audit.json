@@ -1,0 +1,85 @@
+{
+  "audit_date": "2026-03-11",
+  "head_sha": "8db0fab",
+  "ticks_analyzed": 362,
+  "tick_range_utc": "13:43 — 18:58",
+
+  "gate_pipeline_summary": {
+    "candidates_seen": "22 symbols per tick (universe)",
+    "alpha_candidates_produced": "unknown — no alpha_scan log entries visible today",
+    "breakout_candidates_produced": "at least 27 (those reaching confidence gate logging)",
+    "candidates_after_fitness": "N/A — fitness gate is disabled in learning mode",
+    "candidates_after_liquidity": "at least 27 reached confidence evaluation",
+    "candidates_after_confidence": 0,
+    "candidates_after_sector_gate": 0,
+    "candidates_after_circuit_breaker": 0,
+    "candidates_after_bar_boundary": 0,
+    "kelly_sized": 0,
+    "size_positions_produced": 0,
+    "orders_submitted": 0
+  },
+
+  "rejection_breakdown": {
+    "confidence_gate": {
+      "count": "ALL candidates — 100% rejection rate",
+      "sub_breakdown": {
+        "below_exploration_gate_0.25": "majority (eff_conf=0.00)",
+        "below_main_book_threshold_0.40_or_0.45": "remainder (max eff_conf=0.22)"
+      }
+    },
+    "trending_down_block": {
+      "count": 2,
+      "note": "trending_down regime after 10:00 ET — main-book blocked (14:12 UTC)"
+    },
+    "regime_transition_cooldown": {
+      "count": 1,
+      "note": "trending_up → trending_down — blocked main-book for 12 ticks"
+    },
+    "data_stale_block": {
+      "count": 1,
+      "note": "987s stale at first tick (13:43 UTC) — resolved after warmup"
+    },
+    "warmup_block": {
+      "count": 1,
+      "note": "4/5 warmup ticks at startup"
+    },
+    "fitness_gate": 0,
+    "liquidity_gate": 0,
+    "sector_gate": 0,
+    "circuit_breaker": 0,
+    "cooldown": 0,
+    "pending_entry": 0,
+    "no_bar_boundary": "N/A — no candidates reached this stage",
+    "no_size": "N/A — no candidates reached Kelly sizing"
+  },
+
+  "confidence_gate_analysis": {
+    "gate_thresholds": {
+      "exploration_gate": 0.25,
+      "main_book_baseline": 0.40,
+      "main_book_defensive": 0.45,
+      "defensive_regimes": ["chop", "high_vol", "trending_down"]
+    },
+    "learning_mode_formula": "eff_conf = 0.65 * breakout_score + 0.35 * min(tension, 1.0)",
+    "max_eff_conf_seen_today": 0.22,
+    "eff_conf_distribution": {
+      "0.00": "18 logged rejections (SNOW x8, XLE x2, TSLA x2, IWM x3, AMD x2, WMT x1)",
+      "0.13": "2 (GOOGL in high_vol)",
+      "0.14": "2 (XLE in high_vol)",
+      "0.15": "1 (TSLA in high_vol)",
+      "0.17": "1 (NVDA in trending_down)",
+      "0.21": "1 (XLE in trending_down)",
+      "0.22": "1 (TSLA in trending_down)"
+    },
+    "note": "The highest confidence today (0.22) is below even the 0.25 exploration gate. Breakout scores and tension readings are extremely low across all symbols. This is consistent with a regime-unstable, low-conviction market day."
+  },
+
+  "scanner_health": {
+    "movers_up_passed": 0,
+    "movers_down_passed": 0,
+    "most_actives_passed": 0,
+    "recurring_warning": "Scanner: no stocks passed initial filters",
+    "scan_interval": "~80 seconds",
+    "note": "Market scanner consistently returning zero candidates — external universe scan also finds nothing actionable"
+  }
+}

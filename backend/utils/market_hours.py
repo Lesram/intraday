@@ -152,13 +152,24 @@ def _calculate_nyse_early_close(year: int) -> set[date]:
 
 
 def _build_sets() -> tuple[set[date], set[date]]:
-    """Build holiday + early-close sets for current ± 5 years."""
+    """Build holiday + early-close sets for current ± 5 years.
+
+    Audit-K finding K-7 (2026-05-02): when July 4 falls on Saturday,
+    the observed Friday holiday (July 3) was being added to BOTH the
+    holiday set AND the early-close set. Same for Christmas Eve when
+    Dec 25 = Saturday → Dec 24. This violated the invariant
+    `holidays ∩ early_close == ∅` and caused `market_close_time(d)` to
+    return EARLY_CLOSE (1 PM) for fully-closed days. We now subtract
+    holidays from early-close so the sets are disjoint.
+    """
     cur = datetime.now().year
     holidays: set[date] = set()
     early: set[date] = set()
     for y in range(cur - 1, cur + 6):
         holidays.update(_calculate_nyse_holidays(y))
         early.update(_calculate_nyse_early_close(y))
+    # Enforce disjoint invariant
+    early -= holidays
     return holidays, early
 
 

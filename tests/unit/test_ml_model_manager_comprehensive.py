@@ -1276,8 +1276,9 @@ class TestModelRegistryExtended:
 
     def test_load_artifacts(self, registry_with_model):
         """Test loading model artifacts."""
-        model, artifacts, metadata = registry_with_model.load_artifacts("test_model", "v1.0")
-        
+        with patch("backend.ml.model_manager.secure_load", side_effect=lambda f: pickle.load(f)):
+            model, artifacts, metadata = registry_with_model.load_artifacts("test_model", "v1.0")
+
         assert model is not None
         assert isinstance(metadata, dict)
         assert "model_id" in metadata or "version" in metadata

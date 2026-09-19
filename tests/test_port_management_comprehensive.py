@@ -8,6 +8,7 @@ Targets 70%+ coverage for PortManager class:
 - Context manager usage
 """
 
+import asyncio
 import socket
 from unittest.mock import patch, MagicMock
 import pytest

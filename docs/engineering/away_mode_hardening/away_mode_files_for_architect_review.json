@@ -1,0 +1,59 @@
+{
+  "files_requiring_review": {
+    "source_files_changed": [
+      {
+        "path": "backend/organism/live_engine.py",
+        "changes": "+208 lines",
+        "areas": [
+          "A2: Scanner gate decoupled from entries_blocked (~line 1187)",
+          "A4: Pending entry save/restore in _save_to_brain() and initialize()",
+          "C1-C5: Watchdog state machine, _update_watchdog_state(), get_watchdog_state()",
+          "C2: Equity fallback counter/streak in _get_equity()",
+          "C3: _check_universe_drift() method",
+          "C4: Brain save tick tracking in _save_brain()",
+          "C5: watchdog field added to LiveTickResult"
+        ],
+        "risk": "LOW — all changes are additive (new counters, new methods). No existing logic paths modified except removing 'not entries_blocked' from scanner gate."
+      },
+      {
+        "path": "backend/organism/universe_selector.py",
+        "changes": "+17 lines",
+        "areas": ["A1: protected_symbols parameter in __init__, rotate(), to_dict(), from_dict()"],
+        "risk": "LOW — additive parameter with default empty set. Existing behavior unchanged when no protected symbols specified."
+      },
+      {
+        "path": "backend/integrations/alpaca_stream.py",
+        "changes": "+66 lines",
+        "areas": [
+          "B1: _write_to_dlq() method and DLQ call in retry exhaust path",
+          "B2: _last_connected_at tracking, _reconnect_count, gap-fill duration computation"
+        ],
+        "risk": "LOW — DLQ is append-only file write. Gap-fill change only affects lookback window size."
+      },
+      {
+        "path": "backend/services/audit_service.py",
+        "changes": "+36 lines",
+        "areas": ["B3: refresh_session(), _check_session_health(), reset() class method"],
+        "risk": "LOW — additive methods. log() now raises on stale session (fail-loud, intentional)."
+      },
+      {
+        "path": "scripts/runtime/write_runtime_snapshot.py",
+        "changes": "+10 lines",
+        "areas": ["A3: unreachable_reason field, scanner_candidates_count field"],
+        "risk": "MINIMAL — additional fields in JSON output only."
+      }
+    ],
+    "test_files_added": [
+      "tests/test_away_mode_wave_a.py (14 tests)",
+      "tests/test_away_mode_wave_b.py (14 tests)",
+      "tests/test_away_mode_wave_c.py (23 tests)"
+    ],
+    "review_priority": [
+      "1. live_engine.py — scanner gate change (A2) is the most impactful behavioral change",
+      "2. universe_selector.py — protected_symbols logic affects universe composition",
+      "3. alpaca_stream.py — DLQ and gap-fill changes affect execution resilience",
+      "4. audit_service.py — session health changes affect audit trail",
+      "5. write_runtime_snapshot.py — minimal risk, reporting only"
+    ]
+  }
+}

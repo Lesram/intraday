@@ -138,9 +138,9 @@ class TestTokenSecurity:
         
         # Expired token should be rejected
         from jwt import decode, ExpiredSignatureError
-        import os
-        secret = os.getenv("JWT_SECRET", "test_secret_NOT_FOR_PRODUCTION")
-        
+        from backend.api.auth import _get_jwt_secret
+        secret = _get_jwt_secret()
+
         with pytest.raises(ExpiredSignatureError):
             decode(token, secret, algorithms=["HS256"])
     

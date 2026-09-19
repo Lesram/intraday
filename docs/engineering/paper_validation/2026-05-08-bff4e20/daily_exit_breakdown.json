@@ -1,0 +1,44 @@
+{
+  "failure_to_follow": {
+    "count": 4,
+    "total_pnl": -4.62,
+    "avg_pnl": -1.16,
+    "win_rate": 0.0,
+    "avg_hold_time_seconds": 567.2
+  },
+  "max_holding_period": {
+    "count": 2,
+    "total_pnl": 4.86,
+    "avg_pnl": 2.43,
+    "win_rate": 1.0,
+    "avg_hold_time_seconds": 1784.6
+  },
+  "pyramid_cut_full_at_-1.9R": {
+    "count": 1,
+    "total_pnl": -0.58,
+    "avg_pnl": -0.58,
+    "win_rate": 0.0,
+    "avg_hold_time_seconds": 615.0
+  },
+  "pyramid_cut_full_at_-2.3R": {
+    "count": 1,
+    "total_pnl": -10.71,
+    "avg_pnl": -10.71,
+    "win_rate": 0.0,
+    "avg_hold_time_seconds": 617.9
+  },
+  "stop_loss": {
+    "count": 1,
+    "total_pnl": -1.96,
+    "avg_pnl": -1.96,
+    "win_rate": 0.0,
+    "avg_hold_time_seconds": 923.3
+  },
+  "trailing_stop": {
+    "count": 3,
+    "total_pnl": -10.78,
+    "avg_pnl": -3.59,
+    "win_rate": 0.0,
+    "avg_hold_time_seconds": 1335.8
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "date": "2026-03-18",
+  "sha": "16dcdd8 + away-mode hardening (uncommitted)",
+  "test_suites": {
+    "wave_a_tests": {"total": 14, "passed": 14, "failed": 0},
+    "wave_b_tests": {"total": 14, "passed": 14, "failed": 0},
+    "wave_c_tests": {"total": 23, "passed": 23, "failed": 0},
+    "tension_fallback_tests": {"total": 5, "passed": 5, "failed": 0},
+    "equity_fallback_tests": {"total": 5, "passed": 5, "failed": 0},
+    "runtime_snapshot_auth_tests": {"total": 3, "passed": 3, "failed": 0},
+    "full_suite": {"total": 8350, "passed": 7638, "failed": 28, "skipped": 684}
+  },
+  "new_tests_added": 51,
+  "new_tests_all_passing": true,
+  "regressions_introduced": 0,
+  "pre_existing_failures": {
+    "count": 28,
+    "categories": {
+      "audit_patch_queue_model_acceptance": 19,
+      "algorithm_improvements_liquidity": 1,
+      "residual_remediation_creds": 1,
+      "replay_simulator_flaky": 1,
+      "risk_advanced_manager": 3,
+      "audit_patch_forensic": 1,
+      "other": 2
+    },
+    "assessment": "All 28 failures are pre-existing at HEAD 16dcdd8. Zero new failures introduced by away-mode hardening."
+  }
+}

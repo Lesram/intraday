@@ -21,7 +21,7 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 import logging
 import math
@@ -124,7 +124,8 @@ class StressTestResult:
     worst_position: str
     worst_position_pnl: float
     risk_metrics_change: dict[str, float]
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    # K-9: tz-aware UTC (was datetime.utcnow, deprecated in Py 3.12+)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -264,7 +265,7 @@ class RealTimeRiskAnalytics:
 
     async def update_positions(self, positions_data: dict[str, dict[str, Any]]) -> None:
         """Update position data and trigger analytics"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             self.positions = positions_data
@@ -304,13 +305,13 @@ class RealTimeRiskAnalytics:
 
             # Record SLO metrics
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("position_update", execution_time, success=True)
 
         except Exception as e:
             logger.error(f"Error updating positions: {e}")
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("position_update", execution_time, success=False)
             raise
 
@@ -535,7 +536,7 @@ class RealTimeRiskAnalytics:
     async def _check_risk_alerts(self) -> None:
         """Check for risk alerts and generate notifications"""
         try:
-            current_hour = datetime.utcnow().hour
+            current_hour = datetime.now(UTC).hour
 
             # Clean up alert count tracking
             while len(self.alert_count_by_hour) >= 24:
@@ -544,7 +545,7 @@ class RealTimeRiskAnalytics:
             # Count alerts in current hour
             current_hour_alerts = sum(1 for alert in self.alert_history
                                     if alert.timestamp.hour == current_hour and
-                                       alert.timestamp.date() == datetime.utcnow().date())
+                                       alert.timestamp.date() == datetime.now(UTC).date())
 
             # Rate limiting: don't generate too many alerts
             if current_hour_alerts >= self.max_alerts_per_hour:
@@ -670,7 +671,7 @@ class RealTimeRiskAnalytics:
                 priority=priority,
                 title=title,
                 message=message,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 metadata=metadata
             )
 
@@ -702,7 +703,7 @@ class RealTimeRiskAnalytics:
 
     async def run_stress_test(self, scenario_name: str) -> StressTestResult:
         """Run stress test scenario"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             if scenario_name not in self.stress_scenarios:
@@ -793,7 +794,7 @@ class RealTimeRiskAnalytics:
 
             # Record SLO metrics
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("stress_test", execution_time, success=True)
 
             logger.info(f"Stress test '{scenario_name}' completed: P&L = {total_pnl:,.0f}")
@@ -802,7 +803,7 @@ class RealTimeRiskAnalytics:
         except Exception as e:
             logger.error(f"Error in stress test '{scenario_name}': {e}")
             if self.slo_monitor:
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 await self._record_slo_metrics("stress_test", execution_time, success=False)
             raise
 
@@ -943,7 +944,7 @@ class RealTimeRiskAnalytics:
         """Perform periodic analytics tasks"""
         try:
             # Auto-resolve old alerts
-            current_time = datetime.utcnow()
+            current_time = datetime.now(UTC)
             for alert in list(self.active_alerts.values()):
                 if (current_time - alert.timestamp).total_seconds() > 3600:  # 1 hour
                     alert.auto_resolved = True

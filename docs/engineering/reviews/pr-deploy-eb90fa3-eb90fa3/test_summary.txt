@@ -1,0 +1,60 @@
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_services_lot_tracker_comprehensive.py::TestCloseLotsFifo::test_close_lots_fifo_single_lot_full_close
+tests/unit/test_services_lot_tracker_comprehensive.py::TestCloseLotsFifo::test_close_lots_fifo_partial_close
+tests/unit/test_services_lot_tracker_comprehensive.py::TestCloseLotsFifo::test_close_lots_fifo_multiple_lots
+tests/unit/test_services_lot_tracker_comprehensive.py::TestCloseLotsFifo::test_close_lots_fifo_calculates_pnl
+tests/unit/test_services_lot_tracker_comprehensive.py::TestLotTrackerEdgeCases::test_close_lots_with_zero_cost_basis
+  /Users/marselkei/VS/intra/backend/services/lot_tracker_service.py:177: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    self.session.add(realized_trade)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_services_trade_analytics_comprehensive.py::TestCalculateComprehensiveMetrics::test_comprehensive_metrics_with_trades
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/_core/_methods.py:219: RuntimeWarning: Degrees of freedom <= 0 for slice
+    ret = _var(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+
+tests/unit/test_services_trade_analytics_comprehensive.py::TestCalculateComprehensiveMetrics::test_comprehensive_metrics_with_trades
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/_core/_methods.py:211: RuntimeWarning: invalid value encountered in scalar divide
+    ret = ret.dtype.type(ret / rcount)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_algorithm_improvements.py::TestLiquidityGate::test_missing_data_passes
+FAILED tests/test_apr8_patch_a_force_save.py::test_route_rejects_without_force_query
+FAILED tests/test_apr8_patch_a_force_save.py::test_route_calls_force_save_brain_when_forced
+FAILED tests/test_apr8_patch_a_force_save.py::test_route_returns_409_when_engine_inactive
+FAILED tests/test_audit_patch_queue_b1.py::TestConfidenceGateFullParity::test_unified_threshold_uses_regime_conf_guard
+FAILED tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_current_equity_none_when_no_ticks
+FAILED tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_current_equity_from_broker_after_ticks
+FAILED tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_cumulative_pnl_correct
+FAILED tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_equity_not_cumulative_pnl
+FAILED tests/test_audit_patch_queue_c2.py::TestTradeForensicFields::test_apply_to_learner_restores_forensic_fields
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_rejects_negative_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_acceptance_accepts_positive_edge
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_poor_model_rejected
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_model_accepted
+FAILED tests/test_audit_patch_queue_d1.py::TestValidateNewModelEconomic::test_improved_but_negative_edge_rejected
+FAILED tests/test_audit_patch_queue_d2.py::TestModelAcceptancePrecisionGate::test_acceptance_positive_edge_weak_precision_rejected
+FAILED tests/test_audit_patch_queue_d2.py::TestModelAcceptancePrecisionGate::test_acceptance_old_model_comparison_still_works
+FAILED tests/test_audit_patch_queue_h1.py::TestAcceptanceGateCalibration::test_inverted_calibration_rejected_with_sufficient_data
+FAILED tests/test_audit_patch_queue_h1.py::TestAcceptanceGateCalibration::test_weak_calibration_requires_higher_score
+FAILED tests/test_audit_patch_queue_h2.py::TestLearnerDelegatesToSharedGate::test_learner_rejects_inverted_calibration
+FAILED tests/test_audit_patch_queue_h2.py::TestLearnerDelegatesToSharedGate::test_learner_raises_threshold_for_insufficient_cal
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_good_model
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_inverted_calibration
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_insufficient_calibration_low_score
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_insufficient_calibration_high_score
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_no_edge
+FAILED tests/test_audit_patch_queue_h2.py::TestBackgroundAndLearnerAgree::test_agreement_low_precision
+FAILED tests/test_organism_engine_scenarios.py::test_orphaned_position_adopted
+FAILED tests/test_organism_engine_scenarios.py::test_brain_saved_after_fill
+FAILED tests/test_residual_remediation.py::TestCOMP407408NoCreds::test_write_runtime_snapshot_no_hardcoded_creds
+FAILED tests/test_safety_invariants.py::TestSafetyInvariants::test_long_only_exit_loop_skips_short_positions
+FAILED tests/test_safety_invariants.py::TestSafetyInvariants::test_spy_filter_blocks_below_ma
+FAILED tests/test_semantic_invariants.py::TestBreakoutSharedGates::test_breakout_path_uses_shared_helper
+FAILED tests/test_walkforward_persistence.py::TestAlwaysPersistedState::test_manifest_updated
+FAILED tests/unit/test_risk_advanced_manager_comprehensive.py::TestCalculateRiskMetrics::test_timestamp_updated
+FAILED tests/unit/test_risk_advanced_manager_comprehensive.py::TestCheckRiskLimits::test_alerts_pruned_after_24_hours
+FAILED tests/unit/test_risk_advanced_manager_comprehensive.py::TestGetRiskSummary::test_summary_contains_active_alerts_count
+37 failed, 7857 passed, 684 skipped, 289 warnings in 171.55s (0:02:51)

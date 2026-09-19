@@ -16,7 +16,15 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+import os as _os
+
 from backend.organism.ml_signal import MLSignal
+
+# Work order Task D: a symmetric SHORT side for the observable-direction signal
+# (currently long has 4 paths, short has 1 -> trending_down is 0% win). Add
+# mirror bearish paths. SHIPPED OFF by default (byte-identical) — enable only
+# after the costed-OOS validation + Cowork red-team, per the brief.
+SYMMETRIC_SHORT_ENABLED = _os.getenv("ORGANISM_SYMMETRIC_SHORT_ENABLED", "false").strip().lower() in ("1", "true", "yes", "y")
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -97,6 +105,7 @@ class AlphaScanner:
         current_regime: str = "unknown",
         ml_is_trained: bool = True,
         learning_mode: bool = False,
+        derive_direction_from_observables: bool = False,
     ) -> list[AlphaCandidate]:
         """Score all symbols, return top-N candidates sorted by alpha.
 
@@ -107,6 +116,9 @@ class AlphaScanner:
         current_regime : regime label from RegimeDetector
         ml_is_trained : whether the ML model has been trained
         learning_mode : whether the organism is in learning mode
+        derive_direction_from_observables : when True, live direction comes
+            from breakout/momentum features instead of ML. Use this when ML is
+            intentionally excluded from the live gate.
 
         Returns
         -------
@@ -157,7 +169,8 @@ class AlphaScanner:
                 _eff_conf = ml_sig.effective_confidence if ml_sig.effective_confidence > 0 else ml_sig.confidence
                 ml_score = _eff_conf * abs(ml_sig.predicted_return) * 20  # Scale up
                 ml_score = min(ml_score, 1.0)
-                direction = ml_sig.direction
+                if not learning_mode and not derive_direction_from_observables:
+                    direction = ml_sig.direction
 
             # 2. Breakout readiness (composite: squeeze + coil + resistance proximity)
             breakout_readiness = float(row.get("comp_breakout_readiness", 0.0))
@@ -212,16 +225,16 @@ class AlphaScanner:
                 + self.WEIGHT_REGIME * regime_score
             )
 
-            # If ML says hold, penalize — but less when untrained
-            if direction == 0:
-                if not ml_is_trained:
-                    # Derive direction from momentum/breakout when ML is untrained
-                    ret_5d = float(row.get("ret_5d", 0.0))
-                    _bo_readiness = float(row.get("comp_breakout_readiness", 0.0))
-                    if ret_5d > 0.005 or _bo_readiness > 0.6:
-                        direction = 1.0
-                    elif ret_5d < -0.005:
-                        direction = -1.0
+            # If ML says hold, penalize — but less when ML is isolated or
+            # untrained.  Phase 2 guarded-production mode reuses
+            # learning_mode to mean "ML must not influence the main book";
+            # in that state direction is derived from observable
+            # momentum/breakout, not the model's direction output.
+            if direction == 0 or derive_direction_from_observables:
+                if learning_mode or not ml_is_trained or derive_direction_from_observables:
+                    obs_direction = self._observable_direction(row)
+                    if obs_direction != 0:
+                        direction = obs_direction
                     composite *= 0.7  # Mild penalty (was 0.3x)
                 else:
                     composite *= 0.3
@@ -256,10 +269,27 @@ class AlphaScanner:
             # "calibrated_breakout" if breakout + ML confirms direction
             # "heuristic" if no ML or synthetic floor
             _exp_ret_source = "heuristic"
-            if ml_is_trained and ml_sig and ml_sig.direction != 0 and abs(ml_sig.predicted_return) > 1e-6:
+            if (
+                not derive_direction_from_observables
+                and not learning_mode
+                and ml_is_trained
+                and ml_sig
+                and ml_sig.direction != 0
+                and abs(ml_sig.predicted_return) > 1e-6
+            ):
                 _exp_ret_source = "ml"
-            elif breakout_score >= 0.4 and ml_is_trained and ml_sig and ml_sig.direction != 0:
+            elif (
+                not derive_direction_from_observables
+                and not learning_mode
+                and breakout_score >= 0.4
+                and ml_is_trained
+                and ml_sig
+                and ml_sig.direction != 0
+            ):
                 _exp_ret_source = "calibrated_breakout"
+            candidate_ml_signal = (
+                None if (learning_mode or derive_direction_from_observables) else ml_sig
+            )
 
             candidates.append(AlphaCandidate(
                 symbol=symbol,
@@ -271,7 +301,7 @@ class AlphaScanner:
                 regime_score=regime_score,
                 institutional_score=inst_score,
                 momentum_quality_score=mom_quality,
-                ml_signal=ml_sig,
+                ml_signal=candidate_ml_signal,
                 direction=direction,
                 expected_return_source=_exp_ret_source,
             ))
@@ -292,6 +322,59 @@ class AlphaScanner:
             self._hit_count += 1
 
         return result
+
+    @staticmethod
+    def _finite_float(value: Any, default: float = 0.0) -> float:
+        try:
+            out = float(value)
+        except (TypeError, ValueError):
+            return default
+        return out if np.isfinite(out) else default
+
+    def _observable_direction(self, row: pd.Series) -> float:
+        """Infer direction from non-ML momentum/breakout features.
+
+        This is deliberately simple and auditable. It exists so a candidate
+        whose gate excludes ML cannot pass downstream as ``direction=0`` merely
+        because the ML model emitted hold/neutral.
+        """
+        ret_5d = self._finite_float(row.get("ret_5d", 0.0))
+        ret_20d = self._finite_float(row.get("ret_20d", 0.0))
+        breakout_readiness = self._finite_float(
+            row.get("comp_breakout_readiness", 0.0)
+        )
+        squeeze_momentum = self._finite_float(
+            row.get("comp_squeeze_momentum", 0.0)
+        )
+        trend_strength = self._finite_float(row.get("trend_strength", 0.0))
+
+        bullish_breakout = (
+            breakout_readiness > 0.60
+            or (breakout_readiness > 0.50 and squeeze_momentum > 0.50)
+        )
+        bullish_momentum = ret_5d > 0.005 or (ret_20d > 0.010 and trend_strength >= 0)
+
+        if SYMMETRIC_SHORT_ENABLED:
+            # Mirror-image bearish paths (Task D), symmetric to the long logic:
+            #   bearish_breakdown  ~ bullish_breakout (negative squeeze)
+            #   bearish_momentum   ~ bullish_momentum (sign-flipped)
+            bearish_breakdown = squeeze_momentum < -0.50
+            bearish_momentum = (
+                ret_5d < -0.005 or (ret_20d < -0.010 and trend_strength <= 0)
+            ) and not bullish_breakout
+            if bullish_breakout or bullish_momentum:
+                return 1.0
+            if bearish_breakdown or bearish_momentum:
+                return -1.0
+            return 0.0
+
+        # Default (flag off): original asymmetric logic — byte-identical.
+        bearish_momentum = ret_5d < -0.005 and not bullish_breakout
+        if bullish_breakout or bullish_momentum:
+            return 1.0
+        if bearish_momentum:
+            return -1.0
+        return 0.0
 
     def _rank_momentum(
         self, features_by_symbol: dict[str, pd.DataFrame]

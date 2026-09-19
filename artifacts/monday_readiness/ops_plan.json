@@ -1,0 +1,40 @@
+{
+  "task_id": "monday-readiness-ops",
+  "summary": "Repair paper uptime checks and backup validation without changing the frozen trading decision surface or existing accounts.",
+  "runtime_behavior_changed": false,
+  "production_mutations_authorized_in_this_batch": false,
+  "owned_files": [
+    "scripts/ops/paper_watchdog.sh",
+    "scripts/ops/paper_watchdog.py",
+    "ops/launchd/com.intra.paper.watchdog.plist",
+    "scripts/runtime/rotate_brain_backup.py",
+    "scripts/runtime/backup/paper_database.py",
+    "ops/launchd/com.intra.postgres-backup.plist",
+    "scripts/runtime/com.intra.brain-backup.plist",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "docs/runbooks/PAPER_BACKUP_RECOVERY.md",
+    "tests/test_paper_watchdog.py",
+    "tests/test_paper_backup_recovery.py",
+    "scripts/runtime/INSTALL_BRAIN_BACKUP.md"
+  ],
+  "steps": [
+    "Add bounded daemon/container/API readiness probes, durable status, cooldown, and an optional local notification adapter.",
+    "Permit recovery only for known existing paper containers; never submit orders or recreate runtime configuration.",
+    "Make brain snapshots atomic and fail closed on incomplete source or destination; protect valid retention on backup failure.",
+    "Add a fresh PostgreSQL custom-format backup with checksums and an explicitly isolated restore-verification command.",
+    "Add local scheduling templates and accurate recovery instructions; root installs only after review.",
+    "Verify behavior with mocked commands, synthetic brain fixtures, isolated test state, and a separately scoped restore rehearsal."
+  ],
+  "tests": [
+    "tests/test_paper_watchdog.py",
+    "tests/test_paper_backup_recovery.py"
+  ],
+  "constraints": [
+    "No strategy, frozen constants, trading account resets, or credential changes.",
+    "No production service restart or schedule installation by this worker.",
+    "No external notifications until the operator selects the delivery channel.",
+    "No destructive restore against the live database or live brain."
+  ],
+  "isolated_restore_authorized": true,
+  "local_notification_default": "macOS only, enabled in template after reviewed installation"
+}

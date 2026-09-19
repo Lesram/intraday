@@ -1,0 +1,17 @@
+..................F.......                                               [100%]
+=================================== FAILURES ===================================
+E   AssertionError: Only 0 orders in 100 ticks — throttle may still be blocking
+    assert 0 >= 3
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $100,000
+  💾 Brain saved: generation 0, 0 trades, equity $100,000
+  💾 Brain saved: generation 0, 0 trades, equity $100,000
+  💾 Brain saved: generation 0, 0 trades, equity $100,000
+  💾 Brain saved: generation 0, 0 trades, equity $100,000
+  💾 Brain saved: generation 0, 0 trades, equity $100,000
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.governance:governance.py:110 {"event": "Governance drawdown_kill_pct=0.2000 is 4.00x the code default 0.0500 \u2014 verify this is intentional (env override from ORGANISM_DRAWDOWN_KILL_PCT)", "logger": "backend.organism.governance", "level": "warning", "timestamp": "2026-04-25T02:12:19.649233Z"}
+/Users/marselkei/VS/intra/tests/test_replay_simulator.py:387: AssertionError: Only 0 orders in 100 ticks — throttle may still be blocking
+=========================== short test summary info ============================
+FAILED tests/test_replay_simulator.py::test_replay_no_throttle_blocking - Ass...
+1 failed, 25 passed in 125.08s (0:02:05)

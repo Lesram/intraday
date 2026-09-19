@@ -433,11 +433,12 @@ class TestCacheServiceOperations:
         service.redis_client = mock_client
         service.redis_available = True
         
-        # Pre-populate memory cache
-        from datetime import datetime, timedelta
+        # Pre-populate memory cache.
+        # V4 Z-R-2 (2026-05-02): production cache TTL is tz-aware UTC.
+        from datetime import UTC, datetime, timedelta
         service.memory_cache['quotes']['AAPL'] = (
             {'price': 150.0},
-            datetime.now() + timedelta(seconds=60)
+            datetime.now(UTC) + timedelta(seconds=60)
         )
         
         # Should fall back to memory after Redis error

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Five-minute watchdog. Checks all three paper services and API readiness.
+  Bounded recovery preserves existing container configuration and applies
+  a fifteen-minute cooldown. Missing containers require reviewed paper-up.
+
+  Install:
+    cp ops/launchd/com.intra.paper.watchdog.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.intra.paper.watchdog.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.intra.paper.watchdog</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/marselkei/VS/intra/scripts/ops/paper_watchdog.sh</string>
+        <string>--reopen-docker</string>
+        <string>--notify-local</string>
+        <string>--check-backups</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>300</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

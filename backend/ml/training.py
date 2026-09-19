@@ -634,7 +634,7 @@ class TrainingService:
             try:
                 with open(job.result.model_path, 'rb') as f:
                     # Use secure pickle with migration support
-                    return secure_load(f, allow_unsigned=True)
+                    return secure_load(f)
             except PickleSecurityError as e:
                 self.logger.error(f"Security error loading model for job {job_id}: {str(e)}")
                 raise

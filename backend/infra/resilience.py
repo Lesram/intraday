@@ -244,6 +244,125 @@ class CircuitBreaker:
 
         logger.info(f"Circuit breaker {self.name} closed - recovery successful")
 
+    # ─────────────────────────────────────────────────────────────────
+    # V5 S-NET-CB-1 / Wave-18 (2026-05-03): sync probe API for code paths
+    # that do their own retry/backoff (e.g., AlpacaBrokerClient._make_request_with_retry)
+    # but want the breaker's open/closed semantics. Lock-free: tiny races
+    # don't change overall behavior — at worst a single request slips
+    # through during a state transition.
+    # ─────────────────────────────────────────────────────────────────
+
+    def allow_request(self) -> bool:
+        """Return True if a new request may proceed (CLOSED or HALF_OPEN
+        or recovery elapsed in OPEN). Returns False if breaker is OPEN
+        and cooldown hasn't elapsed."""
+        if self.state == CircuitBreakerState.CLOSED:
+            return True
+        if self.state == CircuitBreakerState.HALF_OPEN:
+            return True
+        # OPEN: probe cooldown.
+        if time.time() >= self.next_attempt_time:
+            # Transition to HALF_OPEN inline.
+            self.state = CircuitBreakerState.HALF_OPEN
+            self.success_count = 0
+            try:
+                circuit_breaker_state_changes.labels(
+                    service=self.name,
+                    from_state="open",
+                    to_state="half_open",
+                ).inc()
+            except Exception:
+                pass
+            logger.info(
+                "Circuit breaker %s half-opened for testing (sync probe)",
+                self.name,
+            )
+            return True
+        return False
+
+    def record_success(self) -> None:
+        """Mirror of `_on_success` for sync callers."""
+        if self.state == CircuitBreakerState.HALF_OPEN:
+            self.success_count += 1
+            if self.success_count >= self.config.success_threshold:
+                old_state = self.state
+                self.state = CircuitBreakerState.CLOSED
+                self.failure_count = 0
+                self.success_count = 0
+                try:
+                    circuit_breaker_state_changes.labels(
+                        service=self.name,
+                        from_state=old_state.value,
+                        to_state=self.state.value,
+                    ).inc()
+                except Exception:
+                    pass
+                logger.info("Circuit breaker %s closed (sync probe)", self.name)
+        elif self.state == CircuitBreakerState.CLOSED:
+            self.failure_count = 0
+        try:
+            circuit_breaker_requests.labels(
+                service=self.name, outcome="success"
+            ).inc()
+        except Exception:
+            pass
+
+    def record_failure(self, reason: str = "") -> None:
+        """Mirror of `_on_failure` for sync callers. `reason` is only
+        used for logging."""
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        if (
+            self.state == CircuitBreakerState.CLOSED
+            and self.failure_count >= self.config.failure_threshold
+        ) or self.state == CircuitBreakerState.HALF_OPEN:
+            old_state = self.state
+            self.state = CircuitBreakerState.OPEN
+            self.next_attempt_time = time.time() + self.config.recovery_timeout
+            try:
+                circuit_breaker_state_changes.labels(
+                    service=self.name,
+                    from_state=old_state.value,
+                    to_state=self.state.value,
+                ).inc()
+            except Exception:
+                pass
+            logger.warning(
+                "Circuit breaker %s opened (sync probe) — failure_count=%d, "
+                "reason=%s, cooldown=%ds",
+                self.name,
+                self.failure_count,
+                reason,
+                self.config.recovery_timeout,
+            )
+        try:
+            circuit_breaker_requests.labels(
+                service=self.name, outcome="failure"
+            ).inc()
+        except Exception:
+            pass
+
+
+# V5 S-NET-CB-1 / Wave-18 (2026-05-03): module-level registry for
+# the sync probe API. Synchronizes by name so the same breaker is
+# shared across all callers.
+_breakers_lock = __import__("threading").Lock()
+_breakers: dict[str, CircuitBreaker] = {}
+
+
+def get_or_create_circuit_breaker(
+    name: str,
+    config: CircuitBreakerConfig | None = None,
+) -> CircuitBreaker:
+    """Return the named CircuitBreaker, creating it (with optional config)
+    on first request. Threadsafe."""
+    with _breakers_lock:
+        breaker = _breakers.get(name)
+        if breaker is None:
+            breaker = CircuitBreaker(name, config or CircuitBreakerConfig())
+            _breakers[name] = breaker
+        return breaker
+
 
 class ExponentialBackoff:
     """Exponential backoff with jitter for retry delays."""

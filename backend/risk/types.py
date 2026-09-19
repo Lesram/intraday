@@ -26,15 +26,45 @@ class OrderType(Enum):
 
 
 class OrderStatus(Enum):
-    """Order status enumeration."""
+    """Order status enumeration.
 
+    V10 VV-3 / Wave-54 (2026-05-03): expanded to cover Alpaca's actual
+    wire vocabulary so frontend can match.  V10 VV audit found that
+    backend `OrderStatus` was missing values Alpaca actually emits
+    (`pending_new`, `done_for_day`, `expired`, `replaced`, `stopped`,
+    `accepted_for_bidding`, `calculated`) plus a `canceled`/`cancelled`
+    orthography mismatch.  Frontend OrderStatus is now expected to
+    extend from this canonical set.
+    """
+
+    # Pre-broker / submitting.
     NEW = "new"
-    SUBMITTED = "submitted"
-    PARTIAL = "partial"
-    FILLED = "filled"
-    CANCELED = "canceled"
-    REJECTED = "rejected"
+    PENDING_NEW = "pending_new"
     PENDING = "pending"
+    SUBMITTED = "submitted"
+    SUBMITTING = "submitting"
+    ACCEPTED = "accepted"
+    ACCEPTED_FOR_BIDDING = "accepted_for_bidding"
+
+    # Active / partials.
+    PARTIALLY_FILLED = "partially_filled"
+    PARTIAL = "partial"  # Legacy alias; prefer PARTIALLY_FILLED.
+
+    # Terminal — happy path.
+    FILLED = "filled"
+
+    # Terminal — cancellation.  Alpaca uses "canceled" (American).
+    # Keep both spellings to absorb FE drift; canonical is CANCELED.
+    CANCELED = "canceled"
+    CANCELLED = "cancelled"  # alias
+
+    # Terminal — failure.
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+    DONE_FOR_DAY = "done_for_day"
+    STOPPED = "stopped"
+    REPLACED = "replaced"
+    CALCULATED = "calculated"
 
 
 class TimeInForce(Enum):

@@ -1,0 +1,28 @@
+{
+  "source_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "postclose_run": 35463360197,
+  "artifact_id": 10591001537,
+  "lock_pin_count": 173,
+  "mismatches": {},
+  "linux_transitive_unpinned_names": [
+    "cuda-bindings",
+    "cuda-pathfinder",
+    "nvidia-cublas-cu12",
+    "nvidia-cuda-cupti-cu12",
+    "nvidia-cuda-nvrtc-cu12",
+    "nvidia-cuda-runtime-cu12",
+    "nvidia-cudnn-cu12",
+    "nvidia-cufft-cu12",
+    "nvidia-cufile-cu12",
+    "nvidia-curand-cu12",
+    "nvidia-cusolver-cu12",
+    "nvidia-cusparse-cu12",
+    "nvidia-cusparselt-cu12",
+    "nvidia-nccl-cu12",
+    "nvidia-nvjitlink-cu12",
+    "nvidia-nvshmem-cu12",
+    "nvidia-nvtx-cu12",
+    "triton"
+  ],
+  "readiness_comparison_limit": "Both workflows install requirements.lock at identical source; readiness had no dependency freeze artifact. This confirms post-close pins, not a proof of fully identical transitive installations."
+}

@@ -22,6 +22,56 @@ def _safe(series: pd.Series, default: float = 0.0) -> pd.Series:
     return series.fillna(default)
 
 
+def compute_tension_proxy(features_df: pd.DataFrame) -> float:
+    """Tension proxy when MarketScanner is unavailable (replay, outside RTH,
+    API down). Uses observable feature data only — no scanner calls.
+
+    Source of truth for the tension fallback formula (previously inlined in
+    live_engine.py). Extracted to ml_features so live and replay use the
+    SAME formula.
+
+    Inputs (read from the last row of features_df):
+      - vol_sma_ratio  : volume / SMA(volume).  > 1 = above-average volume.
+      - ret_1d         : 1-bar return (signed).  Magnitude used.
+      - atr_ratio      : ATR / close.  Volatility regime context.
+
+    Output: tension in [0.0, 0.80].
+
+    Calibration: matches the prior fallback (vol + return) and adds a small
+    contribution from atr_ratio so quiet-market low-volume periods produce
+    lower tension than noisy-but-quiet ones.
+    """
+    if features_df is None or len(features_df) < 1:
+        return 0.0
+    row = features_df.iloc[-1]
+    vol_ratio = float(row.get("vol_sma_ratio", 1.0))
+    abs_ret = abs(float(row.get("ret_1d", 0.0)))
+    atr_ratio = float(row.get("atr_ratio", 0.02))
+    if pd.isna(vol_ratio):
+        vol_ratio = 1.0
+    if pd.isna(abs_ret):
+        abs_ret = 0.0
+    if pd.isna(atr_ratio):
+        atr_ratio = 0.02
+
+    # Volume excess: capped at 1.0 (3x volume = full contribution)
+    vol_component = max(vol_ratio - 1.0, 0.0) / 3.0
+    # Price move: 2% move = 0.4 tension
+    move_component = abs_ret * 20.0
+    # Volatility regime: atr_ratio of 0.04 = mid-range; cap at 0.5
+    # (scaled relative to typical chop atr_ratio ~0.018-0.03)
+    vol_regime_component = min(max(atr_ratio - 0.018, 0.0) / 0.04, 0.5) * 0.2
+
+    tension = vol_component + move_component + vol_regime_component
+    # Audit-A finding 10 (2026-05-01): saturating at 0.80 made big-stress
+    # days look numerically identical to moderately-active days at 5
+    # callsites. Cap raised to 1.0 (natural ceiling for a 0..1 score).
+    # Downstream consumers (alpha+breakout/ORB/EOD/MR composite blends)
+    # already wrap with `min(tension, 1.0)`, so the uncapped 0..0.80
+    # range stays valid; the 0.80..1.0 range is now distinguishable.
+    return min(tension, 1.0)
+
+
 def _ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
 
@@ -217,17 +267,31 @@ def compute_ml_features(
     # CROSS-SECTIONAL (5) — relative to SPY/market
     # ═══════════════════════════════════════════════════════
     if spy_df is not None and "close" in spy_df.columns and len(spy_df) >= len(df):
-        spy_c = spy_df["close"].iloc[-len(df):].values
-        spy_ret = pd.Series(spy_c).pct_change().values
+        # V7 DD-3 / Wave-24 (2026-05-03): align SPY to the stock's
+        # DataFrame on the timestamp INDEX rather than positional
+        # tail-slicing. The previous `iloc[-len(df):]` silently
+        # mis-aligned when SPY and stock had different lengths
+        # (e.g. trading halt in the stock; SPY trades through). Now:
+        # reindex SPY to the stock's index using forward-fill so
+        # gaps in stock data don't shift SPY values to wrong rows.
+        spy_close_aligned = spy_df["close"].reindex(df.index, method="ffill")
+        spy_c = spy_close_aligned.values
+        spy_ret = pd.Series(spy_c, index=f.index).pct_change().values
 
         # Relative strength vs SPY
         stock_ret_20 = f["ret_20d"].values
-        spy_ret_20 = pd.Series(spy_c).pct_change(20).values[-len(df):]
+        spy_ret_20 = pd.Series(spy_c, index=f.index).pct_change(20).values
         f["rel_strength_spy"] = pd.Series(
             stock_ret_20 - spy_ret_20, index=f.index
         )
 
-        # Beta (rolling 20-day)
+        # Beta (rolling 20-day).
+        # V7 DD-3 / Wave-24 (2026-05-03): with `spy_ret` now reindexed
+        # to `f.index`, both arrays are length-aligned by *timestamp*
+        # not position; the previous off-by-end positional slice
+        # (`max(0, len(spy_ret)-len(stock_rets)+i-...)`) is unnecessary
+        # and was the misalignment vector when stock had gaps. Direct
+        # `[i-20:i]` slicing on aligned arrays is correct.
         stock_rets = f["ret_1d"].values
         betas = []
         for i in range(len(stock_rets)):
@@ -235,35 +299,35 @@ def compute_ml_features(
                 betas.append(1.0)
             else:
                 sr = stock_rets[i-20:i]
-                mr = spy_ret[max(0, len(spy_ret)-len(stock_rets)+i-20):max(0, len(spy_ret)-len(stock_rets)+i)]
+                mr = spy_ret[i-20:i]
                 if (
                     len(mr) >= 20
                     and np.std(mr) > 0
                     and not np.any(np.isnan(sr))
-                    and not np.any(np.isnan(mr[-20:]))
+                    and not np.any(np.isnan(mr))
                 ):
-                    val = float(np.corrcoef(sr, mr[-20:])[0, 1] * np.std(sr) / np.std(mr[-20:]))
+                    val = float(np.corrcoef(sr, mr)[0, 1] * np.std(sr) / np.std(mr))
                     betas.append(val if np.isfinite(val) else 1.0)
                 else:
                     betas.append(1.0)
         f["beta_20d"] = betas
 
-        # Correlation to market
+        # Correlation to market — same DD-3 alignment as beta above.
         corrs = []
         for i in range(len(stock_rets)):
             if i < 20:
                 corrs.append(0.0)
             else:
                 sr = stock_rets[i-20:i]
-                mr = spy_ret[max(0, len(spy_ret)-len(stock_rets)+i-20):max(0, len(spy_ret)-len(stock_rets)+i)]
+                mr = spy_ret[i-20:i]
                 if (
                     len(mr) >= 20
                     and np.std(sr) > 0
                     and np.std(mr) > 0
                     and not np.any(np.isnan(sr))
-                    and not np.any(np.isnan(mr[-20:]))
+                    and not np.any(np.isnan(mr))
                 ):
-                    val = float(np.corrcoef(sr, mr[-20:])[0, 1])
+                    val = float(np.corrcoef(sr, mr)[0, 1])
                     corrs.append(val if np.isfinite(val) else 0.0)
                 else:
                     corrs.append(0.0)

@@ -1,0 +1,28 @@
+{
+  "local_head_sha": "06ec9a4",
+  "runtime_reported_sha": "unknown",
+  "sha_match": "unknown",
+  "runtime_reachable": true,
+  "readiness_verdict": "GO_WITH_RISKS",
+  "critical_blockers_count": 0,
+  "high_risks_count": 3,
+  "medium_risks_count": 3,
+  "low_risks_count": 1,
+  "top_open_risks": [
+    "HIGH: MAX_OPEN_POSITIONS=15 in .env overrides code default of 8 — 87.5% more leverage than documented spec",
+    "HIGH: bar_boundary_entry_only is declared true in resolved config but NOT enforced in entry code path — intra-bar entries allowed",
+    "HIGH: .env universe has 30 symbols (no SH/PSQ inverse ETFs) vs code default 22 (with SH/PSQ) — spec drift on both count and composition",
+    "MEDIUM: entry_source is always empty in trade_history.csv — all 142 trades show 'unknown' provenance, forensics degraded",
+    "MEDIUM: runtime API reports ml_trained=true, universe_size=30, total_trades=160 — but daily bundle (from brain CSV) shows ml_trained=false, universe_size=22, total_trades=142",
+    "MEDIUM: strategy_quality_pass=false (payoff_ratio=0.7426 < 1.0) — system is losing more per loss than gaining per win"
+  ],
+  "notes": [
+    "Runtime container is healthy (Up 3h, healthy). API reachable. No data staleness.",
+    "Git not available inside container — cannot verify runtime SHA. Treat as unknown.",
+    "5 modified files in working tree (J4+J5 patches) not yet deployed to container.",
+    "No CRITICAL blockers — system can trade tomorrow but with economic and forensic risks.",
+    "Operational pass is true. Strategy quality pass is false (expected in early learning mode).",
+    "Paper equity: $111,612 (peak $111,728). Drawdown: -$116 (-0.10%).",
+    "Evolution freeze active (160 trades < 300). Learning mode active (160 < 200)."
+  ]
+}

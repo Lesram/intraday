@@ -41,19 +41,29 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # Use a lowercase local tag.  `${{ github.repository }}` preserves
+  # owner casing (e.g. Lesram/intraday), which Docker rejects as a tag.
+  IMAGE_NAME: intra-security-scan
 
 jobs:
   trivy-scan-dockerfile:
     name: "🔍 Scan Dockerfile"
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     permissions:
+      actions: read
       contents: read
       security-events: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Free runner disk before image build
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          df -h
 
       - name: Build Docker image for scanning
         run: |
@@ -68,11 +78,13 @@ jobs:
           severity: ${{ github.event.inputs.severity || 'MEDIUM' }},HIGH,CRITICAL
           ignore-unfixed: true
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+      - name: Upload Trivy SARIF artifact
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('trivy-results.sarif') != ''
         with:
-          sarif_file: 'trivy-results.sarif'
+          name: trivy-dockerfile-sarif
+          path: trivy-results.sarif
+          retention-days: 30
 
       - name: Run Trivy for table output
         uses: aquasecurity/trivy-action@master
@@ -86,20 +98,40 @@ jobs:
   trivy-scan-production:
     name: "🔍 Scan Production Dockerfile"
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     permissions:
+      actions: read
       contents: read
       security-events: write
-    if: hashFiles('Dockerfile.production') != ''
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check for production Dockerfile
+        id: production-dockerfile
+        run: |
+          if [ -f Dockerfile.production ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Dockerfile.production not present; skipping production image scan."
+          fi
+
+      - name: Free runner disk before production image build
+        if: steps.production-dockerfile.outputs.exists == 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          df -h
+
       - name: Build Production Docker image for scanning
+        if: steps.production-dockerfile.outputs.exists == 'true'
         run: |
           docker build -t ${{ env.IMAGE_NAME }}:prod-scan -f Dockerfile.production .
 
       - name: Run Trivy vulnerability scanner
+        if: steps.production-dockerfile.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ env.IMAGE_NAME }}:prod-scan'
@@ -108,14 +140,16 @@ jobs:
           severity: ${{ github.event.inputs.severity || 'MEDIUM' }},HIGH,CRITICAL
           ignore-unfixed: true
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+      - name: Upload Trivy production SARIF artifact
+        if: always() && steps.production-dockerfile.outputs.exists == 'true' && hashFiles('trivy-prod-results.sarif') != ''
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: 'trivy-prod-results.sarif'
-          category: 'trivy-production'
+          name: trivy-production-sarif
+          path: trivy-prod-results.sarif
+          retention-days: 30
 
       - name: Run Trivy for table output (Production)
+        if: steps.production-dockerfile.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ env.IMAGE_NAME }}:prod-scan'
@@ -128,6 +162,7 @@ jobs:
     name: "📁 Scan Filesystem/IaC"
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
 
@@ -145,12 +180,13 @@ jobs:
           severity: 'MEDIUM,HIGH,CRITICAL'
           scanners: 'vuln,secret,misconfig'
 
-      - name: Upload filesystem scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+      - name: Upload filesystem SARIF artifact
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('trivy-fs-results.sarif') != ''
         with:
-          sarif_file: 'trivy-fs-results.sarif'
-          category: 'trivy-filesystem'
+          name: trivy-filesystem-sarif
+          path: trivy-fs-results.sarif
+          retention-days: 30
 
       - name: Scan for secrets and misconfigurations
         uses: aquasecurity/trivy-action@master
@@ -198,7 +234,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Scan | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Dockerfile | ${{ needs.trivy-scan-dockerfile.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Filesystem | ${{ needs.trivy-scan-fs.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dockerfile | ${{ needs.trivy-scan-dockerfile.result == 'success' && '✅ Passed' || needs.trivy-scan-dockerfile.result == 'skipped' && '⏭️ Skipped for PR' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Filesystem | ${{ needs.trivy-scan-fs.result == 'success' && '✅ Passed' || needs.trivy-scan-fs.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View detailed results in the [Security tab](../../security/code-scanning)." >> $GITHUB_STEP_SUMMARY
+          echo "PRs run filesystem/IaC scan and SBOM generation. Full image scans run on push, schedule, and manual dispatch." >> $GITHUB_STEP_SUMMARY

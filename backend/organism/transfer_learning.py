@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -179,7 +180,14 @@ class TransferLearningEngine:
         2. On brain save:  ``record_run()`` → ``save_knowledge()``
     """
 
-    def __init__(self, brain_dir: str | Path = "organism_brain"):
+    def __init__(self, brain_dir: str | Path | None = None):
+        # Punchlist 2026-07-24 item 3: a literal "organism_brain" default
+        # bypassed ORGANISM_BRAIN_DIR (bare construction wrote the real brain
+        # volume even under the test-suite redirect). Lazy env read so a
+        # late-set env is still honored. Engine call sites pass brain_dir
+        # explicitly and are unaffected.
+        if brain_dir is None:
+            brain_dir = os.environ.get("ORGANISM_BRAIN_DIR", "organism_brain")
         self.brain_dir = Path(brain_dir).resolve()
         self.knowledge = TransferKnowledge()
 

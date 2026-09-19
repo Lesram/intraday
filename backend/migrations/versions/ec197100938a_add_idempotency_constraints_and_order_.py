@@ -143,10 +143,16 @@ def downgrade() -> None:
     op.drop_constraint('uq_daily_ledger_account_day', 'daily_ledger', type_='unique')
     op.drop_constraint('uq_events_broker_type_time', 'order_events', type_='unique')
 
-    try:
-        op.drop_constraint('uq_orders_account_client_order', 'orders', type_='unique')
-    except Exception:
-        pass
+    # V10 XX-1 / Wave-55 (2026-05-03): use IF EXISTS so the txn doesn't
+    # abort on a missing constraint. The previous try/except: pass was
+    # ineffective — PostgreSQL aborts the whole transaction on a failed
+    # DDL even if Python catches the exception, poisoning every
+    # subsequent op (DROP TABLE daily_ledger, DROP TABLE order_events,
+    # DROP COLUMN account_id all died with InFailedSqlTransaction).
+    # Disaster-recovery rollback past 83ec4ee73d7d was impossible.
+    op.execute(
+        "ALTER TABLE orders DROP CONSTRAINT IF EXISTS uq_orders_account_client_order"
+    )
 
     # Drop tables
     op.drop_table('daily_ledger')

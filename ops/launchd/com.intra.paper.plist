@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Intra paper-trading login boot — 2026-07-23 ops work order Task 3.
+
+  Install (see docs/runbooks/PAPER_UPTIME.md for the full runbook):
+    cp ops/launchd/com.intra.paper.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.intra.paper.plist
+
+  Paths are absolute because launchd requires it; adjust if the repo moves.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.intra.paper</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/marselkei/VS/intra/ops/launchd/paper_boot.sh</string>
+    </array>
+    <!-- Run once at login. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/marselkei/VS/intra/logs/paper_boot.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/marselkei/VS/intra/logs/paper_boot.err.log</string>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

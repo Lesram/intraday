@@ -1,0 +1,194 @@
+=== 1: Patch C learner.state.best_sharpe in brain_persistence.py ===
+1272:        # from learner.state.best_sharpe when available. The previous
+1276:        # learner.state.best_sharpe is maintained by ContinuousLearner as
+
+=== 2: Patch B _apply_live_manifest_fields in brain_persistence.py ===
+580:            self._apply_live_manifest_fields(manifest, signal_gen, learner)
+598:    def _apply_live_manifest_fields(
+669:        self._apply_live_manifest_fields(manifest, signal_gen, learner)
+
+=== 3: Patch A save(force= in brain_persistence.py ===
+
+=== 4: Patch A force_save_brain in live_engine.py ===
+4279:    def force_save_brain(self) -> dict:
+4360:            logger.error("force_save_brain failed: %s", e, exc_info=True)
+
+=== 5: Patch A POST /save route in routes.py ===
+
+=== 6+7: require_admin + _get_engine around /save route ===
+
+=== 8: walk_forward_gate still present in live_engine.py ===
+4289:          - call walk_forward_gate
+4386:            should_save, reason = self.brain.walk_forward_gate(
+
+=== 9: _last_sharpe_decay_date ABSENT in brain_persistence.py ===
+MISSING (expected)
+
+=== 3b: def save signature in brain_persistence.py ===
+231:    def save(
+511:    def save_essential_state(
+
+=== 5b: search for /save route across all of /app/backend ===
+
+=== 5c: search for organism save route ===
+/app/backend/api/routes/multi_strategy_live.py
+/app/backend/api/routes/settings.py
+/app/backend/api/routes/orders.py
+/app/backend/api/routes_setup.py
+/app/backend/api/lifespan.py
+=== 3c: full def save signature lines 231-245 ===
+    def save(
+        self,
+        signal_gen: Any,            # MLSignalGenerator
+        learner: Any,               # ContinuousLearner
+        equity_curve: list[float],
+        all_trades: list[Any],      # list[TradeRecord]
+        epoch_metrics: list[Any],   # list[EpochMetrics]
+        peak_equity: float = 0.0,
+        extra_counters: dict[str, Any] | None = None,
+        evolved_params: dict[str, Any] | None = None,
+        governance_controller: Any | None = None,
+        regime_detector: Any | None = None,
+        force: bool = False,
+    ) -> None:
+        """Save the organism's full learned state to disk.
+
+        Atomic: writes to temp dir first, then renames.
+        Backs up the previous brain before overwriting.
+        Thread-safe via cross-platform file lock (Phase 3.1).
+
+
+=== 5d: find organism route file ===
+/app/backend/organism/live_engine.py
+/app/backend/organism/routes.py
+/app/backend/organism/brain_persistence.py
+/app/backend/organism/__pycache__/brain_persistence.cpython-312.pyc
+/app/backend/organism/__pycache__/routes.cpython-312.pyc
+/app/backend/organism/__pycache__/live_engine.cpython-312.pyc
+
+/app/backend/api/routes/auth.py
+/app/backend/api/routes/chart_templates.py
+/app/backend/api/routes/health.py
+/app/backend/api/routes/__init__.py
+/app/backend/api/routes/indicators.py
+/app/backend/api/routes/strategy.py
+/app/backend/api/routes/models.py
+/app/backend/api/routes/lots.py
+/app/backend/api/routes/admin_trading.py
+/app/backend/api/routes/watchlists.py
+/app/backend/api/routes/positions.py
+/app/backend/api/routes/observability.py
+/app/backend/api/routes/signals.py
+/app/backend/api/routes/trades.py
+/app/backend/api/routes/auto_breakout_scanner.py
+/app/backend/api/routes/multi_strategy_live.py
+/app/backend/api/routes/settings.py
+/app/backend/api/routes/orders.py
+/app/backend/api/routes/market_data.py
+/app/backend/api/routes/system.py
+/app/backend/api/routes/risk.py
+/app/backend/api/routes/backtest.py
+/app/backend/api/routes/audit.py
+/app/backend/api/routes/monitoring.py
+/app/backend/api/routes/optimizations.py
+/app/backend/api/routes/scanner.py
+/app/backend/api/routes/drawings.py
+/app/backend/api/routes/position_import.py
+=== 3d: def save signature with force ===
+    def save(
+        self,
+        signal_gen: Any,            # MLSignalGenerator
+        learner: Any,               # ContinuousLearner
+        equity_curve: list[float],
+        all_trades: list[Any],      # list[TradeRecord]
+        epoch_metrics: list[Any],   # list[EpochMetrics]
+        peak_equity: float = 0.0,
+        extra_counters: dict[str, Any] | None = None,
+        evolved_params: dict[str, Any] | None = None,
+        governance_controller: Any | None = None,
+        regime_detector: Any | None = None,
+        force: bool = False,
+    ) -> None:
+        """Save the organism's full learned state to disk.
+
+        Atomic: writes to temp dir first, then renames.
+        Backs up the previous brain before overwriting.
+        Thread-safe via cross-platform file lock (Phase 3.1).
+
+        The ``force`` flag is audit-only: ``save()`` always performs the
+        same full atomic save regardless of the flag. The walk-forward
+        gate lives in the caller (``LiveEngine._save_brain``). ``force=True``
+        is set by ``LiveEngine.force_save_brain()`` to signal an explicit
+        admin-initiated recovery save for logging/audit trail.
+        """
+        self.brain_dir.mkdir(parents=True, exist_ok=True)
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+
+        lock = _BrainLock(self.brain_dir / LOCK_FILE)
+
+=== 5e: /save route in organism/routes.py ===
+29:from backend.infra.security import require_admin
+191:async def trigger_training(request: Request, payload: TrainRequest | None = None, _admin=Depends(require_admin)):
+199:async def freeze_adaptation(request: Request, _admin=Depends(require_admin)):
+207:async def unfreeze_adaptation(request: Request, _admin=Depends(require_admin)):
+215:async def halt_trading(request: Request, _admin=Depends(require_admin)):
+223:async def resume_trading(request: Request, _admin=Depends(require_admin)):
+231:async def advance_promotion(request: Request, _admin=Depends(require_admin)):
+245:async def force_rollback(request: Request, _admin=Depends(require_admin)):
+266:async def compute_attribution(request: Request, _admin=Depends(require_admin)):
+301:async def manual_tick(request: Request, _admin=Depends(require_admin)):
+336:@router.post("/save")
+340:    _admin=Depends(require_admin),
+348:    Calls ``LiveEngine.force_save_brain()`` on the live engine instance
+356:                "error": "force=true query parameter required for /save",
+357:                "hint": "Use POST /api/v1/organism/save?force=true",
+361:    engine = _get_engine(request)
+368:    result = await asyncio.to_thread(engine.force_save_brain)
+585:async def close_legacy_shorts(request: Request, _admin=Depends(require_admin)):
+648:async def cleanup_stuck_orders(request: Request, _admin=Depends(require_admin)):
+697:def _get_engine(request: Request):
+705:    engine = _get_engine(request)
+725:    engine = _get_engine(request)
+744:    engine = _get_engine(request)
+764:    engine = _get_engine(request)
+781:    engine = _get_engine(request)
+814:    engine = _get_engine(request)
+848:async def run_deep_diagnostics(request: Request, _admin=Depends(require_admin)):
+850:    engine = _get_engine(request)
+
+=== 6b: context around /save route ===
+334-
+335-
+336:@router.post("/save")
+337-async def force_save(
+338-    request: Request,
+339-    force: bool = Query(default=False),
+340-    _admin=Depends(require_admin),
+341-) -> dict:
+342-    """Admin-only force-save endpoint: persist full brain bypassing the
+343-    walk-forward gate.
+344-
+345-    Requires explicit ``?force=true`` query parameter. Without it, returns
+346-    HTTP 400. This is a recovery path for the case where the walk-forward
+347-    gate has been blocking ML joblib persistence for an entire session.
+348-    Calls ``LiveEngine.force_save_brain()`` on the live engine instance
+349-    attached to ``app.state`` — never instantiates a new persistence object.
+350-    """
+351-    if not force:
+352-        raise HTTPException(
+353-            status_code=400,
+354-            detail={
+355-                "success": False,
+356-                "error": "force=true query parameter required for /save",
+
+=== SUMMARY ===
+Check 1 (Patch C learner.state.best_sharpe): PRESENT (brain_persistence.py line 1272,1276)
+Check 2 (Patch B _apply_live_manifest_fields): PRESENT (brain_persistence.py line 580,598,669)
+Check 3 (Patch A save force= param): PRESENT (brain_persistence.py line 243: "force: bool = False")
+Check 4 (Patch A force_save_brain method): PRESENT (live_engine.py line 4279)
+Check 5 (Patch A POST /save route): PRESENT (organism/routes.py line 336: @router.post("/save"))
+Check 6 (require_admin on /save): PRESENT (organism/routes.py line 340: _admin=Depends(require_admin))
+Check 7 (_get_engine used): PRESENT (organism/routes.py line 361: engine = _get_engine(request))
+Check 8 (walk_forward_gate still present): PRESENT (live_engine.py line 4386)
+Check 9 (_last_sharpe_decay_date ABSENT): MISSING as expected
+ALL 9 CHECKS PASS.

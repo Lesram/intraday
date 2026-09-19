@@ -1,0 +1,412 @@
+{
+  "peak_equity": 111784.74,
+  "tick_count": 8700,
+  "bars_since_retrain": 2,
+  "universe_selector": {
+    "active": [
+      "NVDA",
+      "TSLA",
+      "AMZN",
+      "SPY",
+      "QQQ",
+      "XLK",
+      "XLE",
+      "COST",
+      "LLY",
+      "XOM",
+      "PSQ",
+      "SH",
+      "AAPL",
+      "PLTR",
+      "SQ"
+    ],
+    "rotation_count": 27,
+    "protected_symbols": [
+      "PSQ",
+      "SH"
+    ],
+    "fitness": {
+      "NVDA": {
+        "symbol": "NVDA",
+        "fitness": 0.4846,
+        "total_trades": 289,
+        "win_rate": 0.4546,
+        "avg_pnl": 4.57,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "TSLA": {
+        "symbol": "TSLA",
+        "fitness": 0.443,
+        "total_trades": 218,
+        "win_rate": 0.3537,
+        "avg_pnl": 7.09,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "AMZN": {
+        "symbol": "AMZN",
+        "fitness": 0.53,
+        "total_trades": 348,
+        "win_rate": 0.5269,
+        "avg_pnl": 7.3,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "SPY": {
+        "symbol": "SPY",
+        "fitness": 0.6235,
+        "total_trades": 146,
+        "win_rate": 0.7189,
+        "avg_pnl": 3.45,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "QQQ": {
+        "symbol": "QQQ",
+        "fitness": 0.585,
+        "total_trades": 191,
+        "win_rate": 0.6262,
+        "avg_pnl": 11.09,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "XLK": {
+        "symbol": "XLK",
+        "fitness": 0.4987,
+        "total_trades": 241,
+        "win_rate": 0.4364,
+        "avg_pnl": 22.55,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "XLE": {
+        "symbol": "XLE",
+        "fitness": 0.5294,
+        "total_trades": 413,
+        "win_rate": 0.5261,
+        "avg_pnl": 9.46,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "COST": {
+        "symbol": "COST",
+        "fitness": 0.5051,
+        "total_trades": 162,
+        "win_rate": 0.5,
+        "avg_pnl": 3.07,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "LLY": {
+        "symbol": "LLY",
+        "fitness": 0.5012,
+        "total_trades": 108,
+        "win_rate": 0.5,
+        "avg_pnl": 0.73,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "XOM": {
+        "symbol": "XOM",
+        "fitness": 0.4585,
+        "total_trades": 233,
+        "win_rate": 0.4074,
+        "avg_pnl": 0.53,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "PSQ": {
+        "symbol": "PSQ",
+        "fitness": 0.2348,
+        "total_trades": 66,
+        "win_rate": 0.0,
+        "avg_pnl": -5.87,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "SH": {
+        "symbol": "SH",
+        "fitness": 0.2413,
+        "total_trades": 120,
+        "win_rate": 0.0,
+        "avg_pnl": -2.03,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "AAPL": {
+        "symbol": "AAPL",
+        "fitness": 0.4645,
+        "total_trades": 87,
+        "win_rate": 0.442,
+        "avg_pnl": 1.37,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "AMD": {
+        "symbol": "AMD",
+        "fitness": 0.3486,
+        "total_trades": 132,
+        "win_rate": 0.2,
+        "avg_pnl": 1.03,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "AVGO": {
+        "symbol": "AVGO",
+        "fitness": 0.2755,
+        "total_trades": 189,
+        "win_rate": 0.1428,
+        "avg_pnl": -24.77,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "CAT": {
+        "symbol": "CAT",
+        "fitness": 0.2321,
+        "total_trades": 54,
+        "win_rate": 0.0,
+        "avg_pnl": -7.46,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "CRM": {
+        "symbol": "CRM",
+        "fitness": 0.2302,
+        "total_trades": 104,
+        "win_rate": 0.0,
+        "avg_pnl": -8.38,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "GOOGL": {
+        "symbol": "GOOGL",
+        "fitness": 0.3645,
+        "total_trades": 108,
+        "win_rate": 0.25,
+        "avg_pnl": -4.63,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "IWM": {
+        "symbol": "IWM",
+        "fitness": 0.3773,
+        "total_trades": 107,
+        "win_rate": 0.25,
+        "avg_pnl": 2.89,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "META": {
+        "symbol": "META",
+        "fitness": 0.2184,
+        "total_trades": 53,
+        "win_rate": 0.0,
+        "avg_pnl": -15.51,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "MSFT": {
+        "symbol": "MSFT",
+        "fitness": 0.3261,
+        "total_trades": 135,
+        "win_rate": 0.2,
+        "avg_pnl": -12.17,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "WMT": {
+        "symbol": "WMT",
+        "fitness": 0.3502,
+        "total_trades": 162,
+        "win_rate": 0.3333,
+        "avg_pnl": -38.01,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "SQ": {
+        "symbol": "SQ",
+        "fitness": 0.5,
+        "total_trades": 0,
+        "win_rate": 0.0,
+        "avg_pnl": 0.0,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "PLTR": {
+        "symbol": "PLTR",
+        "fitness": 0.5485,
+        "total_trades": 270,
+        "win_rate": 0.6,
+        "avg_pnl": -1.43,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "NFLX": {
+        "symbol": "NFLX",
+        "fitness": 0.4909,
+        "total_trades": 216,
+        "win_rate": 0.5,
+        "avg_pnl": -5.32,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "ADBE": {
+        "symbol": "ADBE",
+        "fitness": 0.4054,
+        "total_trades": 81,
+        "win_rate": 0.3333,
+        "avg_pnl": -5.56,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "INTC": {
+        "symbol": "INTC",
+        "fitness": 0.2101,
+        "total_trades": 54,
+        "win_rate": 0.0,
+        "avg_pnl": -20.4,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "MU": {
+        "symbol": "MU",
+        "fitness": 0.3953,
+        "total_trades": 162,
+        "win_rate": 0.3333,
+        "avg_pnl": -11.51,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "COIN": {
+        "symbol": "COIN",
+        "fitness": 0.4421,
+        "total_trades": 324,
+        "win_rate": 0.4166,
+        "avg_pnl": -9.02,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "SNOW": {
+        "symbol": "SNOW",
+        "fitness": 0.0746,
+        "total_trades": 81,
+        "win_rate": 0.0,
+        "avg_pnl": -103.35,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "UBER": {
+        "symbol": "UBER",
+        "fitness": 0.1963,
+        "total_trades": 81,
+        "win_rate": 0.0,
+        "avg_pnl": -28.48,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      },
+      "ABNB": {
+        "symbol": "ABNB",
+        "fitness": 0.4125,
+        "total_trades": 81,
+        "win_rate": 0.3333,
+        "avg_pnl": -1.42,
+        "avg_volume_quality": 0.5,
+        "last_rotated_gen": 0,
+        "rotations_observed": 27
+      }
+    }
+  },
+  "exit_levels": {},
+  "entry_metadata": {},
+  "regime_kelly_stats": {
+    "chop": {
+      "wins": 17.0,
+      "losses": 38.0,
+      "total_pnl": 369.99886899999774,
+      "total_win_pnl": 504.12813899999855,
+      "total_loss_pnl": 134.12927000000082
+    },
+    "trending_up": {
+      "wins": 3.0,
+      "losses": 3.0,
+      "total_pnl": 87.56579499999995,
+      "total_win_pnl": 126.48000000000008,
+      "total_loss_pnl": 38.91420500000012
+    },
+    "unknown": {
+      "wins": 0,
+      "losses": 1,
+      "total_pnl": -5.154470000000067,
+      "total_win_pnl": 0.0,
+      "total_loss_pnl": 5.154470000000067
+    }
+  },
+  "ml_calibration": {
+    "counts": [
+      [
+        0,
+        0
+      ],
+      [
+        19,
+        53
+      ],
+      [
+        1,
+        9
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "map": [
+      1.0,
+      1.2179487179487176,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "entry_timestamps": [
+    1775673967.4302793,
+    1775675408.7498233
+  ],
+  "pending_entry": {}
+}

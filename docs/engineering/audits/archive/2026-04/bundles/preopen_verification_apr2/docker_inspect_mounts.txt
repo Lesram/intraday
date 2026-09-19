@@ -1,0 +1,26 @@
+[
+    {
+        "Type": "bind",
+        "Source": "/Users/marselkei/VS/intra/data",
+        "Destination": "/app/data",
+        "Mode": "rw",
+        "RW": true,
+        "Propagation": "rprivate"
+    },
+    {
+        "Type": "bind",
+        "Source": "/Users/marselkei/VS/intra/organism_brain",
+        "Destination": "/app/organism_brain",
+        "Mode": "rw",
+        "RW": true,
+        "Propagation": "rprivate"
+    },
+    {
+        "Type": "bind",
+        "Source": "/Users/marselkei/VS/intra/logs",
+        "Destination": "/app/logs",
+        "Mode": "rw",
+        "RW": true,
+        "Propagation": "rprivate"
+    }
+]

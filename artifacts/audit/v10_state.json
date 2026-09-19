@@ -1,0 +1,63 @@
+{
+  "version": "v10",
+  "branch": "rc-1.5-curated",
+  "head_at_v10_start": "35a1fe9",
+  "head_at_v10_end": "post-wave-58",
+  "phase": "complete",
+  "phases": {
+    "phase_1_verify_v9": {"status": "complete", "tests_pass": "190/190"},
+    "phase_2_design_v10": {"status": "complete", "prompts_committed_at": "c048103"},
+    "phase_3_audit": {
+      "status": "complete",
+      "tracks_total": 10,
+      "agents_completed": 10,
+      "synthesis_committed_at": "e0df067"
+    },
+    "phase_4_synthesis": {
+      "status": "complete",
+      "findings_total": 32,
+      "informational": 2,
+      "deliverable": 1,
+      "critical": 1,
+      "high": 13,
+      "medium": 12,
+      "low": 6
+    },
+    "phase_5_implementation": {
+      "status": "complete",
+      "waves_committed": [
+        {"wave": 50, "sha": "c63f745", "findings": ["AA4-2", "AA4-3", "AA4-4"], "deferred_operator": ["AA4-1"]},
+        {"wave": 51, "sha": "41c5529", "findings": ["WW-1", "PP2-1", "UU2-A", "UU2-C"]},
+        {"wave": 52, "sha": "e6a6547", "findings": ["YY-1", "YY-2", "YY-5"]},
+        {"wave": 53, "sha": "74d02bf", "findings": ["DD4-1", "DD4-2", "DD4-4"]},
+        {"wave": 54, "sha": "6d76710", "findings": ["VV-3"]},
+        {"wave": 55, "sha": "16bce49", "findings": ["XX-1", "XX-2", "BB4-F2 verify"]},
+        {"wave": 56, "sha": "310a694", "findings": ["WW-2", "WW-3", "PP2-2", "PP2-3", "Z8-1"]},
+        {"wave": 57, "sha": "a943e26", "findings": ["UU2-B deliverable"]},
+        {"wave": 58, "sha": "<this commit>", "findings": ["operator-followup docs"]}
+      ],
+      "closures_in_v10": 22,
+      "deliverable": 1,
+      "operator_action": ["AA4-1 deploy gate", "throwaway test-user cleanup", "Mon post-open verify"],
+      "deferred_to_v11": [
+        "DD4-3 inverse-ETF flip refactor",
+        "XX-3 ORM-vs-DB drift",
+        "VV-1/2/4/5 frontend-side",
+        "YY-3 Prom labels",
+        "YY-4 BackgroundTrainer alert"
+      ]
+    }
+  },
+  "v11_recommendation": {
+    "retain_lenses": [
+      "AA", "BB", "DD", "HH", "NN", "OO",
+      "PP", "UU", "TT", "VV", "WW", "XX", "YY",
+      "W3/W4/W5", "Z6/Z7/Z8"
+    ],
+    "candidate_new_lenses": [
+      "DD-DEPLOY container vs source-SHA verification",
+      "DD-PROD-DATA fix-correct-in-code vs fix-exercised-in-prod-data"
+    ],
+    "yield_expectation": "5-15 findings"
+  }
+}

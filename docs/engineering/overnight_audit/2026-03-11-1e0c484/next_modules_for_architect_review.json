@@ -1,0 +1,32 @@
+[
+  {
+    "priority": 1,
+    "file": "backend/organism/kelly_sizer.py",
+    "reason": "Kelly sizer now uses MAX_OPEN_POSITIONS=8 (aligned). Per-position max is 10% → max 80% portfolio. Risk-budget learning=0.10% equity. Verify these parameters are appropriate for the 22-symbol universe."
+  },
+  {
+    "priority": 2,
+    "file": "backend/organism/adaptive_exits.py",
+    "reason": "Stop loss exits accounted for -$489 (36.3% of total loss). ATR stop multipliers (trending_up=3.5, chop=2.5, etc.) should be reviewed against actual 1-min ATR volatility of the 22-symbol universe. Trailing stop deeply negative (-$202 on 5 trades)."
+  },
+  {
+    "priority": 3,
+    "file": "backend/organism/alpha_scanner.py",
+    "reason": "Alpha scanner top_n=5, breakout scanner top_n=8. Review whether this ratio produces good candidate diversity. All prior trades showed unknown entry_source — verify entry_source populates correctly in the next session."
+  },
+  {
+    "priority": 4,
+    "file": "backend/organism/ml_signal.py",
+    "reason": "Confidence quintile analysis showed NO correlation between confidence and outcome. The confidence formula may need tuning once sufficient calibration data accumulates."
+  },
+  {
+    "priority": 5,
+    "file": "backend/organism/continuous_learner.py",
+    "reason": "J4 evaluation-event history now deployed. Verify events are being persisted correctly in tomorrow's session. Acceptance gate composite score and quality constraints should be reviewed for appropriateness."
+  },
+  {
+    "priority": 6,
+    "file": "tests/test_audit_patch_queue_h1.py, tests/test_audit_patch_queue_h2.py, tests/test_audit_patch_queue_c2.py, tests/test_audit_patch_queue_d1.py, tests/test_audit_patch_queue_d2.py",
+    "reason": "19 stale test assertions need updating: _validate_new_model now returns tuple[bool,str] (post-I1) but old tests compare against bool. Low priority but should be cleaned up."
+  }
+]

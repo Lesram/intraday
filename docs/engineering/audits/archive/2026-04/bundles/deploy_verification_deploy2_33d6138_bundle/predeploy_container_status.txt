@@ -1,0 +1,13 @@
+=== docker ps ===
+NAMES                       STATUS                  IMAGE                PORTS
+intra-api-1                 Up 20 hours (healthy)   intra-api            0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+intra-redis-1               Up 20 hours (healthy)   redis:7-alpine       0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+trading_platform_db_paper   Up 20 hours (healthy)   postgres:16-alpine   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+
+=== intra-api-1 inspect ===
+Health=healthy
+Running=true
+StartedAt=2026-04-23T06:45:08.490460292Z
+RestartCount=0
+Image=intra-api
+ImageDigest=sha256:32296cf9a48623c33fcf671b0650b42490c4ffbc20400b9c6003f000e388b477

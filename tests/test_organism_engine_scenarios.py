@@ -13,12 +13,9 @@ Tests cover 7 failure categories:
 
 from __future__ import annotations
 
-import asyncio
-import os
 import time
-from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pandas as pd
@@ -62,13 +59,18 @@ def _make_engine(
     )
     brain_dir = brain_dir or "/tmp/test_brain_scenarios"
 
-    return OrganismLiveEngine(
+    engine = OrganismLiveEngine(
         data_client=data_client,
         order_service=broker,
         positions_service=broker,
         brain_dir=brain_dir,
         universe=universe,
     )
+    # Scenario tests must stay hermetic. The production default can enable the
+    # Alpaca screener, but CI has no market-data credentials and should not
+    # spend timeout budget retrying external 401s.
+    engine.market_scanner = None
+    return engine
 
 
 async def _run_ticks(engine, n: int) -> list:
@@ -204,6 +206,7 @@ async def test_empty_features_for_position_symbol(broker, brain_dir):
 # ═════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(120)
 async def test_regime_stability_over_20_ticks(broker, brain_dir):
     """Run 20 ticks with smooth uptrend data — regime should not flap excessively."""
     bars = make_features_dict(["AAPL", "MSFT", "SPY"], n=600, seed=42, trend="up")
@@ -333,13 +336,13 @@ async def test_entry_throttle_persists_across_restart(broker, brain_dir):
 @pytest.mark.asyncio
 async def test_sector_saturation_doesnt_deadlock(broker, brain_dir):
     """4 tech positions open (max_per_sector=4) — tech blocked, non-tech can enter."""
-    from backend.organism.sector_map import sector_gate_allows, get_sector
+    from backend.organism.sector_map import sector_gate_allows
 
     open_symbols = {"AAPL", "MSFT", "GOOGL", "NVDA"}  # All tech
     planned = set()
 
-    # Tech symbol should be blocked
-    allowed_tech = sector_gate_allows("META", open_symbols, planned)
+    # Tech symbol evaluation should not deadlock the non-tech path below.
+    _allowed_tech = sector_gate_allows("META", open_symbols, planned)
     # Non-tech should be allowed
     allowed_non_tech = sector_gate_allows("XOM", open_symbols, planned)
 
@@ -368,6 +371,63 @@ async def test_all_ml_neutral_still_produces_candidates(broker, brain_dir):
     result = await engine.live_tick()
     # Engine should still complete — breakout scanner doesn't need ML
     assert result.timestamp
+
+
+@pytest.mark.asyncio
+async def test_alpha_breakout_bad_regime_filter_blocks_main_book_orders(broker, brain_dir):
+    """Evidence-backed filter blocks alpha+breakout in chop before sizing/orders."""
+    from backend.organism.alpha_scanner import AlphaCandidate
+    from backend.organism.ml_signal import MLSignal
+
+    engine = _make_engine(broker, brain_dir=brain_dir, universe=["AAPL", "MSFT", "SPY"])
+    await engine.initialize()
+    now = datetime(2026, 5, 8, 16, 0, tzinfo=UTC)
+    engine._tick_count = 10
+    engine._now_fn = lambda: now
+    engine._time_fn = lambda: now.timestamp()
+
+    features = make_features_dict(["AAPL", "MSFT", "SPY"], n=120, seed=7)
+    for sym, df in features.items():
+        df["_nan_missingness"] = 0.0
+        df["volume"] = 500_000.0
+        broker.set_price(sym, float(df["close"].iloc[-1]))
+
+    ml_signal = MLSignal(
+        symbol="AAPL",
+        direction=1,
+        confidence=0.80,
+        predicted_return=0.004,
+        raw_confidence=0.80,
+        effective_confidence=0.80,
+    )
+    engine._fetch_and_compute_features = AsyncMock(return_value=features)
+    engine.regime_detector.detect = MagicMock(
+        return_value=MagicMock(primary="chop", confidence=0.90)
+    )
+    engine.breakout_scanner.scan = MagicMock(return_value=[])
+    engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": ml_signal})
+    engine.alpha_scanner.scan = MagicMock(return_value=[
+        AlphaCandidate(
+            symbol="AAPL",
+            composite_score=0.80,
+            breakout_score=0.45,
+            ml_signal=ml_signal,
+            direction=1,
+            expected_return_source="ml",
+        )
+    ])
+
+    sized_inputs = []
+    engine.kelly_sizer.size_positions = MagicMock(
+        side_effect=lambda candidates, *args, **kwargs: sized_inputs.append(candidates) or []
+    )
+
+    result = await engine.live_tick()
+
+    assert result.signals_generated == 0
+    assert result.orders_submitted == 0
+    assert sized_inputs == [[]]
+    assert engine._last_gate_rejections["confidence_gate"] == 1
 
 
 @pytest.mark.asyncio
@@ -602,10 +662,10 @@ async def test_reconcile_detects_closed_position(broker, brain_dir):
     engine._tick_count = 10  # Ensure past grace period
     await engine.live_tick()
 
-    # Check trade was recorded
-    if len(engine._all_trades) > 0:
-        trade = engine._all_trades[-1]
-        assert trade.symbol == "AAPL"
+    # Check the AAPL closure was recorded. Reconciliation can record more
+    # than one stale metadata adjustment in the same tick, so ordering is not
+    # the contract under test here.
+    assert any(trade.symbol == "AAPL" for trade in engine._all_trades)
 
 
 @pytest.mark.asyncio
@@ -789,6 +849,7 @@ async def test_reconstructed_trades_fed_to_learner(broker, brain_dir):
 # ═════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(120)
 async def test_brain_save_interval_20_ticks(broker, brain_dir):
     """Run 25 ticks — brain should be saved at tick 20."""
     engine = _make_engine(broker, brain_dir=brain_dir)
@@ -803,7 +864,7 @@ async def test_brain_save_interval_20_ticks(broker, brain_dir):
 
     engine._save_brain = tracking_save
 
-    results = await _run_ticks(engine, 25)
+    await _run_ticks(engine, 25)
 
     # Brain should be saved at tick 20
     assert 20 in saved_ticks, f"Brain not saved at tick 20. Saved at: {saved_ticks}"

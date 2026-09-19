@@ -140,6 +140,23 @@ class TestEvolutionEngine:
         assert new_params.total_adaptations == 1
         assert len(evo.log) == 1
 
+    def test_evolve_tolerates_legacy_non_string_entry_source(self):
+        """Persisted pre-provenance trades may restore blank sources as NaN."""
+        evo = EvolutionEngine(min_trades=5)
+        params = EvolvedParams()
+        trades = _make_trades(20)
+        for trade in trades:
+            trade.entry_source = float("nan")
+
+        new_params = evo.evolve(
+            params,
+            trades,
+            epoch_regime="chop",
+        )
+
+        assert new_params.evolution_generation == 1
+        assert len(evo.log) == 1
+
     def test_skips_with_few_trades(self):
         evo = EvolutionEngine(min_trades=50)
         params = EvolvedParams()

@@ -4,6 +4,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import ThresholdTable from '../components/ThresholdTable';
 import { engineStartup } from '../data/mermaidDefinitions';
 import { thresholds, engineConfig } from '../data/thresholds';
+import type { EngineConfig } from '../data/thresholds';
 import { apiRoutes, otherRouteGroups } from '../data/apiRoutes';
 import { dbTables, startupSteps } from '../data/dbSchema';
 import { colors } from '@styles/theme';
@@ -104,7 +105,10 @@ const OperationsTab = () => (
     </CollapsibleSection>
 
     <CollapsibleSection title="Engine Configuration" subtitle="Environment variables (.env / docker-compose.yml)">
-      <ThresholdTable
+      {/* V13 W98 (Lens 7): explicit generic type so TS infers
+          searchField as keyof EngineConfig (string union of all keys),
+          not the literal type of one entry. */}
+      <ThresholdTable<EngineConfig>
         data={engineConfig}
         searchField="variable"
         columns={[

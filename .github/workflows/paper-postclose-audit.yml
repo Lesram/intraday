@@ -2,47 +2,206 @@ name: paper-postclose-audit
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '15 22 * * 1-5'
+    inputs:
+      source_sha:
+        description: Reviewed immutable source commit (full 40-character SHA)
+        required: true
+        type: string
+      notify_issues:
+        description: Explicitly authorize GitHub issue delivery on failure
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      notify_issues:
+        required: false
+        default: false
+        type: boolean
 
-env:
-  # KPI thresholds — auto-open issue when breached
-  KPI_MIN_WIN_RATE: "0.40"
-  KPI_MAX_AVG_LOSS: "15.0"
-  KPI_MIN_PAYOFF_RATIO: "0.5"
-  KPI_MAX_STOP_LOSS_PCT: "0.60"
+permissions:
+  contents: read
 
 jobs:
   collect-and-audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 80
+    outputs:
+      source_sha: ${{ steps.provenance.outputs.source_sha }}
+    env:
+      CI_EXPECTED_SHA: ${{ inputs.source_sha }}
+      APP_ENVIRONMENT: testing
+      ENVIRONMENT: testing
+      TESTING: 'true'
+      USE_MOCK_BROKER: 'true'
+      USE_MOCK_DATA: 'true'
+      TRADING_EXECUTION_MODE: shadow
+      SECURITY_JWT_SECRET: 'test-jwt-secret-not-for-production'
+      PICKLE_HMAC_SECRET: 'test-pickle-secret-not-for-production'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONPATH: .
+      DATABASE_URL: 'sqlite+aiosqlite:///:memory:'
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.source_sha }}
           fetch-depth: 0
+          persist-credentials: false
+      - name: Configure isolated test paths
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          scratch = Path(os.environ["RUNNER_TEMP"])
+          with Path(os.environ["GITHUB_ENV"]).open("a") as output:
+              output.write("ORGANISM_BRAIN_DIR=" + str(scratch / "paper-ci-brain") + "\n")
+              output.write("ORGANISM_SHADOW_EXIT_TELEMETRY_PATH=" + str(scratch / "paper-ci-brain/shadow.jsonl") + "\n")
+              output.write("ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH=" + str(scratch / "paper-ci-brain/filter.jsonl") + "\n")
+              output.write("ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH=" + str(scratch / "paper-ci-brain/strategy.jsonl") + "\n")
+          PY
+      - name: Verify source and clear previous evidence
+        id: provenance
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, pathlib, re, subprocess, time
+          expected = os.environ['CI_EXPECTED_SHA']
+          actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          if not re.fullmatch(r'[0-9a-f]{40}', expected) or actual != expected:
+              raise SystemExit('Reviewed source SHA must be full length and match checkout')
+          art = pathlib.Path('artifacts')
+          art.mkdir(exist_ok=True)
+          started = time.time()
+          # Tracked evidence from a prior run must never satisfy this run.
+          for name in ('task_report.json', 'test_summary.json', 'replay_summary.json',
+                       'grep_assertions.json', 'runtime_snapshot_summary.json',
+                       'runtime_config_snapshot.json', 'semantic_invariants_summary.json',
+                       'spec_drift_summary.json', 'postclose_kpi_report.json',
+                       'postclose_kpi_report.md',
+                       'phase8_evidence_warehouse/postclose_run_summary.json'):
+              (art / name).unlink(missing_ok=True)
+          payload = {'source_sha': actual, 'caller_sha': os.environ['GITHUB_SHA'],
+                     'started_at_epoch': started, 'run_id': os.environ['GITHUB_RUN_ID'],
+                     'run_attempt': os.environ['GITHUB_RUN_ATTEMPT'],
+                     'scope': 'secret-free CI; not live broker/runtime verification'}
+          (art / 'ci_run_provenance.json').write_text(json.dumps(payload, indent=2) + '\n')
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f'CI_RUN_STARTED_AT={started}\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'source_sha={actual}\n')
+          PYCODE
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Install dependencies
+        timeout-minutes: 10
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-          pip install pytest pytest-asyncio pytest-timeout
+          python -m pip install -r requirements.lock
+          python -m pip freeze > artifacts/ci_resolved_dependencies.txt
 
       - name: Generate full artifact pack
+        id: pack
+        timeout-minutes: 50
         run: python scripts/ci/generate_artifacts.py full
 
       - name: Generate audit index
+        if: always()
+        timeout-minutes: 2
         run: python scripts/ci/generate_audit_index.py
 
-      - name: Check KPI thresholds and open issue if breached
+      - name: Generate Phase 8 evidence warehouse and replay queue
+        if: always()
+        timeout-minutes: 2
+        run: python scripts/ci/run_phase8_postclose_evidence.py
+
+      - name: Check KPI evidence and write durable report
+        if: always()
+        timeout-minutes: 1
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI_UPSTREAM_STATUS: ${{ job.status }}
+          CI_ARTIFACT_PACK_OUTCOME: ${{ steps.pack.outcome }}
+          CI_REQUIRE_PHASE8: 'true'
         run: python scripts/ci/check_kpi_thresholds.py
 
       - uses: actions/upload-artifact@v4
+        if: always()
+        timeout-minutes: 2
         with:
           name: postclose-artifacts
+          if-no-files-found: error
           path: |
             artifacts/
             docs/engineering/LIVE_AUDIT_INDEX.md
+
+  report-status:
+    name: Preserve workflow result and optionally notify
+    needs: collect-and-audit
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # No checkout or platform imports occur in this separately permissioned job.
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Write durable result and deliver only when authorized
+        timeout-minutes: 2
+        uses: actions/github-script@v7
+        env:
+          AUDIT_RESULT: ${{ needs.collect-and-audit.result }}
+          AUDITED_SHA: ${{ needs.collect-and-audit.outputs.source_sha }}
+          EXPECTED_SHA: ${{ inputs.source_sha }}
+          NOTIFY_ISSUES: ${{ inputs.notify_issues }}
+        with:
+          script: |
+            const fs = require('fs');
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const result = {workflow: context.workflow, result: process.env.AUDIT_RESULT,
+              expected_sha: process.env.EXPECTED_SHA, source_sha: process.env.AUDITED_SHA || null,
+              caller_sha: context.sha, run_url: url, run_id: context.runId,
+              run_attempt: process.env.GITHUB_RUN_ATTEMPT,
+              notification: 'disabled; explicit notify_issues authorization required'};
+            const title = '[Post-Close Audit] CI evidence failure';
+            const body = `Result: **${result.result}**\n\nAudited source: ${result.source_sha || 'not verified'}\nExpected source: ${result.expected_sha}\n\nRun: ${url}\n\nInspect uploaded artifacts and logs. This is CI evidence, not a live trading-health certificate.`;
+            try {
+              if (result.result !== 'success' && process.env.NOTIFY_ISSUES === 'true') {
+                const issues = await github.paginate(github.rest.issues.listForRepo,
+                  {...context.repo, state: 'open', labels: 'bug', per_page: 100});
+                const existing = issues.find(issue => !issue.pull_request && issue.title === title);
+                if (existing) {
+                  const comments = await github.paginate(github.rest.issues.listComments,
+                    {...context.repo, issue_number: existing.number, per_page: 100});
+                  if (!(existing.body || '').includes(url) && !comments.some(comment => comment.body && comment.body.includes(url))) {
+                    await github.rest.issues.createComment({...context.repo, issue_number: existing.number, body});
+                  }
+                  result.issue_url = existing.html_url;
+                } else {
+                  const issue = await github.rest.issues.create({...context.repo, title, body, labels: ['bug']});
+                  result.issue_url = issue.data.html_url;
+                }
+                result.notification = 'delivered';
+              } else if (result.result === 'success') {
+                result.notification = 'not required';
+              }
+            } catch (error) {
+              result.notification = 'failed';
+              result.notification_error = 'GitHub issue delivery failed; inspect this job';
+              core.setFailed(result.notification_error);
+            } finally {
+              fs.mkdirSync('workflow-status', {recursive: true});
+              fs.writeFileSync('workflow-status/result.json', JSON.stringify(result, null, 2) + '\n');
+              await core.summary.addHeading(title).addRaw(body).addRaw(`\n\nNotification: ${result.notification}`).write();
+            }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        timeout-minutes: 2
+        with:
+          name: postclose-workflow-status
+          path: workflow-status/
+          if-no-files-found: error

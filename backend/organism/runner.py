@@ -42,11 +42,18 @@ class OrganismRunner:
         regime_detector: RegimeDetector | None = None,
         ensemble: RegimeConditionedEnsemble | None = None,
         drift_detector: DriftDetector | None = None,
+        now_fn: Any = None,
     ) -> None:
         self.governance = governance or GovernanceController()
         self.regime = regime_detector or RegimeDetector()
         self.ensemble = ensemble or RegimeConditionedEnsemble()
         self.drift = drift_detector or DriftDetector()
+
+        # V8 DD2-10 / Wave-35 (2026-05-03): inject a clock so replay sees
+        # the replay clock instead of wall clock.  Default is the canonical
+        # wall-clock for live; replay supplies a synthetic clock.
+        from backend.utils.clock_injection import default_now_fn
+        self._now_fn = now_fn or default_now_fn
 
         self._tick_count: int = 0
         self._last_regime: str = ""
@@ -101,7 +108,8 @@ class OrganismRunner:
                 result["final_weights"] = blended
 
         # Drift check (periodic)
-        now = datetime.now(UTC)
+        # V8 DD2-10 / Wave-35: use injected clock for replay determinism.
+        now = self._now_fn()
         if reference_features is not None and features_df is not None:
             should_check = (
                 self._last_drift_check is None

@@ -1,0 +1,40 @@
+=== git log --oneline -30 (with ISO dates) ===
+33d6138 2026-04-19T13:21:21-07:00  feat(alerting): wire critical events to Slack/webhook alerts            [HEAD]
+c306074 2026-04-19T13:18:09-07:00  fix(governance): H5 settings API enforces frozen/halted state
+bb5cbb5 2026-04-19T12:36:02-07:00  feat(risk): per-trade notional cap + daily max-loss circuit breaker
+679ffd2 2026-04-19T12:21:23-07:00  fix(real-money): H1 production risk-budget cap + H2 feature drift guard
+---- image-build cut-point: 2026-04-16T02:41Z (commits above NOT in running container) ----
+b97f903 2026-04-13T21:20:23-07:00  experiment(exits): chop trailing-stop giveback control [Exp 4] + observation tooling giveback section
+15cc0a4 2026-04-11T12:59:51-07:00  fix(mechanical): G1 exit-level restore warning + G2 cooldown-on-success-only + G3 NaN pyramid guard
+ce06d41 2026-04-10T21:26:13-07:00  experiment(instrumentation): confidence inversion side-by-side logging [Exp 3 prep]     [LIVE CONTAINER]
+d79cae0 2026-04-10T21:07:02-07:00  experiment(entries): suppress inverse ETF entries in chop regime [Exp 2]
+6754223 2026-04-10T20:55:04-07:00  feat(tooling): automated experiment observation report generator
+ab54b2f 2026-04-10T18:34:16-07:00  experiment(exits): chop-regime minimum-hold gate for pyramid_cut [Exp 1A]
+7d36b61 2026-04-09T23:12:27-07:00  fix(brain): LiveEngine forensic guard + bypass audit [F4/4]
+9e7c9a9                            fix(brain): break-glass reset + suspicious-write instrumentation [F3/4]
+3a694ee                            fix(brain): route save_essential_state through _write_manifest_guarded [F2/4]
+eaa4b2f                            fix(brain): introduce _write_manifest_guarded helper, route save() through it [F1/4]
+3528162                            fix(brain): extend trained-state overwrite guard to save_essential_state [F-lite]
+62256d7                            fix(brain): refuse to overwrite trained manifest with untrained state
+c5fb0ed                            fix(scripts): default standalone scripts to organism_brain_sandbox/
+be2eee8                            feat(brain): force-save admin route for ML artifact recovery
+50b2513                            fix(brain): save manifest from live learner.state and signal_gen
+93593a2                            fix(brain): walk_forward_gate reads authoritative learner.state.best_sharpe
+2018999                            fix(H5): preserve pyramid level on broker sync collapse
+f2448be                            fix(correctness): H5 phantom pyramid prevention + H4 unified trading phase + H3 edge-cost instrumentation
+d46e17a                            fix(accounting): use broker cost-weighted avg for pyramid entry_price
+8f1e657                            docs(handoff): add AIA architect continuity handoff
+3534346                            fix(persistence): complete split persistence — all runtime truth survives gate block
+007a977                            fix(persistence): ensure trades persist even when walk-forward gate blocks
+53cc1ad                            fix(reconciliation): stale-fill prevention + regime_at_exit + brain volume mount
+296012b                            fix(incident-recovery): wave XA+XB mechanical resilience + gate calibration
+e7112e1                            fix(universe): merge protected symbols into active universe on brain restore
+88c110f                            fix(away-hardening): complete away-mode hardening program (waves A-C)
+
+=== Inferred recent deploy history ===
+Deploy N (2026-04-15 ~19:42 PDT):  image-build → ran commits up to b97f903 (Exp4 present in image, BUT runtime fingerprint is ce06d41)
+     Explanation: image was rebuilt 2026-04-16T02:41Z (Apr 15 PDT evening), but the code snapshot inside matches ce06d41 exactly (file hashes of 5 critical files).
+     Likely reason: the worktree at rebuild time was on or checked out at ce06d41, not HEAD. The post-ce06d41 commits (15cc0a4, b97f903) never made it into the running image.
+Container restart 2026-04-23T06:45:08Z:  same image, just a restart. 0 restart count means no crash loops between.
+
+Next planned deploy ("DEPLOY 2") = full HEAD 33d6138 → HARD STOP 2026-04-23 per DEPLOY_VERIFICATION_DEPLOY2_33d6138.md.

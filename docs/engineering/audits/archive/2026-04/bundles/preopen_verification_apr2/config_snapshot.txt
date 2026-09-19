@@ -1,0 +1,18 @@
+=== docker-compose.paper.yml volumes section ===
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./organism_brain:/app/organism_brain
+--
+    volumes:
+      - redis_data:/data
+    healthcheck:
+
+=== docker-compose.paper.yml env relevant ===
+      - APP_ENVIRONMENT=development
+      - ALPACA_PAPER=true
+      - USE_MOCK_DATA=false
+      - USE_MOCK_BROKER=false
+
+=== organism_brain volume mount present ===
+      - ./organism_brain:/app/organism_brain

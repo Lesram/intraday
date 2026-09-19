@@ -1,0 +1,61 @@
+{
+  "date": "2026-03-12",
+  "head_sha": "8db0fab",
+
+  "errors_analyzed": {
+    "alpaca_position_disconnects": 9,
+    "scheduler_timeouts": 2,
+    "websocket_drops": 3
+  },
+
+  "did_errors_suppress_trading": false,
+
+  "evidence": {
+    "error_timing_analysis": {
+      "first_error": "17:44:42 UTC (12:44 ET)",
+      "last_error": "19:56:30 UTC (14:56 ET)",
+      "market_close": "20:00 UTC (4:00 PM ET)",
+      "all_errors_in_last_135_minutes": true,
+      "errors_before_1244_et": 0,
+      "note": "ALL errors occurred in the final 2.25 hours of the session. The first 3.25 hours (9:30-12:44 ET) had ZERO errors."
+    },
+
+    "candidate_activity_during_error_window": {
+      "candidates_after_1244_et": 0,
+      "reason": "By 12:37 ET, the regime had already flipped back to trending_up (incorrect). The 'Entries blocked' state was active for most post-12:00 ticks due to the backing-off scheduler. Even without errors, zero candidates would have passed.",
+      "conclusion": "Errors were INCIDENTAL to the zero-trade outcome, not causal"
+    },
+
+    "recovery_behavior": {
+      "max_error_streak": 1,
+      "auto_recovery": true,
+      "cascading_failures": false,
+      "note": "Every error had streak=1 — the scheduler recovered on the very next tick. No persistent degradation."
+    },
+
+    "root_cause_of_disconnects": {
+      "service": "backend/services/positions_service.py:115",
+      "call": "self.trading_client.get_all_positions()",
+      "error": "RemoteDisconnected('Remote end closed connection without response')",
+      "explanation": "Alpaca paper API drops idle HTTP connections. The SDK reuses connections without keepalive. After market close, Alpaca may be more aggressive about closing idle connections.",
+      "frequency": "~1 disconnect every 15 minutes in the post-close period"
+    },
+
+    "websocket_behavior": {
+      "drops": 3,
+      "all_reconnected": true,
+      "data_gap_duration": "< 30 seconds each",
+      "impact": "Stale data warnings during reconnection, then normal operation"
+    }
+  },
+
+  "verdict": "NOISY_BUT_NON_BLOCKING",
+
+  "recommendation": {
+    "priority": "LOW",
+    "fix": "Add retry with backoff in positions_service.get_all_positions() (3 attempts, 1s/2s/4s delay)",
+    "file": "backend/services/positions_service.py:115",
+    "risk": "None — purely additive error handling",
+    "urgency": "Not needed for tomorrow. Errors occur post-close and self-recover. Would be nice-to-have for cleaner logs."
+  }
+}

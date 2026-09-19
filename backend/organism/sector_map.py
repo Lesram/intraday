@@ -46,15 +46,22 @@ SECTOR_MAP: dict[str, str] = {
     # Cloud / Software (counted under Technology)
     "SNOW": "Technology",
     "PLTR": "Technology",
-    # ETFs — treated as their own "sector" so they don't crowd stock entries
-    "SPY": "ETF",
-    "QQQ": "ETF",
-    "IWM": "ETF",
-    "XLK": "ETF",
-    "XLE": "ETF",
-    # improve9 B4: Inverse ETFs for bearish participation (long-only)
-    "SH": "ETF",
-    "PSQ": "ETF",
+    # Audit-F finding 15 (2026-05-01): broad-index ETFs map to a generic
+    # "Index" bucket (not GICS sector — they cover the whole market). But
+    # sector ETFs (XLK, XLE) and their inverses now map to the underlying
+    # GICS sector so they correctly trip the sector cap. Holding XLK + AAPL
+    # used to count as 1 ETF + 1 Tech = no cap; now counts as 2 Tech.
+    "SPY": "Index",   # broad market — keep as own bucket
+    "QQQ": "Index",
+    "IWM": "Index",
+    "XLK": "Technology",   # Tech sector ETF
+    "XLE": "Energy",       # Energy sector ETF
+    # Inverse ETFs (long-only short access) map to opposite-of-underlying
+    # so they DON'T trip the long-side sector cap (they're a hedge, not
+    # a concentration). SH inverses SPY (broad), PSQ inverses QQQ (Tech-
+    # heavy). Both kept as Index-Inverse bucket.
+    "SH": "Index-Inverse",
+    "PSQ": "Index-Inverse",
 }
 
 

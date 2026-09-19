@@ -1,0 +1,414 @@
+"""V13 W95 (Lens 4: Data Integrity) — behavioral coverage.
+
+Closes:
+- AuditLog.ts duplicate-index bug (W74-FOLLOWUP-1).
+- BB5-F2 GDPR right-to-be-forgotten via the new
+  ``backend.services.gdpr_forget_user.forget_user`` service.
+- Outbox prune Prometheus metrics (``outbox_pruned_total``,
+  ``outbox_prune_last_run_timestamp_seconds``).
+- realized_trades vs brain.total_trades reconciliation surface at
+  ``/api/v1/health/data-integrity``.
+
+Run with:
+    ./venv/bin/python -m pytest tests/test_v13_w95_data_integrity.py -v
+"""
+# wave: V13-W95
+from __future__ import annotations
+
+import asyncio
+import ast
+from datetime import UTC, datetime
+import json
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCHEMAS_PATH = REPO_ROOT / "backend" / "infra" / "schemas.py"
+OUTBOX_PATH = REPO_ROOT / "backend" / "infra" / "outbox_worker.py"
+GDPR_PATH = REPO_ROOT / "backend" / "services" / "gdpr_forget_user.py"
+DI_HEALTH_PATH = REPO_ROOT / "backend" / "api" / "routes" / "data_integrity_health.py"
+
+
+# ────────────────────────────────────────────────────────────────────
+# 1. AuditLog.ts duplicate index closed
+# ────────────────────────────────────────────────────────────────────
+
+
+def test_w95_audit_log_ts_has_no_duplicate_index_decl():
+    """`AuditLog.ts` had `index=True` AND `Index("ix_audit_logs_ts", "ts")`
+    in __table_args__ — the duplicate broke SQLite tests on first import.
+    W95 removes `index=True` so the explicit named declaration wins.
+
+    Parse the AST and find the AuditLog class; assert that within the
+    `ts` mapped_column, no `index=True` keyword appears.
+    """
+    src = SCHEMAS_PATH.read_text()
+    tree = ast.parse(src)
+
+    audit_class = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == "AuditLog":
+            audit_class = node
+            break
+    assert audit_class is not None, "AuditLog class not found in schemas.py"
+
+    # Find the `ts: Mapped[datetime] = mapped_column(...)` assignment.
+    ts_call = None
+    for stmt in audit_class.body:
+        if (
+            isinstance(stmt, ast.AnnAssign)
+            and isinstance(stmt.target, ast.Name)
+            and stmt.target.id == "ts"
+            and isinstance(stmt.value, ast.Call)
+        ):
+            ts_call = stmt.value
+            break
+    assert ts_call is not None, "AuditLog.ts mapped_column call not found"
+
+    # No keyword `index=True` allowed.
+    for kw in ts_call.keywords:
+        if kw.arg == "index":
+            assert not (
+                isinstance(kw.value, ast.Constant) and kw.value.value is True
+            ), (
+                "AuditLog.ts retains index=True; W95 was supposed to "
+                "remove it (the explicit Index() declaration in "
+                "__table_args__ is canonical)."
+            )
+
+    # And the explicit Index must still be there in __table_args__.
+    assert "ix_audit_logs_ts" in src
+    assert 'Index("ix_audit_logs_ts", "ts")' in src
+
+
+# ────────────────────────────────────────────────────────────────────
+# 2. GDPR forget_user service
+# ────────────────────────────────────────────────────────────────────
+
+
+def test_w95_gdpr_forget_user_module_exists():
+    assert GDPR_PATH.is_file()
+    src = GDPR_PATH.read_text()
+    assert "async def forget_user(" in src
+    assert "ForgetUserResult" in src
+
+
+def test_w95_gdpr_discover_scrub_targets():
+    """The discover helper returns the canonical list of tables that
+    will be scrubbed.  Must include known user-scoped tables and
+    exclude `users` itself."""
+    from backend.services.gdpr_forget_user import discover_scrub_targets
+    tables = discover_scrub_targets()
+    assert isinstance(tables, list)
+    assert tables == sorted(tables)  # alphabetized
+    assert "users" not in tables, (
+        "users is the parent — scrubbed by forget_user only via "
+        "delete_user_row=True path, not by the per-table sweep"
+    )
+    # Spot-check tables that we know have user_id columns.
+    expected_subset = {"orders", "realized_trades", "position_lots"}
+    assert expected_subset.issubset(set(tables)), (
+        f"expected scrub targets missing: {expected_subset - set(tables)}"
+    )
+
+
+def test_w95_gdpr_forget_user_audit_pseudonymize_default():
+    """The service's default is to PSEUDONYMIZE audit_logs rows, not
+    delete them — compliance-retention is separate from GDPR right-to-
+    be-forgotten."""
+    from backend.services.gdpr_forget_user import discover_scrub_targets
+
+    targets = discover_scrub_targets()
+    assert "audit_logs" not in targets
+
+    src = GDPR_PATH.read_text()
+    assert "pseudonymize_audit: bool = True" in src
+    assert "_AUDIT_LOG_TABLES = (\"audit_logs\",)" in src
+    # And the tight pseudonymization path: hash + prefix.
+    assert "forgotten:" in src
+    assert "sha256" in src
+
+
+def test_w95_gdpr_forget_user_result_is_immutable_dataclass():
+    """The result struct is a frozen dataclass so callers can stash
+    it in audit logs without worrying about mutation."""
+    from backend.services.gdpr_forget_user import ForgetUserResult
+    r = ForgetUserResult(
+        user_id="alice", user_deleted=True,
+        audit_actor_pseudonymized=2,
+        tables_affected={"orders": 5},
+    )
+    import dataclasses
+    assert dataclasses.is_dataclass(r)
+    fld_dict = {f.name: f for f in dataclasses.fields(r)}
+    assert "tables_affected" in fld_dict
+
+
+# ────────────────────────────────────────────────────────────────────
+# 3. Outbox prune Prometheus metrics
+# ────────────────────────────────────────────────────────────────────
+
+
+def test_w95_outbox_prune_metrics_declared():
+    """The two prune metrics are declared at module level.  They may
+    be None (e.g. if prometheus_client is unavailable in this env),
+    but the names must exist so the call sites compile."""
+    from backend.infra import outbox_worker
+    worker = outbox_worker.OutboxWorker(lambda: None)
+    assert isinstance(worker, outbox_worker.OutboxWorker)
+    assert hasattr(outbox_worker, "OUTBOX_PRUNED_TOTAL")
+    assert hasattr(outbox_worker, "OUTBOX_PRUNE_LAST_RUN_TS")
+
+
+def test_w95_outbox_prune_emits_metrics(monkeypatch):
+    """`prune_old_events` should call `.inc()` and `.set()` on the
+    metrics when total_pruned > 0."""
+    from backend.infra import outbox_worker
+
+    class _Counter:
+        def __init__(self):
+            self.values: list[int] = []
+
+        def inc(self, value: int) -> None:
+            self.values.append(value)
+
+    class _Gauge:
+        def __init__(self):
+            self.values: list[float] = []
+
+        def set(self, value: float) -> None:
+            self.values.append(value)
+
+    class _Result:
+        def __init__(self, rows=None, rowcount=0):
+            self._rows = rows or []
+            self.rowcount = rowcount
+
+        def all(self):
+            return list(self._rows)
+
+    class _Session:
+        def __init__(self, factory):
+            self._factory = factory
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def execute(self, stmt):
+            kind = type(stmt).__name__
+            if kind == "Select":
+                self._factory.select_calls += 1
+                if self._factory.select_calls == 1:
+                    return _Result(rows=[("evt-1",), ("evt-2",)])
+                return _Result(rows=[])
+            if kind == "Delete":
+                self._factory.delete_calls += 1
+                return _Result(rowcount=2)
+            raise AssertionError(f"unexpected statement type: {kind}")
+
+        async def commit(self):
+            self._factory.commits += 1
+
+    class _SessionFactory:
+        def __init__(self):
+            self.select_calls = 0
+            self.delete_calls = 0
+            self.commits = 0
+
+        def __call__(self):
+            return _Session(self)
+
+    counter = _Counter()
+    gauge = _Gauge()
+    monkeypatch.setattr(outbox_worker, "OUTBOX_PRUNED_TOTAL", counter)
+    monkeypatch.setattr(outbox_worker, "OUTBOX_PRUNE_LAST_RUN_TS", gauge)
+    sessions = _SessionFactory()
+    worker = outbox_worker.OutboxWorker(sessions)
+
+    pruned = asyncio.run(worker.prune_old_events(
+        max_age_days=30,
+        now=datetime(2026, 5, 11, tzinfo=UTC),
+    ))
+
+    assert pruned == 2
+    assert sessions.delete_calls == 1
+    assert sessions.commits == 1
+    assert counter.values == [2]
+    assert len(gauge.values) == 1
+
+
+# ────────────────────────────────────────────────────────────────────
+# 4. Data-integrity reconciliation endpoint
+# ────────────────────────────────────────────────────────────────────
+
+
+def test_w95_data_integrity_route_module_exists():
+    assert DI_HEALTH_PATH.is_file()
+    src = DI_HEALTH_PATH.read_text()
+    assert '@router.get("/data-integrity")' in src
+    assert "_compute_variance" in src
+    assert "_realized_trade_summary" in src
+
+
+def test_w95_data_integrity_compute_variance_pure():
+    """The pure helper computes percent variance and `within_tolerance`
+    correctly."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _compute_variance
+
+    # Both None → tolerance None.
+    out = _compute_variance(None, None)
+    assert out["within_tolerance"] is None
+    assert out["variance_pct"] is None
+
+    # Equal → 0% variance.
+    out = _compute_variance(100, 100)
+    assert out["variance_pct"] == 0.0
+    assert out["within_tolerance"] is True
+
+    # 5% — at default tolerance (5%).
+    out = _compute_variance(95, 100)
+    assert out["variance_pct"] == 5.0
+    assert out["within_tolerance"] is True
+
+    # 10% — above default tolerance.
+    out = _compute_variance(90, 100)
+    assert out["variance_pct"] == 10.0
+    assert out["within_tolerance"] is False
+
+
+def test_w95_data_integrity_round_trip_ratio_pure():
+    """Fill-count brain totals are healthy when they are roughly 2x
+    realized round trips, even though direct brain-vs-realized variance
+    is large."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _round_trip_variance
+
+    out = _round_trip_variance(realized=50, brain=100)
+    assert out["expected_brain_total_trades_from_realized"] == 100
+    assert out["round_trip_variance_pct"] == 0.0
+    assert out["round_trip_within_tolerance"] is True
+
+
+def test_w95_data_integrity_classifies_empty_realized_as_critical():
+    """The live failure shape (brain/orders exist, realized/lots empty)
+    must be reported as critical accounting drift, not as expected
+    fill-vs-round-trip semantics."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _classify_accounting_status
+
+    out = _classify_accounting_status(
+        brain=498,
+        realized=0,
+        orders=1369,
+        executions=0,
+        position_lots=0,
+        tick_telemetry=0,
+    )
+    assert out["accounting_status"] == "critical"
+    assert "brain_has_trades_but_realized_trades_empty" in out["reasons"]
+    assert "orders_exist_but_executions_empty" in out["reasons"]
+    assert "orders_and_brain_trades_exist_but_position_lots_empty" in out["reasons"]
+
+
+def test_w95_data_integrity_classifies_clean_round_trip_as_ok():
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _classify_accounting_status
+
+    out = _classify_accounting_status(
+        brain=100,
+        realized=50,
+        orders=100,
+        executions=100,
+        position_lots=50,
+        tick_telemetry=500,
+    )
+    assert out["accounting_status"] == "ok"
+    assert out["reasons"] == []
+
+
+def test_w95_data_integrity_scope_detects_historical_db_superset():
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _classify_scope_status
+
+    out = _classify_scope_status(
+        brain_history={
+            "rows": 537,
+            "first_closed_at": "2026-03-30T18:37:23+00:00",
+        },
+        realized_summary={
+            "distinct_close_orders": 719,
+            "first_close_date": "2026-03-03T20:01:24+00:00",
+        },
+    )
+    assert out["scope_status"] == "not_comparable_db_superset"
+    assert "db_history_starts_before_brain_history" in out["scope_notes"]
+    assert "db_close_orders_exceed_brain_history_rows" in out["scope_notes"]
+
+
+def test_w95_data_integrity_db_superset_is_not_accounting_warning():
+    """A populated historical DB ledger can be a superset of the current
+    brain history. That is a scope note, not proof of broken accounting."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _classify_accounting_status
+
+    out = _classify_accounting_status(
+        brain=537,
+        realized=993,
+        orders=1479,
+        executions=1551,
+        position_lots=805,
+        tick_telemetry=10000,
+        scope_status="not_comparable_db_superset",
+        realized_close_orders=719,
+        brain_history_rows=537,
+    )
+    assert out["accounting_status"] == "ok"
+    assert out["reasons"] == []
+
+
+def test_w95_data_integrity_reads_current_manifest_shape(tmp_path):
+    """Production manifest stores total_trades at top level."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _read_brain_total_trades
+
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "total_trades": 498,
+        "strategy_expectancy": {"n_trades": 498},
+    }))
+
+    assert _read_brain_total_trades(tmp_path) == 498
+
+
+def test_w95_data_integrity_reads_legacy_nested_manifest_shape(tmp_path):
+    """Older brain snapshots nested the counter under brain_state."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT))
+    from backend.api.routes.data_integrity_health import _read_brain_total_trades
+
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "brain_state": {"total_trades": "123"},
+    }))
+
+    assert _read_brain_total_trades(tmp_path) == 123
+
+
+def test_w95_data_integrity_route_mounted():
+    """Confirm the data-integrity router is wired into the FastAPI app."""
+    from fastapi import FastAPI
+
+    from backend.api.routes_setup import register_routes
+
+    app = FastAPI()
+    register_routes(app)
+    paths = {getattr(route, "path", "") for route in app.routes}
+    assert "/api/v1/health/data-integrity" in paths

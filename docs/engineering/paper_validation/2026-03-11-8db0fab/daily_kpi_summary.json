@@ -1,0 +1,66 @@
+{
+  "date": "2026-03-11",
+  "head_sha": "8db0fab",
+
+  "economics": {
+    "today_trades": 0,
+    "today_realized_pnl": 0.0,
+    "today_unrealized_pnl": 0.0,
+    "today_win_rate": null,
+    "today_avg_win": null,
+    "today_avg_loss": null,
+    "today_payoff_ratio": null,
+    "note": "Zero trades — no economics to compute. Pivoting to gate audit."
+  },
+
+  "exit_breakdown_by_reason": {},
+  "entry_breakdown_by_source": {},
+  "top_5_winners": [],
+  "top_5_losers": [],
+  "top_economic_drag": null,
+  "top_positive_contributor": null,
+
+  "confidence_usefulness_today": "N/A — no trades executed to evaluate signal quality",
+
+  "gate_selectivity_audit": {
+    "ticks_analyzed": 362,
+    "candidates_seen_per_tick": 22,
+    "candidates_reaching_confidence_eval": 27,
+    "candidates_passing_all_gates": 0,
+    "max_eff_conf_today": 0.22,
+    "gate_floor": 0.25,
+
+    "top_rejected_candidates": [
+      {"symbol": "TSLA", "eff_conf": 0.22, "regime": "trending_down"},
+      {"symbol": "XLE", "eff_conf": 0.21, "regime": "trending_down"},
+      {"symbol": "NVDA", "eff_conf": 0.17, "regime": "trending_down"},
+      {"symbol": "TSLA", "eff_conf": 0.15, "regime": "high_vol"},
+      {"symbol": "XLE", "eff_conf": 0.14, "regime": "high_vol"},
+      {"symbol": "GOOGL", "eff_conf": 0.13, "regime": "high_vol"},
+      {"symbol": "SNOW", "eff_conf": 0.00, "regime": "trending_up"},
+      {"symbol": "IWM", "eff_conf": 0.00, "regime": "high_vol"},
+      {"symbol": "AMD", "eff_conf": 0.00, "regime": "high_vol"},
+      {"symbol": "META", "eff_conf": 0.00, "regime": "low_vol"}
+    ],
+
+    "rejection_reasons": {
+      "confidence_gate_below_0.25": "majority",
+      "trending_down_block_after_10am_ET": 2,
+      "regime_transition_cooldown": 1,
+      "data_stale_at_startup": 1,
+      "warmup_period": 1
+    },
+
+    "selectivity_verdict": "HEALTHY_SELECTIVITY",
+    "verdict_rationale": "The no-trade outcome is economically healthy: (1) max eff_conf=0.22 is genuinely below the 0.25 floor — not a near-miss; (2) regime instability (4 changes in 5 hours) confirms choppy market; (3) scanner returned zero movers all day; (4) the confidence formula (breakout+tension) correctly produced zero/near-zero scores when no technical setups existed. This is the system working as designed — refusing to force entries in a no-edge environment."
+  },
+
+  "lifetime_context": {
+    "total_trades": 142,
+    "cumulative_pnl": -944.74,
+    "equity": 111612.23,
+    "drawdown_from_start": "-0.84% from $112,557 (Alpaca paper starting value)",
+    "days_since_first_trade": "~8 (Mar 3-11)",
+    "avg_trades_per_active_day": "~24 (prior days)"
+  }
+}

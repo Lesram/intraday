@@ -81,7 +81,10 @@ export const listTemplates = async (): Promise<ChartTemplate[]> => {
 export const createTemplate = async (
   data: CreateTemplateRequest
 ): Promise<ChartTemplate> => {
-  const response = await apiClient.post<ChartTemplate>('/chart-templates', data);
+  // V4 O-7 (2026-05-02): trailing slash. Without it, FastAPI returns
+  // 307 to /chart-templates/ on every save — wastes a round-trip and
+  // can drop POST body on some proxies.
+  const response = await apiClient.post<ChartTemplate>('/chart-templates/', data);
   return response.data;
 };
 

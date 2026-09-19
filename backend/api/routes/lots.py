@@ -66,13 +66,20 @@ class RealizedTradeResponse(BaseModel):
 
 
 class CostBasisResponse(BaseModel):
-    """Cost basis response model"""
+    """Cost basis response model.
+
+    Audit-I finding I-12 (2026-05-02): the response carries a
+    `has_position: bool` flag so consumers can distinguish "user has
+    no open lots in this symbol" from any other zero state. Previously
+    cost_basis=0/total_qty=0 was indistinguishable from a real flat.
+    """
 
     symbol: str
     weighted_avg_cost: float
     total_qty: float
     total_cost: float
     open_lots: int
+    has_position: bool = False
 
 
 class UnrealizedPnLResponse(BaseModel):
@@ -202,6 +209,7 @@ async def get_cost_basis(
                 total_qty=0.0,
                 total_cost=0.0,
                 open_lots=0,
+                has_position=False,
             )
 
         total_qty = sum(lot.remaining_qty for lot in open_lots)
@@ -214,6 +222,7 @@ async def get_cost_basis(
             total_qty=float(total_qty),
             total_cost=float(total_cost),
             open_lots=len(open_lots),
+            has_position=True,
         )
 
     except Exception as e:

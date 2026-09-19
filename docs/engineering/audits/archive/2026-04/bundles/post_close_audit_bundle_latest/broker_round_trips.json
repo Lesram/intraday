@@ -1,0 +1,166 @@
+{
+  "session_date": "2026-04-01",
+  "total_orders": 41,
+  "filled_orders": 41,
+  "canceled_orders": 0,
+  "round_trips": 14,
+  "total_pnl": 51.35,
+  "wins": 6,
+  "losses": 8,
+  "trades": [
+    {
+      "symbol": "AMZN",
+      "side": "long",
+      "shares": 15,
+      "avg_entry": 210.426,
+      "exit_price": 210.036,
+      "pnl": -5.85,
+      "entry_time": "2026-04-01T13:28:10",
+      "exit_time": "2026-04-01T13:37:10",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "XLK",
+      "side": "long",
+      "shares": 40,
+      "avg_entry": 134.8115,
+      "exit_price": 135.11025,
+      "pnl": 11.95,
+      "entry_time": "2026-04-01T14:01:05",
+      "exit_time": "2026-04-01T14:18:10",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "IWM",
+      "side": "long",
+      "shares": 13,
+      "avg_entry": 251.13,
+      "exit_price": 251.68,
+      "pnl": 7.15,
+      "entry_time": "2026-04-01T14:40:09",
+      "exit_time": "2026-04-01T14:57:04",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "TSLA",
+      "side": "long",
+      "shares": 12,
+      "avg_entry": 380.7125,
+      "exit_price": 381.66,
+      "pnl": 11.37,
+      "entry_time": "2026-04-01T14:53:11",
+      "exit_time": "2026-04-01T15:10:04",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "SH",
+      "side": "long",
+      "shares": 44,
+      "avg_entry": 37.54,
+      "exit_price": 37.53,
+      "pnl": -0.44,
+      "entry_time": "2026-04-01T15:08:02",
+      "exit_time": "2026-04-01T15:10:05",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "PSQ",
+      "side": "long",
+      "shares": 1,
+      "avg_entry": 31.7,
+      "exit_price": 31.69,
+      "pnl": -0.01,
+      "entry_time": "2026-04-01T15:08:02",
+      "exit_time": "2026-04-01T15:13:07",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "LLY",
+      "side": "long",
+      "shares": 5,
+      "avg_entry": 951.22,
+      "exit_price": 959.464,
+      "pnl": 41.22,
+      "entry_time": "2026-04-01T15:28:03",
+      "exit_time": "2026-04-01T15:45:04",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "SH",
+      "side": "long",
+      "shares": 106,
+      "avg_entry": 37.5025,
+      "exit_price": 37.51,
+      "pnl": 0.8,
+      "entry_time": "2026-04-01T16:14:02",
+      "exit_time": "2026-04-01T16:31:13",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "XOM",
+      "side": "long",
+      "shares": 20,
+      "avg_entry": 162.21,
+      "exit_price": 162.0075,
+      "pnl": -4.05,
+      "entry_time": "2026-04-01T18:37:03",
+      "exit_time": "2026-04-01T18:44:11",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "SPY",
+      "side": "long",
+      "shares": 2,
+      "avg_entry": 654.715,
+      "exit_price": 654.33,
+      "pnl": -0.77,
+      "entry_time": "2026-04-01T18:50:02",
+      "exit_time": "2026-04-01T18:57:08",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "XOM",
+      "side": "long",
+      "shares": 20,
+      "avg_entry": 161.89,
+      "exit_price": 161.58,
+      "pnl": -6.2,
+      "entry_time": "2026-04-01T19:25:11",
+      "exit_time": "2026-04-01T19:26:11",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "XLE",
+      "side": "long",
+      "shares": 84,
+      "avg_entry": 59.0499,
+      "exit_price": 59.08,
+      "pnl": 2.53,
+      "entry_time": "2026-04-01T19:15:11",
+      "exit_time": "2026-04-01T19:27:01",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "PSQ",
+      "side": "long",
+      "shares": 105,
+      "avg_entry": 31.79,
+      "exit_price": 31.77,
+      "pnl": -2.1,
+      "entry_time": "2026-04-01T19:36:07",
+      "exit_time": "2026-04-01T19:37:09",
+      "hold_seconds": 0
+    },
+    {
+      "symbol": "SPY",
+      "side": "long",
+      "shares": 6,
+      "avg_entry": 656.0533,
+      "exit_price": 655.345,
+      "pnl": -4.25,
+      "entry_time": "2026-04-01T19:36:07",
+      "exit_time": "2026-04-01T19:51:10",
+      "hold_seconds": 0
+    }
+  ]
+}

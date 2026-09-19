@@ -1,0 +1,65 @@
+{
+  "date": "2026-03-13",
+  "head_sha": "8db0fab",
+
+  "stable_window": {
+    "start_date": "2026-03-11",
+    "end_date": "2026-03-13",
+    "config_sha": "8db0fab",
+    "trading_days": 3,
+    "config_changes_in_window": 0,
+    "code_changes_in_window": 0
+  },
+
+  "window_performance": {
+    "total_trades": 0,
+    "realized_pnl": 0.0,
+    "win_rate": "N/A",
+    "avg_win": "N/A",
+    "avg_loss": "N/A",
+    "max_drawdown": 0.0,
+    "equity_start": 111612.21,
+    "equity_end": 111612.21,
+    "equity_change_pct": 0.0
+  },
+
+  "daily_breakdown": [
+    {
+      "date": "2026-03-11",
+      "trades": 0,
+      "pnl": 0.0,
+      "max_eff_conf": 0.17,
+      "regime_dominant": "trending_up",
+      "market_spy_return": -0.76,
+      "note": "First zero-trade day. Candidates detected but all failed confidence gate."
+    },
+    {
+      "date": "2026-03-12",
+      "trades": 0,
+      "pnl": 0.0,
+      "max_eff_conf": 0.20,
+      "regime_dominant": "trending_up (incorrect — broad sell-off)",
+      "market_spy_return": -1.12,
+      "note": "Broad sell-off. 5/7 daily winners were candidates. Regime lag + confidence formula structural gap."
+    },
+    {
+      "date": "2026-03-13",
+      "trades": 0,
+      "pnl": 0.0,
+      "max_eff_conf": 0.20,
+      "regime_dominant": "trending_up → high_vol",
+      "market_spy_return": -0.57,
+      "note": "Continued tech weakness. PSQ reached 0.20 eff_conf — closest inverse ETF has ever been to gate."
+    }
+  ],
+
+  "pattern_assessment": "Three consecutive zero-trade days on identical config. The organism is correctly rejecting low-confidence candidates, but the confidence formula has a structural gap that prevents inverse ETFs and defensive rotations from scoring above ~0.20. This is a known design limitation (INV-008), not a bug.",
+
+  "starvation_risk": {
+    "trades_to_evolution": 142,
+    "consecutive_zero_days": 3,
+    "projected_days_to_evolution": "UNKNOWN — depends on market regime returning to conditions the confidence formula can capture",
+    "risk_level": "ELEVATED",
+    "mitigation": "None warranted yet. The confidence formula is working as designed for breakout/momentum setups. Changing it for sell-off days is Phase C work requiring design discussion."
+  }
+}

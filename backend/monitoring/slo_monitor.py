@@ -177,6 +177,26 @@ class SLOMonitor:
             circuit_breaker_trips_total.labels(error_type=error_type).inc()
             circuit_breaker_open.set(1)
             logger.critical(f"Circuit breaker OPENED due to {error_type}")
+            # V10 YY-1 / Wave-52 (2026-05-03): wire operator alert.
+            try:
+                from backend.infra.alerting import (
+                    AlertCategory, AlertSeverity, send_alert,
+                    dispatch_alert_from_thread,
+                )
+                _et = error_type
+                dispatch_alert_from_thread(
+                    lambda: send_alert(
+                        AlertCategory.SYSTEM_ERROR,
+                        AlertSeverity.CRITICAL,
+                        "Circuit Breaker OPENED",
+                        f"Circuit breaker opened due to {_et}.",
+                    )
+                )
+            except Exception as _alert_err:
+                logger.warning(
+                    "YY-1: circuit-breaker-open alert dispatch failed: %s",
+                    _alert_err,
+                )
         else:
             circuit_breaker_open.set(0)
             logger.info("Circuit breaker CLOSED")
@@ -327,6 +347,26 @@ class SLOMonitor:
                 for alert in alerts:
                     if alert['severity'] == 'critical':
                         logger.critical(f"SLO ALERT: {alert['message']}")
+                        # V10 YY-1 / Wave-52 (2026-05-03): wire operator alert.
+                        try:
+                            from backend.infra.alerting import (
+                                AlertCategory, AlertSeverity, send_alert,
+                                dispatch_alert_from_thread,
+                            )
+                            _msg = alert['message']
+                            dispatch_alert_from_thread(
+                                lambda: send_alert(
+                                    AlertCategory.PERFORMANCE,
+                                    AlertSeverity.CRITICAL,
+                                    "SLO Burn-Rate Critical",
+                                    _msg,
+                                )
+                            )
+                        except Exception as _alert_err:
+                            logger.warning(
+                                "YY-1: SLO-burn alert dispatch failed: %s",
+                                _alert_err,
+                            )
                     else:
                         logger.warning(f"SLO WARNING: {alert['message']}")
 
