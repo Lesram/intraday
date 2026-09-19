@@ -745,8 +745,12 @@ def test_live_engine_shadow_telemetry_is_disabled_by_default_and_pre_sizing():
     assert live_tick_start < call_start < sizing_start
 
 
-def test_runtime_snapshot_includes_shadow_telemetry_switches():
+def test_runtime_snapshot_includes_shadow_telemetry_switches(monkeypatch):
     from scripts.runtime.write_runtime_snapshot import _build_defaults_snapshot
+
+    # This case checks defaults; the integration harness safely overrides paths.
+    monkeypatch.delenv("ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH", raising=False)
+    monkeypatch.delenv("ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH", raising=False)
 
     snapshot = _build_defaults_snapshot()
 

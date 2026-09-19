@@ -23,7 +23,9 @@
     "existing_code_default_round_trip_bps": 3,
     "historical_alternate_round_trip_bps": 6,
     "reports_require_explicit_matching_process_local_ORGANISM_COST_BPS": true,
-    "runtime_cost_environment_changed": false
+    "runtime_cost_environment_changed": false,
+    "proposed_primary_round_trip_bps": 3,
+    "proposed_sensitivity_round_trip_bps": 6
   },
   "preserve": [
     "original freeze bytes and July timestamp archive",
