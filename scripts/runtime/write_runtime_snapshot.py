@@ -734,23 +734,26 @@ def _docker_exec(container: str, cmd: str) -> str:
 
 def _curl_organism_status() -> dict | None:
     """Query the organism status endpoint, with auth."""
+    import urllib.request
+
     base = os.getenv("ORGANISM_API_BASE", "http://localhost:8000")
     # Try authenticated first, then unauthenticated
     token = _get_auth_token(base)
-    headers = []
+    headers = {}
     if token:
-        headers = ["-H", f"Authorization: Bearer {token}"]
+        headers = {"Authorization": f"Bearer {token}"}
 
-    for path in ["/api/v1/organism/status", "/api/organism/status"]:
+    for path in [
+        "/api/v1/paper-monitor/organism/status",
+        "/api/v1/organism/status",
+        "/api/organism/status",
+    ]:
         try:
-            cmd = ["curl", "-s", "--max-time", "5", f"{base}{path}"] + headers
-            out = subprocess.check_output(
-                cmd, text=True, stderr=subprocess.DEVNULL, timeout=10,
-            ).strip()
-            if out:
-                data = json.loads(out)
-                if "detail" not in data:  # not an error response
-                    return data
+            request = urllib.request.Request(f"{base}{path}", headers=headers)
+            with urllib.request.urlopen(request, timeout=5) as response:
+                data = json.load(response)
+            if isinstance(data, dict) and "detail" not in data:
+                return data
         except Exception:  # noqa: BLE001, S112
             continue
     return None
@@ -768,6 +771,17 @@ def _get_auth_token(base: str) -> str:
     """
     username = os.getenv("INTRA_API_USER", "")
     password = os.getenv("INTRA_API_PASSWORD", "")
+    credential_file = os.getenv("INTRA_API_CREDENTIALS_FILE", "")
+    if (not username or not password) and credential_file:
+        try:
+            path = Path(credential_file)
+            if path.stat().st_mode & 0o077:
+                return ""  # Refuse credentials readable by another local user.
+            credentials = json.loads(path.read_text())
+            username = credentials.get("username", "")
+            password = credentials.get("password", "")
+        except (OSError, ValueError, AttributeError):
+            return ""
     if not username or not password:
         # Operator hasn't supplied credentials — return empty token
         # so callers see the auth failure explicitly.

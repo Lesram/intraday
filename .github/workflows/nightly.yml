@@ -1,20 +1,52 @@
 name: Nightly Deep Tests
 
 on:
-  schedule:
-    # Run at 2 AM UTC every day
-    - cron: '0 2 * * *'
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Reviewed immutable source commit (full 40-character SHA)
+        required: true
+        type: string
+      notify_issues:
+        description: Explicitly authorize GitHub issue delivery on failure
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      notify_issues:
+        required: false
+        default: false
+        type: boolean
 
-env:
-  PYTHON_VERSION: "3.11"
+permissions:
+  contents: read
 
 jobs:
   deep-tests:
-    name: "🔬 Deep Testing Suite"
+    name: Deep testing suite
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # Allow up to 1 hour for comprehensive testing
-
+    timeout-minutes: 75
+    outputs:
+      source_sha: ${{ steps.provenance.outputs.source_sha }}
+    env:
+      CI_EXPECTED_SHA: ${{ inputs.source_sha }}
+      APP_ENVIRONMENT: testing
+      ENVIRONMENT: testing
+      TESTING: 'true'
+      USE_MOCK_BROKER: 'true'
+      USE_MOCK_DATA: 'true'
+      TRADING_EXECUTION_MODE: shadow
+      PYTHONDONTWRITEBYTECODE: '1'
+      ORGANISM_BRAIN_DIR: ${{ runner.temp }}/paper-ci-brain
+      ORGANISM_SHADOW_EXIT_TELEMETRY_PATH: ${{ runner.temp }}/paper-ci-brain/shadow.jsonl
+      DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+      REDIS_URL: redis://localhost:6379/0
+      TEST_SEED: '42'
+      PYTHONPATH: .
     services:
       postgres:
         image: postgres:15
@@ -23,205 +55,168 @@ jobs:
           POSTGRES_USER: testuser
           POSTGRES_DB: testdb
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
         ports:
           - 5432:5432
-
       redis:
         image: redis:7-alpine
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd "redis-cli ping" --health-interval 10s
+          --health-timeout 5s --health-retries 5
         ports:
           - 6379:6379
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify source and clear previous evidence
+        id: provenance
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, pathlib, re, subprocess, time
+          expected = os.environ['CI_EXPECTED_SHA']
+          actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          if not re.fullmatch(r'[0-9a-f]{40}', expected) or actual != expected:
+              raise SystemExit('Reviewed source SHA must be full length and match checkout')
+          art = pathlib.Path('artifacts')
+          art.mkdir(exist_ok=True)
+          started = time.time()
+          # Tracked evidence from a prior run must never satisfy this run.
+          for name in ('task_report.json', 'test_summary.json', 'replay_summary.json',
+                       'grep_assertions.json', 'runtime_snapshot_summary.json',
+                       'runtime_config_snapshot.json', 'semantic_invariants_summary.json',
+                       'spec_drift_summary.json', 'postclose_kpi_report.json',
+                       'postclose_kpi_report.md',
+                       'phase8_evidence_warehouse/postclose_run_summary.json'):
+              (art / name).unlink(missing_ok=True)
+          payload = {'source_sha': actual, 'caller_sha': os.environ['GITHUB_SHA'],
+                     'started_at_epoch': started, 'run_id': os.environ['GITHUB_RUN_ID'],
+                     'run_attempt': os.environ['GITHUB_RUN_ATTEMPT'],
+                     'scope': 'secret-free CI; not live broker/runtime verification'}
+          (art / 'ci_run_provenance.json').write_text(json.dumps(payload, indent=2) + '\n')
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f'CI_RUN_STARTED_AT={started}\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'source_sha={actual}\n')
+          PYCODE
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Install dependencies
+        timeout-minutes: 12
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-          
-          # Install additional testing dependencies
-          pip install hypothesis pytest-benchmark pytest-timeout pytest-randomly
-
-      - name: Set up test environment
-        env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-          REDIS_URL: redis://localhost:6379/0
-          TESTING: true
+          python -m pip install -r requirements.lock
+          python -m pip install -c requirements.lock -r requirements-dev.txt pytest-cov pytest-benchmark pytest-randomly
+          python -m pip freeze > artifacts/ci_resolved_dependencies.txt
+      - name: Set up isolated test database
+        timeout-minutes: 2
         run: |
-          # Run database migrations if they exist
-          if [ -f "alembic/env.py" ]; then
-            pip install alembic
-            alembic upgrade head
+          if [ -f alembic/env.py ]; then
+            python -m alembic upgrade head
           fi
-
-      - name: Run deep test suite
-        env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-          REDIS_URL: redis://localhost:6379/0
-          TESTING: true
-          PYTHONPATH: .
-          TEST_SEED: 42  # Deterministic tests
-        run: |
-          # Run deep tests using Make target
-          make test-deep
+      - name: Run deep test suite once and retain output
         timeout-minutes: 45
-        continue-on-error: false
-
-      - name: Generate comprehensive coverage report
-        if: always()
-        env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-          REDIS_URL: redis://localhost:6379/0
-          TESTING: true
-          PYTHONPATH: .
-          TEST_SEED: 42
+        shell: bash
         run: |
-          # Generate coverage from all test types
-          coverage run --source=backend --omit="*/tests/*" -m pytest \
-            tests/ -x --tb=short --disable-warnings
-          
-          coverage xml -o deep-coverage.xml
-          coverage html -d deep-htmlcov
-          coverage report --show-missing
-          
-          echo "📊 Deep test coverage complete"
-
+          set -o pipefail
+          mkdir -p test_reports
+          python -m pytest tests/ --tb=short --durations=20 \
+            --cov=backend --cov-report=term-missing --cov-report=xml:deep-coverage.xml \
+            --cov-report=html:deep-htmlcov --timeout=30 -v -m 'not slow' \
+            --junitxml=test_reports/nightly.xml 2>&1 | tee test_reports/nightly.log
       - name: Performance regression check
         if: always()
+        timeout-minutes: 1
         run: |
-          # Check if performance results exist
-          if [ -f "performance-results.json" ]; then
-            echo "📈 Performance regression analysis"
+          if [ -f performance-results.json ]; then
             python scripts/ci/check_performance_regression.py performance-results.json || true
           else
-            echo "No performance results found for regression analysis"
+            echo 'No performance results found for regression analysis'
           fi
-
       - name: Upload deep test results
         if: always()
+        timeout-minutes: 3
         uses: actions/upload-artifact@v4
         with:
           name: deep-test-results
+          if-no-files-found: error
+          retention-days: 14
           path: |
+            artifacts/ci_run_provenance.json
+            artifacts/ci_resolved_dependencies.txt
+            performance-results.json
             deep-coverage.xml
             deep-htmlcov/
-            performance-results.json
             test_reports/
-          retention-days: 7
 
-      - name: Publish deep coverage to Pages
-        if: success()
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./deep-htmlcov
-          destination_dir: deep-coverage
-
-      - name: Notify on failure
-        if: failure()
-        uses: actions/github-script@v6
-        with:
-          script: |
-            // Create issue or notify about nightly test failures
-            const title = `🚨 Nightly Deep Tests Failed - ${new Date().toISOString().split('T')[0]}`;
-            const body = `
-            ## Nightly Deep Test Failure
-            
-            **Workflow**: ${{ github.workflow }}
-            **Run ID**: ${{ github.run_id }}
-            **Commit**: ${{ github.sha }}
-            **Branch**: ${{ github.ref_name }}
-            
-            ### Failed Components
-            - Deep testing suite encountered failures
-            - Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            
-            ### Next Steps
-            1. Review test failures in the workflow logs
-            2. Check for performance regressions
-            3. Validate test environment setup
-            4. Fix issues and monitor next nightly run
-            
-            ### Auto-Resolution
-            This issue will be automatically closed if tomorrow's nightly run succeeds.
-            
-            /cc @team-platform
-            `;
-            
-            // Check if there's already an open nightly failure issue
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['nightly-failure', 'automated'],
-              state: 'open'
-            });
-            
-            if (issues.data.length === 0) {
-              // Create new issue
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: title,
-                body: body,
-                labels: ['nightly-failure', 'automated', 'bug']
-              });
-            } else {
-              // Update existing issue
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issues.data[0].number,
-                body: `⚠️ Nightly tests failed again on ${new Date().toISOString().split('T')[0]}\n\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`
-              });
-            }
-
-  close-resolved-issues:
-    name: "✅ Close Resolved Issues"
-    runs-on: ubuntu-latest
+  report-status:
+    name: Preserve workflow result and optionally notify
     needs: deep-tests
-    if: success()
-
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # No checkout or platform imports occur in this separately permissioned job.
+    permissions:
+      contents: read
+      issues: write
     steps:
-      - name: Close resolved nightly issues
-        uses: actions/github-script@v6
+      - name: Write durable result and deliver only when authorized
+        timeout-minutes: 2
+        uses: actions/github-script@v7
+        env:
+          AUDIT_RESULT: ${{ needs.deep-tests.result }}
+          AUDITED_SHA: ${{ needs.deep-tests.outputs.source_sha }}
+          EXPECTED_SHA: ${{ inputs.source_sha }}
+          NOTIFY_ISSUES: ${{ inputs.notify_issues }}
         with:
           script: |
-            // Find open nightly failure issues and close them
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['nightly-failure', 'automated'],
-              state: 'open'
-            });
-            
-            for (const issue of issues.data) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                body: `✅ **Auto-Resolved**: Nightly deep tests passed successfully on ${new Date().toISOString().split('T')[0]}\n\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`
-              });
-              
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                state: 'closed'
-              });
+            const fs = require('fs');
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const result = {workflow: context.workflow, result: process.env.AUDIT_RESULT,
+              expected_sha: process.env.EXPECTED_SHA, source_sha: process.env.AUDITED_SHA || null,
+              caller_sha: context.sha, run_url: url, run_id: context.runId,
+              run_attempt: process.env.GITHUB_RUN_ATTEMPT,
+              notification: 'disabled; explicit notify_issues authorization required'};
+            const title = '[Nightly Audit] CI evidence failure';
+            const body = `Result: **${result.result}**\n\nAudited source: ${result.source_sha || 'not verified'}\nExpected source: ${result.expected_sha}\n\nRun: ${url}\n\nInspect uploaded artifacts and logs. This is CI evidence, not a live trading-health certificate.`;
+            try {
+              if (result.result !== 'success' && process.env.NOTIFY_ISSUES === 'true') {
+                const issues = await github.paginate(github.rest.issues.listForRepo,
+                  {...context.repo, state: 'open', labels: 'bug', per_page: 100});
+                const existing = issues.find(issue => !issue.pull_request && issue.title === title);
+                if (existing) {
+                  const comments = await github.paginate(github.rest.issues.listComments,
+                    {...context.repo, issue_number: existing.number, per_page: 100});
+                  if (!(existing.body || '').includes(url) && !comments.some(comment => comment.body && comment.body.includes(url))) {
+                    await github.rest.issues.createComment({...context.repo, issue_number: existing.number, body});
+                  }
+                  result.issue_url = existing.html_url;
+                } else {
+                  const issue = await github.rest.issues.create({...context.repo, title, body, labels: ['bug']});
+                  result.issue_url = issue.data.html_url;
+                }
+                result.notification = 'delivered';
+              } else if (result.result === 'success') {
+                result.notification = 'not required';
+              }
+            } catch (error) {
+              result.notification = 'failed';
+              result.notification_error = 'GitHub issue delivery failed; inspect this job';
+              core.setFailed(result.notification_error);
+            } finally {
+              fs.mkdirSync('workflow-status', {recursive: true});
+              fs.writeFileSync('workflow-status/result.json', JSON.stringify(result, null, 2) + '\n');
+              await core.summary.addHeading(title).addRaw(body).addRaw(`\n\nNotification: ${result.notification}`).write();
             }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        timeout-minutes: 2
+        with:
+          name: nightly-workflow-status
+          path: workflow-status/
+          if-no-files-found: error

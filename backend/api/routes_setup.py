@@ -37,6 +37,7 @@ def register_routes(app) -> None:
     from backend.api.routes.observability import router as observability_router
     from backend.api.routes.optimizations import router as optimizations_router
     from backend.api.routes.orders import router as orders_router
+    from backend.api.routes.paper_monitor import router as paper_monitor_router
     from backend.api.routes.positions import router as positions_router
     from backend.api.routes.risk import router as risk_router
     from backend.api.routes.scanner import router as scanner_router
@@ -62,6 +63,7 @@ def register_routes(app) -> None:
     protected.include_router(positions_router, tags=["Positions"])
     protected.include_router(risk_router, tags=["Risk Management"])
     protected.include_router(orders_router, tags=["Orders"])
+    protected.include_router(paper_monitor_router, tags=["Paper monitoring"])
     protected.include_router(trades_router, tags=["Trades"])
     protected.include_router(signals_router, tags=["Signals"])
     protected.include_router(multi_strategy_live_router, tags=["Multi-Strategy Live"])
@@ -99,8 +101,8 @@ def register_routes(app) -> None:
         protected.include_router(organism_router, tags=["Living Organism"])
     except ImportError:
         logger.info("Organism module not available — skipping organism routes")
-    except Exception as e:
-        logger.warning(f"Failed to load organism routes: {e}")
+    except Exception as e:  # noqa: BLE001 -- keep optional module failures from blocking API startup
+        logger.warning("Failed to load organism routes: %s", e)
 
     # ── Mount ────────────────────────────────────────────────────────
     api_router.include_router(protected)

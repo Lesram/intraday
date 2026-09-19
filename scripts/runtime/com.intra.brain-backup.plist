@@ -6,8 +6,8 @@
     <key>Label</key>
     <string>com.intra.brain-backup</string>
 
-    <!-- Run the rotation script daily at 4:30 PM ET (= 21:30 UTC standard / 20:30 UTC daylight).
-         Adjust as needed. macOS launchd uses local time. -->
+    <!-- Daily at 16:30 in the Mac's local timezone (currently Pacific),
+         after the equity session. Also capture a missed day's backup at login. -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
@@ -32,8 +32,7 @@
     <key>StandardErrorPath</key>
     <string>/Users/marselkei/VS/intra/logs/brain_backup.log</string>
 
-    <!-- Don't run on missed boots — daily rotation is fine to skip. -->
     <key>RunAtLoad</key>
-    <false/>
+    <true/>
 </dict>
 </plist>
