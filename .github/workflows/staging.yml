@@ -3,6 +3,12 @@ name: Staging Deployment
 on:
   push:
     branches: [main]
+    # Scheduler-only changes must not publish or deploy the old main platform.
+    paths-ignore:
+      - ".github/workflows/paper-postclose-audit.yml"
+      - ".github/workflows/nightly.yml"
+      - ".github/workflows/scheduler-bridge-check.yml"
+      - ".github/workflows/staging.yml"
   pull_request:
     branches: [main]
     types: [labeled]

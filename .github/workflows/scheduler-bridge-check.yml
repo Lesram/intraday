@@ -1,0 +1,146 @@
+name: scheduler-bridge-check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/paper-postclose-audit.yml'
+      - '.github/workflows/nightly.yml'
+      - '.github/workflows/scheduler-bridge-check.yml'
+      - '.github/workflows/staging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scheduler-bridge-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install YAML reader
+        timeout-minutes: 1
+        run: python -m pip install PyYAML==6.0.3
+      - name: Validate bridge workflow schema
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts
+          curl --fail --silent --show-error --location \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output "$RUNNER_TEMP/actionlint.tar.gz"
+          printf '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  %s\n' "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes= \
+            .github/workflows/paper-postclose-audit.yml \
+            .github/workflows/nightly.yml \
+            .github/workflows/scheduler-bridge-check.yml \
+            2>&1 | tee artifacts/scheduler_bridge_lint.log
+      - name: Verify immutable source and bridge contracts
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRIDGE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+        run: |
+          python - <<'PY'
+          import base64, json, os, pathlib, re, subprocess
+          from collections import Counter
+          import yaml
+          root = pathlib.Path.cwd()
+          names = {'paper-postclose-audit.yml': '15 22 * * 1-5', 'nightly.yml': '0 2 * * *'}
+          results, sources, errors = [], set(), []
+          for name, cron in names.items():
+              try:
+                  data = yaml.safe_load((root / '.github/workflows' / name).read_text())
+                  triggers = data.get('on', data.get(True))
+                  assert set(triggers) == {'schedule', 'workflow_dispatch'}, 'unexpected trigger'
+                  assert triggers['schedule'] == [{'cron': cron}], 'schedule drift'
+                  assert data['permissions'] == {'contents': 'read', 'issues': 'write'}, 'permission drift'
+                  assert set(data['jobs']) == {'reviewed-audit'}, 'unexpected job'
+                  job = data['jobs']['reviewed-audit']
+                  assert set(job) == {'uses', 'with'}, 'steps, secrets or extra controls in bridge'
+                  sha = job['with']['source_sha']
+                  assert re.fullmatch(r'[0-9a-f]{40}', sha), 'source pin must be full SHA'
+                  assert job['uses'] == f'Lesram/intraday/.github/workflows/{name}@{sha}', 'workflow/source pins differ'
+                  assert job['with'] == {'source_sha': sha, 'notify_issues': True}, 'notification or input drift'
+                  response = subprocess.check_output(['gh', 'api', f'repos/Lesram/intraday/contents/.github/workflows/{name}?ref={sha}'], text=True, timeout=30)
+                  target = yaml.safe_load(base64.b64decode(json.loads(response)['content']).decode())
+                  events = target.get('on', target.get(True))
+                  assert 'workflow_call' in events, 'target is not reusable'
+                  assert events['workflow_call']['inputs']['source_sha']['required'] is True, 'target source verification not required'
+                  assert events['workflow_call']['inputs']['notify_issues']['type'] == 'boolean', 'target notification input invalid'
+                  assert any(step.get('uses', '').startswith('actions/checkout@') and step.get('with', {}).get('ref') == '$' + '{{ inputs.source_sha }}'
+                             for worker in target['jobs'].values() for step in worker.get('steps', [])), 'target does not check out pinned source'
+                  sources.add(sha)
+                  results.append({'workflow': name, 'status': 'pass', 'source_sha': sha})
+              except Exception as exc:
+                  errors.append(f'{name}: {type(exc).__name__}: {exc}')
+                  results.append({'workflow': name, 'status': 'fail'})
+          if len(sources) != 1:
+              errors.append('both bridges must use the same source SHA')
+          staging_diagnostics = {}
+          try:
+              path = '.github/workflows/staging.yml'
+              staging = yaml.safe_load((root / path).read_text())
+              events = staging.get('on', staging.get(True))
+              ignored = {'.github/workflows/' + name for name in names} | {path, '.github/workflows/scheduler-bridge-check.yml'}
+              assert events['push']['branches'] == ['main'], 'staging branch drift'
+              assert set(events['push']['paths-ignore']) == ignored, 'staging must exclude exactly the four bridge paths'
+              assert all(name not in ignored for name in ('backend/main.py', 'Dockerfile', 'requirements.txt', 'docker-compose.yml')), 'runtime pushes must remain eligible'
+              assert events['pull_request'] == {'branches': ['main'], 'types': ['labeled']}, 'explicit label trigger changed'
+              assert 'workflow_dispatch' in events, 'manual staging dispatch removed'
+              baseline_sha = os.environ['BRIDGE_BASE_SHA']
+              assert re.fullmatch(r'[0-9a-f]{40}', baseline_sha), 'invalid comparison base'
+              baseline = subprocess.check_output(['git', 'show', f'{baseline_sha}:{path}'], text=True, timeout=30)
+              lint = [str(pathlib.Path(os.environ['RUNNER_TEMP']) / 'actionlint'), '-shellcheck=', '-pyflakes=', '-format', '{' + '{json .}' + '}', '-']
+              for name, content in [('base', baseline), ('candidate', (root / path).read_text())]:
+                  checked = subprocess.run(lint, input=content, text=True, capture_output=True, timeout=30)
+                  assert checked.returncode in (0, 1), checked.stderr
+                  staging_diagnostics[name] = json.loads(checked.stdout or '[]')
+              def signatures(items):
+                  return Counter((item['kind'], item['message']) for item in items)
+              assert signatures(staging_diagnostics['candidate']) <= signatures(staging_diagnostics['base']), 'new staging lint diagnostic'
+              results.append({'workflow': 'staging.yml', 'status': 'pass', 'excluded_push_paths': sorted(ignored),
+                              'unchanged_baseline_diagnostics': len(staging_diagnostics['candidate'])})
+          except Exception as exc:
+              errors.append(f'staging.yml: {type(exc).__name__}: {exc}')
+              results.append({'workflow': 'staging.yml', 'status': 'fail'})
+          art = root / 'artifacts'
+          art.mkdir(exist_ok=True)
+          sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          files = ['.github/workflows/' + name for name in names] + ['.github/workflows/scheduler-bridge-check.yml', '.github/workflows/staging.yml']
+          report = {'task_id': 'paper-scheduler-bridge', 'summary': 'Immutable scheduler bridge validation only; no old-main platform test claim',
+                    'sha': sha, 'branch': os.environ.get('GITHUB_HEAD_REF', 'codex/paper-scheduler-bridge'),
+                    'files_changed': files, 'commands': ['actionlint 1.7.12 on three workflow files', 'bridge and staging guard contracts, remote reusable source validation, no-new-staging-lint comparison'],
+                    'tests_passed': [item['workflow'] for item in results if item['status'] == 'pass'],
+                    'tests_failed': [item['workflow'] for item in results if item['status'] != 'pass'],
+                    'runtime_behavior_changed': False, 'docs_updated': False,
+                    'risks': ['Scheduled evidence comes from pinned operational source, not main', 'Old-main CI failures and existing staging lint diagnostics are retained', 'Do not merge until pinned postclose and safety evidence pass'],
+                    'follow_ups': ['Confirm real scheduled run audited SHA after merge', 'Update both pins through review for future source revisions'],
+                    'source_sha': next(iter(sources), None), 'validation_errors': errors,
+                    'source_evidence_pr': 'https://github.com/Lesram/intraday/pull/12'}
+          (art / 'task_report.json').write_text(json.dumps(report, indent=2) + '\n')
+          (art / 'changed_files.json').write_text(json.dumps(files, indent=2) + '\n')
+          (art / 'scheduler_bridge_validation.json').write_text(json.dumps({'results': results, 'errors': errors, 'staging_lint_diagnostics': staging_diagnostics}, indent=2) + '\n')
+          print(json.dumps({'results': results, 'errors': errors}, indent=2))
+          raise SystemExit(bool(errors))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        timeout-minutes: 2
+        with:
+          name: scheduler-bridge-evidence
+          if-no-files-found: error
+          path: |
+            artifacts/task_report.json
+            artifacts/changed_files.json
+            artifacts/scheduler_bridge_validation.json
+            artifacts/scheduler_bridge_lint.log
