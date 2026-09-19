@@ -1,0 +1,35 @@
+{
+  "task_id": "paper-corrections-candidate-2026-09-19",
+  "status": "undeployed_integration_proposal",
+  "base": "d6438f5e219159a54dd84691fc271a360004b6ec",
+  "accounting_source_to_integrate": "75b1775fdf9ced011e83d37261b056aa6b692b1c",
+  "scope": "Combine reviewed historical-data/prefill and partial-fill accounting corrections, validate one concrete candidate, and specify prospective evaluation activation without writing production state.",
+  "affected_files": [
+    "backend/organism/live_engine.py (_reconcile_fills only)",
+    "backend/organism/live_engine_fills.py",
+    "backend/organism/continuous_learner.py (comments)",
+    "tests/test_live_engine_fill_accounting.py",
+    "tests/fixtures/paper_fill_accounting_forward_20260919.json",
+    ".github/workflows/paper-readiness.yml",
+    "tests/test_monday_ci_workflows.py",
+    "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md",
+    "artifacts/corrections_candidate/activation_manifest.draft.json",
+    "scripts/phase3_attribution_report.py",
+    "tests/test_phase3_attribution_report.py"
+  ],
+  "steps": [
+    "Inspect and cherry-pick accounting source commit only; preserve data correction and resolve only genuine conflicts.",
+    "Inspect active cutoff/report consumers; explicitly distinguish original parameter freeze, evaluation cutoff, and lifetime counters.",
+    "Add accounting regressions to existing neutral readiness command alongside data files.",
+    "Fix authorized phase3 report normalized regime column and prove nonempty active-cutoff reports agree, without changing statistical/eligibility/cost policy.",
+    "Write undeployed activation/cohort specification and draft manifest with no fabricated activation timestamp.",
+    "Run affected focused/order/state/safety/replay/full-pack/freeze checks in denied-network scratch environment.",
+    "Generate report/audit evidence; independent review and draft integration PR, leaving all production-state activation to explicit approval."
+  ],
+  "prohibitions": [
+    "No deployment/resume/orders",
+    "No live freeze/counter/history/brain writes",
+    "No feed/strategy/frozen function changes",
+    "Do not supersede PR14/15 until acceptance"
+  ]
+}

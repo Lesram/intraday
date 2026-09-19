@@ -46,7 +46,7 @@ def main() -> int:
               if TRADES.exists() else pd.DataFrame())
     print(f"\n[1] CAPITAL — forward corpus: {len(corpus)} trades")
     if len(corpus):
-        for (strat, regime), sub in corpus.groupby(["strategy", "regime_at_entry"]):
+        for (strat, regime), sub in corpus.groupby(["strategy", "regime"]):
             net = sub["net_pnl"].to_numpy(dtype=float)
             sess = pd.factorize(sub["session"])[0] if "session" in sub else None
             tc = _cluster_tstat(net, sess) if sess is not None else float("nan")

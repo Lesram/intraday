@@ -1,0 +1,56 @@
+# Combined paper corrections — activation decision draft
+
+**Status: undeployed candidate, no activation approval or effective timestamp.** This combines reviewed historical-data correction PR #15 and partial-fill accounting PR #14. It does not supersede those proposals until acceptance. The paper engine remains in the separately managed maintenance hold.
+
+## Concrete candidate
+
+The accounting source commit `75b1775` was cherry-picked without conflict onto the reviewed data proposal `d6438f5`. The data and accounting implementation files remain byte-identical to their separately reviewed versions. Both corrections now run together in the same regression/full-pack environment. Hosted operational validation includes the data tests, accounting tests and forward-attribution report regression.
+
+One necessary report correction changes phase-3 attribution to group the normalized `regime` column returned by `load_forward_corpus`; the old `regime_at_entry` name raised `KeyError` whenever the forward corpus was nonempty. The regression uses real corpus loading and both reporting CLIs to prove that old, equal-to-cutoff and subsequent synthetic closes are counted consistently, without writing their input files. Statistical boundaries, eligibility mapping and costs are unchanged.
+
+The candidate retrieves latest available chronological bars using the same IEX feed/split adjustment and gives historical prefill its actual event age. The source-bound actual read-only probe returned 500 unique IEX minute bars ending September 18 at 19:59 UTC; this probe remains valid for the unchanged client file, but does not certify an installed combined engine. The shared current-time end can include an evolving higher-timeframe interval; it does not promise completed intervals or continuity.
+
+Complete, attributed, quantity-conserved DB fills produce full-position cash-flow PnL, including all partial exits. Incomplete evidence retains an explicitly approximate legacy result, recorded once with no later correction/retry. Corrected future PnL can affect learner/risk state. Existing raw history and inherited state are not migrated. See the two original proposal reports for their detailed bounds.
+
+## Why a parallel count is insufficient
+
+The native phase-2 gate and phase-3 capital-attribution CLIs read `artifacts/phase2/param_freeze.json` and its `FROZEN_AT`. The reconciliation research tool uses the explicitly supplied `--freeze` file. None discovers a separate cohort manifest. Creating only a new manifest would leave these reports counting from July and mix the measurement regimes.
+
+The proposed approval therefore includes a **deliberate prospective advancement of the active `FROZEN_AT` at activation**, while first archiving the original July file byte-for-byte. Keep the complete frozen `surface` unchanged, including its six function hashes, strategy configuration, regime policy, exit overrides and routing/data-feed values. The original parameter-freeze date remains documented separately as provenance. The current active file is untouched by this proposal, and `phase2_freeze.py --verify` must still match July before activation.
+
+Do not run `phase2_freeze.py` without `--verify` as an activation shortcut: unchanged source hashes preserve the old date, and a detected drift would rewrite a clock as a side effect. The eventual approved publication must explicitly set the new evaluation cutoff while asserting exact equality of the archived and active surfaces. `--verify` subsequently verifies surface equality; it does not validate cohort approval or the new date.
+
+## Exact proposed activation sequence — not executed
+
+1. Record Marsel’s explicit approval of the immutable combined source/image, the deliberate forward-cutoff restart and cost/reporting convention. The draft manifest has no approval reference, image or activation time. A lack of response authorizes none of these steps.
+2. Keep the engine stopped, automatic startup disabled and recovery paused. Capture fresh read-only broker proof of zero positions and zero open orders. Preserve verified database and brain backups, current runtime/config/image identity, original freeze bytes/hash, CSV/order history and inherited counters. A failed flat/no-order check blocks activation; do not flatten or cancel automatically.
+3. Build the approved image while the existing API container remains stopped. Verify exact code/image identity, unchanged strategy/feed/settings and the historical client in a separate read-only container that does not start the application/engine. Prepare the stopped service’s approved image reference; do not start it or run application startup before step 7. The disabled startup agent and paused watchdog must remain held; do not rely on market-closed timing alone.
+4. Reconfirm broker-flat/no-orders and the complete unchanged surface. Choose the actual current UTC time `T` at this approved transition, never backdate it. Write an immutable activation manifest containing approval identity, old/new freeze hashes, candidate source/image/file hashes, backup/flat attestations, unchanged surface digest, reporting convention and `T`.
+5. Archive the exact old freeze at a versioned immutable path and verify its hash. Prepare a new active freeze by copying the archived object, changing `FROZEN_AT` to `T`, updating activation metadata/source provenance and preserving every `surface` value and existing gate targets. Publish via a temporary file plus atomic replacement only after validating the new object. Keep the manifest and old freeze available together; a partial publication blocks engine release.
+6. Before release, run both forward CLIs from the designated active runtime repository, and broker reconciliation with its explicit active `--freeze` path, with matching explicit report cost configuration. Bind the resolved absolute path and freeze hash to each result. An archived worktree or a baked container copy is not the active freeze; containerized report runs must receive the approved file explicitly as a read-only input. Confirm each reported cutoff equals manifest `T`. Their new post-cutoff count must be zero. Verify the original archive/hash, raw history and lifetime counters remain unchanged. The eligibility cutoff is strictly `closed_at > T`; flat/no-orders prevents inherited positions closing into the new cohort. Complete these checks before an order can be generated.
+7. Release the approved paper hold, capture actual installed-runtime/config/freeze/manifest identity and observe a natural session. Initial history freshness and subsequent partial-fill accounting must be reconciled against provider/broker evidence. This is paper-only acceptance, not a profitability conclusion.
+
+If deployment or pre-release acceptance fails, retain the hold. Restore the previous image/config if required, and preserve all failed-candidate evidence. After any new candidate trade occurs, do not silently restore the old July cutoff or pool those rows; a rollback becomes another documented intervention requiring an explicit evaluation decision. Raw rows and inherited state remain preserved throughout.
+
+## Counter and report boundaries
+
+| Consumer | Prospective treatment |
+|---|---|
+| `scripts/phase2_gate.py`, phase-3 CAPITAL/gate sections | Active `param_freeze.json/FROZEN_AT`; explicit cost basis; new evaluation count. |
+| `scripts/research/paper_fill_reconciliation.py` | Pass the exact active freeze with `--freeze`; bind its hash in the report. An archived freeze is historical mode only. |
+| Phase-3 SHADOW, phase-8/9 warehouse/outcome reports, replay planner and truth observer | Existing all-input/history scopes. They do not become prospective cohort evidence merely because the active freeze advances. Label historical/diagnostic and prohibit use as the new verdict until explicitly bounded inputs/provenance are supplied. |
+| Stand-down session rows | Session-date operational observations; not forward-cohort counters. |
+| Live phase, `/edge`, learner/brain, Kelly, evolution, promotion and persisted trade counters | Existing inherited/lifetime or trailing-window behavior. No reset, rewrite or substitution with the new evaluation count. |
+| CI/KPI evidence | Software checks only; not account or edge certification. CI’s original frozen reference is a verification fixture, not the active runtime cutoff. |
+
+The old 609/610 scope difference must not be “fixed” by setting counters to zero. Starting a new evaluation cutoff does not restart a 300-trade evolution clock, change routing, promote shadow strategies or demonstrate a new edge.
+
+## Measurement and cost limits
+
+The native corpus loader filters close timestamp and mapped entry source. It does **not** independently enforce complete cash-flow provenance, duplicate identity or all reconciliation-artifact exclusions, and `TradeRecord` does not persist an authoritative entry timestamp. A raw CLI count is therefore not automatically a clean qualified count. Read-only broker/ledger reconciliation must attest each prospective round trip and classify measurement gaps. If approximate, duplicate, carry-in or reconciliation rows remain unresolved, **withhold the forward verdict** rather than silently exclude inconvenient outcomes, rewrite history or claim a clean sample. This candidate does not change those eligibility policies.
+
+The current code default is **3 bps round-trip**, while the prior research protocol also discusses **3 bps per side / 6 bps round-trip**. No costing or runtime environment is changed here. Approval must preregister the primary report convention and invoke both native forward CLIs with the same explicit process-local `ORGANISM_COST_BPS`; record it and the input hashes with every report. A 6 bps sensitivity can be reported separately, never pooled with a 3 bps primary series. The draft manifest leaves this explicit approval field pending; neither code defaults nor ambient shell state count as that decision.
+
+## Validation and remaining gates
+
+Machine-readable plan, draft manifest, source equivalence, focused and full-pack results, unchanged-surface verification and final independent review are under `artifacts/corrections_candidate/`. Canonical snapshots are isolated test/mock settings, not a deployed combined runtime. The original data/accounting reviews remain history. Required hosted checks, explicit activation/cutoff/cost approval, actual installed-engine validation and natural-session evidence remain acceptance gates.

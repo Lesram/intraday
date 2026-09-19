@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "status": "draft_not_approved_not_activated",
+  "candidate_source_sha": null,
+  "candidate_image_digest": null,
+  "approval_reference": null,
+  "activation_timestamp_utc": null,
+  "original_decision_surface_frozen_at": "2026-07-07T20:36:49.008305+00:00",
+  "original_freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+  "unchanged_surface_sha256": "0c26f5f22835fad2014479f78e6a026aea5462e1fbb0a5c985d709c25755f3fc",
+  "active_cutoff_contract": {
+    "path": "artifacts/phase2/param_freeze.json",
+    "field": "FROZEN_AT",
+    "future_action": "After explicit approval only: archive exact original then deliberately advance active evaluation cutoff to actual UTC activation time; preserve the entire surface.",
+    "current_file_modified": false,
+    "parallel_manifest_alone_sufficient": false,
+    "selection": "closed_at strictly greater than approved activation timestamp",
+    "initial_expected_count": 0,
+    "requires_broker_flat_and_zero_open_orders": true
+  },
+  "cost_protocol": {
+    "approved_primary_round_trip_bps": null,
+    "existing_code_default_round_trip_bps": 3,
+    "historical_alternate_round_trip_bps": 6,
+    "reports_require_explicit_matching_process_local_ORGANISM_COST_BPS": true,
+    "runtime_cost_environment_changed": false
+  },
+  "preserve": [
+    "original freeze bytes and July timestamp archive",
+    "entire frozen decision surface, strategy/settings/feed",
+    "raw CSV/database/order history",
+    "brain and learner/Kelly/evolution/lifetime counters",
+    "gate targets and statistical look schedule"
+  ],
+  "pending_attestations": [
+    "approval and primary report cost convention",
+    "source/image identity",
+    "verified backup and original freeze archive hashes",
+    "fresh broker-flat/no-open-orders evidence",
+    "atomic active cutoff publication",
+    "both forward reports and reconciliation bound to active freeze with zero initial count",
+    "installed runtime/config/freeze identity",
+    "natural paper session acceptance"
+  ],
+  "report_scope_limits": [
+    "Phase3 shadow, Phase8/9 warehouse and truth observer remain all-history diagnostic scopes unless inputs are separately bounded.",
+    "Native phase2 eligibility does not itself enforce all reconciliation/provenance quality checks; withhold verdict on unresolved measurement gaps."
+  ],
+  "specification": "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md"
+}

@@ -81,6 +81,8 @@ jobs:
             tests/unit/test_alpaca_data_comprehensive.py \
             tests/unit/test_streaming_data_provider.py \
             tests/unit/test_paper_data_freshness.py \
+            tests/test_live_engine_fill_accounting.py \
+            tests/test_phase3_attribution_report.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
             2>&1 | tee artifacts/monday_readiness/github_operational.log
       - name: Verify unchanged frozen decision surface

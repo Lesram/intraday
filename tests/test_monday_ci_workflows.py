@@ -228,7 +228,9 @@ def test_readiness_runs_latest_data_and_prefill_regressions():
                 if step.get("name") == "Verify operational fixes and trading safety")
     for path in ("tests/unit/test_alpaca_data_comprehensive.py",
                  "tests/unit/test_streaming_data_provider.py",
-                 "tests/unit/test_paper_data_freshness.py"):
+                 "tests/unit/test_paper_data_freshness.py",
+                 "tests/test_live_engine_fill_accounting.py",
+                 "tests/test_phase3_attribution_report.py"):
         assert path in step["run"]
     assert step["timeout-minutes"] == 5
     assert "set -o pipefail" in step["run"]
