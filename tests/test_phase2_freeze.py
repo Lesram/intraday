@@ -20,6 +20,22 @@ from scripts.phase2_freeze import (
 )
 
 
+@pytest.fixture(autouse=True)
+def documented_frozen_environment(monkeypatch):
+    """Supply the certified deployment inputs only within this test module.
+
+    The values are explicit, not read from the artifact being verified.  CI's
+    general defaults are not the deployed paper configuration.  Production
+    verification must still inspect its own actual environment.
+    """
+    for key in phase2_freeze.EXIT_ENV_VARS + phase2_freeze.ROUTING_DATA_ENV_VARS:
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("ALPACA_DATA_FEED", "iex")
+    monkeypatch.setenv("ORGANISM_MIN_AVG_DOLLAR_VOLUME", "50000")
+    monkeypatch.setenv("ORGANISM_FRAMEWORK_ROUTING_V2", "true")
+    monkeypatch.setenv("ORGANISM_ROUTING_RANK_POLICY", "flat_policy")
+
+
 @pytest.fixture(scope="module")
 def freeze():
     if not Path(FREEZE_PATH).exists():
@@ -100,3 +116,17 @@ def test_verify_mode_reports_missing_artifact(tmp_path, monkeypatch):
     """--verify returns 2 (not 0) when there is no artifact to check against."""
     monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", tmp_path / "does_not_exist.json")
     assert verify() == 2
+
+
+@pytest.mark.parametrize("key", [
+    "ALPACA_DATA_FEED",
+    "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
+    "ORGANISM_FRAMEWORK_ROUTING_V2",
+    "ORGANISM_ROUTING_RANK_POLICY",
+])
+def test_verify_mode_detects_missing_deployment_env(key, monkeypatch):
+    """Missing deployed inputs must still fail without changing the freeze."""
+    before = Path(FREEZE_PATH).read_bytes()
+    monkeypatch.delenv(key)
+    assert verify() == 1
+    assert Path(FREEZE_PATH).read_bytes() == before

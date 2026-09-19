@@ -185,7 +185,7 @@ def test_classifier_flags_mixed_pattern():
 def test_baseline_classifier_runs_on_repo():
     """The classifier must run cleanly across all 33 wave-test files."""
     proc = subprocess.run(
-        ["./venv/bin/python", str(CLASSIFIER), "--json", "-"],
+        [sys.executable, str(CLASSIFIER), "--json", "-"],
         capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, proc.stderr
@@ -200,7 +200,7 @@ def test_baseline_marker_only_count_matches_committed():
     """Baseline JSON committed in W70 must agree with current classifier output."""
     baseline = json.loads(V12_BASELINE.read_text())
     proc = subprocess.run(
-        ["./venv/bin/python", str(CLASSIFIER), "--json", "-"],
+        [sys.executable, str(CLASSIFIER), "--json", "-"],
         capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0

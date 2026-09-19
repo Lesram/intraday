@@ -105,6 +105,11 @@ class TestPasswordSecurity:
 class TestTokenSecurity:
     """Test JWT token generation and validation"""
     
+    @pytest.fixture(autouse=True)
+    def synthetic_legacy_jwt_key(self, monkeypatch):
+        # Legacy helper reads JWT_SECRET_KEY; this fixture supplies only a synthetic value.
+        monkeypatch.setenv("JWT_SECRET_KEY", "synthetic-test-only-legacy-jwt-secret-32chars")
+
     def test_create_access_token(self):
         """Test JWT access token creation"""
         user_data = {"sub": "user123", "email": "test@example.com"}
@@ -144,6 +149,15 @@ class TestTokenSecurity:
         with pytest.raises(ExpiredSignatureError):
             decode(token, secret, algorithms=["HS256"])
     
+    def test_missing_key_fails_outside_development(self, monkeypatch):
+        from backend.api.auth import _get_jwt_secret
+
+        monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+        monkeypatch.delenv("JWT_SECRET", raising=False)
+        monkeypatch.setenv("APP_ENVIRONMENT", "testing")
+        with pytest.raises(RuntimeError, match=r"JWT_SECRET_KEY \(or JWT_SECRET\)"):
+            _get_jwt_secret()
+
     def test_token_uses_strong_secret(self):
         """Test token signing uses environment secret"""
         import os

@@ -16,6 +16,8 @@ Run with:
 """
 from __future__ import annotations
 
+import sys
+
 import json
 import subprocess
 from pathlib import Path
@@ -72,7 +74,7 @@ def test_uu3_2_lint_ratchet_passes_against_committed_baseline():
     """Live invariant: current ruff state must match (or be lower than)
     the committed baseline.  The ratchet must exit 0."""
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"), str(RATCHET)],
+        [sys.executable, str(RATCHET)],
         capture_output=True, text=True, timeout=120, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, (
@@ -87,7 +89,7 @@ def test_uu3_2_lint_ratchet_runs_in_under_2_minutes():
     import time
     start = time.time()
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"), str(RATCHET)],
+        [sys.executable, str(RATCHET)],
         capture_output=True, text=True, timeout=120, cwd=REPO_ROOT,
     )
     elapsed = time.time() - start
@@ -104,7 +106,7 @@ def test_f821_no_undefined_names_in_repo():
     investigation are real runtime crash sites.  They were fixed; this
     test prevents reintroduction."""
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"), "-m", "ruff",
+        [sys.executable, "-m", "ruff",
          "check", ".", "--no-fix", "--select", "F821",
          "--output-format=concise"],
         capture_output=True, text=True, timeout=60, cwd=REPO_ROOT,
@@ -247,7 +249,7 @@ def test_w75_ratchet_detects_new_violation_against_fixture(tmp_path: Path):
     (sb / "clean.py").write_text("def f():\n    return 1\n")
     # Capture baseline.
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"),
+        [sys.executable,
          "scripts/ci/lint_ratchet.py", "--update-baseline"],
         capture_output=True, text=True, timeout=60, cwd=sb,
     )
@@ -262,7 +264,7 @@ def test_w75_ratchet_detects_new_violation_against_fixture(tmp_path: Path):
     )
     # Re-run ratchet — should fail.
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"),
+        [sys.executable,
          "scripts/ci/lint_ratchet.py"],
         capture_output=True, text=True, timeout=60, cwd=sb,
     )

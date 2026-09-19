@@ -1,0 +1,43 @@
+{
+  "stage": "targeted",
+  "exit_code": 0,
+  "seconds": 39.751,
+  "command": [
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=short",
+    "--timeout=30",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-nightly-test-harness/intra/artifacts/nightly_test_harness/targeted_junit.xml",
+    "tests/test_wave37_fixes.py",
+    "tests/test_wave48_fixes.py",
+    "tests/test_wave55_fixes.py",
+    "tests/test_wave61_fixes.py",
+    "tests/test_reachability_v8.py",
+    "tests/test_v12_w75_lint_ratchet.py",
+    "tests/test_v12_w77_findings_ledger.py",
+    "tests/test_v12_w81_ci_cleanup.py",
+    "tests/unit/test_auth_security_phase4.py",
+    "tests/test_strategy_engine_comprehensive.py",
+    "tests/test_organism_integration_smoke.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_v12_baseline_invariants.py::test_baseline_classifier_runs_on_repo",
+    "tests/test_v12_baseline_invariants.py::test_baseline_marker_only_count_matches_committed"
+  ],
+  "network_denied": true,
+  "live_env_and_brain_denied": true,
+  "scratch": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-nightly-harness-validation-bqtzmyi6",
+  "source_sha": "02ba1afff73e1f05902b9fe71f13170d618d6d5e",
+  "source_has_uncommitted_changes": true,
+  "suites": [
+    {
+      "tests": "170",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "39.047"
+    }
+  ]
+}

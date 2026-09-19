@@ -121,6 +121,29 @@ class MockOrderService:
         return {"id": f"mock_{len(self.submitted)}", "status": "accepted"}
 
 
+class _EmptyScanner:
+    """No-candidate scanner for lifecycle tests; never creates an HTTP client."""
+
+    def __init__(self):
+        self.scan_count = 0
+        self.last_scan_time = 0.0
+        self.scanned_stocks = []
+
+    async def scan(self):
+        self.scan_count += 1
+        return []
+
+    async def close(self):
+        pass
+
+
+@pytest.fixture(autouse=True)
+def isolated_market_scanner(monkeypatch):
+    monkeypatch.setattr("backend.organism.live_engine.MarketScanner", _EmptyScanner)
+    monkeypatch.setattr("backend.organism.live_engine.SCANNER_ENABLED", True)
+    monkeypatch.setattr("backend.organism.live_engine.SCAN_INTERVAL_TICKS", 6)
+
+
 @pytest.fixture
 def brain_dir(tmp_path):
     return str(tmp_path / "test_brain")
@@ -755,6 +778,11 @@ class TestMultiTickLifecycleInvariants:
 
             # INVARIANT 6: duration must be positive
             assert result.duration_s >= 0
+
+        # Ten ticks exercise the scan boundary without external market-data calls.
+        assert isinstance(engine.market_scanner, _EmptyScanner)
+        assert engine.market_scanner.scan_count >= 1
+        assert engine._universe == ["AAPL", "MSFT", "SPY", "GOOGL"]
 
     @pytest.mark.asyncio
     async def test_save_load_invariant(self, brain_dir):

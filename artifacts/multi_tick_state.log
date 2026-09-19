@@ -4,4 +4,4 @@ tests/test_multi_tick_state.py::TestMultiTickState::test_position_closes_no_dupl
   <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-9 passed, 1 warning in 1.31s
+9 passed, 1 warning in 1.33s

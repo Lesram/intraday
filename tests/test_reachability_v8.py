@@ -27,6 +27,8 @@ Run with: ./venv/bin/python -m pytest tests/test_reachability_v8.py -v
 """
 from __future__ import annotations
 
+import sys
+
 import inspect
 
 import pytest
@@ -216,7 +218,7 @@ def test_wave_28_check_wave_markers_script_exists_and_runs():
     script would silently disable enforcement."""
     import subprocess
     proc = subprocess.run(
-        ["./venv/bin/python", "scripts/ci/check_wave_markers.py", "--help"],
+        [sys.executable, "scripts/ci/check_wave_markers.py", "--help"],
         capture_output=True, text=True, timeout=10,
     )
     assert proc.returncode == 0, (
