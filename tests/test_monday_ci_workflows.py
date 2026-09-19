@@ -234,3 +234,64 @@ def test_readiness_runs_latest_data_and_prefill_regressions():
         assert path in step["run"]
     assert step["timeout-minutes"] == 5
     assert "set -o pipefail" in step["run"]
+
+
+def test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence():
+    workflow = _load("paper-readiness.yml")
+    triggers = workflow.get("on", workflow.get(True))
+    assert "intra-2.0-phase1" in triggers["pull_request"]["branches"]
+    job = workflow["jobs"]["operational-safety"]
+    step = next(step for step in job["steps"]
+                if step.get("name") == "Verify nightly test harness repairs")
+    assert step["if"] == "always()"
+    assert not step.get("continue-on-error", False)
+    assert 0 < step["timeout-minutes"] <= 10
+    assert step["env"]["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
+    assert "pytest_asyncio.plugin" in step["env"]["PYTEST_ADDOPTS"]
+    assert "pytest_timeout" in step["env"]["PYTEST_ADDOPTS"]
+    run = step["run"]
+    expected = {
+        "tests/test_wave37_fixes.py", "tests/test_wave48_fixes.py",
+        "tests/test_wave55_fixes.py", "tests/test_wave61_fixes.py",
+        "tests/test_reachability_v8.py", "tests/test_v12_w75_lint_ratchet.py",
+        "tests/test_v12_w77_findings_ledger.py", "tests/test_v12_w81_ci_cleanup.py",
+        "tests/unit/test_auth_security_phase4.py", "tests/test_strategy_engine_comprehensive.py",
+        "tests/test_organism_integration_smoke.py", "tests/test_phase2_freeze.py",
+        "tests/test_v12_baseline_invariants.py::test_baseline_classifier_runs_on_repo",
+        "tests/test_v12_baseline_invariants.py::test_baseline_marker_only_count_matches_committed",
+    }
+    import shlex
+    assert {word for word in shlex.split(run) if word.startswith("tests/")} == expected
+    assert "--timeout=30" in run and "--junitxml=" in run
+    assert "rm -f artifacts/nightly_test_harness/github_targeted.xml" in run
+    upload = next(step for step in job["steps"]
+                  if step.get("uses", "").startswith("actions/upload-artifact@"))
+    assert upload["if"] == "always()" and "artifacts/" in upload["with"]["path"]
+    assert job["timeout-minutes"] >= sum(step.get("timeout-minutes", 0)
+                                          for step in job["steps"]) + 5
+    install = next(step["run"] for step in job["steps"]
+                   if step.get("name") == "Install pinned dependencies")
+    assert "requirements-dev.txt" in install and "ruff==" in install
+
+
+@pytest.mark.parametrize("exit_code", [0, 7])
+def test_nightly_harness_workflow_pipeline_retains_pytest_exit_and_log(tmp_path, exit_code):
+    import os
+    job = _load("paper-readiness.yml")["jobs"]["operational-safety"]
+    step = next(step for step in job["steps"]
+                if step.get("name") == "Verify nightly test harness repairs")
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    python = bindir / "python"
+    python.write_text(f"#!/bin/sh\nprintf 'synthetic pytest output\\n'\nexit {exit_code}\n")
+    python.chmod(0o755)
+    evidence = tmp_path / "artifacts/nightly_test_harness"
+    evidence.mkdir(parents=True)
+    stale = evidence / "github_targeted.xml"
+    stale.write_text('<testsuite tests="170" failures="0"/>')
+    completed = subprocess.run(["/bin/bash", "-c", step["run"]], cwd=tmp_path,
+                               env={"PATH": str(bindir) + os.pathsep + "/usr/bin:/bin"},
+                               capture_output=True, text=True)
+    assert completed.returncode == exit_code
+    assert "synthetic pytest output" in (evidence / "github_targeted.log").read_text()
+    assert not stale.exists(), "An early pytest failure must not retain a prior passing JUnit"

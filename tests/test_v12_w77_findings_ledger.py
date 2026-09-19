@@ -18,6 +18,8 @@ Run with:
 """
 from __future__ import annotations
 
+import sys
+
 import json
 from pathlib import Path
 import subprocess
@@ -43,7 +45,7 @@ def test_w77_builder_runs_and_produces_ledger(tmp_path: Path):
     out_json = tmp_path / "findings_ledger.json"
     out_md = tmp_path / "findings_ledger_v12.md"
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"), str(BUILDER),
+        [sys.executable, str(BUILDER),
          "--out-json", str(out_json), "--out-md", str(out_md)],
         capture_output=True, text=True, timeout=60, cwd=REPO_ROOT,
     )
@@ -106,7 +108,7 @@ def test_w77_builder_includes_v11_audited_closures():
 def test_w77_verifier_passes_against_committed_ledger():
     """Live ledger must pass internal consistency check."""
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"), str(VERIFIER)],
+        [sys.executable, str(VERIFIER)],
         capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, (
@@ -143,7 +145,7 @@ def test_w77_verifier_catches_closed_without_test(tmp_path: Path):
     }
     (sb / "artifacts" / "audit" / "findings_ledger.json").write_text(json.dumps(bad))
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"),
+        [sys.executable,
          "scripts/ci/verify_findings_ledger.py"],
         capture_output=True, text=True, timeout=30, cwd=sb,
     )
@@ -181,7 +183,7 @@ def test_w77_verifier_catches_deferred_without_reason(tmp_path: Path):
     }
     (sb / "artifacts" / "audit" / "findings_ledger.json").write_text(json.dumps(bad))
     proc = subprocess.run(
-        [str(REPO_ROOT / "venv" / "bin" / "python"),
+        [sys.executable,
          "scripts/ci/verify_findings_ledger.py"],
         capture_output=True, text=True, timeout=30, cwd=sb,
     )

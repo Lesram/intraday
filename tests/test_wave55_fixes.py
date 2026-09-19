@@ -19,6 +19,7 @@ Run with: ./venv/bin/python -m pytest tests/test_wave55_fixes.py -v
 from __future__ import annotations
 
 import inspect
+import sys
 import os
 import re
 
@@ -59,7 +60,7 @@ def test_xx_2_migration_tree_still_single_headed():
     """Adding the wave-55 migration must not branch the tree."""
     import subprocess
     proc = subprocess.run(
-        ["./venv/bin/python", "scripts/ci/check_migrations.py"],
+        [sys.executable, "scripts/ci/check_migrations.py"],
         capture_output=True, text=True, timeout=30,
     )
     assert proc.returncode == 0, (

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import inspect
 import subprocess
+import sys
 
 
 def test_z7_1_pytest_collection_clean():
@@ -21,7 +22,7 @@ def test_z7_1_pytest_collection_clean():
     modules).  Wave-38's clean-up of mlops/ml/risk/optimization left
     orphan test files that broke collection."""
     proc = subprocess.run(
-        ["./venv/bin/python", "-m", "pytest", "--collect-only", "tests/"],
+        [sys.executable, "-m", "pytest", "--collect-only", "tests/"],
         capture_output=True, text=True, timeout=120,
     )
     # We don't require returncode 0 (some tests may legitimately fail

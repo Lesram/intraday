@@ -9,8 +9,10 @@ Targets 70%+ coverage for the strategy engine module which handles:
 """
 
 import asyncio
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 
@@ -21,6 +23,42 @@ from backend.strategies.types import ExecutionPlan, Side, TradingSignal
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
+@dataclass(frozen=True)
+class _TradingSettings:
+    account_value: float = 100000.0
+
+
+@dataclass(frozen=True)
+class _EngineSettings:
+    strategy_momentum_weight: float = 0.6
+    strategy_mean_rev_weight: float = 0.4
+    strategy_ensemble_weight: float = 1.0
+    strategy_min_flip_interval_s: float = 60.0
+    strategy_max_new_risk_per_bar: float = 0.15
+    qty_precision: int = 4
+    price_precision: int = 4
+    trading: _TradingSettings = field(default_factory=_TradingSettings)
+
+
+@pytest.fixture
+def engine_settings(monkeypatch):
+    # These tests exercise settings/config precedence independently of the host.
+    monkeypatch.delenv("STRATEGY_MIN_FLIP_INTERVAL_S", raising=False)
+    monkeypatch.delenv("STRATEGY_MAX_NEW_RISK_PER_BAR", raising=False)
+    return _EngineSettings()
+
+
+@pytest.fixture
+def quote_manager():
+    prices = {"AAPL": 175.0, "GOOG": 140.0, "TEST": 100.0, "BTCUSD": 45000.0}
+
+    async def get_quotes(symbols):
+        return {symbol: SimpleNamespace(last=prices[symbol])
+                for symbol in symbols if symbol in prices}
+
+    return SimpleNamespace(get_quotes=AsyncMock(side_effect=get_quotes))
+
 
 @pytest.fixture
 def mock_risk_manager():
@@ -35,6 +73,7 @@ def mock_positions_service():
     """Create mock PositionsService"""
     ps = Mock()
     ps.get_positions_by_symbols = AsyncMock(return_value={})
+    ps.get_all_positions = AsyncMock(return_value=[])
     return ps
 
 
@@ -48,32 +87,20 @@ def mock_metrics():
 
 
 @pytest.fixture
-def strategy_engine(mock_risk_manager, mock_positions_service, mock_metrics):
-    """Create StrategyEngine with mocked dependencies"""
-    with patch("backend.strategies.engine.get_settings") as mock_settings, \
-         patch("backend.strategies.engine.get_metrics_registry", return_value=mock_metrics):
-        
-        # Configure settings mock
-        settings = Mock()
-        settings.strategy_momentum_weight = 0.6
-        settings.strategy_mean_rev_weight = 0.4
-        settings.strategy_ensemble_weight = 1.0
-        settings.strategy_min_flip_interval_s = 60
-        settings.strategy_max_new_risk_per_bar = 0.15
-        settings.qty_precision = 4
-        settings.price_precision = 4
-        settings.trading = Mock()
-        settings.trading.account_value = 100000
-        mock_settings.return_value = settings
-        
+def strategy_engine(mock_risk_manager, mock_positions_service, mock_metrics,
+                    engine_settings, quote_manager):
+    """Exercise real netting/sizing with explicit settings and quote dependencies."""
+    with patch("backend.strategies.engine.get_settings", return_value=engine_settings), \
+         patch("backend.strategies.engine.get_metrics_registry", return_value=mock_metrics), \
+         patch("backend.strategies.engine.QuoteManager", return_value=quote_manager), \
+         patch("backend.strategies.engine.QUOTE_MANAGER_AVAILABLE", True):
         engine = StrategyEngine(
             risk_manager=mock_risk_manager,
             positions_service=mock_positions_service,
             config={}
         )
         engine.metrics = mock_metrics
-        
-        return engine
+        yield engine
 
 
 @pytest.fixture
@@ -95,20 +122,12 @@ def sample_signal():
 class TestStrategyEngineInit:
     """Tests for StrategyEngine initialization"""
     
-    def test_init_with_defaults(self, mock_risk_manager, mock_positions_service):
+    def test_init_with_defaults(self, mock_risk_manager, mock_positions_service, engine_settings):
         """Test initialization with default config"""
         with patch("backend.strategies.engine.get_settings") as mock_settings, \
              patch("backend.strategies.engine.get_metrics_registry") as mock_metrics:
             
-            settings = Mock()
-            settings.strategy_momentum_weight = 0.6
-            settings.strategy_mean_rev_weight = 0.4
-            settings.strategy_ensemble_weight = 1.0
-            settings.strategy_min_flip_interval_s = 60
-            settings.strategy_max_new_risk_per_bar = 0.15
-            settings.qty_precision = 4
-            settings.price_precision = 4
-            mock_settings.return_value = settings
+            mock_settings.return_value = engine_settings
             mock_metrics.return_value = Mock()
             
             engine = StrategyEngine(
@@ -119,16 +138,14 @@ class TestStrategyEngineInit:
             assert engine.risk_manager == mock_risk_manager
             assert engine.positions_service == mock_positions_service
             assert engine.strategy_weights["momentum"] == 0.6
-            assert engine.min_flip_interval_s == 10.0
+            assert engine.min_flip_interval_s == 60.0
             
-    def test_init_with_custom_config(self, mock_risk_manager, mock_positions_service):
+    def test_init_with_custom_config(self, mock_risk_manager, mock_positions_service, engine_settings):
         """Test initialization with custom config"""
         with patch("backend.strategies.engine.get_settings") as mock_settings, \
              patch("backend.strategies.engine.get_metrics_registry"):
             
-            settings = Mock()
-            settings.strategy_momentum_weight = 0.6
-            mock_settings.return_value = settings
+            mock_settings.return_value = engine_settings
             
             config = {
                 "momentum_weight": 0.7,
@@ -417,6 +434,13 @@ class TestExposureToQuantity:
         assert side == Side.SELL
         
     @pytest.mark.asyncio
+    async def test_missing_quote_rejects_sizing(self, strategy_engine, quote_manager):
+        """An explicit quote fixture must not create a price for unknown symbols."""
+        with pytest.raises(ValueError, match="without real price for NO_QUOTE"):
+            await strategy_engine._exposure_to_qty("NO_QUOTE", 0.5, 100000)
+        quote_manager.get_quotes.assert_awaited_once_with(["NO_QUOTE"])
+
+    @pytest.mark.asyncio
     async def test_known_symbol_pricing(self, strategy_engine):
         """Test known symbols use their mock prices"""
         qty_btc, _, _ = await strategy_engine._exposure_to_qty(
@@ -669,22 +693,14 @@ class TestMaxRiskPerBar:
 class TestFactoryMethod:
     """Tests for create_default factory method"""
     
-    def test_create_default_returns_engine(self):
+    def test_create_default_returns_engine(self, engine_settings):
         """Test factory method creates engine instance"""
         with patch("backend.strategies.engine.get_settings") as mock_settings, \
              patch("backend.strategies.engine.get_metrics_registry"), \
              patch("backend.strategies.engine.RiskManager"), \
              patch("backend.strategies.engine.PositionsService"):
             
-            settings = Mock()
-            settings.strategy_momentum_weight = 0.6
-            settings.strategy_mean_rev_weight = 0.4
-            settings.strategy_ensemble_weight = 1.0
-            settings.strategy_min_flip_interval_s = 60
-            settings.strategy_max_new_risk_per_bar = 0.15
-            settings.qty_precision = 4
-            settings.price_precision = 4
-            mock_settings.return_value = settings
+            mock_settings.return_value = engine_settings
             
             engine = StrategyEngine.create_default()
             
