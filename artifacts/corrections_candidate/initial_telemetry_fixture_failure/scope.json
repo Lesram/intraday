@@ -1,0 +1,6 @@
+{
+  "status": "superseded_fixture_failure",
+  "cause": "Existing default-runtime-snapshot assertion observed intentional scratch telemetry environment paths. Production defaults are unchanged.",
+  "repair": "Clear only the two path overrides inside the default-contract test using monkeypatch; retain all assertions.",
+  "original_result": "111 passed, 1 failed"
+}

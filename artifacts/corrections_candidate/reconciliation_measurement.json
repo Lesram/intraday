@@ -1,0 +1,30 @@
+{
+  "label": "reconciliation_measurement",
+  "exit_code": 0,
+  "seconds": 3.47,
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--timeout=30",
+    "--tb=short",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-paper-corrections/intra/artifacts/corrections_candidate/reconciliation_measurement.xml",
+    "tests/test_order_integrity_comprehensive.py",
+    "tests/test_position_reconciliation.py",
+    "tests/test_position_reconciliation_comprehensive.py",
+    "tests/test_audit_m1_measurement_integrity.py",
+    "tests/test_phase3_candidate_shadow_telemetry.py"
+  ],
+  "network_denied": true,
+  "real_checkout_writes_denied": true,
+  "real_env_and_brain_reads_denied": true,
+  "source_binding": "139a76f16d98bef704ea98dacab269fc1203a07a",
+  "source_binding_note": "Tested files match this committed source; some runs preceded the corresponding source-only commit."
+}

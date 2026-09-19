@@ -1,0 +1,21 @@
+{
+  "label": "full",
+  "exit_code": 0,
+  "seconds": 204.78,
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "scripts/ci/generate_artifacts.py",
+    "full"
+  ],
+  "network_denied": true,
+  "real_checkout_writes_denied": true,
+  "real_env_and_brain_reads_denied": true,
+  "source_sha": "fdd08cad27a97d6d350ce397b7535a49e0af86ad",
+  "final_candidate_source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "runtime_and_core_test_files_identical": true,
+  "scope": "Complete local216-test corepack. Only the unrelated supplemental telemetry-default test was edited during the run; it is not collected by the core pack. Later candidate commits affect tests/CI/docs only."
+}

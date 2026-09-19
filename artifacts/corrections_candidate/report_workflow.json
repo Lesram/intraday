@@ -1,0 +1,28 @@
+{
+  "label": "report_workflow",
+  "exit_code": 0,
+  "seconds": 2.63,
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--timeout=30",
+    "--tb=short",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-paper-corrections/intra/artifacts/corrections_candidate/report_workflow.xml",
+    "tests/test_phase3_attribution_report.py",
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_artifact_workflow_contract.py"
+  ],
+  "network_denied": true,
+  "real_checkout_writes_denied": true,
+  "real_env_and_brain_reads_denied": true,
+  "source_binding": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "source_binding_note": "Tested files match this committed source; some runs preceded the corresponding source-only commit."
+}

@@ -1,0 +1,6 @@
+{
+  "status": "superseded_fixture_failure",
+  "cause": "Removing environment values after earlier imports did not undo cached telemetry constants.",
+  "repair": "A fresh child interpreter checks the actual defaults with those two path overrides absent; every original assertion remains.",
+  "original_result": "111 passed, 1 failed"
+}

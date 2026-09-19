@@ -1,9 +1,9 @@
 # Live Audit Index
 
-Generated: 2026-09-19T20:33:56Z
+Generated: 2026-09-19T20:58:11Z
 PR: n/a
-SHA: `c66bb2d812`
-Branch: `codex/paper-data-freshness`
+SHA: `274d0c47ea`
+Branch: `codex/paper-corrections-candidate`
 Scope: **backend_logic**
 Change scope: `base` (`02ba1afff73e1f05902b9fe71f13170d618d6d5e...HEAD`)
 
@@ -11,16 +11,16 @@ Change scope: `base` (`02ba1afff73e1f05902b9fe71f13170d618d6d5e...HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 2 | `backend/integrations/alpaca_data.py`, `backend/organism/streaming_data_provider.py` |
-| Organism | 1 | `backend/organism/streaming_data_provider.py` |
-| Scripts | 0 | none |
+| Backend | 5 | `backend/integrations/alpaca_data.py`, `backend/organism/continuous_learner.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/streaming_data_provider.py` |
+| Organism | 4 | `backend/organism/continuous_learner.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/streaming_data_provider.py` |
+| Scripts | 1 | `scripts/phase3_attribution_report.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 4 | `tests/test_monday_ci_workflows.py`, `tests/unit/test_alpaca_data_comprehensive.py`, `tests/unit/test_paper_data_freshness.py`, `tests/unit/test_streaming_data_provider.py` |
-| Docs | 0 | none |
+| Tests | 21 | `tests/fixtures/paper_fill_accounting_forward_20260919.json`, `tests/test_live_engine_fill_accounting.py`, `tests/test_monday_ci_workflows.py`, `tests/test_organism_integration_smoke.py`, `tests/test_phase2_freeze.py`, `tests/test_phase3_attribution_report.py`, `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/test_reachability_v8.py`, `tests/test_strategy_engine_comprehensive.py`, `tests/test_v12_baseline_invariants.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/NIGHTLY_TEST_HARNESS_2026-09-19.md` |
 
 ## Live constants
 
-**Evidence scope:** The constants below are the isolated mock/test snapshot generated for this proposal, including the test `1Day` setting. They are not the stopped paper runtime or an installed candidate. The separate actual provider probe used configured IEX/`1Min`/500 in an ephemeral read-only container (`artifacts/data_freshness_proposal/actual_readonly_provider_probe.json`); it did not activate the engine. Original-runtime and maintenance-hold observations are under `artifacts/data_freshness/`. Activation, cohort approval and fresh installed-runtime evidence remain pending.
+**Evidence scope:** These are isolated mock/test settings for the combined proposal. They are not the stopped paper runtime or an activated candidate. The API remains held; the July cutoff is unchanged. The prebuilt image is source-bound and verified without application startup. Primary prospective research reports are proposed at 6 bps round trip using report-process-only configuration; native/runtime costing remains unchanged. See `reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md` and `artifacts/corrections_candidate/`.
 
 Source: `resolved_config_snapshot.json`
 
@@ -56,4 +56,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 1 organism file(s) changed — require replay verification
+- 4 organism file(s) changed — require replay verification

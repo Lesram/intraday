@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "status": "draft_not_approved_not_activated",
-  "candidate_source_sha": null,
-  "candidate_image_digest": null,
+  "candidate_source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "candidate_image_digest": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
   "approval_reference": null,
   "activation_timestamp_utc": null,
   "original_decision_surface_frozen_at": "2026-07-07T20:36:49.008305+00:00",
@@ -56,5 +56,7 @@
     "Phase3 shadow, Phase8/9 warehouse and truth observer remain all-history diagnostic scopes unless inputs are separately bounded.",
     "Native phase2 eligibility does not itself enforce all reconciliation/provenance quality checks; withhold verdict on unresolved measurement gaps."
   ],
-  "specification": "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md"
+  "specification": "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md",
+  "candidate_image_build_receipt": "artifacts/corrections_candidate/candidate_image_build.json",
+  "candidate_image_tag": "intra-api:corrections-274d0c47ea6c"
 }
