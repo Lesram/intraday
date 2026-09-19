@@ -27,12 +27,12 @@
     "tests/unit/test_paper_data_freshness.py": "c8669905ad4282c0dde9ef1c128566459ac161fc30f2b6c343bffbee1ff11d84"
   },
   "reviewed_metadata_sha256": {
-    "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md": "6311b3b3973ade1988592e6e52a244adbe79da5fcca0097808f3819d49619fa7",
-    "artifacts/corrections_candidate/activation_manifest.draft.json": "55f0dd069c587b09d23d9f58411aacb75fb262e72244e382742a12912eadc492",
+    "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md": "b88a43eb4cbff2a8617f54b1b6fd6256cab9cb2937802e9ee787a05bd24edacb",
+    "artifacts/corrections_candidate/activation_manifest.draft.json": "11d5b4738773a9c8187759e56d5dba5a11278fafa1b183d4acbe46c42744f590",
     "artifacts/corrections_candidate/plan.json": "aeb0c526d1e8f676d6a1cc6df5ea85ede6287bbdcfa0fd04b2b56e540df48294",
-    "artifacts/task_report.json": "ac6aa53226f9271ad3de345ca2e0c5e8e220d8c1e279cef48f4bd23dc38114a1",
-    "artifacts/task-report.json": "ac6aa53226f9271ad3de345ca2e0c5e8e220d8c1e279cef48f4bd23dc38114a1",
-    "docs/engineering/LIVE_AUDIT_INDEX.md": "0936987411a544a79dbba0e64bb4e166a4f1f4d49adf60f35c99474632f567f4"
+    "artifacts/task_report.json": "85a465ddf8f61d0e98b203642da2a9d735cc98259ee4023991e18bf18994e836",
+    "artifacts/task-report.json": "85a465ddf8f61d0e98b203642da2a9d735cc98259ee4023991e18bf18994e836",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "a8a9d08b972e81c94cad7292c4d3d57b6822f4903cc2651388e8578c7fe2397a"
   },
   "evidence_sha256": {
     "artifacts/corrections_candidate/focused.json": "2b70698aae3e8c2e0b94410631620b0b898dd159455dbaba11f1b7ee745a1dea",
@@ -57,7 +57,9 @@
     "artifacts/runtime_config_snapshot.json": "5790d83678f7e5e9f0bfd9fe24a500395d7d56742df019f4caabf1b45a0a5d31",
     "artifacts/test_summary.json": "dfdad06cb4ddbfe6a2084eaa24fcaf35d1fe013ddcf6b4e592d6fe0ec7b140ea",
     "artifacts/replay_summary.json": "5318e08c6bbbe621000f9ea534636fef221317135672c53ebe8b8ec63625a468",
-    "artifacts/semantic_invariants_summary.json": "45550d6203900b734127dddaa40e1c1e0e489ffef96c8787172afe3b0e801593"
+    "artifacts/semantic_invariants_summary.json": "45550d6203900b734127dddaa40e1c1e0e489ffef96c8787172afe3b0e801593",
+    "artifacts/corrections_candidate/accepted_base_source_equivalence.json": "7e87da4085533fdcf8c48896dace16461534afcc59bbf2dfff9daf5e4e0de297",
+    "artifacts/corrections_candidate/accepted_base_freeze_verification.json": "c688912df9527e471185ad49bbf5f6d875efcf8e5bf70573ef0e220f1fa2b6c0"
   },
   "metadata_binding_note": "Source 274d0c4 is immutable and source-bound to the prebuilt image. Current metadata incorporates completed validation/image receipts after that source commit. Accepted-base merge, PR URL and audit-index packaging still require source-equivalence/final metadata binding; this is not approval of future implementation changes.",
   "prior_reviews": {
@@ -138,9 +140,36 @@
   ],
   "remaining_acceptance_gates": [
     "Finish accepted-base/PR packaging and retain final source-equivalence, audit index and review binding. Obtain required hosted checks on the combined source; standalone proposal checks do not substitute.",
+    "Update the main scheduler bridge uses/source_sha pins together to the accepted candidate source, review the exact four-pin delta and validate an actual called post-close run. The existing d7c3c6c schedule is old-source validation, not ongoing validation of the proposed deployed candidate.",
     "Obtain Marsel explicit approval of this source/image, deliberate prospective FROZEN_AT advancement and 6 bps primary reporting convention. No merge, deployment, clock reset or hold release is authorized by this review or by silence.",
     "After approval only: verified fresh backups and broker-flat/no-orders evidence; immutable original freeze archive; validated atomic active-cutoff/manifest publication; exact active-input paths/hashes and zero initial counts before startup.",
     "Obtain installed-candidate authenticated runtime/config/source evidence, read-only current provider comparison and controlled paper restart checks; confirm startup/watchdog restoration only after acceptance.",
     "Observe the natural market session, streaming progression, broker fills/reconciliation/exits and post-close evidence before claiming session readiness. No test order or real-money activation is authorized."
-  ]
+  ],
+  "accepted_base_packaging": {
+    "reviewed_at_utc": "2026-09-19T21:02:46.954156+00:00",
+    "merge_sha": "79a898697e46de4d8d13051db33ef18d500a2db4",
+    "active_base_sha": "3fa2199df04d75ea0552a5aa08d1f59ba844b211",
+    "source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "active_base_is_ancestor": true,
+    "backend_scripts_tests_workflows_build_dependencies_identical_to_prebuilt_source": true,
+    "qualification": "PR URL and final audit-index reference are pending metadata-only packaging; source/image approval remains unchanged."
+  },
+  "resolved_final_wording": [
+    "Prebuilt image digest is bound; approval reference and activation time remain null.",
+    "Approved candidate starts with autostart disabled and watchdog paused; actual readiness/runtime/config/freeze/broker checks must pass before those controls are restored."
+  ],
+  "final_metadata_refresh": {
+    "reviewed_at_utc": "2026-09-19T21:07:52.825749+00:00",
+    "source_sha_unchanged": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "accepted_base_merge_unchanged": "79a898697e46de4d8d13051db33ef18d500a2db4",
+    "image_id_unchanged": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+    "clarifications_reviewed": [
+      "Fresh held-state database/brain backups are required, including a final save potentially made by the orderly stop; matching checksums and configuration/source provenance must be recorded.",
+      "The candidate starts while automatic startup/recovery remain held; runtime/broker/config/freeze acceptance precedes their restoration.",
+      "Scheduler uses/source_sha pins must target the accepted candidate; old-source scheduled checks do not certify it."
+    ],
+    "semantic_summary_restored_to_candidate_evidence": true,
+    "further_packaging": "PR URL/audit-index reference may be updated as metadata only. This refresh does not authorize source changes, merge, deployment, cutoff advancement or hold release."
+  }
 }

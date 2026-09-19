@@ -45,7 +45,7 @@
   "pending_attestations": [
     "approval and primary report cost convention",
     "source/image identity",
-    "verified backup and original freeze archive hashes",
+    "fresh held-state database/brain backups with verified integrity and hashes; original freeze archive hash",
     "fresh broker-flat/no-open-orders evidence",
     "atomic active cutoff publication",
     "both forward reports and reconciliation bound to active freeze with zero initial count",
@@ -58,5 +58,13 @@
   ],
   "specification": "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md",
   "candidate_image_build_receipt": "artifacts/corrections_candidate/candidate_image_build.json",
-  "candidate_image_tag": "intra-api:corrections-274d0c47ea6c"
+  "candidate_image_tag": "intra-api:corrections-274d0c47ea6c",
+  "scheduler_acceptance": {
+    "required_source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "require_matching_reusable_workflow_ref_and_source_sha": true,
+    "actual_callable_validation_required": true,
+    "accepted_bridge_reference": null,
+    "status": "pending_root_workflow_packaging",
+    "prior_d7c3c6c_bridge_certifies_this_candidate": false
+  }
 }
