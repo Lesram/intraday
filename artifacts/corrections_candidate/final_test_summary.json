@@ -1,0 +1,22 @@
+{
+  "candidate_source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "distinct_tests_passed": 665,
+  "tests_failed": 0,
+  "counts": {
+    "focused": 116,
+    "reconciliation_measurement": 112,
+    "report_workflow": 51,
+    "nightly_harness": 170,
+    "organism_live_engine": 26,
+    "organism_engine_scenarios": 31,
+    "multi_tick_state": 9,
+    "safety_invariants": 29,
+    "self_evolution": 15,
+    "algorithm_improvements": 58,
+    "replay_simulator": 28,
+    "semantic_invariants": 20
+  },
+  "source_binding": "See per-suite JSON and full_pack_source_equivalence.json. Historical development failures remain separately labeled.",
+  "full_pack_source_sha": "fdd08ca",
+  "full_pack_seconds": 204.78
+}

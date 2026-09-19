@@ -1,0 +1,25 @@
+{
+  "recorded_at": "2026-09-19T20:22:21.812089+00:00",
+  "reason": "Confirmed historical-data first-page defect and prefill freshness issue; pending separately tested repair and forward-cohort decision",
+  "paper_positions": 0,
+  "paper_open_orders": 0,
+  "application_container": "intra-api-1",
+  "restart_policy": "unless-stopped",
+  "startup_service": "gui/501/com.intra.paper",
+  "pause_existed": false,
+  "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "application_source_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "status": "held",
+  "startup_bootout_exit": 0,
+  "api_stop_exit": 0,
+  "api_running": false,
+  "api_exit_code": 0,
+  "api_oom_killed": false,
+  "database_and_redis": "healthy; backups remain scheduled",
+  "hold_controls": [
+    "logs/paper_watchdog.pause suppresses automatic recovery",
+    "com.intra.paper disabled and unloaded to prevent login restart",
+    "paper API gracefully stopped; restart policy unless-stopped"
+  ],
+  "resume_gate": "Reviewed data correction, explicit forward-cohort decision, validated deployment and fresh broker/data/runtime checks"
+}

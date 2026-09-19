@@ -1,0 +1,15 @@
+{
+  "checked_at_utc": "2026-09-19T20:55:35.104249+00:00",
+  "source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "image_id": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+  "exit_code": 0,
+  "network": "none",
+  "read_only_root": true,
+  "production_credentials_supplied": false,
+  "production_brain_or_database_mounted": false,
+  "source_hash_match": true,
+  "freeze_match": true,
+  "original_freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+  "original_freeze_bytes_unchanged": true,
+  "output_tail": "IMAGE_SOURCE_HASHES_MATCH\nDRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-07-07T20:36:49.008305+00:00)\n"
+}

@@ -1,0 +1,8 @@
+{
+  "stage": "before repair",
+  "exit_code": 0,
+  "stdout": "DRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-07-07T20:36:49.008305+00:00)\n",
+  "runtime_sha": "9697cd59e8add11dbc96080aaec0f4c21def4292",
+  "surface_environment_source": "Observed running paper container, selected frozen variables only",
+  "freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697"
+}

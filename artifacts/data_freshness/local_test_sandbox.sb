@@ -1,0 +1,1 @@
+(version 1)(allow default)(deny network*)(deny file-write* (subpath "/Users/marselkei/VS/intra"))(deny file-read* (literal "/Users/marselkei/VS/intra/.env") (subpath "/Users/marselkei/VS/intra/organism_brain"))

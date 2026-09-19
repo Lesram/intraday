@@ -267,20 +267,47 @@ class StreamingDataProvider:
                 if df is None or df.empty:
                     continue
 
-                buf: deque[dict[str, Any]] = deque(maxlen=self._buffer_size)
+                # Historical arrival is not evidence of a fresh bar. Validate
+                # every timestamp before replacing any existing stream state.
+                now = self._time_fn()
+                rows_by_time: dict[pd.Timestamp, dict[str, Any]] = {}
                 for _, row in df.iterrows():
-                    buf.append({
-                        "timestamp": row.get("timestamp"),
+                    timestamp = pd.Timestamp(row.get("timestamp"))
+                    if pd.isna(timestamp) or timestamp.tzinfo is None:
+                        raise ValueError("prefill timestamp must be timezone-aware")
+                    timestamp = timestamp.tz_convert("UTC")
+                    if timestamp.timestamp() > now:
+                        raise ValueError("prefill timestamp is in the future")
+                    rows_by_time[timestamp] = {
+                        "timestamp": timestamp.isoformat(),
                         "open": row.get("open"),
                         "high": row.get("high"),
                         "low": row.get("low"),
                         "close": row.get("close"),
                         "volume": row.get("volume"),
-                    })
-                self._bars[symbol] = buf
-                _now = self._time_fn()
-                self._last_bar_ts[symbol] = _now
-                self.last_update_time = _now
+                    }
+                newest_historical = max(rows_by_time).timestamp()
+                # Subscription callbacks can run while REST is awaited. Keep
+                # their newer data (and any same-minute stream correction).
+                existing = self._bars.get(symbol, ())
+                for row in existing:
+                    timestamp = pd.Timestamp(row.get("timestamp"))
+                    if pd.isna(timestamp) or timestamp.tzinfo is None:
+                        raise ValueError("existing stream timestamp must be timezone-aware")
+                    timestamp = timestamp.tz_convert("UTC")
+                    if timestamp.timestamp() > now:
+                        raise ValueError("existing stream timestamp is in the future")
+                    rows_by_time[timestamp] = row
+                self._bars[symbol] = deque(
+                    (rows_by_time[timestamp] for timestamp in sorted(rows_by_time)),
+                    maxlen=self._buffer_size,
+                )
+                # Existing streaming receipt timestamps keep their established
+                # semantics; historical-only state uses the actual bar time.
+                self._last_bar_ts[symbol] = max(
+                    self._last_bar_ts.get(symbol, float("-inf")), newest_historical,
+                )
+                self.last_update_time = max(self._last_bar_ts.values())
                 filled += 1
             except Exception as e:
                 logger.warning("Pre-fill failed for %s: %s", symbol, e)

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/tmp/intra-actionlint",
+    "-shellcheck=",
+    "-pyflakes=",
+    ".github/workflows/paper-readiness.yml"
+  ],
+  "version": "1.7.12",
+  "sha256": "8db11704dc296f096216db4db65d86cd7f0ebfdf4c38453a1da276b137b88388",
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": ""
+}

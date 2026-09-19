@@ -1,0 +1,21 @@
+{
+  "accepted_base": "3fa2199df04d75ea0552a5aa08d1f59ba844b211",
+  "candidate_merge": "79a898697e46de4d8d13051db33ef18d500a2db4",
+  "prebuilt_source": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "checked_surfaces": [
+    "backend",
+    "scripts",
+    "tests",
+    ".github",
+    "Dockerfile",
+    ".dockerignore",
+    "docker-compose.paper.yml",
+    "requirements.lock",
+    "requirements-dev.txt",
+    "pyproject.toml",
+    "pytest.ini"
+  ],
+  "different_paths": [],
+  "merge_resolution": "Keep current candidate canonical full-pack artifacts and combined workflow contract tests; retain accepted nightly source and its separate evidence. Runtime/tests/workflows equal prebuilt source exactly.",
+  "image_id": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c"
+}

@@ -1,0 +1,175 @@
+{
+  "task_id": "combined-paper-corrections-independent-review-2026-09-19",
+  "reviewer": "/root/combined_acceptance_review",
+  "reviewed_at_utc": "2026-09-19T21:00:25.933805+00:00",
+  "verdict": "approve_undeployed_candidate_source_activation_spec_and_completed_local_validation",
+  "blocking_source_findings": [],
+  "activation_authorized": false,
+  "source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "active_operational_base": "02ba1afff73e1f05902b9fe71f13170d618d6d5e",
+  "image_id": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+  "scope": "Independent backend integration, reporting and activation-plan review. Reviewer only wrote this review artifact; no source, credential, runtime, order, brain/history or freeze writes.",
+  "source_files_sha256": {
+    "backend/integrations/alpaca_data.py": "cd4e8b8904dacb37f7ebf16469495daf7f6e7360327c35815bf221e0ead37c5a",
+    "backend/organism/streaming_data_provider.py": "4d88047c0ef6d310e0ec887f519f6ac5c210c745e642b6d3d8e32f97c6212d6f",
+    "backend/organism/live_engine.py": "921fd933db1e0a1c7a132154667e028c298ff9da8c2c507879b63fe363b4d6a7",
+    "backend/organism/live_engine_fills.py": "9267e7a341c3e414b28b5061bcfcb79941413c1f162a66b700563049070f5750",
+    "backend/organism/continuous_learner.py": "2c235f704cc57fb6c12113e762e6cf4775ea2195c79e165f4c0d87013b8d5bee",
+    "scripts/phase3_attribution_report.py": "755c4e58a306eeaed335812fcbb90467fc7b75a40202c3dea3a6ceec4b02935f",
+    ".github/workflows/paper-readiness.yml": "0203424279eb02dc603c1cc07c3648479cc2b9c04b3ad60ddecba554b790cfca",
+    "tests/test_live_engine_fill_accounting.py": "6547fe52de926e9605812f297df5042d5a035dcbc9eb27a3fa1ba1b9084f3552",
+    "tests/fixtures/paper_fill_accounting_forward_20260919.json": "bbdd83aff5b48daa7cf806ba179b591574aabb3a3a0011ca197e18451c0b4a37",
+    "tests/test_phase3_attribution_report.py": "13417ccdb6b93ee636795d57cff66c6eeac23d7ed885e9ead9652c6b0c34813d",
+    "tests/test_phase3_candidate_shadow_telemetry.py": "bb4f43b475278ece9c2be106dc5f002d5ab963a380f0d64508e2f3cc084aa216",
+    "tests/test_monday_ci_workflows.py": "7e40eefab53b9a0dbab9e400f2439d592587e7b577ca76b4a67ebb49ffcd07bb",
+    "tests/unit/test_alpaca_data_comprehensive.py": "f5afd3184538dc3d03d8a4f6f63b71269fa5ed6ed39f4cb6d0f75aafb6e66f1e",
+    "tests/unit/test_streaming_data_provider.py": "9f974da916d452404f714da7aa672c2e82cb0c766b1dbbf5dec683386bddb095",
+    "tests/unit/test_paper_data_freshness.py": "c8669905ad4282c0dde9ef1c128566459ac161fc30f2b6c343bffbee1ff11d84"
+  },
+  "reviewed_metadata_sha256": {
+    "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md": "b88a43eb4cbff2a8617f54b1b6fd6256cab9cb2937802e9ee787a05bd24edacb",
+    "artifacts/corrections_candidate/activation_manifest.draft.json": "11d5b4738773a9c8187759e56d5dba5a11278fafa1b183d4acbe46c42744f590",
+    "artifacts/corrections_candidate/plan.json": "aeb0c526d1e8f676d6a1cc6df5ea85ede6287bbdcfa0fd04b2b56e540df48294",
+    "artifacts/task_report.json": "85a465ddf8f61d0e98b203642da2a9d735cc98259ee4023991e18bf18994e836",
+    "artifacts/task-report.json": "85a465ddf8f61d0e98b203642da2a9d735cc98259ee4023991e18bf18994e836",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "a8a9d08b972e81c94cad7292c4d3d57b6822f4903cc2651388e8578c7fe2397a"
+  },
+  "evidence_sha256": {
+    "artifacts/corrections_candidate/focused.json": "2b70698aae3e8c2e0b94410631620b0b898dd159455dbaba11f1b7ee745a1dea",
+    "artifacts/corrections_candidate/focused.xml": "47919bfefbb7aff0ec4885f725a36ea3011aca35edd0e053ca42375950222cd0",
+    "artifacts/corrections_candidate/reconciliation_measurement.json": "a2808e2405befa96f6580ad23544297c362d049459d57075cf857359d09013fb",
+    "artifacts/corrections_candidate/reconciliation_measurement.xml": "50f90edfab4e65ed424a4937fb27f690fe01a0a45674a2219b629da438b6edd5",
+    "artifacts/corrections_candidate/report_workflow.json": "d73101c4c0a2e333eeffc099b538798128af0ee46b9b23657b387e3e151b46bf",
+    "artifacts/corrections_candidate/report_workflow.xml": "a3d2706b458dc8bc0fff5f99f49a5585ba71fc55b94a0ebebcea3f66a15c4629",
+    "artifacts/corrections_candidate/nightly_harness.json": "f8b4c4644409412fd3e9030fed6a1f24dc6c27ad685d5a344a201bbf57b05ffd",
+    "artifacts/corrections_candidate/nightly_harness.xml": "c96c6a7fd758941f873e53ba281d971ed5c8372c36d4e81a901ab6dbf5d8102c",
+    "artifacts/corrections_candidate/full.json": "a2f13981108a49ff76973b79f4d660e315256f1e226e08f915e96604d30097f3",
+    "artifacts/corrections_candidate/full_pack_source_equivalence.json": "bd7a4b7226752fd5fe6f4315a1f0cd0382f9c5224e5ad438bd332780a7eb4e6b",
+    "artifacts/corrections_candidate/source_equivalence.json": "929f0f36be65cca2e546189de3aa3671022e4f6d4b3e8061f36b04e14d74794d",
+    "artifacts/corrections_candidate/final_test_summary.json": "4da5fd875ed217661b362038faecf0264cc468f0b06dbda59e5e0bc15ad126c5",
+    "artifacts/corrections_candidate/freeze_verification.json": "3010cc9588099235c9a8e15d195e64c2d91701f5d595a5c9a8a1c335a2f1decf",
+    "artifacts/corrections_candidate/workflow_lint.json": "88e7c6bfd5de69ab7cf02a08ccce3c127e81a36f49346e70286c5c7f706db907",
+    "artifacts/corrections_candidate/candidate_image_build.json": "788e9cfc36f0f0f0da72736e2378ac6569d05c4cd2514952b15142ff790cf12f",
+    "artifacts/corrections_candidate/candidate_image_verification.json": "271da811c11596815f2fd6b4686d195f0360fe35fc2f94658ba00eee09f7dace",
+    "artifacts/grep_assertions.json": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b",
+    "artifacts/spec_drift_summary.json": "10edba1a3b542b45844267bdd1efa759dc8bb77dbcc5a238a3009cf24c5b1ab5",
+    "artifacts/runtime_snapshot_summary.json": "d2d6ee395490a16cfef02ae6da7e25b3e659ba30886cc3f285d359d6d1c724cc",
+    "artifacts/runtime_config_snapshot.json": "5790d83678f7e5e9f0bfd9fe24a500395d7d56742df019f4caabf1b45a0a5d31",
+    "artifacts/test_summary.json": "dfdad06cb4ddbfe6a2084eaa24fcaf35d1fe013ddcf6b4e592d6fe0ec7b140ea",
+    "artifacts/replay_summary.json": "5318e08c6bbbe621000f9ea534636fef221317135672c53ebe8b8ec63625a468",
+    "artifacts/semantic_invariants_summary.json": "45550d6203900b734127dddaa40e1c1e0e489ffef96c8787172afe3b0e801593",
+    "artifacts/corrections_candidate/accepted_base_source_equivalence.json": "7e87da4085533fdcf8c48896dace16461534afcc59bbf2dfff9daf5e4e0de297",
+    "artifacts/corrections_candidate/accepted_base_freeze_verification.json": "c688912df9527e471185ad49bbf5f6d875efcf8e5bf70573ef0e220f1fa2b6c0"
+  },
+  "metadata_binding_note": "Source 274d0c4 is immutable and source-bound to the prebuilt image. Current metadata incorporates completed validation/image receipts after that source commit. Accepted-base merge, PR URL and audit-index packaging still require source-equivalence/final metadata binding; this is not approval of future implementation changes.",
+  "prior_reviews": {
+    "data": {
+      "source": "c66bb2d8128d7105023a1c323b97981dda2f612a",
+      "review_sha256": "c3304d9e994ff84262c6bdd7dc25af31236ee6f689f057273dd00a4c2b9cd291",
+      "five_implementation_files_match_prior_reviews": true
+    },
+    "accounting": {
+      "source": "75b1775fdf9ced011e83d37261b056aa6b692b1c",
+      "review_sha256": "523c162d679ef77d96047366519de34a7e13b00dac2dc0a5d44ced37506f0fc7"
+    },
+    "nightly_fixtures": {
+      "source": "502b3c7b955b35b21dea659c316dd41e5d7f137b",
+      "review_sha256": "e9fb8db656062a06c2fe6138df4e571f3111e8e8832e468ee2106b319eca5130",
+      "integration_review": "Both combined correction cases and the dedicated 170-case step remain in the workflow, with bounded timeouts, pinned Ruff, pipefail, fresh JUnit and failure upload intact."
+    }
+  },
+  "correctness_findings": [
+    "Accounting requires a unique entry identity, attributed organism orders, terminal states, finite positive prices, unique broker/local identities and conserved whole-share entry/exit quantities. Read-only DB ambiguity checks include pre-entry active and late-updated fills; weighted prices and decimal cash flows cover all attributed exits.",
+    "Incomplete evidence retains the existing one-shot approximate fallback, explicitly tagged fill_approximate/db_fill_approximate; no retry/correction is promised. Complete db_position_fills describes DB-order evidence, not independent broker truth. Restart/reconciliation-artifact learning exclusions are preserved.",
+    "Both historical methods use one captured UTC end, descending pagination and timestamp deduplication before chronological latest-N output. Malformed/ambiguous/future timestamps, repeated tokens, page errors and the page bound fail without publishing partial success.",
+    "Prefill validates before publishing and merges existing stream rows without an intervening await. Historical freshness uses bar event time; stream receipt semantics and late callback ordering remain unchanged.",
+    "Only _reconcile_fills changes executable live_engine behavior. continuous_learner changes comments only. No learning-mode ML or Kelly sizing influence, dead order-submit branch, frozen function, feed/settings or runtime constant was introduced or changed.",
+    "The phase3 normalized regime-column fix is necessary and scoped. Actual loader/CLI tests cover old/equal/new cutoff rows and input immutability. Fresh-process tests prove both reports use 6 bps when explicitly configured without changing parent/runtime environment.",
+    "Telemetry default-test repair uses a fresh interpreter because earlier imports cache path constants; it removes only two tested overrides, inherits the isolation environment/sandbox and retains the original assertions."
+  ],
+  "freeze_verification": {
+    "frozen_at": "2026-07-07T20:36:49.008305+00:00",
+    "sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+    "surface_sha256": "0c26f5f22835fad2014479f78e6a026aea5462e1fbb0a5c985d709c25755f3fc",
+    "byte_identical_to_active_base": true,
+    "independent_read_only_verify_exit_code": 0,
+    "final_source_and_prebuilt_image_verify_exit_code": 0,
+    "clock_reset_performed": false
+  },
+  "activation_spec_review": [
+    "Explicitly approved advancement of active artifacts/phase2/param_freeze.json/FROZEN_AT is required for native report consumers; a parallel manifest alone would retain July counts. Archive the exact July artifact first, preserve the complete surface and gate targets, publish the approved cutoff atomically and bind absolute input paths/hashes.",
+    "Prebuild and verify the immutable source/image before requesting approval. Hold engine/startup/watchdog recovery until fresh broker-flat/no-orders evidence, verified backups, manifest/cutoff publication and zero new-count report checks complete. Historical state, counters and records remain unchanged.",
+    "The count uses close time strictly greater than the cutoff, not an authoritative entry timestamp. A fresh flat/no-orders condition addresses carry-in positions; native source mapping alone is not a clean-cohort guarantee. Unresolved approximate, duplicate or reconciliation evidence blocks a verdict rather than silently changing eligibility.",
+    "The July research brief sets at least 3 bps per side. The proposal consistently preregisters 6 bps round-trip PRIMARY in report-only subprocesses, while unchanged native/runtime 3 bps is diagnostic only. No SIP/feed or broader strategy proposal is included.",
+    "Phase3 SHADOW and phase8/9/warehouse/observer diagnostics remain historical scopes. Lifetime, learner, Kelly/evolution and promotion counters are not restarted. Rollback after new trades is another intervention requiring a documented evaluation decision."
+  ],
+  "validation": {
+    "producer": "Implementation agent in OS-sandboxed, network-denied scratch environment. Reviewer inspected source, JSON/JUnit, hashes and commands; independently reran read-only freeze verification, parsed distinct test identities and checked source equivalence.",
+    "focused": 116,
+    "reconciliation_measurement": 112,
+    "report_workflow": 51,
+    "nightly_harness": 170,
+    "full_pack": {
+      "core": 168,
+      "replay": 28,
+      "semantic": 20,
+      "seconds": 204.78,
+      "tested_source_sha": "fdd08cad27a97d6d350ce397b7535a49e0af86ad",
+      "equivalent_source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+      "equivalence_files_independently_checked": 18
+    },
+    "distinct_case_total": 665,
+    "duplicate_case_id_count": 0,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "grep_assertions": "pass",
+    "spec_drift": "pass; zero drifts",
+    "workflow_lint": "actionlint 1.7.12 pass",
+    "source_diff_check": "pass",
+    "earlier_failures": "Two 111-pass/1-fail telemetry-default fixture attempts are retained separately as non-acceptance evidence; the final group passes 112.",
+    "snapshot_scope": "Canonical full-pack snapshots reflect isolated mock/test settings, not an installed combined runtime.",
+    "image_receipt_review": "Exact git-archive build; nine recorded source/build/report-script hashes match in a network-disabled, read-only container with no production credentials or brain/database mounts. Application was not started; original freeze remains unchanged."
+  },
+  "residual_limits": [
+    "DB snapshots can lag broker executions; quantity conservation cannot prove an unrecorded order did not occur. Approximate fallback can still feed existing risk/learner paths and is never repaired later by this patch.",
+    "Latest available higher-timeframe bars may still be evolving. Fixed history windows can return fewer rows; no continuous-minute guarantee, aggregate request deadline or late-stream callback correction is added.",
+    "Corrected inputs and PnL change future behavior despite unchanged freeze hashes. Inherited learner/risk state remains; a new cutoff is not a fresh brain or an independent profitability proof.",
+    "Six bps is the proposed research minimum, not proof of actual execution cost. Report realistic observed spread/cost evidence when available and do not use the 3 bps diagnostic for qualification.",
+    "Broad nightly API/provider/database/history prerequisites and parked CI/security debt are not all resolved. No assertion that the full repository is green or Monday paper readiness is certified."
+  ],
+  "remaining_acceptance_gates": [
+    "Finish accepted-base/PR packaging and retain final source-equivalence, audit index and review binding. Obtain required hosted checks on the combined source; standalone proposal checks do not substitute.",
+    "Update the main scheduler bridge uses/source_sha pins together to the accepted candidate source, review the exact four-pin delta and validate an actual called post-close run. The existing d7c3c6c schedule is old-source validation, not ongoing validation of the proposed deployed candidate.",
+    "Obtain Marsel explicit approval of this source/image, deliberate prospective FROZEN_AT advancement and 6 bps primary reporting convention. No merge, deployment, clock reset or hold release is authorized by this review or by silence.",
+    "After approval only: verified fresh backups and broker-flat/no-orders evidence; immutable original freeze archive; validated atomic active-cutoff/manifest publication; exact active-input paths/hashes and zero initial counts before startup.",
+    "Obtain installed-candidate authenticated runtime/config/source evidence, read-only current provider comparison and controlled paper restart checks; confirm startup/watchdog restoration only after acceptance.",
+    "Observe the natural market session, streaming progression, broker fills/reconciliation/exits and post-close evidence before claiming session readiness. No test order or real-money activation is authorized."
+  ],
+  "accepted_base_packaging": {
+    "reviewed_at_utc": "2026-09-19T21:02:46.954156+00:00",
+    "merge_sha": "79a898697e46de4d8d13051db33ef18d500a2db4",
+    "active_base_sha": "3fa2199df04d75ea0552a5aa08d1f59ba844b211",
+    "source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "active_base_is_ancestor": true,
+    "backend_scripts_tests_workflows_build_dependencies_identical_to_prebuilt_source": true,
+    "qualification": "PR URL and final audit-index reference are pending metadata-only packaging; source/image approval remains unchanged."
+  },
+  "resolved_final_wording": [
+    "Prebuilt image digest is bound; approval reference and activation time remain null.",
+    "Approved candidate starts with autostart disabled and watchdog paused; actual readiness/runtime/config/freeze/broker checks must pass before those controls are restored."
+  ],
+  "final_metadata_refresh": {
+    "reviewed_at_utc": "2026-09-19T21:07:52.825749+00:00",
+    "source_sha_unchanged": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "accepted_base_merge_unchanged": "79a898697e46de4d8d13051db33ef18d500a2db4",
+    "image_id_unchanged": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+    "clarifications_reviewed": [
+      "Fresh held-state database/brain backups are required, including a final save potentially made by the orderly stop; matching checksums and configuration/source provenance must be recorded.",
+      "The candidate starts while automatic startup/recovery remain held; runtime/broker/config/freeze acceptance precedes their restoration.",
+      "Scheduler uses/source_sha pins must target the accepted candidate; old-source scheduled checks do not certify it."
+    ],
+    "semantic_summary_restored_to_candidate_evidence": true,
+    "further_packaging": "PR URL/audit-index reference may be updated as metadata only. This refresh does not authorize source changes, merge, deployment, cutoff advancement or hold release."
+  }
+}

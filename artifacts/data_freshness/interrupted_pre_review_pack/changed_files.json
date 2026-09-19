@@ -1,0 +1,31 @@
+{
+  "scope": "base",
+  "ref": "d7c3c6c047d97a4f925c7b66c7f121e3ee10cd4d...HEAD",
+  "total": 9,
+  "all": [
+    ".github/workflows/paper-readiness.yml",
+    "artifacts/data_freshness/plan.json",
+    "backend/integrations/alpaca_data.py",
+    "backend/organism/streaming_data_provider.py",
+    "reports/PAPER_DATA_FRESHNESS_PROPOSAL_2026-09-19.md",
+    "tests/test_monday_ci_workflows.py",
+    "tests/unit/test_alpaca_data_comprehensive.py",
+    "tests/unit/test_paper_data_freshness.py",
+    "tests/unit/test_streaming_data_provider.py"
+  ],
+  "backend": [
+    "backend/integrations/alpaca_data.py",
+    "backend/organism/streaming_data_provider.py"
+  ],
+  "organism": [
+    "backend/organism/streaming_data_provider.py"
+  ],
+  "tests": [
+    "tests/test_monday_ci_workflows.py",
+    "tests/unit/test_alpaca_data_comprehensive.py",
+    "tests/unit/test_paper_data_freshness.py",
+    "tests/unit/test_streaming_data_provider.py"
+  ],
+  "config": [],
+  "docs": []
+}

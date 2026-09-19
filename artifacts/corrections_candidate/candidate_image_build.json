@@ -1,0 +1,29 @@
+{
+  "status": "built_not_deployed",
+  "source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "source_material": "exact git archive; no uncommitted working-copy inputs",
+  "image_tag": "intra-api:corrections-274d0c47ea6c",
+  "image_id": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+  "image_architecture": "arm64",
+  "built_at_utc": "2026-09-19T20:54:12Z",
+  "provenance": {
+    "GIT_SHA": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "BUILD_TIME": "2026-09-19T20:54:12Z",
+    "IMAGE_SHA": "274d0c47ea6c4a092667cc65f813a96a2264e676"
+  },
+  "source_file_sha256": {
+    "Dockerfile": "8816b42d06a58d95495401016db93a978bf8eba05af03c42deadefc102e08694",
+    ".dockerignore": "6276664bc3e77f60522129bbdb99b9571c420152fd359eb6d693d97e4b60910d",
+    "docker-compose.paper.yml": "9d65d48a73253793af8848d7bb65e279f7bb9231f8686086bdb55744b49fa399",
+    "backend/integrations/alpaca_data.py": "cd4e8b8904dacb37f7ebf16469495daf7f6e7360327c35815bf221e0ead37c5a",
+    "backend/organism/streaming_data_provider.py": "4d88047c0ef6d310e0ec887f519f6ac5c210c745e642b6d3d8e32f97c6212d6f",
+    "backend/organism/live_engine.py": "921fd933db1e0a1c7a132154667e028c298ff9da8c2c507879b63fe363b4d6a7",
+    "backend/organism/live_engine_fills.py": "9267e7a341c3e414b28b5061bcfcb79941413c1f162a66b700563049070f5750",
+    "backend/organism/continuous_learner.py": "2c235f704cc57fb6c12113e762e6cf4775ea2195c79e165f4c0d87013b8d5bee",
+    "scripts/phase3_attribution_report.py": "755c4e58a306eeaed335812fcbb90467fc7b75a40202c3dea3a6ceec4b02935f"
+  },
+  "network_scope": "Docker build dependency retrieval only; no app or broker requests",
+  "application_started": false,
+  "production_api_still_stopped": true,
+  "production_state_mounted": false
+}

@@ -1,0 +1,40 @@
+{
+  "observed_at_utc": "2026-09-19T20:16:23.806704+00:00",
+  "application_source_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+  "host_source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "scope": "Read-only market-data GET probes within installed paper API container; no orders, config changes or state edits",
+  "settings": {
+    "ORGANISM_LIVE_LOOKBACK": 500,
+    "ORGANISM_LIVE_TIMEFRAME": "1Min",
+    "ORGANISM_USE_STREAMING": "1",
+    "ALPACA_DATA_FEED": "iex"
+  },
+  "installed_client": {
+    "method": "AlpacaDataClient.get_historical_bars_df",
+    "symbol": "AAPL",
+    "rows": 500,
+    "first_timestamp": "2026-09-15T14:49:00Z",
+    "last_timestamp": "2026-09-16T16:34:00Z",
+    "seconds": 0.4
+  },
+  "same_provider_latest_comparison": {
+    "symbol": "AAPL",
+    "http_status": 200,
+    "sort": "desc",
+    "limit": 2,
+    "timestamps": [
+      "2026-09-18T19:59:00Z",
+      "2026-09-18T19:58:00Z"
+    ],
+    "next_page_present": true,
+    "same_feed": true,
+    "same_adjustment": "split"
+  },
+  "finding": "The configured historical client returns an old first-page tail even though newer bars are available; active streaming prefill and REST fallback use this client. Data correctness requires a separately tested correction before unconditional Monday acceptance.",
+  "limits": [
+    "Read-only weekend observation, not a forecast of a particular Monday order",
+    "Streaming warmup and existing stale receipt gates remain relevant; no claim a bad order necessarily occurs"
+  ],
+  "credentials_disclosed": false,
+  "forward_clock_changed": false
+}

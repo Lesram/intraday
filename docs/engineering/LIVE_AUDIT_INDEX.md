@@ -1,24 +1,26 @@
 # Live Audit Index
 
-Generated: 2026-09-19T20:38:07Z
+Generated: 2026-09-19T21:02:16Z
 PR: n/a
-SHA: `502b3c7b95`
-Branch: `codex/nightly-test-harness`
-Scope: **tooling/evidence_only**
-Change scope: `task` (`HEAD`)
+SHA: `79a898697e`
+Branch: `codex/paper-corrections-candidate`
+Scope: **backend_logic**
+Change scope: `base` (`3fa2199df04d75ea0552a5aa08d1f59ba844b211...HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
-| Organism | 0 | none |
-| Scripts | 0 | none |
+| Backend | 5 | `backend/integrations/alpaca_data.py`, `backend/organism/continuous_learner.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/streaming_data_provider.py` |
+| Organism | 4 | `backend/organism/continuous_learner.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/streaming_data_provider.py` |
+| Scripts | 1 | `scripts/phase3_attribution_report.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 14 | `tests/test_monday_ci_workflows.py`, `tests/test_organism_integration_smoke.py`, `tests/test_phase2_freeze.py`, `tests/test_reachability_v8.py`, `tests/test_strategy_engine_comprehensive.py`, `tests/test_v12_baseline_invariants.py`, `tests/test_v12_w75_lint_ratchet.py`, `tests/test_v12_w77_findings_ledger.py`, `tests/test_v12_w81_ci_cleanup.py`, `tests/test_wave37_fixes.py` |
-| Docs | 1 | `docs/engineering/NIGHTLY_TEST_HARNESS_2026-09-19.md` |
+| Tests | 8 | `tests/fixtures/paper_fill_accounting_forward_20260919.json`, `tests/test_live_engine_fill_accounting.py`, `tests/test_monday_ci_workflows.py`, `tests/test_phase3_attribution_report.py`, `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/unit/test_alpaca_data_comprehensive.py`, `tests/unit/test_paper_data_freshness.py`, `tests/unit/test_streaming_data_provider.py` |
+| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Live constants
+
+**Evidence scope:** These are isolated mock/test settings for the combined proposal. They are not the stopped paper runtime or an activated candidate. The API remains held; the July cutoff is unchanged. The prebuilt image is source-bound and verified without application startup. Primary prospective research reports are proposed at 6 bps round trip using report-process-only configuration; native/runtime costing remains unchanged. See `reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md` and `artifacts/corrections_candidate/`.
 
 Source: `resolved_config_snapshot.json`
 
@@ -54,4 +56,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- No code changes in this PR — verify evidence artifacts are current
+- 4 organism file(s) changed — require replay verification

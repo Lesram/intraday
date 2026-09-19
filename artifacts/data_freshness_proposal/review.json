@@ -1,0 +1,131 @@
+{
+  "task_id": "paper-data-freshness-independent-review-2026-09-19",
+  "reviewer": "artifact_review",
+  "reviewed_at_utc": "2026-09-19T20:35:57.628256+00:00",
+  "verdict": "approve_undeployed_proposal_source_and_completed_local_validation",
+  "blocking_findings": [],
+  "source_sha": "c66bb2d8128d7105023a1c323b97981dda2f612a",
+  "tested_source_sha": "47ad8c9cf57799b787f919e25e6c82551fb0226a",
+  "source_before": "d7c3c6c047d97a4f925c7b66c7f121e3ee10cd4d",
+  "active_base": "02ba1afff73e1f05902b9fe71f13170d618d6d5e",
+  "source_equivalence": {
+    "identical_git_tree": "30c9bc2ffcd9e710180c931abd0dd67a43ff76e8",
+    "verified": true,
+    "qualification": "Source-identical active-base merge follows the completed full pack. Report and audit index final evidence wording is separately hash-bound below."
+  },
+  "files_sha256": {
+    ".github/workflows/paper-readiness.yml": "84a72778c98dff0d7dc170fdae3fe87b4fd978fcec39c1aee043db90c80ebb26",
+    "artifacts/data_freshness/plan.json": "f9839b4f7f7acde27b54b45ea5cd0cee86df18f2e1355c852fd002cde9089586",
+    "backend/integrations/alpaca_data.py": "cd4e8b8904dacb37f7ebf16469495daf7f6e7360327c35815bf221e0ead37c5a",
+    "backend/organism/streaming_data_provider.py": "4d88047c0ef6d310e0ec887f519f6ac5c210c745e642b6d3d8e32f97c6212d6f",
+    "reports/PAPER_DATA_FRESHNESS_PROPOSAL_2026-09-19.md": "0ba14f242d277823ef117603fb3a4e7601278ac726c447951b9fe217e6565701",
+    "tests/test_monday_ci_workflows.py": "9c6e9bceb4683182e690455a6e9eff5547c6656f17618835b4ad39b76cae05fd",
+    "tests/unit/test_alpaca_data_comprehensive.py": "f5afd3184538dc3d03d8a4f6f63b71269fa5ed6ed39f4cb6d0f75aafb6e66f1e",
+    "tests/unit/test_paper_data_freshness.py": "c8669905ad4282c0dde9ef1c128566459ac161fc30f2b6c343bffbee1ff11d84",
+    "tests/unit/test_streaming_data_provider.py": "9f974da916d452404f714da7aa672c2e82cb0c766b1dbbf5dec683386bddb095",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "52c44a1328848c75eb90d4475bce60afb0f86062efb61fac710107b86ea6ffb9"
+  },
+  "evidence_sha256": {
+    "artifacts/data_freshness/full.json": "2ce2fecaca0833e285ef58da865ec3b1406ca10e4a5bdf5f468f9a3f04b687f6",
+    "artifacts/data_freshness/focused.xml": "4468e18211bf59c6db862119418e7471b360f085a120b900d7442f6a5214d1de",
+    "artifacts/data_freshness/order_reconciliation.xml": "6daaf8dcabd0f692b98819208e6f1937812089a8bd554a85b683488fa0f23221",
+    "artifacts/data_freshness/workflow.xml": "ba073fbe89968888dc154eb7d97d52a06226d4ba5740af050f795a502ddc3b84",
+    "artifacts/data_freshness/freeze_verification.json": "1c2d7884ceeb156e2d3e349b46ed683f5a514ada4cc8a7bb6f62e0f42c036e55",
+    "artifacts/data_freshness/actual_runtime_observation.json": "32b6115a2e8c273753299104eced57daa0a31ac42e7f741f404d352c1639db12",
+    "artifacts/data_freshness/maintenance_hold.json": "cdb00e009dd14df5a7360ee7181a32d432f6d53e80eb6443e98a932471d0fdb8",
+    "artifacts/data_freshness_proposal/actual_readonly_provider_probe.json": "766b208394b811cdace1431f7f86053b64e200aeaf4dba8bd6983f6b21c02e9b",
+    "artifacts/task_report.json": "a1efbf7bbd57c7fc2bca2850cef309528f21a00d1e87f35d2c75b9fa17350dfe",
+    "artifacts/runtime_snapshot_summary.json": "67552b221cdaf383edd17f911a796b7b3a308a9aaf5dae9b9bae771e20954d9d",
+    "artifacts/replay_summary.json": "b9cad197e0ebe5e353c4a4ac085373d329fe3ad7ca6614276baff2e86be6e7e0"
+  },
+  "scope": "Two production modules, four test modules, one workflow test-list extension, proposal plan/report and generated evidence. Reviewer made no source edits, broker requests, deployment, merge, history rewrite or clock changes.",
+  "resolved_findings": [
+    {
+      "id": "DF-1",
+      "severity": "P2",
+      "path": "backend/integrations/alpaca_data.py:132",
+      "problem": "Preserving time-of-day in the new start bound excluded Friday midnight-stamped daily bars for a Saturday lookback=1 request that previously included them.",
+      "resolution": "47ad8c9 floors the UTC start to the beginning of the first calendar day; regressions exercise both public methods with a provider honoring both bounds. Latest-500 fixture also now honors both bounds."
+    },
+    {
+      "id": "DF-2",
+      "severity": "clarification",
+      "problem": "Current-time end affects higher-timeframe callers and can select an evolving interval.",
+      "resolution": "Final report and task risks explicitly promise latest available data rather than closed intervals; this remains part of the activation/cohort decision."
+    },
+    {
+      "id": "DF-3",
+      "severity": "clarification",
+      "problem": "Generated audit index could be mistaken for installed runtime because its live-constants heading showed isolated 1Day defaults.",
+      "resolution": "Final index and snapshot summary explicitly separate isolated test configuration, stopped original runtime and ephemeral candidate retrieval probe."
+    }
+  ],
+  "correctness_review": [
+    "Both public historical methods share one request window, preserve feed and split adjustment, request descending data, follow continuation tokens until enough unique bars or no continuation, then expose the latest selected bars in chronological UTC order.",
+    "Request end is captured once. Page parameter dictionaries are copied, overlap deduplicates by normalized timestamp, page size is capped at 10000, repeated/invalid continuation and the 100-page bound fail closed. Page API errors do not return partial success.",
+    "Ambiguous, invalid and future timestamps cause retrieval failure. Prefill validates historical and retained-stream timestamps before publishing; a malformed result cannot partially replace its existing buffer or freshness metadata.",
+    "Prefill merge executes without an await after REST returns, preserving callbacks that arrived during the await and giving existing stream rows precedence on timestamp collisions. Historical-only age derives from the newest event; cross-symbol global age does not regress to the last stale symbol.",
+    "AST comparison confirms _prefill is the only changed StreamingDataProvider method. Stream callback receipt semantics, later callback ordering, stale thresholds, freeze-hashed functions, feed/config values and trading submission gates are unchanged.",
+    "No ML or Kelly influence is introduced into learning mode, no order-submission branch is added, and no frozen reference is restamped. Unchanged hashes do not establish equivalent input data or authorize activation."
+  ],
+  "validation": {
+    "producer": "Implementation agent under documented OS network/live-state denial; reviewer independently inspected JSON/JUnit and source hashes.",
+    "focused": 77,
+    "order_reconciliation": 80,
+    "workflow_contracts": 44,
+    "full_pack": {
+      "ordinary": 168,
+      "replay": 28,
+      "semantic": 20,
+      "seconds": 215.09,
+      "exit_code": 0
+    },
+    "distinct_case_total_verified_from_junit": 417,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "grep_assertions": "pass",
+    "spec_drift": "pass",
+    "workflow_actionlint": "1.7.12 pass",
+    "reviewer_diff_check": "pass",
+    "freeze": "PASS at c66bb2d against documented frozen environment; FROZEN_AT=2026-07-07T20:36:49.008305+00:00 unchanged.",
+    "interrupted_run": "Earlier 45e47f1 pack was operator-interrupted while source was corrected. Preserved as non-acceptance evidence and excluded from completed validation.",
+    "snapshot_scope": "Canonical full-pack snapshots use isolated mock/test settings; live_process reachable=false is expected under this harness and is not proof of installed-candidate state.",
+    "real_provider_probe": {
+      "source_sha": "c66bb2d8128d7105023a1c323b97981dda2f612a",
+      "source_file_hash_verified": true,
+      "rows": 500,
+      "first_timestamp": "2026-09-17T18:26:00+00:00",
+      "last_timestamp": "2026-09-18T19:59:00+00:00",
+      "ordered_unique": true,
+      "scope": "Root-provided evidence from proposed client only in separate ephemeral container, no engine or orders. Original API remains held. This verifies retrieval, not installed-engine or natural-session behavior."
+    }
+  },
+  "provider_contract_sources": [
+    {
+      "url": "https://docs.alpaca.markets/us/reference/stockbarsingle-1",
+      "checked_date": "2026-09-19",
+      "supports": "Inclusive RFC-3339 bounds, descending sort, page size and continuation contract."
+    },
+    {
+      "url": "https://docs.alpaca.markets/us/docs/market-data-faq",
+      "checked_date": "2026-09-19",
+      "supports": "Bars label the interval start; daily bars use the New York day boundary."
+    }
+  ],
+  "known_limits_not_introduced_blockers": [
+    "Fixed calendar window may return fewer bars, especially small daily/weekend/holiday or longer-timeframe requests; no adaptive expansion or exchange calendar introduced.",
+    "Latest available higher-timeframe bars can evolve; no closed-interval guarantee.",
+    "No continuity guarantee across market closures, IEX no-trade minutes or outages. Later out-of-order/duplicate streamed events and receipt-time freshness remain outside this change.",
+    "Pagination is bounded by pages and existing per-request timeout/retries, not a new aggregate deadline; no order behavior was added.",
+    "Data integrity correction does not establish profitability or restore a historical strategy-edge claim."
+  ],
+  "remaining_acceptance_gates": [
+    "Package this exact reviewed proposal/evidence on the feature branch, open the draft PR, update its audit-index/PR link, and require actual hosted checks on the accepted proposal source before any merge decision.",
+    "Obtain explicit activation and prospective evaluation-cohort approval. Account for corrected data inputs and coordinate the separate accounting proposal explicitly; do not silently mix samples, rewrite history or reset/restamp the July freeze.",
+    "Keep the reversible paper maintenance hold until authorized deployment. Verify flat/order-free state again before controlled restart; the September19 observation is not a standing guarantee.",
+    "After approval, build/deploy the accepted candidate and obtain authenticated actual-runtime/config evidence plus a read-only provider comparison. The ephemeral probe is not an installed-engine acceptance test.",
+    "Observe natural market open, latest-bar timestamps, prefill/stream progression, order/fill/reconciliation/exit behavior and post-close evidence. No Monday-ready or strategy-edge claim from this review.",
+    "Operational PR12/bridge13 and legacy CI acceptance are independent; this proposal review neither approves unrelated failures nor authorizes required-check bypass."
+  ]
+}

@@ -574,8 +574,8 @@ class TestAlpacaDataClientParamValidation:
             assert call_args.kwargs["params"]["timeframe"] == timeframe
 
     @pytest.mark.asyncio
-    async def test_sort_is_ascending(self, mock_env_vars, mock_http_client, sample_bars_response):
-        """Test sort parameter is set to asc."""
+    async def test_request_sort_is_descending(self, mock_env_vars, mock_http_client, sample_bars_response):
+        """Test request starts from the newest available data."""
         from backend.integrations.alpaca_data import AlpacaDataClient
 
         client = AlpacaDataClient()
@@ -589,7 +589,7 @@ class TestAlpacaDataClientParamValidation:
         await client.get_historical_closes("AAPL")
 
         call_args = mock_http_client.request.call_args
-        assert call_args.kwargs["params"]["sort"] == "asc"
+        assert call_args.kwargs["params"]["sort"] == "desc"
 
     @pytest.mark.asyncio
     async def test_adjustment_is_split(self, mock_env_vars, mock_http_client, sample_bars_response):
@@ -635,12 +635,12 @@ class TestAlpacaDataClientDateRange:
         call_args = mock_http_client.request.call_args
         params = call_args.kwargs["params"]
 
-        # Start and end should be date strings
+        # Start and end must retain UTC time, including the current session
         assert "start" in params
         assert "end" in params
-        # Format should be YYYY-MM-DD
-        assert len(params["start"]) == 10
-        assert len(params["end"]) == 10
+        # Both bounds are timezone-aware ISO timestamps
+        assert datetime.fromisoformat(params["start"]).utcoffset() == timedelta(0)
+        assert datetime.fromisoformat(params["end"]).utcoffset() == timedelta(0)
 
     @pytest.mark.asyncio
     async def test_buffer_days_for_weekends(self, mock_env_vars, mock_http_client, sample_bars_response):
@@ -661,8 +661,8 @@ class TestAlpacaDataClientDateRange:
         params = call_args.kwargs["params"]
 
         # Start date should be well before lookback trading days
-        start_date = datetime.strptime(params["start"], "%Y-%m-%d")
-        end_date = datetime.strptime(params["end"], "%Y-%m-%d")
+        start_date = datetime.fromisoformat(params["start"])
+        end_date = datetime.fromisoformat(params["end"])
 
         # With 1.4 buffer factor, should request ~140 days for 100 lookback
         days_diff = (end_date - start_date).days
@@ -686,8 +686,8 @@ class TestAlpacaDataClientResponseParsing:
 
         response_data = {
             "bars": [
-                {"t": "2025-01-01", "c": 150.50, "o": 149, "h": 151, "l": 148, "v": 1000},
-                {"t": "2025-01-02", "c": 151.25, "o": 150, "h": 152, "l": 149, "v": 1100},
+                {"t": "2025-01-01T00:00:00Z", "c": 150.50, "o": 149, "h": 151, "l": 148, "v": 1000},
+                {"t": "2025-01-02T00:00:00Z", "c": 151.25, "o": 150, "h": 152, "l": 149, "v": 1100},
             ]
         }
 
@@ -710,7 +710,7 @@ class TestAlpacaDataClientResponseParsing:
 
         response_data = {
             "bars": [
-                {"t": "2025-01-01", "c": 150, "o": 149, "h": 151, "l": 148, "v": 1000},  # Integer
+                {"t": "2025-01-01T00:00:00Z", "c": 150, "o": 149, "h": 151, "l": 148, "v": 1000},  # Integer
             ]
         }
 

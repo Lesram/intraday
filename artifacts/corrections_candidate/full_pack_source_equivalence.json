@@ -1,0 +1,119 @@
+{
+  "tested_source_sha": "fdd08cad27a97d6d350ce397b7535a49e0af86ad",
+  "candidate_source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "files": [
+    {
+      "path": "backend/integrations/alpaca_data.py",
+      "sha256": "cd4e8b8904dacb37f7ebf16469495daf7f6e7360327c35815bf221e0ead37c5a",
+      "identical": true
+    },
+    {
+      "path": "backend/organism/streaming_data_provider.py",
+      "sha256": "4d88047c0ef6d310e0ec887f519f6ac5c210c745e642b6d3d8e32f97c6212d6f",
+      "identical": true
+    },
+    {
+      "path": "backend/organism/live_engine.py",
+      "sha256": "921fd933db1e0a1c7a132154667e028c298ff9da8c2c507879b63fe363b4d6a7",
+      "identical": true
+    },
+    {
+      "path": "backend/organism/live_engine_fills.py",
+      "sha256": "9267e7a341c3e414b28b5061bcfcb79941413c1f162a66b700563049070f5750",
+      "identical": true
+    },
+    {
+      "path": "backend/organism/continuous_learner.py",
+      "sha256": "2c235f704cc57fb6c12113e762e6cf4775ea2195c79e165f4c0d87013b8d5bee",
+      "identical": true
+    },
+    {
+      "path": "scripts/phase3_attribution_report.py",
+      "sha256": "755c4e58a306eeaed335812fcbb90467fc7b75a40202c3dea3a6ceec4b02935f",
+      "identical": true
+    },
+    {
+      "path": "scripts/ci/generate_artifacts.py",
+      "sha256": "f77b6891c82d000a849c6b2d6fe260f9c8e3e57c3bcb59634944164e1c93bb14",
+      "identical": true
+    },
+    {
+      "path": "scripts/runtime/write_runtime_snapshot.py",
+      "sha256": "b2e42c2d081c6d7e00a83e93f422b418bd7fc11142572dbca9fe8baa3695d883",
+      "identical": true
+    },
+    {
+      "path": "scripts/ci/check_spec_drift.py",
+      "sha256": "79e626ee79ab22c199bd74fd5279cb63efad44bd8f5fe07e97654f9b36e59bd9",
+      "identical": true
+    },
+    {
+      "path": "tests/conftest.py",
+      "sha256": "b2a63c51671423a25eab443ea47fe8e9474c3887e0087c34440e9e068788efee",
+      "identical": true
+    },
+    {
+      "path": "tests/test_organism_live_engine.py",
+      "sha256": "a096c91b69ccf02a3e79c7d4cae443755851eb17607c0a418a66e549f37f3344",
+      "identical": true
+    },
+    {
+      "path": "tests/test_organism_engine_scenarios.py",
+      "sha256": "dacaa38cdc7edcfacb13ba771c739007315d9cc9e7ce57daa855ca18c9cae36a",
+      "identical": true
+    },
+    {
+      "path": "tests/test_multi_tick_state.py",
+      "sha256": "ca676f235bb01a97f09771f8c00bddb0a39ef9ad1c7725afce652146c208ee36",
+      "identical": true
+    },
+    {
+      "path": "tests/test_safety_invariants.py",
+      "sha256": "9c22f8b82f715ad551f8b72f0424b27bd358f3722e77c6d63904afa9b8cad7e6",
+      "identical": true
+    },
+    {
+      "path": "tests/test_self_evolution.py",
+      "sha256": "b90e1918884065064576919925cca8319d1d63fdad9cc7b0dd54a7fb86f2a828",
+      "identical": true
+    },
+    {
+      "path": "tests/test_algorithm_improvements.py",
+      "sha256": "607e16a14e20d13d80e00f57a8a4ebc2a09affe50f311935c7ac30a4594ec958",
+      "identical": true
+    },
+    {
+      "path": "tests/test_replay_simulator.py",
+      "sha256": "6ba7fa03b11d18a98ab1b8380352c9f5cfdfbbcc770fc3b2812d30ea6410ec66",
+      "identical": true
+    },
+    {
+      "path": "tests/test_semantic_invariants.py",
+      "sha256": "ae91e50b9bc3f669865e7dae84cca1511a4d62c1439466873946fefb3f1e3e81",
+      "identical": true
+    }
+  ],
+  "changed_paths_since_full_pack": [
+    ".github/workflows/paper-readiness.yml",
+    "artifacts/corrections_candidate/activation_manifest.draft.json",
+    "docs/engineering/NIGHTLY_TEST_HARNESS_2026-09-19.md",
+    "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md",
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_organism_integration_smoke.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_phase3_attribution_report.py",
+    "tests/test_phase3_candidate_shadow_telemetry.py",
+    "tests/test_reachability_v8.py",
+    "tests/test_strategy_engine_comprehensive.py",
+    "tests/test_v12_baseline_invariants.py",
+    "tests/test_v12_w75_lint_ratchet.py",
+    "tests/test_v12_w77_findings_ledger.py",
+    "tests/test_v12_w81_ci_cleanup.py",
+    "tests/test_wave37_fixes.py",
+    "tests/test_wave48_fixes.py",
+    "tests/test_wave55_fixes.py",
+    "tests/test_wave61_fixes.py",
+    "tests/unit/test_auth_security_phase4.py"
+  ],
+  "tests_rerun_for_changed_paths": "report_workflow51, reconciliation_measurement112, nightly_harness170; logs preserve actual outcomes"
+}

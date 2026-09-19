@@ -1,0 +1,7 @@
+{
+  "status": "intentionally_interrupted_not_acceptance",
+  "recorded_source_sha": "45e47f1",
+  "reason": "Reviewer found daily start-day boundary regression during replay. Child replay process group was terminated with SIGTERM so the final source could include the boundary correction and merged active base. Complete final evidence will be generated separately.",
+  "timing": "Boundary source was edited while intermediate pack was running; this pack is not certified against one final tree.",
+  "tests_failed_are_operator_interruption": true
+}

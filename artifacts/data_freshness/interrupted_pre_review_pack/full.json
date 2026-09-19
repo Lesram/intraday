@@ -1,0 +1,21 @@
+{
+  "label": "full",
+  "exit_code": 1,
+  "seconds": 156.15,
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "scripts/ci/generate_artifacts.py",
+    "full"
+  ],
+  "network_denied": true,
+  "real_checkout_writes_denied": true,
+  "real_env_and_brain_reads_denied": true,
+  "recorded_source_sha": "45e47f1",
+  "status": "intentionally_interrupted_not_acceptance",
+  "termination_reason": "Reviewer start-day correction superseded the run; replay subprocess group explicitly terminated with SIGTERM.",
+  "source_tree_changed_during_run": true
+}

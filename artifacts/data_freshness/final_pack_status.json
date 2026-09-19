@@ -1,0 +1,8 @@
+{
+  "status": "pass",
+  "source_sha": "47ad8c9cf57799b787f919e25e6c82551fb0226a",
+  "accepted_source_sha": "c66bb2d8128d7105023a1c323b97981dda2f612a",
+  "source_identical_merge": true,
+  "exit_code": 0,
+  "artifact": "full.json"
+}

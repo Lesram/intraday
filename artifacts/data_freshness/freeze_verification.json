@@ -1,0 +1,17 @@
+{
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "scripts/phase2_freeze.py",
+    "--verify"
+  ],
+  "source_sha": "c66bb2d8128d7105023a1c323b97981dda2f612a",
+  "exit_code": 0,
+  "stdout": "DRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-07-07T20:36:49.008305+00:00)\n",
+  "stderr": "",
+  "environment_source": "artifacts/monday_readiness/freeze_environment.json; documented frozen reference only; no live .env read",
+  "restamped": false
+}

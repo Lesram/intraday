@@ -222,6 +222,20 @@ def test_scheduled_validation_uses_same_safe_environment_as_readiness(name, job_
     assert any("pip install -r requirements.lock" in step.get("run", "") for step in job["steps"])
 
 
+def test_readiness_runs_latest_data_and_prefill_regressions():
+    job = _load("paper-readiness.yml")["jobs"]["operational-safety"]
+    step = next(step for step in job["steps"]
+                if step.get("name") == "Verify operational fixes and trading safety")
+    for path in ("tests/unit/test_alpaca_data_comprehensive.py",
+                 "tests/unit/test_streaming_data_provider.py",
+                 "tests/unit/test_paper_data_freshness.py",
+                 "tests/test_live_engine_fill_accounting.py",
+                 "tests/test_phase3_attribution_report.py"):
+        assert path in step["run"]
+    assert step["timeout-minutes"] == 5
+    assert "set -o pipefail" in step["run"]
+
+
 def test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence():
     workflow = _load("paper-readiness.yml")
     triggers = workflow.get("on", workflow.get(True))

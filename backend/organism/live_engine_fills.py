@@ -1,27 +1,127 @@
 """DB fill-lookup helpers for the live engine.
 
-Extracted from ``live_engine.py`` (2026-06-08 decomposition) as a mixin to
-shrink the ``OrganismLiveEngine`` god-object. These two methods are a clean,
-self-contained seam: their only engine coupling is ``self._sessionmaker``, all
-SQLAlchemy/schema imports are local, and no structural-guard test inspects
-their source by content (only ``test_phase3_candidate_shadow_telemetry`` calls
-``_lookup_entry_fill_from_db`` behaviourally on an instance, which inheritance
-preserves).
-
-``OrganismLiveEngine`` inherits ``_FillLookupMixin`` so
-``inspect.getsource(OrganismLiveEngine._lookup_entry_fill_from_db)`` still
-resolves via the MRO. Behaviour is byte-for-byte identical to the prior inline
-methods.
+Legacy entry/final-exit lookups remain the approximate fallback. Complete
+position accounting additionally requires an identified entry and conserved
+quantities across every attributed order. All database access is read-only.
 """
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
+
+
+@dataclass(frozen=True)
+class ClosedPositionFills:
+    """Quantity-conserved, attributed order-fill cash flows for one position."""
+
+    shares: int
+    entry_price: float
+    exit_price: float
+    pnl: float
+    had_partial_exits: bool
+
+
+def _closed_position_fills(
+    rows: list[dict[str, Any]], *, entry_order_id: uuid.UUID, symbol: str,
+    direction: float, closed_at: datetime,
+) -> ClosedPositionFills | None:
+    """Refuse exact accounting when attribution or quantity evidence is incomplete.
+
+    The entry-order ID anchors the lifetime. Subsequent orders must form exactly
+    one flat-to-flat position, with no remaining active order that could fill
+    later. Terminal canceled/expired orders contribute any confirmed fills.
+    Reason labels are deliberately irrelevant to scale-out accounting.
+    """
+    terminal = {"filled", "canceled", "cancelled", "expired", "rejected"}
+
+    def utc(value: datetime) -> datetime:
+        # PostgreSQL returns aware values; SQLite test fixtures can return naive
+        # values for the same timezone=True schema, whose contract is UTC.
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+    def decimal(value: Any) -> Decimal:
+        value = Decimal(str(value))
+        if not value.is_finite():
+            raise ValueError("nonfinite fill value")
+        return value
+
+    try:
+        anchors = [row for row in rows if str(row["id"]) == str(entry_order_id)]
+        if len(anchors) != 1 or direction not in (-1, 1):
+            return None
+        anchor_time = utc(anchors[0]["submitted_at"])
+        end = utc(closed_at)
+        if anchor_time > end:
+            return None
+        selected = [row for row in rows if anchor_time <= utc(row["submitted_at"]) <= end]
+        selected.sort(key=lambda row: (utc(row["submitted_at"]), str(row["id"])))
+        entry_side = "buy" if direction > 0 else "sell"
+        exit_side = "sell" if direction > 0 else "buy"
+        seen_ids, seen_broker_ids = set(), set()
+        entries = exits = entry_cash = exit_cash = Decimal(0)
+        exit_orders = 0
+        finished = False
+        for row in selected:
+            if row["symbol"] != symbol or (row.get("attributes") or {}).get("source") != "organism":
+                return None
+            identity = str(row["id"])
+            if identity in seen_ids:
+                return None
+            seen_ids.add(identity)
+            status = str(row["status"]).lower()
+            if status not in terminal:
+                return None
+            qty, requested = decimal(row["filled_qty"]), decimal(row["qty"])
+            if qty < 0 or requested <= 0 or qty > requested:
+                return None
+            if status == "filled" and qty != requested:
+                return None
+            if qty == 0:
+                if status == "filled":
+                    return None
+                continue
+            broker_id = str(row.get("broker_order_id") or "")
+            if not broker_id or broker_id in seen_broker_ids or status == "rejected":
+                return None
+            seen_broker_ids.add(broker_id)
+            price = decimal(row["avg_fill_price"])
+            if price <= 0 or finished:
+                return None
+            # The first positive fill must be the identified entry, not an old
+            # same-symbol position or a conflicting simultaneous order.
+            if entries == 0 and (identity != str(entry_order_id) or row["side"] != entry_side):
+                return None
+            if row["side"] == entry_side:
+                entries += qty
+                entry_cash += qty * price
+            elif row["side"] == exit_side:
+                exits += qty
+                exit_cash += qty * price
+                exit_orders += 1
+            else:
+                return None
+            if exits > entries:
+                return None
+            finished = entries > 0 and entries == exits
+        if not finished or entries != entries.to_integral_value():
+            # TradeRecord.shares is integer-valued; do not silently round an
+            # unsupported fractional position and call it exact accounting.
+            return None
+        pnl = exit_cash - entry_cash if direction > 0 else entry_cash - exit_cash
+        return ClosedPositionFills(
+            shares=int(entries), entry_price=float(entry_cash / entries),
+            exit_price=float(exit_cash / exits), pnl=float(pnl),
+            had_partial_exits=exit_orders > 1,
+        )
+    except (KeyError, ValueError, TypeError, AttributeError, InvalidOperation):
+        return None
 
 
 class _FillLookupMixin:
@@ -30,6 +130,70 @@ class _FillLookupMixin:
     Requires the host class to provide ``self._sessionmaker`` (an async
     SQLAlchemy sessionmaker or ``None``).
     """
+
+    async def _lookup_closed_position_fills_from_db(
+        self, symbol: str, meta: dict[str, Any], *, closed_at: datetime,
+    ) -> ClosedPositionFills | None:
+        """Read all confirmed fill legs for an identified, closed position.
+
+        Read-only, bounded to the DB entry timestamp and this reconciliation
+        time. Unknown identity, incomplete quantities or DB failure retains the
+        caller's legacy approximate fallback; no stored order/corpus is edited.
+        """
+        if not self._sessionmaker or meta.get("entry_source") == "reconciliation_orphan":
+            return None
+        try:
+            entry_id = uuid.UUID(str(meta.get("entry_order_id") or ""))
+            direction = float(meta.get("direction", 1.0))
+        except (ValueError, TypeError):
+            return None
+        try:
+            from sqlalchemy import func, or_, select
+            from backend.infra.schemas import Order
+
+            async with self._sessionmaker() as session:
+                anchor_stmt = select(Order.submitted_at).where(
+                    Order.id == entry_id, Order.symbol == symbol,
+                )
+                entry_time = (await session.execute(anchor_stmt)).scalar_one_or_none()
+                if entry_time is None:
+                    return None
+                # A pre-entry order can still execute during this lifetime.
+                # Reject older active orders and older fills updated since
+                # entry: their attribution cannot be established here.
+                ambiguous_stmt = select(Order.id).where(
+                    Order.symbol == symbol, Order.submitted_at <= closed_at,
+                    or_(
+                        func.lower(Order.status).not_in(
+                            ("filled", "canceled", "cancelled", "expired", "rejected"),
+                        ),
+                        (Order.submitted_at < entry_time)
+                        & (Order.filled_qty > 0) & (Order.updated_at >= entry_time),
+                    ),
+                ).limit(1)
+                if (await session.execute(ambiguous_stmt)).scalar_one_or_none() is not None:
+                    return None
+                stmt = select(
+                    Order.id, Order.symbol, Order.side, Order.qty, Order.filled_qty,
+                    Order.avg_fill_price, Order.status, Order.submitted_at,
+                    Order.broker_order_id, Order.attributes,
+                ).where(
+                    Order.symbol == symbol, Order.submitted_at >= entry_time,
+                    Order.submitted_at <= closed_at,
+                )
+                # Include conflicting attribution and active orders so they
+                # cannot be hidden by a filled/source-only SQL filter.
+                rows = list((await session.execute(stmt)).mappings().all())
+                result = _closed_position_fills(
+                    rows, entry_order_id=entry_id, symbol=symbol,
+                    direction=direction, closed_at=closed_at,
+                )
+                if result is None:
+                    logger.warning("Complete position fill accounting unavailable for %s", symbol)
+                return result
+        except Exception as exc:  # noqa: BLE001 — preserve best-effort reconciliation on DB failures
+            logger.debug("Closed-position fill lookup failed for %s: %s", symbol, exc)
+            return None
 
     async def _lookup_entry_fill_from_db(
         self,

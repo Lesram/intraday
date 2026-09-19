@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "status": "draft_not_approved_not_activated",
+  "candidate_source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "candidate_image_digest": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+  "approval_reference": null,
+  "activation_timestamp_utc": null,
+  "original_decision_surface_frozen_at": "2026-07-07T20:36:49.008305+00:00",
+  "original_freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+  "unchanged_surface_sha256": "0c26f5f22835fad2014479f78e6a026aea5462e1fbb0a5c985d709c25755f3fc",
+  "active_cutoff_contract": {
+    "path": "artifacts/phase2/param_freeze.json",
+    "field": "FROZEN_AT",
+    "future_action": "After explicit approval only: archive exact original then deliberately advance active evaluation cutoff to actual UTC activation time; preserve the entire surface.",
+    "current_file_modified": false,
+    "parallel_manifest_alone_sufficient": false,
+    "selection": "closed_at strictly greater than approved activation timestamp",
+    "initial_expected_count": 0,
+    "requires_broker_flat_and_zero_open_orders": true
+  },
+  "cost_protocol": {
+    "approved_primary_round_trip_bps": null,
+    "proposed_primary_round_trip_bps": 6,
+    "proposed_native_diagnostic_round_trip_bps": 3,
+    "existing_code_default_round_trip_bps": 3,
+    "research_minimum_round_trip_bps": 6,
+    "authority": "reports/RESEARCH_BRIEF_001_2026-07-29.md:15 (original checkout, root verified)",
+    "authority_excerpt": "Every result is net of a realistic cost profile (\u22653 bps/side intraday equities; spread-aware where measurable).",
+    "primary_report_process_environment": {
+      "ORGANISM_COST_BPS": "6"
+    },
+    "native_diagnostic_process_environment": {
+      "ORGANISM_COST_BPS": "3"
+    },
+    "diagnostic_is_qualifying_verdict": false,
+    "runtime_cost_environment_changed": false
+  },
+  "preserve": [
+    "original freeze bytes and July timestamp archive",
+    "entire frozen decision surface, strategy/settings/feed",
+    "raw CSV/database/order history",
+    "brain and learner/Kelly/evolution/lifetime counters",
+    "gate targets and statistical look schedule"
+  ],
+  "pending_attestations": [
+    "approval and primary report cost convention",
+    "source/image identity",
+    "fresh held-state database/brain backups with verified integrity and hashes; original freeze archive hash",
+    "fresh broker-flat/no-open-orders evidence",
+    "atomic active cutoff publication",
+    "both forward reports and reconciliation bound to active freeze with zero initial count",
+    "installed runtime/config/freeze identity",
+    "natural paper session acceptance"
+  ],
+  "report_scope_limits": [
+    "Phase3 shadow, Phase8/9 warehouse and truth observer remain all-history diagnostic scopes unless inputs are separately bounded.",
+    "Native phase2 eligibility does not itself enforce all reconciliation/provenance quality checks; withhold verdict on unresolved measurement gaps."
+  ],
+  "specification": "reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md",
+  "candidate_image_build_receipt": "artifacts/corrections_candidate/candidate_image_build.json",
+  "candidate_image_tag": "intra-api:corrections-274d0c47ea6c",
+  "scheduler_acceptance": {
+    "required_source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "require_matching_reusable_workflow_ref_and_source_sha": true,
+    "actual_callable_validation_required": true,
+    "accepted_bridge_reference": null,
+    "status": "pending_root_workflow_packaging",
+    "prior_d7c3c6c_bridge_certifies_this_candidate": false
+  }
+}

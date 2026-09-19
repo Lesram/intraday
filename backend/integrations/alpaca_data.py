@@ -6,7 +6,7 @@ historical market data. Used when USE_MOCK_DATA=False to get real market data.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 
 from fastapi import HTTPException
@@ -110,216 +110,108 @@ class AlpacaDataClient:
             "Accept": "application/json"
         }
 
-    async def get_historical_closes(
-        self,
-        symbol: str,
-        lookback: int = 200,
-        timeframe: str = "1Day"
-    ) -> list[float]:
+    async def _latest_historical_bars(
+        self, symbol: str, lookback: int, timeframe: str,
+    ) -> list[dict]:
+        """Read the latest requested bars, then expose chronological history.
+
+        Alpaca limits each page, not the entire time window. Starting at the
+        newest end prevents a large intraday window from selecting an old first
+        page. Follow tokens when the provider returns fewer rows than requested.
         """
-        Fetch historical closing prices for a symbol.
-
-        Args:
-            symbol: Stock symbol (e.g., 'AAPL', 'MSFT')
-            lookback: Number of periods to look back (default: 200)
-            timeframe: Data timeframe - '1Day', '1Hour', '5Min' etc. (default: '1Day')
-
-        Returns:
-            List of closing prices in chronological order (oldest first)
-
-        Raises:
-            HTTPException(502): If Alpaca API returns non-200 response
-            HTTPException(503): If API credentials are not configured
-        """
-        try:
-            # Calculate start date based on lookback period
-            # Intraday timeframes need more calendar days to get enough bars
-            tf_lower = timeframe.lower()
-            if "min" in tf_lower or "hour" in tf_lower:
-                bars_per_day = 26 if "15" in tf_lower else (390 if "1min" in tf_lower else 78)
-                buffer_days = max(int((lookback / bars_per_day) * 1.6) + 2, 5)
-            else:
-                buffer_days = int(lookback * 1.4)  # ~40% buffer for non-trading days
-            start_date = datetime.now() - timedelta(days=buffer_days)
-            end_date = datetime.now()
-
-            # Format dates for API (ISO format)
-            start_str = start_date.strftime("%Y-%m-%d")
-            end_str = end_date.strftime("%Y-%m-%d")
-
-            # Build API URL for v2 bars endpoint
-            url = f"{self.base_url}/stocks/{symbol.upper()}/bars"
-
-            # API parameters
-            # Use SIP feed for Algo Trader Plus (full market coverage, all US exchanges)
-            feed = os.getenv("ALPACA_DATA_FEED", "sip")
-            params = {
-                "start": start_str,
-                "end": end_str,
-                "timeframe": timeframe,
-                "adjustment": "split",  # Use split-adjusted prices for correct return calculations
-                "limit": lookback * 2,  # Request more than needed to account for filtering
-                "sort": "asc",  # Chronological order (oldest first)
-                "feed": feed  # SIP for Algo Trader Plus, IEX for free accounts
-            }
-
-            logger.info("Fetching historical data from Alpaca",
-                       symbol=symbol,
-                       lookback=lookback,
-                       timeframe=timeframe,
-                       start_date=start_str,
-                       end_date=end_str)
-
-            # Make API request with retry (§14.3 FIX)
-            headers = self._get_auth_headers()
-            response = await self._request_with_retry("GET", url, params=params, headers=headers)
-
-            # Check for API errors
+        if lookback <= 0:
+            return []
+        tf_lower = timeframe.lower()
+        if "min" in tf_lower or "hour" in tf_lower:
+            bars_per_day = 26 if "15" in tf_lower else (390 if "1min" in tf_lower else 78)
+            buffer_days = max(int((lookback / bars_per_day) * 1.6) + 2, 5)
+        else:
+            buffer_days = max(int(lookback * 1.4), 1)
+        end = datetime.now(timezone.utc)
+        params = {
+            "start": (end - timedelta(days=buffer_days)).replace(
+                hour=0, minute=0, second=0, microsecond=0,
+            ).isoformat(),
+            "end": end.isoformat(),
+            "timeframe": timeframe,
+            "adjustment": "split",
+            "limit": min(lookback * 2, 10000),
+            "sort": "desc",
+            "feed": os.getenv("ALPACA_DATA_FEED", "sip"),
+        }
+        url = f"{self.base_url}/stocks/{symbol.upper()}/bars"
+        headers = self._get_auth_headers()
+        by_timestamp: dict[pd.Timestamp, dict] = {}
+        seen_tokens: set[str] = set()
+        # A broken provider must not create an unbounded request loop.
+        for _ in range(100):
+            response = await self._request_with_retry(
+                "GET", url, params=dict(params), headers=headers,
+            )
             if response.status_code != 200:
                 error_detail = f"Alpaca API error: {response.status_code}"
                 try:
-                    error_data = response.json()
-                    if "message" in error_data:
-                        error_detail += f" - {error_data['message']}"
+                    message = response.json().get("message")
+                    if message:
+                        error_detail += f" - {message}"
                 except Exception:
                     error_detail += f" - {response.text[:200]}"
-
-                logger.error("Alpaca API request failed",
-                           status_code=response.status_code,
-                           symbol=symbol,
-                           error=error_detail)
-
                 raise HTTPException(status_code=502, detail=error_detail)
-
-            # Parse response data
             data = response.json()
-            bars = data.get("bars", [])
+            for bar in data.get("bars") or []:
+                timestamp = pd.Timestamp(bar.get("t"))
+                if pd.isna(timestamp) or timestamp.tzinfo is None:
+                    raise ValueError("historical bar timestamp must be timezone-aware")
+                timestamp = timestamp.tz_convert("UTC")
+                if timestamp > end:
+                    raise ValueError("historical bar timestamp is after request end")
+                # Overlapping pages must not duplicate bars. Keep the newest
+                # page's representation if the provider repeats a boundary.
+                by_timestamp.setdefault(timestamp, {**bar, "t": timestamp.isoformat()})
+            token = data.get("next_page_token")
+            if len(by_timestamp) >= lookback or not token:
+                timestamps = sorted(by_timestamp)[-lookback:]
+                return [by_timestamp[timestamp] for timestamp in timestamps]
+            if not isinstance(token, str) or token in seen_tokens:
+                raise ValueError("invalid or repeated historical page token")
+            seen_tokens.add(token)
+            params["page_token"] = token
+        raise ValueError("historical pagination exceeded 100 pages")
 
-            if not bars:
-                logger.warning("No historical data returned from Alpaca",
-                             symbol=symbol,
-                             lookback=lookback)
-                return []
-
-            # Extract closing prices (already in chronological order due to sort=asc)
-            closes = [float(bar["c"]) for bar in bars]
-
-            # Limit to requested lookback count (take most recent)
-            if len(closes) > lookback:
-                closes = closes[-lookback:]
-
-            logger.info("Successfully fetched historical data",
-                       symbol=symbol,
-                       bars_received=len(bars),
-                       closes_returned=len(closes),
-                       date_range=f"{bars[0]['t']} to {bars[-1]['t']}" if bars else "N/A")
-
-            return closes
-
+    async def get_historical_closes(
+        self, symbol: str, lookback: int = 200, timeframe: str = "1Day",
+    ) -> list[float]:
+        """Return up to lookback latest closing prices, oldest first."""
+        try:
+            bars = await self._latest_historical_bars(symbol, lookback, timeframe)
+            return [float(bar["c"]) for bar in bars]
         except HTTPException:
-            # Re-raise HTTP exceptions as-is
             raise
-        except Exception as e:
-            logger.error("Unexpected error fetching historical data",
-                        symbol=symbol,
-                        error=str(e),
-                        error_type=type(e).__name__)
-            raise HTTPException(
-                status_code=502,
-                detail=f"Failed to fetch historical data: {str(e)}"
-            )
+        except Exception as exc:
+            logger.error("Unexpected error fetching historical data", symbol=symbol,
+                         error=str(exc), error_type=type(exc).__name__)
+            raise HTTPException(status_code=502, detail=f"Failed to fetch historical data: {exc}")
 
     async def get_historical_bars_df(
-        self,
-        symbol: str,
-        lookback: int = 200,
-        timeframe: str = "1Day",
+        self, symbol: str, lookback: int = 200, timeframe: str = "1Day",
     ) -> pd.DataFrame:
-        """Fetch historical bars and return a normalized OHLCV DataFrame.
-
-        The returned DataFrame has columns: ['timestamp','open','high','low','close','volume']
-        sorted ascending by timestamp.
-        """
+        """Return latest normalized OHLCV bars in chronological UTC order."""
+        columns = ["timestamp", "open", "high", "low", "close", "volume"]
         try:
-            # Calculate buffer days based on timeframe
-            # Intraday: ~26 bars/day (6.5h * 4 per hour for 15Min), need more calendar days
-            # Daily: ~1 bar/day, need ~1.4x buffer for weekends/holidays
-            tf_lower = timeframe.lower()
-            if "min" in tf_lower or "hour" in tf_lower:
-                bars_per_day = 26 if "15" in tf_lower else (390 if "1min" in tf_lower else 78)
-                buffer_days = max(int((lookback / bars_per_day) * 1.6) + 2, 5)
-            else:
-                buffer_days = int(lookback * 1.4)
-            start_date = datetime.now() - timedelta(days=buffer_days)
-            end_date = datetime.now()
-
-            start_str = start_date.strftime("%Y-%m-%d")
-            end_str = end_date.strftime("%Y-%m-%d")
-
-            url = f"{self.base_url}/stocks/{symbol.upper()}/bars"
-            feed = os.getenv("ALPACA_DATA_FEED", "sip")
-            params = {
-                "start": start_str,
-                "end": end_str,
-                "timeframe": timeframe,
-                "adjustment": "split",  # Use split-adjusted prices
-                "limit": lookback * 2,
-                "sort": "asc",
-                "feed": feed,
-            }
-
-            headers = self._get_auth_headers()
-            response = await self._request_with_retry("GET", url, params=params, headers=headers)
-            if response.status_code != 200:
-                error_detail = f"Alpaca API error: {response.status_code}"
-                try:
-                    error_data = response.json()
-                    if "message" in error_data:
-                        error_detail += f" - {error_data['message']}"
-                except Exception:
-                    error_detail += f" - {response.text[:200]}"
-                raise HTTPException(status_code=502, detail=error_detail)
-
-            data = response.json()
-            bars = data.get("bars", [])
-            if not bars:
-                return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume"])
-
-            rows = []
-            for bar in bars:
-                rows.append(
-                    {
-                        "timestamp": bar.get("t"),
-                        "open": float(bar.get("o")) if bar.get("o") is not None else None,
-                        "high": float(bar.get("h")) if bar.get("h") is not None else None,
-                        "low": float(bar.get("l")) if bar.get("l") is not None else None,
-                        "close": float(bar.get("c")) if bar.get("c") is not None else None,
-                        "volume": float(bar.get("v")) if bar.get("v") is not None else None,
-                    }
-                )
-
-            df = pd.DataFrame(rows)
-            if df.empty:
-                return df
-
-            df = df.sort_values("timestamp").reset_index(drop=True)
-            if len(df) > lookback:
-                df = df.iloc[-lookback:].reset_index(drop=True)
-            return df
-
+            bars = await self._latest_historical_bars(symbol, lookback, timeframe)
+            rows = [{
+                "timestamp": bar["t"],
+                **{name: float(bar[key]) if bar.get(key) is not None else None
+                   for name, key in (("open", "o"), ("high", "h"), ("low", "l"),
+                                     ("close", "c"), ("volume", "v"))},
+            } for bar in bars]
+            return pd.DataFrame(rows, columns=columns)
         except HTTPException:
             raise
-        except Exception as e:
-            logger.error(
-                "Unexpected error fetching historical bars",
-                symbol=symbol,
-                error=str(e),
-                error_type=type(e).__name__,
-            )
-            raise HTTPException(
-                status_code=502,
-                detail=f"Failed to fetch historical bars: {str(e)}",
-            )
+        except Exception as exc:
+            logger.error("Unexpected error fetching historical bars", symbol=symbol,
+                         error=str(exc), error_type=type(exc).__name__)
+            raise HTTPException(status_code=502, detail=f"Failed to fetch historical bars: {exc}")
 
     async def close(self):
         """Close the HTTP client connection."""
