@@ -1,0 +1,28 @@
+........................................................................ [ 59%]
+.................................................                        [100%]
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /Users/marselkei/.codex/worktrees/intra-nightly-test-harness/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /Users/marselkei/.codex/worktrees/intra-nightly-test-harness/intra/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /Users/marselkei/.codex/worktrees/intra-nightly-test-harness/intra/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/test_settings_comprehensive.py::TestSettingsProxy::test_settings_proxy_getattr
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-nightly-test-harness/intra/tests/test_config_coordinator_comprehensive.py:17: DeprecationWarning: backend.config.coordinator is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.coordinator import ConfigurationCoordinator
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-nightly-test-harness/intra/backend/config/coordinator.py:22: DeprecationWarning: backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.unified import UnifiedSettings, get_unified_settings
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+121 passed, 6 warnings in 7.12s

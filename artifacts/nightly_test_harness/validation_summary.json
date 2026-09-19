@@ -1,0 +1,35 @@
+{
+  "pytest": {
+    "targeted": [
+      {
+        "tests": "170",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "39.047"
+      }
+    ],
+    "workflow_contracts": [
+      {
+        "tests": "46",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "1.920"
+      }
+    ],
+    "deployment_regressions": [
+      {
+        "tests": "121",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "7.123"
+      }
+    ]
+  },
+  "full_pack_exit_code": 0,
+  "freeze_exit_code": 0,
+  "actionlint_exit_code": 0,
+  "no_full_nightly_green_claim": true
+}

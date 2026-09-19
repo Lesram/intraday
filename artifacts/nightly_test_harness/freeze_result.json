@@ -1,0 +1,15 @@
+{
+  "stage": "freeze",
+  "exit_code": 0,
+  "seconds": 1.256,
+  "command": [
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "scripts/phase2_freeze.py",
+    "--verify"
+  ],
+  "network_denied": true,
+  "live_env_and_brain_denied": true,
+  "scratch": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-nightly-harness-validation-bqtzmyi6",
+  "source_sha": "02ba1afff73e1f05902b9fe71f13170d618d6d5e",
+  "source_has_uncommitted_changes": true
+}

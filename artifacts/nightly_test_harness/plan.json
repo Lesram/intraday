@@ -1,0 +1,50 @@
+{
+  "task_id": "nightly-test-harness-20260919",
+  "base_sha": "d7c3c6c047d97a4f925c7b66c7f121e3ee10cd4d",
+  "branch": "codex/nightly-test-harness",
+  "summary": "Repair demonstrated secret-free nightly test fixture/prerequisite errors without changing application behavior.",
+  "files_planned": [
+    "tests/test_wave37_fixes.py",
+    "tests/test_wave48_fixes.py",
+    "tests/test_wave55_fixes.py",
+    "tests/test_wave61_fixes.py",
+    "tests/test_reachability_v8.py",
+    "tests/test_v12_baseline_invariants.py",
+    "tests/test_v12_w75_lint_ratchet.py",
+    "tests/test_v12_w77_findings_ledger.py",
+    "tests/test_v12_w81_ci_cleanup.py",
+    "tests/unit/test_auth_security_phase4.py",
+    "tests/test_strategy_engine_comprehensive.py",
+    "tests/test_organism_integration_smoke.py",
+    "tests/test_phase2_freeze.py",
+    "docs/engineering/NIGHTLY_TEST_HARNESS_2026-09-19.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
+    "artifacts/nightly_test_harness/*",
+    "artifacts/*",
+    ".github/workflows/paper-readiness.yml",
+    "tests/test_monday_ci_workflows.py"
+  ],
+  "changes": [
+    "Use sys.executable for actual hardcoded repository venv subprocess invocations (leave historical documentation/command-string expectations unchanged).",
+    "Use a synthetic module/class-local legacy JWT test secret while preserving fail-closed tests.",
+    "Use explicit typed StrategyEngine settings and deterministic price dependencies for signal/netting tests, retaining missing-price rejection coverage.",
+    "Replace lifecycle smoke scanner with deterministic empty scanner fixture; no backend/default changes.",
+    "Scope documented frozen environment to freeze tests and add missing-routing-env regression that remains read-only.",
+    "Add an independent bounded 170-case readiness step with retained exit/log/JUnit, existing pinned Ruff dependency, and 90-minute job headroom."
+  ],
+  "validation": [
+    "Target affected unit/test modules in isolated network-denied sandbox with fresh SQLite and scratch brain; report unresolved historical fixture failures honestly.",
+    "Run complete organism/state/exits/sizing/replay artifact pack and order-integrity regressions as appropriate.",
+    "Verify frozen surface and byte-identical freeze artifact; generate audit index.",
+    "Independent review before feature commit and draft PR; attach PR."
+  ],
+  "excluded": [
+    "Application/backend changes",
+    "Frozen functions, config, feed settings, parameters, or verdict clock",
+    "Parked frontend npm-audit, bandit, Quality Summary",
+    "External API service/provider lanes, PostgreSQL schema/auth bootstrap and historical evidence prerequisites until separate diagnosis",
+    "Real credentials, orders, live runtime/brain access"
+  ],
+  "runtime_behavior_changed": false,
+  "accepted_base_sha": "02ba1afff73e1f05902b9fe71f13170d618d6d5e"
+}
