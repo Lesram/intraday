@@ -1,0 +1,26 @@
+{
+  "id": 35464760863,
+  "name": "paper-readiness",
+  "head_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "head_branch": "codex/monday-paper-readiness",
+  "event": "pull_request",
+  "status": "in_progress",
+  "conclusion": null,
+  "run_started_at": "2026-09-19T19:34:28Z",
+  "updated_at": "2026-09-19T19:34:31Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35464760863",
+  "jobs": [
+    {
+      "name": "operational-safety",
+      "status": "in_progress",
+      "conclusion": null,
+      "started_at": "2026-09-19T19:34:30Z",
+      "completed_at": null,
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35464760863/job/105954966661",
+      "failed_steps": []
+    }
+  ],
+  "artifacts": [],
+  "xml_summaries": [],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

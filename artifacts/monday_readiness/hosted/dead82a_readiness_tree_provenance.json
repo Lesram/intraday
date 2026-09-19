@@ -1,0 +1,21 @@
+{
+  "comparison": "Readiness checked the PR merge SHA; post-close checked the requested source SHA. Tree identity must be established separately.",
+  "commits": [
+    {
+      "sha": "7d4e779e20323dd1adc98066e7e2536faecabbae",
+      "tree_sha": "3dd827794cb72888c452f1392fdf6d81d67dd446",
+      "parents": [
+        "b2785b66bf39192273a115f002c498f2f159bdcb",
+        "dead82a4d3d110afe811ed91b59959e76bfd9ce6"
+      ]
+    },
+    {
+      "sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+      "tree_sha": "3dd827794cb72888c452f1392fdf6d81d67dd446",
+      "parents": [
+        "b9b87be6552071ac4bf92c85de114b6626be73bb"
+      ]
+    }
+  ],
+  "identical_tree": true
+}

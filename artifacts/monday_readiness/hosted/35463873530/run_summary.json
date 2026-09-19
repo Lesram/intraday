@@ -1,0 +1,26 @@
+{
+  "id": 35463873530,
+  "name": "Nightly Deep Tests",
+  "head_sha": "d5cf78c20ddc2da167179af6ed00c3f39bda3fa9",
+  "head_branch": "codex/monday-paper-readiness",
+  "event": "workflow_dispatch",
+  "status": "in_progress",
+  "conclusion": null,
+  "run_started_at": "2026-09-19T19:17:13Z",
+  "updated_at": "2026-09-19T19:17:18Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35463873530",
+  "jobs": [
+    {
+      "name": "Deep testing suite",
+      "status": "in_progress",
+      "conclusion": null,
+      "started_at": "2026-09-19T19:17:17Z",
+      "completed_at": null,
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35463873530/job/105952439261",
+      "failed_steps": []
+    }
+  ],
+  "artifacts": [],
+  "xml_summaries": [],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

@@ -1,0 +1,16 @@
+{
+  "task_id": "watchdog-critical-false-positive",
+  "summary": "Ignore informational prose about critical tables and zero critical failures while preserving explicit critical alerts and pending retry behavior.",
+  "files": [
+    "scripts/ops/paper_watchdog.py",
+    "tests/test_paper_watchdog.py"
+  ],
+  "tests": [
+    "tests/test_paper_watchdog.py",
+    "tests/test_paper_backup_recovery.py"
+  ],
+  "constraints": [
+    "No runtime parameters, trading surfaces, deployment mutations, or commits.",
+    "Preserve pending-alert retries and no-channel/delivery-failure markers."
+  ]
+}

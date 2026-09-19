@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "max_age_seconds": 93600,
+  "backups": {
+    "brain": {
+      "status": "ok",
+      "files_verified": 26,
+      "age_seconds": 1017.1205201148987
+    },
+    "postgres": {
+      "status": "ok",
+      "files_verified": 1,
+      "age_seconds": 1016.8995881080627
+    }
+  },
+  "problems": [],
+  "elapsed_seconds": 0.052,
+  "mode": "read_only_archive_verification_no_status_or_runtime_mutation"
+}

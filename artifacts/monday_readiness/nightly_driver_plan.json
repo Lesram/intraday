@@ -1,0 +1,17 @@
+{
+  "task_id": "nightly-async-driver",
+  "trigger": "Hosted nightly35463361550 interrupted collection with psycopg2 not async",
+  "affected_files": [
+    ".github/workflows/nightly.yml",
+    "tests/test_monday_ci_workflows.py"
+  ],
+  "change": "Use asyncpg test URL; actually run configured backend/migrations through alembic.ini instead of silently skipping nonexistent alembic/env.py",
+  "existing_migration_behavior": "backend/migrations/env.py converts postgresql+asyncpg to postgresql+psycopg2 for synchronous migration engine",
+  "tests": [
+    "focused 114 existing plus dedicated URL/migration contract",
+    "actionlint all changed operational workflows",
+    "actual hosted nightly after push"
+  ],
+  "runtime_behavior_changed": false,
+  "deployed_image_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6"
+}

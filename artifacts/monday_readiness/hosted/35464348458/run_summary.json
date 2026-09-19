@@ -1,0 +1,49 @@
+{
+  "id": 35464348458,
+  "name": "artifact-reporting",
+  "head_sha": "9441ca7d23288249a41606356730d5fa4d225384",
+  "head_branch": "codex/monday-paper-readiness",
+  "event": "pull_request",
+  "status": "completed",
+  "conclusion": "success",
+  "run_started_at": "2026-09-19T19:26:22Z",
+  "updated_at": "2026-09-19T19:26:40Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35464348458",
+  "jobs": [
+    {
+      "name": "focused-tests",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-19T19:26:24Z",
+      "completed_at": "2026-09-19T19:26:39Z",
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35464348458/job/105953758956",
+      "failed_steps": []
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 10590399112,
+      "name": "artifact-reporting-results",
+      "size_in_bytes": 3095,
+      "expired": false
+    }
+  ],
+  "xml_summaries": [
+    {
+      "artifact": "artifact-reporting-results",
+      "path": "junit.xml",
+      "suites": [
+        {
+          "name": "pytest",
+          "tests": "122",
+          "failures": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "5.980"
+        }
+      ],
+      "failed_cases": 0
+    }
+  ],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

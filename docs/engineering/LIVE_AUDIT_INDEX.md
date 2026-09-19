@@ -1,22 +1,22 @@
 # Live Audit Index
 
-Generated: 2026-09-19T18:17:51Z
-PR: PR #11
-SHA: `d6c5534be6`
-Branch: `codex/fix-artifact-reporting`
-Scope: **tooling/evidence_only**
-Change scope: `base` (`intra-2.0-phase1...HEAD`)
+Generated: 2026-09-19T19:44:21Z
+PR: PR #12
+SHA: `0d1c93d53d`
+Branch: `codex/monday-paper-readiness`
+Scope: **backend_logic**
+Change scope: `base` (`b2785b66bf39192273a115f002c498f2f159bdcb...HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 0 | none |
+| Backend | 6 | `backend/api/routes/market_data.py`, `backend/api/routes/paper_monitor.py`, `backend/api/routes/scanner.py`, `backend/api/routes_setup.py`, `backend/api/socketio_server.py`, `backend/infra/security.py` |
 | Organism | 0 | none |
-| Scripts | 1 | `scripts/ci/generate_artifacts.py` |
-| CI | 3 | `.github/workflows/artifact-reporting.yml`, `.github/workflows/paper-postclose-audit.yml`, `.github/workflows/pr-verify.yml` |
-| Tests | 2 | `tests/test_artifact_workflow_contract.py`, `tests/test_generate_artifacts.py` |
-| Docs | 1 | `docs/engineering/ARTIFACT_REPORTING.md` |
+| Scripts | 10 | `scripts/ci/check_kpi_thresholds.py`, `scripts/ci/generate_artifacts.py`, `scripts/ops/paper_watchdog.py`, `scripts/ops/paper_watchdog.sh`, `scripts/research/paper_fill_reconciliation.py`, `scripts/runtime/INSTALL_BRAIN_BACKUP.md`, `scripts/runtime/backup/paper_database.py`, `scripts/runtime/com.intra.brain-backup.plist`, `scripts/runtime/rotate_brain_backup.py`, `scripts/runtime/write_runtime_snapshot.py` |
+| CI | 5 | `.github/workflows/artifact-reporting.yml`, `.github/workflows/nightly.yml`, `.github/workflows/paper-postclose-audit.yml`, `.github/workflows/paper-readiness.yml`, `.github/workflows/pr-verify.yml` |
+| Tests | 8 | `tests/test_artifact_workflow_contract.py`, `tests/test_monday_ci_workflows.py`, `tests/test_paper_backup_recovery.py`, `tests/test_paper_fill_reconciliation.py`, `tests/test_paper_monitor_access.py`, `tests/test_paper_watchdog.py`, `tests/test_position_reconciliation.py`, `tests/test_postclose_kpi_reporting.py` |
+| Docs | 4 | `docs/engineering/MONDAY_CI_READINESS.md`, `docs/runbooks/PAPER_BACKUP_RECOVERY.md`, `docs/runbooks/PAPER_MONITORING.md`, `docs/runbooks/PAPER_UPTIME.md` |
 
 ## Live constants
 
@@ -54,20 +54,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- Evidence/tooling script changed only — no backend runtime or order-path behavior changed
-- Authenticated application status was unavailable. The displayed values are resolved container configuration, not independently verified in-memory values.
-- Scheduled monitoring still follows the old default branch. KPI coverage, issue permissions, and alert delivery remain separate repairs.
-- Trading-evidence reconciliation and the strategy verdict remain unresolved; this tooling repair establishes no trading edge.
-
-## September 19 repair evidence
-
-Audited source: `d6c5534be6faa5205852a1ce0f52d5610469f188`. The evidence-only commit that follows records this source version; the generated file counts above describe its seven source, test, workflow, and documentation changes.
-
-- Task report and counts: `artifacts/task_report.json` — 280 local tests passed, zero failed.
-- Full pack: `artifacts/repair_validation/full_pack.json` — 216 organism/safety/replay/semantic tests passed under OS isolation.
-- Focused reporting tests: `artifacts/repair_validation/focused.xml` — 58 passed.
-- Freeze tests: `artifacts/repair_validation/freeze_tests.xml` — 6 passed; `freeze_after.json` records the unchanged decision surface.
-- Independent review: `artifacts/repair_validation/review.json`.
-- GitHub source check: `artifacts/repair_validation/github_source_check.json` — 58 focused tests passed and results uploaded.
-- Snapshot provenance: `artifacts/repair_validation/runtime_refresh.json`. Isolated test snapshots are archived separately under `artifacts/repair_validation/isolated_snapshots/`.
-- Current resumption audit: [PR #10](https://github.com/Lesram/intraday/pull/10).
+- 6 backend runtime file(s) changed — require targeted verification

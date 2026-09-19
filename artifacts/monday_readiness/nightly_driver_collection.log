@@ -1,0 +1,74 @@
+tests/test_strategies_automated_suite.py::TestPhase1Database::test_01_strategies_table_exists
+tests/test_strategies_automated_suite.py::TestPhase1Database::test_02_table_structure
+tests/test_strategies_automated_suite.py::TestPhase1Database::test_03_indexes
+tests/test_strategies_automated_suite.py::TestPhase1Database::test_04_foreign_keys
+tests/test_strategies_automated_suite.py::TestPhase1Database::test_05_test_data_exists
+tests/test_strategies_automated_suite.py::TestPhase2ServiceLayer::test_01_repository_get_all
+tests/test_strategies_automated_suite.py::TestPhase2ServiceLayer::test_02_repository_get_by_id
+tests/test_strategies_automated_suite.py::TestPhase2ServiceLayer::test_03_service_create
+tests/test_strategies_automated_suite.py::TestPhase2ServiceLayer::test_04_service_update
+tests/test_strategies_automated_suite.py::TestPhase2ServiceLayer::test_05_service_start
+tests/test_strategies_automated_suite.py::TestPhase2ServiceLayer::test_06_service_pause
+tests/test_strategies_automated_suite.py::TestPhase2ServiceLayer::test_07_service_stop
+tests/test_strategies_automated_suite.py::TestPhase3API::test_01_api_list_strategies
+
+=============================== warnings summary ===============================
+../../../../VS/intra/venv/lib/python3.12/site-packages/_pytest/config/__init__.py:1428
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/_pytest/config/__init__.py:1428: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+tests/test_strategies_automated_suite.py:66
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:66: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:83
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:83: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:120
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:120: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:146
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:146: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:175
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:175: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:195
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:195: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:212
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:212: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:235
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:235: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:268
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:268: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:296
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:296: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:326
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:326: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:353
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:353: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_strategies_automated_suite.py:387
+  /Users/marselkei/.codex/worktrees/intra-monday-readiness/intra/tests/test_strategies_automated_suite.py:387: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+13 tests collected in 0.14s

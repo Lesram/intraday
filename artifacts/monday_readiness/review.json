@@ -1,0 +1,391 @@
+{
+  "schema": "intra_independent_review_v1",
+  "task_id": "monday-paper-readiness-review",
+  "reviewed_at_utc": "2026-09-19T19:36:22.593747+00:00",
+  "reviewer": "Codex independent review agent",
+  "verdict": "approve_bounded_source_diff_pending_hosted_acceptance_and_session_checks",
+  "blocking_findings": [],
+  "review_scope": "Monday operational repair only: CI failure reporting, scoped paper monitoring authentication, loopback publishing, bounded watchdog recovery/notifications, backup and isolated restore tooling, and read-only fill reconciliation.",
+  "branch": "codex/monday-paper-readiness",
+  "base_sha": "02eaa450a2626bc3683a7cc0141f51d2c57e4d26",
+  "source_state": "Final operational source 0d1c93d is committed and bound by per-file SHA-256; all reviewed working-tree source files match that commit.",
+  "reviewed_file_sha256": {
+    ".github/workflows/artifact-reporting.yml": "7eaf58185c8822243f32daab5cc5606806f7ef042a07dafce293c2112e6f6cc5",
+    ".github/workflows/nightly.yml": "5e1c1f517d1e571f6c25bd50f2e4c76cf14c260f8071b7799cc841af8b0cf332",
+    ".github/workflows/paper-postclose-audit.yml": "1d0b0ab7b28e8c991ae857ae6d7b20f77599b2de1521444334dcfd7ebfa1f3a4",
+    ".github/workflows/paper-readiness.yml": "ff7830b30776b01622d8eb83ce584ce6c9d11d1e2d7e27c2975ea47aaa05609b",
+    ".github/workflows/pr-verify.yml": "1090b13ed5a03795cd44967c48e2ed1b56a88dd473de532a4efa0a5e152fc149",
+    "backend/api/routes/market_data.py": "1c0b492b7ceb39e0012f871c5ddd56ae949b9265cf51e8b385057b4e0c8bda14",
+    "backend/api/routes/paper_monitor.py": "37b72759e12e58e41ca3109bc04bee5c2b94a0eccb26ea0c155e1235937c92ac",
+    "backend/api/routes/scanner.py": "daccf4708380a23af682606128564f01f86057c8f2651230d7eaa03648f01d5d",
+    "backend/api/routes_setup.py": "e3b9c70fe9617599ee247a61c02f175c894b4b27de4a21cc27cd4f2222c6553b",
+    "backend/api/socketio_server.py": "36a26fe1759dc317141d023306815424b73b347e93a427b147cfd3cb541fe476",
+    "backend/infra/security.py": "0d46077570f04531a02ea188b658ca16a0b19b63ed78ee2f88468ef23cac5476",
+    "docker-compose.paper.yml": "9d65d48a73253793af8848d7bb65e279f7bb9231f8686086bdb55744b49fa399",
+    "docs/engineering/MONDAY_CI_READINESS.md": "53b27ed19324e68166f4b8c6b18beb5c0b7dfe323c4ef13fada87e45b8eafd17",
+    "docs/runbooks/PAPER_BACKUP_RECOVERY.md": "c6ed41c2fac35fc101a6d275f703e71ac22f8d3dde5763e8feb0604d9ef8519b",
+    "docs/runbooks/PAPER_MONITORING.md": "efb9b9b8de16b2c663bc2a16ed9b547d810ede1c9f7e692b58e5a5b71f2fdf05",
+    "docs/runbooks/PAPER_UPTIME.md": "e9070f87e3237b483c821b15a2a25a252cb3d5d3ad2db7dc692309905da13883",
+    "ops/launchd/com.intra.paper.watchdog.plist": "60095713257353557de686fb245fb5a6a0a5395c8f647bb7b32fb7bb012c76ab",
+    "ops/launchd/com.intra.postgres-backup.plist": "547ac7f3e36d262d7ef9d60663026f143b3be00c819b26119803198c38a94e2e",
+    "reports/PAPER_FILL_RECONCILIATION_2026-09-19.md": "6928c1a245a2cc49bb68043defa61881bdc279a26b58db5f1cc437a2892cfa9f",
+    "scripts/ci/check_kpi_thresholds.py": "90ac139f042a2d50171e416049e5ddf0ef1a3f6e7e28a0be6a22163c7f3fc62c",
+    "scripts/ci/generate_artifacts.py": "c948bcdbac09f6a8dcecc97fe10836186cfc17222dd90dea03e378e8dfd2db64",
+    "scripts/ops/paper_watchdog.py": "a164fcc2e4347ff27c90085f828757b5cf59e5a8b36546199e2d2ab6ee48fef6",
+    "scripts/ops/paper_watchdog.sh": "61f68470a77af0999fec131fac44da0d79d33bd0bb3b3947446757201517049a",
+    "scripts/research/paper_fill_reconciliation.py": "29cffe187e6167c918eb463b8700dbfb0a2a33822f0ccad822bac2e09dd81ee7",
+    "scripts/runtime/INSTALL_BRAIN_BACKUP.md": "7bb9e029a3e8dc1a6ba2cdbee1b32547b4b3934cdc9d02fef603fcf88bf0781f",
+    "scripts/runtime/backup/paper_database.py": "c562e31a66cf3d5e0d324a70e5a53cb6d39fb72640f042b55c748cb396c2c9a8",
+    "scripts/runtime/com.intra.brain-backup.plist": "a80d96cdef1cebec93e68f220e179841ba8c11cb31535cc007bb5b0aa9bfa745",
+    "scripts/runtime/rotate_brain_backup.py": "f6d9f4087997f943fda6d7bb68e46c19765b7d767c496ad5771bf179612708c5",
+    "scripts/runtime/write_runtime_snapshot.py": "b2e42c2d081c6d7e00a83e93f422b418bd7fc11142572dbca9fe8baa3695d883",
+    "tests/test_artifact_workflow_contract.py": "c95867a4ff163fbecd5d9ba9f544f0a4db50eebb8d102458e1a43bbd018cb42a",
+    "tests/test_monday_ci_workflows.py": "f446b83b4cc0fd2dd9cb887fd05ef7aef9ecf8e50954fc83741b53a3bf832447",
+    "tests/test_paper_backup_recovery.py": "b661fed46d8649de6eb9543e24b52fcdc22b6ee79234a077c48010fa6b558196",
+    "tests/test_paper_fill_reconciliation.py": "2c17af5992ba2abcfab495fb8cb0cb90d048554c58a26d6d573576ff6f2d68a4",
+    "tests/test_paper_monitor_access.py": "2f47cb25222afa416074f238f68ad18c6bb98ff256a03df63546a3256a97e738",
+    "tests/test_paper_watchdog.py": "c99bb0d5ebed9ff25a1a43453189769ca4d001ed3af9c2ec10af0d7f7a316e49",
+    "tests/test_position_reconciliation.py": "8b855fd82bdc54a648d2507404f8130ba9140159d76ef895a71f62272950f61a",
+    "tests/test_postclose_kpi_reporting.py": "d1ec8a6f191551a9407d69a4d857fda367a07c225ab2b7ca4f6970a071f8b1ea"
+  },
+  "runtime_behavior_changed": true,
+  "runtime_behavior_description": "Operational authentication, network publication, recovery, backup and reporting behavior changes. Trading strategy, sizing, exit logic, broker submission paths, frozen parameters and historical corpus are not changed by this reviewed diff.",
+  "invariants": {
+    "organism_integration_broker_risk_source_diff": "none",
+    "learning_mode_ml_influence_reintroduced": false,
+    "learning_mode_kelly_reintroduced": false,
+    "order_submission_branch_added_or_left_by_this_change": false,
+    "frozen_decision_surface_changed": false,
+    "forward_verdict_clock_reset": false,
+    "parked_ci_trio_changed": false,
+    "final_committed_source_freeze_verification": "Pass: final source 0d1c93d and separately observed deployed dead82a image, with backend/Compose parity."
+  },
+  "resolved_findings": [
+    {
+      "priority": "P1",
+      "issue": "Monitoring credentials could reach legacy authentication-only mutation routes.",
+      "resolution": "Central strict method/path allowlist is enforced before returning the paper_monitor principal, including mixed monitor/admin roles; explicit scope rejection cannot fall back to an API key. Actual position-close route tests assert no broker construction."
+    },
+    {
+      "priority": "P2",
+      "issue": "Direct JWT WebSocket and Socket.IO authentication bypassed the central monitoring scope.",
+      "resolution": "All three external decode_token handlers reject paper_monitor before subscription/session/scanner work; actual-handler negative tests cover them."
+    },
+    {
+      "priority": "P1",
+      "issue": "Watchdog restart shortened the API's required shutdown grace.",
+      "resolution": "Known-container restart allows 60 seconds for shutdown and a 90-second command timeout; startup grace and persisted 15-minute cooldown remain bounded."
+    },
+    {
+      "priority": "P2",
+      "issue": "A login backup could reserve a day-only archive and suppress the later post-close snapshot.",
+      "resolution": "Each successful run publishes an immutable UTC timestamped snapshot; a regression covers distinct morning and post-close state."
+    },
+    {
+      "priority": "P2",
+      "issue": "Research reconciliation could declare success despite a different entry cost basis.",
+      "resolution": "Unrounded Decimal entry VWAP is compared with an inclusive $0.00005/share tolerance, mismatches block RECONCILED, and output exposes price/notional differences."
+    },
+    {
+      "priority": "P2",
+      "issue": "An intervening log-read failure could discard an undelivered critical alert count.",
+      "resolution": "Pending event counts are retained before all early returns; the failed delivery, failed read, retry sequence is tested."
+    },
+    {
+      "priority": "P2",
+      "issue": "The new PR workflow could terminate the full pack before its internal timeout budget and leave no upload headroom.",
+      "resolution": "Full-pack timeout is 25 minutes and enclosing job timeout is 50 minutes."
+    },
+    {
+      "id": 8,
+      "priority": "P1",
+      "issue": "Hosted workflows rejected runner.temp expressions in job-level environment before any job started.",
+      "resolution": "Three workflows write identical isolated paths to GITHUB_ENV from RUNNER_TEMP after checkout and before tests. Focused CI validates all four changed workflows with pinned, SHA-256-verified actionlint 1.7.12; behavioral regression executes each path-export script and verifies ordering."
+    },
+    {
+      "id": 9,
+      "priority": "P1",
+      "issue": "Nightly used a synchronous PostgreSQL URI for async tests and silently skipped migrations by checking the wrong path.",
+      "resolution": "Use locked asyncpg for tests and run Alembic through the existing backend/migrations environment, which converts the migration URL to psycopg2. Regression verifies configured migration path and fail-closed invocation."
+    },
+    {
+      "id": 10,
+      "priority": "P2",
+      "issue": "Benign startup prose about critical tables and zero critical failures generated operational critical alerts.",
+      "resolution": "Retain ALERT markers, explicit uppercase CRITICAL text and structured critical severity; ignore observed informational prose and zero-failure phrase. Thirteen added regression cases verify matching and no spurious notification; pending retry logic is preserved."
+    },
+    {
+      "id": 11,
+      "priority": "P2",
+      "issue": "Runtime snapshot assigned an unsupported unsaved-activity cause to differing historical counters.",
+      "resolution": "The diagnostic acknowledges potentially different accounting scopes/save times and requires ledger attribution before changing counters; no counter is changed."
+    },
+    {
+      "id": 12,
+      "priority": "P2",
+      "issue": "Hosted suites could exhaust the former process limits despite successful replay taking 283.47 seconds, and scheduled jobs differed from readiness test environment.",
+      "resolution": "Align safe placeholder secrets, import path and all four scratch state/telemetry paths; raise ordinary/semantic process caps to 180s and replay to 600s while preserving per-test limits and failure semantics. Full consumers reserve 40-minute pack steps and 70/110-minute jobs, with contracts checking accumulated limits and reporting headroom."
+    },
+    {
+      "id": 13,
+      "priority": "P2",
+      "issue": "Backup failure/freshness evidence previously remained logs-only rather than reaching the local monitoring alert path.",
+      "resolution": "Opt-in read-only checks now report missing, invalid, corrupted or >26h latest brain/PostgreSQL publications through the existing deduplicated/retried notifier. Latest invalid evidence cannot be hidden by older backups; bounded receipt/inventory/hash checks never invoke recovery. Documentation correctly states the shared 10s/512MiB per-invocation budget and distinguishes archive freshness from engine-state freshness."
+    }
+  ],
+  "validation": {
+    "reviewer_activity": "Read-only code, workflow, documentation and evidence review. Reviewer did not run broker calls, modify source, restart services or deploy.",
+    "junit_evidence": {
+      "ops_junit": {
+        "tests": 37,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "access": {
+        "tests": 156,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "monitor_signed": {
+        "tests": 33,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "configuration": {
+        "tests": 41,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "reconciliation": {
+        "tests": 80,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "order_safety": {
+        "tests": 20,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "ci_tests": {
+        "tests": 111,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "junit_counts_note": "Suites overlap; do not sum these as distinct tests. The final signed-JWT monitor run covers 33 cases; the broader 156-case access/security/WebSocket run precedes a test-only signing adjustment.",
+    "research_regressions": {
+      "passed": 23,
+      "failed": 0,
+      "source": "implementer-reported focused tests and reviewed regression source"
+    },
+    "ops_isolation": {
+      "passed": 37,
+      "failed": 0,
+      "network_denied": true,
+      "duration_seconds": 0.15,
+      "warning": "asyncio_mode unknown because unrelated plugin autoload is disabled"
+    },
+    "restore": {
+      "report": "artifacts/monday_readiness/restore_verification.json",
+      "verified": true,
+      "table_count": 27,
+      "cleanup_succeeded": true,
+      "network": "none",
+      "host_ports": [],
+      "host_mounts": [],
+      "live_database_modified": false
+    },
+    "diff_check": "passed",
+    "freeze_evidence": "artifacts/monday_readiness/freeze_before_deployment.json passed before final packaging; committed-source check remains required.",
+    "secrets_review": "No credentials or raw account/client identifiers were found in the reviewed source or packaged reconciliation JSON key inspection. This is not a substitute for the final staged secret scan.",
+    "workflow_context_repair": {
+      "source_sha": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+      "reviewed_at_utc": "2026-09-19T19:10:28.587979+00:00",
+      "files": [
+        ".github/workflows/artifact-reporting.yml",
+        ".github/workflows/nightly.yml",
+        ".github/workflows/paper-postclose-audit.yml",
+        ".github/workflows/paper-readiness.yml",
+        "tests/test_monday_ci_workflows.py"
+      ],
+      "junit": {
+        "tests": 114,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "actionlint": "1.7.12 passed (evidence: workflow_context_repair_result.json and workflow_lint.log)",
+      "hosted_acceptance": "Jobs have started per root; completion remains pending. Local validation is not represented as hosted success.",
+      "full_pack": "Prior source b9b87be completed successfully; exact dead82a rerun is in progress and remains a release gate.",
+      "runtime_changes_in_followup": false
+    },
+    "final_operational_followup": {
+      "reviewed_at_utc": "2026-09-19T19:23:01.069683+00:00",
+      "source_sha": "f9015f5ba71040d09c980eb0d63cf37ce7f99034",
+      "files": [
+        ".github/workflows/nightly.yml",
+        "scripts/ops/paper_watchdog.py",
+        "scripts/runtime/write_runtime_snapshot.py",
+        "tests/test_monday_ci_workflows.py",
+        "tests/test_paper_watchdog.py"
+      ],
+      "junit_evidence": {
+        "artifacts/monday_readiness/nightly_driver_tests.xml": {
+          "tests": 115,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "artifacts/monday_readiness/watchdog_matcher_validation/junit.xml": {
+          "tests": 50,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "artifacts/monday_readiness/monitor_final.xml": {
+          "tests": 33,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "test_count_note": "Verified JUnit counts; these reruns overlap earlier coverage and are not additive.",
+      "backend_and_paper_compose_diff_from_dead82a": "none",
+      "nightly_review": "Checked locked asyncpg/psycopg2 dependencies and the existing migration URL conversion. Actual hosted migration/deep-suite completion remains a separate gate.",
+      "runtime_claim_boundary": "This follow-up adds no new live-runtime acceptance claim. Root retains separate deployment/authentication/freeze evidence; deployed API source is dead82a with identical backend/Compose source.",
+      "later_changes_excluded": "Uncommitted CI environment and timeout-headroom changes are being prepared separately and require a new source binding.",
+      "full_pack_and_hosted_status": "Exact-source regeneration and hosted completion remain separately tracked release gates; no prior-source pass is relabeled."
+    },
+    "final_source_binding": {
+      "reviewed_at_utc": "2026-09-19T19:36:22.593747+00:00",
+      "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+      "newly_reviewed_paths": [
+        ".github/workflows/nightly.yml",
+        ".github/workflows/paper-postclose-audit.yml",
+        ".github/workflows/paper-readiness.yml",
+        ".github/workflows/pr-verify.yml",
+        "docs/engineering/MONDAY_CI_READINESS.md",
+        "docs/runbooks/PAPER_BACKUP_RECOVERY.md",
+        "docs/runbooks/PAPER_UPTIME.md",
+        "ops/launchd/com.intra.paper.watchdog.plist",
+        "scripts/ci/generate_artifacts.py",
+        "scripts/ops/paper_watchdog.py",
+        "tests/test_artifact_workflow_contract.py",
+        "tests/test_monday_ci_workflows.py",
+        "tests/test_paper_watchdog.py"
+      ],
+      "junit_evidence": {
+        "ops_junit.xml": {
+          "tests": 69,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "postclose_budget_tests.xml": {
+          "tests": 122,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "monitor_final.xml": {
+          "tests": 33,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "counts_note": "Reruns overlap earlier coverage and must not be added as unique tests.",
+      "actual_backup_read_only_verification": "backup_monitor_verification.json records both published backups ok, 26 brain files plus one DB dump, 0.052 seconds, no status/runtime mutation.",
+      "shared_budget_documentation": "Verified final commit explicitly shares one 10-second / 512 MiB budget across brain and PostgreSQL.",
+      "trading_backend_compose_architecture_diff_from_deployed_dead82a": "none",
+      "reviewer_runtime_actions": "none; source/evidence review only",
+      "exact_source_full_pack": "Completed: exit 0, 208.36s, 168 core + 28 replay + 20 semantic; grep/spec pass.",
+      "host_installation_and_freeze": "Completed evidence review: 0d1c93d helpers installed, all four agents loaded, backup-enabled watchdog healthy with no recovery actions, source and deployed-image freeze match.",
+      "hosted_acceptance": "Final-source required PR checks and actual post-close execution remain outstanding."
+    }
+  },
+  "remaining_release_gates": [
+    "Obtain required PR checks for the accepted final source and successful actual reusable post-close audit at 0d1c93d with validation notifications disabled; retain complete KPI/status/artifact evidence and truthful nightly baseline failures.",
+    "Activate scheduler bridge PR #13 only after pinned-source post-close and safety acceptance. Its independent four-workflow review is artifacts/monday_readiness/bridge_review.json; unrelated old-main checks are not certified green.",
+    "After any authorized bridge activation, verify the real scheduled run audited source SHA and uploaded evidence; no future cron execution is claimed complete by this review.",
+    "Finish evidence packaging/commit, final staged secret scan, current audit-index PR/source references and distinct isolated-test versus actual-runtime snapshots; preserve source/review hash binding.",
+    "Retain local notification visibility as an operator/OS-dependent limit and periodically inspect backup receipts and engine-save provenance; healthy archive checks do not prove every scheduled attempt succeeded.",
+    "Observe Monday fresh-data, naturally generated paper order/fill/reconciliation/exit and post-close acceptance. Weekend liveness does not establish future-session behavior."
+  ],
+  "known_deferred_limits": [
+    "Local Mac notifications require a logged-in session and OS delivery permission; accepted notification requests do not prove the operator saw them. No off-machine alert channel is installed.",
+    "The critical log bridge is bounded to 1,000 lines and 256 KiB of processed text; unavailable/truncated windows are reported, not represented as complete alert coverage.",
+    "Backup alerts validate latest published archive integrity and age, not every failed scheduled attempt while a recent valid archive exists. Archive creation freshness does not prove recent engine-save activity; source_saved_at remains available for investigation. Check-limit exhaustion is reported as failure.",
+    "Hosted CI uses isolated/mock/shadow configuration and no broker credentials; it does not establish live runtime or broker health.",
+    "Broker-reconciled evidence intentionally reports DISCREPANCY for six material partial-exit accounting omissions. The original ledger, learner state and forward corpus remain unchanged.",
+    "Historical nightly failures and the explicitly parked frontend npm-audit, bandit and Quality Summary work remain outside this bounded repair."
+  ],
+  "excluded_authorizations": [
+    "No approval to deploy the separate runtime fill-accounting proposal.",
+    "No approval to restate historical ledger/learner/corpus data, change risk inputs, reset the verdict clock, tune frozen strategy parameters, change the data feed, promote a strategy or place test orders in the forward corpus.",
+    "No claim of established trading edge or real-money readiness."
+  ],
+  "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "follow_up_review": {
+    "reviewed_at_utc": "2026-09-19T19:03:05.645938+00:00",
+    "source_sha": "b9b87be6552071ac4bf92c85de114b6626be73bb",
+    "changed_documents": [
+      "docs/engineering/MONDAY_CI_READINESS.md",
+      "reports/PAPER_FILL_RECONCILIATION_2026-09-19.md"
+    ],
+    "stable_ledger_packaging": "resolved",
+    "ledger_rows": 27,
+    "reproduced_result": {
+      "status": "DISCREPANCY",
+      "filled_orders": 61,
+      "matched_closes": 27,
+      "ledger_minus_broker_pnl": -4.897577,
+      "material_pnl_differences": 6
+    },
+    "evidence_sha256": {
+      "broker_orders.json": "eec4bffd10908da373a7124ba8fd3c6d01734ef04085f749f1aa4cfc06d417e8",
+      "forward_ledger.csv": "7418b955cbf552a2dbaac032f4a2b4c6b15499ec04539f1c09ea0054e73037f0",
+      "ledger_extraction.json": "ba7ba26dcf5ebc7d262f78723d8fac19a6b62bdb87db5ca8054270820c76982e",
+      "fill_reconciliation.json": "7a206fc5098bf58eab3335739c0fe5cfc238542896618a59ce36ab608cf8dace"
+    },
+    "extraction_provenance": "Original 610-row CSV SHA-256, strict post-freeze filter, selected six columns, 27-row count and output SHA-256 retained in ledger_extraction.json; original live CSV unchanged."
+  },
+  "completed_release_evidence_review": {
+    "reviewed_at_utc": "2026-09-19T19:41:24.848519+00:00",
+    "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+    "full_pack": {
+      "exit_code": 0,
+      "seconds": 208.36,
+      "passed_counts": {
+        "core": 168,
+        "replay": 28,
+        "semantic": 20
+      },
+      "grep": "pass",
+      "spec_drift": "pass; zero drift",
+      "scope": "Network-denied isolated validation; actual runtime evidence remains separate."
+    },
+    "final_source_freeze": "pass at 0d1c93d; FROZEN_AT unchanged",
+    "running_image_freeze": "pass at deployed dead82a; no changed keys; reviewed backend/Compose parity with 0d1c93d",
+    "host_helpers": "Installed 0d1c93d per launch_agents_after.json; paper login, five-minute watchdog, 16:30 brain and 16:45 PostgreSQL backup agents loaded.",
+    "watchdog_after_install": {
+      "checked_at": "2026-09-19T19:36:29.350346+00:00",
+      "healthy": true,
+      "paused": false,
+      "actions": [],
+      "problems": [],
+      "backup_monitor_enabled": true,
+      "brain_backup": "ok; 26 verified files",
+      "postgres_backup": "ok; one verified dump"
+    },
+    "notification_limit": "No notification was attempted by the healthy post-install watchdog check. Earlier command submission does not prove visible OS delivery.",
+    "source_hash_binding": "All 37 reviewed files still match their bound hashes."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": 35464757621,
+  "name": "paper-postclose-audit",
+  "head_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "head_branch": "codex/monday-paper-readiness",
+  "event": "workflow_dispatch",
+  "status": "in_progress",
+  "conclusion": null,
+  "run_started_at": "2026-09-19T19:34:24Z",
+  "updated_at": "2026-09-19T19:34:28Z",
+  "html_url": "https://github.com/Lesram/intraday/actions/runs/35464757621",
+  "jobs": [
+    {
+      "name": "collect-and-audit",
+      "status": "in_progress",
+      "conclusion": null,
+      "started_at": "2026-09-19T19:34:27Z",
+      "completed_at": null,
+      "html_url": "https://github.com/Lesram/intraday/actions/runs/35464757621/job/105954960304",
+      "failed_steps": []
+    }
+  ],
+  "artifacts": [],
+  "xml_summaries": [],
+  "retention_note": "Compact source/provenance/status summaries, selected log tails and failed-case XML only. Complete artifact downloads remain on GitHub. Text snippets may be truncated."
+}

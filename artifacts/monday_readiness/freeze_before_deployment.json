@@ -1,0 +1,6 @@
+{
+  "exit_code": 0,
+  "stdout": "DRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-07-07T20:36:49.008305+00:00)\n",
+  "freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+  "phase": "after initial operational patches"
+}

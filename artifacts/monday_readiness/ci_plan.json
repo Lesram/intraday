@@ -1,0 +1,23 @@
+{
+  "task_id": "monday-ci-readiness",
+  "scope": "Fail-closed postclose reporting, reusable pinned-source scheduled checks, explicit opt-in issue delivery; no frozen/trading changes or parked CI trio.",
+  "owned_files": [
+    ".github/workflows/paper-postclose-audit.yml",
+    ".github/workflows/nightly.yml",
+    "scripts/ci/check_kpi_thresholds.py",
+    "tests/test_postclose_kpi_reporting.py",
+    "tests/test_monday_ci_workflows.py",
+    "docs/engineering/MONDAY_CI_READINESS.md",
+    ".github/workflows/artifact-reporting.yml"
+  ],
+  "tests_before_edit": [
+    "tests/test_postclose_kpi_reporting.py (new: missing/malformed/stale/failed/incomplete evidence, no-test and timeout paths, durable result, no notification side effects)",
+    "tests/test_monday_ci_workflows.py (new: pinned source, provenance, permission isolation, timeout fallback, opt-in notifications)",
+    "tests/test_generate_artifacts.py",
+    "tests/test_artifact_workflow_contract.py",
+    "tests/test_artifact_change_scope.py"
+  ],
+  "source_base": "02eaa450a2626bc3683a7cc0141f51d2c57e4d26",
+  "external_mutations": "None. Root handles integration, PRs, schedule bridge, and any approved notifications.",
+  "verification": "Isolated pure reporting/workflow tests using --noconftest; freeze verification after edits coordinated with root."
+}

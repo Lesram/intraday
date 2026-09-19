@@ -1,0 +1,104 @@
+{
+  "results": [
+    {
+      "workflow": "paper-postclose-audit.yml",
+      "status": "pass",
+      "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0"
+    },
+    {
+      "workflow": "nightly.yml",
+      "status": "pass",
+      "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0"
+    },
+    {
+      "workflow": "staging.yml",
+      "status": "pass",
+      "excluded_push_paths": [
+        ".github/workflows/nightly.yml",
+        ".github/workflows/paper-postclose-audit.yml",
+        ".github/workflows/scheduler-bridge-check.yml",
+        ".github/workflows/staging.yml"
+      ],
+      "unchanged_baseline_diagnostics": 4
+    }
+  ],
+  "errors": [],
+  "staging_lint_diagnostics": {
+    "base": [
+      {
+        "message": "the runner of \"actions/setup-python@v4\" action is too old to run on GitHub Actions. update the action's version to fix this issue",
+        "filepath": "<stdin>",
+        "line": 34,
+        "column": 13,
+        "kind": "action",
+        "snippet": "      uses: actions/setup-python@v4\n            ^~~~~~~~~~~~~~~~~~~~~~~",
+        "end_column": 35
+      },
+      {
+        "message": "the runner of \"codecov/codecov-action@v3\" action is too old to run on GitHub Actions. update the action's version to fix this issue",
+        "filepath": "<stdin>",
+        "line": 80,
+        "column": 13,
+        "kind": "action",
+        "snippet": "      uses: codecov/codecov-action@v3\n            ^~~~~~~~~~~~~~~~~~~~~~~~~",
+        "end_column": 37
+      },
+      {
+        "message": "the runner of \"actions/setup-python@v4\" action is too old to run on GitHub Actions. update the action's version to fix this issue",
+        "filepath": "<stdin>",
+        "line": 205,
+        "column": 13,
+        "kind": "action",
+        "snippet": "      uses: actions/setup-python@v4\n            ^~~~~~~~~~~~~~~~~~~~~~~",
+        "end_column": 35
+      },
+      {
+        "message": "property \"test\" is not defined in object type {deploy-staging: {outputs: {}; result: string}}",
+        "filepath": "<stdin>",
+        "line": 251,
+        "column": 129,
+        "kind": "expression",
+        "snippet": "      run: |",
+        "end_column": 129
+      }
+    ],
+    "candidate": [
+      {
+        "message": "the runner of \"actions/setup-python@v4\" action is too old to run on GitHub Actions. update the action's version to fix this issue",
+        "filepath": "<stdin>",
+        "line": 40,
+        "column": 13,
+        "kind": "action",
+        "snippet": "      uses: actions/setup-python@v4\n            ^~~~~~~~~~~~~~~~~~~~~~~",
+        "end_column": 35
+      },
+      {
+        "message": "the runner of \"codecov/codecov-action@v3\" action is too old to run on GitHub Actions. update the action's version to fix this issue",
+        "filepath": "<stdin>",
+        "line": 86,
+        "column": 13,
+        "kind": "action",
+        "snippet": "      uses: codecov/codecov-action@v3\n            ^~~~~~~~~~~~~~~~~~~~~~~~~",
+        "end_column": 37
+      },
+      {
+        "message": "the runner of \"actions/setup-python@v4\" action is too old to run on GitHub Actions. update the action's version to fix this issue",
+        "filepath": "<stdin>",
+        "line": 211,
+        "column": 13,
+        "kind": "action",
+        "snippet": "      uses: actions/setup-python@v4\n            ^~~~~~~~~~~~~~~~~~~~~~~",
+        "end_column": 35
+      },
+      {
+        "message": "property \"test\" is not defined in object type {deploy-staging: {outputs: {}; result: string}}",
+        "filepath": "<stdin>",
+        "line": 257,
+        "column": 129,
+        "kind": "expression",
+        "snippet": "      run: |",
+        "end_column": 129
+      }
+    ]
+  }
+}

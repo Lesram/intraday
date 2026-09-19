@@ -1,0 +1,37 @@
+{
+  "task_id": "workflow-context-repair",
+  "source_commit_with_failure": "b9b87be6552071ac4bf92c85de114b6626be73bb",
+  "hosted_errors": [
+    {
+      "run_id": 35463100929,
+      "workflow": "paper-readiness.yml",
+      "message": "Unrecognized named-value runner in job env runner.temp",
+      "lines": [
+        24,
+        25,
+        26,
+        27
+      ]
+    },
+    {
+      "run_id": 35463100303,
+      "workflow": "paper-postclose-audit.yml",
+      "message": "Unrecognized named-value runner in job env runner.temp",
+      "lines": [
+        43,
+        44
+      ]
+    }
+  ],
+  "repair": "Move identical temp path values from unsupported job-level runner context to runner-executed GITHUB_ENV exports in all three workflows",
+  "tests_passed": 114,
+  "tests_failed": 0,
+  "tests_log": "artifacts/monday_readiness/workflow_context_tests.log",
+  "tests_xml": "artifacts/monday_readiness/workflow_context_tests.xml",
+  "actionlint_version": "1.7.12",
+  "actionlint_result": "pass",
+  "actionlint_darwin_arm64_sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
+  "actionlint_ci_linux_amd64_sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+  "runtime_behavior_changed": false,
+  "hosted_acceptance": "pending root commit and push; local validation is not claimed as hosted success"
+}

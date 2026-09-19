@@ -1,0 +1,16 @@
+{
+  "source_sha256": "c37a2279083eaa6cd84735efbb4ab4b5cd8d3d87eaeab8980e2e646f2784dbd8",
+  "source_row_count": 610,
+  "selected_count": 27,
+  "selection": "closed_at > FROZEN_AT",
+  "columns": [
+    "symbol",
+    "closed_at",
+    "shares",
+    "entry_price",
+    "pnl",
+    "had_partial_exits"
+  ],
+  "extracted_at": "2026-09-19T19:01:54.880795+00:00",
+  "output_sha256": "7418b955cbf552a2dbaac032f4a2b4c6b15499ec04539f1c09ea0054e73037f0"
+}

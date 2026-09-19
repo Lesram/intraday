@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuite name="retained_failure_excerpt" total_failed_cases="1" retained_cases="1"><testcase classname="" name="tests.test_strategies_automated_suite" time="0.000"><error message="collection failure">tests/test_strategies_automated_suite.py:50: in &lt;module&gt;
+    engine = create_async_engine(DATABASE_URL, echo=False)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py:121: in create_async_engine
+    return AsyncEngine(sync_engine)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py:1035: in __init__
+    raise exc.InvalidRequestError(
+E   sqlalchemy.exc.InvalidRequestError: The asyncio extension requires an async driver to be used. The loaded 'psycopg2' is not async.</error></testcase></testsuite>

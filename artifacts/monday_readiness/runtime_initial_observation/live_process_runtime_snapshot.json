@@ -1,0 +1,973 @@
+{
+  "source": "live_process",
+  "snapshot_taken_at": "2026-09-19T19:14:01Z",
+  "container": "intra-api-1",
+  "reachable": true,
+  "organism_status": {
+    "enabled": true,
+    "governance": {
+      "frozen": false,
+      "trading_halted": false,
+      "halted": false,
+      "drawdown_triggered": false,
+      "disabled_strategies": [],
+      "policy_version": "",
+      "config_hash": "",
+      "change_count_today": 0,
+      "max_changes_per_day": 500,
+      "change_budget_remaining": 500
+    },
+    "regime": {
+      "last_regime": ""
+    },
+    "promotion": null,
+    "policy_weights": {
+      "momentum": 1.0023455365351297,
+      "mean_reversion": 2.5,
+      "stat_arb": 2.5,
+      "regime_momentum": 1.7562395161534294,
+      "breakout": 2.5,
+      "ensemble": 1.0,
+      "order_flow": 2.5,
+      "vol_structure": 1.060594946053946,
+      "cross_momentum": 1.0,
+      "microstructure": 0.1,
+      "adaptive_regime": 1.6161843624050236
+    },
+    "tick_count": 114480,
+    "live_engine": {
+      "running": true,
+      "tick_interval_s": 10,
+      "last_tick": null,
+      "tick_history": [],
+      "engine": {
+        "initialized": true,
+        "tick_count": 114480,
+        "total_trades": 610,
+        "brain_generation": 389,
+        "brain_total_runs": 6130,
+        "evolved_generation": 143,
+        "evolved_adaptations": 143,
+        "peak_equity": 100093.67,
+        "current_equity": 100055.55,
+        "governance": {
+          "frozen": false,
+          "trading_halted": false,
+          "halted": false,
+          "drawdown_triggered": false,
+          "disabled_strategies": [],
+          "policy_version": "",
+          "config_hash": "",
+          "change_count_today": 8,
+          "max_changes_per_day": 500,
+          "change_budget_remaining": 492
+        },
+        "universe_size": 20,
+        "universe_symbols": [
+          "NVDA",
+          "XLK",
+          "COST",
+          "AMD",
+          "IWM",
+          "MSFT",
+          "WMT",
+          "QQQ",
+          "AAPL",
+          "AMZN",
+          "AVGO",
+          "CAT",
+          "CRM",
+          "GOOGL",
+          "LLY",
+          "META",
+          "SPY",
+          "TSLA",
+          "XLE",
+          "XOM"
+        ],
+        "positions_tracked": 0,
+        "cumulative_pnl": -588.39,
+        "win_rate": 0.3393,
+        "winning_trades": 207,
+        "losing_trades": 399,
+        "avg_win": 10.98,
+        "avg_loss": -7.17,
+        "strategy_total_trades": 602,
+        "strategy_cumulative_pnl": -726.79,
+        "strategy_win_rate": 0.3355,
+        "strategy_sharpe_ratio_per_trade": -1.2628,
+        "ml_accuracy": 0.0,
+        "ml_trained": true,
+        "training_history": [],
+        "regime": "unknown",
+        "shorts_enabled": false,
+        "data_stale": false,
+        "learning_mode": false,
+        "trading_phase": "production_guarded",
+        "guarded_mode": true,
+        "ml_influence_enabled": false,
+        "fixed_risk_sizing": true,
+        "promotion_blockers": [
+          "total_pnl -726.79 < floor 0.00",
+          "sharpe_ratio_per_trade -1.2628 < floor 0.0000"
+        ],
+        "watchdog": {
+          "no_trade": {
+            "state": "OK",
+            "ticks_since_last_order": 0,
+            "zero_candidate_ticks": 0
+          },
+          "equity_fallback": {
+            "total_fallback_count": 0,
+            "current_streak": 0
+          },
+          "universe_drift": {},
+          "brain_save": {
+            "ticks_since_last_save": 0,
+            "healthy": true
+          }
+        },
+        "scanner_enabled": true,
+        "scanner_scan_count": 0,
+        "scanner_candidates_count": 0,
+        "scanner_last_scan_time": 0.0
+      }
+    }
+  },
+  "brain_state": {
+    "brain_format_version": 2,
+    "saved_at": "2026-09-19T19:12:35.542579+00:00",
+    "total_runs": 6130,
+    "generation": 389,
+    "total_trades": 609,
+    "cumulative_pnl": -588.39,
+    "best_sharpe": 3.4363,
+    "ml_is_trained": true,
+    "feature_count": 79,
+    "strategy_expectancy": {
+      "n_trades": 602,
+      "n_wins": 202,
+      "n_losses": 396,
+      "total_pnl": -726.7926,
+      "mean_pnl": -1.2073,
+      "median_pnl": -0.935,
+      "win_rate": 0.3355,
+      "sharpe_ratio_per_trade": -1.2628,
+      "max_drawdown": -985.93,
+      "last_25_mean_pnl": 3.6093,
+      "last_25_win_rate": 0.48,
+      "last_50_mean_pnl": 0.7346,
+      "last_50_win_rate": 0.38
+    },
+    "all_records_expectancy": {
+      "n_trades": 610,
+      "n_wins": 207,
+      "n_losses": 399,
+      "total_pnl": -588.3892,
+      "mean_pnl": -0.9646,
+      "median_pnl": -0.915,
+      "win_rate": 0.3393,
+      "sharpe_ratio_per_trade": -0.9673,
+      "max_drawdown": -985.93,
+      "last_25_mean_pnl": 3.6093,
+      "last_25_win_rate": 0.48,
+      "last_50_mean_pnl": 0.7346,
+      "last_50_win_rate": 0.38
+    },
+    "excluded_reconciliation_artifacts": 8,
+    "strategy_attribution": {
+      "n_trades": 602,
+      "total_pnl": -726.7926,
+      "segments": {
+        "strategy_id": [
+          {
+            "value": "alpha_baseline",
+            "n_trades": 602,
+            "total_pnl": -726.7926,
+            "mean_pnl": -1.2073,
+            "win_rate": 0.3355
+          }
+        ],
+        "exit_reason": [
+          {
+            "value": "stop_loss",
+            "n_trades": 143,
+            "total_pnl": -654.6224,
+            "mean_pnl": -4.5778,
+            "win_rate": 0.2448
+          },
+          {
+            "value": "pyramid_cut",
+            "n_trades": 151,
+            "total_pnl": -451.6354,
+            "mean_pnl": -2.991,
+            "win_rate": 0.0066
+          },
+          {
+            "value": "failure_to_follow",
+            "n_trades": 109,
+            "total_pnl": -349.745,
+            "mean_pnl": -3.2087,
+            "win_rate": 0.2477
+          },
+          {
+            "value": "max_loss_limit",
+            "n_trades": 7,
+            "total_pnl": -188.76,
+            "mean_pnl": -26.9657,
+            "win_rate": 0.2857
+          },
+          {
+            "value": "trailing_stop",
+            "n_trades": 52,
+            "total_pnl": -179.3485,
+            "mean_pnl": -3.449,
+            "win_rate": 0.3077
+          },
+          {
+            "value": "partial_take_profit",
+            "n_trades": 7,
+            "total_pnl": -4.06,
+            "mean_pnl": -0.58,
+            "win_rate": 0.7143
+          }
+        ],
+        "entry_source": [
+          {
+            "value": "nan",
+            "n_trades": 149,
+            "total_pnl": -970.08,
+            "mean_pnl": -6.5106,
+            "win_rate": 0.4027
+          },
+          {
+            "value": "alpha+breakout",
+            "n_trades": 197,
+            "total_pnl": -29.2266,
+            "mean_pnl": -0.1484,
+            "win_rate": 0.3249
+          },
+          {
+            "value": "breakout",
+            "n_trades": 20,
+            "total_pnl": 13.68,
+            "mean_pnl": 0.684,
+            "win_rate": 0.4
+          },
+          {
+            "value": "alpha",
+            "n_trades": 236,
+            "total_pnl": 258.8339,
+            "mean_pnl": 1.0968,
+            "win_rate": 0.2966
+          }
+        ],
+        "regime_at_entry": [
+          {
+            "value": "nan",
+            "n_trades": 142,
+            "total_pnl": -944.75,
+            "mean_pnl": -6.6532,
+            "win_rate": 0.4014
+          },
+          {
+            "value": "unknown",
+            "n_trades": 7,
+            "total_pnl": -25.33,
+            "mean_pnl": -3.6186,
+            "win_rate": 0.4286
+          },
+          {
+            "value": "trending_down",
+            "n_trades": 7,
+            "total_pnl": -9.8187,
+            "mean_pnl": -1.4027,
+            "win_rate": 0.0
+          },
+          {
+            "value": "low_vol",
+            "n_trades": 3,
+            "total_pnl": 0.69,
+            "mean_pnl": 0.23,
+            "win_rate": 0.3333
+          },
+          {
+            "value": "trending_up",
+            "n_trades": 42,
+            "total_pnl": 25.463,
+            "mean_pnl": 0.6063,
+            "win_rate": 0.3095
+          },
+          {
+            "value": "chop",
+            "n_trades": 367,
+            "total_pnl": 26.9356,
+            "mean_pnl": 0.0734,
+            "win_rate": 0.2943
+          }
+        ],
+        "confidence_bucket": [
+          {
+            "value": "0.5-0.6",
+            "n_trades": 147,
+            "total_pnl": -256.6091,
+            "mean_pnl": -1.7456,
+            "win_rate": 0.3333
+          },
+          {
+            "value": ">=0.7",
+            "n_trades": 50,
+            "total_pnl": -144.489,
+            "mean_pnl": -2.8898,
+            "win_rate": 0.42
+          },
+          {
+            "value": "<0.4",
+            "n_trades": 220,
+            "total_pnl": -142.5086,
+            "mean_pnl": -0.6478,
+            "win_rate": 0.3455
+          },
+          {
+            "value": "0.6-0.7",
+            "n_trades": 103,
+            "total_pnl": -100.4709,
+            "mean_pnl": -0.9754,
+            "win_rate": 0.3786
+          },
+          {
+            "value": "0.4-0.5",
+            "n_trades": 82,
+            "total_pnl": -82.715,
+            "mean_pnl": -1.0087,
+            "win_rate": 0.2073
+          }
+        ]
+      },
+      "confidence_inversion": {
+        "flag": true,
+        "reason": "high-confidence bucket underperforms mid-confidence bucket",
+        "buckets": {
+          "<0.4": {
+            "n_trades": 220,
+            "total_pnl": -142.5086,
+            "mean_pnl": -0.6478,
+            "win_rate": 0.3455
+          },
+          "0.4-0.5": {
+            "n_trades": 82,
+            "total_pnl": -82.715,
+            "mean_pnl": -1.0087,
+            "win_rate": 0.2073
+          },
+          "0.5-0.6": {
+            "n_trades": 147,
+            "total_pnl": -256.6091,
+            "mean_pnl": -1.7456,
+            "win_rate": 0.3333
+          },
+          "0.6-0.7": {
+            "n_trades": 103,
+            "total_pnl": -100.4709,
+            "mean_pnl": -0.9754,
+            "win_rate": 0.3786
+          },
+          ">=0.7": {
+            "n_trades": 50,
+            "total_pnl": -144.489,
+            "mean_pnl": -2.8898,
+            "win_rate": 0.42
+          }
+        }
+      },
+      "windows": {
+        "last_25": {
+          "n_trades": 25,
+          "total_pnl": 90.2324,
+          "mean_pnl": 3.6093,
+          "win_rate": 0.48,
+          "segments": {
+            "strategy_id": [
+              {
+                "value": "alpha_baseline",
+                "n_trades": 25,
+                "total_pnl": 90.2324,
+                "mean_pnl": 3.6093,
+                "win_rate": 0.48
+              }
+            ],
+            "exit_reason": [
+              {
+                "value": "stop_loss",
+                "n_trades": 7,
+                "total_pnl": -25.4009,
+                "mean_pnl": -3.6287,
+                "win_rate": 0.1429
+              },
+              {
+                "value": "failure_to_follow",
+                "n_trades": 5,
+                "total_pnl": -24.19,
+                "mean_pnl": -4.838,
+                "win_rate": 0.2
+              },
+              {
+                "value": "trailing_stop",
+                "n_trades": 6,
+                "total_pnl": 21.58,
+                "mean_pnl": 3.5967,
+                "win_rate": 0.5
+              },
+              {
+                "value": "max_holding_period",
+                "n_trades": 7,
+                "total_pnl": 118.2433,
+                "mean_pnl": 16.8919,
+                "win_rate": 1.0
+              }
+            ],
+            "entry_source": [
+              {
+                "value": "alpha+breakout",
+                "n_trades": 18,
+                "total_pnl": 7.3524,
+                "mean_pnl": 0.4085,
+                "win_rate": 0.4444
+              },
+              {
+                "value": "alpha",
+                "n_trades": 7,
+                "total_pnl": 82.88,
+                "mean_pnl": 11.84,
+                "win_rate": 0.5714
+              }
+            ],
+            "regime_at_entry": [
+              {
+                "value": "trending_up",
+                "n_trades": 14,
+                "total_pnl": -34.9576,
+                "mean_pnl": -2.497,
+                "win_rate": 0.2857
+              },
+              {
+                "value": "low_vol",
+                "n_trades": 3,
+                "total_pnl": 0.69,
+                "mean_pnl": 0.23,
+                "win_rate": 0.3333
+              },
+              {
+                "value": "high_vol",
+                "n_trades": 8,
+                "total_pnl": 124.5,
+                "mean_pnl": 15.5625,
+                "win_rate": 0.875
+              }
+            ],
+            "confidence_bucket": [
+              {
+                "value": "0.6-0.7",
+                "n_trades": 4,
+                "total_pnl": -15.6009,
+                "mean_pnl": -3.9002,
+                "win_rate": 0.25
+              },
+              {
+                "value": "0.5-0.6",
+                "n_trades": 7,
+                "total_pnl": 4.9733,
+                "mean_pnl": 0.7105,
+                "win_rate": 0.4286
+              },
+              {
+                "value": ">=0.7",
+                "n_trades": 4,
+                "total_pnl": 5.69,
+                "mean_pnl": 1.4225,
+                "win_rate": 0.5
+              },
+              {
+                "value": "0.4-0.5",
+                "n_trades": 2,
+                "total_pnl": 7.43,
+                "mean_pnl": 3.715,
+                "win_rate": 0.5
+              },
+              {
+                "value": "<0.4",
+                "n_trades": 8,
+                "total_pnl": 87.74,
+                "mean_pnl": 10.9675,
+                "win_rate": 0.625
+              }
+            ]
+          },
+          "confidence_inversion": {
+            "flag": false,
+            "reason": "insufficient evidence or no high-confidence underperformance",
+            "buckets": {
+              "<0.4": {
+                "n_trades": 8,
+                "total_pnl": 87.74,
+                "mean_pnl": 10.9675,
+                "win_rate": 0.625
+              },
+              "0.4-0.5": {
+                "n_trades": 2,
+                "total_pnl": 7.43,
+                "mean_pnl": 3.715,
+                "win_rate": 0.5
+              },
+              "0.5-0.6": {
+                "n_trades": 7,
+                "total_pnl": 4.9733,
+                "mean_pnl": 0.7105,
+                "win_rate": 0.4286
+              },
+              "0.6-0.7": {
+                "n_trades": 4,
+                "total_pnl": -15.6009,
+                "mean_pnl": -3.9002,
+                "win_rate": 0.25
+              },
+              ">=0.7": {
+                "n_trades": 4,
+                "total_pnl": 5.69,
+                "mean_pnl": 1.4225,
+                "win_rate": 0.5
+              }
+            }
+          }
+        },
+        "last_50": {
+          "n_trades": 50,
+          "total_pnl": 36.7305,
+          "mean_pnl": 0.7346,
+          "win_rate": 0.38,
+          "segments": {
+            "strategy_id": [
+              {
+                "value": "alpha_baseline",
+                "n_trades": 50,
+                "total_pnl": 36.7305,
+                "mean_pnl": 0.7346,
+                "win_rate": 0.38
+              }
+            ],
+            "exit_reason": [
+              {
+                "value": "stop_loss",
+                "n_trades": 11,
+                "total_pnl": -52.0709,
+                "mean_pnl": -4.7337,
+                "win_rate": 0.0909
+              },
+              {
+                "value": "failure_to_follow",
+                "n_trades": 16,
+                "total_pnl": -37.69,
+                "mean_pnl": -2.3556,
+                "win_rate": 0.3125
+              },
+              {
+                "value": "pyramid_cut",
+                "n_trades": 5,
+                "total_pnl": -24.5744,
+                "mean_pnl": -4.9149,
+                "win_rate": 0.0
+              },
+              {
+                "value": "trailing_stop",
+                "n_trades": 8,
+                "total_pnl": 17.16,
+                "mean_pnl": 2.145,
+                "win_rate": 0.375
+              },
+              {
+                "value": "max_holding_period",
+                "n_trades": 10,
+                "total_pnl": 133.9058,
+                "mean_pnl": 13.3906,
+                "win_rate": 1.0
+              }
+            ],
+            "entry_source": [
+              {
+                "value": "alpha+breakout",
+                "n_trades": 35,
+                "total_pnl": -44.422,
+                "mean_pnl": -1.2692,
+                "win_rate": 0.3429
+              },
+              {
+                "value": "alpha",
+                "n_trades": 15,
+                "total_pnl": 81.1525,
+                "mean_pnl": 5.4102,
+                "win_rate": 0.4667
+              }
+            ],
+            "regime_at_entry": [
+              {
+                "value": "trending_up",
+                "n_trades": 21,
+                "total_pnl": -68.592,
+                "mean_pnl": -3.2663,
+                "win_rate": 0.1905
+              },
+              {
+                "value": "chop",
+                "n_trades": 6,
+                "total_pnl": -2.08,
+                "mean_pnl": -0.3467,
+                "win_rate": 0.3333
+              },
+              {
+                "value": "low_vol",
+                "n_trades": 3,
+                "total_pnl": 0.69,
+                "mean_pnl": 0.23,
+                "win_rate": 0.3333
+              },
+              {
+                "value": "high_vol",
+                "n_trades": 20,
+                "total_pnl": 106.7125,
+                "mean_pnl": 5.3356,
+                "win_rate": 0.6
+              }
+            ],
+            "confidence_bucket": [
+              {
+                "value": "0.6-0.7",
+                "n_trades": 12,
+                "total_pnl": -46.3454,
+                "mean_pnl": -3.8621,
+                "win_rate": 0.1667
+              },
+              {
+                "value": "0.5-0.6",
+                "n_trades": 18,
+                "total_pnl": -14.6742,
+                "mean_pnl": -0.8152,
+                "win_rate": 0.3889
+              },
+              {
+                "value": ">=0.7",
+                "n_trades": 6,
+                "total_pnl": 4.61,
+                "mean_pnl": 0.7683,
+                "win_rate": 0.5
+              },
+              {
+                "value": "0.4-0.5",
+                "n_trades": 6,
+                "total_pnl": 5.4,
+                "mean_pnl": 0.9,
+                "win_rate": 0.3333
+              },
+              {
+                "value": "<0.4",
+                "n_trades": 8,
+                "total_pnl": 87.74,
+                "mean_pnl": 10.9675,
+                "win_rate": 0.625
+              }
+            ]
+          },
+          "confidence_inversion": {
+            "flag": false,
+            "reason": "insufficient evidence or no high-confidence underperformance",
+            "buckets": {
+              "<0.4": {
+                "n_trades": 8,
+                "total_pnl": 87.74,
+                "mean_pnl": 10.9675,
+                "win_rate": 0.625
+              },
+              "0.4-0.5": {
+                "n_trades": 6,
+                "total_pnl": 5.4,
+                "mean_pnl": 0.9,
+                "win_rate": 0.3333
+              },
+              "0.5-0.6": {
+                "n_trades": 18,
+                "total_pnl": -14.6742,
+                "mean_pnl": -0.8152,
+                "win_rate": 0.3889
+              },
+              "0.6-0.7": {
+                "n_trades": 12,
+                "total_pnl": -46.3454,
+                "mean_pnl": -3.8621,
+                "win_rate": 0.1667
+              },
+              ">=0.7": {
+                "n_trades": 6,
+                "total_pnl": 4.61,
+                "mean_pnl": 0.7683,
+                "win_rate": 0.5
+              }
+            }
+          }
+        },
+        "last_100": {
+          "n_trades": 100,
+          "total_pnl": 63.6581,
+          "mean_pnl": 0.6366,
+          "win_rate": 0.37,
+          "segments": {
+            "strategy_id": [
+              {
+                "value": "alpha_baseline",
+                "n_trades": 100,
+                "total_pnl": 63.6581,
+                "mean_pnl": 0.6366,
+                "win_rate": 0.37
+              }
+            ],
+            "exit_reason": [
+              {
+                "value": "stop_loss",
+                "n_trades": 30,
+                "total_pnl": -75.5724,
+                "mean_pnl": -2.5191,
+                "win_rate": 0.3
+              },
+              {
+                "value": "pyramid_cut",
+                "n_trades": 13,
+                "total_pnl": -47.3132,
+                "mean_pnl": -3.6395,
+                "win_rate": 0.0
+              },
+              {
+                "value": "failure_to_follow",
+                "n_trades": 24,
+                "total_pnl": -42.815,
+                "mean_pnl": -1.784,
+                "win_rate": 0.25
+              },
+              {
+                "value": "trailing_stop",
+                "n_trades": 14,
+                "total_pnl": 4.58,
+                "mean_pnl": 0.3271,
+                "win_rate": 0.3571
+              },
+              {
+                "value": "max_loss_limit",
+                "n_trades": 4,
+                "total_pnl": 17.41,
+                "mean_pnl": 4.3525,
+                "win_rate": 0.5
+              },
+              {
+                "value": "eod_flatten",
+                "n_trades": 2,
+                "total_pnl": 65.24,
+                "mean_pnl": 32.62,
+                "win_rate": 1.0
+              }
+            ],
+            "entry_source": [
+              {
+                "value": "alpha+breakout",
+                "n_trades": 84,
+                "total_pnl": -17.1544,
+                "mean_pnl": -0.2042,
+                "win_rate": 0.3571
+              },
+              {
+                "value": "alpha",
+                "n_trades": 16,
+                "total_pnl": 80.8125,
+                "mean_pnl": 5.0508,
+                "win_rate": 0.4375
+              }
+            ],
+            "regime_at_entry": [
+              {
+                "value": "trending_up",
+                "n_trades": 27,
+                "total_pnl": -71.6034,
+                "mean_pnl": -2.652,
+                "win_rate": 0.2593
+              },
+              {
+                "value": "trending_down",
+                "n_trades": 7,
+                "total_pnl": -9.8187,
+                "mean_pnl": -1.4027,
+                "win_rate": 0.0
+              },
+              {
+                "value": "chop",
+                "n_trades": 32,
+                "total_pnl": -1.0672,
+                "mean_pnl": -0.0334,
+                "win_rate": 0.3438
+              },
+              {
+                "value": "low_vol",
+                "n_trades": 3,
+                "total_pnl": 0.69,
+                "mean_pnl": 0.23,
+                "win_rate": 0.3333
+              },
+              {
+                "value": "high_vol",
+                "n_trades": 31,
+                "total_pnl": 145.4575,
+                "mean_pnl": 4.6922,
+                "win_rate": 0.5806
+              }
+            ],
+            "confidence_bucket": [
+              {
+                "value": "0.6-0.7",
+                "n_trades": 29,
+                "total_pnl": -67.8109,
+                "mean_pnl": -2.3383,
+                "win_rate": 0.2759
+              },
+              {
+                "value": "0.5-0.6",
+                "n_trades": 39,
+                "total_pnl": -28.192,
+                "mean_pnl": -0.7229,
+                "win_rate": 0.359
+              },
+              {
+                "value": "0.4-0.5",
+                "n_trades": 7,
+                "total_pnl": 5.06,
+                "mean_pnl": 0.7229,
+                "win_rate": 0.2857
+              },
+              {
+                "value": ">=0.7",
+                "n_trades": 17,
+                "total_pnl": 66.861,
+                "mean_pnl": 3.933,
+                "win_rate": 0.4706
+              },
+              {
+                "value": "<0.4",
+                "n_trades": 8,
+                "total_pnl": 87.74,
+                "mean_pnl": 10.9675,
+                "win_rate": 0.625
+              }
+            ]
+          },
+          "confidence_inversion": {
+            "flag": false,
+            "reason": "insufficient evidence or no high-confidence underperformance",
+            "buckets": {
+              "<0.4": {
+                "n_trades": 8,
+                "total_pnl": 87.74,
+                "mean_pnl": 10.9675,
+                "win_rate": 0.625
+              },
+              "0.4-0.5": {
+                "n_trades": 7,
+                "total_pnl": 5.06,
+                "mean_pnl": 0.7229,
+                "win_rate": 0.2857
+              },
+              "0.5-0.6": {
+                "n_trades": 39,
+                "total_pnl": -28.192,
+                "mean_pnl": -0.7229,
+                "win_rate": 0.359
+              },
+              "0.6-0.7": {
+                "n_trades": 29,
+                "total_pnl": -67.8109,
+                "mean_pnl": -2.3383,
+                "win_rate": 0.2759
+              },
+              ">=0.7": {
+                "n_trades": 17,
+                "total_pnl": 66.861,
+                "mean_pnl": 3.933,
+                "win_rate": 0.4706
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "process_env": {
+    "GIT_SHA": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+    "BUILD_TIME": "2026-09-19T19:09:00Z",
+    "IMAGE_SHA": "dead82a4d3d110afe811ed91b59959e76bfd9ce6",
+    "APP_ENVIRONMENT": "development",
+    "ALPACA_PAPER": "true",
+    "ORGANISM_DRAWDOWN_KILL_PCT": "0.10",
+    "ORGANISM_DRAWDOWN_COOLDOWN_S": "300",
+    "ORGANISM_MAX_CHANGES_PER_DAY": "500",
+    "ORGANISM_MAX_POSITIONS": "8",
+    "ORGANISM_MAX_DAILY_LOSS": "1100",
+    "ORGANISM_MAX_NOTIONAL": "2000",
+    "ORGANISM_TICK_INTERVAL_SECONDS": "10",
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": "false",
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": "true",
+    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": "false"
+  },
+  "source_annotations": {
+    "tick_count": "api_top_level.tick_count",
+    "trade_count": "engine_memory.total_trades",
+    "open_positions": "engine_memory.positions_tracked",
+    "is_learning_mode": "engine_memory.learning_mode",
+    "trading_phase": "engine_memory.trading_phase",
+    "guarded_mode": "engine_memory.guarded_mode",
+    "ml_influence_enabled": "engine_memory.ml_influence_enabled",
+    "fixed_risk_sizing": "engine_memory.fixed_risk_sizing",
+    "promotion_blockers": "engine_memory.promotion_blockers",
+    "brain_generation": "engine_memory.brain_generation",
+    "regime": "api_top_level.regime.last_regime",
+    "equity": "engine_memory.current_equity",
+    "ml_trained": "engine_memory.ml_trained",
+    "win_rate": "engine_memory.win_rate",
+    "cumulative_pnl": "engine_memory.cumulative_pnl",
+    "universe_size": "engine_memory.universe_size",
+    "scanner_candidates_count": "engine_memory.scanner_candidates_count"
+  },
+  "container_started_at": "2026-09-19T19:12:46.78645868Z",
+  "live": {
+    "tick_count": 114480,
+    "trade_count": 610,
+    "open_positions": 0,
+    "is_learning_mode": false,
+    "trading_phase": "production_guarded",
+    "guarded_mode": true,
+    "ml_influence_enabled": false,
+    "fixed_risk_sizing": true,
+    "promotion_blockers": [
+      "total_pnl -726.79 < floor 0.00",
+      "sharpe_ratio_per_trade -1.2628 < floor 0.0000"
+    ],
+    "brain_generation": 389,
+    "uptime_seconds": null,
+    "last_tick_at": null,
+    "idle_reason": "market_closed_or_no_ticks_yet",
+    "regime": "idle",
+    "drawdown_pct": null,
+    "equity": 100055.55,
+    "ml_trained": true,
+    "win_rate": 0.3393,
+    "cumulative_pnl": -588.39,
+    "universe_size": 20,
+    "scanner_candidates_count": 0,
+    "running": true
+  },
+  "coherence_notes": [
+    "brain_state.total_trades=609 vs live.trade_count=610: brain manifest persists at save-time; engine accumulates in-memory across restarts. Engine count includes trades since last brain save."
+  ]
+}

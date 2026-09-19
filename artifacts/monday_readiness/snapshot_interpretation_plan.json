@@ -1,0 +1,11 @@
+{
+  "scope": "Correct an unsupported explanation in the snapshot report; no collection, configuration or trading change",
+  "files": [
+    "scripts/runtime/write_runtime_snapshot.py"
+  ],
+  "evidence": "609/610 difference is inherited scope, not demonstrated save delay; durable reconciliation report explains it",
+  "validation": [
+    "existing snapshot/monitor tests",
+    "fresh snapshot read and freeze verification"
+  ]
+}
