@@ -21,10 +21,6 @@ jobs:
       ENVIRONMENT: testing
       TESTING: 'true'
       TRADING_EXECUTION_MODE: shadow
-      ORGANISM_BRAIN_DIR: ${{ runner.temp }}/paper-readiness-brain
-      ORGANISM_SHADOW_EXIT_TELEMETRY_PATH: ${{ runner.temp }}/paper-readiness-brain/shadow.jsonl
-      ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH: ${{ runner.temp }}/paper-readiness-brain/filter.jsonl
-      ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH: ${{ runner.temp }}/paper-readiness-brain/strategy.jsonl
       DATABASE_URL: 'sqlite+aiosqlite:///:memory:'
       SECURITY_JWT_SECRET: 'test-jwt-secret-not-for-production'
       PICKLE_HMAC_SECRET: 'test-pickle-secret-not-for-production'
@@ -33,6 +29,20 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Configure isolated test paths
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          scratch = Path(os.environ["RUNNER_TEMP"])
+          with Path(os.environ["GITHUB_ENV"]).open("a") as output:
+              output.write("ORGANISM_BRAIN_DIR=" + str(scratch / "paper-readiness-brain") + "\n")
+              output.write("ORGANISM_SHADOW_EXIT_TELEMETRY_PATH=" + str(scratch / "paper-readiness-brain/shadow.jsonl") + "\n")
+              output.write("ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH=" + str(scratch / "paper-readiness-brain/filter.jsonl") + "\n")
+              output.write("ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH=" + str(scratch / "paper-readiness-brain/strategy.jsonl") + "\n")
+          PY
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

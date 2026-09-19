@@ -167,3 +167,26 @@ def test_focused_pr_workflow_runs_new_checker_and_workflow_cases():
     assert "tests/test_postclose_kpi_reporting.py" in run
     assert "tests/test_monday_ci_workflows.py" in run
     assert any(step.get("uses", "").startswith("actions/setup-node@") for step in steps)
+
+
+@pytest.mark.parametrize("name,job_name", WORKFLOWS + [("paper-readiness.yml", "operational-safety")])
+def test_runner_paths_are_configured_only_after_job_starts(name, job_name, tmp_path):
+    import re
+    import sys
+    workflow = _load(name)
+    job = workflow["jobs"][job_name]
+    # GitHub rejects these runner-time contexts in job-level env, before jobs start.
+    assert not re.search(r"\b(?:runner|steps|job)\.", json.dumps(job.get("env", {})))
+    step = next(step for step in job["steps"] if step.get("name") == "Configure isolated test paths")
+    code = step["run"].split("<<'PY'\n", 1)[1].rsplit("\nPY", 1)[0]
+    output = tmp_path / "github_env"
+    env = {"RUNNER_TEMP": str(tmp_path), "GITHUB_ENV": str(output)}
+    result = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    values = dict(line.split("=", 1) for line in output.read_text().splitlines())
+    assert {"ORGANISM_BRAIN_DIR", "ORGANISM_SHADOW_EXIT_TELEMETRY_PATH"} <= values.keys()
+    assert all(value.startswith(str(tmp_path) + "/") for value in values.values())
+    setup_index = job["steps"].index(step)
+    tests_index = next(i for i, candidate in enumerate(job["steps"])
+                       if "pytest" in candidate.get("run", "") or "generate_artifacts.py full" in candidate.get("run", ""))
+    assert setup_index < tests_index

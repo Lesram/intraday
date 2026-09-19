@@ -40,8 +40,6 @@ jobs:
       USE_MOCK_DATA: 'true'
       TRADING_EXECUTION_MODE: shadow
       PYTHONDONTWRITEBYTECODE: '1'
-      ORGANISM_BRAIN_DIR: ${{ runner.temp }}/paper-ci-brain
-      ORGANISM_SHADOW_EXIT_TELEMETRY_PATH: ${{ runner.temp }}/paper-ci-brain/shadow.jsonl
       DATABASE_URL: 'sqlite+aiosqlite:///:memory:'
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +47,18 @@ jobs:
           ref: ${{ inputs.source_sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Configure isolated test paths
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          scratch = Path(os.environ["RUNNER_TEMP"])
+          with Path(os.environ["GITHUB_ENV"]).open("a") as output:
+              output.write("ORGANISM_BRAIN_DIR=" + str(scratch / "paper-ci-brain") + "\n")
+              output.write("ORGANISM_SHADOW_EXIT_TELEMETRY_PATH=" + str(scratch / "paper-ci-brain/shadow.jsonl") + "\n")
+          PY
       - name: Verify source and clear previous evidence
         id: provenance
         timeout-minutes: 2
