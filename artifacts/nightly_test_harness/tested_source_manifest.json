@@ -1,0 +1,42 @@
+{
+  "accepted_base_sha": "02ba1afff73e1f05902b9fe71f13170d618d6d5e",
+  "reviewed_files": {
+    ".github/workflows/paper-readiness.yml": "4b66ba38e32a3996994c43970baf7f43027b31f2437481d59b1422e23c51acba",
+    "tests/test_monday_ci_workflows.py": "fa3fc1d481d2b214f35bfa81475e979c6aaa640c5f738d09754b00450daac04f",
+    "tests/test_organism_integration_smoke.py": "440550273464e840edad44cec92bc0e4daef840d3d14e78748b6aa4545aba8f2",
+    "tests/test_phase2_freeze.py": "4d3a5a12524c3fe104bf242e56938083e87281d49d9d8c9b7b1cd7d69e01542e",
+    "tests/test_reachability_v8.py": "c90280f77d703bd5685e54b248c208a960615bbef29bc06b81baa5f074500a16",
+    "tests/test_strategy_engine_comprehensive.py": "7a84cec30db9acaa86c60e719678f530a58d310af066df5a202443b84e372f2c",
+    "tests/test_v12_baseline_invariants.py": "bc95f532fd470ef31ae35dfbed397844165440b6477af05871896c4ac193714b",
+    "tests/test_v12_w75_lint_ratchet.py": "18d15cd59759c44fb0557445c20d540c77e69ec50f7951307773cf6218f92699",
+    "tests/test_v12_w77_findings_ledger.py": "25c4bc2472c669093ba181c33b9a551d75242a16ab7ec57a000e89af8f477e67",
+    "tests/test_v12_w81_ci_cleanup.py": "61b983436134550977392a4a2f839284713a9549e181441e4a6f700251ed9bb4",
+    "tests/test_wave37_fixes.py": "bdeed60d5234647c2cff7e1fd22fa2f2930e05eea695275dd8c1518942e74b78",
+    "tests/test_wave48_fixes.py": "c412d9ffa84db009e5dd98f1e022a8747b5d8f8593ac2d8216e47db09a857cc2",
+    "tests/test_wave55_fixes.py": "0e4316d519309fbfd068513e7a7cd7288f4746faa0b37f71ddeb1eb10d0a031a",
+    "tests/test_wave61_fixes.py": "f3ee276303d6521ebbe71c21934fe70f4875f7af71566e6cb9b7cec6bcf83606",
+    "tests/unit/test_auth_security_phase4.py": "0c884f2a63d5500c3a540d51ebcf83402731fe86a83ff77c6d0154dcb7d30936"
+  },
+  "python_ast_sha256": {
+    "tests/test_monday_ci_workflows.py": "3ee323200b057b9f4dae409df918bf5dfe7a1dc68b0aeefa0be9afff118aebe3",
+    "tests/test_organism_integration_smoke.py": "76c87beefe2b311c56bddcd276d4a3f56f719fabb95a6750c672db919b25280a",
+    "tests/test_phase2_freeze.py": "80bff6efeb3e66c12d3f1c191695361694851b8875253de073855dd8940cee33",
+    "tests/test_reachability_v8.py": "faa26c712ce7465794140d78fb32c587ca54afcd59d6b80bfeef0e4f18e6e0f3",
+    "tests/test_strategy_engine_comprehensive.py": "b456f5d2752ee242e787f983b04656d8ade88a7fe93fd29bc355962e8972e6eb",
+    "tests/test_v12_baseline_invariants.py": "1f8394557914b0ef7cf2ddf4cdc8437a8b15256d4e88fa29fd17938cf976a786",
+    "tests/test_v12_w75_lint_ratchet.py": "21f6821751929d3b1b6c05fdee25e14c3c5f5d42cb07deaa788553c35f8c95f3",
+    "tests/test_v12_w77_findings_ledger.py": "d0572447bb436d401c051906de21f5b3d29d9e1f5f206e403ed084f35001eb7e",
+    "tests/test_v12_w81_ci_cleanup.py": "79e5d1c8620f6e2478b5f1aa25c011f1a6671c996f084902ae8a9c16686ca052",
+    "tests/test_wave37_fixes.py": "e45edf3011cdc502b61a80fd680230b5ec27432de40f0fe5c72f931580bd5eb8",
+    "tests/test_wave48_fixes.py": "3af269e5bd37d14c573a197c1bd5cc07b36d9c35a77d614d786a01fa51cc450e",
+    "tests/test_wave55_fixes.py": "175154b6a8645cb2a5a3d3aa7a92b3e78a4ae2e0b332772b46b398357799172a",
+    "tests/test_wave61_fixes.py": "e26505c12d88986264ade42c4732d1cf38b6f8e658788bf65a943fa10c435130",
+    "tests/unit/test_auth_security_phase4.py": "9427624df220e2fbc1df4cd8f9e1c84b5164a9a323ab3724a9eaae95d368244d"
+  },
+  "freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+  "execution_before_commit": true,
+  "post_targeted_behavioral_edits": "None. One comment was corrected after the targeted run; workflow and workflow-contract additions were tested separately.",
+  "runtime_behavior_changed": false,
+  "source_commit": "502b3c7b955b35b21dea659c316dd41e5d7f137b",
+  "metadata_refresh_note": "Test execution results remain unchanged; current reviewed file/AST hashes bind those executions to the source commit. The only post-targeted source edit was a comment; workflow edits had separate passing contract tests."
+}

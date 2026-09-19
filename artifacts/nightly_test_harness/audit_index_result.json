@@ -1,0 +1,14 @@
+{
+  "stage": "audit_index",
+  "exit_code": 0,
+  "seconds": 0.129,
+  "command": [
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "scripts/ci/generate_audit_index.py"
+  ],
+  "network_denied": true,
+  "live_env_and_brain_denied": true,
+  "scratch": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-nightly-harness-validation-bqtzmyi6",
+  "source_sha": "502b3c7b955b35b21dea659c316dd41e5d7f137b",
+  "source_has_uncommitted_changes": true
+}
