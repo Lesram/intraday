@@ -20,12 +20,20 @@
   },
   "cost_protocol": {
     "approved_primary_round_trip_bps": null,
+    "proposed_primary_round_trip_bps": 6,
+    "proposed_native_diagnostic_round_trip_bps": 3,
     "existing_code_default_round_trip_bps": 3,
-    "historical_alternate_round_trip_bps": 6,
-    "reports_require_explicit_matching_process_local_ORGANISM_COST_BPS": true,
-    "runtime_cost_environment_changed": false,
-    "proposed_primary_round_trip_bps": 3,
-    "proposed_sensitivity_round_trip_bps": 6
+    "research_minimum_round_trip_bps": 6,
+    "authority": "reports/RESEARCH_BRIEF_001_2026-07-29.md:15 (original checkout, root verified)",
+    "authority_excerpt": "Every result is net of a realistic cost profile (\u22653 bps/side intraday equities; spread-aware where measurable).",
+    "primary_report_process_environment": {
+      "ORGANISM_COST_BPS": "6"
+    },
+    "native_diagnostic_process_environment": {
+      "ORGANISM_COST_BPS": "3"
+    },
+    "diagnostic_is_qualifying_verdict": false,
+    "runtime_cost_environment_changed": false
   },
   "preserve": [
     "original freeze bytes and July timestamp archive",
