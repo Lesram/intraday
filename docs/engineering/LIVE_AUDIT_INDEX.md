@@ -5,7 +5,7 @@
 > Open risks: scheduled checks run stale main; runtime alert delivery is unconfigured; historical collection gaps; replay artifact false-pass defect; application login unavailable; shadow/ledger and cost-protocol differences; no enforced branch gates; insufficient forward evidence. Live container source/configuration freeze comparison passes, but protected in-memory API status is unavailable.
 
 Generated: 2026-09-19T17:43:52Z
-PR: n/a
+PR: [#10](https://github.com/Lesram/intraday/pull/10)
 SHA: `4a8e0e713d`
 Branch: `codex/resumption-readiness-2026-09-19`
 Scope: **tooling/evidence_only**
@@ -20,7 +20,9 @@ Change scope: `range` (`--cached`)
 | Scripts | 0 | none |
 | CI | 0 | none |
 | Tests | 0 | none |
-| Docs | 0 | none |
+| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Reports | 1 | `reports/RESUMPTION_READINESS_AUDIT_2026-09-19.md` |
+| Evidence | 24 | See `artifacts/changed_files.json` |
 
 ## Live constants
 

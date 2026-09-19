@@ -17,7 +17,7 @@ This is an integration and readiness audit, not a certification of every code pa
 | Area | Result | Evidence and limits |
 |---|---|---|
 | Local files | Verified | Read/write/read-back/delete probe succeeded. Source, history, logs, brain artifacts and local configuration are accessible. Secret values were not printed or committed. |
-| GitHub | Verified read and declared write access | CLI and connector authenticate as Lesram; repository metadata grants admin/maintain/push/pull/triage. PRs, issues, checks, logs, security metadata and artifact downloads are accessible. |
+| GitHub | Verified read, branch push and PR creation | CLI and connector authenticate as Lesram; repository metadata grants admin/maintain/push/pull/triage. PRs, issues, checks, logs, security metadata and artifact downloads are accessible. The report branch was pushed and [draft PR #10](https://github.com/Lesram/intraday/pull/10) opened successfully. Review submission, workflow dispatch and deployment remain unexercised. |
 | Backend development | Verified with project environment | `venv/bin/python` is Python 3.12.12; dependency consistency check passes; all 173 lockfile versions match installed packages. System `python3` is 3.9.6 and bare `python`/`pytest` are unavailable. Use the project environment explicitly. |
 | Frontend development | Verified | Dependency tree, both TypeScript checks, production build and 134 frontend tests pass. An authenticated browser workflow was not exercised. |
 | Paper runtime | Verified | API, PostgreSQL and Redis containers healthy; `/health` and the actual readiness endpoint return HTTP 200. API restart count is zero since its September 19 start, not proof of continuous historical uptime. |
@@ -72,7 +72,7 @@ An [open secret-scanning alert](https://github.com/Lesram/intraday/security/secr
 
 The active `.env` is ignored by Git. API port 8000 and PostgreSQL port 5432 are bound to all host interfaces; Redis is loopback-only. External reachability was not probed. Any binding changes require a deliberate deployment/configuration task.
 
-Development declarations have gaps despite the consistent lockfile installation, including missing `pytest-xdist` and optional development tools. Existing Codex hook files invoke system Python and use tool-name matchers whose execution was not demonstrated in this session. Critical checks were run explicitly rather than assuming hooks enforced them.
+Development declarations have gaps despite the consistent lockfile installation, including missing `pytest-xdist` and optional development tools. Git commits work, but identity is inferred from the local machine rather than explicitly configured; confirm the desired author email before future implementation commits. Existing Codex hook files invoke system Python and use tool-name matchers whose execution was not demonstrated in this session. Critical checks were run explicitly rather than assuming hooks enforced them.
 
 ## Where the strategy stands today
 

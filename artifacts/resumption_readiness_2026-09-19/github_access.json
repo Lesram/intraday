@@ -44,5 +44,8 @@
     "workflow_dispatch",
     "deployment",
     "settings_mutation"
-  ]
+  ],
+  "branch_push_verified": true,
+  "pull_request_creation_verified": true,
+  "audit_pr": "https://github.com/Lesram/intraday/pull/10"
 }

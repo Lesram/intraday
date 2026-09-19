@@ -112,5 +112,6 @@
   },
   "preserved_user_changes": [
     ".claude/settings.local.json"
-  ]
+  ],
+  "pull_request": "https://github.com/Lesram/intraday/pull/10"
 }
