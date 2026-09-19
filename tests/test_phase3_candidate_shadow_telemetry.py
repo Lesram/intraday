@@ -745,14 +745,24 @@ def test_live_engine_shadow_telemetry_is_disabled_by_default_and_pre_sizing():
     assert live_tick_start < call_start < sizing_start
 
 
-def test_runtime_snapshot_includes_shadow_telemetry_switches(monkeypatch):
-    from scripts.runtime.write_runtime_snapshot import _build_defaults_snapshot
+def test_runtime_snapshot_includes_shadow_telemetry_switches():
+    import json
+    import os
+    import subprocess
+    import sys
 
-    # This case checks defaults; the integration harness safely overrides paths.
-    monkeypatch.delenv("ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH", raising=False)
-    monkeypatch.delenv("ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH", raising=False)
-
-    snapshot = _build_defaults_snapshot()
+    # Earlier cases import telemetry constants under isolated harness paths.
+    # Check the real defaults in a fresh interpreter, without changing those
+    # cached constants or the parent process's safe output paths.
+    env = dict(os.environ)
+    env.pop("ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH", None)
+    env.pop("ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH", None)
+    result = subprocess.run(
+        [sys.executable, "-c", "import json; from scripts.runtime.write_runtime_snapshot "
+         "import _build_defaults_snapshot; print(json.dumps(_build_defaults_snapshot()))"],
+        env=env, capture_output=True, text=True, check=True, timeout=30,
+    )
+    snapshot = json.loads(result.stdout)
 
     assert snapshot["alpha_breakout_bad_regime_filter_enabled"] is True
     assert snapshot["candidate_filter_shadow_telemetry_enabled"] is False
