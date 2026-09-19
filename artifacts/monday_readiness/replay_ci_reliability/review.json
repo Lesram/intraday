@@ -1,0 +1,84 @@
+{
+  "task_id": "replay-ci-cumulative-budget-independent-review",
+  "reviewed_at_utc": "2026-09-19T20:05:48.010960+00:00",
+  "reviewer": "artifact_review",
+  "verdict": "approve_bounded_ci_source_diff_pending_source_bound_hosted_acceptance",
+  "source_before": "69949da9af1ed342d65e37e79264a3c4bd143964",
+  "source_binding": "Pre-commit review; eight file hashes bind exact reviewed contents. Commit SHA is assigned after packaging this record.",
+  "files_sha256": {
+    ".github/workflows/paper-postclose-audit.yml": "a27840f186bcebe82f7020bb4552bc4651800670903c69bad9595f52d39f8fce",
+    ".github/workflows/paper-readiness.yml": "60ce0a3221c2e8e67b95ceba890254258e6226612d759cf1e8205808063c6bde",
+    ".github/workflows/pr-verify.yml": "0cf078c02d95a6952fd9aa6f584a1ae96dcc54c557c0205d959873de5371991c",
+    "docs/engineering/MONDAY_CI_READINESS.md": "c20e1abddfcd87a7f9e4b62705fb41e9bfb67486e01fe689e3e62c9c2d2bfdc1",
+    "reports/MONDAY_PAPER_READINESS_2026-09-21.md": "2810a8cd4a443f4c846bd1c2f479cfbda38c62ff918d8c1a66f13c5f84138932",
+    "scripts/ci/generate_artifacts.py": "f77b6891c82d000a849c6b2d6fe260f9c8e3e57c3bcb59634944164e1c93bb14",
+    "tests/test_artifact_workflow_contract.py": "80ebc20b145e51a1d4d6b35a81c4443f013ca55693f0ecbee7cd202c21f6cd46",
+    "tests/test_generate_artifacts.py": "6863a1a8d38dee7f116ae3ee9b3b1828ae5f439456822fa56118adf5d13a59ba"
+  },
+  "blocking_findings": [],
+  "scope": "CI aggregate replay deadline, replay-only diagnostics, enclosing budgets, focused regressions and docs. No source edits, merge, deployment, broker requests, accounting activation or clock changes by reviewer.",
+  "resolved_nonblocking_suggestion": "Diagnostic timeout regression now gives child pytest four seconds rather than one to start; focused test passes.",
+  "verified": {
+    "limits_seconds": {
+      "ordinary_semantic": 180,
+      "replay_aggregate": 1200,
+      "replay_cli_case_default": 120
+    },
+    "replay_markers": "Existing four 180-second markers and 120-second marker unchanged; tests/test_replay_simulator.py has no diff.",
+    "diagnostics": "Only replay uses -vv/--durations=0. Case names survive forced termination; normal completed summary lists durations. No synthetic passing JUnit on timeout.",
+    "failure_fidelity": "Process-group kill, raw output, fresh JUnit parsing, nonzero exit, missing/malformed/all-skipped failures and final fail-closed status preserved. No retries, xfails, skips, case selection or assertion changes.",
+    "unchanged_functions_ast": [
+      "run_command",
+      "command_evidence",
+      "gen_test_summary",
+      "gen_semantic_invariants_summary",
+      "gen_runtime_snapshot",
+      "gen_spec_drift_summary",
+      "_backfill_task_report_tests",
+      "main"
+    ],
+    "budget_seconds": {
+      "seven_ordinary_semantic_suites": 1260,
+      "replay": 1200,
+      "snapshot": 60,
+      "spec_drift": 30,
+      "subprocess_total": 2550,
+      "full_pack_step": 3000,
+      "step_headroom": 450
+    },
+    "job_minutes": {
+      "postclose": 80,
+      "readiness": 80,
+      "pr_organism": 110,
+      "pr_organism_explicit_steps": 104
+    },
+    "trading_frozen_surface": "Eight-path diff contains no backend, runtime setting, Compose, freeze reference, replay assertion or architecture change. Existing learning ML/Kelly isolation and no exploration submission untouched."
+  },
+  "evidence_reviewed": {
+    "focused_junit": {
+      "path": "artifacts/monday_readiness/replay_ci_reliability/focused.xml",
+      "tests": 124,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b7f430d03f37ef0f0dd66a86b601b8a546368fa2d33f02a3658fc306efec47aa"
+    },
+    "validation": "artifacts/monday_readiness/replay_ci_reliability/validation.json",
+    "freeze": "Implementation agent freeze.log says DRIFT-VERIFY OK, FROZEN_AT=2026-07-07T20:36:49.008305+00:00; inspected by reviewer.",
+    "lint": "Implementation validation records actionlint 1.7.12 on five workflows and Ruff on three Python modules. Reviewer separately ran git diff --check successfully.",
+    "local_profile": "replay_cpu_diagnostic.json: 50-tick case setup, profiled 26.9265s wall / 26.8768s process CPU, 150 feature calls, zero socket attempts in network-denied sandbox; profiler overhead and unmeasured child CPU qualified.",
+    "thread_ab": "Linux arm64 two-CPU quota, OpenBLAS 16 versus 1 thread: 12.37s versus 11.95s. No supported/applied thread-cap fix; does not establish hosted amd64 throughput.",
+    "retained_failed_runs_sha256": {
+      "artifacts/monday_readiness/hosted/35464757621-completed-20260919T195155Z/postclose-artifacts__replay_summary.json": "a4531c07f6e03947fb980a62a5973358ef226241e47fff7ffb6a4c3167e52779",
+      "artifacts/monday_readiness/hosted/35464760863-completed-20260919T195159Z/paper-readiness-evidence__replay_summary.json": "a4531c07f6e03947fb980a62a5973358ef226241e47fff7ffb6a4c3167e52779"
+    }
+  },
+  "outstanding_acceptance_gates": [
+    "Commit reviewed contents on feature branch; require actual successful source-pinned post-close and required operational-safety runs at the new commit with fresh JUnit/full-pack/audit-index artifacts. A 1200s cap is not proof replay now passes.",
+    "Retain failed 0d1 runs; 22 progress markers are not a passing 28-case replay.",
+    "Bridge 6d6a4e3 still pins failing 0d1. Repin both reusable workflow references and both source_sha inputs to the same newly accepted immutable source; rerun hosted bridge check and independently review pin-only diff before activation.",
+    "No bypass of required checks, all-main-CI-green claim or certification of parked legacy nightly corpus.",
+    "Verify actual scheduled run after separately authorized activation. Monday natural-market/fill/reconciliation/post-close acceptance remains future work.",
+    "Keep authenticated actual-runtime snapshots distinct from isolated CI snapshots. Accounting activation, history rewrite and forward-clock decisions excluded."
+  ]
+}

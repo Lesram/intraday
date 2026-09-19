@@ -6,7 +6,7 @@ This maintenance repairs operational readiness for supervised paper trading. It 
 
 This is the source-bound maintenance evidence record; final GitHub run and merge outcomes are linked in PR #12 and PR #13.
 
-The API runs the independently reviewed `dead82a4d3d110afe811ed91b59959e76bfd9ce6` image. The installed host helpers and final CI source are `0d1c93d53d912d906440b679e70be20b4739d0b0`. Subsequent changes affect host monitoring/reporting and CI only; backend and paper-container configuration parity is verified. API, PostgreSQL and Redis are healthy. Database/broker readiness passes; startup reports 18/18 preflight checks. Every existing data mount and application setting is preserved; only build provenance changed. API, database and Redis host ports bind to loopback.
+The API runs the independently reviewed `dead82a4d3d110afe811ed91b59959e76bfd9ce6` image. The installed host helpers use `0d1c93d53d912d906440b679e70be20b4739d0b0`; subsequent CI revisions change only test orchestration and evidence. Subsequent changes affect host monitoring/reporting and CI only; backend and paper-container configuration parity is verified. API, PostgreSQL and Redis are healthy. Database/broker readiness passes; startup reports 18/18 preflight checks. Every existing data mount and application setting is preserved; only build provenance changed. API, database and Redis host ports bind to loopback.
 
 A dedicated private monitoring credential now reaches four protected GET endpoints. It cannot reach administration, position control or WebSockets; signed-token regressions cover the existing position-close route. Authentication succeeds through the normal login path. No test orders were submitted or canceled.
 
@@ -22,7 +22,7 @@ PR #14 is a separately reviewed prospective accounting proposal. It requires an 
 
 ## Validation and source provenance
 
-Local core/state/sizing/exit/replay validation passed 216 tests, plus 511 targeted tests: 156 access/authentication, 41 configuration, 80 order/reconciliation, 20 order safety, 69 operations, 122 CI contracts, and 23 offline research cases. Reruns are not added again. The reviewed original operating build also passed the hosted operational-safety job. Failed workflow setup, collection and time-budget runs remain available; fixes are validated against actual hosted runs rather than erased.
+Local core/state/sizing/exit/replay validation at operational source `0d1c93d` passed 216 tests, plus 513 targeted tests across the maintenance changes: 156 access/authentication, 41 configuration, 80 order/reconciliation, 20 order safety, 69 operations, 124 CI contracts, and 23 offline research cases. Reruns are not added again. The reviewed original operating build also passed the hosted operational-safety job. Failed workflow setup, collection and time-budget runs remain available; fixes are validated against actual hosted runs rather than erased.
 
 GitHub's hosted audit verifies software evidence using mock/shadow settings. Its snapshots are not an observation of the Mac or broker. The separate authenticated `runtime_after_deployment` snapshot is the actual running-state observation.
 
@@ -40,4 +40,11 @@ Before 06:30 Pacific, confirm the watchdog is healthy/unpaused, backups are fres
 
 Repository controls require pull requests on main and the active paper branch, prohibit force pushes/deletion, and enforce the active branch’s operational safety check. The owner is the sole collaborator, so GitHub human-approval count is zero; independent agent review is recorded separately and is not represented as a GitHub human approval. The default-branch scheduler bridge also excludes its four workflow files from staging publication triggers.
 
-The repaired scheduled post-close worker passed end to end on `9441ca7` in run [35464396251](https://github.com/Lesram/intraday/actions/runs/35464396251): all 216 full-pack tests, Phase 8 report, KPI evidence check and independent status reporting succeeded. Its replay took 456.236 seconds, exceeding the former 300-second process limit; the new bounded 600-second limit retained this valid result. Final pinned source validation uses [run 35464757621](https://github.com/Lesram/intraday/actions/runs/35464757621).
+The repaired scheduled post-close worker passed end to end on `9441ca7` in run [35464396251](https://github.com/Lesram/intraday/actions/runs/35464396251): all 216 full-pack tests, Phase 8 report, KPI evidence check and independent status reporting succeeded. Its replay took 456.236 seconds, exceeding the former 300-second process limit; the then-current bounded 600-second limit retained this valid result. The later 0d1 failure is recorded in [run 35464757621](https://github.com/Lesram/intraday/actions/runs/35464757621).
+
+
+## CI replay reliability follow-up
+
+The local 216-test full pack remains valid for operational source `0d1c93d`. Its hosted [post-close run 35464757621](https://github.com/Lesram/intraday/actions/runs/35464757621) and [readiness run 35464760863](https://github.com/Lesram/intraday/actions/runs/35464760863) nevertheless failed the cumulative 600-second replay process cap after 22 completed case markers; all six ordinary suites and semantic checks passed. Those failures and raw artifacts remain intact. This is a CI acceptance failure, not a passing replay result.
+
+The subsequent CI-only correction allows 1200 seconds for the complete 28-case replay and retains verbose case progress and durations. Existing per-case deadlines, assertions, test selection, process-group termination and fail-closed reports are preserved. Offline profiling found CPU-bound feature calculations; a two-CPU Linux arm64 thread comparison showed negligible benefit, so numerical thread settings are unchanged. The deployed app stays at `dead82a` and installed host helpers at `0d1c93d`; frozen/application/host behavior is unchanged by this correction. New source-bound hosted full-pack and audit-index evidence must pass before acceptance; final runs and merge outcomes are linked in [PR #12](https://github.com/Lesram/intraday/pull/12) and [PR #13](https://github.com/Lesram/intraday/pull/13).

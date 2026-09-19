@@ -1,0 +1,11 @@
+{
+  "workflow": "paper-postclose-audit",
+  "result": "failure",
+  "expected_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "source_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "caller_sha": "0d1c93d53d912d906440b679e70be20b4739d0b0",
+  "run_url": "https://github.com/Lesram/intraday/actions/runs/35464757621",
+  "run_id": 35464757621,
+  "run_attempt": "1",
+  "notification": "disabled; explicit notify_issues authorization required"
+}

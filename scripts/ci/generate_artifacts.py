@@ -42,11 +42,11 @@ TASK_REPORT_NEED_ONE_OF = [
     ("tests_passed", "tests_failed"),
 ]
 
-# Bound subprocesses below the workflows' 40-minute artifact step. Hosted
-# replay passed at 283.47s and timed out at 300s on the same source; retain
-# per-test limits while allowing ordinary/replay suite startup variability.
+# Keep the complete CPU-bound replay within the workflows' 50-minute pack.
+# Hosted replay passed at 456s, then reached 22/28 cases before a 600s process
+# cutoff; retain all case deadlines and collect uncensored case timing.
 TEST_SUITE_TIMEOUT_SECONDS = 180
-REPLAY_TIMEOUT_SECONDS = 600
+REPLAY_TIMEOUT_SECONDS = 1200
 RUNTIME_SNAPSHOT_FILES = (
     "runtime_defaults_snapshot.json",
     "resolved_config_snapshot.json",
@@ -108,7 +108,10 @@ def command_evidence(name: str, result: CommandResult) -> dict:
     }
 
 
-def run_pytest(name: str, path: str, *, timeout: float, test_timeout: int = 30) -> dict:
+def run_pytest(
+    name: str, path: str, *, timeout: float, test_timeout: int = 30,
+    verbose: bool = False,
+) -> dict:
     """Require fresh JUnit results, actual executed tests, and a successful process."""
     junit_path = ART / f"{name}.junit.xml"
     junit_path.unlink(missing_ok=True)
@@ -116,8 +119,9 @@ def run_pytest(name: str, path: str, *, timeout: float, test_timeout: int = 30) 
     if not test_path.is_file():
         result = CommandResult(None, error=f"required test file not found: {path}")
     else:
+        progress_flags = ["-vv", "--durations=0"] if verbose else ["-q"]
         result = run_command([
-            sys.executable, "-m", "pytest", "-q", f"--timeout={test_timeout}",
+            sys.executable, "-m", "pytest", *progress_flags, f"--timeout={test_timeout}",
             "--tb=line", f"--junitxml={junit_path}", str(test_path),
         ], timeout=timeout)
 
@@ -353,7 +357,7 @@ def gen_test_summary() -> None:
 def gen_replay_summary() -> None:
     write("replay_summary.json", run_pytest(
         "replay_simulator", "tests/test_replay_simulator.py",
-        timeout=REPLAY_TIMEOUT_SECONDS, test_timeout=120,
+        timeout=REPLAY_TIMEOUT_SECONDS, test_timeout=120, verbose=True,
     ))
 
 

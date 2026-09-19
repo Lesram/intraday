@@ -89,7 +89,7 @@ def test_full_pack_has_bounded_time_and_reporting_headroom(workflow, job_name):
     # Six ordinary suites plus semantic checks, replay, snapshot and drift;
     # reserve five more minutes for grep, git metadata and report generation.
     subprocess_seconds = 7 * limits["TEST_SUITE_TIMEOUT_SECONDS"] + limits["REPLAY_TIMEOUT_SECONDS"] + 60 + 30
-    assert subprocess_seconds + 300 <= pack_minutes * 60 <= 45 * 60
+    assert subprocess_seconds + 300 <= pack_minutes * 60 <= 55 * 60
     assert job["timeout-minutes"] >= pack_minutes + 10
 
 

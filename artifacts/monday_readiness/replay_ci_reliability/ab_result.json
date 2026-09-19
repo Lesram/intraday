@@ -1,0 +1,20 @@
+{
+  "node": "tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops",
+  "image": "intra-api:monday-dead82a",
+  "architecture": "linux arm64",
+  "cpu_quota": 2,
+  "network": "none",
+  "source_mount": "read-only",
+  "brain_and_telemetry": "container /tmp scratch",
+  "default": {
+    "call_seconds": 12.37,
+    "pytest_total_seconds": 12.72,
+    "status": "pass"
+  },
+  "native_threads_one": {
+    "call_seconds": 11.95,
+    "pytest_total_seconds": 12.12,
+    "status": "pass"
+  },
+  "conclusion": "Negligible change; does not establish native pool oversubscription as the cause. No thread cap will be introduced. Full local ARM run stopped because hosted amd64 throughput must be measured directly."
+}

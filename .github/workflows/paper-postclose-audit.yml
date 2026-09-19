@@ -28,7 +28,7 @@ permissions:
 jobs:
   collect-and-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 80
     outputs:
       source_sha: ${{ steps.provenance.outputs.source_sha }}
     env:
@@ -107,7 +107,7 @@ jobs:
 
       - name: Generate full artifact pack
         id: pack
-        timeout-minutes: 40
+        timeout-minutes: 50
         run: python scripts/ci/generate_artifacts.py full
 
       - name: Generate audit index
