@@ -91,6 +91,13 @@ jobs:
             tests/unit/test_streaming_data_provider.py \
             tests/unit/test_paper_data_freshness.py \
             tests/test_live_engine_fill_accounting.py \
+            tests/test_pending_close_accounting.py \
+            tests/test_replay_close_accounting.py \
+            tests/test_entry_evidence.py \
+            tests/test_runtime_snapshot_auth.py \
+            tests/test_walkforward_persistence.py \
+            tests/test_paper_daily_evidence.py \
+            tests/test_standdown_session_row.py \
             tests/test_phase3_attribution_report.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
             2>&1 | tee artifacts/monday_readiness/github_operational.log

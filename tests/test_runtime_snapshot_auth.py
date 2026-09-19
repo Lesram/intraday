@@ -4,6 +4,26 @@ import os
 from unittest.mock import MagicMock, patch
 
 
+def test_live_accounting_policy_is_observed_not_inferred_from_candidate():
+    """A candidate snapshot must not certify its policy as already deployed."""
+    import scripts.runtime.write_runtime_snapshot as snap_mod
+
+    observed = {"policy": "exact_position_fills_or_pending_v1", "pending_count": 1}
+    for fields, expected in (({}, None), ({"close_accounting": observed}, observed)):
+        with (
+            patch.object(snap_mod, "_find_api_container", return_value=""),
+            patch.object(snap_mod, "_curl_organism_status", return_value={
+                "live_engine": {"engine": fields},
+            }),
+        ):
+            result = snap_mod._build_live_process_snapshot()
+        assert result["live"]["close_accounting"] == expected
+        if expected is None:
+            assert "close_accounting" not in result["source_annotations"]
+        else:
+            assert result["source_annotations"]["close_accounting"] == "engine_memory.close_accounting"
+
+
 def test_auth_returns_empty_token_when_env_unset():
     """V12 W89/W90 (post-cleanup, COMP-407/408): when env vars are
     unset, the auth helper now returns an empty token (was: silently

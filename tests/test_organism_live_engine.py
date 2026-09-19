@@ -357,7 +357,7 @@ class TestFillReconciliation:
     """Test that closed positions produce TradeRecords."""
 
     @pytest.mark.asyncio
-    async def test_position_close_creates_trade_record(
+    async def test_position_close_without_fill_evidence_remains_pending(
         self, mock_data_client, mock_order_service, brain_dir,
     ):
         from backend.organism.live_engine import OrganismLiveEngine
@@ -392,11 +392,10 @@ class TestFillReconciliation:
         features = {"AAPL": _make_price_df(300), "SPY": _make_price_df(300)}
         await engine._reconcile_fills(features)
 
-        assert len(engine._all_trades) >= 1
-        trade = engine._all_trades[-1]
-        assert trade.symbol == "AAPL"
-        assert trade.direction == 1.0
-        assert trade.entry_price == 150.0
+        assert not engine._all_trades
+        assert engine.learner.state.total_trades == 0
+        assert engine._entry_metadata["AAPL"]["pending_close"]["observed_at"]
+        assert engine._entry_metadata["AAPL"]["entry_price"] == 150.0
 
 
 # ═════════════════════════════════════════════════════════════════

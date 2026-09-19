@@ -84,6 +84,8 @@ SHADOW_EXIT_TELEMETRY_FILE = "shadow_exit_telemetry.jsonl"
 MODEL_SWAP_AUDIT_FILE = "model_swap_audit.jsonl"
 PREVIOUS_MODEL_DIR = "previous_model"
 SIDECAR_TELEMETRY_NAMES = frozenset({
+    "close_accounting.json",  # Authoritative close projection: never stage an older copy.
+    "entry_evidence.jsonl",  # Append-only prospective decision/submission receipts.
     CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE,
     STRATEGY_EVIDENCE_TELEMETRY_FILE,
     SHADOW_EXIT_TELEMETRY_FILE,
@@ -967,6 +969,7 @@ class OrganismBrain:
                         td.get("predicted_return_signed")
                     ),
                     ml_spoke=_truthy_cell(td.get("ml_spoke")),
+                    entry_order_id=str(td.get("entry_order_id", "") or ""),
                     price_source=str(td.get("price_source", "") or ""),
                     had_partial_exits=_truthy_cell(
                         td.get("had_partial_exits")
@@ -1778,6 +1781,7 @@ class OrganismBrain:
                     t, "predicted_return_signed", None
                 ),
                 "ml_spoke": bool(getattr(t, "ml_spoke", False)),
+                "entry_order_id": getattr(t, "entry_order_id", ""),
                 "price_source": getattr(t, "price_source", ""),
                 "had_partial_exits": bool(
                     getattr(t, "had_partial_exits", False)
@@ -2423,6 +2427,7 @@ class OrganismBrain:
                         td.get("predicted_return_signed")
                     ),
                     ml_spoke=_truthy_cell(td.get("ml_spoke")),
+                    entry_order_id=str(td.get("entry_order_id", "") or ""),
                     price_source=str(td.get("price_source", "") or ""),
                     had_partial_exits=_truthy_cell(
                         td.get("had_partial_exits")

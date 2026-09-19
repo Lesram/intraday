@@ -1,8 +1,8 @@
 """DB fill-lookup helpers for the live engine.
 
-Legacy entry/final-exit lookups remain the approximate fallback. Complete
-position accounting additionally requires an identified entry and conserved
-quantities across every attributed order. All database access is read-only.
+Strategy outcomes require an identified entry and conserved quantities across
+every attributed order. Legacy entry/final-exit lookups remain available for
+excluded orphan bookkeeping. All database access is read-only.
 """
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ class ClosedPositionFills:
     exit_price: float
     pnl: float
     had_partial_exits: bool
+    price_source: str = "db_position_fills"
 
 
 def _closed_position_fills(
@@ -131,14 +132,50 @@ class _FillLookupMixin:
     SQLAlchemy sessionmaker or ``None``).
     """
 
+    async def _entry_verified_unfilled(self, symbol: str, meta: dict[str, Any]) -> bool:
+        """Only a terminal, identified entry with no execution can be discarded.
+
+        Any other order in its lifetime makes cleanup uncertain. This is
+        deliberately stricter than missing position data or a missing DB row.
+        """
+        if not self._sessionmaker:
+            return False
+        try:
+            from sqlalchemy import select
+            from backend.infra.schemas import Execution, Order
+            entry_id = uuid.UUID(str(meta.get("entry_order_id") or ""))
+            async with self._sessionmaker() as session:
+                row = (await session.execute(select(Order).where(
+                    Order.id == entry_id, Order.symbol == symbol,
+                ))).scalar_one_or_none()
+                if row is None or (row.attributes or {}).get("source") != "organism":
+                    return False
+                if str(row.status).lower() not in {"canceled", "cancelled", "expired", "rejected"}:
+                    return False
+                if row.filled_qty is None or Decimal(str(row.filled_qty)) != 0:
+                    return False
+                executions = (await session.execute(select(Execution.id).where(
+                    Execution.order_id == entry_id,
+                ).limit(1))).scalar_one_or_none()
+                if executions is not None:
+                    return False  # Order summaries can lag individual fills.
+                other = (await session.execute(select(Order.id).where(
+                    Order.symbol == symbol, Order.submitted_at >= row.submitted_at,
+                    Order.id != entry_id,
+                ).limit(1))).scalar_one_or_none()
+                return other is None
+        except Exception as exc:  # noqa: BLE001 - any lookup failure must retain unresolved accounting.
+            logger.debug("Zero-fill verification unavailable for %s: %s", symbol, exc)
+            return False
+
     async def _lookup_closed_position_fills_from_db(
         self, symbol: str, meta: dict[str, Any], *, closed_at: datetime,
     ) -> ClosedPositionFills | None:
         """Read all confirmed fill legs for an identified, closed position.
 
         Read-only, bounded to the DB entry timestamp and this reconciliation
-        time. Unknown identity, incomplete quantities or DB failure retains the
-        caller's legacy approximate fallback; no stored order/corpus is edited.
+        time. Unknown identity, incomplete quantities or DB failure leaves the
+        strategy close pending; no stored order/corpus is edited.
         """
         if not self._sessionmaker or meta.get("entry_source") == "reconciliation_orphan":
             return None

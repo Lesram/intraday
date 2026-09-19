@@ -353,7 +353,10 @@ def _make_gated_engine(max_skips):
 
 def _drive_save(engine):
     from backend.organism.live_engine import OrganismLiveEngine
-    OrganismLiveEngine._save_brain(engine)
+    # This mock-only test isolates the bounded walk-forward save policy.
+    # Real authority publication/crash recovery is covered with real engines
+    # in test_pending_close_accounting.py.
+    OrganismLiveEngine._save_brain.__wrapped__(engine)
 
 
 class TestBoundedWalkForwardSkip:

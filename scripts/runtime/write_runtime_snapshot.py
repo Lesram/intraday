@@ -29,6 +29,7 @@ def _build_defaults_snapshot() -> dict:
     try:
         from backend.organism.adaptive_exits import AdaptiveExitEngine
         from backend.organism.alpha_scanner import AlphaScanner
+        from backend.organism.close_accounting import ACCOUNTING_POLICY
         from backend.organism.governance import (
             DEFAULT_DRAWDOWN_COOLDOWN_S,
             DEFAULT_DRAWDOWN_KILL_PCT,
@@ -67,6 +68,7 @@ def _build_defaults_snapshot() -> dict:
 
         return {
             "source": "code_defaults",
+            "close_accounting_policy": ACCOUNTING_POLICY,
             "timeframe": LIVE_TIMEFRAME,
             "lookback": LIVE_LOOKBACK,
             "min_bars": MIN_BARS,
@@ -359,6 +361,9 @@ def _build_resolved_config_snapshot() -> dict:
     )
 
     resolved["resolved"] = {
+        # This describes the checked-out candidate. Only live status below
+        # establishes which accounting policy the installed process runs.
+        "close_accounting_policy": defaults.get("close_accounting_policy"),
         "drawdown_kill_pct": _resolve_float(
             "ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct", "drawdown_kill_pct",
         ),
@@ -649,6 +654,9 @@ def _build_live_process_snapshot() -> dict:
         )
         live["promotion_blockers"] = _pick_annotated(
             "promotion_blockers", "promotion_blockers",
+        )
+        live["close_accounting"] = _pick_annotated(
+            "close_accounting", "close_accounting",
         )
         live["brain_generation"] = _pick_annotated("brain_generation", "brain_generation")
         live["uptime_seconds"] = _pick_annotated("uptime_seconds", "uptime_seconds")
