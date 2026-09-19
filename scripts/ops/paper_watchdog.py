@@ -7,7 +7,9 @@ import fcntl
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
+import stat
 import subprocess
 import re
 import time
@@ -23,6 +25,9 @@ SERVICES = {
 }
 COOLDOWN_SECONDS = 900
 STARTUP_GRACE_SECONDS = 60
+BACKUP_MAX_AGE_SECONDS = 26 * 3600
+BACKUP_MAX_BYTES = 512 * 1024 * 1024
+POSTGRES_BACKUP_DIR = Path.home() / "Library/Application Support/Intra/backups/postgres"
 
 
 def command(args: list[str], timeout: int = 10) -> subprocess.CompletedProcess:
@@ -170,8 +175,156 @@ def scan_critical_events(previous: dict, now: float) -> dict:
     return result
 
 
+class BackupCheckError(ValueError):
+    """A fixed, non-sensitive monitoring failure code."""
+
+
+def observe_backups(root: Path, now: float) -> dict:
+    """Check published backups only; never import models or mutate archives."""
+    deadline = time.monotonic() + 10
+    remaining_bytes = BACKUP_MAX_BYTES
+
+    def check_budget():
+        if time.monotonic() >= deadline:
+            raise BackupCheckError("check_limit_exceeded")
+
+    def regular_file(path):
+        check_budget()
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode):
+            raise BackupCheckError("invalid_file")
+        return info
+
+    def read_metadata(path):
+        if regular_file(path).st_size > 1024 * 1024:
+            raise BackupCheckError("check_limit_exceeded")
+        with path.open("rb") as source:
+            content = source.read(1024 * 1024 + 1)
+        if len(content) > 1024 * 1024:
+            raise BackupCheckError("check_limit_exceeded")
+        payload = json.loads(content)
+        if not isinstance(payload, dict):
+            raise BackupCheckError("malformed_receipt")
+        return payload
+
+    def verify_file(path, expected):
+        nonlocal remaining_bytes
+        size, digest = expected["bytes"], expected["sha256"]
+        if type(size) is not int or size < 0 or not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest):
+            raise BackupCheckError("malformed_receipt")
+        if regular_file(path).st_size != size:
+            raise BackupCheckError("checksum_mismatch")
+        if size > remaining_bytes:
+            raise BackupCheckError("check_limit_exceeded")
+        hashed = hashlib.sha256()
+        with path.open("rb") as source:
+            while True:
+                check_budget()
+                block = source.read(1024 * 1024)
+                if not block:
+                    break
+                remaining_bytes -= len(block)
+                if remaining_bytes < 0:
+                    raise BackupCheckError("check_limit_exceeded")
+                hashed.update(block)
+        if hashed.hexdigest() != digest:
+            raise BackupCheckError("checksum_mismatch")
+
+    def latest(directory, pattern):
+        if directory.is_symlink():
+            raise BackupCheckError("invalid_file")
+        candidates = []
+        with os.scandir(directory) as entries:
+            for index, entry in enumerate(entries):
+                check_budget()
+                if index >= 4096:
+                    raise BackupCheckError("check_limit_exceeded")
+                if re.fullmatch(pattern, entry.name):
+                    candidates.append(Path(entry.path))
+        if not candidates:
+            raise BackupCheckError("missing")
+        return max(candidates, key=lambda entry: entry.name)
+
+    result = {"enabled": True, "max_age_seconds": BACKUP_MAX_AGE_SECONDS, "backups": {}, "problems": []}
+    for kind in ("brain", "postgres"):
+        item = {"status": "unknown"}
+        try:
+            if kind == "brain":
+                backup = latest(root / "organism_brain_archive", r"\d{4}-\d{2}-\d{2}(?:T\d{6}\.\d{6}Z)?")
+                if backup.is_symlink() or not backup.is_dir():
+                    raise BackupCheckError("invalid_file")
+                receipt = read_metadata(backup / "backup_manifest.json")
+                files = receipt["files"]
+                if not isinstance(files, dict) or not files:
+                    raise BackupCheckError("malformed_receipt")
+                if len(files) > 1024:
+                    raise BackupCheckError("check_limit_exceeded")
+                if not {"manifest.json", "learning_state.json", ".save_complete"} <= files.keys():
+                    raise BackupCheckError("malformed_receipt")
+                # A receipt must describe the complete published archive, not
+                # a subset that silently omits a damaged or extra model file.
+                actual_files, directories, entry_count = set(), [backup], 0
+                while directories:
+                    with os.scandir(directories.pop()) as entries:
+                        for entry in entries:
+                            check_budget()
+                            entry_count += 1
+                            if entry_count > 4096:
+                                raise BackupCheckError("check_limit_exceeded")
+                            if entry.is_symlink():
+                                raise BackupCheckError("invalid_file")
+                            if entry.is_dir(follow_symlinks=False):
+                                directories.append(Path(entry.path))
+                            else:
+                                actual_files.add(str(Path(entry.path).relative_to(backup)))
+                if actual_files - {"backup_manifest.json"} != set(files):
+                    raise BackupCheckError("checksum_mismatch")
+                for name, expected in files.items():
+                    relative = Path(name)
+                    if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+                        raise BackupCheckError("malformed_receipt")
+                    if any(parent.is_symlink() for parent in (backup / relative).parents if parent != backup and backup in parent.parents):
+                        raise BackupCheckError("invalid_file")
+                    verify_file(backup / relative, expected)
+                manifest = read_metadata(backup / "manifest.json")
+                read_metadata(backup / "learning_state.json")
+                if not manifest.get("saved_at") or (backup / ".save_complete").stat().st_size == 0:
+                    raise BackupCheckError("malformed_receipt")
+                datetime.fromisoformat(manifest["saved_at"].replace("Z", "+00:00"))
+                if manifest.get("ml_is_trained"):
+                    models = {"ml_classifier.joblib", "ml_regressor.joblib", "ml_state.json"}
+                    if not models <= files.keys() or any(files[name]["bytes"] == 0 for name in models):
+                        raise BackupCheckError("malformed_receipt")
+                    read_metadata(backup / "ml_state.json")
+                item["files_verified"] = len(files)
+            else:
+                selected = latest(POSTGRES_BACKUP_DIR, r"paper-postgres-\d{8}T\d{12}Z\.(?:dump|json)")
+                receipt = read_metadata(selected.with_suffix(".json"))
+                if receipt["bytes"] == 0:
+                    raise BackupCheckError("malformed_receipt")
+                verify_file(selected.with_suffix(".dump"), receipt)
+                item["files_verified"] = 1
+            created = datetime.fromisoformat(receipt["created_at"].replace("Z", "+00:00"))
+            if created.tzinfo is None or created.timestamp() > now + 300:
+                raise BackupCheckError("malformed_receipt")
+            item["age_seconds"] = max(0, now - created.timestamp())
+            item["status"] = "stale" if item["age_seconds"] > BACKUP_MAX_AGE_SECONDS else "ok"
+        except BackupCheckError as exc:
+            item["status"] = str(exc)
+        except FileNotFoundError:
+            item["status"] = "missing"
+        except (ValueError, TypeError, KeyError, AttributeError):
+            item["status"] = "malformed_receipt"
+        except OSError:
+            item["status"] = "unavailable"
+        result["backups"][kind] = item
+        if item["status"] != "ok":
+            result["problems"].append(f"{kind}_backup_{item['status']}")
+    return result
+
+
 def run_watchdog(root: Path, *, recover: bool = False, reopen_docker: bool = False,
-                 local_notifications: bool = False) -> dict:
+                 local_notifications: bool = False, check_backups: bool = False) -> dict:
     logs = root / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     status_path = logs / "paper_watchdog_status.json"
@@ -236,6 +389,12 @@ def run_watchdog(root: Path, *, recover: bool = False, reopen_docker: bool = Fal
     if monitor["truncated"]:
         result["problems"].append("critical_alert_log_window_truncated")
         result["healthy"] = False
+    # Backup failures are added only after service recovery decisions. They
+    # share notification dedup/retry, but never start or restart a service.
+    result["backup_monitor"] = observe_backups(root, now) if check_backups else {"enabled": False}
+    if check_backups:
+        result["problems"].extend(result["backup_monitor"]["problems"])
+        result["healthy"] = not result["problems"]
     changed = previous.get("problems") != result["problems"] or previous.get("healthy") != result["healthy"]
     pending_events = monitor.get("pending_events", monitor["new_events"])
     prior_notice = previous.get("notification") or {}
@@ -243,6 +402,8 @@ def run_watchdog(root: Path, *, recover: bool = False, reopen_docker: bool = Fal
     if local_notifications and (changed or pending_events or retry_notice) and not paused:
         if pending_events:
             message = f"Paper API logged {pending_events} critical alert(s) awaiting notification. Review application logs."
+            if result["problems"]:
+                message += " Other checks need attention: " + ", ".join(result["problems"])
         else:
             message = "Paper services recovered." if result["healthy"] else "Paper services need attention: " + ", ".join(result["problems"])
         result["notification"]["attempted"] = True
@@ -260,6 +421,7 @@ def main() -> int:
     parser.add_argument("--recover", action="store_true")
     parser.add_argument("--reopen-docker", action="store_true")
     parser.add_argument("--notify-local", action="store_true")
+    parser.add_argument("--check-backups", action="store_true")
     args = parser.parse_args()
     logs = ROOT / "logs"
     logs.mkdir(parents=True, exist_ok=True)
@@ -270,7 +432,7 @@ def main() -> int:
             print("Paper watchdog already running; no duplicate action.")
             return 0
         result = run_watchdog(ROOT, recover=args.recover, reopen_docker=args.reopen_docker,
-                              local_notifications=args.notify_local)
+                              local_notifications=args.notify_local, check_backups=args.check_backups)
     print(json.dumps(result))
     return 0 if result["healthy"] or result["paused"] else 1
 

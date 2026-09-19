@@ -19,6 +19,7 @@
         <string>/Users/marselkei/VS/intra/scripts/ops/paper_watchdog.sh</string>
         <string>--reopen-docker</string>
         <string>--notify-local</string>
+        <string>--check-backups</string>
     </array>
     <key>StartInterval</key>
     <integer>300</integer>

@@ -1,9 +1,12 @@
 """Paper uptime probes and recovery with no real Docker or notifications."""
 import copy
+from datetime import datetime, timezone
+import hashlib
 import importlib.util
 import io
 import json
 from pathlib import Path
+import plistlib
 import subprocess
 import urllib.error
 
@@ -262,3 +265,153 @@ def test_pending_critical_notice_survives_log_failure_until_delivered(watchdog, 
     assert third["critical_monitor"]["pending_events"] == 0
     assert not fourth["notification"]["attempted"]
     assert len(delivered) == 1
+
+
+@pytest.fixture
+def backups(watchdog, monkeypatch, tmp_path):
+    now = 1_800_000_000
+    created = datetime.fromtimestamp(now, timezone.utc).isoformat()
+    brain = tmp_path / "organism_brain_archive/2027-01-15T080000.000000Z"
+    brain.mkdir(parents=True)
+    (brain / "manifest.json").write_text(json.dumps({"saved_at": "2026-01-01T00:00:00Z", "ml_is_trained": False}))
+    (brain / "learning_state.json").write_text('{}')
+    (brain / ".save_complete").write_text('complete')
+    (brain / "private-model.bin").write_bytes(b'private_payload')
+    files = {path.name: {"bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+             for path in brain.iterdir()}
+    brain_receipt = brain / "backup_manifest.json"
+    brain_receipt.write_text(json.dumps({"created_at": created, "files": files, "source_saved_at": "2026-01-01T00:00:00Z"}))
+    postgres = tmp_path / "private-postgres"
+    postgres.mkdir()
+    monkeypatch.setattr(watchdog, "POSTGRES_BACKUP_DIR", postgres)
+    dump = postgres / "paper-postgres-20270115T080000000000Z.dump"
+    dump.write_bytes(b'private_database_payload')
+    postgres_receipt = dump.with_suffix('.json')
+    postgres_receipt.write_text(json.dumps({"created_at": created, "bytes": dump.stat().st_size,
+                                          "sha256": hashlib.sha256(dump.read_bytes()).hexdigest()}))
+    return {"root": tmp_path, "now": now, "brain": brain_receipt, "postgres": postgres_receipt,
+            "brain_data": brain / "private-model.bin", "postgres_data": dump}
+
+
+def test_backup_monitor_accepts_fresh_receipts_despite_old_closed_market_source(watchdog, backups):
+    result = watchdog.observe_backups(backups["root"], backups["now"])
+    assert result["problems"] == []
+    assert result["backups"]["brain"]["files_verified"] == 4
+    assert result["backups"]["postgres"]["files_verified"] == 1
+    assert "private_payload" not in json.dumps(result)
+    assert "private_database_payload" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("kind", ["brain", "postgres"])
+@pytest.mark.parametrize("fault,status", [
+    ("missing", "missing"), ("malformed", "malformed_receipt"),
+    ("checksum", "checksum_mismatch"), ("stale", "stale"),
+])
+def test_backup_monitor_detects_faults_with_fake_clock(watchdog, backups, kind, fault, status):
+    receipt = backups[kind]
+    if fault == "missing":
+        receipt.unlink()
+    elif fault == "malformed":
+        receipt.write_text('{broken')
+    elif fault == "checksum":
+        data = backups[kind + "_data"]
+        data.write_bytes(b'x' * data.stat().st_size)
+    elif fault == "stale":
+        payload = json.loads(receipt.read_text())
+        payload["created_at"] = datetime.fromtimestamp(backups["now"] - 26 * 3600 - 1, timezone.utc).isoformat()
+        receipt.write_text(json.dumps(payload))
+    result = watchdog.observe_backups(backups["root"], backups["now"])
+    assert result["backups"][kind]["status"] == status
+    assert result["problems"] == [f"{kind}_backup_{status}"]
+
+
+def test_backup_monitor_flags_missing_directories(watchdog, monkeypatch, tmp_path):
+    monkeypatch.setattr(watchdog, "POSTGRES_BACKUP_DIR", tmp_path / 'absent-postgres')
+    result = watchdog.observe_backups(tmp_path, 1_800_000_000)
+    assert result["problems"] == ["brain_backup_missing", "postgres_backup_missing"]
+
+
+def test_backup_monitor_checks_latest_publication_not_older_valid_archive(watchdog, backups):
+    newest = backups['brain'].parent.with_name('2027-01-15T160000.000000Z')
+    newest.mkdir()
+    (newest / 'backup_manifest.json').write_text('{broken')
+    result = watchdog.observe_backups(backups["root"], backups["now"])
+    assert result["problems"] == ['brain_backup_malformed_receipt']
+
+
+@pytest.mark.parametrize('fault,status', [('extra_file', 'checksum_mismatch'), ('symlink', 'invalid_file')])
+def test_brain_receipt_must_describe_safe_complete_archive(watchdog, backups, fault, status):
+    extra = backups['brain'].parent / 'unexpected.bin'
+    if fault == 'symlink':
+        extra.symlink_to(backups['brain_data'])
+    else:
+        extra.write_bytes(b'unrecorded')
+    result = watchdog.observe_backups(backups['root'], backups['now'])
+    assert result['problems'] == [f'brain_backup_{status}']
+
+
+def test_backup_freshness_allows_twenty_six_hours_then_alerts(watchdog, backups):
+    assert watchdog.observe_backups(backups['root'], backups['now'] + 26 * 3600)['problems'] == []
+    assert watchdog.observe_backups(backups['root'], backups['now'] + 26 * 3600 + 1)['problems'] == [
+        'brain_backup_stale', 'postgres_backup_stale',
+    ]
+
+
+def test_backup_monitor_bounds_bytes_and_time(watchdog, monkeypatch, backups):
+    monkeypatch.setattr(watchdog, 'BACKUP_MAX_BYTES', 1)
+    result = watchdog.observe_backups(backups['root'], backups['now'])
+    assert result['problems'] == ['brain_backup_check_limit_exceeded', 'postgres_backup_check_limit_exceeded']
+    ticks = iter([0, 11, 12])
+    monkeypatch.setattr(watchdog.time, 'monotonic', lambda: next(ticks))
+    result = watchdog.observe_backups(backups['root'], backups['now'])
+    assert result['problems'] == ['brain_backup_check_limit_exceeded', 'postgres_backup_check_limit_exceeded']
+
+
+def test_backup_checks_are_opt_in_and_do_not_access_host_by_default(watchdog, monkeypatch, tmp_path):
+    monkeypatch.setattr(watchdog, 'observe', lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog, 'observe_backups', lambda *args: pytest.fail('backup paths require opt-in'))
+    result = watchdog.run_watchdog(tmp_path)
+    assert result['backup_monitor'] == {'enabled': False}
+
+
+def test_backup_alerts_retry_deduplicate_and_never_recover_services(watchdog, monkeypatch, backups):
+    monkeypatch.setattr(watchdog, 'observe', lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog.time, 'time', lambda: backups['now'])
+    monkeypatch.setattr(watchdog, 'command', lambda *args, **kwargs: pytest.fail('no service action for backup problem'))
+    original = backups['brain'].read_bytes()
+    backups['brain'].write_text('{broken')
+    notices = []
+    delivered = iter([False, True, True])
+    monkeypatch.setattr(watchdog, 'notify_local', lambda message: notices.append(message) or next(delivered))
+    first = watchdog.run_watchdog(backups['root'], check_backups=True, recover=True, local_notifications=True)
+    second = watchdog.run_watchdog(backups['root'], check_backups=True, recover=True, local_notifications=True)
+    third = watchdog.run_watchdog(backups['root'], check_backups=True, recover=True, local_notifications=True)
+    assert first['healthy'] is False and first['actions'] == []
+    assert not first['notification']['delivered']
+    assert second['notification']['delivered']
+    assert not third['notification']['attempted']
+    backups['brain'].write_bytes(original)
+    recovered = watchdog.run_watchdog(backups['root'], check_backups=True, recover=True, local_notifications=True)
+    assert recovered['healthy'] is True and recovered['actions'] == []
+    assert recovered['notification']['delivered']
+    assert len(notices) == 3
+    assert 'private_payload' not in ''.join(notices)
+
+
+def test_simultaneous_critical_alert_does_not_hide_backup_failure(watchdog, monkeypatch, backups):
+    monkeypatch.setattr(watchdog, 'observe', lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog.time, 'time', lambda: backups['now'])
+    monkeypatch.setattr(watchdog, 'scan_critical_events', lambda previous, now: {
+        'available': True, 'new_events': 1, 'pending_events': 1, 'truncated': False, 'seen': ['fingerprint'],
+    })
+    backups['postgres'].unlink()
+    notices = []
+    monkeypatch.setattr(watchdog, 'notify_local', lambda message: notices.append(message) or True)
+    watchdog.run_watchdog(backups['root'], check_backups=True, local_notifications=True)
+    assert len(notices) == 1
+    assert 'critical alert' in notices[0] and 'postgres_backup_missing' in notices[0]
+
+
+def test_reviewed_watchdog_agent_enables_backup_check():
+    template = plistlib.loads((ROOT / 'ops/launchd/com.intra.paper.watchdog.plist').read_bytes())
+    assert '--check-backups' in template['ProgramArguments']

@@ -32,6 +32,8 @@ From the installed repository, a check without recovery or notifications is:
 ./venv/bin/python -B scripts/ops/paper_watchdog.py
 ```
 
+Add `--check-backups` to include the read-only backup checks described below.
+Without this option, the command does not access backup directories.
 It writes the status and event files. `make paper-watchdog` invokes the recovery
 wrapper; `make paper-up` invokes Compose and can apply current configuration.
 Use those only with the reviewed deployment checkout.
@@ -39,7 +41,9 @@ Use those only with the reviewed deployment checkout.
 ## Local alert delivery
 
 The LaunchAgent enables Mac notifications. A bounded scan of API logs also
-detects `CRITICAL`, `ALERT-NO-CHANNELS`, and `ALERT-DELIVERY-FAILED` events.
+detects explicit uppercase `CRITICAL`, structured critical severity, and
+`ALERT-NO-CHANNELS`/`ALERT-DELIVERY-FAILED` events. Informational prose about
+critical tables or zero critical failures is ignored.
 Notifications contain a count and a request to inspect application logs. The
 watchdog retains only hashes, counts, and timestamps from those events; it does
 not copy private alert payloads into its report.
@@ -62,6 +66,30 @@ A successful notification command confirms macOS accepted the request, not that
 the operator saw it. Verify visible delivery after installation, including the
 Mac's notification permissions and Focus settings. No external alert destination
 is configured by this repair.
+
+## Backup health alerts
+
+The reviewed LaunchAgent also enables `--check-backups`. It inspects the latest
+published brain archive and private PostgreSQL dump, validates their receipts
+and file checksums, and reports missing, malformed, corrupted, or stale backups.
+An invalid latest publication is reported even when an older valid one exists.
+The age limit is 26 hours from receipt creation, allowing two hours beyond the
+daily schedule. The source brain's `saved_at` does not need to advance while
+markets are closed.
+
+The combined brain/PostgreSQL check shares a ten-second elapsed-time budget
+and a maximum of 512 MiB of hashed data. It also allows at most
+1,024 brain files, 4,096 entries per directory search/archive walk, and 1 MiB per
+metadata file. A limit reached is reported as a monitoring failure rather than
+healthy status. The monitor reads regular files only and rejects symbolic links;
+it never loads model files as executable objects.
+
+Backup problems appear in `backup_monitor` and `problems` in the same durable
+status and event log. They use the same local notification deduplication and
+failed-delivery retry as service problems, including when a critical application
+alert arrives at the same time. These checks never start, stop, recreate, delete,
+or restore anything. A successful check validates the archive bytes, not database
+restore semantics; retain the separate restore rehearsal.
 
 ## Installation and maintenance
 

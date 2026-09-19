@@ -63,9 +63,9 @@ it does not switch the application's mounted state. Older date-only archives
 without `backup_manifest.json` do not satisfy this new verification contract.
 
 `scripts/runtime/com.intra.brain-backup.plist` runs at login and daily at 16:30
-local time, currently Pacific. Review `source_saved_at` in each receipt: a new
-archive can faithfully preserve stale application state, so archive creation
-time alone does not prove the engine saved recently.
+local time, currently Pacific. `source_saved_at` remains available in each receipt
+for engine-state investigation. Watchdog backup freshness uses archive creation
+time, so an unchanged brain during closed markets does not create a false alert.
 
 ## Installing and checking schedules
 
@@ -78,9 +78,18 @@ current numeric user ID. Both run immediately at bootstrap.
 Check each job's exit status and the new receipts afterward. Logs are
 `logs/brain_backup.log` and `logs/postgres_backup.log`. These schedules require a
 logged-in, awake Mac and available Docker for the database job. Failed jobs are
-visible in their logs and launchd exit status; this batch does not add a separate
-backup-failure notification bridge. After a busy-lock or startup failure, run a
-manual backup once the dependency is ready instead of assuming a new receipt.
+visible in their logs and launchd exit status. The watchdog's `--check-backups`
+option, enabled in its reviewed LaunchAgent, checks the latest publication's
+receipt/checksums and sends a local notification if it is missing, malformed,
+corrupted, or older than 26 hours. An invalid latest publication is not hidden
+by an older valid archive. Checks are read-only and bounded; exceeding a check
+limit is itself an alert. See [Paper uptime](PAPER_UPTIME.md#backup-health-alerts)
+for the limits and durable status files.
+
+This detects unusable or overdue backups, not every failed scheduled attempt
+while a valid recent backup exists. After a busy-lock or startup failure, inspect
+the logs and rerun the backup when the dependency is ready instead of assuming
+a new receipt. Backup alerts do not trigger automatic recovery or deletion.
 
 ## Live recovery boundary
 
