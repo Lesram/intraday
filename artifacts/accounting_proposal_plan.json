@@ -1,0 +1,10 @@
+{
+  "task_id": "paper-partial-fill-accounting-proposal-2026-09-19",
+  "base_sha": "b2785b6",
+  "branch": "codex/paper-partial-fill-accounting",
+  "scope": "Prepare an isolated, undeployed correction to future closed-position accounting for explicit review and activation approval.",
+  "files": ["backend/organism/live_engine_fills.py", "backend/organism/live_engine.py::_reconcile_fills", "tests/test_live_engine_fill_accounting.py", "reports/PAPER_PARTIAL_FILL_ACCOUNTING_PROPOSAL_2026-09-19.md"],
+  "checks": ["six observed ml_reversal partial-fill cases", "weighted entry and exit fills", "incomplete and ambiguous evidence remains approximate", "real reconciliation updates future risk inputs once", "organism, state, exits, sizing and replay regression", "phase2 freeze verification", "artifact pack and audit index"],
+  "constraints": ["No deployment or merge", "No broker writes", "No historical corpus changes", "No frozen function, configuration, feed or clock edits", "Activation requires explicit risk-state and forward-clock decision"],
+  "plan_provenance": "Scope and affected tests were emitted in a machine-readable tool result before runtime edits; this durable copy records the same plan."
+}

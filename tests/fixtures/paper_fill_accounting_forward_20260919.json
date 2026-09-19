@@ -1,0 +1,710 @@
+{
+  "provenance": "Sanitized read-only paper broker order export acquired 2026-09-19; matched to historical closed positions. Broker identifiers replaced with deterministic fixture IDs by tests. This is accounting replay, not strategy replay.",
+  "source_sha256": "49a6efa4d7297e6d22d8b67e13ae2e9570f691beb4ecfc98a97b4b2a51eb4498",
+  "cases": [
+    {
+      "symbol": "SH",
+      "closed_at": "2026-07-27T14:53:23.911314+00:00",
+      "expected_gross_pnl": -2.95,
+      "historical_ledger_pnl": -2.95,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "59",
+          "filled_avg_price": "33.56",
+          "submitted_at": "2026-07-27T14:47:06.966313Z",
+          "filled_at": "2026-07-27T14:47:08.648619Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "59",
+          "filled_avg_price": "33.51",
+          "submitted_at": "2026-07-27T14:53:08.642479Z",
+          "filled_at": "2026-07-27T14:53:09.63131Z"
+        }
+      ]
+    },
+    {
+      "symbol": "SH",
+      "closed_at": "2026-07-30T14:29:23.882254+00:00",
+      "expected_gross_pnl": -2.36,
+      "historical_ledger_pnl": -2.36,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "59",
+          "filled_avg_price": "33.54",
+          "submitted_at": "2026-07-30T14:03:08.072667Z",
+          "filled_at": "2026-07-30T14:03:14.053083Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "59",
+          "filled_avg_price": "33.5",
+          "submitted_at": "2026-07-30T14:29:08.441903Z",
+          "filled_at": "2026-07-30T14:29:09.012018Z"
+        }
+      ]
+    },
+    {
+      "symbol": "AVGO",
+      "closed_at": "2026-07-30T14:43:20.123443+00:00",
+      "expected_gross_pnl": 1.8,
+      "historical_ledger_pnl": 1.8,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "386.29",
+          "submitted_at": "2026-07-30T14:00:09.076974Z",
+          "filled_at": "2026-07-30T14:00:11.382949Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "386.65",
+          "submitted_at": "2026-07-30T14:43:04.898549Z",
+          "filled_at": "2026-07-30T14:43:07.689078Z"
+        }
+      ]
+    },
+    {
+      "symbol": "AMD",
+      "closed_at": "2026-07-30T14:44:22.732623+00:00",
+      "expected_gross_pnl": -15.34,
+      "historical_ledger_pnl": -15.34,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "4",
+          "filled_avg_price": "496.96",
+          "submitted_at": "2026-07-30T14:30:12.594725Z",
+          "filled_at": "2026-07-30T14:30:14.191591Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "4",
+          "filled_avg_price": "493.125",
+          "submitted_at": "2026-07-30T14:44:07.628814Z",
+          "filled_at": "2026-07-30T14:44:09.544879Z"
+        }
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "closed_at": "2026-07-30T14:44:22.738229+00:00",
+      "expected_gross_pnl": 5.6,
+      "historical_ledger_pnl": 5.6,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "10",
+          "filled_avg_price": "195.59",
+          "submitted_at": "2026-07-30T14:00:08.879235Z",
+          "filled_at": "2026-07-30T14:00:09.157784Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "10",
+          "filled_avg_price": "196.15",
+          "submitted_at": "2026-07-30T14:44:07.825989Z",
+          "filled_at": "2026-07-30T14:44:10.573261Z"
+        }
+      ]
+    },
+    {
+      "symbol": "GOOGL",
+      "closed_at": "2026-07-30T17:13:33.743167+00:00",
+      "expected_gross_pnl": -1.22,
+      "historical_ledger_pnl": -1.22,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "335.014",
+          "submitted_at": "2026-07-30T17:01:09.22693Z",
+          "filled_at": "2026-07-30T17:01:11.418589Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "334.77",
+          "submitted_at": "2026-07-30T17:13:18.581408Z",
+          "filled_at": "2026-07-30T17:13:19.94173Z"
+        }
+      ]
+    },
+    {
+      "symbol": "QQQ",
+      "closed_at": "2026-07-30T17:14:22.203125+00:00",
+      "expected_gross_pnl": -0.1,
+      "historical_ledger_pnl": -0.1,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "681.76",
+          "submitted_at": "2026-07-30T17:01:09.025013Z",
+          "filled_at": "2026-07-30T17:01:09.877911Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "681.71",
+          "submitted_at": "2026-07-30T17:14:06.870186Z",
+          "filled_at": "2026-07-30T17:14:08.517285Z"
+        }
+      ]
+    },
+    {
+      "symbol": "SH",
+      "closed_at": "2026-07-31T14:34:30.737982+00:00",
+      "expected_gross_pnl": -5.9,
+      "historical_ledger_pnl": -5.9,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "59",
+          "filled_avg_price": "33.55",
+          "submitted_at": "2026-07-31T14:17:17.137753Z",
+          "filled_at": "2026-07-31T14:17:19.797395Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "59",
+          "filled_avg_price": "33.45",
+          "submitted_at": "2026-07-31T14:34:15.728165Z",
+          "filled_at": "2026-07-31T14:34:16.505898Z"
+        }
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "closed_at": "2026-07-31T14:34:30.743594+00:00",
+      "expected_gross_pnl": 13.330002,
+      "historical_ledger_pnl": 13.330002,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "7",
+          "filled_avg_price": "269.568571",
+          "submitted_at": "2026-07-31T14:05:09.026196Z",
+          "filled_at": "2026-07-31T14:05:10.006988Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "7",
+          "filled_avg_price": "271.472857",
+          "submitted_at": "2026-07-31T14:34:15.53321Z",
+          "filled_at": "2026-07-31T14:34:17.872587Z"
+        }
+      ]
+    },
+    {
+      "symbol": "CAT",
+      "closed_at": "2026-08-03T14:53:22.900707+00:00",
+      "expected_gross_pnl": 22.02,
+      "historical_ledger_pnl": 22.02,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "821.7",
+          "submitted_at": "2026-08-03T14:04:17.508661Z",
+          "filled_at": "2026-08-03T14:04:19.617063Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "832.71",
+          "submitted_at": "2026-08-03T14:53:07.679265Z",
+          "filled_at": "2026-08-03T14:53:10.178542Z"
+        }
+      ]
+    },
+    {
+      "symbol": "SH",
+      "closed_at": "2026-08-03T15:17:21.702846+00:00",
+      "expected_gross_pnl": -0.6,
+      "historical_ledger_pnl": -0.6,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "60",
+          "filled_avg_price": "32.81",
+          "submitted_at": "2026-08-03T15:05:13.92202Z",
+          "filled_at": "2026-08-03T15:05:17.836454Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "60",
+          "filled_avg_price": "32.8",
+          "submitted_at": "2026-08-03T15:17:06.380011Z",
+          "filled_at": "2026-08-03T15:17:09.185736Z"
+        }
+      ]
+    },
+    {
+      "symbol": "TSLA",
+      "closed_at": "2026-08-03T16:31:25.961093+00:00",
+      "expected_gross_pnl": 5.78,
+      "historical_ledger_pnl": 4.86,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "6",
+          "filled_avg_price": "321",
+          "submitted_at": "2026-08-03T14:54:11.849717Z",
+          "filled_at": "2026-08-03T14:54:12.541268Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "1",
+          "filled_avg_price": "322.73",
+          "submitted_at": "2026-08-03T15:48:05.170523Z",
+          "filled_at": "2026-08-03T15:48:06.320731Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "321.81",
+          "submitted_at": "2026-08-03T16:31:10.84398Z",
+          "filled_at": "2026-08-03T16:31:11.994966Z"
+        }
+      ]
+    },
+    {
+      "symbol": "IWM",
+      "closed_at": "2026-08-03T16:33:31.713142+00:00",
+      "expected_gross_pnl": -1.8,
+      "historical_ledger_pnl": -1.8,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "6",
+          "filled_avg_price": "295.86",
+          "submitted_at": "2026-08-03T16:29:05.142496Z",
+          "filled_at": "2026-08-03T16:29:06.670415Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "6",
+          "filled_avg_price": "295.56",
+          "submitted_at": "2026-08-03T16:33:16.48645Z",
+          "filled_at": "2026-08-03T16:33:17.775147Z"
+        }
+      ]
+    },
+    {
+      "symbol": "AVGO",
+      "closed_at": "2026-08-03T16:42:22.820781+00:00",
+      "expected_gross_pnl": -0.6,
+      "historical_ledger_pnl": -0.9,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "388.12",
+          "submitted_at": "2026-08-03T15:05:14.145944Z",
+          "filled_at": "2026-08-03T15:05:17.447421Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "1",
+          "filled_avg_price": "388.24",
+          "submitted_at": "2026-08-03T15:51:13.299288Z",
+          "filled_at": "2026-08-03T15:51:14.259963Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "4",
+          "filled_avg_price": "387.94",
+          "submitted_at": "2026-08-03T16:42:07.541523Z",
+          "filled_at": "2026-08-03T16:42:09.20489Z"
+        }
+      ]
+    },
+    {
+      "symbol": "AMD",
+      "closed_at": "2026-08-03T16:56:24.295344+00:00",
+      "expected_gross_pnl": 36.75,
+      "historical_ledger_pnl": 34.4,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "4",
+          "filled_avg_price": "471.48",
+          "submitted_at": "2026-08-03T14:03:10.256449Z",
+          "filled_at": "2026-08-03T14:03:11.176296Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "1",
+          "filled_avg_price": "482.43",
+          "submitted_at": "2026-08-03T16:31:10.549143Z",
+          "filled_at": "2026-08-03T16:31:10.994931Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "3",
+          "filled_avg_price": "480.08",
+          "submitted_at": "2026-08-03T16:56:09.114456Z",
+          "filled_at": "2026-08-03T16:56:09.758307Z"
+        }
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "closed_at": "2026-08-03T16:56:24.301848+00:00",
+      "expected_gross_pnl": 44.17,
+      "historical_ledger_pnl": 44.01,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "9",
+          "filled_avg_price": "202.11",
+          "submitted_at": "2026-08-03T14:03:10.062845Z",
+          "filled_at": "2026-08-03T14:03:10.696027Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "207.08",
+          "submitted_at": "2026-08-03T15:20:15.699854Z",
+          "filled_at": "2026-08-03T15:20:16.85676Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "7",
+          "filled_avg_price": "207",
+          "submitted_at": "2026-08-03T16:56:09.319434Z",
+          "filled_at": "2026-08-03T16:56:11.084316Z"
+        }
+      ]
+    },
+    {
+      "symbol": "MSFT",
+      "closed_at": "2026-08-03T16:59:16.421751+00:00",
+      "expected_gross_pnl": 5.939999,
+      "historical_ledger_pnl": 5.373332,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "4",
+          "filled_avg_price": "487.19",
+          "submitted_at": "2026-08-03T16:29:04.726239Z",
+          "filled_at": "2026-08-03T16:29:06.825118Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "1",
+          "filled_avg_price": "489.1",
+          "submitted_at": "2026-08-03T16:44:12.74056Z",
+          "filled_at": "2026-08-03T16:44:13.800877Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "3",
+          "filled_avg_price": "488.533333",
+          "submitted_at": "2026-08-03T16:59:01.460645Z",
+          "filled_at": "2026-08-03T16:59:03.431346Z"
+        }
+      ]
+    },
+    {
+      "symbol": "MSFT",
+      "closed_at": "2026-08-04T14:30:24.064484+00:00",
+      "expected_gross_pnl": 9.24,
+      "historical_ledger_pnl": 9.24,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "4",
+          "filled_avg_price": "491.47",
+          "submitted_at": "2026-08-04T14:01:12.641877Z",
+          "filled_at": "2026-08-04T14:01:13.447154Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "4",
+          "filled_avg_price": "493.78",
+          "submitted_at": "2026-08-04T14:30:08.809944Z",
+          "filled_at": "2026-08-04T14:30:11.134224Z"
+        }
+      ]
+    },
+    {
+      "symbol": "CRM",
+      "closed_at": "2026-08-04T16:09:25.035570+00:00",
+      "expected_gross_pnl": -4.3,
+      "historical_ledger_pnl": -4.3,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "10",
+          "filled_avg_price": "189.31",
+          "submitted_at": "2026-08-04T15:29:04.946846Z",
+          "filled_at": "2026-08-04T15:29:06.837036Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "10",
+          "filled_avg_price": "188.88",
+          "submitted_at": "2026-08-04T16:09:09.841765Z",
+          "filled_at": "2026-08-04T16:09:10.685305Z"
+        }
+      ]
+    },
+    {
+      "symbol": "XOM",
+      "closed_at": "2026-08-04T16:23:00.088420+00:00",
+      "expected_gross_pnl": 1.609995,
+      "historical_ledger_pnl": 1.619085,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "13",
+          "filled_avg_price": "153.21",
+          "submitted_at": "2026-08-04T15:29:05.177996Z",
+          "filled_at": "2026-08-04T15:29:05.98679Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "153.33",
+          "submitted_at": "2026-08-04T16:20:07.366466Z",
+          "filled_at": "2026-08-04T16:20:08.870982Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "11",
+          "filled_avg_price": "153.334545",
+          "submitted_at": "2026-08-04T16:22:45.004848Z",
+          "filled_at": "2026-08-04T16:22:48.951071Z"
+        }
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "closed_at": "2026-08-04T16:31:17.835794+00:00",
+      "expected_gross_pnl": 1.110004,
+      "historical_ledger_pnl": 0.500004,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "9",
+          "filled_avg_price": "210.264444",
+          "submitted_at": "2026-08-04T15:20:12.206445Z",
+          "filled_at": "2026-08-04T15:20:14.832198Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "210.625",
+          "submitted_at": "2026-08-04T16:00:17.49018Z",
+          "filled_at": "2026-08-04T16:00:19.017431Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "7",
+          "filled_avg_price": "210.32",
+          "submitted_at": "2026-08-04T16:31:02.739442Z",
+          "filled_at": "2026-08-04T16:31:05.942591Z"
+        }
+      ]
+    },
+    {
+      "symbol": "META",
+      "closed_at": "2026-08-04T16:41:27.778575+00:00",
+      "expected_gross_pnl": -5.180001,
+      "historical_ledger_pnl": -5.180001,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "3",
+          "filled_avg_price": "581.26",
+          "submitted_at": "2026-08-04T16:40:08.522842Z",
+          "filled_at": "2026-08-04T16:40:10.268747Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "3",
+          "filled_avg_price": "579.533333",
+          "submitted_at": "2026-08-04T16:41:12.603785Z",
+          "filled_at": "2026-08-04T16:41:15.433699Z"
+        }
+      ]
+    },
+    {
+      "symbol": "META",
+      "closed_at": "2026-09-16T18:13:33.073763+00:00",
+      "expected_gross_pnl": -7.32,
+      "historical_ledger_pnl": -7.32,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "681.09",
+          "submitted_at": "2026-09-16T18:08:14.579406Z",
+          "filled_at": "2026-09-16T18:08:15.748845Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "2",
+          "filled_avg_price": "677.43",
+          "submitted_at": "2026-09-16T18:13:17.805365Z",
+          "filled_at": "2026-09-16T18:13:19.356597Z"
+        }
+      ]
+    },
+    {
+      "symbol": "TSLA",
+      "closed_at": "2026-09-16T18:14:21.465035+00:00",
+      "expected_gross_pnl": -10.55,
+      "historical_ledger_pnl": -10.55,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "362.84",
+          "submitted_at": "2026-09-16T18:08:14.797449Z",
+          "filled_at": "2026-09-16T18:08:16.93063Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "360.73",
+          "submitted_at": "2026-09-16T18:14:06.161477Z",
+          "filled_at": "2026-09-16T18:14:06.465841Z"
+        }
+      ]
+    },
+    {
+      "symbol": "SH",
+      "closed_at": "2026-09-17T16:33:26.356642+00:00",
+      "expected_gross_pnl": 0.0,
+      "historical_ledger_pnl": 0.0,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "61",
+          "filled_avg_price": "32.72",
+          "submitted_at": "2026-09-17T16:17:11.469593Z",
+          "filled_at": "2026-09-17T16:17:13.230855Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "61",
+          "filled_avg_price": "32.72",
+          "submitted_at": "2026-09-17T16:33:11.078701Z",
+          "filled_at": "2026-09-17T16:33:14.728623Z"
+        }
+      ]
+    },
+    {
+      "symbol": "TSLA",
+      "closed_at": "2026-09-17T16:49:26.214276+00:00",
+      "expected_gross_pnl": -5.6,
+      "historical_ledger_pnl": -5.6,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "367.88",
+          "submitted_at": "2026-09-17T16:21:07.376589Z",
+          "filled_at": "2026-09-17T16:21:08.406313Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "5",
+          "filled_avg_price": "366.76",
+          "submitted_at": "2026-09-17T16:49:10.767569Z",
+          "filled_at": "2026-09-17T16:49:12.1535Z"
+        }
+      ]
+    },
+    {
+      "symbol": "WMT",
+      "closed_at": "2026-09-17T17:04:18.537395+00:00",
+      "expected_gross_pnl": 6.289992,
+      "historical_ledger_pnl": 6.289992,
+      "orders": [
+        {
+          "side": "buy",
+          "status": "filled",
+          "filled_qty": "18",
+          "filled_avg_price": "106.44",
+          "submitted_at": "2026-09-17T16:21:07.118659Z",
+          "filled_at": "2026-09-17T16:21:07.978185Z"
+        },
+        {
+          "side": "sell",
+          "status": "filled",
+          "filled_qty": "18",
+          "filled_avg_price": "106.789444",
+          "submitted_at": "2026-09-17T17:04:03.402017Z",
+          "filled_at": "2026-09-17T17:04:05.089789Z"
+        }
+      ]
+    }
+  ]
+}

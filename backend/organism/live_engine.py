@@ -6587,6 +6587,13 @@ class OrganismLiveEngine(
             if meta is None:
                 continue
 
+            # Account for every confirmed exit leg, including
+            # ml_reversal scale-outs whose reason does not contain "partial".
+            # Only a complete attributed position can replace legacy prices.
+            position_fills = await self._lookup_closed_position_fills_from_db(
+                sym, meta, closed_at=self._now_fn().astimezone(UTC),
+            )
+
             # Use real fill price from exit order when available.
             # Audit 2026-06-11 (measurement integrity): tag WHICH rung of
             # the fallback ladder priced this exit. Rows priced from a bar
@@ -6595,7 +6602,10 @@ class OrganismLiveEngine(
             real_fill = self._last_exit_fill_price.pop(sym, None)
             exit_price: float | None = None
             _price_source = ""
-            if real_fill and real_fill > 0:
+            if position_fills is not None:
+                exit_price = position_fills.exit_price
+                _price_source = "db_position_fills"
+            elif real_fill and real_fill > 0:
                 exit_price = real_fill
                 _price_source = "fill"
             else:
@@ -6630,6 +6640,11 @@ class OrganismLiveEngine(
                             exit_price = ask
                             _price_source = "quote_ask"
 
+            if position_fills is None and _price_source in {"fill", "db_fill"}:
+                # A genuine FINAL price is not proof of full-position PnL.
+                # Keep legacy fallback amounts but label that uncertainty.
+                _price_source += "_approximate"
+
             if exit_price is None:
                 logger.warning(
                     "Skipping trade record for %s — no exit price available "
@@ -6654,13 +6669,17 @@ class OrganismLiveEngine(
             else:
                 entry_price = meta["entry_price"]
 
-            entry_fill = await self._lookup_entry_fill_from_db(sym, meta)
-            if entry_fill is not None:
-                db_entry_price, db_entry_qty = entry_fill
-                if db_entry_price > 0:
-                    entry_price = db_entry_price
-                if db_entry_qty > 0:
-                    shares = int(round(db_entry_qty))
+            if position_fills is not None:
+                entry_price = position_fills.entry_price
+                shares = position_fills.shares
+            else:
+                entry_fill = await self._lookup_entry_fill_from_db(sym, meta)
+                if entry_fill is not None:
+                    db_entry_price, db_entry_qty = entry_fill
+                    if db_entry_price > 0:
+                        entry_price = db_entry_price
+                    if db_entry_qty > 0:
+                        shares = int(round(db_entry_qty))
 
             if shares == 0:
                 # Fallback to tracked filled_shares from entry metadata
@@ -6669,7 +6688,9 @@ class OrganismLiveEngine(
                 logger.error("Zero shares for closed position %s — skipping trade record", sym)
                 continue
 
-            if direction > 0:
+            if position_fills is not None:
+                pnl = position_fills.pnl
+            elif direction > 0:
                 pnl = (exit_price - entry_price) * shares
             else:
                 pnl = (entry_price - exit_price) * shares
@@ -6767,7 +6788,8 @@ class OrganismLiveEngine(
                 predicted_return_signed=meta.get("predicted_return_signed"),
                 ml_spoke=bool(meta.get("ml_spoke", False)),
                 price_source=_price_source,
-                had_partial_exits=bool(meta.get("had_partial_exits", False)),
+                had_partial_exits=(position_fills.had_partial_exits if position_fills is not None
+                                   else bool(meta.get("had_partial_exits", False))),
             )
             self._all_trades.append(trade)
             # Audit-G BUG-G: do NOT feed reconciliation artifacts into the
