@@ -688,8 +688,9 @@ def _build_live_process_snapshot() -> dict:
     if brain_trades is not None and engine_trades is not None and brain_trades != engine_trades:
         coherence_notes.append(
             f"brain_state.total_trades={brain_trades} vs live.trade_count={engine_trades}: "
-            "brain manifest persists at save-time; engine accumulates in-memory across restarts. "
-            "Engine count includes trades since last brain save."
+            "the counters can have different accounting scopes or save times. "
+            "This comparison alone does not establish missing trades or unsaved activity; "
+            "reconcile ledger attribution before changing either counter."
         )
     if brain.get("ml_is_trained") is not None and live.get("ml_trained") is not None:
         if brain.get("ml_is_trained") != live.get("ml_trained"):

@@ -187,6 +187,42 @@ def test_critical_log_bridge_deduplicates_and_never_persists_payloads(watchdog, 
     assert "--tail" in calls[0] and "--since" in calls[0]
 
 
+@pytest.mark.parametrize("message,expected", [
+    ("INFO All 5 critical tables present", 0),
+    ("INFO PREFLIGHT 18/18 passed, 0 critical failures", 0),
+    ("INFO PREFLIGHT 18/18 passed, 0 CRITICAL failures", 0),
+    ('{"level":"info","message":"All 5 critical tables present"}', 0),
+    ('{"level":"info","message":"0 critical failures"}', 0),
+    ('{"level":"critical","message":"Risk gate failed"}', 1),
+    ('{"levelname":"critical","message":"Risk gate failed"}', 1),
+    ('{"severity":"critical","message":"Risk gate failed"}', 1),
+    ("CRITICAL Risk gate failed", 1),
+    ("ERROR Risk condition is CRITICAL", 1),
+    ("ERROR ALERT-NO-CHANNELS: risk event", 1),
+    ("ERROR ALERT-DELIVERY-FAILED: risk event", 1),
+])
+def test_critical_log_bridge_distinguishes_severity_from_startup_prose(watchdog, monkeypatch, message, expected):
+    line = "2026-09-19T18:00:00Z " + message + "\n"
+    monkeypatch.setattr(watchdog, "command", lambda args, **kwargs: subprocess.CompletedProcess(args, 0, line, ""))
+    result = watchdog._scan_for_test({}, 1800000000)
+    assert result["available"] is True
+    assert result["new_events"] == expected
+    assert result["pending_events"] == expected
+
+
+def test_healthy_startup_checks_do_not_trigger_critical_notification(watchdog, monkeypatch, tmp_path):
+    monkeypatch.setattr(watchdog, "observe", lambda now: healthy(watchdog))
+    watchdog.run_watchdog(tmp_path)
+    monkeypatch.setattr(watchdog, "scan_critical_events", watchdog._scan_for_test)
+    lines = "INFO All 5 critical tables present\nINFO PREFLIGHT 18/18 passed, 0 critical failures\n"
+    monkeypatch.setattr(watchdog, "command", lambda args, **kwargs: subprocess.CompletedProcess(args, 0, lines, ""))
+    monkeypatch.setattr(watchdog, "notify_local", lambda message: pytest.fail("startup prose must not notify"))
+    result = watchdog.run_watchdog(tmp_path, local_notifications=True)
+    assert result["healthy"] is True
+    assert result["critical_monitor"]["pending_events"] == 0
+    assert result["notification"]["attempted"] is False
+
+
 def test_new_critical_event_notifies_even_when_api_remains_healthy(watchdog, monkeypatch, tmp_path):
     monkeypatch.setattr(watchdog, "observe", lambda now: healthy(watchdog))
     calls = []

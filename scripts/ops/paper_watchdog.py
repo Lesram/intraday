@@ -148,7 +148,14 @@ def scan_critical_events(previous: dict, now: float) -> dict:
     result["truncated"] = len(content) > 262144 or len(lines) >= 1000
     hashes = list(result["seen"])
     for line in lines:
-        if not re.search(r"ALERT-(?:NO-CHANNELS|DELIVERY-FAILED)|\bCRITICAL\b", line, re.IGNORECASE):
+        # Startup INFO prose mentions critical tables and zero failures. Match
+        # explicit uppercase severity/text or a structured logging level only.
+        severity_text = re.sub(r"\b0\s+CRITICAL\s+failures?\b", "", line)
+        if not (
+            re.search(r"ALERT-(?:NO-CHANNELS|DELIVERY-FAILED)", line, re.IGNORECASE)
+            or re.search(r"\bCRITICAL\b", severity_text)
+            or re.search(r'"(?:level|levelname|severity)"\s*:\s*"critical"', line, re.IGNORECASE)
+        ):
             continue
         fingerprint = hashlib.sha256(line.encode()).hexdigest()
         if fingerprint not in hashes:
