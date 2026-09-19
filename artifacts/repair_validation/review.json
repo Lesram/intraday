@@ -1,0 +1,142 @@
+{
+  "reviewer": "/root/artifact_review",
+  "review_date": "2026-09-19",
+  "verdict": "approve_bounded_diff",
+  "summary": "No unresolved correctness, trading-safety, or spec-drift findings in the reviewed artifact-reporting repair.",
+  "approval_scope": "Independent source and evidence review only; not a merge, deployment, strategy-change, or project-wide readiness approval.",
+  "reviewed_base_sha": "4a8e0e713d8fd0b2e0b87b077d616f4773304d0f",
+  "branch": "codex/fix-artifact-reporting",
+  "reviewed_source_sha256": {
+    "scripts/ci/generate_artifacts.py": "faca07ceec57348dae322eba75825bd3b7d3237d254fdcf79730fe92b03230ee",
+    "tests/test_generate_artifacts.py": "5ecdf3166381ec8cfe7b5f2d0a405a57800e2f5d57ce484eda8e941bf0633bfc",
+    "tests/test_artifact_workflow_contract.py": "873fad372109cd2d5fe46ebfba9ba4f307f31038d3f330a2315eb82eaeafeea9",
+    ".github/workflows/artifact-reporting.yml": "5624da5138082fde41f3cdde0a22458b14f99d1926a7c90d9773ab1f5bdced2b",
+    ".github/workflows/pr-verify.yml": "f4de3481cc6f405dc554386fcfa1b1e89e6917b7f4271890a9400c9d528af589",
+    ".github/workflows/paper-postclose-audit.yml": "638e5af9b42908f5b7391f340c15ae4b1ada964bcdfa2b236cece47efcc5588f",
+    "docs/engineering/ARTIFACT_REPORTING.md": "8a88801cc65a3c1996b58f47e4dc8479b7a4da98aea7585db683aa20347a9c91"
+  },
+  "governing_documents": [
+    "AGENTS.md",
+    "docs/architecture/mapss.md"
+  ],
+  "findings": [],
+  "resolved_during_review": [
+    {
+      "severity": "P2",
+      "issue": "Error-bearing runtime snapshot JSON was replaced with a generic error, losing the original import or configuration diagnostic.",
+      "resolution": "Original snapshot JSON and its error text are retained, and the summary includes the diagnostic. A targeted regression covers this path."
+    },
+    {
+      "severity": "P2",
+      "issue": "A snapshot subprocess failing after writing all JSON files no longer marked the legacy snapshot error consumed by the existing KPI checker.",
+      "resolution": "Command failures append a legacy error marker without discarding snapshot values. A targeted regression covers valid output followed by nonzero exit."
+    },
+    {
+      "severity": "P2",
+      "issue": "The existing CI workflows did not execute the new focused tests and did not cover a stacked PR targeting the active feature branch.",
+      "resolution": "A path-scoped pull_request workflow without a target-branch filter runs all three focused suites with pinned dependencies, platform conftest disabled, fatal pipeline status, and failure artifact upload."
+    },
+    {
+      "severity": "P2",
+      "identified_by": "/root",
+      "issue": "Quick mode could record a passing quick check before required snapshot or grep stages failed.",
+      "resolution": "Quick summary creation follows required stages and reflects their actual verdict. Tests cover each required quick-stage failure."
+    }
+  ],
+  "review_checks": {
+    "pytest_exit_code_and_junit_both_required": true,
+    "missing_stale_malformed_empty_all_skipped_evidence_fails": true,
+    "subprocess_timeouts_preserve_diagnostics": true,
+    "posix_timeout_descendant_cleanup_covered": true,
+    "unexpected_required_stage_failures_remain_fatal_and_allow_later_stages": true,
+    "snapshot_and_spec_process_failures_remain_fatal": true,
+    "quick_mode_does_not_reuse_full_summary_results": true,
+    "full_consumer_failure_artifacts_are_uploaded": true,
+    "dedicated_focused_workflow_covers_active_pr_base": true,
+    "frozen_backend_or_runtime_configuration_files_changed": false,
+    "ml_or_kelly_influence_in_learning_mode_introduced": false,
+    "order_submission_code_added_or_retained_by_this_change": false,
+    "operational_timeout_constants_documented": true,
+    "diff_check_passed": true
+  },
+  "evidence_reviewed": {
+    "tests_executed_by_reviewer": false,
+    "focused": {
+      "source": "artifacts/repair_validation/focused.json",
+      "junit": "artifacts/repair_validation/focused.xml",
+      "passed": 58,
+      "failed": 0,
+      "exit_code": 0,
+      "isolation": "Root-run OS sandbox denies network, real checkout writes, and real environment/brain reads."
+    },
+    "freeze_tests": {
+      "source": "artifacts/repair_validation/freeze_tests.json",
+      "junit": "artifacts/repair_validation/freeze_tests.xml",
+      "passed": 6,
+      "failed": 0,
+      "exit_code": 0,
+      "qualification": "Root supplied the selected running frozen environment values; the earlier environment-less harness failure was not a source-surface change."
+    },
+    "full_pack": {
+      "source": "artifacts/repair_validation/full_pack.json",
+      "exit_code": 0,
+      "seconds": 206.41,
+      "standard_suites_passed": 168,
+      "replay_passed": 28,
+      "semantic_passed": 20,
+      "grep_verdict": "pass",
+      "spec_verdict": "pass",
+      "qualification": "The complete isolated full pack was rerun after the final source was committed at this SHA; all required checks passed. Runtime snapshots were subsequently refreshed separately through read-only container inspection.",
+      "tested_source_sha": "d6c5534be6faa5205852a1ce0f52d5610469f188"
+    },
+    "freeze_verification": {
+      "source": "artifacts/repair_validation/freeze_after.json",
+      "source_sha": "d6c5534be6faa5205852a1ce0f52d5610469f188",
+      "exit_code": 0,
+      "backend_or_frozen_config_diff": [],
+      "qualification": "Verification used selected frozen environment values observed from the running paper container. No frozen surface changed."
+    },
+    "github_source_check": {
+      "source": "artifacts/repair_validation/github_source_check.json",
+      "url": "https://github.com/Lesram/intraday/actions/runs/35460616904",
+      "source_sha": "d6c5534be6faa5205852a1ce0f52d5610469f188",
+      "conclusion": "success",
+      "focused_tests_passed": 58,
+      "artifact_upload": "success"
+    },
+    "runtime_refresh": {
+      "source": "artifacts/repair_validation/runtime_refresh.json",
+      "source_sha": "d6c5534be6faa5205852a1ce0f52d5610469f188",
+      "refreshed_at": "2026-09-19T18:17:34.568411+00:00",
+      "snapshot_generation_status": "pass",
+      "container": "intra-api-1",
+      "authenticated_live_api_reachable": false,
+      "isolated_snapshot_archive": "artifacts/repair_validation/isolated_snapshots/",
+      "qualification": "Canonical snapshots now combine source defaults, observed container environment and persisted brain state. The authenticated status endpoint remains unavailable; config_truth_status=consistent describes available-source comparisons only and does not verify running application values. Empty live-source coherence notes are not live verification. Persisted brain statistics are historical records, not a reconciled forward-strategy result."
+    }
+  },
+  "remaining_acceptance_steps": [
+    "Commit and attach the final evidence package, retaining tested source SHA provenance and the runtime-access qualification.",
+    "Keep task metadata and audit index aligned with the reviewed source and PR; any evidence-only follow-up commit must not imply that trading logic was deployed."
+  ],
+  "known_deferred_gaps": [
+    "Scheduled monitoring still follows the outdated default branch until the separate monitoring repair is integrated.",
+    "KPI coverage, issue-writing permissions, and notification delivery require their separately scoped repair; preserving legacy failure fields does not establish reliable alert delivery.",
+    "Offline artifact success does not certify authenticated live application access or running-process configuration truth.",
+    "Branch protections, wider existing CI failures, and the parked CI trio cleanup are outside this repair.",
+    "Trading evidence reconciliation and strategy research remain separate; this change does not establish a trading edge or authorize changes to the frozen strategy."
+  ],
+  "source_sha": "d6c5534be6faa5205852a1ce0f52d5610469f188",
+  "review_updated_at": "2026-09-19T18:19:04.133526+00:00",
+  "pull_request": "https://github.com/Lesram/intraday/pull/11",
+  "packaging_review": {
+    "verdict": "pass_with_explicit_runtime_limitations",
+    "scope": "Runtime and repair-validation JSON, task metadata, test logs and JUnit evidence. No global secret-scan certification is implied.",
+    "credential_findings": [],
+    "method": "Reviewed JSON field structure and scanned for nonempty credential-bearing keys, credentials embedded in URLs, common token prefixes, private-key markers and credential assignments. Output reported paths/counts without exposing values.",
+    "latest_json_files_scanned": 18,
+    "test_log_and_junit_files_scanned": 19,
+    "live_vs_isolated_claims": "Isolated regression snapshots remain archived separately. Final runtime_refresh.json and this review explicitly distinguish successful snapshot creation from unavailable authenticated application values.",
+    "source_hashes_rechecked": true
+  }
+}

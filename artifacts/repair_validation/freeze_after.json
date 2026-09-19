@@ -1,0 +1,10 @@
+{
+  "stage": "after final source and evidence generation",
+  "source_sha": "d6c5534be6faa5205852a1ce0f52d5610469f188",
+  "exit_code": 0,
+  "stdout": "DRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-07-07T20:36:49.008305+00:00)\n",
+  "stderr": "",
+  "freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+  "environment_source": "selected frozen variables observed from running paper container",
+  "backend_or_frozen_config_diff": []
+}

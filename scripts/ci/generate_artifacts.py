@@ -18,8 +18,11 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -39,11 +42,117 @@ TASK_REPORT_NEED_ONE_OF = [
     ("tests_passed", "tests_failed"),
 ]
 
+# Bound subprocesses below the workflows' 25-minute artifact step, while
+# allowing CI headroom above the replay's observed ~138-second runtime.
+TEST_SUITE_TIMEOUT_SECONDS = 120
+REPLAY_TIMEOUT_SECONDS = 300
+RUNTIME_SNAPSHOT_FILES = (
+    "runtime_defaults_snapshot.json",
+    "resolved_config_snapshot.json",
+    "live_process_runtime_snapshot.json",
+    "runtime_config_snapshot.json",
+)
+
+
+@dataclass
+class CommandResult:
+    exit_code: int | None
+    stdout: str = ""
+    stderr: str = ""
+    error: str = ""
+    timed_out: bool = False
+
+    @property
+    def output(self) -> str:
+        return self.stdout + ("\n" if self.stdout and self.stderr else "") + self.stderr
+
+
+def run_command(cmd: list[str], *, timeout: float) -> CommandResult:
+    """Retain process failures and bound the entire child process group."""
+    try:
+        process = subprocess.Popen(
+            cmd, cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, errors="replace", start_new_session=(os.name == "posix"),
+        )
+    except OSError as exc:
+        return CommandResult(None, error=str(exc))
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+        return CommandResult(process.returncode, stdout, stderr)
+    except subprocess.TimeoutExpired:
+        if os.name == "posix":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        else:
+            process.kill()
+        stdout, stderr = process.communicate()
+        return CommandResult(
+            process.returncode, stdout, stderr,
+            error=f"command timed out after {timeout}s", timed_out=True,
+        )
+
+
+def command_evidence(name: str, result: CommandResult) -> dict:
+    """Keep complete output alongside a bounded, backwards-compatible JSON tail."""
+    output_path = ART / f"{name}.log"
+    output_path.write_text(result.output + (f"\n{result.error}\n" if result.error else ""))
+    return {
+        "exit_code": result.exit_code,
+        "timed_out": result.timed_out,
+        "error": result.error,
+        "output_file": str(output_path.relative_to(ROOT)),
+        "output_tail": result.output[-800:],
+    }
+
+
+def run_pytest(name: str, path: str, *, timeout: float, test_timeout: int = 30) -> dict:
+    """Require fresh JUnit results, actual executed tests, and a successful process."""
+    junit_path = ART / f"{name}.junit.xml"
+    junit_path.unlink(missing_ok=True)
+    test_path = ROOT / path
+    if not test_path.is_file():
+        result = CommandResult(None, error=f"required test file not found: {path}")
+    else:
+        result = run_command([
+            sys.executable, "-m", "pytest", "-q", f"--timeout={test_timeout}",
+            "--tb=line", f"--junitxml={junit_path}", str(test_path),
+        ], timeout=timeout)
+
+    data = {
+        "status": "fail", "passed": 0, "failed": 0, "errors": 0, "skipped": 0,
+        "total": 0, "tests": [], **command_evidence(name, result),
+        "junit_file": str(junit_path.relative_to(ROOT)),
+    }
+    try:
+        report = ET.parse(junit_path).getroot()
+        if report.tag not in {"testsuites", "testsuite"}:
+            raise ValueError(f"unexpected JUnit root: {report.tag}")
+        for case in report.iter("testcase"):
+            status = (
+                "error" if case.find("error") is not None else
+                "failed" if case.find("failure") is not None else
+                "skipped" if case.find("skipped") is not None else "passed"
+            )
+            data["errors" if status == "error" else status] += 1
+            data["tests"].append({"name": case.get("name", ""), "status": status})
+        data["total"] = sum(data[key] for key in ("passed", "failed", "errors", "skipped"))
+        if data["total"] == 0 or data["passed"] + data["failed"] + data["errors"] == 0:
+            raise ValueError("no tests executed (empty or all skipped)")
+        if result.exit_code == 0 and not result.error and not data["failed"] and not data["errors"]:
+            data["status"] = "pass"
+    except (OSError, ET.ParseError, ValueError) as exc:
+        data["error"] = "; ".join(filter(None, (data["error"], f"invalid pytest evidence: {exc}")))
+    if result.exit_code not in (None, 0) and not data["error"]:
+        data["error"] = f"pytest exited with code {result.exit_code}"
+    return data
+
 
 def sh(cmd: list[str], cwd: str | None = None) -> str:
     try:
-        return subprocess.check_output(cmd, text=True, cwd=cwd or str(ROOT), stderr=subprocess.STDOUT).strip()
-    except Exception:
+        return subprocess.check_output(cmd, text=True, cwd=cwd or str(ROOT), stderr=subprocess.STDOUT, timeout=30).strip()
+    except (OSError, subprocess.SubprocessError):
         return ""
 
 
@@ -79,7 +188,6 @@ def gen_task_report() -> None:
     config_files = [f for f in diff_names if f.startswith(("backend/config/", ".env", "docker-compose"))]
     test_files = [f for f in diff_names if f.startswith("tests/")]
     docs_files = [f for f in diff_names if f.startswith("docs/")]
-    script_files = [f for f in diff_names if f.startswith("scripts/")]
 
     # Auto-derive risks
     risks = []
@@ -162,14 +270,37 @@ def gen_runtime_snapshot() -> None:
     # Prefer venv python for organism module imports (requires Python 3.12+)
     venv_python = ROOT / "venv" / "bin" / "python3"
     python = str(venv_python) if venv_python.exists() else sys.executable
-    result = subprocess.run(
+    for name in RUNTIME_SNAPSHOT_FILES:
+        (ART / name).unlink(missing_ok=True)
+    result = run_command(
         [python, str(ROOT / "scripts" / "runtime" / "write_runtime_snapshot.py")],
-        cwd=str(ROOT), capture_output=True, text=True,
+        timeout=60,
     )
-    if result.returncode != 0:
-        write("runtime_config_snapshot.json", {
-            "error": result.stderr.strip() or "snapshot script failed",
-        })
+    errors = []
+    if result.exit_code != 0 or result.error:
+        errors.append(result.error or f"snapshot script exited with code {result.exit_code}")
+    for name in RUNTIME_SNAPSHOT_FILES:
+        try:
+            data = json.loads((ART / name).read_text())
+            if not isinstance(data, dict) or not data:
+                raise ValueError("empty or invalid snapshot")
+            if data.get("error"):
+                errors.append(f"{name}: {data['error']}")
+        except (OSError, ValueError) as exc:
+            errors.append(f"{name}: {exc}")
+            write(name, {"error": f"snapshot generation failed: {exc}"})
+    if result.exit_code != 0 or result.error:
+        # Existing KPI consumers inspect the legacy error key. Keep that
+        # failure signal even if the command wrote all snapshots before dying.
+        legacy_path = ART / "runtime_config_snapshot.json"
+        legacy = json.loads(legacy_path.read_text())
+        legacy["error"] = "; ".join(filter(None, (legacy.get("error"), errors[0])))
+        write(legacy_path.name, legacy)
+    write("runtime_snapshot_summary.json", {
+        "overall": "fail" if errors else "pass",
+        **command_evidence("runtime_snapshot", result),
+        "errors": errors,
+    })
 
 
 # ── 3. changed_files.json ────────────────────────────────────────────
@@ -208,17 +339,7 @@ def gen_test_summary() -> None:
     ]
     results = {}
     for name, path in suites:
-        test_path = ROOT / path
-        if not test_path.exists():
-            results[name] = {"status": "skipped", "reason": "file not found"}
-            continue
-        out = sh([sys.executable, "-m", "pytest", "-q", "--timeout=30", "--tb=line", str(test_path)])
-        if "passed" in out:
-            passed = int(out.split(" passed")[0].split()[-1]) if "passed" in out else 0
-            failed = int(out.split(" failed")[0].split()[-1]) if "failed" in out else 0
-            results[name] = {"status": "pass" if failed == 0 else "fail", "passed": passed, "failed": failed}
-        else:
-            results[name] = {"status": "error", "output": out[-500:]}
+        results[name] = run_pytest(name, path, timeout=TEST_SUITE_TIMEOUT_SECONDS)
 
     all_pass = all(r.get("status") == "pass" for r in results.values())
     write("test_summary.json", {
@@ -229,19 +350,10 @@ def gen_test_summary() -> None:
 
 # ── 5. replay_summary.json ───────────────────────────────────────────
 def gen_replay_summary() -> None:
-    replay_path = ROOT / "tests" / "test_replay_simulator.py"
-    if not replay_path.exists():
-        write("replay_summary.json", {"status": "skipped", "reason": "file not found"})
-        return
-    out = sh([sys.executable, "-m", "pytest", "-q", "--timeout=120", "--tb=line", str(replay_path)])
-    passed = int(out.split(" passed")[0].split()[-1]) if "passed" in out else 0
-    failed = int(out.split(" failed")[0].split()[-1]) if "failed" in out else 0
-    write("replay_summary.json", {
-        "status": "pass" if failed == 0 else "fail",
-        "passed": passed,
-        "failed": failed,
-        "output_tail": out[-500:],
-    })
+    write("replay_summary.json", run_pytest(
+        "replay_simulator", "tests/test_replay_simulator.py",
+        timeout=REPLAY_TIMEOUT_SECONDS, test_timeout=120,
+    ))
 
 
 # ── 6. grep_assertions.json ──────────────────────────────────────────
@@ -250,15 +362,11 @@ def gen_grep_assertions() -> None:
     checks = []
 
     def check(name: str, pattern: str, path: str, must_exist: bool = True) -> None:
-        try:
-            out = subprocess.run(
-                ["grep", "-rn", pattern, str(ROOT / path)],
-                capture_output=True, text=True,
-            )
-            found = out.returncode == 0
-        except Exception:
-            found = False
-        passed = found == must_exist
+        result = run_command(["grep", "-rn", pattern, str(ROOT / path)], timeout=10)
+        found = result.exit_code == 0
+        # grep exit 1 means no matches; execution/path errors must never make
+        # a negative assertion pass.
+        passed = result.exit_code in (0, 1) and not result.error and found == must_exist
         checks.append({
             "name": name,
             "pattern": pattern,
@@ -266,6 +374,8 @@ def gen_grep_assertions() -> None:
             "must_exist": must_exist,
             "found": found,
             "passed": passed,
+            "exit_code": result.exit_code,
+            "error": result.error or result.stderr.strip(),
         })
 
     # ── Original 8 invariants ──────────────────────────────────────
@@ -342,75 +452,34 @@ def gen_grep_assertions() -> None:
 # ── 7. semantic_invariants_summary.json ──────────────────────────────
 def gen_semantic_invariants_summary() -> None:
     """Run semantic invariant tests and export structured JSON summary."""
-    test_path = ROOT / "tests" / "test_semantic_invariants.py"
-    if not test_path.exists():
-        write("semantic_invariants_summary.json", {
-            "status": "skipped", "reason": "test file not found",
-        })
-        return
-
-    out = sh([
-        sys.executable, "-m", "pytest", str(test_path),
-        "-v", "--timeout=30", "--tb=short",
-    ])
-
-    # Parse pytest verbose output
-    tests = []
-    passed = 0
-    failed = 0
-    for line in out.splitlines():
-        if " PASSED" in line:
-            test_name = line.split(" PASSED")[0].strip().split("::")[-1]
-            tests.append({"name": test_name, "status": "passed"})
-            passed += 1
-        elif " FAILED" in line:
-            test_name = line.split(" FAILED")[0].strip().split("::")[-1]
-            tests.append({"name": test_name, "status": "failed"})
-            failed += 1
-
-    write("semantic_invariants_summary.json", {
-        "overall": "pass" if failed == 0 and passed > 0 else "fail",
-        "passed": passed,
-        "failed": failed,
-        "total": passed + failed,
-        "tests": tests,
-        "output_tail": out[-800:] if failed > 0 else "",
-    })
+    data = run_pytest(
+        "semantic_invariants", "tests/test_semantic_invariants.py",
+        timeout=TEST_SUITE_TIMEOUT_SECONDS,
+    )
+    write("semantic_invariants_summary.json", {**data, "overall": data["status"]})
 
 
 # ── 8. spec_drift_summary.json ──────────────────────────────────────
 def gen_spec_drift_summary() -> None:
     """Run the 3-way drift check and export structured JSON summary."""
     drift_script = ROOT / "scripts" / "ci" / "check_spec_drift.py"
-    if not drift_script.exists():
-        write("spec_drift_summary.json", {
-            "status": "skipped", "reason": "check_spec_drift.py not found",
-        })
-        return
-
-    result = subprocess.run(
+    result = run_command(
         [sys.executable, str(drift_script), "--json"],
-        cwd=str(ROOT), capture_output=True, text=True,
+        timeout=30,
     )
-
-    # Try to parse JSON output from --json mode
     try:
         data = json.loads(result.stdout)
-        write("spec_drift_summary.json", data)
-        return
+        if not isinstance(data, dict) or data.get("overall") not in ("pass", "fail"):
+            raise ValueError("missing spec drift verdict")
     except (json.JSONDecodeError, ValueError):
-        pass
-
-    # Fallback: parse text output
-    drifted = result.returncode != 0
-    write("spec_drift_summary.json", {
-        "overall": "fail" if drifted else "pass",
-        "exit_code": result.returncode,
-        "output": result.stdout.strip()[-800:],
-    })
+        data = {"overall": "fail"}
+        result.error = result.error or "spec drift script did not produce a valid JSON verdict"
+    if result.exit_code != 0 or result.error:
+        data["overall"] = "fail"
+    write("spec_drift_summary.json", {**data, **command_evidence("spec_drift", result)})
 
 
-def _backfill_task_report_tests() -> None:
+def _backfill_task_report_tests(*, include_full: bool = True) -> None:
     """Backfill tests_passed / tests_failed from test_summary.json into task_report."""
     tr_path = ART / "task_report.json"
     ts_path = ART / "test_summary.json"
@@ -425,25 +494,27 @@ def _backfill_task_report_tests() -> None:
         status = info.get("status", "")
         if status == "pass":
             passed.append(name)
-        elif status in ("fail", "error"):
+        else:
             failed.append(name)
+    if not ts.get("suites"):
+        failed.append("required_test_suites")
 
     # Also include semantic invariants
     si_path = ART / "semantic_invariants_summary.json"
-    if si_path.exists():
+    if include_full and si_path.exists():
         si = json.loads(si_path.read_text())
         if si.get("overall") == "pass":
             passed.append("semantic_invariants")
-        elif si.get("overall") == "fail":
+        else:
             failed.append("semantic_invariants")
 
     # Also include replay
     rp_path = ART / "replay_summary.json"
-    if rp_path.exists():
+    if include_full and rp_path.exists():
         rp = json.loads(rp_path.read_text())
         if rp.get("status") == "pass":
             passed.append("replay_simulator")
-        elif rp.get("status") == "fail":
+        else:
             failed.append("replay_simulator")
 
     if passed or failed:
@@ -453,7 +524,7 @@ def _backfill_task_report_tests() -> None:
         print(f"  -> backfilled task_report: {len(passed)} passed, {len(failed)} failed")
 
 
-def gen_quick_test_summary() -> None:
+def gen_quick_test_summary(*, success: bool = True) -> None:
     """Record that quick mode intentionally skips expensive test suites.
 
     Clean CI runners still validate the task-report schema. Without an
@@ -461,47 +532,85 @@ def gen_quick_test_summary() -> None:
     fields and the artifact pack fails after doing the useful snapshot work.
     """
     write("test_summary.json", {
-        "overall": "pass",
+        "overall": "pass" if success else "fail",
         "mode": "quick",
         "suites": {
             "quick_artifact_pack": {
-                "status": "pass",
-                "passed": 1,
-                "failed": 0,
-                "reason": "quick mode generated snapshots and grep assertions; full suites intentionally skipped",
+                "status": "pass" if success else "fail",
+                "passed": 1 if success else 0,
+                "failed": 0 if success else 1,
+                "reason": (
+                    "quick mode generated snapshots and grep assertions; full suites intentionally skipped"
+                    if success else
+                    "quick snapshot or grep checks failed; full suites intentionally skipped"
+                ),
             }
         },
     })
+    for name in ("replay_summary.json", "semantic_invariants_summary.json", "spec_drift_summary.json"):
+        write(name, {
+            "status": "skipped", "overall": "skipped", "mode": "quick",
+            "reason": "intentionally not run in quick mode",
+        })
 
 
 # ── main ──────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    mode = sys.argv[1] if len(sys.argv) > 1 else "full"
+def main(mode: str = "full") -> int:
+    if mode not in ("full", "quick"):
+        print(f"ERROR: unknown artifact mode: {mode}")
+        return 2
     print(f"Generating artifacts (mode={mode})...")
 
     gen_task_report()
-    gen_runtime_snapshot()
     gen_changed_files()
-    gen_grep_assertions()
-
+    stages = [
+        ("runtime_snapshot_summary.json", gen_runtime_snapshot),
+        ("grep_assertions.json", gen_grep_assertions),
+    ]
     if mode == "full":
-        gen_test_summary()
-        gen_replay_summary()
-        gen_semantic_invariants_summary()
-        gen_spec_drift_summary()
-    elif mode == "quick":
+        stages.extend([
+            ("test_summary.json", gen_test_summary),
+            ("replay_summary.json", gen_replay_summary),
+            ("semantic_invariants_summary.json", gen_semantic_invariants_summary),
+            ("spec_drift_summary.json", gen_spec_drift_summary),
+        ])
+    else:
         print("  (skipping test/replay/semantic/drift in quick mode)")
-        gen_quick_test_summary()
+
+    # Finish the remaining evidence even when an earlier required stage fails.
+    errors = []
+    for filename, generate in stages:
+        (ART / filename).unlink(missing_ok=True)
+        try:
+            generate()
+            data = json.loads((ART / filename).read_text())
+            if data.get("overall", data.get("status")) != "pass":
+                errors.append(f"{filename}: required check failed")
+        except Exception as exc:  # noqa: BLE001 -- retain unexpected stage failures and finish the pack
+            write(filename, {"overall": "fail", "status": "fail", "error": str(exc)})
+            errors.append(f"{filename}: {exc}")
+
+    if mode == "quick":
+        gen_quick_test_summary(success=not errors)
 
     # Backfill test results into task_report
-    _backfill_task_report_tests()
+    _backfill_task_report_tests(include_full=mode == "full")
 
-    # Validate task_report completeness — FATAL on errors
-    errors = validate_task_report()
+    errors.extend(validate_task_report())
+    report_path = ART / "task_report.json"
+    report = json.loads(report_path.read_text())
+    report["artifact_pack_status"] = "fail" if errors else "pass"
+    report["artifact_pack_errors"] = errors
+    report_path.write_text(json.dumps(report, indent=2))
     if errors:
-        print(f"\nERROR: task_report.json validation FAILED ({len(errors)} issues):")
+        print(f"\nERROR: artifact pack FAILED ({len(errors)} issues):")
         for e in errors:
             print(f"  - {e}")
-        sys.exit(1)
+        return 1
 
     print("Done.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "full"))

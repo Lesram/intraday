@@ -1,0 +1,9 @@
+{
+  "overall": "pass",
+  "exit_code": 0,
+  "timed_out": false,
+  "error": "",
+  "output_file": "artifacts/runtime_snapshot.log",
+  "output_tail": "Defaults snapshot written to /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/runtime_defaults_snapshot.json\nResolved config snapshot written to /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/resolved_config_snapshot.json\nLive process snapshot written to /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/live_process_runtime_snapshot.json\nLegacy snapshot written to /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/runtime_config_snapshot.json\n",
+  "errors": []
+}
