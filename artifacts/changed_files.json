@@ -1,0 +1,24 @@
+{
+  "scope": "base",
+  "ref": "intra-2.0-phase1...HEAD",
+  "total": 7,
+  "all": [
+    ".github/workflows/artifact-reporting.yml",
+    ".github/workflows/paper-postclose-audit.yml",
+    ".github/workflows/pr-verify.yml",
+    "docs/engineering/ARTIFACT_REPORTING.md",
+    "scripts/ci/generate_artifacts.py",
+    "tests/test_artifact_workflow_contract.py",
+    "tests/test_generate_artifacts.py"
+  ],
+  "backend": [],
+  "organism": [],
+  "tests": [
+    "tests/test_artifact_workflow_contract.py",
+    "tests/test_generate_artifacts.py"
+  ],
+  "config": [],
+  "docs": [
+    "docs/engineering/ARTIFACT_REPORTING.md"
+  ]
+}

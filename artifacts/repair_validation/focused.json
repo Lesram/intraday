@@ -1,0 +1,29 @@
+{
+  "label": "focused",
+  "command": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-readiness-20260919-v0s9vanl/readiness_results/sandbox.sb",
+    "/Users/marselkei/VS/intra/venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--timeout=30",
+    "--tb=short",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/repair_validation/focused.xml",
+    "tests/test_generate_artifacts.py",
+    "tests/test_artifact_workflow_contract.py",
+    "tests/test_artifact_change_scope.py"
+  ],
+  "exit_code": 0,
+  "seconds": 3.76,
+  "log": "/Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/repair_validation/focused.log",
+  "network_denied": true,
+  "live_repo_write_denied": true,
+  "live_env_brain_read_denied": true,
+  "tested_source_sha": "d6c5534be6faa5205852a1ce0f52d5610469f188",
+  "source_provenance": "Final source files match this committed source version."
+}

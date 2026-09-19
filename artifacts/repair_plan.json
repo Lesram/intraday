@@ -1,0 +1,33 @@
+{
+  "task_id": "intra-artifact-reporting-repair-2026-09-19",
+  "objective": "Preserve failures in artifact reports and exit statuses; retain downstream diagnostic artifacts",
+  "source_base": "intra-2.0-phase1@4a8e0e7",
+  "branch": "codex/fix-artifact-reporting",
+  "affected_paths": [
+    "scripts/ci/generate_artifacts.py",
+    "tests/test_generate_artifacts.py",
+    "tests/test_artifact_workflow_contract.py",
+    ".github/workflows/artifact-reporting.yml",
+    ".github/workflows/pr-verify.yml",
+    ".github/workflows/paper-postclose-audit.yml",
+    "docs/engineering/ARTIFACT_REPORTING.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
+    "artifacts: evidence only"
+  ],
+  "unchanged": [
+    "backend",
+    "runtime config",
+    "frozen surface",
+    "paper state",
+    "parked CI trio"
+  ],
+  "validation": [
+    "focused fault-injection tests",
+    "organism/state/safety/sizing/replay regressions through isolated full pack",
+    "workflow consumer checks",
+    "freeze comparison before/after",
+    "independent review"
+  ],
+  "user_changes_preserved": "Original checkout left untouched, including .claude settings and regenerated audit artifacts",
+  "pull_request": "https://github.com/Lesram/intraday/pull/11"
+}

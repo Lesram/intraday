@@ -1,0 +1,11 @@
+Generating artifacts (mode=full)...
+  -> /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/task_report.json
+  -> /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/changed_files.json
+  -> /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/runtime_snapshot_summary.json
+  -> /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/grep_assertions.json
+  -> /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/test_summary.json
+  -> /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/replay_summary.json
+  -> /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/semantic_invariants_summary.json
+  -> /Users/marselkei/.codex/worktrees/intra-artifact-reporting/intra/artifacts/spec_drift_summary.json
+  -> backfilled task_report: 8 passed, 0 failed
+Done.
