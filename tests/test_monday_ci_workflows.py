@@ -220,3 +220,15 @@ def test_scheduled_validation_uses_same_safe_environment_as_readiness(name, job_
                 "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH", "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH"):
         assert key in setup
     assert any("pip install -r requirements.lock" in step.get("run", "") for step in job["steps"])
+
+
+def test_readiness_runs_latest_data_and_prefill_regressions():
+    job = _load("paper-readiness.yml")["jobs"]["operational-safety"]
+    step = next(step for step in job["steps"]
+                if step.get("name") == "Verify operational fixes and trading safety")
+    for path in ("tests/unit/test_alpaca_data_comprehensive.py",
+                 "tests/unit/test_streaming_data_provider.py",
+                 "tests/unit/test_paper_data_freshness.py"):
+        assert path in step["run"]
+    assert step["timeout-minutes"] == 5
+    assert "set -o pipefail" in step["run"]

@@ -18,7 +18,7 @@ from backend.organism.streaming_data_provider import StreamingDataProvider
 def _make_bars_df(n: int = 5) -> pd.DataFrame:
     """Return a small OHLCV DataFrame for testing."""
     return pd.DataFrame({
-        "timestamp": pd.date_range("2024-01-01", periods=n, freq="min"),
+        "timestamp": pd.date_range(end=pd.Timestamp.now(tz="UTC").floor("min"), periods=n, freq="min"),
         "open": [100.0 + i for i in range(n)],
         "high": [101.0 + i for i in range(n)],
         "low": [99.0 + i for i in range(n)],
@@ -238,7 +238,7 @@ class TestStreamingBarsAppendAfterPrefill:
 
         # Simulate a streaming bar arriving
         await provider._on_bar("AAPL", {
-            "timestamp": "2024-01-01T01:00:00Z",
+            "timestamp": pd.Timestamp.now(tz="UTC").isoformat(),
             "open": 200.0,
             "high": 201.0,
             "low": 199.0,

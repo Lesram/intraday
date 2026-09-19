@@ -78,6 +78,9 @@ jobs:
             tests/test_paper_watchdog.py \
             tests/test_paper_backup_recovery.py \
             tests/test_paper_fill_reconciliation.py \
+            tests/unit/test_alpaca_data_comprehensive.py \
+            tests/unit/test_streaming_data_provider.py \
+            tests/unit/test_paper_data_freshness.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
             2>&1 | tee artifacts/monday_readiness/github_operational.log
       - name: Verify unchanged frozen decision surface

@@ -1,0 +1,26 @@
+{
+  "task_id": "paper-data-freshness-2026-09-19",
+  "status": "proposal_only",
+  "base": "d7c3c6c047d97a4f925c7b66c7f121e3ee10cd4d",
+  "scope": "Correct latest historical bar selection and honest prefill event freshness without changing frozen functions, feed, settings, live deployment, or corpus.",
+  "affected_files": [
+    "backend/integrations/alpaca_data.py",
+    "backend/organism/streaming_data_provider.py",
+    "tests/unit/test_alpaca_data_comprehensive.py",
+    "tests/unit/test_streaming_data_provider.py",
+    "tests/unit/test_paper_data_freshness.py",
+    "reports/PAPER_DATA_FRESHNESS_PROPOSAL_2026-09-19.md",
+    ".github/workflows/paper-readiness.yml",
+    "tests/test_monday_ci_workflows.py"
+  ],
+  "steps": [
+    "Shared descending historical retrieval with UTC window, pagination, timestamp validation and chronological output.",
+    "Historical prefill freshness uses newest event time and preserves concurrent newer streaming bars.",
+    "Deterministic multi-page/current-session/stale-prefill/invalid-timestamp tests; retain behavior assertions and update obsolete query contracts/fixtures.",
+    "Add the three data/streaming unit files to existing bounded hosted operational validation; run workflow contract tests and lint.",
+    "Focused, organism/state/exits/sizing/replay and order/reconciliation regressions under network/live-state denial.",
+    "Full artifact pack, audit index and read-only frozen-surface verification.",
+    "Independent review and draft PR; root owns merge/deployment/cohort approval."
+  ],
+  "activation_requires": "Explicit approval of data-input correction and prospective cohort treatment; hash PASS does not establish input-semantic equivalence."
+}
