@@ -15,6 +15,8 @@ env:
 jobs:
   collect-and-audit:
     runs-on: ubuntu-latest
+    # Keep time for dependency setup and reporting after a failed full pack.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,20 +32,25 @@ jobs:
           pip install pytest pytest-asyncio pytest-timeout
 
       - name: Generate full artifact pack
+        timeout-minutes: 25
         run: python scripts/ci/generate_artifacts.py full
 
       - name: Generate audit index
+        if: always()
         run: python scripts/ci/generate_audit_index.py
 
       - name: Generate Phase 8 evidence warehouse and replay queue
+        if: always()
         run: python scripts/ci/run_phase8_postclose_evidence.py
 
       - name: Check KPI thresholds and open issue if breached
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/ci/check_kpi_thresholds.py
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: postclose-artifacts
           path: |

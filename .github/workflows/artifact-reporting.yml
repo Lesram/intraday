@@ -1,0 +1,60 @@
+name: artifact-reporting
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/artifact-reporting.yml'
+      - '.github/workflows/pr-verify.yml'
+      - '.github/workflows/paper-postclose-audit.yml'
+      - 'scripts/ci/generate_artifacts.py'
+      - 'scripts/ci/change_scope.py'
+      - 'scripts/ci/generate_audit_index.py'
+      - 'requirements.lock'
+      - 'tests/test_generate_artifacts.py'
+      - 'tests/test_artifact_workflow_contract.py'
+      - 'tests/test_artifact_change_scope.py'
+
+permissions:
+  contents: read
+
+jobs:
+  focused-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      USE_MOCK_BROKER: 'true'
+      USE_MOCK_DATA: 'true'
+      APP_ENVIRONMENT: testing
+      ENVIRONMENT: testing
+      TRADING_EXECUTION_MODE: shadow
+      DATABASE_URL: 'sqlite+aiosqlite:///:memory:'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install focused test dependencies
+        timeout-minutes: 3
+        # Match requirements.lock; these tests do not import the platform.
+        run: python -m pip install pytest==9.0.2 pytest-timeout==2.4.0 PyYAML==6.0.3
+      - name: Test artifact failure reporting and workflow contracts
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/artifact-reporting
+          python -m pytest --noconftest -o addopts= -q \
+            -p pytest_timeout --timeout=30 \
+            tests/test_generate_artifacts.py \
+            tests/test_artifact_workflow_contract.py \
+            tests/test_artifact_change_scope.py \
+            --junitxml=artifacts/artifact-reporting/junit.xml \
+            2>&1 | tee artifacts/artifact-reporting/pytest.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        timeout-minutes: 2
+        with:
+          name: artifact-reporting-results
+          path: artifacts/artifact-reporting/
