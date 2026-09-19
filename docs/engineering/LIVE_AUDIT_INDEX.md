@@ -1,11 +1,15 @@
 # Live Audit Index
 
-Generated: 2026-05-26T22:21:16Z
+> Current resumption audit: [September 19 readiness report](../../reports/RESUMPTION_READINESS_AUDIT_2026-09-19.md). This index was generated at audited source SHA 4a8e0e7; the subsequent commit contains reports/evidence only. The report supersedes the historical-report auto-selection below for resumption decisions.
+>
+> Open risks: scheduled checks run stale main; runtime alert delivery is unconfigured; historical collection gaps; replay artifact false-pass defect; application login unavailable; shadow/ledger and cost-protocol differences; no enforced branch gates; insufficient forward evidence. Live container source/configuration freeze comparison passes, but protected in-memory API status is unavailable.
+
+Generated: 2026-09-19T17:43:52Z
 PR: n/a
-SHA: `04f21200d4`
-Branch: `codex/phase9d-portfolio-construction`
+SHA: `4a8e0e713d`
+Branch: `codex/resumption-readiness-2026-09-19`
 Scope: **tooling/evidence_only**
-Change scope: `working-tree` (`HEAD+working-tree`)
+Change scope: `range` (`--cached`)
 
 ## Changed files
 
@@ -16,7 +20,7 @@ Change scope: `working-tree` (`HEAD+working-tree`)
 | Scripts | 0 | none |
 | CI | 0 | none |
 | Tests | 0 | none |
-| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Docs | 0 | none |
 
 ## Live constants
 
@@ -30,12 +34,12 @@ Source: `resolved_config_snapshot.json`
   "learning_mode_threshold": 200,
   "evolution_freeze": 300,
   "horizon_timeout_bars": 18,
-  "drawdown_kill_pct": 0.2,
+  "drawdown_kill_pct": 0.1,
   "exploration_enabled": false,
   "bar_boundary_entry_only": true,
-  "candidate_filter_shadow_telemetry_enabled": true,
+  "candidate_filter_shadow_telemetry_enabled": false,
   "strategy_evidence_telemetry_enabled": true,
-  "phase9_shadow_engines_enabled": true
+  "phase9_shadow_engines_enabled": false
 }
 ```
 

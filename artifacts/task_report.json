@@ -1,0 +1,116 @@
+{
+  "task_id": "intra-resumption-readiness-2026-09-19",
+  "summary": "Audit integration, permissions, development/test readiness, GitHub oversight, paper runtime access and current forward evidence; preserve frozen decision surface. Ready for supervised research; unattended readiness has documented gaps.",
+  "sha": "4a8e0e713d8fd0b2e0b87b077d616f4773304d0f",
+  "sha_scope": "Audited and tested source commit. Report-only commit created after evidence collection.",
+  "branch": "codex/resumption-readiness-2026-09-19",
+  "files_changed": [
+    "artifacts/changed_files.json",
+    "artifacts/grep_assertions.json",
+    "artifacts/replay_summary.json",
+    "artifacts/resumption_readiness_2026-09-19/artifact_pack_audit.json",
+    "artifacts/resumption_readiness_2026-09-19/audit_plan.json",
+    "artifacts/resumption_readiness_2026-09-19/dependency_audit.json",
+    "artifacts/resumption_readiness_2026-09-19/development_readiness.json",
+    "artifacts/resumption_readiness_2026-09-19/freeze_verification.json",
+    "artifacts/resumption_readiness_2026-09-19/generator_failure_probe.json",
+    "artifacts/resumption_readiness_2026-09-19/github_access.json",
+    "artifacts/resumption_readiness_2026-09-19/grep_assertions.json",
+    "artifacts/resumption_readiness_2026-09-19/replay_summary.json",
+    "artifacts/resumption_readiness_2026-09-19/runtime_access.json",
+    "artifacts/resumption_readiness_2026-09-19/sandbox.sb",
+    "artifacts/resumption_readiness_2026-09-19/semantic_invariants_summary.json",
+    "artifacts/resumption_readiness_2026-09-19/spec_drift_summary.json",
+    "artifacts/resumption_readiness_2026-09-19/strategy_evidence.json",
+    "artifacts/resumption_readiness_2026-09-19/summary.json",
+    "artifacts/resumption_readiness_2026-09-19/test_summary.json",
+    "artifacts/runtime_config_snapshot.json",
+    "artifacts/semantic_invariants_summary.json",
+    "artifacts/spec_drift_summary.json",
+    "artifacts/task_report.json",
+    "artifacts/test_summary.json",
+    "reports/RESUMPTION_READINESS_AUDIT_2026-09-19.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md"
+  ],
+  "commands": [
+    "git status --short --branch; git ls-remote origin",
+    "gh auth status; repository/PR/workflow/security metadata reads",
+    "isolated pytest across 13 requested files (12 runnable, one no-tests)",
+    "isolated frontend TypeScript checks, production build and Vitest",
+    "isolated python scripts/ci/generate_artifacts.py full",
+    "python scripts/ci/generate_audit_index.py",
+    "venv/bin/python scripts/runtime/write_runtime_snapshot.py",
+    "venv/bin/python scripts/ci/check_spec_drift.py --json",
+    "venv/bin/python scripts/phase2_freeze.py --verify with local dotenv loaded",
+    "running-image compute_surface compared to original freeze, read-only",
+    "paper broker/account/positions/orders/clock/IEX HTTP GETs",
+    "PostgreSQL read-only transaction and Redis authenticated PING"
+  ],
+  "tests_passed": [
+    "organism_live_engine",
+    "organism_engine_scenarios",
+    "multi_tick_state",
+    "safety_invariants",
+    "replay_simulator",
+    "self_evolution",
+    "algorithm_improvements",
+    "order_integrity_comprehensive",
+    "position_reconciliation_comprehensive",
+    "settings_comprehensive",
+    "config_coordinator_comprehensive",
+    "system_integration",
+    "frontend134",
+    "frontend_types",
+    "frontend_build",
+    "semantic_invariants20",
+    "grep_assertions",
+    "spec_drift",
+    "local_and_running_freeze"
+  ],
+  "tests_failed": [],
+  "verification_gaps": [
+    {
+      "suite": "position_reconciliation",
+      "exit_code": 5,
+      "reason": "Legacy standalone script collects zero pytest tests"
+    }
+  ],
+  "test_counts": {
+    "direct_backend_passed": 313,
+    "frontend_passed": 134,
+    "additional_semantic_passed": 20,
+    "failed_assertions": 0
+  },
+  "runtime_behavior_changed": false,
+  "docs_updated": [
+    "reports/RESUMPTION_READINESS_AUDIT_2026-09-19.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md"
+  ],
+  "risks": [
+    "Scheduled monitoring runs stale main and fails or times out before reporting",
+    "Runtime alert channel absent and historical collection gaps observed",
+    "Artifact generator can falsely report failed replay as pass",
+    "Protected application API credentials unavailable; Claude Code signed out",
+    "Shadow and trade ledger use differing price/quantity semantics; cost protocol mismatch",
+    "No branch protections; existing PR9 lacks independent review",
+    "PostgreSQL backup/restore freshness unverified; latest local backup observed May2",
+    "Historical secret-scanning alert unresolved, validity unknown",
+    "Formal strategy gate insufficient at24/60; no demonstrated edge"
+  ],
+  "follow_ups": [
+    "Restore reliable scheduled evidence and alert delivery",
+    "Complete local application authentication and implementation-tool login if needed",
+    "Reconcile broker fills, shadow semantics, count discrepancy and cost protocol",
+    "Verify backup recovery and historical runtime availability",
+    "Plan one preregistered ORB research experiment within frozen regime"
+  ],
+  "artifact_provenance": {
+    "tests": "OS-isolated archive of audited source, real credentials and brain inaccessible",
+    "runtime_config_snapshot": "Separate local generation using observed live container configuration; protected process-memory status unavailable",
+    "raw_direct_results": "artifacts/resumption_readiness_2026-09-19/summary.json",
+    "generator_failure_probe": "artifacts/resumption_readiness_2026-09-19/generator_failure_probe.json"
+  },
+  "preserved_user_changes": [
+    ".claude/settings.local.json"
+  ]
+}

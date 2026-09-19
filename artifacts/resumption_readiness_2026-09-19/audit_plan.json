@@ -1,0 +1,22 @@
+{
+  "task_id": "intra-resumption-readiness-2026-09-19",
+  "type": "read_only_platform_audit_with_report_artifacts",
+  "source_sha": "4a8e0e713d8fd0b2e0b87b077d616f4773304d0f",
+  "branch": "codex/resumption-readiness-2026-09-19",
+  "scope": [
+    "local integration and toolchain",
+    "GitHub permissions and CI",
+    "paper runtime and data access",
+    "current forward and shadow evidence",
+    "document blockers and ordered resumption plan"
+  ],
+  "runtime_behavior_changed": false,
+  "planned_changes": [
+    "reports/RESUMPTION_READINESS_AUDIT_2026-09-19.md",
+    "artifacts/resumption_readiness_2026-09-19/",
+    "artifacts/task_report.json",
+    "docs/engineering/LIVE_AUDIT_INDEX.md"
+  ],
+  "preserved_user_change": ".claude/settings.local.json",
+  "platform_mutations_performed": []
+}

@@ -1,0 +1,513 @@
+{
+  "task_id": "intra-resumption-readiness-2026-09-19-strategy-evidence",
+  "generated_at": "2026-09-19T17:42:17.920304+00:00",
+  "scope": "Read-only historical research and current local evidence audit; only this /tmp output was written; no platform imports, broker/network calls or repository modifications.",
+  "freeze": {
+    "frozen_at": "2026-07-07T20:36:49.008305+00:00",
+    "artifact": "artifacts/phase2/param_freeze.json",
+    "hash_verification": "root agent responsibility; no inference from artifact timestamp alone"
+  },
+  "sources": {
+    "authoritative_handoff": "reports/RESEARCH_BRIEF_001_2026-07-29.md",
+    "closeout": "reports/OPS_WORKORDER_COMPLETION_2026-07-23.md",
+    "contract": "AGENTS.md",
+    "gate": "backend/organism/phase2_gate.py",
+    "cost_model": "backend/organism/costing.py",
+    "trade_ledger": "organism_brain/trade_history.csv",
+    "shadow": "organism_brain/shadow_exit_telemetry.jsonl",
+    "shadow_pricing_implementation": "backend/organism/experimental/shadow_exit.py:187-228"
+  },
+  "current_forward": {
+    "n": 27,
+    "sessions_with_closes": 7,
+    "gross_recorded_pnl": 84.922414,
+    "modeled_net_3bps_round_trip": 69.904105,
+    "sensitivity_net_6bps_round_trip": 54.885796,
+    "price_source_counts": {
+      "db_fill": 27
+    },
+    "first_close": "2026-07-27T14:53:23.911314+00:00",
+    "last_close": "2026-09-17T17:04:18.537395+00:00",
+    "by_day": {
+      "2026-07-27": {
+        "n": 1,
+        "sessions_with_closes": 1,
+        "gross_recorded_pnl": -2.95,
+        "modeled_net_3bps_round_trip": -3.544012,
+        "sensitivity_net_6bps_round_trip": -4.138024,
+        "price_source_counts": {
+          "db_fill": 1
+        }
+      },
+      "2026-07-30": {
+        "n": 6,
+        "sessions_with_closes": 1,
+        "gross_recorded_pnl": -11.62,
+        "modeled_net_3bps_round_trip": -14.887792,
+        "sensitivity_net_6bps_round_trip": -18.155584,
+        "price_source_counts": {
+          "db_fill": 6
+        }
+      },
+      "2026-07-31": {
+        "n": 2,
+        "sessions_with_closes": 1,
+        "gross_recorded_pnl": 7.430002,
+        "modeled_net_3bps_round_trip": 6.270073,
+        "sensitivity_net_6bps_round_trip": 5.110144,
+        "price_source_counts": {
+          "db_fill": 2
+        }
+      },
+      "2026-08-03": {
+        "n": 8,
+        "sessions_with_closes": 1,
+        "gross_recorded_pnl": 107.363332,
+        "modeled_net_3bps_round_trip": 102.891103,
+        "sensitivity_net_6bps_round_trip": 98.418874,
+        "price_source_counts": {
+          "db_fill": 8
+        }
+      },
+      "2026-08-04": {
+        "n": 5,
+        "sessions_with_closes": 1,
+        "gross_recorded_pnl": 1.879088,
+        "modeled_net_3bps_round_trip": -0.966973,
+        "sensitivity_net_6bps_round_trip": -3.813034,
+        "price_source_counts": {
+          "db_fill": 5
+        }
+      },
+      "2026-09-16": {
+        "n": 2,
+        "sessions_with_closes": 1,
+        "gross_recorded_pnl": -17.87,
+        "modeled_net_3bps_round_trip": -18.822914,
+        "sensitivity_net_6bps_round_trip": -19.775828,
+        "price_source_counts": {
+          "db_fill": 2
+        }
+      },
+      "2026-09-17": {
+        "n": 3,
+        "sessions_with_closes": 1,
+        "gross_recorded_pnl": 0.689992,
+        "modeled_net_3bps_round_trip": -1.03538,
+        "sensitivity_net_6bps_round_trip": -2.760752,
+        "price_source_counts": {
+          "db_fill": 3
+        }
+      }
+    },
+    "entry_source_counts": {
+      "alpha+breakout": 20,
+      "alpha": 7
+    },
+    "regime_counts": {
+      "trending_up": 15,
+      "high_vol": 9,
+      "low_vol": 3
+    },
+    "exploration_rows": 0,
+    "reconciliation_artifact_rows": 0,
+    "duplicate_symbol_close_identities": 0,
+    "evidence_limit": "Local records all labeled db_fill; independent broker reconciliation belongs to root."
+  },
+  "momentum_verdict": {
+    "n": 24,
+    "sessions_with_closes": 6,
+    "gross_recorded_pnl": 84.232422,
+    "modeled_net_3bps_round_trip": 70.939485,
+    "sensitivity_net_6bps_round_trip": 57.646548,
+    "price_source_counts": {
+      "db_fill": 24
+    },
+    "state_inferred_from_gate_threshold": "INSUFFICIENT",
+    "first_look_n": 60,
+    "final_look_n": 120,
+    "t_statistic": null,
+    "t_statistic_computed": false,
+    "other_strategy_slice_n": {
+      "breakout": 0,
+      "mean_reversion": 0,
+      "orb": 0
+    }
+  },
+  "cost_protocol": {
+    "runtime_cost_bps": 3.0,
+    "runtime_confirmation": "Root independently confirmed current running ORGANISM_COST_BPS=3.0.",
+    "helper_unit": "basis points round trip",
+    "research_brief_unit": "minimum 3 basis points per side",
+    "caveat": "Protocol discrepancy must be explicit before promotion; displayed net is modeled, not an independent broker fee reconciliation."
+  },
+  "ledger_state": {
+    "csv_rows": 610,
+    "valid_closed_at_rows": 468,
+    "manifest_total_trades": 609,
+    "ledger_pnl_sum": -588.389243,
+    "manifest_cumulative_pnl": -588.39,
+    "manifest_saved_at": "2026-09-19T17:00:22.294372+00:00",
+    "generation": 389,
+    "caveat": "One-record count difference (610 CSV versus609 manifest); PnL reconciles to displayed cents; cause not established."
+  },
+  "shadow": {
+    "rows_total": 27,
+    "forward_rows": 26,
+    "forward_triggered": 8,
+    "forward_delta_gross": -1.1511,
+    "all_rows_delta_gross": -1.6761,
+    "post_freeze_ledger_rows_matched_once_within_5_seconds": 26,
+    "unmatched": [
+      {
+        "symbol": "SH",
+        "closed_at": "2026-07-27T14:53:23.911314+00:00",
+        "pnl": "-2.95"
+      }
+    ],
+    "unmatched_explanation": "July27 SH is documented pre-fix omission; all26 closes after July29 activation have exactly one row.",
+    "quantity_differences_vs_ledger": 5,
+    "pnl_differences_strictly_over_2_cents": 24,
+    "examples": [
+      {
+        "symbol": "CAT",
+        "ledger_line": 594,
+        "shadow_line": 10,
+        "ledger_pnl": 22.02,
+        "shadow_real_pnl_gross": -3.37
+      },
+      {
+        "symbol": "CRM",
+        "ledger_line": 603,
+        "shadow_line": 19,
+        "ledger_pnl": -4.3,
+        "shadow_real_pnl_gross": 0.75
+      }
+    ],
+    "interpretation": "No current positive cumulative exit advantage. Shadow real PnL uses last observed quote and stored quantity, not broker fill; audit comparability and partial exits before treating it as promotion evidence."
+  },
+  "operations": {
+    "application_log_files_inspected": [
+      {
+        "path": "logs/application.log",
+        "first_timestamp": "2026-09-16T18:37:02",
+        "last_timestamp": "2026-09-19T17:31:25",
+        "timestamped_lines": 20565
+      },
+      {
+        "path": "logs/application.log.1",
+        "first_timestamp": "2026-08-10T17:18:29",
+        "last_timestamp": "2026-09-16T18:37:01",
+        "timestamped_lines": 135385
+      },
+      {
+        "path": "logs/application.log.2",
+        "first_timestamp": "2026-07-31T17:11:48",
+        "last_timestamp": "2026-08-10T17:18:29",
+        "timestamped_lines": 132497
+      },
+      {
+        "path": "logs/application.log.3",
+        "first_timestamp": "2026-07-07T18:08:06",
+        "last_timestamp": "2026-07-31T17:11:48",
+        "timestamped_lines": 133265
+      },
+      {
+        "path": "logs/application.log.4",
+        "first_timestamp": "2026-06-16T16:49:11",
+        "last_timestamp": "2026-07-07T18:08:06",
+        "timestamped_lines": 136686
+      },
+      {
+        "path": "logs/application.log.5",
+        "first_timestamp": "2026-05-27T19:23:56",
+        "last_timestamp": "2026-06-16T16:49:11",
+        "timestamped_lines": 128910
+      }
+    ],
+    "dated_application_log_line_counts": {
+      "2026-07-06": 113,
+      "2026-07-07": 20196,
+      "2026-07-08": 5040,
+      "2026-07-09": 235,
+      "2026-07-23": 10499,
+      "2026-07-24": 18003,
+      "2026-07-25": 576,
+      "2026-07-26": 586,
+      "2026-07-27": 24863,
+      "2026-07-28": 23172,
+      "2026-07-29": 15807,
+      "2026-07-30": 17892,
+      "2026-07-31": 19674,
+      "2026-08-01": 586,
+      "2026-08-02": 586,
+      "2026-08-03": 25469,
+      "2026-08-04": 24341,
+      "2026-08-05": 20157,
+      "2026-08-06": 21525,
+      "2026-08-07": 19193,
+      "2026-08-08": 599,
+      "2026-08-09": 576,
+      "2026-08-10": 18760,
+      "2026-08-11": 23483,
+      "2026-08-12": 31369,
+      "2026-08-13": 26749,
+      "2026-08-14": 27268,
+      "2026-08-15": 642,
+      "2026-08-16": 464,
+      "2026-08-17": 992,
+      "2026-09-16": 19603,
+      "2026-09-17": 16789,
+      "2026-09-18": 130,
+      "2026-09-19": 414
+    },
+    "logging_gaps_over_8_hours": [
+      {
+        "last_observed_at_utc": "2026-07-09T08:57:12Z",
+        "next_observed_at_utc": "2026-07-23T15:46:48Z",
+        "hours_without_retained_application_log": 342.83,
+        "before_source": {
+          "path": "logs/application.log.3",
+          "line": 10945
+        },
+        "after_source": {
+          "path": "logs/application.log.3",
+          "line": 10946
+        },
+        "classification": "observed_logging_gap; exact process or host downtime not established"
+      },
+      {
+        "last_observed_at_utc": "2026-08-17T17:55:07Z",
+        "next_observed_at_utc": "2026-09-16T02:41:23Z",
+        "hours_without_retained_application_log": 704.77,
+        "before_source": {
+          "path": "logs/application.log.1",
+          "line": 119024
+        },
+        "after_source": {
+          "path": "logs/application.log.1",
+          "line": 119025
+        },
+        "classification": "observed_logging_gap; exact process or host downtime not established"
+      },
+      {
+        "last_observed_at_utc": "2026-09-18T04:36:16Z",
+        "next_observed_at_utc": "2026-09-19T16:59:29Z",
+        "hours_without_retained_application_log": 36.39,
+        "before_source": {
+          "path": "logs/application.log",
+          "line": 20151
+        },
+        "after_source": {
+          "path": "logs/application.log",
+          "line": 20152
+        },
+        "classification": "observed_logging_gap; exact process or host downtime not established"
+      }
+    ],
+    "daily_alert_no_channels_counts": {
+      "2026-08-11": 229,
+      "2026-08-12": 1517,
+      "2026-08-13": 1517,
+      "2026-08-14": 1515,
+      "2026-08-17": 15,
+      "2026-09-16": 873
+    },
+    "daily_c1_watchdog_counts": {
+      "2026-07-28": 531,
+      "2026-08-05": 108,
+      "2026-08-06": 1511,
+      "2026-08-10": 875,
+      "2026-08-11": 1514,
+      "2026-08-12": 1517,
+      "2026-08-13": 1517,
+      "2026-08-14": 1515,
+      "2026-08-17": 15,
+      "2026-09-16": 873
+    },
+    "daily_reconnect_related_lines": {
+      "2026-07-06": 3,
+      "2026-07-07": 8,
+      "2026-07-08": 451,
+      "2026-07-09": 6,
+      "2026-07-23": 11,
+      "2026-07-26": 3,
+      "2026-07-28": 3,
+      "2026-07-29": 28,
+      "2026-07-30": 5,
+      "2026-08-01": 4,
+      "2026-08-02": 4,
+      "2026-08-05": 12,
+      "2026-08-06": 4,
+      "2026-08-07": 7,
+      "2026-08-08": 7,
+      "2026-08-10": 3,
+      "2026-08-15": 178,
+      "2026-08-16": 178,
+      "2026-08-17": 134,
+      "2026-09-16": 84,
+      "2026-09-17": 64,
+      "2026-09-18": 16,
+      "2026-09-19": 11
+    },
+    "max_reported_session_reconnects_by_day": {
+      "2026-07-08": 70,
+      "2026-07-09": 71,
+      "2026-08-01": 11,
+      "2026-08-02": 12,
+      "2026-08-05": 14,
+      "2026-08-15": 42,
+      "2026-08-16": 88,
+      "2026-08-17": 122,
+      "2026-09-16": 140,
+      "2026-09-17": 154,
+      "2026-09-18": 158
+    },
+    "archives_currently_retained": [
+      {
+        "archive_date": "2026-09-15",
+        "manifest_saved_at": "2026-08-14T20:00:19.771677+00:00",
+        "total_trades": 604,
+        "cumulative_pnl": -571.21,
+        "save_complete": "2026-08-14T19:03:13.668494+00:00"
+      },
+      {
+        "archive_date": "2026-09-16",
+        "manifest_saved_at": "2026-09-16T19:56:24.579996+00:00",
+        "total_trades": 606,
+        "cumulative_pnl": -589.08,
+        "save_complete": "2026-09-16T19:30:14.517733+00:00"
+      },
+      {
+        "archive_date": "2026-09-17",
+        "manifest_saved_at": "2026-09-17T19:58:18.083422+00:00",
+        "total_trades": 609,
+        "cumulative_pnl": -588.39,
+        "save_complete": "2026-09-17T19:37:16.897575+00:00"
+      }
+    ],
+    "backup_log_success_dates_since_august": [
+      {
+        "date": "2026-08-01",
+        "line": 188
+      },
+      {
+        "date": "2026-08-02",
+        "line": 189
+      },
+      {
+        "date": "2026-08-03",
+        "line": 190
+      },
+      {
+        "date": "2026-08-04",
+        "line": 191
+      },
+      {
+        "date": "2026-08-05",
+        "line": 192
+      },
+      {
+        "date": "2026-08-06",
+        "line": 193
+      },
+      {
+        "date": "2026-08-07",
+        "line": 196
+      },
+      {
+        "date": "2026-08-08",
+        "line": 199
+      },
+      {
+        "date": "2026-08-09",
+        "line": 202
+      },
+      {
+        "date": "2026-08-10",
+        "line": 205
+      },
+      {
+        "date": "2026-08-11",
+        "line": 208
+      },
+      {
+        "date": "2026-08-12",
+        "line": 211
+      },
+      {
+        "date": "2026-08-13",
+        "line": 214
+      },
+      {
+        "date": "2026-08-14",
+        "line": 215
+      },
+      {
+        "date": "2026-08-15",
+        "line": 216
+      },
+      {
+        "date": "2026-08-16",
+        "line": 217
+      },
+      {
+        "date": "2026-09-15",
+        "line": 218
+      },
+      {
+        "date": "2026-09-16",
+        "line": 244
+      },
+      {
+        "date": "2026-09-17",
+        "line": 247
+      }
+    ],
+    "paper_boot_log_observed_successes": [
+      "2026-08-07T00:02:02Z",
+      "2026-09-19T17:00:08Z"
+    ],
+    "paper_boot_log_action": "Both successful runs recreate and start intra-api-1; exact cause of launch not inferred.",
+    "gap_assessment": "Aug17 17:55Z to Sep16 02:41Z absence is corroborated by Sep15 backup containing stale Aug14 brain state and archive log stopping Aug16/resuming Sep15. Consistent with evidence-collection interruption; exact host/process downtime or cause not proven. Sep18 04:36Z to Sep19 16:59Z gap includes full Sep18 US regular session; Sept18 records are all before04:37Z.",
+    "distinguish_no_trades": "No forward closes Aug5-Sep15 alone cannot prove downtime; logs show active days Aug5-Aug14 without fills.",
+    "alert_delivery": "Root confirmed no configured alert destination key names; local records independently contain ALERT-NO-CHANNELS."
+  },
+  "historical_vs_current": {
+    "july_report_forward_n": 1,
+    "current_forward_n": 27,
+    "july_report_last_session": "2026-07-28",
+    "latest_current_close": "2026-09-17T17:04:18.537395+00:00",
+    "july_report_forward_rate_per_session": 0.25,
+    "rate_caveat": "Historical four-session rate and one-year forecast are obsolete; recompute with complete-session runtime coverage before forecasting."
+  },
+  "resumption_sequence": [
+    "Validate runtime and broker reconciliation, freeze, uptime coverage and alert delivery.",
+    "Isolate explicit shadow telemetry path for tests; July report records contamination despite scratch brain directory.",
+    "Publish updated evidence and operational gap report; reconcile cost protocol and shadow quote-based pricing qualification.",
+    "Preserve frozen trend strategy while preparing one preregistered research memo; prior next candidate was wide-universe ORB.",
+    "Verify current data entitlements and corpus coverage before a feed/subscription decision.",
+    "Explicit owner sign-off precedes any frozen-surface change/reset; reset now affects27 forward closes including24 eligible trend trades."
+  ],
+  "historical_research_status": {
+    "last_brief_date": "2026-07-29",
+    "next_candidate": "ORB at proper scale",
+    "rejected_families_historical": [
+      "plain mean reversion",
+      "residual mean reversion",
+      "confidence-sized entries versus flat",
+      "ML prediction",
+      "pyramiding"
+    ],
+    "unproven_candidates": [
+      "trend momentum plus breakout",
+      "retracement exits",
+      "ORB"
+    ],
+    "not_rerun_in_this_audit": true,
+    "scripts_research_files": [
+      "README.md"
+    ],
+    "r4_disclosure_memo": "Not found in inspected reports/docs/research paths."
+  }
+}
