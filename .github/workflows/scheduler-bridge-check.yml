@@ -7,6 +7,7 @@ on:
       - '.github/workflows/paper-postclose-audit.yml'
       - '.github/workflows/nightly.yml'
       - '.github/workflows/scheduler-bridge-check.yml'
+      - '.github/workflows/staging.yml'
   workflow_dispatch:
 
 permissions:
@@ -47,6 +48,7 @@ jobs:
         timeout-minutes: 2
         env:
           GH_TOKEN: ${{ github.token }}
+          BRIDGE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
         run: |
           python - <<'PY'
           import base64, json, os, pathlib, re, subprocess
@@ -83,25 +85,50 @@ jobs:
                   results.append({'workflow': name, 'status': 'fail'})
           if len(sources) != 1:
               errors.append('both bridges must use the same source SHA')
+          staging_diagnostics = {}
+          try:
+              path = '.github/workflows/staging.yml'
+              staging = yaml.safe_load((root / path).read_text())
+              events = staging.get('on', staging.get(True))
+              ignored = {'.github/workflows/' + name for name in names} | {path, '.github/workflows/scheduler-bridge-check.yml'}
+              assert events['push']['branches'] == ['main'], 'staging branch drift'
+              assert set(events['push']['paths-ignore']) == ignored, 'staging must exclude exactly the four bridge paths'
+              assert all(name not in ignored for name in ('backend/main.py', 'Dockerfile', 'requirements.txt', 'docker-compose.yml')), 'runtime pushes must remain eligible'
+              assert events['pull_request'] == {'branches': ['main'], 'types': ['labeled']}, 'explicit label trigger changed'
+              assert 'workflow_dispatch' in events, 'manual staging dispatch removed'
+              baseline_sha = os.environ['BRIDGE_BASE_SHA']
+              assert re.fullmatch(r'[0-9a-f]{40}', baseline_sha), 'invalid comparison base'
+              baseline = subprocess.check_output(['git', 'show', f'{baseline_sha}:{path}'], text=True, timeout=30)
+              lint = [str(pathlib.Path(os.environ['RUNNER_TEMP']) / 'actionlint'), '-shellcheck=', '-pyflakes=', '-format', '{' + '{json .}' + '}', '-']
+              for name, content in [('base', baseline), ('candidate', (root / path).read_text())]:
+                  checked = subprocess.run(lint, input=content, text=True, capture_output=True, timeout=30)
+                  assert checked.returncode in (0, 1), checked.stderr
+                  staging_diagnostics[name] = json.loads(checked.stdout or '[]')
+              def signatures(items):
+                  return {(item['kind'], item['message']) for item in items}
+              assert signatures(staging_diagnostics['candidate']) <= signatures(staging_diagnostics['base']), 'new staging lint diagnostic'
+              results.append({'workflow': 'staging.yml', 'status': 'pass', 'excluded_push_paths': sorted(ignored),
+                              'unchanged_baseline_diagnostics': len(staging_diagnostics['candidate'])})
+          except Exception as exc:
+              errors.append(f'staging.yml: {type(exc).__name__}: {exc}')
+              results.append({'workflow': 'staging.yml', 'status': 'fail'})
           art = root / 'artifacts'
           art.mkdir(exist_ok=True)
           sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-          files = ['.github/workflows/' + name for name in names] + ['.github/workflows/scheduler-bridge-check.yml']
+          files = ['.github/workflows/' + name for name in names] + ['.github/workflows/scheduler-bridge-check.yml', '.github/workflows/staging.yml']
           report = {'task_id': 'paper-scheduler-bridge', 'summary': 'Immutable scheduler bridge validation only; no old-main platform test claim',
                     'sha': sha, 'branch': os.environ.get('GITHUB_HEAD_REF', 'codex/paper-scheduler-bridge'),
-                    'files_changed': files, 'commands': ['actionlint 1.7.12 on three workflow files', 'bridge contract and remote reusable source validation'],
+                    'files_changed': files, 'commands': ['actionlint 1.7.12 on three workflow files', 'bridge and staging guard contracts, remote reusable source validation, no-new-staging-lint comparison'],
                     'tests_passed': [item['workflow'] for item in results if item['status'] == 'pass'],
                     'tests_failed': [item['workflow'] for item in results if item['status'] != 'pass'],
                     'runtime_behavior_changed': False, 'docs_updated': False,
-                    'risks': ['Scheduled evidence comes from pinned operational source, not main', 'Old-main CI failures are separate', 'Do not merge until pinned postclose and safety evidence pass'],
+                    'risks': ['Scheduled evidence comes from pinned operational source, not main', 'Old-main CI failures and existing staging lint diagnostics are retained', 'Do not merge until pinned postclose and safety evidence pass'],
                     'follow_ups': ['Confirm real scheduled run audited SHA after merge', 'Update both pins through review for future source revisions'],
                     'source_sha': next(iter(sources), None), 'validation_errors': errors,
-                    'source_evidence_pr': 'https://github.com/Lesram/intraday/pull/12',
-                    'source_postclose_run': 'https://github.com/Lesram/intraday/actions/runs/35463360197',
-                    'source_safety_run': 'https://github.com/Lesram/intraday/actions/runs/35463347099'}
+                    'source_evidence_pr': 'https://github.com/Lesram/intraday/pull/12'}
           (art / 'task_report.json').write_text(json.dumps(report, indent=2) + '\n')
           (art / 'changed_files.json').write_text(json.dumps(files, indent=2) + '\n')
-          (art / 'scheduler_bridge_validation.json').write_text(json.dumps({'results': results, 'errors': errors}, indent=2) + '\n')
+          (art / 'scheduler_bridge_validation.json').write_text(json.dumps({'results': results, 'errors': errors, 'staging_lint_diagnostics': staging_diagnostics}, indent=2) + '\n')
           print(json.dumps({'results': results, 'errors': errors}, indent=2))
           raise SystemExit(bool(errors))
           PY
