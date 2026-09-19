@@ -1,48 +1,14 @@
 name: paper-postclose-audit
-
 on:
-  workflow_dispatch:
   schedule:
     - cron: '15 22 * * 1-5'
-
-env:
-  # KPI thresholds — auto-open issue when breached
-  KPI_MIN_WIN_RATE: "0.40"
-  KPI_MAX_AVG_LOSS: "15.0"
-  KPI_MIN_PAYOFF_RATIO: "0.5"
-  KPI_MAX_STOP_LOSS_PCT: "0.60"
-
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
 jobs:
-  collect-and-audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-          pip install pytest pytest-asyncio pytest-timeout
-
-      - name: Generate full artifact pack
-        run: python scripts/ci/generate_artifacts.py full
-
-      - name: Generate audit index
-        run: python scripts/ci/generate_audit_index.py
-
-      - name: Check KPI thresholds and open issue if breached
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python scripts/ci/check_kpi_thresholds.py
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: postclose-artifacts
-          path: |
-            artifacts/
-            docs/engineering/LIVE_AUDIT_INDEX.md
+  reviewed-audit:
+    uses: Lesram/intraday/.github/workflows/paper-postclose-audit.yml@dead82a4d3d110afe811ed91b59959e76bfd9ce6
+    with:
+      source_sha: dead82a4d3d110afe811ed91b59959e76bfd9ce6
+      notify_issues: true
