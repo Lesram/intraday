@@ -11,7 +11,7 @@ permissions:
 jobs:
   operational-safety:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 70
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       PYTHONPATH: .
@@ -97,7 +97,7 @@ jobs:
           PY
       - name: Full safety and replay artifact pack
         if: always()
-        timeout-minutes: 25
+        timeout-minutes: 40
         run: python scripts/ci/generate_artifacts.py full
       - name: Audit index
         if: always()

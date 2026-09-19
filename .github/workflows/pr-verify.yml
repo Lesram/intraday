@@ -70,9 +70,9 @@ jobs:
     needs: detect
     if: needs.detect.outputs.changed_organism == 'true'
     runs-on: ubuntu-latest
-    # Existing suite limits total 52 minutes; reserve 25 for the full pack,
+    # Existing suite limits total 52 minutes; reserve 40 for the full pack,
     # 2 for the audit index, and headroom for setup and artifact upload.
-    timeout-minutes: 90
+    timeout-minutes: 110
     steps:
       - uses: actions/checkout@v4
         with:
@@ -114,7 +114,7 @@ jobs:
         if: always()
         # Full artifact generation replays evidence after the explicit
         # organism suites; GitHub runners are much slower than local here.
-        timeout-minutes: 25
+        timeout-minutes: 40
         run: python scripts/ci/generate_artifacts.py full
       - name: Generate audit index
         if: always()

@@ -24,6 +24,14 @@ A canceled workflow or GitHub runner/service outage can still prevent any job fr
 
 The nightly test selection remains the existing full `tests/` corpus excluding `slow`. It runs once, retaining logs, JUnit and coverage instead of rerunning the entire corpus to generate coverage. Legacy baseline failures remain visible; the parked Bandit, frontend audit and Quality Summary work is untouched. Coverage is retained as an artifact; this audit workflow no longer publishes to Pages or needs repository-content write access.
 
+## Hosted environment and time budgets
+
+All readiness/post-close/nightly jobs install the same `requirements.lock`, use test-only JWT/HMAC placeholders and direct all four organism state/telemetry paths into runner scratch space. Nightly uses `postgresql+asyncpg` for async application tests; the configured Alembic migration environment converts that URL to the synchronous driver. Migrations run against the existing `alembic.ini` path rather than a nonexistent legacy directory.
+
+At source `dead82a4d3d110afe811ed91b59959e76bfd9ce6`, [operational safety passed](https://github.com/Lesram/intraday/actions/runs/35463347099) with scenarios at 74.37 seconds and replay at 283.47 seconds. The same source's [post-close run](https://github.com/Lesram/intraday/actions/runs/35463360197) hit the former 120/300-second suite ceilings. The post-close dependency artifact matched every repository lock pin; environment differences and runner variability remain hypotheses, not a proven dependency defect. Both failed runs and their artifacts remain visible.
+
+Ordinary/semantic suite subprocess caps are now 180 seconds and replay 600 seconds. Per-test caps remain 30 seconds ordinarily and 120 seconds for replay, and timeout/error results still fail the pack and terminate the process group. The full-pack step has 40 minutes: maximum suite/snapshot/drift subprocess budgets total 32.5 minutes, leaving time for invariant checks and report generation. Readiness and post-close jobs have 70 minutes; the separate PR organism job retains its existing explicit suites with 110 minutes overall. Budget contracts check every full-pack consumer and reserve artifact/reporting headroom. These changes do not alter trading code or certify the entire legacy nightly corpus.
+
 ## Minimal default-branch bridge
 
 After the active repair has passed review and checks, substitute its accepted full SHA for `REVIEWED_SHA` below. This substitution is mandatory in both locations; do not use an unreviewed branch tip. The following is the complete replacement for `main`'s `.github/workflows/paper-postclose-audit.yml`:

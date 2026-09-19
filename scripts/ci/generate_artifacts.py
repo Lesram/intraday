@@ -42,10 +42,11 @@ TASK_REPORT_NEED_ONE_OF = [
     ("tests_passed", "tests_failed"),
 ]
 
-# Bound subprocesses below the workflows' 25-minute artifact step, while
-# allowing CI headroom above the replay's observed ~138-second runtime.
-TEST_SUITE_TIMEOUT_SECONDS = 120
-REPLAY_TIMEOUT_SECONDS = 300
+# Bound subprocesses below the workflows' 40-minute artifact step. Hosted
+# replay passed at 283.47s and timed out at 300s on the same source; retain
+# per-test limits while allowing ordinary/replay suite startup variability.
+TEST_SUITE_TIMEOUT_SECONDS = 180
+REPLAY_TIMEOUT_SECONDS = 600
 RUNTIME_SNAPSHOT_FILES = (
     "runtime_defaults_snapshot.json",
     "resolved_config_snapshot.json",

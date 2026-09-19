@@ -206,3 +206,17 @@ def test_nightly_database_driver_matches_async_tests_and_migrations_really_run()
     migration_env = Path(config["alembic"]["script_location"]) / "env.py"
     assert migration_env.is_file()
     assert "postgresql+psycopg2://" in migration_env.read_text()
+
+
+@pytest.mark.parametrize("name,job_name", WORKFLOWS)
+def test_scheduled_validation_uses_same_safe_environment_as_readiness(name, job_name):
+    job = _load(name)["jobs"][job_name]
+    reference = _load("paper-readiness.yml")["jobs"]["operational-safety"]
+    for key in ("PYTHONPATH", "SECURITY_JWT_SECRET", "PICKLE_HMAC_SECRET",
+                "USE_MOCK_BROKER", "USE_MOCK_DATA", "APP_ENVIRONMENT", "TRADING_EXECUTION_MODE"):
+        assert job["env"][key] == reference["env"][key]
+    setup = next(step["run"] for step in job["steps"] if step.get("name") == "Configure isolated test paths")
+    for key in ("ORGANISM_BRAIN_DIR", "ORGANISM_SHADOW_EXIT_TELEMETRY_PATH",
+                "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH", "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH"):
+        assert key in setup
+    assert any("pip install -r requirements.lock" in step.get("run", "") for step in job["steps"])

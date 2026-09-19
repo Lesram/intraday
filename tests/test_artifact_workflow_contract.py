@@ -1,5 +1,6 @@
 """Failure-path contracts for workflows that generate full evidence packs."""
 
+import ast
 from pathlib import Path
 import shlex
 
@@ -11,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FULL_CONSUMERS = [
     ("pr-verify.yml", "organism-tests"),
     ("paper-postclose-audit.yml", "collect-and-audit"),
+    ("paper-readiness.yml", "operational-safety"),
 ]
 
 
@@ -79,14 +81,21 @@ def test_postclose_reporting_runs_even_when_an_earlier_report_fails(command):
 def test_full_pack_has_bounded_time_and_reporting_headroom(workflow, job_name):
     job = _job(workflow, job_name)
     pack_minutes = _full_pack(job)["timeout-minutes"]
-    # Six ordinary suites, replay, semantic checks, snapshot and spec checks
-    # can consume 20.5 minutes at their configured process timeout ceilings.
-    assert 21 <= pack_minutes <= 25
+    source = ast.parse((ROOT / "scripts/ci/generate_artifacts.py").read_text())
+    limits = {node.targets[0].id: ast.literal_eval(node.value)
+              for node in source.body if isinstance(node, ast.Assign)
+              and isinstance(node.targets[0], ast.Name)
+              and node.targets[0].id in {"TEST_SUITE_TIMEOUT_SECONDS", "REPLAY_TIMEOUT_SECONDS"}}
+    # Six ordinary suites plus semantic checks, replay, snapshot and drift;
+    # reserve five more minutes for grep, git metadata and report generation.
+    subprocess_seconds = 7 * limits["TEST_SUITE_TIMEOUT_SECONDS"] + limits["REPLAY_TIMEOUT_SECONDS"] + 60 + 30
+    assert subprocess_seconds + 300 <= pack_minutes * 60 <= 45 * 60
     assert job["timeout-minutes"] >= pack_minutes + 10
 
 
-def test_organism_job_budget_covers_existing_suite_limits_and_reporting():
-    job = _job("pr-verify.yml", "organism-tests")
+@pytest.mark.parametrize("workflow,job_name", FULL_CONSUMERS)
+def test_full_consumer_job_budget_covers_all_step_limits_and_reporting(workflow, job_name):
+    job = _job(workflow, job_name)
     bounded_minutes = sum(step.get("timeout-minutes", 0) for step in job["steps"])
     # A job timeout would suppress even always() evidence steps. Keep extra
     # time beyond all explicit suite, full-pack and audit-index ceilings.

@@ -40,6 +40,8 @@ jobs:
       USE_MOCK_BROKER: 'true'
       USE_MOCK_DATA: 'true'
       TRADING_EXECUTION_MODE: shadow
+      SECURITY_JWT_SECRET: 'test-jwt-secret-not-for-production'
+      PICKLE_HMAC_SECRET: 'test-pickle-secret-not-for-production'
       PYTHONDONTWRITEBYTECODE: '1'
       DATABASE_URL: postgresql+asyncpg://testuser:testpass@localhost:5432/testdb
       REDIS_URL: redis://localhost:6379/0
@@ -81,6 +83,8 @@ jobs:
           with Path(os.environ["GITHUB_ENV"]).open("a") as output:
               output.write("ORGANISM_BRAIN_DIR=" + str(scratch / "paper-ci-brain") + "\n")
               output.write("ORGANISM_SHADOW_EXIT_TELEMETRY_PATH=" + str(scratch / "paper-ci-brain/shadow.jsonl") + "\n")
+              output.write("ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH=" + str(scratch / "paper-ci-brain/filter.jsonl") + "\n")
+              output.write("ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH=" + str(scratch / "paper-ci-brain/strategy.jsonl") + "\n")
           PY
       - name: Verify source and clear previous evidence
         id: provenance
