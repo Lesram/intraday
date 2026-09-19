@@ -118,7 +118,7 @@ jobs:
           sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
           files = ['.github/workflows/' + name for name in names] + ['.github/workflows/scheduler-bridge-check.yml', '.github/workflows/staging.yml']
           report = {'task_id': 'paper-scheduler-bridge', 'summary': 'Immutable scheduler bridge validation only; no old-main platform test claim',
-                    'sha': sha, 'branch': os.environ.get('GITHUB_HEAD_REF', 'codex/paper-scheduler-bridge'),
+                    'sha': sha, 'branch': os.environ.get('GITHUB_HEAD_REF') or os.environ.get('GITHUB_REF_NAME', 'unknown'),
                     'files_changed': files, 'commands': ['actionlint 1.7.12 on three workflow files', 'bridge and staging guard contracts, remote reusable source validation, no-new-staging-lint comparison'],
                     'tests_passed': [item['workflow'] for item in results if item['status'] == 'pass'],
                     'tests_failed': [item['workflow'] for item in results if item['status'] != 'pass'],
@@ -126,7 +126,7 @@ jobs:
                     'risks': ['Scheduled evidence comes from pinned operational source, not main', 'Old-main CI failures and existing staging lint diagnostics are retained', 'Do not merge until pinned postclose and safety evidence pass'],
                     'follow_ups': ['Confirm real scheduled run audited SHA after merge', 'Update both pins through review for future source revisions'],
                     'source_sha': next(iter(sources), None), 'validation_errors': errors,
-                    'source_evidence_pr': 'https://github.com/Lesram/intraday/pull/12'}
+                    'source_evidence_pr': 'https://github.com/Lesram/intraday/pull/17'}
           (art / 'task_report.json').write_text(json.dumps(report, indent=2) + '\n')
           (art / 'changed_files.json').write_text(json.dumps(files, indent=2) + '\n')
           (art / 'scheduler_bridge_validation.json').write_text(json.dumps({'results': results, 'errors': errors, 'staging_lint_diagnostics': staging_diagnostics}, indent=2) + '\n')
