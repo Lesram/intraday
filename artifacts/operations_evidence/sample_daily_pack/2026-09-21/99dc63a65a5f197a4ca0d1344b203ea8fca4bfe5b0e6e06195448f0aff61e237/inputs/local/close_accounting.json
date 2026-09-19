@@ -1,0 +1,28 @@
+{
+  "policy": "exact_position_fills_or_pending_v1",
+  "sha256": "c5c41e5bf38b464e890a905d3594a2725fcb6b2e5e90b3da8d15bf8622935a77",
+  "state": {
+    "all_trades": [
+      {
+        "closed_at": "2026-09-21T16:00:20Z",
+        "entry_order_id": "database-entry-id",
+        "entry_price": 100,
+        "entry_source": "alpha",
+        "exit_price": 99.6667,
+        "had_partial_exits": true,
+        "pnl": -2,
+        "price_source": "db_position_fills",
+        "regime_at_entry": "trending_up",
+        "shares": 6,
+        "symbol": "XYZ"
+      }
+    ],
+    "completed": {
+      "database-entry-id": "2026-09-21T16:00:20Z"
+    },
+    "tracking": {
+      "_entry_metadata": {}
+    }
+  },
+  "version": 1
+}

@@ -1,0 +1,72 @@
+{
+  "source_sha": "3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f",
+  "unique_tests_passed": 889,
+  "tests_failed": 0,
+  "skipped": 0,
+  "suites": [
+    {
+      "junit": "artifacts/operations_evidence/operational_final.xml",
+      "passed": 644,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/operations_evidence/workflow_contract.xml",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/organism_live_engine.junit.xml",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/organism_engine_scenarios.junit.xml",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/multi_tick_state.junit.xml",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/safety_invariants.junit.xml",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/self_evolution.junit.xml",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/algorithm_improvements.junit.xml",
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/replay_simulator.junit.xml",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "junit": "artifacts/semantic_invariants.junit.xml",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "count_method": "Unique (JUnit classname,case name) across accepted final runs; exploratory/repeated runs are not added.",
+  "full_artifact_pack": "pass",
+  "freeze_verification": "pass",
+  "deployed": false
+}

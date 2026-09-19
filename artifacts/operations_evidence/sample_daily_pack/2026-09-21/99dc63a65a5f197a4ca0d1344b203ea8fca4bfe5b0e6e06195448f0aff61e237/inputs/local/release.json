@@ -1,0 +1,7 @@
+{
+  "image_digest": "sha256:image",
+  "image_sha": "source",
+  "runtime_config_hash": "config",
+  "source_sha": "source",
+  "timeframe": "1Min"
+}

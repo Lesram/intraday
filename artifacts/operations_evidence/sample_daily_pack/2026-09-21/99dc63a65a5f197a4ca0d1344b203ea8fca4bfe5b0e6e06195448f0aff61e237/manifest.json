@@ -1,0 +1,192 @@
+{
+  "collection": {
+    "captured_at": "2026-09-21T20:10:00+00:00",
+    "collector": "actual_host_get_only",
+    "evidence_class": "synthetic_fixture_no_live_data",
+    "issues": [],
+    "log_timezone": null,
+    "order_inventory": {
+      "cutoff": "2026-09-19T21:55:01.857005+00:00",
+      "order_count": 3,
+      "pages": 1,
+      "pagination": "before_order_id",
+      "status_filter": "all",
+      "termination": "exhausted",
+      "until": "2026-09-21T20:10:00+00:00"
+    },
+    "requests": [
+      {
+        "input": "broker/calendar.json",
+        "method": "GET",
+        "origin": "paper",
+        "params": {
+          "end": "2026-09-21",
+          "start": "2026-09-21"
+        },
+        "path": "/v2/calendar",
+        "sha256": "61fffbfdfcb74091c0816ebc34cc5c49f4d8c9d028da80f9e1ccd9bde8661132"
+      },
+      {
+        "input": "broker/account.json",
+        "method": "GET",
+        "origin": "paper",
+        "params": {},
+        "path": "/v2/account",
+        "sha256": "1a5c0ef4dc0896824494bf2a753402a801bd173a6809a88b93c9de27e1995810"
+      },
+      {
+        "input": "broker/clock.json",
+        "method": "GET",
+        "origin": "paper",
+        "params": {},
+        "path": "/v2/clock",
+        "sha256": "e04ae9dff15d897d0e2ab4cbfc95dc3df4b63c8c84180214e522d151932f20bb"
+      },
+      {
+        "input": "broker/positions.json",
+        "method": "GET",
+        "origin": "paper",
+        "params": {},
+        "path": "/v2/positions",
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      {
+        "input": "runtime/deploy.json",
+        "method": "GET",
+        "origin": "local",
+        "params": {},
+        "path": "/api/v1/paper-monitor/deploy",
+        "sha256": "a0e9bb3a8c1292db94e0b9be58b9a8b339a7461a06f15834c1f1fb5afe1fff2f"
+      },
+      {
+        "input": "runtime/status.json",
+        "method": "GET",
+        "origin": "local",
+        "params": {},
+        "path": "/api/v1/paper-monitor/organism/status",
+        "sha256": "995b40d858b873f3e884bec6b622c9251cef95dd5d6101936e4f68c3894c1896"
+      },
+      {
+        "input": "broker/orders-000.json",
+        "method": "GET",
+        "origin": "paper",
+        "params": {
+          "direction": "desc",
+          "limit": 500,
+          "nested": "false",
+          "status": "all",
+          "until": "2026-09-21T20:10:00+00:00"
+        },
+        "path": "/v2/orders",
+        "sha256": "0e2a5cb6e1a9311a6271e2cb58679a195221d94f406428ba47d50c1efcb3c164"
+      },
+      {
+        "input": "broker/final-order-probe.json",
+        "method": "GET",
+        "origin": "paper",
+        "params": {
+          "after": "2026-09-21T20:09:59.999999+00:00",
+          "direction": "asc",
+          "limit": 1,
+          "nested": "false",
+          "status": "all"
+        },
+        "path": "/v2/orders",
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      {
+        "input": "broker/final-positions.json",
+        "method": "GET",
+        "origin": "paper",
+        "params": {},
+        "path": "/v2/positions",
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      }
+    ],
+    "session_date": "2026-09-21"
+  },
+  "inputs": {
+    "broker/account.json": {
+      "bytes": 81,
+      "sha256": "1a5c0ef4dc0896824494bf2a753402a801bd173a6809a88b93c9de27e1995810"
+    },
+    "broker/calendar.json": {
+      "bytes": 80,
+      "sha256": "61fffbfdfcb74091c0816ebc34cc5c49f4d8c9d028da80f9e1ccd9bde8661132"
+    },
+    "broker/clock.json": {
+      "bytes": 67,
+      "sha256": "e04ae9dff15d897d0e2ab4cbfc95dc3df4b63c8c84180214e522d151932f20bb"
+    },
+    "broker/final-order-probe.json": {
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    "broker/final-positions.json": {
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    "broker/orders-000.json": {
+      "bytes": 831,
+      "sha256": "0e2a5cb6e1a9311a6271e2cb58679a195221d94f406428ba47d50c1efcb3c164"
+    },
+    "broker/positions.json": {
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    "derived/orders.json": {
+      "bytes": 831,
+      "sha256": "0e2a5cb6e1a9311a6271e2cb58679a195221d94f406428ba47d50c1efcb3c164"
+    },
+    "local/activation.json": {
+      "bytes": 278,
+      "sha256": "9fa4c63f2584d527c20975605ba219bdf7760abab2da4a6ebee26442d511e2c5"
+    },
+    "local/close_accounting.json": {
+      "bytes": 708,
+      "sha256": "3f84de76d05cdcf99cefddb92b7a3829cf2a193cfd2bbeed2dc52d97afa9cbe4"
+    },
+    "local/entry_evidence.jsonl": {
+      "bytes": 797,
+      "sha256": "dda4a26927d00efaef0cb44315221c70404d0b7b5c16b1135137939fb8337550"
+    },
+    "local/events.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "local/freeze.json": {
+      "bytes": 138,
+      "sha256": "164efc37fc4b329c7c0dd83941de4122c27ff36d789ec8c799f6e77973521648"
+    },
+    "local/release.json": {
+      "bytes": 146,
+      "sha256": "44cef8a5f7eff42a0ab0a8f81ebbbe966b87540af29549655a2a4c1307066a9a"
+    },
+    "local/trades.csv": {
+      "bytes": 229,
+      "sha256": "f351393a2382554704ed654eb3a3781db0ec5a50cf76586fe385ca7d3418d203"
+    },
+    "logs/application.log": {
+      "bytes": 12096,
+      "sha256": "d65596a4ac175a6e8c9e70e16408a96c723d50be79367d6754d5444b89b30c7a"
+    },
+    "logs/application.log.9": {
+      "bytes": 12600,
+      "sha256": "f9a568eaffa6996dfe41ca81c383340f5f10c1197ef880ac38660786615d2e33"
+    },
+    "runtime/container.json": {
+      "bytes": 105,
+      "sha256": "a66c13efd4baf93b073460e89a672849dac8a447b5413470f32740143907aaa9"
+    },
+    "runtime/deploy.json": {
+      "bytes": 89,
+      "sha256": "a0e9bb3a8c1292db94e0b9be58b9a8b339a7461a06f15834c1f1fb5afe1fff2f"
+    },
+    "runtime/status.json": {
+      "bytes": 207,
+      "sha256": "995b40d858b873f3e884bec6b622c9251cef95dd5d6101936e4f68c3894c1896"
+    }
+  },
+  "report_sha256": "baef3ea37752b68cd17ad55af0632b2e41d6522b218c0197badee7c852a90ed7",
+  "schema": "paper_daily_evidence_v1"
+}

@@ -1,0 +1,126 @@
+{
+  "status": "pass",
+  "scope": "All changed Python files against accepted base; no legacy rule cleanup",
+  "files": [
+    {
+      "path": "backend/organism/brain_persistence.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "backend/organism/close_accounting.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "backend/organism/continuous_learner.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "backend/organism/entry_evidence.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "backend/organism/live_engine.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "backend/organism/live_engine_fills.py",
+      "baseline_findings": 2,
+      "current_findings": 2,
+      "new_findings": []
+    },
+    {
+      "path": "backend/organism/replay_simulator.py",
+      "baseline_findings": 4,
+      "current_findings": 4,
+      "new_findings": []
+    },
+    {
+      "path": "scripts/ops/paper_daily_evidence.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "scripts/ops/standdown_session_row.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "scripts/runtime/write_runtime_snapshot.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_entry_evidence.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_live_engine_fill_accounting.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_organism_engine_scenarios.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_organism_live_engine.py",
+      "baseline_findings": 6,
+      "current_findings": 6,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_paper_daily_evidence.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_pending_close_accounting.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_replay_close_accounting.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_runtime_snapshot_auth.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_standdown_session_row.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_walkforward_persistence.py",
+      "baseline_findings": 3,
+      "current_findings": 3,
+      "new_findings": []
+    }
+  ]
+}

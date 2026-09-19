@@ -1,0 +1,73 @@
+{
+  "task_id": "operations-evidence-integrity-20260919-replay-accounting",
+  "status": "implemented_full_replay_validation_passed",
+  "finding": {
+    "replay_constructor_has_no_sql_session": true,
+    "pre_repair_diagnostic": {
+      "simulated_orders": 3,
+      "broker_exit_legs": 2,
+      "broker_gross_pnl": -2,
+      "engine_finalized_trades": 0,
+      "learner_trades": 0,
+      "pending_symbols": [
+        "TSLA"
+      ]
+    },
+    "test_gap": "ReplayResult.trades originated from broker exit-leg trade_log, while old valid-PnL loop had no nonempty assertion and no learner/ledger agreement."
+  },
+  "files_changed": [
+    "backend/organism/replay_simulator.py",
+    "backend/organism/live_engine_fills.py",
+    "backend/organism/live_engine.py (one nonhashed price_source line)",
+    "tests/test_replay_close_accounting.py"
+  ],
+  "implementation": [
+    "ReplayEngine alone wires complete-position lookup to actual SimulatedBroker execution receipts; production DB lookup stays strict.",
+    "Fill receipts carry entry/order identity, simulated broker identity, modeled execution timestamp and sequence; pure conserved-cashflow validator is reused.",
+    "Per-broker random UUID namespace plus monotonic sequence preserves same-time execution ordering and avoids cross-run ID collision.",
+    "Terminal simulated rejections preserve order_id and explicit zero-execution receipts; replay-only verified-unfilled cleanup prevents rejected attempts from stalling subsequent outcomes.",
+    "Sell clipping and commissions use executed quantity, not requested oversized sell quantity.",
+    "Default ClosedPositionFills.price_source remains db_position_fills; replay returns simulated_position_fills, which paper evidence must not qualify.",
+    "ReplayResult preserves existing per-exit-leg trades and separately exposes accounted_trades plus accounting_pending."
+  ],
+  "nonvacuous_cases": [
+    "buy6@100,sell2@101,sell4@99 -> one engine/learner -2 outcome; missing leg pending; repeat and engine restart no double count",
+    "pyramid weighted entry and oversized sell cashflow/commission use actual six executed shares",
+    "two flat lifetimes sharing one timestamp preserve order and identities",
+    "next-open modeled executed prices include spread/slippage in gross cashflow",
+    "future/conflicting receipts stay pending",
+    "real ReplayEngine.run wiring invokes actual reconciliation and consumer state; nonzero ledger count required",
+    "distinct SimulatedBrokers have noncolliding IDs",
+    "rejected first simulated entry does not block subsequent actual -2 close"
+  ],
+  "tests": [
+    {
+      "suite": "new replay integration + pending close + fill accounting",
+      "passed": 78,
+      "failed": 0
+    },
+    {
+      "suite": "new replay integration + full tests/test_replay_simulator.py",
+      "passed": 36,
+      "failed": 0,
+      "duration_seconds": 145.83
+    }
+  ],
+  "lint": {
+    "new_test_file": "passed"
+  },
+  "freeze": {
+    "exit_code": 0,
+    "tracked_freeze_metadata": "2026-07-07T20:36:49.008305+00:00",
+    "active_operating_cutoff": "2026-09-19T21:55:01.857005+00:00",
+    "surface_changes": false,
+    "active_reference_unchanged": true
+  },
+  "limitations": [
+    "Existing delay_fill means synchronous position mutation using next-bar-open price, not a queued delayed-execution lifecycle; adapter does not fix that pre-existing simulation lookahead model.",
+    "Engine restart is tested with the same broker receipt history; a fresh broker cannot reconstruct a previous run's missing executions, which remain explicitly pending.",
+    "No claim of paper execution fidelity or profitable strategy follows from replay adapter checks."
+  ],
+  "no_live_platform_mutation": true,
+  "tests_unique_note": "78-case accounting run and36-case replay run overlap by8 new adapter cases; do not sum as114 distinct cases."
+}

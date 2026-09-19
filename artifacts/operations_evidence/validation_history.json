@@ -1,0 +1,31 @@
+{
+  "first_full_pack": {
+    "status": "failed",
+    "reason": "Two scenario fixtures and replay throttle diagnostic failed under inherited frozen routing overrides; this run is not acceptance.",
+    "test_summary": "fail",
+    "replay_summary": "fail"
+  },
+  "scenario_followup": {
+    "passed": 31,
+    "failed": 0,
+    "junit": "scenario_regression.xml"
+  },
+  "first_root_targeted": {
+    "passed": 75,
+    "failed": 1,
+    "reason": "Source inspection raced a simultaneous engine edit; subsequent stable root regression197/197 passed."
+  },
+  "replay_throttle_followup": {
+    "passed": 1,
+    "failed": 0,
+    "junit": "replay_throttle_diagnostic.xml",
+    "environment": "Isolated baseline test configuration without frozen paper routing overrides; source unchanged from failed run."
+  },
+  "replay_adapter_integration_finding": "Resolved: simulated executed-fill and rejected-entry adapters feed engine consumers; explicit simulated provenance and separate accounted/pending diagnostics. Nonvacuous regression cases pass.",
+  "workflow_contract_initial": {
+    "passed": 19,
+    "failed": 10,
+    "cause": "Isolated PATH omitted installed Node required by existing JavaScript notification harness. No source defect; rerun includes only its binary directory with network still denied."
+  },
+  "final_acceptance": "Final operational, workflow, full safety, replay and semantic suites pass at source 3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f"
+}

@@ -1,0 +1,21 @@
+{
+  "blocked": "2026-09-21/99dc63a65a5f197a4ca0d1344b203ea8fca4bfe5b0e6e06195448f0aff61e237",
+  "blocked_gate": {
+    "reason": "evidence_quality",
+    "state": "WITHHELD"
+  },
+  "blocked_status": "BLOCKED",
+  "evidence_class": "synthetic_fixture_no_live_data",
+  "oracle": {
+    "buy": "6 at100",
+    "exits": [
+      "2 at101",
+      "4 at99"
+    ],
+    "gross_pnl": -2,
+    "six_bps_net": -2.36
+  },
+  "positive": "2026-09-21/e9bfe7d895671bcabe16bbd0912b058da59c1c41ecc34f15d7ee644ca8e961c5",
+  "positive_status": "READY_FOR_REVIEW",
+  "verified_immutable_packs": true
+}

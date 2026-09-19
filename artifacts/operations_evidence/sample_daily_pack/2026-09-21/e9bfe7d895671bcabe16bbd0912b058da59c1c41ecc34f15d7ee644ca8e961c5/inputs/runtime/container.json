@@ -1,0 +1,6 @@
+{
+  "image_digest": "sha256:image",
+  "name": "/intra-api-1",
+  "project": "intra",
+  "service": "api"
+}

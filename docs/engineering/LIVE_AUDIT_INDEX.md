@@ -1,26 +1,30 @@
 # Live Audit Index
 
-Generated: 2026-09-19T21:02:16Z
+Candidate validation only: this index and its resolved values describe the isolated
+`3fd6a3f71f` source build. They do not describe the installed paper process. The
+network-denied live snapshot is explicitly unreachable. Deployment remains PR #17
+until a separate accepted activation; see `artifacts/task_report.json` and
+`artifacts/operations_evidence/final_validation.json` for current evidence.
+
+Generated: 2026-09-19T23:52:01Z
 PR: n/a
-SHA: `79a898697e`
-Branch: `codex/paper-corrections-candidate`
+SHA: `3fd6a3f71f`
+Branch: `codex/operations-evidence-integrity`
 Scope: **backend_logic**
-Change scope: `base` (`3fa2199df04d75ea0552a5aa08d1f59ba844b211...HEAD`)
+Change scope: `base` (`ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 5 | `backend/integrations/alpaca_data.py`, `backend/organism/continuous_learner.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/streaming_data_provider.py` |
-| Organism | 4 | `backend/organism/continuous_learner.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/streaming_data_provider.py` |
-| Scripts | 1 | `scripts/phase3_attribution_report.py` |
+| Backend | 7 | `backend/organism/brain_persistence.py`, `backend/organism/close_accounting.py`, `backend/organism/continuous_learner.py`, `backend/organism/entry_evidence.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/replay_simulator.py` |
+| Organism | 7 | `backend/organism/brain_persistence.py`, `backend/organism/close_accounting.py`, `backend/organism/continuous_learner.py`, `backend/organism/entry_evidence.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/replay_simulator.py` |
+| Scripts | 3 | `scripts/ops/paper_daily_evidence.py`, `scripts/ops/standdown_session_row.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 8 | `tests/fixtures/paper_fill_accounting_forward_20260919.json`, `tests/test_live_engine_fill_accounting.py`, `tests/test_monday_ci_workflows.py`, `tests/test_phase3_attribution_report.py`, `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/unit/test_alpaca_data_comprehensive.py`, `tests/unit/test_paper_data_freshness.py`, `tests/unit/test_streaming_data_provider.py` |
-| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Tests | 10 | `tests/test_entry_evidence.py`, `tests/test_live_engine_fill_accounting.py`, `tests/test_organism_engine_scenarios.py`, `tests/test_organism_live_engine.py`, `tests/test_paper_daily_evidence.py`, `tests/test_pending_close_accounting.py`, `tests/test_replay_close_accounting.py`, `tests/test_runtime_snapshot_auth.py`, `tests/test_standdown_session_row.py`, `tests/test_walkforward_persistence.py` |
+| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_DAILY_EVIDENCE.md` |
 
-## Live constants
-
-**Evidence scope:** These are isolated mock/test settings for the combined proposal. They are not the stopped paper runtime or an activated candidate. The API remains held; the July cutoff is unchanged. The prebuilt image is source-bound and verified without application startup. Primary prospective research reports are proposed at 6 bps round trip using report-process-only configuration; native/runtime costing remains unchanged. See `reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md` and `artifacts/corrections_candidate/`.
+## Resolved constants — candidate validation environment
 
 Source: `resolved_config_snapshot.json`
 
@@ -56,4 +60,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 4 organism file(s) changed — require replay verification
+- 7 organism file(s) changed — require replay verification

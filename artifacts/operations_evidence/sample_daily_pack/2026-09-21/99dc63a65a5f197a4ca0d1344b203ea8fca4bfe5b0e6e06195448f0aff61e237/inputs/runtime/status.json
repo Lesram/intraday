@@ -1,0 +1,12 @@
+{
+  "live_engine": {
+    "engine": {
+      "close_accounting": {
+        "error": null,
+        "pending": {},
+        "policy": "exact_position_fills_or_pending_v1"
+      }
+    },
+    "running": true
+  }
+}

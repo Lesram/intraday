@@ -1,0 +1,73 @@
+{
+  "branch": "codex/operations-evidence-integrity",
+  "commands": [
+    "Network-denied sandbox-exec with env-i, pytest plugin autoload disabled, pytest_asyncio/pytest_timeout enabled: pytest -q tests/test_paper_daily_evidence.py tests/test_standdown_session_row.py tests/test_paper_fill_reconciliation.py tests/test_phase3_attribution_report.py --junitxml=artifacts/operations_evidence/daily_final.xml",
+    "ruff check scripts/ops/paper_daily_evidence.py scripts/ops/standdown_session_row.py tests/test_paper_daily_evidence.py tests/test_standdown_session_row.py",
+    "Synthetic collector\u2192analyze\u2192publish\u2192verify_pack positive and blocked examples; no network"
+  ],
+  "committed": false,
+  "docs_updated": [
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md"
+  ],
+  "files_changed": [
+    "scripts/ops/paper_daily_evidence.py",
+    "scripts/ops/standdown_session_row.py",
+    "tests/test_paper_daily_evidence.py",
+    "tests/test_standdown_session_row.py",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md",
+    "artifacts/operations_evidence/sample_daily_pack/",
+    "artifacts/operations_evidence/daily_implementation.json"
+  ],
+  "follow_ups": [
+    "Parent complete full release checks and frozen-surface verification.",
+    "Bind deployed repair to approved release identity without changing original measurement cutoff.",
+    "Execute manual daily pack after a natural paper session following accepted deployment; do not backdate current broker snapshots as historical session proof."
+  ],
+  "lint": "passed",
+  "no_live_calls": true,
+  "no_platform_state_writes": true,
+  "producer_consumer_integration": "Real observe_gate and observe_submission decorators emit on-disk JSONL from causal feature frame and actual OrderService-shaped response; collector/analyzer produce READY_FOR_REVIEW using exact DB-to-client-to-broker joins. Receipt not hand-built or mocked.",
+  "risks": [
+    "No current runtime or broker collection was executed; all transport tests and sample packs are isolated synthetic evidence.",
+    "Manual runner requires actual approved active cutoff, current release identity, credentials and historical baseline; this implementation does not install a scheduler or deploy code.",
+    "No qualified historical entry receipts are fabricated; missing receipts, pending/mismatched accounting and incomplete log coverage deliberately block results.",
+    "Observed tick coverage is not proof of all platform/user-interface/recovery paths; frame hashes are not provider data archives.",
+    "Actual logs with unknown timezone/unparseable records require explicit investigation; results cannot silently treat missing coverage as zero.",
+    "Full regression, freeze verification, artifacts, PR review and release remain parent responsibilities."
+  ],
+  "runtime_behavior_changed": false,
+  "sample_evidence": {
+    "blocked": "2026-09-21/99dc63a65a5f197a4ca0d1344b203ea8fca4bfe5b0e6e06195448f0aff61e237",
+    "blocked_gate": {
+      "reason": "evidence_quality",
+      "state": "WITHHELD"
+    },
+    "blocked_status": "BLOCKED",
+    "evidence_class": "synthetic_fixture_no_live_data",
+    "oracle": {
+      "buy": "6 at100",
+      "exits": [
+        "2 at101",
+        "4 at99"
+      ],
+      "gross_pnl": -2,
+      "six_bps_net": -2.36
+    },
+    "positive": "2026-09-21/e9bfe7d895671bcabe16bbd0912b058da59c1c41ecc34f15d7ee644ca8e961c5",
+    "positive_status": "READY_FOR_REVIEW",
+    "verified_immutable_packs": true
+  },
+  "sha": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
+  "source_sha256": {
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md": "a36459ec12537e2d55fbe928925d4973b2ab9ff6fd646cd6525608620741150f",
+    "scripts/ops/paper_daily_evidence.py": "61a017d6f82a6d35a282e2d59668120cfc2aeb760282fb3d5c99ffa1ee5fd960",
+    "scripts/ops/standdown_session_row.py": "9d49764a3b3a8abe8550b608dd56b797cfc8b987c86f677ad7c9aa93cb497a35",
+    "tests/test_paper_daily_evidence.py": "1a194e14a696bc51e66ef61fe935e2da4c16ea6be274604f9e255172a23fdd42",
+    "tests/test_standdown_session_row.py": "a8098b13160f276ed00845a19315447b9a8c6befa210e51ac870b33e2d11db71"
+  },
+  "summary": "Implemented manual fixed-paper GET-only collector, immutable source-byte packs, exact-accounting and per-buy entry provenance qualification, explicit 6bps native gate and complete-session diagnostics.",
+  "task_id": "operations-evidence-integrity-20260919-package-B",
+  "test_evidence": "artifacts/operations_evidence/daily_final.xml",
+  "tests_failed": 0,
+  "tests_passed": 73
+}

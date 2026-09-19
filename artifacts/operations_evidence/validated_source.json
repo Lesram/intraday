@@ -1,0 +1,32 @@
+{
+  "source_sha": "3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f",
+  "base_sha": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
+  "files": {
+    ".github/workflows/paper-readiness.yml": "c10635a77e3dff7650d80cea57128e03ebb06b0acfeb7ba83226b918539412de",
+    "backend/organism/brain_persistence.py": "5b0d876402f85cebeb3b1082ecb3d4abc1a9fef1aaa729dea4a4b603ab6f280f",
+    "backend/organism/close_accounting.py": "26aea3cf6c1b2929f14d9c03dcb66998e87b65c780bd68744eed3743c7e9a2c9",
+    "backend/organism/continuous_learner.py": "1dc5b21b936abddaf0e335e26a1b16a8298ca1659d8781abb06fb76fc905772f",
+    "backend/organism/entry_evidence.py": "2d049c536bbcbea2b5349f4a771ab83eb20ab6aca0c46b941e8f9a806335f6ef",
+    "backend/organism/live_engine.py": "e68d86d0797a138b296a135e423de355713608f6086056b4252014e4a32cec5d",
+    "backend/organism/live_engine_fills.py": "b4943b8606308c21d1f10aec584e813a1ccd4eadf18d500af0fadcb9f9083d4c",
+    "backend/organism/replay_simulator.py": "d991bcca5e65021fee059d2c41aa9df6e2a762f4f29c6a8857a67d00f868b763",
+    "docs/architecture/mapss.md": "791e01e50855e953211dfe6425dd922400c420cd99fda587e3c95f9cd4b2fffb",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "f238157142d2aadd8cce56fefad1be986a00d2a0f72f4d364ceb43f5342bf967",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md": "a36459ec12537e2d55fbe928925d4973b2ab9ff6fd646cd6525608620741150f",
+    "scripts/ops/paper_daily_evidence.py": "61a017d6f82a6d35a282e2d59668120cfc2aeb760282fb3d5c99ffa1ee5fd960",
+    "scripts/ops/standdown_session_row.py": "9d49764a3b3a8abe8550b608dd56b797cfc8b987c86f677ad7c9aa93cb497a35",
+    "scripts/runtime/write_runtime_snapshot.py": "c860ef376d7d30ca3e20d1a0571ba536f55a01d522b3d6da06fa097778c2ab15",
+    "tests/test_entry_evidence.py": "b1373eb24451c8fb2438d8f047ff70312ae887b940b454a2f953237eea76e863",
+    "tests/test_live_engine_fill_accounting.py": "7be9361760cacd7d9349f756b10b89920011a713e7f6769b44eb591a32cff475",
+    "tests/test_organism_engine_scenarios.py": "d5fa2b39e397f53849c6596e5f11b03665a81b8e63f71d86bde4878cc885fe14",
+    "tests/test_organism_live_engine.py": "4589b991e800a6f8334445d87e91fbc4ded878733296a335295c521eb4f7b49a",
+    "tests/test_paper_daily_evidence.py": "1a194e14a696bc51e66ef61fe935e2da4c16ea6be274604f9e255172a23fdd42",
+    "tests/test_pending_close_accounting.py": "a8d1025accf1ec15163d790ea7546be65850c5a4bddb32034e478d2cf3c9b3e9",
+    "tests/test_replay_close_accounting.py": "a039b256ca27b103b54683d5e3f6efe86f438de2fe3d1ff16db8bc0fe69f051c",
+    "tests/test_runtime_snapshot_auth.py": "67e46424ea87cefe4177fd44df0d40a85f99dea0b9740172aaa2ce024477d334",
+    "tests/test_standdown_session_row.py": "a8098b13160f276ed00845a19315447b9a8c6befa210e51ac870b33e2d11db71",
+    "tests/test_walkforward_persistence.py": "f39f701c0d44734ba2abf3698476b35a7d67ab062f31a0fe7d938cf22ac7a049"
+  },
+  "runtime_installed": false,
+  "note": "Operational644-case validation used these source bytes; final safety/replay pack runs from this committed candidate. Later release commit contains evidence/docs only."
+}

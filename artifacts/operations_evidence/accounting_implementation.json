@@ -1,0 +1,76 @@
+{
+  "task_id": "operations-evidence-integrity-20260919-A",
+  "status": "implemented_independently_source_reviewed",
+  "summary": "Durable exact-close accounting with deterministic deferred outcome order and an atomic authoritative projection for ledger, learner, risk, Kelly and calibration; legacy torn-save recovery cannot split close consumers.",
+  "branch": "codex/operations-evidence-integrity",
+  "sha": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
+  "files_owned": [
+    "backend/organism/live_engine.py",
+    "backend/organism/live_engine_fills.py",
+    "backend/organism/close_accounting.py",
+    "backend/organism/brain_persistence.py",
+    "backend/organism/continuous_learner.py",
+    "tests/test_live_engine_fill_accounting.py",
+    "tests/test_pending_close_accounting.py"
+  ],
+  "runtime_behavior_changed": true,
+  "policy": "exact_position_fills_or_pending_v1",
+  "implementation": [
+    "Pending closes keep first broker-flat time/tick, exit reason/regime/causal levels and entry identity; global deterministic ordering holds later outcomes behind earlier unresolved ones.",
+    "Only complete quantity-conserved strategy fills update ledger and downstream consumers; known orphans retain explicit exclusion; terminal zero-fill cleanup checks contradictory Execution rows.",
+    "Authoritative close_accounting.json atomically replaces the full accounting projection with checksum and preservation guards; commit failure rolls back every in-memory consumer.",
+    "Close transaction and legacy I/O share serialization; background save requests synchronous owner-loop capture/publication before legacy I/O, preventing mixed daily-state snapshots or stale checkpoint replacement.",
+    "Startup validates authority before legacy backup recovery and overlays committed state afterward; corrupt authority aborts startup; completed entry IDs remove stale legacy tracking.",
+    "Checkpoint retains legacy histories/counts rather than rebuilding or resetting; publication refuses count/history/identity regressions and PnL changes without an outcome.",
+    "Cross-session resolution preserves historical close time without adding old losses/cooldowns to today; existing pending closes bypass stale entry grace; tick floor and elapsed-time mapping prevent renewed delayed cooldowns.",
+    "Prospective entry_order_id persists in TradeRecord and all three legacy serialization paths; root-owned entry evidence hooks/sidecar preservation integrated.",
+    "A saved identified open position that closes while the process is down survives startup flat-symbol pruning and is reconciled at the first actual restarted observation; no historical observation time is fabricated."
+  ],
+  "tests": [
+    {
+      "command": "isolated pytest tests/test_pending_close_accounting.py tests/test_live_engine_fill_accounting.py",
+      "passed": 70,
+      "failed": 0
+    },
+    {
+      "command": "isolated pytest tests/test_v13_persistence_cleanup.py tests/test_audit_0_6_brain_save_load_race.py tests/test_phase5_shadow_telemetry_persistence.py",
+      "passed": 10,
+      "failed": 0
+    }
+  ],
+  "test_isolation": "macOS sandbox-exec denies network; env -i with explicit mock/test/shadow settings; temporary brains and isolated SQLite; plugin autoload disabled",
+  "freeze_verification": {
+    "exit_code": 0,
+    "frozen_at": "2026-09-19T21:55:01.857005+00:00",
+    "six_source_groups_changed": false,
+    "config_or_feed_changed": false,
+    "note": "Checked with nonsecret frozen exit/routing environment restored from copied active reference; no freeze file written."
+  },
+  "risks": [
+    "Atomic authority covers close accounting, not arbitrary corruption or whole-host recovery of ML/model files.",
+    "Unknown or ambiguous earliest close blocks later outcome finalization until evidence is repaired; status exposes pending records.",
+    "Decision freshness, broker position completeness and exact economic execution fidelity remain separate acceptance surfaces.",
+    "No running paper platform change, deployment, broker calls, history reset or new schedule performed.",
+    "Independent final review and root full required regression/artifact pack remain outstanding."
+  ],
+  "follow_ups": [
+    "Root owns unrelated legacy synthetic-close fixture and isolated walk-forward helper updates for new contract.",
+    "Root owns PR, full validation artifacts and deployment acceptance."
+  ],
+  "source_stable": true,
+  "tests_passed": 80,
+  "tests_failed": 0,
+  "docs_updated": false,
+  "commands": [
+    "Network-denied isolated pytest: tests/test_pending_close_accounting.py tests/test_live_engine_fill_accounting.py (70 passed)",
+    "Network-denied isolated pytest: tests/test_v13_persistence_cleanup.py tests/test_audit_0_6_brain_save_load_race.py tests/test_phase5_shadow_telemetry_persistence.py (10 passed)",
+    "Network-denied scripts/phase2_freeze.py --verify with copied approved freeze environment (exit 0)",
+    "ruff check backend/organism/close_accounting.py tests/test_pending_close_accounting.py --output-format concise (exit 0)"
+  ],
+  "independent_review": "combined_acceptance_review reports no remaining concrete source blocker; conditional on required root validation and no claim of power-loss/full-session acceptance",
+  "lint_cleanup": {
+    "new_files": "ruff check close_accounting.py + test_pending_close_accounting.py: passed",
+    "rationales": "Owner callback propagates BaseException to waiting worker; any zero-fill lookup failure retains unresolved accounting.",
+    "focused_rerun": "70 passed after fixture alias cleanup; no frozen engine edits"
+  }
+}
