@@ -129,7 +129,9 @@ class AlpacaDataClient:
             buffer_days = max(int(lookback * 1.4), 1)
         end = datetime.now(timezone.utc)
         params = {
-            "start": (end - timedelta(days=buffer_days)).isoformat(),
+            "start": (end - timedelta(days=buffer_days)).replace(
+                hour=0, minute=0, second=0, microsecond=0,
+            ).isoformat(),
             "end": end.isoformat(),
             "timeframe": timeframe,
             "adjustment": "split",

@@ -47,7 +47,8 @@ async def test_latest_500_from_large_current_session_window(client, method):
     async def request(*args, params, **kwargs):
         calls.append(params)
         selected = [row for row in all_bars
-                    if datetime.fromisoformat(row["t"]) <= datetime.fromisoformat(params["end"])]
+                    if datetime.fromisoformat(params["start"]) <= datetime.fromisoformat(row["t"])
+                    <= datetime.fromisoformat(params["end"])]
         selected.sort(key=lambda row: row["t"], reverse=params["sort"] == "desc")
         return reply(selected[:params["limit"]], "older-page")
     client._request_with_retry = request
@@ -56,7 +57,7 @@ async def test_latest_500_from_large_current_session_window(client, method):
     assert values == list(range(1500, 2000))
     assert len(calls) == 1
     assert datetime.fromisoformat(calls[0]["end"]) == NOW
-    assert datetime.fromisoformat(calls[0]["start"]) == NOW - timedelta(days=5)
+    assert datetime.fromisoformat(calls[0]["start"]) == (NOW - timedelta(days=5)).replace(hour=0, minute=0, second=0, microsecond=0)
     assert calls[0]["feed"] == "iex"
     assert calls[0]["adjustment"] == "split"
     if method.endswith("df"):
@@ -185,3 +186,25 @@ async def test_stale_second_symbol_does_not_lower_global_event_time():
     assert provider.last_update_time == NOW.timestamp()-30
     assert not provider.get_bars("AAPL").empty
     assert provider.get_bars("MSFT").empty
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["get_historical_closes", "get_historical_bars_df"])
+async def test_daily_small_lookback_retains_first_day_midnight_bar(client, monkeypatch, method):
+    saturday = datetime(2026, 9, 19, 20, tzinfo=timezone.utc)
+    friday_daily = bar(datetime(2026, 9, 18, 4, tzinfo=timezone.utc), 123)
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return saturday.astimezone(tz)
+    monkeypatch.setattr("backend.integrations.alpaca_data.datetime", Clock)
+    async def request(*args, params, **kwargs):
+        start = datetime.fromisoformat(params["start"])
+        end = datetime.fromisoformat(params["end"])
+        assert start == datetime(2026, 9, 18, tzinfo=timezone.utc)
+        assert end == saturday
+        return reply([friday_daily] if start <= datetime.fromisoformat(friday_daily["t"]) <= end else [])
+    client._request_with_retry = request
+    result = await getattr(client, method)("AAPL", 1, "1Day")
+    values = result.close.tolist() if method.endswith("df") else result
+    assert values == [123]
