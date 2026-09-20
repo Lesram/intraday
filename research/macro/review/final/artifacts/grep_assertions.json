@@ -1,0 +1,8 @@
+{
+  "status": "pass",
+  "scope": "New research scripts only; read-only frozen-surface import is intentional and not an execution path.",
+  "files": 4,
+  "hits": [],
+  "frozen_surface_matches": true,
+  "runtime_behavior_changed": false
+}

@@ -1,0 +1,10 @@
+{
+  "pr": "https://github.com/Lesram/intraday/pull/21",
+  "branch": "codex/macro-review-002",
+  "status": "final_local_validation_before_branch_update",
+  "is_draft": true,
+  "new_monitor_implementation": false,
+  "merge_approval": false,
+  "hosted_ci": "Earlier head has existing workflow failures; final-head status will be recorded after delivery.",
+  "prior_ci_evidence": "../../artifacts/ci_status.json"
+}

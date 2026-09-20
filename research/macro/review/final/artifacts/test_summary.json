@@ -1,0 +1,85 @@
+{
+  "generated_at_utc": "2026-09-20T17:53:32.675004+00:00",
+  "final_research_validation": {
+    "status": "pass",
+    "checks_passed": 23,
+    "checks_failed": 0
+  },
+  "quantitative_reproduction": {
+    "original_full_score_max_error": 4.9995418940795844e-05,
+    "review_feature_max_error": 2.842170943040401e-14,
+    "review_score_max_error": 7.105427357601002e-15,
+    "original_joint_membership_exact": true,
+    "original_joint_months_before_maturity": 26,
+    "common_calendar_months": 685,
+    "common_eligible_months": 684,
+    "common_excluded_months": [
+      "2020-10"
+    ],
+    "original_2007oct_eligible": true,
+    "original_2007oct_expanding_similarity_rank": 1,
+    "models_recomputed": true,
+    "common_summary_cells_with_complete_raw_rows": 624,
+    "common_raw_return_rows": 29736,
+    "rich_calm_summary_cells_with_complete_raw_rows": 2808,
+    "rich_calm_raw_return_rows": 79240,
+    "profit_holdout_max_abs_error": 2.220446049250313e-16,
+    "cape_baseline_abs_error": 7.105427357601002e-15,
+    "cape_review002_abs_error": 0.0,
+    "cape_consolidation_scenario_abs_error": 0.0,
+    "profit_current_pct": 12.071159985945975,
+    "profit_pre1990_mean_pct": 6.094630143877905,
+    "profit_fixed_GDP_change_pct": -49.51081626808305,
+    "cape_rewritten_history_months": 38,
+    "cape_rewritten_history_range": [
+      "2023-07-01",
+      "2026-08-01"
+    ],
+    "cape_past_months_in_denominator_unchanged": 82,
+    "status": "PASS",
+    "limitations": [
+      "revised histories, not vintage data",
+      "current target chosen today",
+      "original feature availability remains original, without review release lags",
+      "selection spacing prevents overlapping return windows, not independent macro observations",
+      "no portfolio allocation or forecast inferred"
+    ]
+  },
+  "contract_validation": {
+    "schema_fields": 42,
+    "rows": 21,
+    "unique_ids": 21,
+    "inventory": {
+      "review_flag": 2,
+      "watch": 5,
+      "context": 6,
+      "retired": 5,
+      "candidate": 2,
+      "engineering_control": 1
+    },
+    "active_financial_rows": 13,
+    "tested_historical_alarm_definitions": 8,
+    "proposed_review_or_watch_threshold_definitions": 7,
+    "empirical_join_checks": 24,
+    "empirical_join_failures": 0,
+    "financial_thresholds_and_empirical_fields_unchanged": true,
+    "calendar_dependency_examples_passed": 5,
+    "implementation_changed": false,
+    "source_sha256": "873d2b2a7df165cc8979b4ca3450e1a1c79c6649ecdda679f8a52fda00d625dd",
+    "final_contract_sha256": "35f423067c9325a6f13b420313a060d9d619c496c08164fa23ce8297cfcdb09a",
+    "validation_scope": "Research contract consistency only; no future monitoring software has been implemented or certified."
+  },
+  "prior_prototype_unit_tests": {
+    "passed": 35,
+    "failed": 0,
+    "rerun_for_this_finalization": false,
+    "reason": "Prototype code is unchanged; prior test receipt is historical evidence, not a validation of future software.",
+    "receipt": "../../artifacts/pipeline_final_tests.log"
+  },
+  "platform_safety_regression_replay": {
+    "status": "not_run",
+    "reason": "No platform changes; prior collection unavailable due to missing FastAPI. No new platform-pass claim."
+  },
+  "freeze_verification": "pass",
+  "hosted_ci": "See delivery_status.json when present; earlier checks blocked by existing workflow configuration."
+}

@@ -1,0 +1,13 @@
+{
+  "status": "research_reproduction_pass",
+  "research": [
+    "../evidence/quantitative_validation.json",
+    "../evidence/contract_validation.json"
+  ],
+  "platform_replay": {
+    "status": "not_run",
+    "passed": null,
+    "failed": null
+  },
+  "scope": "Historical macro comparisons, not a trading-system replay or demonstration of investment performance."
+}

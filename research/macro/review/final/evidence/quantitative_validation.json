@@ -1,0 +1,40 @@
+{
+  "original_full_score_max_error": 4.9995418940795844e-05,
+  "review_feature_max_error": 2.842170943040401e-14,
+  "review_score_max_error": 7.105427357601002e-15,
+  "original_joint_membership_exact": true,
+  "original_joint_months_before_maturity": 26,
+  "common_calendar_months": 685,
+  "common_eligible_months": 684,
+  "common_excluded_months": [
+    "2020-10"
+  ],
+  "original_2007oct_eligible": true,
+  "original_2007oct_expanding_similarity_rank": 1,
+  "models_recomputed": true,
+  "common_summary_cells_with_complete_raw_rows": 624,
+  "common_raw_return_rows": 29736,
+  "rich_calm_summary_cells_with_complete_raw_rows": 2808,
+  "rich_calm_raw_return_rows": 79240,
+  "profit_holdout_max_abs_error": 2.220446049250313e-16,
+  "cape_baseline_abs_error": 7.105427357601002e-15,
+  "cape_review002_abs_error": 0.0,
+  "cape_consolidation_scenario_abs_error": 0.0,
+  "profit_current_pct": 12.071159985945975,
+  "profit_pre1990_mean_pct": 6.094630143877905,
+  "profit_fixed_GDP_change_pct": -49.51081626808305,
+  "cape_rewritten_history_months": 38,
+  "cape_rewritten_history_range": [
+    "2023-07-01",
+    "2026-08-01"
+  ],
+  "cape_past_months_in_denominator_unchanged": 82,
+  "status": "PASS",
+  "limitations": [
+    "revised histories, not vintage data",
+    "current target chosen today",
+    "original feature availability remains original, without review release lags",
+    "selection spacing prevents overlapping return windows, not independent macro observations",
+    "no portfolio allocation or forecast inferred"
+  ]
+}

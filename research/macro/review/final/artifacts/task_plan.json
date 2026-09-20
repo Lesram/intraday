@@ -1,0 +1,12 @@
+{
+  "task_id": "MACRO_FINAL_004_2026-09-20",
+  "objective": "Finalize and peer-review the macro research, reconcile accepted consolidation corrections, and provide an authoritative research basis for a later user decision about a monitoring tool.",
+  "write_boundary": "research/macro/review/final/",
+  "preserve": ["Study 001", "sealed review 002", "consolidation 003", "existing monitor and dashboard", "trading platform and freeze", "pre-existing dirty files"],
+  "deliverables": ["FINAL_RESEARCH.md", "MONITORING_AND_DECISION_SPEC.md", "INDICATOR_CONTRACT.csv", "CHANGE_DISPOSITION.csv", "RESOLUTION_LEDGER.csv", "quantitative completion evidence", "PEER_REVIEW.md", "README.md", "scoped artifact pack"],
+  "affected_tests": ["research-only reproduction checks", "contract and report consistency", "source integrity and seal verification", "frozen-surface verification"],
+  "not_authorized_in_this_phase": ["implementing the future monitoring tool", "changing the existing monitor", "personalized allocations or trade execution", "changing frozen trading parameters", "repairing parked CI"],
+  "steps": ["preserve input hashes", "complete remaining identifiable research checks", "reconcile corrections and contract", "write standalone final analysis", "cross-agent peer review and correction closure", "validate evidence and freeze", "deliver through existing research draft PR"],
+  "publication": "Add only the new authored final package to the existing review branch using an isolated index; retain large/private companion source material locally.",
+  "artifact_location_rationale": "Prior work order expressly limits writes to review. This finalization narrows that boundary to final; root generators and platform collection must not mutate unrelated existing artifacts. Report scoped checks and unavailable platform validation honestly."
+}
