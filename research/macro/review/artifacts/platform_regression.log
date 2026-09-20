@@ -1,0 +1,4 @@
+ImportError while loading conftest '/Users/marselkei/VS/intra/tests/conftest.py'.
+tests/conftest.py:16: in <module>
+    from fastapi.testclient import TestClient
+E   ModuleNotFoundError: No module named 'fastapi'

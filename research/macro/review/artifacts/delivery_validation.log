@@ -1,0 +1,140 @@
+{
+  "checked_at_utc": "2026-09-20T05:29:48.485962+00:00",
+  "status": "pass",
+  "checks": [
+    {
+      "name": "blind_A_B_immutable",
+      "status": "pass",
+      "detail": {
+        "files": 75,
+        "changed": []
+      }
+    },
+    {
+      "name": "original_sources_unchanged",
+      "status": "pass",
+      "detail": {
+        "files": 344,
+        "changed": []
+      }
+    },
+    {
+      "name": "second_reader_lock_immutable",
+      "status": "pass",
+      "detail": {
+        "files": 5,
+        "changed": []
+      }
+    },
+    {
+      "name": "prediction_lock_immutable",
+      "status": "pass",
+      "detail": {
+        "rows": 60,
+        "post_lock_amendments_separate": true
+      }
+    },
+    {
+      "name": "required_deliverables",
+      "status": "pass",
+      "detail": [
+        "PHASE_A_transcript_analysis.md",
+        "PHASE_B_independent_regime_analysis.md",
+        "PHASE_B_event_validation.md",
+        "PHASE_C_adjudication.md",
+        "PHASE_D_indicator_spec.md",
+        "PHASE_E_dashboard_spec.md",
+        "README.md",
+        "indicators.csv",
+        "dashboard.html"
+      ]
+    },
+    {
+      "name": "public_artifact_pack_included",
+      "status": "pass",
+      "detail": {
+        "required_files": 10,
+        "missing": []
+      }
+    },
+    {
+      "name": "bulk_transcript_tables_local_only",
+      "status": "pass",
+      "detail": {
+        "excluded_files": 5,
+        "included_in_error": []
+      }
+    },
+    {
+      "name": "indicator_contract",
+      "status": "pass",
+      "detail": {
+        "n": 12,
+        "missing_fields": []
+      }
+    },
+    {
+      "name": "tiers",
+      "status": "pass",
+      "detail": "3 review /5 watch /4 context"
+    },
+    {
+      "name": "snapshot_validated",
+      "status": "pass",
+      "detail": {
+        "status": "validated",
+        "version": "002.2",
+        "as_of": "2026-09-18"
+      }
+    },
+    {
+      "name": "fresh_live_source_trial",
+      "status": "pass",
+      "detail": {
+        "status": "validated",
+        "as_of": "2026-09-20",
+        "sources": 12
+      }
+    },
+    {
+      "name": "dashboard_complete",
+      "status": "pass",
+      "detail": {
+        "id": "dashboard:f83ccf8b-7cba-4cfd-91e1-73dc712142e5",
+        "buildStatus": "complete"
+      }
+    },
+    {
+      "name": "self_contained_html",
+      "status": "pass",
+      "detail": {
+        "bytes": 3068458,
+        "sha256": "0bf1effa49e43a69bc5e433392258bfa08d598c1d637c23b7dedb5f142e6515d"
+      }
+    },
+    {
+      "name": "pipeline_syntax",
+      "status": "pass",
+      "detail": {
+        "files": 7,
+        "errors": []
+      }
+    },
+    {
+      "name": "final_targeted_tests",
+      "status": "pass",
+      "detail": "35 unittest cases; no platform-test claim"
+    },
+    {
+      "name": "freeze_verify",
+      "status": "pass",
+      "detail": "DRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-09-19T21:55:01.857005+00:00)"
+    },
+    {
+      "name": "adjudication_complete",
+      "status": "pass",
+      "detail": "No unresolved report placeholders"
+    }
+  ],
+  "platform_test_status": "unavailable: collection failed, FastAPI missing; no trading-platform files changed"
+}

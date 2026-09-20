@@ -1,0 +1,13 @@
+channel,method,n,correct,accuracy,forecast_wins_method_loses,forecast_loses_method_wins
+all,forecast,16,10,0.625,0,0
+all,always_up,16,14,0.875,0,4
+all,no_change,16,1,0.0625,10,1
+all,persistence,16,11,0.6875,2,3
+bravos,forecast,11,8,0.7272727272727273,0,0
+bravos,always_up,11,10,0.9090909090909091,0,2
+bravos,no_change,11,1,0.09090909090909091,8,1
+bravos,persistence,11,7,0.6363636363636364,1,0
+jikh,forecast,5,2,0.4,0,0
+jikh,always_up,5,4,0.8,0,2
+jikh,no_change,5,0,0.0,2,0
+jikh,persistence,5,4,0.8,1,3

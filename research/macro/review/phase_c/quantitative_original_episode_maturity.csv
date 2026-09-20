@@ -1,0 +1,14 @@
+episode,start_date,months_used,truncated,expected_end,in_maximum_disjoint_chronological_set
+S 2021-11 post-COVID top,2021-11,56,True,2026-11-01,True
+S 2007-10 pre-GFC top,2007-10,60,False,2012-10-01,True
+S 2005-09 mid-2000s,2005-09,60,False,2010-09-01,False
+S 2001-02 post-dotcom,2001-02,60,False,2006-02-01,True
+S 2018-06 late-cycle,2018-06,60,False,2023-06-01,False
+S 2011-07 post-QE2,2011-07,60,False,2016-07-01,False
+S 2003-03 reflation,2003-03,60,False,2008-03-01,False
+S 1996-02 mid-90s,1996-02,60,False,2001-02-01,True
+S 1966-05 late-60s (1st leg),1966-05,60,False,1971-05-01,True
+S 1950-10 Korea/repression,1950-10,60,False,1955-10-01,False
+S 1946-06 post-war,1946-06,60,False,1951-06-01,True
+S 2014-07 mid-2010s,2014-07,60,False,2019-07-01,True
+M 1999-2000 dotcom [anchor],2000-02,60,False,2005-02-01,False

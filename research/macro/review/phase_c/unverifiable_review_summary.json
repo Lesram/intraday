@@ -1,0 +1,12 @@
+{
+  "n": 48,
+  "categories": {
+    "vague_inference": 5,
+    "normative_rhetorical": 7,
+    "private_performance": 9,
+    "public_evidence_missing": 13,
+    "underspecified_measure": 6,
+    "commercial_service": 8
+  },
+  "warning": "One primary category per compound row; manual taxonomy, not independent truth verification. Original notes were visible for this taxonomy; distinct from72-row blind verdict experiment."
+}

@@ -1,0 +1,1976 @@
+{
+  "spec_version": "002.2",
+  "as_of": "2026-09-18",
+  "mode": "snapshot",
+  "generated_at": "2026-09-20T04:51:07.782931+00:00",
+  "status": "validated",
+  "regime": "No monitored fast-state threshold crossed. Structural valuation and profit-share readings remain context; absence of a signal does not establish safety.",
+  "indicators": [
+    {
+      "id": "claims_rise",
+      "name": "Initial claims above trailing low",
+      "tier": 1,
+      "unit": "%",
+      "formula": "100 \u00d7 (4-week mean ICSA / minimum of its trailing 52 weekly means \u2212 1); require all 52 averages; sample monthly for historical validation",
+      "threshold_text": "\u2265 20 %",
+      "action": "Request a diagnostic review after confirmation on next source release; record recession already underway separately. No position or price action.",
+      "source_url": "https://fred.stlouisfed.org/series/ICSA",
+      "base_rate": "Event: recession_present_or_onset, horizon 12m. Full 1968-01\u20132025-08: 9/13 matured alarm episodes; hit 69.2%; median lead 0m (0\u201310); monthly unconditional event rate 26.2% across 692 eligible months. Holdout 2000+ 2000-01\u20132025-08: 3/5 matured alarm episodes; hit 60.0%; median lead 0m (0\u20135); monthly unconditional event rate 20.8% across 308 eligible months. Diagnostic event includes recession already in progress where named; no forecast claim. Revised-history chronological holdout, not vintage-real-time proof. Monthly-validation record only: native-frequency transient flags do not inherit this hit rate.",
+      "false_positive_rate": "Full: 4/13 episode false alarms = 30.8% (Wilson 95% 12.7%\u201357.6%); classical monthly FPR 26/511 = 5.1%. Holdout 2000+: 2/5 episode false alarms = 40.0% (Wilson 95% 11.8%\u201376.9%); classical monthly FPR 15/244 = 6.1%. Monthly windows overlap; episode observations remain only approximately independent.",
+      "value": 2.1356783919598055,
+      "previous": 3.5175879396984966,
+      "change": -1.3819095477386911,
+      "distance": -17.864321608040193,
+      "history": [
+        {
+          "date": "2026-04-04",
+          "value": 1.948842874543244
+        },
+        {
+          "date": "2026-04-11",
+          "value": 2.3142509135200884
+        },
+        {
+          "date": "2026-04-18",
+          "value": 2.8014616321559105
+        },
+        {
+          "date": "2026-04-25",
+          "value": 1.218026796589533
+        },
+        {
+          "date": "2026-05-02",
+          "value": 0.0
+        },
+        {
+          "date": "2026-05-09",
+          "value": 0.49261083743843415
+        },
+        {
+          "date": "2026-05-16",
+          "value": 0.0
+        },
+        {
+          "date": "2026-05-23",
+          "value": 2.71270036991369
+        },
+        {
+          "date": "2026-05-30",
+          "value": 5.91861898890258
+        },
+        {
+          "date": "2026-06-06",
+          "value": 8.138101109741068
+        },
+        {
+          "date": "2026-06-13",
+          "value": 10.234278668310726
+        },
+        {
+          "date": "2026-06-20",
+          "value": 10.727496917385949
+        },
+        {
+          "date": "2026-06-27",
+          "value": 9.741060419235502
+        },
+        {
+          "date": "2026-07-04",
+          "value": 8.138101109741068
+        },
+        {
+          "date": "2026-07-11",
+          "value": 5.91861898890258
+        },
+        {
+          "date": "2026-07-18",
+          "value": 2.5893958076448786
+        },
+        {
+          "date": "2026-07-25",
+          "value": 0.2466091245376001
+        },
+        {
+          "date": "2026-08-01",
+          "value": 0.0
+        },
+        {
+          "date": "2026-08-08",
+          "value": 0.37688442211054607
+        },
+        {
+          "date": "2026-08-15",
+          "value": 2.638190954773867
+        },
+        {
+          "date": "2026-08-22",
+          "value": 3.3919597989949812
+        },
+        {
+          "date": "2026-08-29",
+          "value": 4.271356783919589
+        },
+        {
+          "date": "2026-09-05",
+          "value": 3.5175879396984966
+        },
+        {
+          "date": "2026-09-12",
+          "value": 2.1356783919598055
+        }
+      ],
+      "observation_date": "2026-09-12",
+      "status": "below",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "ICSA": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/ICSA",
+          "sha256": "8a17e65deb9d7c16245f36373d6bc2c1d1dd7221e4cf82af179d1394a2c5d3d0",
+          "observation_date": "2026-09-12",
+          "period_end": "2026-09-12",
+          "age_days": 6,
+          "max_age_days": 14,
+          "frequency": "weekly",
+          "first_observation": "1967-01-07",
+          "next_observation_due_by": "2026-09-26",
+          "freshness_basis": "Latest observed weekly date plus 14 calendar days, allowing ordinary release delay and holidays",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "sahm",
+      "name": "Sahm unemployment rule",
+      "tier": 1,
+      "unit": "pp",
+      "formula": "Published real-time Sahm indicator: 3-month unemployment average minus its minimum over the preceding 12 months",
+      "threshold_text": "\u2265 0.5 pp",
+      "action": "Request a diagnostic review after confirmation on next source release; record recession already underway separately. No position or price action.",
+      "source_url": "https://fred.stlouisfed.org/series/SAHMREALTIME",
+      "base_rate": "Event: recession_present_or_onset, horizon 12m. Full 1960-01\u20132025-08: 8/11 matured alarm episodes; hit 72.7%; median lead 0m (0\u20132); monthly unconditional event rate 24.7% across 788 eligible months. Holdout 2000+ 2000-01\u20132025-08: 2/4 matured alarm episodes; hit 50.0%; median lead 0m (0\u20130); monthly unconditional event rate 20.8% across 308 eligible months. Diagnostic event includes recession already in progress where named; no forecast claim. Revised-history chronological holdout, not vintage-real-time proof. Monthly-validation record only: native-frequency transient flags do not inherit this hit rate.",
+      "false_positive_rate": "Full: 3/11 episode false alarms = 27.3% (Wilson 95% 9.7%\u201356.6%); classical monthly FPR 102/593 = 17.2%. Holdout 2000+: 2/4 episode false alarms = 50.0% (Wilson 95% 15.0%\u201385.0%); classical monthly FPR 39/244 = 16.0%. Monthly windows overlap; episode observations remain only approximately independent.",
+      "value": -0.07,
+      "previous": -0.03,
+      "change": -0.04000000000000001,
+      "distance": -0.5700000000000001,
+      "history": [
+        {
+          "date": "2024-08-01",
+          "value": 0.57
+        },
+        {
+          "date": "2024-09-01",
+          "value": 0.5
+        },
+        {
+          "date": "2024-10-01",
+          "value": 0.43
+        },
+        {
+          "date": "2024-11-01",
+          "value": 0.43
+        },
+        {
+          "date": "2024-12-01",
+          "value": 0.4
+        },
+        {
+          "date": "2025-01-01",
+          "value": 0.37
+        },
+        {
+          "date": "2025-02-01",
+          "value": 0.27
+        },
+        {
+          "date": "2025-03-01",
+          "value": 0.27
+        },
+        {
+          "date": "2025-04-01",
+          "value": 0.27
+        },
+        {
+          "date": "2025-05-01",
+          "value": 0.27
+        },
+        {
+          "date": "2025-06-01",
+          "value": 0.17
+        },
+        {
+          "date": "2025-07-01",
+          "value": 0.1
+        },
+        {
+          "date": "2025-08-01",
+          "value": 0.13
+        },
+        {
+          "date": "2025-09-01",
+          "value": 0.23
+        },
+        {
+          "date": "2025-11-01",
+          "value": 0.43
+        },
+        {
+          "date": "2025-12-01",
+          "value": 0.35
+        },
+        {
+          "date": "2026-01-01",
+          "value": 0.3
+        },
+        {
+          "date": "2026-02-01",
+          "value": 0.27
+        },
+        {
+          "date": "2026-03-01",
+          "value": 0.2
+        },
+        {
+          "date": "2026-04-01",
+          "value": 0.13
+        },
+        {
+          "date": "2026-05-01",
+          "value": 0.1
+        },
+        {
+          "date": "2026-06-01",
+          "value": 0.07
+        },
+        {
+          "date": "2026-07-01",
+          "value": -0.03
+        },
+        {
+          "date": "2026-08-01",
+          "value": -0.07
+        }
+      ],
+      "observation_date": "2026-08-01",
+      "status": "below",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "SAHMREALTIME": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/SAHMREALTIME",
+          "sha256": "4da0144adced98f11f79b131e7bff40c54572137c11e1003d507632476a7608b",
+          "observation_date": "2026-08-01",
+          "period_end": "2026-08-31",
+          "age_days": 18,
+          "max_age_days": 50,
+          "frequency": "monthly",
+          "first_observation": "1959-12-01",
+          "next_observation_due_by": "2026-10-20",
+          "freshness_basis": "Next monthly observation period end plus 20 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "credit_change",
+      "name": "Baa credit-spread widening",
+      "tier": 1,
+      "unit": "pp",
+      "formula": "Last BAA10Y observation in completed month minus last observation three calendar months earlier",
+      "threshold_text": "\u2265 1 pp",
+      "action": "Request a diagnostic review after confirmation on next source release; record recession already underway separately. No position or price action.",
+      "source_url": "https://fred.stlouisfed.org/series/BAA10Y",
+      "base_rate": "Event: recession_present_or_onset, horizon 12m. Full 1986-04\u20132025-08: 2/2 matured alarm episodes; hit 100.0%; median lead 0m (0\u20130); monthly unconditional event rate 17.8% across 473 eligible months. Holdout 2000+ 2000-01\u20132025-08: 2/2 matured alarm episodes; hit 100.0%; median lead 0m (0\u20130); monthly unconditional event rate 20.8% across 308 eligible months. Diagnostic event includes recession already in progress where named; no forecast claim. Revised-history chronological holdout, not vintage-real-time proof. Monthly-validation record only: native-frequency transient flags do not inherit this hit rate.",
+      "false_positive_rate": "Full: 0/2 episode false alarms = 0.0% (Wilson 95% 0.0%\u201365.8%); classical monthly FPR 0/389 = 0.0%. Holdout 2000+: 0/2 episode false alarms = 0.0% (Wilson 95% 0.0%\u201365.8%); classical monthly FPR 0/244 = 0.0%. Monthly windows overlap; episode observations remain only approximately independent.",
+      "value": 0.020000000000000018,
+      "previous": -0.07000000000000006,
+      "change": 0.09000000000000008,
+      "distance": -0.98,
+      "history": [
+        {
+          "date": "2024-09-30",
+          "value": 0.07999999999999985
+        },
+        {
+          "date": "2024-10-31",
+          "value": -0.21999999999999997
+        },
+        {
+          "date": "2024-11-30",
+          "value": -0.25
+        },
+        {
+          "date": "2024-12-31",
+          "value": -0.20999999999999996
+        },
+        {
+          "date": "2025-01-31",
+          "value": -0.010000000000000009
+        },
+        {
+          "date": "2025-02-28",
+          "value": 0.13000000000000012
+        },
+        {
+          "date": "2025-03-31",
+          "value": 0.3400000000000001
+        },
+        {
+          "date": "2025-04-30",
+          "value": 0.51
+        },
+        {
+          "date": "2025-05-31",
+          "value": 0.27
+        },
+        {
+          "date": "2025-06-30",
+          "value": -0.010000000000000009
+        },
+        {
+          "date": "2025-07-31",
+          "value": -0.29000000000000004
+        },
+        {
+          "date": "2025-08-31",
+          "value": -0.040000000000000036
+        },
+        {
+          "date": "2025-09-30",
+          "value": -0.08000000000000007
+        },
+        {
+          "date": "2025-10-31",
+          "value": 0.020000000000000018
+        },
+        {
+          "date": "2025-11-30",
+          "value": -0.020000000000000018
+        },
+        {
+          "date": "2025-12-31",
+          "value": 0.050000000000000044
+        },
+        {
+          "date": "2026-01-31",
+          "value": -0.06999999999999984
+        },
+        {
+          "date": "2026-02-28",
+          "value": 0.020000000000000018
+        },
+        {
+          "date": "2026-03-31",
+          "value": 0.07000000000000006
+        },
+        {
+          "date": "2026-04-30",
+          "value": 0.07999999999999985
+        },
+        {
+          "date": "2026-05-31",
+          "value": -0.22999999999999998
+        },
+        {
+          "date": "2026-06-30",
+          "value": -0.26
+        },
+        {
+          "date": "2026-07-31",
+          "value": -0.07000000000000006
+        },
+        {
+          "date": "2026-08-31",
+          "value": 0.020000000000000018
+        }
+      ],
+      "observation_date": "2026-08-31",
+      "status": "below",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "BAA10Y": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/BAA10Y",
+          "sha256": "404bb66fa73d98284c3cacb05bd17c2daa3f0b6062602192602369a0163d2287",
+          "observation_date": "2026-09-17",
+          "period_end": "2026-09-17",
+          "age_days": 1,
+          "max_age_days": 7,
+          "frequency": "daily",
+          "first_observation": "1986-01-02",
+          "next_observation_due_by": "2026-09-24",
+          "freshness_basis": "Latest observed daily date plus 7 calendar days, allowing ordinary release delay and holidays",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "credit_level",
+      "name": "Baa credit-spread level",
+      "tier": 2,
+      "unit": "pp",
+      "formula": "Moody's Baa yield minus 10-year constant-maturity Treasury yield; latest daily observation",
+      "threshold_text": "\u2265 3 pp",
+      "action": "Watch and explain in monthly report; crossing alone changes no allocation or trading rule.",
+      "source_url": "https://fred.stlouisfed.org/series/BAA10Y",
+      "base_rate": "Event: recession_present_or_onset, horizon 12m. Full 1986-01\u20132025-08: 3/8 matured alarm episodes; hit 37.5%; median lead 0m (0\u20131); monthly unconditional event rate 17.6% across 476 eligible months. Holdout 2000+ 2000-01\u20132025-08: 3/7 matured alarm episodes; hit 42.9%; median lead 0m (0\u20131); monthly unconditional event rate 20.8% across 308 eligible months. Diagnostic event includes recession already in progress where named; no forecast claim. Revised-history chronological holdout, not vintage-real-time proof. Monthly-validation record only: native-frequency transient flags do not inherit this hit rate.",
+      "false_positive_rate": "Full: 5/8 episode false alarms = 62.5% (Wilson 95% 30.6%\u201386.3%); classical monthly FPR 40/392 = 10.2%. Holdout 2000+: 4/7 episode false alarms = 57.1% (Wilson 95% 25.0%\u201384.2%); classical monthly FPR 39/244 = 16.0%. Monthly windows overlap; episode observations remain only approximately independent.",
+      "value": 1.44,
+      "previous": 1.43,
+      "change": 0.010000000000000009,
+      "distance": -1.56,
+      "history": [
+        {
+          "date": "2026-08-14",
+          "value": 1.69
+        },
+        {
+          "date": "2026-08-17",
+          "value": 1.69
+        },
+        {
+          "date": "2026-08-18",
+          "value": 1.68
+        },
+        {
+          "date": "2026-08-19",
+          "value": 1.64
+        },
+        {
+          "date": "2026-08-20",
+          "value": 1.64
+        },
+        {
+          "date": "2026-08-21",
+          "value": 1.63
+        },
+        {
+          "date": "2026-08-24",
+          "value": 1.63
+        },
+        {
+          "date": "2026-08-25",
+          "value": 1.62
+        },
+        {
+          "date": "2026-08-26",
+          "value": 1.61
+        },
+        {
+          "date": "2026-08-27",
+          "value": 1.6
+        },
+        {
+          "date": "2026-08-28",
+          "value": 1.54
+        },
+        {
+          "date": "2026-08-31",
+          "value": 1.59
+        },
+        {
+          "date": "2026-09-01",
+          "value": 1.58
+        },
+        {
+          "date": "2026-09-02",
+          "value": 1.58
+        },
+        {
+          "date": "2026-09-03",
+          "value": 1.57
+        },
+        {
+          "date": "2026-09-04",
+          "value": 1.56
+        },
+        {
+          "date": "2026-09-08",
+          "value": 1.57
+        },
+        {
+          "date": "2026-09-09",
+          "value": 1.55
+        },
+        {
+          "date": "2026-09-10",
+          "value": 1.51
+        },
+        {
+          "date": "2026-09-11",
+          "value": 1.5
+        },
+        {
+          "date": "2026-09-14",
+          "value": 1.47
+        },
+        {
+          "date": "2026-09-15",
+          "value": 1.48
+        },
+        {
+          "date": "2026-09-16",
+          "value": 1.43
+        },
+        {
+          "date": "2026-09-17",
+          "value": 1.44
+        }
+      ],
+      "observation_date": "2026-09-17",
+      "status": "below",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "BAA10Y": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/BAA10Y",
+          "sha256": "404bb66fa73d98284c3cacb05bd17c2daa3f0b6062602192602369a0163d2287",
+          "observation_date": "2026-09-17",
+          "period_end": "2026-09-17",
+          "age_days": 1,
+          "max_age_days": 7,
+          "frequency": "daily",
+          "first_observation": "1986-01-02",
+          "next_observation_due_by": "2026-09-24",
+          "freshness_basis": "Latest observed daily date plus 7 calendar days, allowing ordinary release delay and holidays",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "nfci",
+      "name": "Financial conditions",
+      "tier": 2,
+      "unit": "index",
+      "formula": "Chicago Fed NFCI published weekly; 0 is historical average, positive is tighter than average",
+      "threshold_text": "> 0 index",
+      "action": "Watch and explain in monthly report; crossing alone changes no allocation or trading rule.",
+      "source_url": "https://fred.stlouisfed.org/series/NFCI",
+      "base_rate": "Event: recession_present_or_onset, horizon 12m. Full 1971-02\u20132025-08: 5/9 matured alarm episodes; hit 55.6%; median lead 4m (0\u201310); monthly unconditional event rate 24.1% across 655 eligible months. Holdout 2000+ 2000-01\u20132025-08: 3/3 matured alarm episodes; hit 100.0%; median lead 4m (0\u201310); monthly unconditional event rate 20.8% across 308 eligible months. Diagnostic event includes recession already in progress where named; no forecast claim. Revised-history chronological holdout, not vintage-real-time proof. Monthly-validation record only: native-frequency transient flags do not inherit this hit rate.",
+      "false_positive_rate": "Full: 4/9 episode false alarms = 44.4% (Wilson 95% 18.9%\u201373.3%); classical monthly FPR 83/497 = 16.7%. Holdout 2000+: 0/3 episode false alarms = 0.0% (Wilson 95% 0.0%\u201356.2%); classical monthly FPR 6/244 = 2.5%. Monthly windows overlap; episode observations remain only approximately independent.",
+      "value": -0.56,
+      "previous": -0.558,
+      "change": -0.0020000000000000018,
+      "distance": -0.56,
+      "history": [
+        {
+          "date": "2026-04-03",
+          "value": -0.464
+        },
+        {
+          "date": "2026-04-10",
+          "value": -0.474
+        },
+        {
+          "date": "2026-04-17",
+          "value": -0.485
+        },
+        {
+          "date": "2026-04-24",
+          "value": -0.495
+        },
+        {
+          "date": "2026-05-01",
+          "value": -0.502
+        },
+        {
+          "date": "2026-05-08",
+          "value": -0.507
+        },
+        {
+          "date": "2026-05-15",
+          "value": -0.508
+        },
+        {
+          "date": "2026-05-22",
+          "value": -0.507
+        },
+        {
+          "date": "2026-05-29",
+          "value": -0.505
+        },
+        {
+          "date": "2026-06-05",
+          "value": -0.505
+        },
+        {
+          "date": "2026-06-12",
+          "value": -0.505
+        },
+        {
+          "date": "2026-06-19",
+          "value": -0.507
+        },
+        {
+          "date": "2026-06-26",
+          "value": -0.511
+        },
+        {
+          "date": "2026-07-03",
+          "value": -0.516
+        },
+        {
+          "date": "2026-07-10",
+          "value": -0.522
+        },
+        {
+          "date": "2026-07-17",
+          "value": -0.527
+        },
+        {
+          "date": "2026-07-24",
+          "value": -0.533
+        },
+        {
+          "date": "2026-07-31",
+          "value": -0.537
+        },
+        {
+          "date": "2026-08-07",
+          "value": -0.542
+        },
+        {
+          "date": "2026-08-14",
+          "value": -0.547
+        },
+        {
+          "date": "2026-08-21",
+          "value": -0.551
+        },
+        {
+          "date": "2026-08-28",
+          "value": -0.555
+        },
+        {
+          "date": "2026-09-04",
+          "value": -0.558
+        },
+        {
+          "date": "2026-09-11",
+          "value": -0.56
+        }
+      ],
+      "observation_date": "2026-09-11",
+      "status": "below",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "NFCI": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/NFCI",
+          "sha256": "5f05630ba19a141ea212861bde9b81b437be2786eb0aebbdf68415684d9111dd",
+          "observation_date": "2026-09-11",
+          "period_end": "2026-09-11",
+          "age_days": 7,
+          "max_age_days": 14,
+          "frequency": "weekly",
+          "first_observation": "1971-01-08",
+          "next_observation_due_by": "2026-09-25",
+          "freshness_basis": "Latest observed weekly date plus 14 calendar days, allowing ordinary release delay and holidays",
+          "published_at": null
+        }
+      },
+      "change_unit": "index",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "curve",
+      "name": "10-year minus 3-month yield",
+      "tier": 2,
+      "unit": "pp",
+      "formula": "Monthly GS10 Treasury yield minus TB3MS discount-basis bill yield; proxy differs from daily T10Y3M",
+      "threshold_text": "< 0 pp",
+      "action": "Watch and explain in monthly report; crossing alone changes no allocation or trading rule.",
+      "source_url": "https://fred.stlouisfed.org/series/GS10 | https://fred.stlouisfed.org/series/TB3MS",
+      "base_rate": "Event: recession_onset, horizon 24m. Full 1954-06\u20132024-08: 6/8 matured alarm episodes; hit 75.0%; median lead 9.5m (5\u201316); monthly unconditional event rate 30.8% across 740 eligible months. Holdout 2000+ 2000-01\u20132024-08: 3/4 matured alarm episodes; hit 75.0%; median lead 8m (7\u201316); monthly unconditional event rate 23.5% across 268 eligible months. Diagnostic event includes recession already in progress where named; no forecast claim. Revised-history chronological holdout, not vintage-real-time proof. Monthly-validation record only: native-frequency transient flags do not inherit this hit rate.",
+      "false_positive_rate": "Full: 2/8 episode false alarms = 25.0% (Wilson 95% 7.1%\u201359.1%); classical monthly FPR 26/512 = 5.1%. Holdout 2000+: 1/4 episode false alarms = 25.0% (Wilson 95% 4.6%\u201369.9%); classical monthly FPR 21/205 = 10.2%. Monthly windows overlap; episode observations remain only approximately independent.",
+      "value": 0.9599999999999995,
+      "previous": 0.8699999999999997,
+      "change": 0.08999999999999986,
+      "distance": -0.9599999999999995,
+      "history": [
+        {
+          "date": "2024-09-30",
+          "value": -0.9999999999999996
+        },
+        {
+          "date": "2024-10-31",
+          "value": -0.41000000000000014
+        },
+        {
+          "date": "2024-11-30",
+          "value": -0.05999999999999961
+        },
+        {
+          "date": "2024-12-31",
+          "value": 0.1200000000000001
+        },
+        {
+          "date": "2025-01-31",
+          "value": 0.41999999999999993
+        },
+        {
+          "date": "2025-02-28",
+          "value": 0.23000000000000043
+        },
+        {
+          "date": "2025-03-31",
+          "value": 0.08000000000000007
+        },
+        {
+          "date": "2025-04-30",
+          "value": 0.07000000000000028
+        },
+        {
+          "date": "2025-05-31",
+          "value": 0.16999999999999993
+        },
+        {
+          "date": "2025-06-30",
+          "value": 0.14999999999999947
+        },
+        {
+          "date": "2025-07-31",
+          "value": 0.13999999999999968
+        },
+        {
+          "date": "2025-08-31",
+          "value": 0.13999999999999968
+        },
+        {
+          "date": "2025-09-30",
+          "value": 0.20000000000000018
+        },
+        {
+          "date": "2025-10-31",
+          "value": 0.23999999999999977
+        },
+        {
+          "date": "2025-11-30",
+          "value": 0.31000000000000005
+        },
+        {
+          "date": "2025-12-31",
+          "value": 0.5499999999999998
+        },
+        {
+          "date": "2026-01-31",
+          "value": 0.6400000000000001
+        },
+        {
+          "date": "2026-02-28",
+          "value": 0.5299999999999998
+        },
+        {
+          "date": "2026-03-31",
+          "value": 0.6400000000000001
+        },
+        {
+          "date": "2026-04-30",
+          "value": 0.7100000000000004
+        },
+        {
+          "date": "2026-05-31",
+          "value": 0.8800000000000003
+        },
+        {
+          "date": "2026-06-30",
+          "value": 0.8099999999999996
+        },
+        {
+          "date": "2026-07-31",
+          "value": 0.8699999999999997
+        },
+        {
+          "date": "2026-08-31",
+          "value": 0.9599999999999995
+        }
+      ],
+      "observation_date": "2026-08-31",
+      "status": "below",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "GS10": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/GS10",
+          "sha256": "e22128f6caa50e4e7fed03a1c2d323a517bad452a2c69eab89277450fb59bc5c",
+          "observation_date": "2026-08-01",
+          "period_end": "2026-08-31",
+          "age_days": 18,
+          "max_age_days": 50,
+          "frequency": "monthly",
+          "first_observation": "1953-04-01",
+          "next_observation_due_by": "2026-10-20",
+          "freshness_basis": "Next monthly observation period end plus 20 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        },
+        "TB3MS": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/TB3MS",
+          "sha256": "ebf04b1ae5bc5729ba3bb2b35dbb0e0c5e22dace36bea0c02632782d625ae6ab",
+          "observation_date": "2026-08-01",
+          "period_end": "2026-08-31",
+          "age_days": 18,
+          "max_age_days": 50,
+          "frequency": "monthly",
+          "first_observation": "1934-01-01",
+          "next_observation_due_by": "2026-10-20",
+          "freshness_basis": "Next monthly observation period end plus 20 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "inflation",
+      "name": "Headline inflation",
+      "tier": 2,
+      "unit": "%",
+      "formula": "100 \u00d7 (CPIAUCSL at month t / CPIAUCSL at exactly t\u221212 calendar months \u2212 1); never positional pct_change on dropped missing months",
+      "threshold_text": "\u2265 4 %",
+      "action": "Watch and explain in monthly report; crossing alone changes no allocation or trading rule.",
+      "source_url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+      "base_rate": "Event: equity_entry_loss_20, horizon 12m. Full 1955-02\u20132025-08: 2/7 matured alarm episodes; hit 28.6%; median lead 6m (2\u201310); monthly unconditional event rate 6.7% across 847 eligible months. Holdout 2000+ 2000-01\u20132025-08: 1/3 matured alarm episodes; hit 33.3%; median lead 10m (10\u201310); monthly unconditional event rate 10.1% across 308 eligible months. Diagnostic event includes recession already in progress where named; no forecast claim. Revised-history chronological holdout, not vintage-real-time proof. Monthly-validation record only: native-frequency transient flags do not inherit this hit rate.",
+      "false_positive_rate": "Full: 5/7 episode false alarms = 71.4% (Wilson 95% 35.9%\u201391.8%); classical monthly FPR 224/790 = 28.4%. Holdout 2000+: 2/3 episode false alarms = 66.7% (Wilson 95% 20.8%\u201393.9%); classical monthly FPR 29/277 = 10.5%. Monthly windows overlap; episode observations remain only approximately independent.",
+      "value": 3.353016322755642,
+      "previous": 3.303856050706311,
+      "change": 0.049160272049331155,
+      "distance": -0.646983677244358,
+      "history": [
+        {
+          "date": "2024-09-30",
+          "value": 2.4264830315416708
+        },
+        {
+          "date": "2024-10-31",
+          "value": 2.578844053871343
+        },
+        {
+          "date": "2024-11-30",
+          "value": 2.719472461284833
+        },
+        {
+          "date": "2024-12-31",
+          "value": 2.870690967509981
+        },
+        {
+          "date": "2025-01-31",
+          "value": 2.9909783078999608
+        },
+        {
+          "date": "2025-02-28",
+          "value": 2.8015834477613355
+        },
+        {
+          "date": "2025-03-31",
+          "value": 2.381981462805549
+        },
+        {
+          "date": "2025-04-30",
+          "value": 2.32538823025783
+        },
+        {
+          "date": "2025-05-31",
+          "value": 2.3772651073680873
+        },
+        {
+          "date": "2025-06-30",
+          "value": 2.680453865910226
+        },
+        {
+          "date": "2025-07-31",
+          "value": 2.742618052167134
+        },
+        {
+          "date": "2025-08-31",
+          "value": 2.9385917430316155
+        },
+        {
+          "date": "2025-09-30",
+          "value": 3.0225715847133294
+        },
+        {
+          "date": "2025-10-31",
+          "value": null
+        },
+        {
+          "date": "2025-11-30",
+          "value": 2.6964439164939513
+        },
+        {
+          "date": "2025-12-31",
+          "value": 2.653304114557753
+        },
+        {
+          "date": "2026-01-31",
+          "value": 2.391201432150014
+        },
+        {
+          "date": "2026-02-28",
+          "value": 2.4340041103732224
+        },
+        {
+          "date": "2026-03-31",
+          "value": 3.2859577528651984
+        },
+        {
+          "date": "2026-04-30",
+          "value": 3.7792458367415627
+        },
+        {
+          "date": "2026-05-31",
+          "value": 4.166614684049641
+        },
+        {
+          "date": "2026-06-30",
+          "value": 3.463530729385411
+        },
+        {
+          "date": "2026-07-31",
+          "value": 3.303856050706311
+        },
+        {
+          "date": "2026-08-31",
+          "value": 3.353016322755642
+        }
+      ],
+      "observation_date": "2026-08-31",
+      "status": "below",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "CPIAUCSL": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+          "sha256": "f8ecddf53a9a9a74dda92c2c4204e6039466fcb744bc74171b73b5f6aac48119",
+          "observation_date": "2026-08-01",
+          "period_end": "2026-08-31",
+          "age_days": 18,
+          "max_age_days": 55,
+          "frequency": "monthly",
+          "first_observation": "1947-01-01",
+          "next_observation_due_by": "2026-10-25",
+          "freshness_basis": "Next monthly observation period end plus 25 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "inflation_acceleration",
+      "name": "Broad inflation acceleration",
+      "tier": 2,
+      "unit": "pp",
+      "formula": "Calendar headline CPI YoY minus its value 12 calendar months earlier; threshold additionally requires headline CPI YoY \u22654%",
+      "threshold_text": "\u2265 2 pp AND headline CPI YoY \u22654%",
+      "action": "Watch and explain in monthly report; crossing alone changes no allocation or trading rule.",
+      "source_url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+      "base_rate": "Event: equity_entry_loss_20, horizon 12m. Full 1956-02\u20132025-08: 2/7 matured alarm episodes; hit 28.6%; median lead 6m (2\u201310); monthly unconditional event rate 6.8% across 835 eligible months. Holdout 2000+ 2000-01\u20132025-08: 1/3 matured alarm episodes; hit 33.3%; median lead 10m (10\u201310); monthly unconditional event rate 10.1% across 308 eligible months. Diagnostic event includes recession already in progress where named; no forecast claim. Revised-history chronological holdout, not vintage-real-time proof. Monthly-validation record only: native-frequency transient flags do not inherit this hit rate.",
+      "false_positive_rate": "Full: 5/7 episode false alarms = 71.4% (Wilson 95% 35.9%\u201391.8%); classical monthly FPR 54/778 = 6.9%. Holdout 2000+: 2/3 episode false alarms = 66.7% (Wilson 95% 20.8%\u201393.9%); classical monthly FPR 17/277 = 6.1%. Monthly windows overlap; episode observations remain only approximately independent.",
+      "value": 0.41442457972402647,
+      "previous": 0.5612379985391769,
+      "change": -0.14681341881515042,
+      "distance": -1.5855754202759735,
+      "history": [
+        {
+          "date": "2024-09-30",
+          "value": -1.260723606577585
+        },
+        {
+          "date": "2024-10-31",
+          "value": -0.6724218559898354
+        },
+        {
+          "date": "2024-11-30",
+          "value": -0.41387381330635353
+        },
+        {
+          "date": "2024-12-31",
+          "value": -0.4452189752003122
+        },
+        {
+          "date": "2025-01-31",
+          "value": -0.09736467858560971
+        },
+        {
+          "date": "2025-02-28",
+          "value": -0.35549069388736143
+        },
+        {
+          "date": "2025-03-31",
+          "value": -1.1048534492781092
+        },
+        {
+          "date": "2025-04-30",
+          "value": -1.0354068959618434
+        },
+        {
+          "date": "2025-05-31",
+          "value": -0.8670134766350257
+        },
+        {
+          "date": "2025-06-30",
+          "value": -0.2898040827368664
+        },
+        {
+          "date": "2025-07-31",
+          "value": -0.1988577413911674
+        },
+        {
+          "date": "2025-08-31",
+          "value": 0.3314472523395784
+        },
+        {
+          "date": "2025-09-30",
+          "value": 0.5960885531716587
+        },
+        {
+          "date": "2025-10-31",
+          "value": null
+        },
+        {
+          "date": "2025-11-30",
+          "value": -0.02302854479088179
+        },
+        {
+          "date": "2025-12-31",
+          "value": -0.21738685295222826
+        },
+        {
+          "date": "2026-01-31",
+          "value": -0.5997768757499466
+        },
+        {
+          "date": "2026-02-28",
+          "value": -0.3675793373881131
+        },
+        {
+          "date": "2026-03-31",
+          "value": 0.9039762900596493
+        },
+        {
+          "date": "2026-04-30",
+          "value": 1.4538576064837327
+        },
+        {
+          "date": "2026-05-31",
+          "value": 1.7893495766815537
+        },
+        {
+          "date": "2026-06-30",
+          "value": 0.783076863475185
+        },
+        {
+          "date": "2026-07-31",
+          "value": 0.5612379985391769
+        },
+        {
+          "date": "2026-08-31",
+          "value": 0.41442457972402647
+        }
+      ],
+      "observation_date": "2026-08-31",
+      "status": "below",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "condition_value": 3.353016322755642,
+      "condition_threshold": 4.0,
+      "source_observations": {
+        "CPIAUCSL": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+          "sha256": "f8ecddf53a9a9a74dda92c2c4204e6039466fcb744bc74171b73b5f6aac48119",
+          "observation_date": "2026-08-01",
+          "period_end": "2026-08-31",
+          "age_days": 18,
+          "max_age_days": 55,
+          "frequency": "monthly",
+          "first_observation": "1947-01-01",
+          "next_observation_due_by": "2026-10-25",
+          "freshness_basis": "Next monthly observation period end plus 25 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "core_inflation",
+      "name": "Core inflation",
+      "tier": 3,
+      "unit": "%",
+      "formula": "100 \u00d7 (CPILFESL at t / CPILFESL at exactly t\u221212 calendar months \u2212 1)",
+      "threshold_text": "No action threshold: context only",
+      "action": "Context only, no action; inform long-horizon scenario discussion, never timing.",
+      "source_url": "https://fred.stlouisfed.org/series/CPILFESL",
+      "base_rate": "Not estimated: context indicator has no alarm/event claim (n=0 tested triggers).",
+      "false_positive_rate": "Not applicable: no threshold fires; no false-positive denominator. It may not be promoted to a trigger without a preregistered event study.",
+      "value": 2.4461631786472537,
+      "previous": 2.4665177892309265,
+      "change": -0.020354610583672716,
+      "distance": null,
+      "history": [
+        {
+          "date": "2024-09-30",
+          "value": 3.2823574494668994
+        },
+        {
+          "date": "2024-10-31",
+          "value": 3.298689706765301
+        },
+        {
+          "date": "2024-11-30",
+          "value": 3.2859356193500444
+        },
+        {
+          "date": "2024-12-31",
+          "value": 3.2133335461932644
+        },
+        {
+          "date": "2025-01-31",
+          "value": 3.282970485398584
+        },
+        {
+          "date": "2025-02-28",
+          "value": 3.13755688228059
+        },
+        {
+          "date": "2025-03-31",
+          "value": 2.808783050077035
+        },
+        {
+          "date": "2025-04-30",
+          "value": 2.7760200724699313
+        },
+        {
+          "date": "2025-05-31",
+          "value": 2.7658403935930886
+        },
+        {
+          "date": "2025-06-30",
+          "value": 2.910895442696071
+        },
+        {
+          "date": "2025-07-31",
+          "value": 3.0544930080893096
+        },
+        {
+          "date": "2025-08-31",
+          "value": 3.111806098514469
+        },
+        {
+          "date": "2025-09-30",
+          "value": 3.0199668258857892
+        },
+        {
+          "date": "2025-10-31",
+          "value": null
+        },
+        {
+          "date": "2025-11-30",
+          "value": 2.5990448060944082
+        },
+        {
+          "date": "2025-12-31",
+          "value": 2.6464847073089937
+        },
+        {
+          "date": "2026-01-31",
+          "value": 2.512028782828879
+        },
+        {
+          "date": "2026-02-28",
+          "value": 2.4724624767640258
+        },
+        {
+          "date": "2026-03-31",
+          "value": 2.602167705486824
+        },
+        {
+          "date": "2026-04-30",
+          "value": 2.7433094309685213
+        },
+        {
+          "date": "2026-05-31",
+          "value": 2.8229420636110225
+        },
+        {
+          "date": "2026-06-30",
+          "value": 2.5657850563697515
+        },
+        {
+          "date": "2026-07-31",
+          "value": 2.4665177892309265
+        },
+        {
+          "date": "2026-08-31",
+          "value": 2.4461631786472537
+        }
+      ],
+      "observation_date": "2026-08-31",
+      "status": "context",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "CPILFESL": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/CPILFESL",
+          "sha256": "cec76bf4c38dc062c63ccd3b576c21a54709ae3e3bf73ddbccb44e04384c559a",
+          "observation_date": "2026-08-01",
+          "period_end": "2026-08-31",
+          "age_days": 18,
+          "max_age_days": 55,
+          "frequency": "monthly",
+          "first_observation": "1957-01-01",
+          "next_observation_due_by": "2026-10-25",
+          "freshness_basis": "Next monthly observation period end plus 25 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "brent",
+      "name": "Brent spot oil",
+      "tier": 3,
+      "unit": "USD/bbl",
+      "formula": "EIA Europe Brent spot price; latest daily observation; spot-price context, not an investable total return",
+      "threshold_text": "No action threshold: context only",
+      "action": "Context only, no action; inform long-horizon scenario discussion, never timing.",
+      "source_url": "https://fred.stlouisfed.org/series/DCOILBRENTEU",
+      "base_rate": "Not estimated: context indicator has no alarm/event claim (n=0 tested triggers).",
+      "false_positive_rate": "Not applicable: no threshold fires; no false-positive denominator. It may not be promoted to a trigger without a preregistered event study.",
+      "value": 130.8,
+      "previous": 121.25,
+      "change": 9.550000000000011,
+      "distance": null,
+      "history": [
+        {
+          "date": "2026-08-12",
+          "value": 92.52
+        },
+        {
+          "date": "2026-08-13",
+          "value": 92.03
+        },
+        {
+          "date": "2026-08-14",
+          "value": 92.02
+        },
+        {
+          "date": "2026-08-17",
+          "value": 92.43
+        },
+        {
+          "date": "2026-08-18",
+          "value": 95.29
+        },
+        {
+          "date": "2026-08-19",
+          "value": 92.37
+        },
+        {
+          "date": "2026-08-20",
+          "value": 94.0
+        },
+        {
+          "date": "2026-08-21",
+          "value": 96.92
+        },
+        {
+          "date": "2026-08-24",
+          "value": 92.71
+        },
+        {
+          "date": "2026-08-25",
+          "value": 88.24
+        },
+        {
+          "date": "2026-08-26",
+          "value": 87.77
+        },
+        {
+          "date": "2026-08-27",
+          "value": 90.18
+        },
+        {
+          "date": "2026-08-28",
+          "value": 89.75
+        },
+        {
+          "date": "2026-09-01",
+          "value": 96.02
+        },
+        {
+          "date": "2026-09-02",
+          "value": 97.59
+        },
+        {
+          "date": "2026-09-03",
+          "value": 100.52
+        },
+        {
+          "date": "2026-09-04",
+          "value": 102.24
+        },
+        {
+          "date": "2026-09-07",
+          "value": 104.47
+        },
+        {
+          "date": "2026-09-08",
+          "value": 106.12
+        },
+        {
+          "date": "2026-09-09",
+          "value": 109.51
+        },
+        {
+          "date": "2026-09-10",
+          "value": 120.98
+        },
+        {
+          "date": "2026-09-11",
+          "value": 118.06
+        },
+        {
+          "date": "2026-09-14",
+          "value": 121.25
+        },
+        {
+          "date": "2026-09-15",
+          "value": 130.8
+        }
+      ],
+      "observation_date": "2026-09-15",
+      "status": "context",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "DCOILBRENTEU": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/DCOILBRENTEU",
+          "sha256": "29783075f33251bfa2789e0895aa384cbd2e4926618e467f6e84551f562fd8da",
+          "observation_date": "2026-09-15",
+          "period_end": "2026-09-15",
+          "age_days": 3,
+          "max_age_days": 10,
+          "frequency": "daily",
+          "first_observation": "1987-05-20",
+          "next_observation_due_by": "2026-09-25",
+          "freshness_basis": "Latest observed daily date plus 10 calendar days, allowing ordinary release delay and holidays",
+          "published_at": null
+        }
+      },
+      "change_unit": "USD/bbl",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "equities_gdp",
+      "name": "Corporate equities relative to GDP",
+      "tier": 3,
+      "unit": "%",
+      "formula": "100 \u00d7 (NCBEILQ027S in USD millions / 1000) / GDP in USD billions SAAR, joined on the same quarter",
+      "threshold_text": "No action threshold: context only",
+      "action": "Context only, no action; inform long-horizon scenario discussion, never timing.",
+      "source_url": "https://fred.stlouisfed.org/series/NCBEILQ027S | https://fred.stlouisfed.org/series/GDP",
+      "base_rate": "Not estimated: context indicator has no alarm/event claim (n=0 tested triggers).",
+      "false_positive_rate": "Not applicable: no threshold fires; no false-positive denominator. It may not be promoted to a trigger without a preregistered event study.",
+      "value": 255.65067496938534,
+      "previous": 219.72948297639334,
+      "change": 35.92119199299199,
+      "distance": null,
+      "history": [
+        {
+          "date": "2020-07-01",
+          "value": 175.61011603295674
+        },
+        {
+          "date": "2020-10-01",
+          "value": 198.25252318541632
+        },
+        {
+          "date": "2021-01-01",
+          "value": 205.94007863869064
+        },
+        {
+          "date": "2021-04-01",
+          "value": 215.6902250542242
+        },
+        {
+          "date": "2021-07-01",
+          "value": 210.81364780366448
+        },
+        {
+          "date": "2021-10-01",
+          "value": 218.73502031144213
+        },
+        {
+          "date": "2022-01-01",
+          "value": 202.9447714124483
+        },
+        {
+          "date": "2022-04-01",
+          "value": 163.80383470400471
+        },
+        {
+          "date": "2022-07-01",
+          "value": 153.27629116067308
+        },
+        {
+          "date": "2022-10-01",
+          "value": 157.13013952589782
+        },
+        {
+          "date": "2023-01-01",
+          "value": 166.87740445161006
+        },
+        {
+          "date": "2023-04-01",
+          "value": 177.74548942964336
+        },
+        {
+          "date": "2023-07-01",
+          "value": 167.15261412297684
+        },
+        {
+          "date": "2023-10-01",
+          "value": 182.0651544103052
+        },
+        {
+          "date": "2024-01-01",
+          "value": 197.33336454397062
+        },
+        {
+          "date": "2024-04-01",
+          "value": 199.65463393131733
+        },
+        {
+          "date": "2024-07-01",
+          "value": 207.98576793229958
+        },
+        {
+          "date": "2024-10-01",
+          "value": 210.45316672334135
+        },
+        {
+          "date": "2025-01-01",
+          "value": 197.8174637716062
+        },
+        {
+          "date": "2025-04-01",
+          "value": 214.30794061050668
+        },
+        {
+          "date": "2025-07-01",
+          "value": 226.37199781195125
+        },
+        {
+          "date": "2025-10-01",
+          "value": 229.11873157492172
+        },
+        {
+          "date": "2026-01-01",
+          "value": 219.72948297639334
+        },
+        {
+          "date": "2026-04-01",
+          "value": 255.65067496938534
+        }
+      ],
+      "observation_date": "2026-04-01",
+      "status": "context",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "NCBEILQ027S": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/NCBEILQ027S",
+          "sha256": "c217c084ca5bcb27f5ecf466848ce1eebeee9ffdcc18193012c463974337619d",
+          "observation_date": "2026-04-01",
+          "period_end": "2026-06-30",
+          "age_days": 80,
+          "max_age_days": 192,
+          "frequency": "quarterly",
+          "first_observation": "1945-10-01",
+          "next_observation_due_by": "2027-01-08",
+          "freshness_basis": "Next quarterly observation period end plus 100 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        },
+        "GDP": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/GDP",
+          "sha256": "d6adae12f21cfb616fe8fa07d6a8fb7ff319a588a18f3876d32beeb78debe360",
+          "observation_date": "2026-04-01",
+          "period_end": "2026-06-30",
+          "age_days": 80,
+          "max_age_days": 192,
+          "frequency": "quarterly",
+          "first_observation": "1947-01-01",
+          "next_observation_due_by": "2027-01-08",
+          "freshness_basis": "Next quarterly observation period end plus 100 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    },
+    {
+      "id": "profit_share",
+      "name": "After-tax corporate profit share",
+      "tier": 3,
+      "unit": "%",
+      "formula": "100 \u00d7 CPATAX / GDP, same quarter and nominal USD billions SAAR; broad NIPA corporations, not S&P per-share earnings",
+      "threshold_text": "No action threshold: context only",
+      "action": "Context only, no action; inform long-horizon scenario discussion, never timing.",
+      "source_url": "https://fred.stlouisfed.org/series/CPATAX | https://fred.stlouisfed.org/series/GDP",
+      "base_rate": "Not estimated: context indicator has no alarm/event claim (n=0 tested triggers).",
+      "false_positive_rate": "Not applicable: no threshold fires; no false-positive denominator. It may not be promoted to a trigger without a preregistered event study.",
+      "value": 12.071159985945975,
+      "previous": 11.37183746760351,
+      "change": 0.6993225183424645,
+      "distance": null,
+      "history": [
+        {
+          "date": "2020-07-01",
+          "value": 11.122159031353819
+        },
+        {
+          "date": "2020-10-01",
+          "value": 9.953076810237258
+        },
+        {
+          "date": "2021-01-01",
+          "value": 10.872886467798844
+        },
+        {
+          "date": "2021-04-01",
+          "value": 11.456395930830436
+        },
+        {
+          "date": "2021-07-01",
+          "value": 11.16842495066899
+        },
+        {
+          "date": "2021-10-01",
+          "value": 10.833837089338106
+        },
+        {
+          "date": "2022-01-01",
+          "value": 10.25016804719555
+        },
+        {
+          "date": "2022-04-01",
+          "value": 10.734436624434695
+        },
+        {
+          "date": "2022-07-01",
+          "value": 10.920332632855393
+        },
+        {
+          "date": "2022-10-01",
+          "value": 10.488595773693401
+        },
+        {
+          "date": "2023-01-01",
+          "value": 10.71485640391315
+        },
+        {
+          "date": "2023-04-01",
+          "value": 10.64891443188181
+        },
+        {
+          "date": "2023-07-01",
+          "value": 10.815881234041319
+        },
+        {
+          "date": "2023-10-01",
+          "value": 11.02162758179306
+        },
+        {
+          "date": "2024-01-01",
+          "value": 10.540264143007978
+        },
+        {
+          "date": "2024-04-01",
+          "value": 10.672118242934
+        },
+        {
+          "date": "2024-07-01",
+          "value": 10.431461946706902
+        },
+        {
+          "date": "2024-10-01",
+          "value": 10.96596493526846
+        },
+        {
+          "date": "2025-01-01",
+          "value": 10.826269110964331
+        },
+        {
+          "date": "2025-04-01",
+          "value": 10.691576376605592
+        },
+        {
+          "date": "2025-07-01",
+          "value": 10.970638105111941
+        },
+        {
+          "date": "2025-10-01",
+          "value": 11.474790409911666
+        },
+        {
+          "date": "2026-01-01",
+          "value": 11.37183746760351
+        },
+        {
+          "date": "2026-04-01",
+          "value": 12.071159985945975
+        }
+      ],
+      "observation_date": "2026-04-01",
+      "status": "context",
+      "error": null,
+      "published_at": null,
+      "acquired_at": "2026-09-19",
+      "sampling_note": "Operational values use latest available source observations; monthly derivations require completed periods. Historical performance uses monthly threshold crossings and coarse release lags, not every daily/weekly flag. Prospective scores use final acquired state in closed UTC months; exact publication times are unknown until separately captured.",
+      "source_observations": {
+        "CPATAX": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/CPATAX",
+          "sha256": "14efe516f6112b937ded12430782535203a6d48fb1328758ee00cb3334644aa3",
+          "observation_date": "2026-04-01",
+          "period_end": "2026-06-30",
+          "age_days": 80,
+          "max_age_days": 192,
+          "frequency": "quarterly",
+          "first_observation": "1947-01-01",
+          "next_observation_due_by": "2027-01-08",
+          "freshness_basis": "Next quarterly observation period end plus 100 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        },
+        "GDP": {
+          "source_file": "data/raw/fred_bundle_2026-09-19.json",
+          "retrieved_at": "2026-09-19 (supplied capture)",
+          "acquired_at": "2026-09-19",
+          "acquisition_precision": "day only; supplied capture",
+          "url": "https://fred.stlouisfed.org/series/GDP",
+          "sha256": "d6adae12f21cfb616fe8fa07d6a8fb7ff319a588a18f3876d32beeb78debe360",
+          "observation_date": "2026-04-01",
+          "period_end": "2026-06-30",
+          "age_days": 80,
+          "max_age_days": 192,
+          "frequency": "quarterly",
+          "first_observation": "1947-01-01",
+          "next_observation_due_by": "2027-01-08",
+          "freshness_basis": "Next quarterly observation period end plus 100 calendar days; conservative release assumption, not an exact release calendar",
+          "published_at": null
+        }
+      },
+      "change_unit": "pp",
+      "last_run_value": null,
+      "change_since_last_run": null
+    }
+  ],
+  "sources": {
+    "GS10": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/GS10",
+      "sha256": "e22128f6caa50e4e7fed03a1c2d323a517bad452a2c69eab89277450fb59bc5c",
+      "observation_date": "2026-08-01",
+      "period_end": "2026-08-31",
+      "age_days": 18,
+      "max_age_days": 50,
+      "frequency": "monthly",
+      "first_observation": "1953-04-01",
+      "next_observation_due_by": "2026-10-20",
+      "freshness_basis": "Next monthly observation period end plus 20 calendar days; conservative release assumption, not an exact release calendar",
+      "published_at": null
+    },
+    "TB3MS": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/TB3MS",
+      "sha256": "ebf04b1ae5bc5729ba3bb2b35dbb0e0c5e22dace36bea0c02632782d625ae6ab",
+      "observation_date": "2026-08-01",
+      "period_end": "2026-08-31",
+      "age_days": 18,
+      "max_age_days": 50,
+      "frequency": "monthly",
+      "first_observation": "1934-01-01",
+      "next_observation_due_by": "2026-10-20",
+      "freshness_basis": "Next monthly observation period end plus 20 calendar days; conservative release assumption, not an exact release calendar",
+      "published_at": null
+    },
+    "BAA10Y": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/BAA10Y",
+      "sha256": "404bb66fa73d98284c3cacb05bd17c2daa3f0b6062602192602369a0163d2287",
+      "observation_date": "2026-09-17",
+      "period_end": "2026-09-17",
+      "age_days": 1,
+      "max_age_days": 7,
+      "frequency": "daily",
+      "first_observation": "1986-01-02",
+      "next_observation_due_by": "2026-09-24",
+      "freshness_basis": "Latest observed daily date plus 7 calendar days, allowing ordinary release delay and holidays",
+      "published_at": null
+    },
+    "CPIAUCSL": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+      "sha256": "f8ecddf53a9a9a74dda92c2c4204e6039466fcb744bc74171b73b5f6aac48119",
+      "observation_date": "2026-08-01",
+      "period_end": "2026-08-31",
+      "age_days": 18,
+      "max_age_days": 55,
+      "frequency": "monthly",
+      "first_observation": "1947-01-01",
+      "next_observation_due_by": "2026-10-25",
+      "freshness_basis": "Next monthly observation period end plus 25 calendar days; conservative release assumption, not an exact release calendar",
+      "published_at": null
+    },
+    "CPILFESL": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/CPILFESL",
+      "sha256": "cec76bf4c38dc062c63ccd3b576c21a54709ae3e3bf73ddbccb44e04384c559a",
+      "observation_date": "2026-08-01",
+      "period_end": "2026-08-31",
+      "age_days": 18,
+      "max_age_days": 55,
+      "frequency": "monthly",
+      "first_observation": "1957-01-01",
+      "next_observation_due_by": "2026-10-25",
+      "freshness_basis": "Next monthly observation period end plus 25 calendar days; conservative release assumption, not an exact release calendar",
+      "published_at": null
+    },
+    "GDP": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/GDP",
+      "sha256": "d6adae12f21cfb616fe8fa07d6a8fb7ff319a588a18f3876d32beeb78debe360",
+      "observation_date": "2026-04-01",
+      "period_end": "2026-06-30",
+      "age_days": 80,
+      "max_age_days": 192,
+      "frequency": "quarterly",
+      "first_observation": "1947-01-01",
+      "next_observation_due_by": "2027-01-08",
+      "freshness_basis": "Next quarterly observation period end plus 100 calendar days; conservative release assumption, not an exact release calendar",
+      "published_at": null
+    },
+    "SAHMREALTIME": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/SAHMREALTIME",
+      "sha256": "4da0144adced98f11f79b131e7bff40c54572137c11e1003d507632476a7608b",
+      "observation_date": "2026-08-01",
+      "period_end": "2026-08-31",
+      "age_days": 18,
+      "max_age_days": 50,
+      "frequency": "monthly",
+      "first_observation": "1959-12-01",
+      "next_observation_due_by": "2026-10-20",
+      "freshness_basis": "Next monthly observation period end plus 20 calendar days; conservative release assumption, not an exact release calendar",
+      "published_at": null
+    },
+    "NCBEILQ027S": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/NCBEILQ027S",
+      "sha256": "c217c084ca5bcb27f5ecf466848ce1eebeee9ffdcc18193012c463974337619d",
+      "observation_date": "2026-04-01",
+      "period_end": "2026-06-30",
+      "age_days": 80,
+      "max_age_days": 192,
+      "frequency": "quarterly",
+      "first_observation": "1945-10-01",
+      "next_observation_due_by": "2027-01-08",
+      "freshness_basis": "Next quarterly observation period end plus 100 calendar days; conservative release assumption, not an exact release calendar",
+      "published_at": null
+    },
+    "DCOILBRENTEU": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/DCOILBRENTEU",
+      "sha256": "29783075f33251bfa2789e0895aa384cbd2e4926618e467f6e84551f562fd8da",
+      "observation_date": "2026-09-15",
+      "period_end": "2026-09-15",
+      "age_days": 3,
+      "max_age_days": 10,
+      "frequency": "daily",
+      "first_observation": "1987-05-20",
+      "next_observation_due_by": "2026-09-25",
+      "freshness_basis": "Latest observed daily date plus 10 calendar days, allowing ordinary release delay and holidays",
+      "published_at": null
+    },
+    "NFCI": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/NFCI",
+      "sha256": "5f05630ba19a141ea212861bde9b81b437be2786eb0aebbdf68415684d9111dd",
+      "observation_date": "2026-09-11",
+      "period_end": "2026-09-11",
+      "age_days": 7,
+      "max_age_days": 14,
+      "frequency": "weekly",
+      "first_observation": "1971-01-08",
+      "next_observation_due_by": "2026-09-25",
+      "freshness_basis": "Latest observed weekly date plus 14 calendar days, allowing ordinary release delay and holidays",
+      "published_at": null
+    },
+    "CPATAX": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/CPATAX",
+      "sha256": "14efe516f6112b937ded12430782535203a6d48fb1328758ee00cb3334644aa3",
+      "observation_date": "2026-04-01",
+      "period_end": "2026-06-30",
+      "age_days": 80,
+      "max_age_days": 192,
+      "frequency": "quarterly",
+      "first_observation": "1947-01-01",
+      "next_observation_due_by": "2027-01-08",
+      "freshness_basis": "Next quarterly observation period end plus 100 calendar days; conservative release assumption, not an exact release calendar",
+      "published_at": null
+    },
+    "ICSA": {
+      "source_file": "data/raw/fred_bundle_2026-09-19.json",
+      "retrieved_at": "2026-09-19 (supplied capture)",
+      "acquired_at": "2026-09-19",
+      "acquisition_precision": "day only; supplied capture",
+      "url": "https://fred.stlouisfed.org/series/ICSA",
+      "sha256": "8a17e65deb9d7c16245f36373d6bc2c1d1dd7221e4cf82af179d1394a2c5d3d0",
+      "observation_date": "2026-09-12",
+      "period_end": "2026-09-12",
+      "age_days": 6,
+      "max_age_days": 14,
+      "frequency": "weekly",
+      "first_observation": "1967-01-07",
+      "next_observation_due_by": "2026-09-26",
+      "freshness_basis": "Latest observed weekly date plus 14 calendar days, allowing ordinary release delay and holidays",
+      "published_at": null
+    }
+  },
+  "errors": {},
+  "changes": [],
+  "cutoff_note": "Supplied raw data captured 2026-09-19, revised history"
+}

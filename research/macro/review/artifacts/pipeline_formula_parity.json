@@ -1,0 +1,54 @@
+{
+  "checks": [
+    {
+      "indicator": "claims_rise",
+      "comparison_months": 704,
+      "historical_availability_shift_months": 0,
+      "maximum_absolute_error": 7.105427357601002e-15
+    },
+    {
+      "indicator": "sahm",
+      "comparison_months": 799,
+      "historical_availability_shift_months": 1,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "indicator": "credit_level",
+      "comparison_months": 488,
+      "historical_availability_shift_months": 0,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "indicator": "credit_change",
+      "comparison_months": 485,
+      "historical_availability_shift_months": 0,
+      "maximum_absolute_error": 2.220446049250313e-16
+    },
+    {
+      "indicator": "nfci",
+      "comparison_months": 667,
+      "historical_availability_shift_months": 1,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "indicator": "curve",
+      "comparison_months": 871,
+      "historical_availability_shift_months": 1,
+      "maximum_absolute_error": 4.440892098500626e-16
+    },
+    {
+      "indicator": "inflation",
+      "comparison_months": 858,
+      "historical_availability_shift_months": 1,
+      "maximum_absolute_error": 1.7763568394002505e-15
+    },
+    {
+      "indicator": "inflation_acceleration",
+      "comparison_months": 846,
+      "historical_availability_shift_months": 1,
+      "maximum_absolute_error": 4.440892098500626e-16
+    }
+  ],
+  "result": "pass",
+  "note": "History aligned to sealed study coarse release lag; operational display uses actual acquired latest values."
+}

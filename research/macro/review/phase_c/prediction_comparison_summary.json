@@ -1,0 +1,33 @@
+{
+  "final_labels": {
+    "UNSCORABLE": 35,
+    "PENDING": 11,
+    "CANNOT_VERIFY": 7,
+    "HIT": 4,
+    "MISS": 3
+  },
+  "locked_labels": {
+    "UNSCORABLE": 35,
+    "PENDING": 15,
+    "CANNOT_VERIFY": 8,
+    "MISS": 2
+  },
+  "post_lock_primary_amendments": 5,
+  "strict_paired_n_before_verification": 0,
+  "strict_paired_n_after_verification": 1,
+  "strict_paired_forecast_hits": 1,
+  "strict_paired_nochange_hits": 1,
+  "strict_paired_persistence_hits": 1,
+  "legacy_all_counts": {
+    "NOT_YET_DUE": 115,
+    "MISS": 64,
+    "HIT": 54,
+    "UNFALSIFIABLE": 33,
+    "PARTIAL": 27
+  },
+  "legacy_raw_rows": 288,
+  "legacy_scored_rows": 293,
+  "legacy_added_title_rows": 5,
+  "validation_checks_passed": 6,
+  "validation_checks_failed": 0
+}

@@ -1,0 +1,118 @@
+{
+  "scope": "Blind Phase A. No claims, prior report, prior verdicts or analogs opened.",
+  "coverage": "All 58 transcript files fully ingested; complete first timestamp pass. Full semantic reading by team is separately recorded in semantic_reading_notes.md, jikh_mid_reader.md and jikh_late_reader.md; working contextual packets are not retained in final deliverables.",
+  "deduplication": "At first declining timestamp; exact equality of retained pass and removed pass required.",
+  "themes": {
+    "oil_energy": "\\b(?:oil|brent|crude|gasoline|energy prices|hormuz)\\b",
+    "inflation": "\\b(?:inflation|inflationary|deflation|cpi|consumer price)\\b",
+    "recession_labor": "\\b(?:recession|unemployment|jobless|layoffs|labor market|labour market|jobs report)\\b",
+    "debt_credit": "\\b(?:debt|deficit|credit|default|bankrupt\\w*)\\b",
+    "dollar_fx": "\\b(?:dollar|currency|currencies|yen|yuan|renminbi)\\b",
+    "gold_silver": "\\b(?:gold|silver|precious metal\\w*)\\b",
+    "ai_tech": "\\b(?:ai|artificial intelligence|nvidia|tech|technology|data centers?)\\b",
+    "valuation_bubble": "\\b(?:bubble|valuation\\w*|overvalued|undervalued|price.to.earnings|cape)\\b",
+    "liquidity_rates": "\\b(?:liquidity|interest rates?|rate cuts?|rate hikes?|federal reserve|quantitative easing|quantitative tightening)\\b",
+    "china_deglobalization": "\\b(?:china|chinese|tariffs?|deglobal\\w*|brics)\\b",
+    "rotation_manufacturing": "\\b(?:rotation|manufacturing|pmi|commodities|commodity|small caps?|industrial\\w*)\\b",
+    "crypto": "\\b(?:bitcoin|crypto\\w*|stablecoins?)\\b",
+    "digital_control": "\\b(?:digital (?:id|identity|control)|cbdc\\w*|programmable money|control grid|surveillance|biometric\\w*)\\b",
+    "housing": "\\b(?:housing|mortgage\\w*|real estate|home prices)\\b"
+  },
+  "rhetoric": {
+    "certainty": "\\b(?:will|guaranteed|certainly|definitely|inevitable|inevitably|must)\\b",
+    "hedge": "\\b(?:could|may|might|possibly|perhaps|probably|potentially|likely|unlikely)\\b",
+    "urgency": "\\b(?:urgent|urgently|emergency|imminent|immediately|crisis|crash|collapse|warning|dangerous|danger|last chance|once in a lifetime|never before|about to)\\b",
+    "correction": "\\b(?:i was wrong|we were wrong|i got it wrong|we got it wrong|my mistake|our mistake|i stand corrected|we stand corrected|changed my mind|changed our mind)\\b"
+  },
+  "sources": {
+    "Simon_Dixon": "\\bsimon dixon\\b",
+    "Ed_Zitron": "\\bed (?:zitron|zitran|citron)\\b",
+    "Jeff_Currie": "\\bjeff (?:currie|curry)\\b",
+    "Northstar": "\\bnorthstar\\b",
+    "Azure_Capital": "\\bazure capital\\b",
+    "BCA_Research": "\\bbca(?: research)?\\b",
+    "CME": "\\b(?:cme|fedwatch)\\b",
+    "Luke_Gromen": "\\b(?:(?:luke|l)\\s+(?:groman|gromen|growman|grman|gman|grumman|roman|crowman)|fftt)\\b",
+    "Catherine_Austin_Fitts": "\\baustin (?:fitts|fitz|fits)\\b",
+    "Chris_Martenson": "\\bchris (?:martenson|martinson)\\b",
+    "Benjamin_Cowen": "\\bbenjamin (?:cowen|cowan)\\b",
+    "Richard_Werner": "\\brichard werner\\b",
+    "NBER": "\\b(?:nber|national bureau of economic research)\\b",
+    "Gartner": "\\bgartner\\b",
+    "Moody_Zandi": "\\b(?:moody\\w*|mark zandi)\\b",
+    "ECB": "\\b(?:european central bank|ecb)\\b",
+    "BIS": "\\b(?:bank (?:for|of) international settlements|bis)\\b",
+    "Our_World_in_Data": "\\bour world in data\\b",
+    "Fed": "\\b(?:federal reserve|the fed|powell|fomc)\\b",
+    "BLS": "\\b(?:bureau of labor statistics|bls)\\b",
+    "BEA": "\\b(?:bureau of economic analysis|bea)\\b",
+    "ISM": "\\b(?:ism|institute for supply management)\\b",
+    "CBO": "\\b(?:congressional budget office|cbo)\\b",
+    "IMF": "\\b(?:imf|international monetary fund)\\b",
+    "Goldman_Sachs": "\\bgoldman(?: sachs)?\\b",
+    "JP_Morgan": "\\b(?:jp\\s*morgan|j\\.p\\.\\s*morgan|jamie dimon)\\b",
+    "Bank_of_America": "\\bbank of america\\b",
+    "Morgan_Stanley": "\\bmorgan stanley\\b",
+    "BofA_Hartnett": "\\bhartnett\\b",
+    "Dalio": "\\bdalio\\b",
+    "Buffett_Berkshire": "\\b(?:buffett|buffet|berkshire)\\b",
+    "Burry": "\\bburry\\b",
+    "Druckenmiller": "\\bdruckenmiller\\b",
+    "Michael_Hartnett": "\\bmichael hartnett\\b",
+    "Bloomberg": "\\bbloomberg\\b",
+    "Reuters": "\\breuters\\b",
+    "Financial_Times": "\\bfinancial times\\b",
+    "CNBC": "\\bcnbc\\b",
+    "Wall_Street_Journal": "\\bwall street journal\\b",
+    "World_Gold_Council": "\\bworld gold council\\b",
+    "FINRA": "\\bfinra\\b",
+    "Bravos": "\\bbravos\\b",
+    "Andrei_Jikh": "\\b(?:andrei jikh|andre jik|andrei jik)\\b"
+  },
+  "pitch": "\\b(?:sponsor(?:ed|ing)?|kikoff|kickoff|plaud|tello|delete me|ground news|gemini predictions|zocdoc|zoc doc|seeking alpha|funvest|members section|premium memberships?|join the membership|book a (?:call|slot)|strategy sessions?|special (?:launch )?offer|special invitation|bravos pro|bravo pro|strategy calls?|premium members?|premium membership|premium community|patreon|moomoo|moo moo|we?bull|robinhood|rocket money|groundfloor|ground floor|sofi|so fi|public\\.com|join our|join my|link (?:in|below)|link in the description|free stocks?|free shares?)\\b",
+  "directional_families": {
+    "oil_direction": [
+      "\\b(?:oil|crude|brent|gasoline)\\b",
+      "\\b(?:rise|rising|risen|higher|surge\\w*|soar\\w*|increase\\w*|up|spik\\w*)\\b",
+      "\\b(?:fall\\w*|lower|declin\\w*|drop\\w*|down|crash\\w*|collaps\\w*)\\b"
+    ],
+    "inflation_direction": [
+      "\\b(?:inflation|consumer prices|cpi)\\b",
+      "\\b(?:rise|rising|risen|higher|accelerat\\w*|increase\\w*|up|surge\\w*)\\b",
+      "\\b(?:fall\\w*|lower|declin\\w*|drop\\w*|down|cool\\w*|decelerat\\w*)\\b"
+    ],
+    "dollar_direction": [
+      "\\b(?:dollar|dxy)\\b",
+      "\\b(?:rise|rising|higher|strength\\w*|surge\\w*|up|rally\\w*)\\b",
+      "\\b(?:fall\\w*|lower|weak\\w*|declin\\w*|drop\\w*|down|collaps\\w*)\\b"
+    ],
+    "gold_direction": [
+      "\\b(?:gold|silver)\\b",
+      "\\b(?:rise|rising|higher|surge\\w*|soar\\w*|increase\\w*|up|rally\\w*)\\b",
+      "\\b(?:fall\\w*|lower|declin\\w*|drop\\w*|down|crash\\w*|collaps\\w*)\\b"
+    ],
+    "rates_direction": [
+      "\\b(?:interest rates?|rate cuts?|rate hikes?|yields?)\\b",
+      "\\b(?:rise|rising|higher|hike\\w*|increas\\w*|up|surge\\w*)\\b",
+      "\\b(?:fall\\w*|lower|declin\\w*|drop\\w*|down|cuts?|cutting)\\b"
+    ],
+    "stocks_direction": [
+      "\\b(?:stock market|stocks|s&p|s and p|equities|nasdaq)\\b",
+      "\\b(?:rise|rising|higher|surge\\w*|soar\\w*|increase\\w*|up|rally\\w*|bullish)\\b",
+      "\\b(?:fall\\w*|lower|declin\\w*|drop\\w*|down|crash\\w*|collaps\\w*|bearish)\\b"
+    ],
+    "recession_presence": [
+      "\\brecession\\b",
+      "\\b(?:enter\\w*|heading|coming|inevitable|will|imminent|risk)\\b",
+      "\\b(?:no recession|not a recession|avoid\\w*|unlikely|won.t|will not|soft landing|not in a recession)\\b"
+    ]
+  },
+  "substantial_theme": "at least 3 regex matches and at least 1 mention per 1000 words",
+  "candidate_pairs": "Every same-channel, same-family, opposite-polarity sentence pair with strictly different increasing dates; only single-polarity sentences <=90 words; no truth/horizon/attribution check until manual adjudication.",
+  "price_context_caveat": "First use left censored by selected corpus. Daily series assumed one-day lag; gold, CPI and unemployment conservative45-day lag on reference date. Raw snapshot is revised vintage, not original releases. No lead-lag causal test.",
+  "input_video_count": 58,
+  "words": 187028,
+  "duplicate_file_count": 28,
+  "n_directional_predicates": 818,
+  "n_candidate_pairs": 13500
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "path": "verify/out/V1/SUMMARY.md",
+    "lines": 169,
+    "sha256": "f68adeafafc31312ddbff47fe061c086d1af9dca63d5293d523a310b86f88537",
+    "read_mode": "full semantic reading, all lines",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/V1/facts.md",
+    "lines": 1011,
+    "sha256": "113c10b1dc176da6fd46e00ca83df32163e29ad09ad42ee2714f433a65e77f30",
+    "read_mode": "full semantic reading, all lines",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/V3/SUMMARY.md",
+    "lines": 99,
+    "sha256": "0f8530f47d8df8d3ba603b9a0fddc01e965e8a7b81bdd427787a5dee363fec82",
+    "read_mode": "full semantic reading, all lines",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/V3/facts.md",
+    "lines": 1543,
+    "sha256": "d35be956103e07c224034904cb711430a91e45482216e82d37a42dd888011cb1",
+    "read_mode": "full semantic reading, all lines",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/V5/SUMMARY.md",
+    "lines": 210,
+    "sha256": "1628fb3e539b22f948d0c15fec431440dd5c7e058e9ef48dda2f6f68baa9432b",
+    "read_mode": "full semantic reading, all lines",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/V5/facts.md",
+    "lines": 1092,
+    "sha256": "0538fffbe6cc7aec9f4005305eb950e1b47268af57c9b2485aab61da161aca2a",
+    "read_mode": "full semantic reading, all lines",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/V8_9/SUMMARY.md",
+    "lines": 96,
+    "sha256": "292905ebd568725515a95158576c78366b678511ad844d07a37b6873acc1b2d7",
+    "read_mode": "full semantic reading, all lines",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/V8_9/facts.md",
+    "lines": 825,
+    "sha256": "6064604deb0ca4e9f55d394da2423944b491ae1d4a32d9d3c42dfcd3f4a4666f",
+    "read_mode": "full semantic reading, all lines",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/PREDICTIONS/SCORECARD.md",
+    "lines": 475,
+    "sha256": "a89082000930ee783b1ad3a32f674c1c3428c9ff621a3197661755d45cbafa24",
+    "read_mode": "full semantic reading, all lines after blind lock",
+    "reader": "blind_events"
+  },
+  {
+    "path": "verify/out/PREDICTIONS/scoring.py",
+    "lines": 676,
+    "sha256": "bf87c14f744ea638a8cf58f83ce7067a26440c485d7c22f3d339566279c66c57",
+    "read_mode": "full semantic reading, all lines after blind lock",
+    "reader": "blind_events"
+  }
+]

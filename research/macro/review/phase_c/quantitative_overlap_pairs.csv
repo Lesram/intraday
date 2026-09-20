@@ -1,0 +1,14 @@
+a,b,overlap_months
+S 2021-11 post-COVID top,S 2018-06 late-cycle,19
+S 2007-10 pre-GFC top,S 2005-09 mid-2000s,35
+S 2007-10 pre-GFC top,S 2011-07 post-QE2,15
+S 2007-10 pre-GFC top,S 2003-03 reflation,5
+S 2005-09 mid-2000s,S 2001-02 post-dotcom,5
+S 2005-09 mid-2000s,S 2003-03 reflation,30
+S 2001-02 post-dotcom,S 2003-03 reflation,35
+S 2001-02 post-dotcom,M 1999-2000 dotcom [anchor],48
+S 2018-06 late-cycle,S 2014-07 mid-2010s,13
+S 2011-07 post-QE2,S 2014-07 mid-2010s,24
+S 2003-03 reflation,M 1999-2000 dotcom [anchor],23
+S 1996-02 mid-90s,M 1999-2000 dotcom [anchor],12
+S 1950-10 Korea/repression,S 1946-06 post-war,8

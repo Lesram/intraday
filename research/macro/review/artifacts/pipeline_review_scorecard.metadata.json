@@ -1,0 +1,11 @@
+{
+  "scored_at": "2026-09-20T04:53:24.806508+00:00",
+  "scoring_as_of": "current UTC",
+  "outcome_file": null,
+  "outcome_sha256": null,
+  "outcome_published_at": null,
+  "outcome_acquired_at": null,
+  "outcome_timestamp_note": "File ingestion time is the scoring time; original publisher/retrieval times are not supplied.",
+  "sampling": "Final acquired state in each closed UTC month; consecutive observed months required",
+  "labels": "Retrospective USREC; scored labels may revise"
+}

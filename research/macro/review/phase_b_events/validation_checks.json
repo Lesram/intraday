@@ -1,0 +1,8 @@
+{
+  "passed": [
+    "All alarm windows mature; cooldown at least horizon; episode denominators reconcile; leads in prescribed horizon.",
+    "Missing 2025-10 CPI remains missing; never bridged with positional year-on-year arithmetic.",
+    "All confusion-matrix denominators equal eligible monthly observations."
+  ],
+  "failed": []
+}

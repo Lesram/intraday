@@ -1,0 +1,55 @@
+{
+  "generated_at_utc": "2026-09-20T05:30:42.675321+00:00",
+  "research_unit_tests": {
+    "passed": 35,
+    "failed": 0,
+    "log": "pipeline_final_tests.log"
+  },
+  "formula_parity": {
+    "series": 8,
+    "status": "pass",
+    "receipt": "pipeline_formula_parity.json"
+  },
+  "prediction_audit": {
+    "locked_checks_passed": 8,
+    "post_verification_checks_passed": 6,
+    "failed": 0
+  },
+  "quantitative_checks": {
+    "status": "PASS with methodological limitations",
+    "checks": {
+      "original_scores_reproduce_within_csv_rounding": true,
+      "cape_source_function_reproduces_cached_values": true,
+      "original_set_is_twelve_screen_plus_one_manual": true,
+      "all_fifteen_original_analog_files_in_reading_receipt": true,
+      "mature_gold_nine_and_median_25_17": true,
+      "screen_returns_nonempty": true,
+      "tightening_all_episodes_nonempty": true,
+      "profit_mean_reversion_nonempty": true,
+      "industry_concentration_history_nonempty": true,
+      "cape_base_rate_freshness_nonempty": true,
+      "energy_tilt_sensitivity_nonempty": true
+    },
+    "all_checks_pass": true
+  },
+  "event_checks": {
+    "passed": [
+      "All alarm windows mature; cooldown at least horizon; episode denominators reconcile; leads in prescribed horizon.",
+      "Missing 2025-10 CPI remains missing; never bridged with positional year-on-year arithmetic.",
+      "All confusion-matrix denominators equal eligible monthly observations."
+    ],
+    "failed": []
+  },
+  "delivery_integrity_checks": {
+    "passed": 17,
+    "failed": 0
+  },
+  "browser": "desktop, mobile, filters, source inspection and standalone export verified",
+  "platform_suites": {
+    "status": "unavailable",
+    "passed": null,
+    "failed": null,
+    "collection_errors": 1,
+    "reason": "FastAPI missing; no platform files changed"
+  }
+}

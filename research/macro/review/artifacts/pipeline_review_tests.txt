@@ -1,0 +1,40 @@
+test_actual_acquisition_month_prevents_backdated_alarm (test_archive.ArchiveTests.test_actual_acquisition_month_prevents_backdated_alarm) ... ok
+test_complete_no_event_is_false_alarm (test_archive.ArchiveTests.test_complete_no_event_is_false_alarm) ... ok
+test_failed_final_monthly_attempt_resets_crossing_baseline (test_archive.ArchiveTests.test_failed_final_monthly_attempt_resets_crossing_baseline) ... ok
+test_horizon_month_must_finish_even_if_labels_exist (test_archive.ArchiveTests.test_horizon_month_must_finish_even_if_labels_exist) ... ok
+test_incomplete_horizon_remains_pending (test_archive.ArchiveTests.test_incomplete_horizon_remains_pending) ... ok
+test_initial_high_reading_cannot_prove_crossing (test_archive.ArchiveTests.test_initial_high_reading_cannot_prove_crossing) ... ok
+test_intramonth_reversal_does_not_inherit_monthly_hit_rate (test_archive.ArchiveTests.test_intramonth_reversal_does_not_inherit_monthly_hit_rate) ... ok
+test_invalid_outcome_label_rejected (test_archive.ArchiveTests.test_invalid_outcome_label_rejected) ... ok
+test_missing_month_resets_crossing_baseline (test_archive.ArchiveTests.test_missing_month_resets_crossing_baseline) ... ok
+test_no_acquisition_timestamp_cannot_create_prospective_history (test_archive.ArchiveTests.test_no_acquisition_timestamp_cannot_create_prospective_history) ... ok
+test_no_repeated_alarms_while_threshold_stays_high (test_archive.ArchiveTests.test_no_repeated_alarms_while_threshold_stays_high) ... ok
+test_open_signal_month_is_not_a_monthly_alarm (test_archive.ArchiveTests.test_open_signal_month_is_not_a_monthly_alarm) ... ok
+test_snapshot_does_not_count_as_prospective (test_archive.ArchiveTests.test_snapshot_does_not_count_as_prospective) ... ok
+test_unavailable_month_resets_crossing_baseline (test_archive.ArchiveTests.test_unavailable_month_resets_crossing_baseline) ... ok
+test_all_eight_historical_formulas_match_sealed_study (test_monitor.MonitorTests.test_all_eight_historical_formulas_match_sealed_study) ... ok
+test_calendar_gap_does_not_become_13_month_growth (test_monitor.MonitorTests.test_calendar_gap_does_not_become_13_month_growth) ... ok
+test_compound_inflation_needs_both_conditions (test_monitor.MonitorTests.test_compound_inflation_needs_both_conditions) ... ok
+test_current_monthly_release_does_not_expire_before_next_is_due (test_monitor.MonitorTests.test_current_monthly_release_does_not_expire_before_next_is_due) ... ok
+test_duplicate_and_unsorted_dates_rejected (test_monitor.MonitorTests.test_duplicate_and_unsorted_dates_rejected) ... ok
+test_failed_refresh_preserves_last_good_and_writes_attempt (test_monitor.MonitorTests.test_failed_refresh_preserves_last_good_and_writes_attempt) ... ok
+test_future_native_observation_excluded (test_monitor.MonitorTests.test_future_native_observation_excluded) ... ok
+test_html_response_is_not_valid_csv (test_monitor.MonitorTests.test_html_response_is_not_valid_csv) ... ok
+test_incomplete_period_not_accepted (test_monitor.MonitorTests.test_incomplete_period_not_accepted) ... ok
+test_malformed_latest_value_does_not_silently_reuse_previous (test_monitor.MonitorTests.test_malformed_latest_value_does_not_silently_reuse_previous) ... ok
+test_mislabeled_source_is_rejected (test_monitor.MonitorTests.test_mislabeled_source_is_rejected) ... ok
+test_missing_week_invalidates_claims_window (test_monitor.MonitorTests.test_missing_week_invalidates_claims_window) ... ok
+test_missing_year_ago_cannot_reuse_neighbour (test_monitor.MonitorTests.test_missing_year_ago_cannot_reuse_neighbour) ... ok
+test_nfci_zero_does_not_cross_strict_threshold (test_monitor.MonitorTests.test_nfci_zero_does_not_cross_strict_threshold) ... ok
+test_nonfinite_derived_value_cannot_look_below_threshold (test_monitor.MonitorTests.test_nonfinite_derived_value_cannot_look_below_threshold) ... ok
+test_output_cannot_escape_review (test_monitor.MonitorTests.test_output_cannot_escape_review) ... ok
+test_partial_month_excluded_from_credit_change (test_monitor.MonitorTests.test_partial_month_excluded_from_credit_change) ... ok
+test_quarterly_release_deadline_accounts_for_next_quarter (test_monitor.MonitorTests.test_quarterly_release_deadline_accounts_for_next_quarter) ... ok
+test_source_loader_exception_still_records_failed_attempt (test_monitor.MonitorTests.test_source_loader_exception_still_records_failed_attempt) ... ok
+test_staleness_uses_observation_period_end (test_monitor.MonitorTests.test_staleness_uses_observation_period_end) ... ok
+test_supplied_capture_inflation_recomputed (test_monitor.MonitorTests.test_supplied_capture_inflation_recomputed) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 0.117s
+
+OK

@@ -1,0 +1,6 @@
+pred_id,locked_label,final_label,primary_url,reason
+BR-20260501-28,PENDING,HIT,https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm,A hike by year-end is an event-by-deadline claim: Sep16 hike already fulfills it; it need not wait until Dec31.
+BR-20260511-21,PENDING,HIT,https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm,Sep16 hike fulfills the explicit year-end event deadline; two repeated calls are not independent successes.
+BR-20260611-24,PENDING,HIT,https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm,"Event outcome matches the relayed year-end hike direction, not independent verification of historical market probability or personal forecasting skill."
+BR-20260602-19,PENDING,MISS,https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm,"Sep16 hike breaches no hike before December. This is an outcome comparison for relayed pricing, not evidence that contemporaneous pricing was misquoted."
+AJ-20260615-26,CANNOT_VERIFY,HIT,https://www.federalreserve.gov/newsevents/pressreleases/monetary20260617a.htm,Official June17 statement maintained the target range at3.50–3.75%; April29 prior decision confirms same baseline.

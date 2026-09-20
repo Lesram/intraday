@@ -1,0 +1,11 @@
+{
+  "status": "pass",
+  "scope": "Research executable pipeline only; not a replacement for full platform grep assertions",
+  "assertions": {
+    "all_changed_paths_inside_review": true,
+    "no_order_submission_or_trading_module_import": true,
+    "frozen_surface_matches_baseline": true,
+    "all_344_original_source_files_unchanged": true
+  },
+  "hits": []
+}

@@ -1,0 +1,18 @@
+## HEAD (no branch)
+ M .claude/settings.local.json
+ M artifacts/changed_files.json
+ M artifacts/live_process_runtime_snapshot.json
+ M artifacts/phase2/param_freeze.json
+ M artifacts/replay_summary.json
+ M artifacts/resolved_config_snapshot.json
+ M artifacts/runtime_config_snapshot.json
+ M artifacts/runtime_defaults_snapshot.json
+ M artifacts/runtime_snapshot.log
+ M artifacts/runtime_snapshot_summary.json
+ M artifacts/semantic_invariants_summary.json
+ M artifacts/spec_drift_summary.json
+ M artifacts/task_report.json
+ M artifacts/test_summary.json
+?? "Claude outputs/"
+?? _to_delete/
+?? research/

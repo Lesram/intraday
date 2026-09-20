@@ -1,0 +1,37 @@
+[
+  {
+    "path": "data/raw/fred_bundle_2026-09-19.json",
+    "sha256": "2b088774e251d64a6632669ee75386a30a774607926414db0c5f26bf959fb011",
+    "bytes": 5496602
+  },
+  {
+    "path": "data/raw/fred_bundle2_2026-09-19.json",
+    "sha256": "3b6f7aa4f3ced1c20515f6ed35b2768a2623181547c491213bc8cdee75ba682c",
+    "bytes": 3358979
+  },
+  {
+    "path": "data/raw/gold-prices_main_data_monthly.csv",
+    "sha256": "6821c07f866d91cddc8beacd942d9548912216f816183565e47cef2c7add0b47",
+    "bytes": 35713
+  },
+  {
+    "path": "scripts/factbase.py",
+    "sha256": "6130d47d327e325cf0948081fa0deea722d011143d3d97000d027ec533e8a9ce",
+    "bytes": 6123
+  },
+  {
+    "path": "scripts/dashboard.py",
+    "sha256": "9c5e56e544126f1c1d030318f91b2f059db341c72d74c821a7d81754326f9f05",
+    "bytes": 9480
+  },
+  {
+    "path": "review/inputs/F-F_Research_Data_Factors.csv",
+    "sha256": "347bdcabb60863073a120111b40cb21b1a0682d6a82e919df057bdbea15e3a73",
+    "bytes": 52453
+  },
+  {
+    "path": "review/inputs/12_Industry_Portfolios.csv",
+    "sha256": "979c74a2684ac4116b152729330577b2a328e11033dc4469fe4dea7f49881336",
+    "bytes": 585700
+  }
+]

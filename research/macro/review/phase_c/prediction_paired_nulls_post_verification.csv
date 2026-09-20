@@ -1,0 +1,2 @@
+pred_id,actual_direction,forecast_direction,nochange_direction,persistence_direction,forecast_hit,no_change_hit,persistence_hit,baseline_range,outcome_range,origin,endpoint,prior_window_start,source
+AJ-20260615-26,flat,flat,flat,flat,True,True,True,3.50–3.75,3.50–3.75,2026-06-15,2026-06-17,2026-05-16,https://www.federalreserve.gov/newsevents/pressreleases/monetary20260429a.htm; https://www.federalreserve.gov/newsevents/pressreleases/monetary20260617a.htm

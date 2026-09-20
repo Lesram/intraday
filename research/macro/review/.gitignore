@@ -1,0 +1,26 @@
+# This research pack intentionally versions its own audit receipts.
+!artifacts/
+!artifacts/**
+.deps/
+__pycache__/
+.pytest_cache/
+*.pyc
+dashboard_app/.data-app-offline/
+dashboard_app/node_modules/
+dashboard_app/dist/
+pipeline/cache/
+pipeline/attempts/
+pipeline/readings/
+artifacts/fred_connectivity_probe.html
+artifacts/*.png
+!artifacts/*.log
+!phase_c/*_run.log
+artifacts/delivery.gitindex*
+
+# Preserve full local evidence without publicly republishing bulk transcript text.
+phase_a/directional_predicates.csv
+phase_a/pitch_sentences.csv
+phase_a/citation_like_sentences.csv
+phase_a/contradiction_pair_sample.csv
+phase_a/contradiction_sample_adjudicated.csv
+artifacts/pr_body.md

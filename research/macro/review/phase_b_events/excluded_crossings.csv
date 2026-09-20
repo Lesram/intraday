@@ -1,0 +1,259 @@
+indicator,horizon_months,event,signal_month,reason
+claims_rise_20pct,12,recession_onset,1973-12,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,recession_onset,1979-08,within 12m cooldown of 1979-04
+claims_rise_20pct,12,recession_onset,1981-10,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,recession_onset,1989-12,within 12m cooldown of 1989-10
+claims_rise_20pct,12,recession_onset,1990-10,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,recession_onset,2008-03,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,recession_onset,2008-06,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,recession_onset,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,recession_onset,2023-08,within 12m cooldown of 2023-06
+claims_rise_20pct,12,recession_present_or_onset,1979-08,within 12m cooldown of 1979-04
+claims_rise_20pct,12,recession_present_or_onset,1989-12,within 12m cooldown of 1989-10
+claims_rise_20pct,12,recession_present_or_onset,2008-06,within 12m cooldown of 2008-03
+claims_rise_20pct,12,recession_present_or_onset,2023-08,within 12m cooldown of 2023-06
+claims_rise_20pct,12,equity_entry_loss_20,1979-08,within 12m cooldown of 1979-04
+claims_rise_20pct,12,equity_entry_loss_20,1989-12,within 12m cooldown of 1989-10
+claims_rise_20pct,12,equity_entry_loss_20,2008-06,within 12m cooldown of 2008-03
+claims_rise_20pct,12,equity_entry_loss_20,2023-08,within 12m cooldown of 2023-06
+claims_rise_20pct,12,equity_peak_drawdown_20,1979-08,within 12m cooldown of 1979-04
+claims_rise_20pct,12,equity_peak_drawdown_20,1989-12,within 12m cooldown of 1989-10
+claims_rise_20pct,12,equity_peak_drawdown_20,2008-06,within 12m cooldown of 2008-03
+claims_rise_20pct,12,equity_peak_drawdown_20,2023-08,within 12m cooldown of 2023-06
+claims_rise_20pct,12,inflation_onset_400,1969-12,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1973-12,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1977-02,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1979-04,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1979-08,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1981-10,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1984-10,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1989-10,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1989-12,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,1990-10,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,2005-09,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,2008-06,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,inflation_onset_400,2023-08,within 12m cooldown of 2023-06
+claims_rise_20pct,12,credit_onset_300,1969-12,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,1973-12,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,1977-02,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,1979-04,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,1979-08,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,1981-10,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,1984-10,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,1989-12,within 12m cooldown of 1989-10
+claims_rise_20pct,12,credit_onset_300,2008-03,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,2008-06,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+claims_rise_20pct,12,credit_onset_300,2023-08,within 12m cooldown of 2023-06
+sahm_050,12,recession_onset,1960-09,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_onset,1970-03,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_onset,1974-04,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_onset,1974-08,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_onset,1980-05,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_onset,1981-12,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_onset,1990-12,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_onset,2001-07,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_onset,2008-05,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,recession_present_or_onset,1970-03,within 12m cooldown of 1969-11
+sahm_050,12,recession_present_or_onset,1974-08,within 12m cooldown of 1974-04
+sahm_050,12,equity_entry_loss_20,1970-03,within 12m cooldown of 1969-11
+sahm_050,12,equity_entry_loss_20,1974-08,within 12m cooldown of 1974-04
+sahm_050,12,equity_peak_drawdown_20,1970-03,within 12m cooldown of 1969-11
+sahm_050,12,equity_peak_drawdown_20,1974-08,within 12m cooldown of 1974-04
+sahm_050,12,inflation_onset_400,1969-11,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,inflation_onset_400,1970-03,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,inflation_onset_400,1974-04,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,inflation_onset_400,1974-08,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,inflation_onset_400,1976-12,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,inflation_onset_400,1980-05,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,inflation_onset_400,1981-12,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,inflation_onset_400,1990-12,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,inflation_onset_400,2008-05,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,1960-09,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,1969-11,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,1970-03,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,1974-04,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,1974-08,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,1976-12,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,1980-05,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,1981-12,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,2008-05,"outcome unavailable, immature, or already active for onset-only target"
+sahm_050,12,credit_onset_300,2020-05,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,recession_onset,1969-08,within 12m cooldown of 1969-02
+curve_inverted,12,recession_onset,1969-12,within 12m cooldown of 1969-02
+curve_inverted,12,recession_onset,1974-09,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,recession_onset,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,recession_present_or_onset,1969-08,within 12m cooldown of 1969-02
+curve_inverted,12,recession_present_or_onset,1969-12,within 12m cooldown of 1969-02
+curve_inverted,12,recession_present_or_onset,2020-03,within 12m cooldown of 2019-07
+curve_inverted,12,equity_entry_loss_20,1969-08,within 12m cooldown of 1969-02
+curve_inverted,12,equity_entry_loss_20,1969-12,within 12m cooldown of 1969-02
+curve_inverted,12,equity_entry_loss_20,2020-03,within 12m cooldown of 2019-07
+curve_inverted,12,equity_peak_drawdown_20,1969-08,within 12m cooldown of 1969-02
+curve_inverted,12,equity_peak_drawdown_20,1969-12,within 12m cooldown of 1969-02
+curve_inverted,12,equity_peak_drawdown_20,2020-03,within 12m cooldown of 2019-07
+curve_inverted,12,inflation_onset_400,1969-02,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,inflation_onset_400,1969-08,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,inflation_onset_400,1969-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,inflation_onset_400,1973-07,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,inflation_onset_400,1974-09,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,inflation_onset_400,1979-01,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,inflation_onset_400,1980-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,inflation_onset_400,2020-03,within 12m cooldown of 2019-07
+curve_inverted,12,inflation_onset_400,2022-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,1966-10,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,1969-02,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,1969-08,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,1969-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,1973-07,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,1974-09,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,1979-01,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,1980-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,12,credit_onset_300,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,recession_onset,1969-08,within 24m cooldown of 1969-02
+curve_inverted,24,recession_onset,1969-12,within 24m cooldown of 1969-02
+curve_inverted,24,recession_onset,1974-09,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,recession_onset,1980-12,within 24m cooldown of 1979-01
+curve_inverted,24,recession_onset,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,recession_present_or_onset,1969-08,within 24m cooldown of 1969-02
+curve_inverted,24,recession_present_or_onset,1969-12,within 24m cooldown of 1969-02
+curve_inverted,24,recession_present_or_onset,1974-09,within 24m cooldown of 1973-07
+curve_inverted,24,recession_present_or_onset,1980-12,within 24m cooldown of 1979-01
+curve_inverted,24,recession_present_or_onset,2020-03,within 24m cooldown of 2019-07
+curve_inverted,24,equity_entry_loss_20,1969-08,within 24m cooldown of 1969-02
+curve_inverted,24,equity_entry_loss_20,1969-12,within 24m cooldown of 1969-02
+curve_inverted,24,equity_entry_loss_20,1974-09,within 24m cooldown of 1973-07
+curve_inverted,24,equity_entry_loss_20,1980-12,within 24m cooldown of 1979-01
+curve_inverted,24,equity_entry_loss_20,2020-03,within 24m cooldown of 2019-07
+curve_inverted,24,equity_peak_drawdown_20,1969-08,within 24m cooldown of 1969-02
+curve_inverted,24,equity_peak_drawdown_20,1969-12,within 24m cooldown of 1969-02
+curve_inverted,24,equity_peak_drawdown_20,1974-09,within 24m cooldown of 1973-07
+curve_inverted,24,equity_peak_drawdown_20,1980-12,within 24m cooldown of 1979-01
+curve_inverted,24,equity_peak_drawdown_20,2020-03,within 24m cooldown of 2019-07
+curve_inverted,24,inflation_onset_400,1969-02,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,inflation_onset_400,1969-08,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,inflation_onset_400,1969-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,inflation_onset_400,1973-07,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,inflation_onset_400,1974-09,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,inflation_onset_400,1979-01,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,inflation_onset_400,1980-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,inflation_onset_400,2020-03,within 24m cooldown of 2019-07
+curve_inverted,24,inflation_onset_400,2022-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,1966-10,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,1969-02,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,1969-08,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,1969-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,1973-07,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,1974-09,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,1979-01,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,1980-12,"outcome unavailable, immature, or already active for onset-only target"
+curve_inverted,24,credit_onset_300,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,recession_onset,2001-09,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,recession_onset,2008-02,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,recession_onset,2010-08,within 12m cooldown of 2010-06
+baa_level_300,12,recession_onset,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,recession_present_or_onset,2001-09,within 12m cooldown of 2001-03
+baa_level_300,12,recession_present_or_onset,2010-08,within 12m cooldown of 2010-06
+baa_level_300,12,equity_entry_loss_20,2001-09,within 12m cooldown of 2001-03
+baa_level_300,12,equity_entry_loss_20,2010-08,within 12m cooldown of 2010-06
+baa_level_300,12,equity_peak_drawdown_20,2001-09,within 12m cooldown of 2001-03
+baa_level_300,12,equity_peak_drawdown_20,2010-08,within 12m cooldown of 2010-06
+baa_level_300,12,inflation_onset_400,2001-09,within 12m cooldown of 2001-03
+baa_level_300,12,inflation_onset_400,2008-02,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,inflation_onset_400,2010-08,within 12m cooldown of 2010-06
+baa_level_300,12,credit_onset_300,1986-08,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2001-03,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2001-09,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2002-06,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2008-02,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2010-06,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2010-08,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2011-08,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2015-08,"outcome unavailable, immature, or already active for onset-only target"
+baa_level_300,12,credit_onset_300,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+baa_widening_100,12,recession_onset,2008-10,"outcome unavailable, immature, or already active for onset-only target"
+baa_widening_100,12,recession_onset,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+baa_widening_100,12,credit_onset_300,2008-10,"outcome unavailable, immature, or already active for onset-only target"
+baa_widening_100,12,credit_onset_300,2020-03,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,recession_onset,1984-05,within 12m cooldown of 1983-11
+nfci_positive,12,recession_onset,1990-09,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,recession_onset,2020-04,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,recession_present_or_onset,1984-05,within 12m cooldown of 1983-11
+nfci_positive,12,equity_entry_loss_20,1984-05,within 12m cooldown of 1983-11
+nfci_positive,12,equity_peak_drawdown_20,1984-05,within 12m cooldown of 1983-11
+nfci_positive,12,inflation_onset_400,1975-10,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,inflation_onset_400,1978-04,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,inflation_onset_400,1984-05,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,inflation_onset_400,1990-09,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,credit_onset_300,1973-02,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,credit_onset_300,1975-10,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,credit_onset_300,1978-04,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,credit_onset_300,1983-11,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,credit_onset_300,1984-05,"outcome unavailable, immature, or already active for onset-only target"
+nfci_positive,12,credit_onset_300,2020-04,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,recession_onset,2008-02,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,recession_onset,2008-07,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,recession_present_or_onset,2008-02,within 12m cooldown of 2007-12
+inflation_surge,12,recession_present_or_onset,2008-07,within 12m cooldown of 2007-12
+inflation_surge,12,equity_entry_loss_20,2008-02,within 12m cooldown of 2007-12
+inflation_surge,12,equity_entry_loss_20,2008-07,within 12m cooldown of 2007-12
+inflation_surge,12,equity_peak_drawdown_20,2008-02,within 12m cooldown of 2007-12
+inflation_surge,12,equity_peak_drawdown_20,2008-07,within 12m cooldown of 2007-12
+inflation_surge,12,inflation_onset_400,1968-11,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,inflation_onset_400,1973-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,inflation_onset_400,1978-10,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,inflation_onset_400,1987-09,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,inflation_onset_400,2005-10,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,inflation_onset_400,2007-12,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,inflation_onset_400,2008-02,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,inflation_onset_400,2008-07,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,inflation_onset_400,2021-05,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,credit_onset_300,1968-11,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,credit_onset_300,1973-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,credit_onset_300,1978-10,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,credit_onset_300,2008-02,"outcome unavailable, immature, or already active for onset-only target"
+inflation_surge,12,credit_onset_300,2008-07,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,recession_onset,1984-02,within 12m cooldown of 1983-05
+inflation_400,12,recession_onset,1988-08,within 12m cooldown of 1987-09
+inflation_400,12,recession_onset,2006-02,within 12m cooldown of 2005-10
+inflation_400,12,recession_onset,2006-07,within 12m cooldown of 2005-10
+inflation_400,12,recession_onset,2008-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,recession_onset,2026-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,recession_present_or_onset,1984-02,within 12m cooldown of 1983-05
+inflation_400,12,recession_present_or_onset,1988-08,within 12m cooldown of 1987-09
+inflation_400,12,recession_present_or_onset,2006-02,within 12m cooldown of 2005-10
+inflation_400,12,recession_present_or_onset,2006-07,within 12m cooldown of 2005-10
+inflation_400,12,recession_present_or_onset,2008-06,within 12m cooldown of 2007-12
+inflation_400,12,recession_present_or_onset,2026-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,equity_entry_loss_20,1984-02,within 12m cooldown of 1983-05
+inflation_400,12,equity_entry_loss_20,1988-08,within 12m cooldown of 1987-09
+inflation_400,12,equity_entry_loss_20,2006-02,within 12m cooldown of 2005-10
+inflation_400,12,equity_entry_loss_20,2006-07,within 12m cooldown of 2005-10
+inflation_400,12,equity_entry_loss_20,2008-06,within 12m cooldown of 2007-12
+inflation_400,12,equity_entry_loss_20,2026-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,equity_peak_drawdown_20,1984-02,within 12m cooldown of 1983-05
+inflation_400,12,equity_peak_drawdown_20,1988-08,within 12m cooldown of 1987-09
+inflation_400,12,equity_peak_drawdown_20,2006-02,within 12m cooldown of 2005-10
+inflation_400,12,equity_peak_drawdown_20,2006-07,within 12m cooldown of 2005-10
+inflation_400,12,equity_peak_drawdown_20,2008-06,within 12m cooldown of 2007-12
+inflation_400,12,equity_peak_drawdown_20,2026-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,1968-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,1973-04,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,1984-02,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,1987-09,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,1988-08,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,2005-10,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,2006-07,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,2007-12,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,2008-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,2021-05,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,inflation_onset_400,2026-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,credit_onset_300,1968-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,credit_onset_300,1973-04,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,credit_onset_300,1983-05,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,credit_onset_300,1984-02,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,credit_onset_300,1988-08,within 12m cooldown of 1987-09
+inflation_400,12,credit_onset_300,2006-02,within 12m cooldown of 2005-10
+inflation_400,12,credit_onset_300,2006-07,within 12m cooldown of 2005-10
+inflation_400,12,credit_onset_300,2008-06,"outcome unavailable, immature, or already active for onset-only target"
+inflation_400,12,credit_onset_300,2026-06,"outcome unavailable, immature, or already active for onset-only target"

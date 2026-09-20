@@ -1,0 +1,134 @@
+{
+  "n_ledger": 2553,
+  "n_verdicts": 1430,
+  "verdict_counts": {
+    "TRUE": 476,
+    "MOSTLY_TRUE": 389,
+    "UNVERIFIABLE": 371,
+    "MISLEADING": 125,
+    "FALSE": 64,
+    "TRENDING": 4,
+    "OPEN": 1
+  },
+  "by_type_all_ledger": {
+    "DATA_POINT": 724,
+    "CAUSAL": 492,
+    "PREDICTION": 428,
+    "SOURCE_CITATION": 250,
+    "POLICY_FACT": 223,
+    "HISTORICAL_ANALOGY": 203,
+    "RECOMMENDATION": 127,
+    "SELF_PERFORMANCE": 106
+  },
+  "by_type_verdicts": {
+    "DATA_POINT": 724,
+    "SOURCE_CITATION": 250,
+    "POLICY_FACT": 223,
+    "RECOMMENDATION": 127,
+    "SELF_PERFORMANCE": 106
+  },
+  "as_of": "2026-09-19",
+  "support_definition": "TRUE + MOSTLY_TRUE + TRENDING, reproducing Brief001 arithmetic. Excludes UNVERIFIABLE and OPEN from denominator. TRENDING is not verified truth; omitting it gives865/1058=81.758%.",
+  "self_correction": "Initial support definition omitted4 TRENDING labels and failed to reproduce82.1%; corrected by explicitly matching source arithmetic rather than quietly relabeling.",
+  "channels": [
+    {
+      "channel": "bravos",
+      "n_all": 666,
+      "n_checkable": 465,
+      "supported": 360,
+      "strict_true": 187,
+      "n_unverifiable": 201,
+      "support_pct": 77.41935483870968,
+      "strict_true_pct": 40.215053763440864,
+      "unknown_pct": 30.180180180180184,
+      "all_rows_lower_pct": 54.054054054054056,
+      "all_rows_upper_pct": 84.23423423423424
+    },
+    {
+      "channel": "jikh",
+      "n_all": 764,
+      "n_checkable": 593,
+      "supported": 509,
+      "strict_true": 289,
+      "n_unverifiable": 170,
+      "support_pct": 85.83473861720068,
+      "strict_true_pct": 48.735244519392914,
+      "unknown_pct": 22.25130890052356,
+      "all_rows_lower_pct": 66.62303664921467,
+      "all_rows_upper_pct": 89.00523560209425
+    }
+  ],
+  "standardized": [
+    {
+      "specification": "claim_type",
+      "min_per_channel": 1,
+      "strata": 5,
+      "n_retained": 1058,
+      "n_available": 1058,
+      "bravos_pct": 78.89028829548505,
+      "jikh_pct": 85.13416919312353,
+      "gap_jikh_minus_bravos_pp": 6.243880897638466
+    },
+    {
+      "specification": "thesis_cluster",
+      "min_per_channel": 1,
+      "strata": 17,
+      "n_retained": 1055,
+      "n_available": 1058,
+      "bravos_pct": 75.56474973512921,
+      "jikh_pct": 86.49946242826904,
+      "gap_jikh_minus_bravos_pp": 10.934712693139836
+    },
+    {
+      "specification": "type_and_topic",
+      "min_per_channel": 1,
+      "strata": 36,
+      "n_retained": 930,
+      "n_available": 1058,
+      "bravos_pct": 78.52680614149399,
+      "jikh_pct": 85.2531627821128,
+      "gap_jikh_minus_bravos_pp": 6.7263566406188025
+    },
+    {
+      "specification": "type_topic_capture_scope",
+      "min_per_channel": 1,
+      "strata": 57,
+      "n_retained": 871,
+      "n_available": 1058,
+      "bravos_pct": 78.87343595780538,
+      "jikh_pct": 84.11403219734129,
+      "gap_jikh_minus_bravos_pp": 5.2405962395359
+    },
+    {
+      "specification": "type_topic_min5",
+      "min_per_channel": 5,
+      "strata": 20,
+      "n_retained": 760,
+      "n_available": 1058,
+      "bravos_pct": 75.9635666631189,
+      "jikh_pct": 83.84015238544649,
+      "gap_jikh_minus_bravos_pp": 7.876585722327589
+    },
+    {
+      "specification": "one_vote_per_channel_fact_key",
+      "min_per_channel": 1,
+      "strata": 36,
+      "n_retained": 775,
+      "n_available": 891,
+      "bravos_pct": 78.48143338402228,
+      "jikh_pct": 85.4993055802903,
+      "gap_jikh_minus_bravos_pp": 7.017872196268016
+    }
+  ],
+  "cluster_bootstrap": {
+    "spec": "type_topic_min5",
+    "draws": 1500,
+    "complete_draws": 862,
+    "gap_95_percentile_interval_pp": [
+      -0.29209271894082306,
+      14.12713048868188
+    ],
+    "caveat": "Video clusters; common-support fixed weights. Incomplete-cell resamples omitted; descriptive stability, not a causal confidence statement."
+  },
+  "unverifiable_sampling": "48 lowest SHA256(review002:unverifiable:v1:claim_id) among all UNVERIFIABLE rows; simple deterministic uniform-rank sample, not chosen for drama."
+}

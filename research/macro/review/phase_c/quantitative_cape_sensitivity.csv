@@ -1,0 +1,11 @@
+spec,month,cape,note
+published_model_original_code_August,2026-08,42.000708232528666,AST-isolated exact source function
+interpolated_gap_August,2026-08,42.001246846070174,"same EPS proxy, missing CPI interpolated"
+September_partial_price_recent_CPI_growth,2026-09,41.25447963726058,12 daily closes through Sep17; CPI extrapolated by latest monthly growth
+postsplice_EPS_multiplier_0.85,2026-09,43.714307752789495,"only post2023June EPS changed; scenario, not estimate"
+postsplice_EPS_multiplier_1.15,2026-09,39.05673566230777,"only post2023June EPS changed; scenario, not estimate"
+freeze_June2023_real_EPS,2026-09,42.40029788447382,flat real per-share EPS after splice
+postsplice_profitshare_pre2000_median,2026-09,49.65907449948276,aggregate share fixed at 6.098744%; GDP-linked EPS only after2023June; stress scenario
+postsplice_profitshare_fixed_8pct,2026-09,46.09749614531333,aggregate share fixed at 8.000000%; GDP-linked EPS only after2023June; stress scenario
+postsplice_profitshare_fixed_10pct,2026-09,42.86362819191937,aggregate share fixed at 10.000000%; GDP-linked EPS only after2023June; stress scenario
+September_CPI_carried_flat,2026-09,41.416108724274174,no September inflation extrapolation
