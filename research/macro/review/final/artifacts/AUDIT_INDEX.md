@@ -1,6 +1,6 @@
 # Final research audit index
 
-Generated 2026-09-20T17:53:32.675004+00:00. Checked workspace: `ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189`. Delivery branch: `codex/macro-review-002`; existing draft [PR #21](https://github.com/Lesram/intraday/pull/21). The branch is separate from the detached, dirty platform checkout; final delivery adds only this research directory through an isolated index.
+Generated 2026-09-20T17:56:43.755464+00:00. Checked workspace: `ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189`. Delivery branch: `codex/macro-review-002`; existing draft [PR #21](https://github.com/Lesram/intraday/pull/21). The branch is separate from the detached, dirty platform checkout; final delivery adds only this research directory through an isolated index.
 
 | Check | Status and receipt |
 |---|---|

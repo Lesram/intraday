@@ -4,7 +4,7 @@
   "sha": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
   "sha_role": "Read-only checked workspace SHA; delivery commit is recorded separately and cannot contain its own hash.",
   "branch": "codex/macro-review-002",
-  "branch_parent_at_receipt_generation": "60e0fb79205d067c9431406a367c3ace33401fdd",
+  "branch_parent_at_receipt_generation": "65d242a7a6ea7d3a0f3b2c3cace19a61a8384443",
   "files_changed": [
     "research/macro/review/final/.gitignore",
     "research/macro/review/final/CHANGE_DISPOSITION.csv",
@@ -96,5 +96,5 @@
     "User review before a monitoring-tool implementation decision.",
     "Any future build must conform to the final contract and establish a separate acquired prospective record."
   ],
-  "generated_at_utc": "2026-09-20T17:53:32.675004+00:00"
+  "generated_at_utc": "2026-09-20T17:56:43.755464+00:00"
 }
