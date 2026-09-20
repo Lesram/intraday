@@ -22,6 +22,7 @@
     "research/macro/review/artifacts/browser_validation.json",
     "research/macro/review/artifacts/build_audit_pack.py",
     "research/macro/review/artifacts/changed_files.json",
+    "research/macro/review/artifacts/ci_status.json",
     "research/macro/review/artifacts/dashboard_build.log",
     "research/macro/review/artifacts/delivery_validation.json",
     "research/macro/review/artifacts/delivery_validation.log",
@@ -543,12 +544,13 @@
     "Broader platform pytest collection failed because FastAPI is absent; no platform regression or replay pass is claimed.",
     "Existing freeze date 2026-09-19T21:55:01.857005+00:00 differs from the user contract July freeze; no freeze was reset.",
     "Dashboard rebuild requires the Data plugin compiler and Node; the included HTML opens standalone.",
-    "No scheduled automation, external website publication or brokerage integration was installed."
+    "No scheduled automation, external website publication or brokerage integration was installed.",
+    "Hosted CI is blocked by existing retired artifact actions and a broad secret grep that flags normal pre-existing code; see ci_status.json. CI maintenance is outside this review-only scope."
   ],
   "follow_ups": [
     "Accumulate prospective acquired monthly readings before evaluating operational alarm usefulness.",
     "Obtain missing historical publication vintages, consistent index earnings/weights and paid-content records before stronger conclusions.",
     "Run platform CI in its normal provisioned environment if this research PR is promoted beyond draft."
   ],
-  "generated_at_utc": "2026-09-20T05:30:42.675321+00:00"
+  "generated_at_utc": "2026-09-20T05:32:34.447564+00:00"
 }

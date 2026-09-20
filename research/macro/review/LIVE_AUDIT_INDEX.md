@@ -4,7 +4,7 @@ This audit concerns research and monitoring only. All task output is under `rese
 
 - Tested workspace SHA: `ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189`.
 - Delivery branch: `codex/macro-review-002`, add-only parent `fe67883626669f6508f79011ba636b1d3cbcc65d`. The delivery commit is separate from the detached, dirty tested checkout.
-- Generated: 2026-09-20T05:30:42.675321+00:00.
+- Generated: 2026-09-20T05:32:34.447564+00:00.
 - Scope and process: [machine-readable plan](task_plan.json), [task report](artifacts/task_report.json), [changed files](artifacts/changed_files.json).
 
 ## Evidence and checks
@@ -23,6 +23,10 @@ This audit concerns research and monitoring only. All task output is under `rese
 | Platform regression / trading replay | Unavailable: pytest collection requires missing FastAPI | [Log](artifacts/platform_regression.log) · [replay scope](artifacts/replay_summary.json) |
 | Final local delivery integrity | pass | [Validation](artifacts/delivery_validation.json) |
 | Research order-path assertions | pass | [Assertions](artifacts/grep_assertions.json) |
+
+## Hosted CI
+
+[PR #21](https://github.com/Lesram/intraday/pull/21) remains draft. [CI diagnosis](artifacts/ci_status.json) records the first delivery commit: quality jobs stop at setup because existing artifact actions use retired v3 versions; the secret-grep job matches pre-existing header names, fixtures, documentation and its own pattern. No match came from the review additions. Research-only path gates skip organism/config suites. These are unresolved repository workflow issues; no green hosted-check claim is made and no parked CI files were changed.
 
 ## Runtime and publication boundaries
 
@@ -43,3 +47,4 @@ The full local evidence pack contains the original immutable derivations. Length
 - Existing freeze date 2026-09-19T21:55:01.857005+00:00 differs from the user contract July freeze; no freeze was reset.
 - Dashboard rebuild requires the Data plugin compiler and Node; the included HTML opens standalone.
 - No scheduled automation, external website publication or brokerage integration was installed.
+- Hosted CI is blocked by existing retired artifact actions and a broad secret grep that flags normal pre-existing code; see ci_status.json. CI maintenance is outside this review-only scope.

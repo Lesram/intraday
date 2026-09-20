@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-20T05:30:42.675321+00:00",
+  "generated_at_utc": "2026-09-20T05:32:34.447564+00:00",
   "research_unit_tests": {
     "passed": 35,
     "failed": 0,
@@ -45,6 +45,27 @@
     "failed": 0
   },
   "browser": "desktop, mobile, filters, source inspection and standalone export verified",
+  "hosted_ci": {
+    "checked_at_utc": "2026-09-20T05:32:33.950565+00:00",
+    "reviewed_head_sha": "985620f2d200f3ef15ee2d97a465bc9bb5a1dab0",
+    "pr": "https://github.com/Lesram/intraday/pull/21",
+    "status": "blocked_by_existing_workflow_configuration",
+    "quality_gates": {
+      "url": "https://github.com/Lesram/intraday/actions/runs/35491875146",
+      "result": "failure before tests execute",
+      "cause": "Five jobs use retired upload-artifact or download-artifact v3 actions."
+    },
+    "pr_verify": {
+      "url": "https://github.com/Lesram/intraday/actions/runs/35491875186",
+      "detect": "passed",
+      "secret_scan": "failed",
+      "cause": "Broad repository grep flags existing API header names, test fixtures, documentation examples and the workflow pattern itself. Observed matching paths are all outside review; no new review credential finding.",
+      "research_only_path_gates": "organism-tests, config-tests, spec-drift and root artifact-pack skipped by path filter"
+    },
+    "resolution": "Keep draft; do not modify frozen/parked platform or CI surfaces under this review-only work order. Separate repository maintenance is required for green hosted checks.",
+    "local_review_secret_scan": "pass; artifacts/secret_scan.json",
+    "not_a_merge_approval": true
+  },
   "platform_suites": {
     "status": "unavailable",
     "passed": null,
