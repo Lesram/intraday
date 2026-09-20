@@ -1,0 +1,237 @@
+{
+  "observed_at_utc": "2026-09-20T00:32:47.861142+00:00",
+  "deployed_release": "PR17",
+  "source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+  "image_digest": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+  "runtime_config_hash": "ffc18df3e0051af4",
+  "readiness": {
+    "status": "ready",
+    "checks": {
+      "database": true,
+      "broker": true
+    },
+    "problems": {},
+    "timestamp": "2026-09-20T00:32:46.415598+00:00",
+    "cached": false
+  },
+  "paper_broker": {
+    "endpoint": "https://paper-api.alpaca.markets",
+    "methods": [
+      "GET"
+    ],
+    "status": "ACTIVE",
+    "trading_blocked": false,
+    "account_blocked": false,
+    "position_count": 0,
+    "open_order_count": 0,
+    "clock": {
+      "is_open": false,
+      "next_close": "2026-09-21T16:00:00-04:00",
+      "next_open": "2026-09-21T09:30:00-04:00",
+      "timestamp": "2026-09-19T20:32:47.53299369-04:00"
+    },
+    "calendar": [
+      {
+        "close": "16:00",
+        "date": "2026-09-21",
+        "open": "09:30",
+        "session_close": "2000",
+        "session_open": "0400",
+        "settlement_date": "2026-09-22"
+      }
+    ]
+  },
+  "scheduler_running": true,
+  "active_freeze_sha256": "06d73b05cd31b99540e352226260b2aedb10ea83563caa4d7ddc73d1d4f625dc",
+  "watchdog": {
+    "checked_at": "2026-09-20T00:30:54.242219+00:00",
+    "daemon": true,
+    "containers": {
+      "postgres": {
+        "name": "trading_platform_db_paper",
+        "verified": true,
+        "running": true,
+        "health": "healthy",
+        "age_seconds": 19098.09312605858
+      },
+      "redis": {
+        "name": "intra-redis-1",
+        "verified": true,
+        "running": true,
+        "health": "healthy",
+        "age_seconds": 19098.03526687622
+      },
+      "api": {
+        "name": "intra-api-1",
+        "verified": true,
+        "running": true,
+        "health": "healthy",
+        "age_seconds": 9145.378207921982
+      }
+    },
+    "readiness": {
+      "status": "ready",
+      "reachable": true
+    },
+    "problems": [],
+    "healthy": true,
+    "paused": false,
+    "last_recovery_at": null,
+    "actions": [],
+    "notification": {
+      "enabled": true,
+      "attempted": false,
+      "delivered": false
+    },
+    "critical_monitor": {
+      "scanned_at": "2026-09-20T00:30:54.242219+00:00",
+      "available": true,
+      "new_events": 0,
+      "seen": [
+        "9af012ff4aa37ef4238d2d2d897c61c3a274da2a025c5f48fe6f80afe1beb891",
+        "533d764704b2bf32d6ab165ba8dfede18198be828c2b285bb152bccc0f05f41b"
+      ],
+      "truncated": false,
+      "pending_events": 0
+    },
+    "backup_monitor": {
+      "enabled": true,
+      "max_age_seconds": 93600,
+      "backups": {
+        "brain": {
+          "status": "ok",
+          "files_verified": 26,
+          "age_seconds": 3648.607251882553
+        },
+        "postgres": {
+          "status": "ok",
+          "files_verified": 1,
+          "age_seconds": 2749.735697031021
+        }
+      },
+      "problems": []
+    }
+  },
+  "jobs": {
+    "com.intra.paper": {
+      "loaded": true,
+      "status": [
+        "state = not running",
+        "runs = 1",
+        "last exit code = 0",
+        "state = active",
+        "state = active"
+      ]
+    },
+    "com.intra.paper.watchdog": {
+      "loaded": true,
+      "status": [
+        "state = not running",
+        "runs = 60",
+        "last exit code = 0",
+        "state = active",
+        "state = active"
+      ]
+    },
+    "com.intra.brain-backup": {
+      "loaded": true,
+      "status": [
+        "state = not running",
+        "runs = 2",
+        "last exit code = 0",
+        "state = active",
+        "state = active"
+      ]
+    },
+    "com.intra.postgres-backup": {
+      "loaded": true,
+      "status": [
+        "state = not running",
+        "runs = 2",
+        "last exit code = 0",
+        "state = active",
+        "state = active"
+      ]
+    }
+  },
+  "power_settings": "Battery Power:\n Sleep On Power Button 1\n powermode            0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           1\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n powermode            0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         10\n womp                 1\n networkoversleep     0\n sleep                0\n tcpkeepalive         1\n disksleep            10\n",
+  "current_power": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=7077987)\t100%; discharging; 10:05 remaining present: true\n",
+  "ledger_hashes": {
+    "live": "c37a2279083eaa6cd84735efbb4ab4b5cd8d3d87eaeab8980e2e646f2784dbd8",
+    "scheduled_backup_restore": "c37a2279083eaa6cd84735efbb4ab4b5cd8d3d87eaeab8980e2e646f2784dbd8",
+    "activation_baseline": "c37a2279083eaa6cd84735efbb4ab4b5cd8d3d87eaeab8980e2e646f2784dbd8"
+  },
+  "ledger_unchanged_since_activation": true,
+  "database_restore": {
+    "backup_sha256": "e0cb6df534a31419a257d3b91c5872f53c3b26b8ed7891ad234b0e460e270bf6",
+    "backup_bytes": 1342351,
+    "container": "intra-restore-check-e6dd770d1078",
+    "network": "none",
+    "host_ports": [],
+    "host_mounts": [],
+    "verified": true,
+    "cleanup_succeeded": true,
+    "table_count": 27,
+    "rows_by_table": {
+      "alembic_version": 1,
+      "audit_logs": 1592,
+      "backtests": 0,
+      "chart_templates": 0,
+      "daily_ledger": 0,
+      "drawings": 0,
+      "emergency_stops": 0,
+      "executions": 1942,
+      "model_lifecycle_events": 455,
+      "model_monitoring_snapshots": 0,
+      "model_registry": 0,
+      "order_events": 0,
+      "orders": 1653,
+      "outbox_events": 10,
+      "portfolio_history": 0,
+      "position_lots": 970,
+      "positions": 0,
+      "realized_trades": 1270,
+      "risk_limits": 0,
+      "risk_metrics": 0,
+      "risk_violations": 0,
+      "signals": 0,
+      "strategies": 0,
+      "tick_telemetry": 439,
+      "users": 4,
+      "watchlist_symbols": 0,
+      "watchlists": 0
+    },
+    "unvalidated_constraints": 0,
+    "source_image": "sha256:97ff59a4e30e08d1c11bdcd9455e7832368c0572b576c9092cde2df4ae5552a3"
+  },
+  "brain_restore": {
+    "archive": "/Users/marselkei/VS/intra/organism_brain_archive/2026-09-19T233005.543886Z",
+    "isolated_restore": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-21/brain-restore",
+    "exit_code": 0,
+    "result": "Isolated brain copy verified; models were not deserialized.",
+    "models_deserialized": false
+  },
+  "candidate_deployed": false,
+  "natural_session_verified": false,
+  "installed_freeze_verification": {
+    "exit_code": 0,
+    "result": "DRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-09-19T21:55:01.857005+00:00)"
+  },
+  "read_only_order_status_inventory": {
+    "replaced_orders": 0,
+    "pending_replace_orders": 0,
+    "orders_total": 1653
+  },
+  "effective_engine_state": {
+    "initialized": true,
+    "tick_count": 114480,
+    "total_trades": 610,
+    "positions_tracked": 0,
+    "learning_mode": false,
+    "trading_phase": "production_guarded",
+    "guarded_mode": true,
+    "ml_influence_enabled": false,
+    "fixed_risk_sizing": true,
+    "data_stale": false
+  }
+}

@@ -1,48 +1,42 @@
 {
-  "verdict": "SOURCE_APPROVED_PENDING_FINAL_ARTIFACT_ACCEPTANCE",
+  "verdict": "LOCAL_SOURCE_AND_ARTIFACTS_ACCEPTED_HOSTED_PENDING",
   "reviewer": "combined_acceptance_review",
-  "source_sha": "3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f",
+  "source_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "supersedes_acceptance_for_prior_source": "3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f",
+  "prior_review_in_git": "a9c20cd:artifacts/operations_evidence/source_review.json",
+  "scope": "Existing PR19 plus bounded replacement diagnosis, input/publication race and numeric receipt hardening",
   "remaining_source_blockers": [],
-  "scope": [
-    "Atomic exact-close accounting and recovery",
-    "Entry provenance and manual daily evidence",
-    "Replay-only execution accounting and result diagnostics"
-  ],
-  "verified_evidence": {
-    "operational_final.xml": {
-      "unique_cases": 644,
-      "failures": 0,
-      "errors": 0,
+  "reviewed_hashes": {
+    "backend/organism/live_engine_fills.py": "138906ac893fb177591597f4fb964b69c31ac8c70f0ed458983bf83c21eeda4b",
+    "scripts/ops/paper_daily_evidence.py": "6559119cf26745216c266dde4012d0dd550afa847a402a7ffbf02407d0a3e6c0"
+  },
+  "targeted_evidence": {
+    "daily_junit_independently_counted": {
+      "passed": 114,
+      "failed": 0,
       "skipped": 0
     },
-    "daily_final.xml": {
-      "passed": 73,
+    "accounting_implementer_reported": {
+      "passed": 98,
       "failed": 0
-    },
-    "frozen_surface": "Verification passes; active and historical reference surfaces match",
-    "new_surface_bandit": "No high-severity findings; bounded configured scan",
-    "credential_pattern_scan": "No flagged paths; bounded scan"
+    }
   },
-  "review_findings": [
-    "Deferred outcomes preserve ordering and commit accounting consumers together.",
-    "Restart, torn legacy saves, rejected entries and delayed receipts have meaningful coverage.",
-    "Every initial and pyramid buy requires its own qualified provenance receipt.",
-    "Collection boundaries, acquisition receipts and output aliases fail closed.",
-    "Replay alone installs simulated fill adapters; production DB verification remains strict.",
-    "Simulated outcomes retain explicit provenance and separate engine-close/pending diagnostics.",
-    "Frozen source groups, strategy settings and data feed remain unchanged."
+  "verified": [
+    "Unsupported replacement orders remain pending and block daily qualification, including zero-fill predecessors",
+    "Input hardlinks, symlink ancestors, nonregular files and concurrent mutation are rejected",
+    "Pinned output publication prevents path-swap writes into protected brain state",
+    "Finite and typed receipt validation cannot expose an invalid favourable gate",
+    "Frozen functions, parameters, feed and submission paths unchanged"
+  ],
+  "remaining_limits": [
+    "Replacement-chain ingestion/cashflow reconciliation remains unsupported; historical ambiguity can hold later outcomes",
+    "Current DB has no replaced or pending_replace rows among1653, but this is not future safety proof",
+    "Candidate deployment, natural-session operation, unattended operation and profitability remain unproved"
   ],
   "final_acceptance_requires": [
-    "Successful final full artifact pack, snapshots, invariant checks and audit index",
-    "Required PR and hosted acceptance checks"
+    "Fresh source-bound full artifact pack and tests",
+    "Image identity and source/freeze verification",
+    "Required hosted check green before merge"
   ],
-  "material_limits": [
-    "No deployment or natural-session acceptance follows from source review.",
-    "Unresolved earliest closes intentionally delay later outcome accounting.",
-    "Downtime closes use first observed-flat time.",
-    "Atomic recovery does not guarantee recovery from failed storage.",
-    "Existing next-open simulation mutates positions synchronously; replay does not prove execution fidelity or profitability.",
-    "Missing receipts or incomplete session coverage withhold strategy results."
-  ],
-  "reviewer_actions": "Read-only inspection; no tests, broker calls, source edits or runtime actions."
+  "final_artifact_review": "monday_final_review.json"
 }

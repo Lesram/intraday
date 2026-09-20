@@ -27,5 +27,14 @@
     "failed": 10,
     "cause": "Isolated PATH omitted installed Node required by existing JavaScript notification harness. No source defect; rerun includes only its binary directory with network still denied."
   },
-  "final_acceptance": "Final operational, workflow, full safety, replay and semantic suites pass at source 3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f"
+  "final_acceptance": "Source-bound local validation passes at 05e67e176ec1830553a26d15e25f821aeff127c8; hosted and activation remain separate",
+  "monday_review_amendment": {
+    "prior_acceptance_source": "3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f",
+    "prior_unique_passed": 889,
+    "superseded_by": "05e67e176ec1830553a26d15e25f821aeff127c8",
+    "reproduction": "15 intentionally failing hostile-input cases plus1 passing existing guard; fixed target passes114",
+    "image_verifier_initial_failure": "Read-only working directory prevented logger audit file. Same image passed from isolated writable /tmp; application root remained read-only.",
+    "final_unique_passed": 950,
+    "hosted": "pending after push"
+  }
 }

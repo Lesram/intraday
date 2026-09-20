@@ -1,0 +1,35 @@
+{
+  "completion_report": "artifacts/operations_evidence/monday_daily_review_fixes.json",
+  "constraints": [
+    "No broker/runtime calls",
+    "No history or frozen edits",
+    "No commit",
+    "Preserve accounting agent and root edits"
+  ],
+  "ownership": [
+    "scripts/ops/paper_daily_evidence.py",
+    "tests/test_paper_daily_evidence.py",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md"
+  ],
+  "review_ids": [
+    "r4055307829",
+    "r4055307844"
+  ],
+  "scope": "Reproduce and repair linked input reads and nonfinite/incorrectly typed entry receipt numerical fields; preserve native strategy/frozen/runtime behavior.",
+  "status": "implemented_and_targeted_validated_no_commit",
+  "steps": [
+    "Add hostile alias and receipt fixtures and demonstrate existing failures.",
+    "Harden read path with no-follow directory traversal and single-link regular-file checks.",
+    "Require finite JSON numeric receipt fields and actual positive integer count fields; inspect nearby conversions for the same coercion issue.",
+    "Run isolated network-denied targeted suites and frozen-surface verification; record source-bound results for parent consolidated pack."
+  ],
+  "task_id": "pr19-daily-hostile-input-review-fixes",
+  "tests": [
+    "input hardlink",
+    "symlinked ancestor/root",
+    "input identity mutation",
+    "NaN/Infinity receipt direction, frame_rows, bar_age_seconds and sizes",
+    "boolean/string/fractional count coercion",
+    "actual producer\u2192consumer positive chain"
+  ]
+}

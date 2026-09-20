@@ -1,0 +1,84 @@
+{
+  "task_id": "pr19-terminal-replaced-accounting",
+  "summary": "Explicitly expose unsupported replacement lineage while preserving the pending accounting and zero-fill cleanup barriers.",
+  "review_comments": [
+    "r4055307783",
+    "r4055307798"
+  ],
+  "disposition": "The broker lifecycle omission is real, but accepting replaced as an accounting-eligible terminal state is unsafe. Replaced-order accounting and cleanup support remain deferred; this patch fixes the ambiguous operational diagnosis and adds regression evidence.",
+  "files_changed": [
+    "backend/organism/live_engine_fills.py",
+    "tests/test_live_engine_fill_accounting.py",
+    "tests/test_pending_close_accounting.py"
+  ],
+  "reasoning": [
+    "Alpaca documents replaced as another order or a corporate-action update, while pending_replace is still nonterminal.",
+    "Order has no typed replaces/replaced_by lineage. Stream updates persist status and cumulative fill summaries without authoritative updated replacement links.",
+    "Existing Execution rows are derived from cumulative Order summary deltas at cumulative average prices; they are not an independent replacement cashflow oracle.",
+    "Observed broker flatness, balanced Order summaries, or hypothetical reciprocal attributes do not prove a complete nonduplicated replacement lifetime.",
+    "ACCOUNTABLE_TERMINAL_STATUSES intentionally preserves the prior accounting-eligible set, which differs from the full broker lifecycle vocabulary.",
+    "Replaced rows retain pending status with accounting_hold_reason=replacement_lineage_unverified. A successful later lookup with no replacement evidence clears this diagnostic, without changing the original close time/reason.",
+    "The prior conservative lifetime scope is preserved, including older same-symbol replaced orders that may have an unknown successor. No histories or stored broker records are altered."
+  ],
+  "source_evidence": [
+    "https://docs.alpaca.markets/us/docs/orders-at-alpaca",
+    "backend/infra/schemas.py:Order",
+    "backend/integrations/alpaca_stream.py:AlpacaStream._on_trade_update",
+    "backend/integrations/alpaca_stream.py:apply_incremental_fill_accounting",
+    "backend/infra/outbox_worker.py:_update_order_status"
+  ],
+  "regressions": [
+    "Zero-filled replaced predecessor with missing, new, pending_replace, canceled, or filled successor remains pending.",
+    "Partial-filled replaced predecessor plus a filled successor and complete balancing exit remains pending even with reciprocal attributes and matching summary-derived Execution rows.",
+    "Repeat and restart preserve the original observed-flat bound and reason; ledger, learner, Kelly, calibration, and completed-entry receipts do not advance.",
+    "A later independently complete symbol remains behind the unresolved replacement close in the deterministic queue.",
+    "Pending_replace, pending_cancel, done_for_day, stopped, and calculated never become eligible for zero-fill cleanup or exact accounting.",
+    "A stale replacement diagnostic cannot block a supported exact -2 close once current evidence no longer has replacement ambiguity."
+  ],
+  "tests_passed": 98,
+  "tests_failed": 0,
+  "test_suites": [
+    "tests/test_live_engine_fill_accounting.py",
+    "tests/test_pending_close_accounting.py",
+    "tests/test_replay_close_accounting.py"
+  ],
+  "commands": [
+    "sandbox-exec -p '(version 1) (allow default) (deny network*)' env -i PATH=/Users/marselkei/VS/intra/venv/bin:/usr/bin:/bin:/usr/sbin:/sbin PYTHONPATH=. USE_MOCK_BROKER=true USE_MOCK_DATA=true ENVIRONMENT=test TRADING_MODE=shadow PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /Users/marselkei/VS/intra/venv/bin/python -m pytest -q tests/test_live_engine_fill_accounting.py tests/test_pending_close_accounting.py tests/test_replay_close_accounting.py -p pytest_asyncio.plugin -p pytest_timeout -p no:cacheprovider",
+    "ruff check backend/organism/live_engine_fills.py tests/test_live_engine_fill_accounting.py tests/test_pending_close_accounting.py",
+    "sandbox-exec network-denied, isolated environment: scripts/phase2_freeze.py --verify with exit_env and routing_data_env restored from worktree param_freeze.json"
+  ],
+  "freeze": {
+    "exit_code": 0,
+    "message": "DRIFT-VERIFY OK",
+    "tracked_reference": "2026-07-07T20:36:49.008305+00:00",
+    "surface_changed": false,
+    "active_operating_reference_modified": false
+  },
+  "lint": {
+    "new_findings": 0,
+    "remaining_preexisting_findings": [
+      "BLE001 in legacy _lookup_entry_fill_from_db",
+      "BLE001 in legacy _lookup_exit_fill_from_db"
+    ]
+  },
+  "runtime_behavior_changed": "Operational pending diagnosis only; eligibility remains conservative and unchanged.",
+  "risks": [
+    "Replacement-chain liveness remains unresolved until authoritative lineage and per-order execution semantics are ingested and validated.",
+    "The additional hold reason is diagnostic and recomputed on retry after restart; durable pending identity, original bound, and consumer authority remain unchanged.",
+    "The daily evidence owner must block replacement cohorts until the missing lineage/cashflow proof is available; terminal inventory alone is insufficient.",
+    "Targeted mock/database tests do not attest a natural paper trading session.",
+    "Historical same-symbol replaced rows retain the pre-existing conservative hold because their successors may be missing; this patch does not repair replacement liveness."
+  ],
+  "follow_ups": [
+    "Root owns consolidated regression, artifact generation, review replies, and PR publication.",
+    "No commit, broker call, ingestion migration, deployment, or frozen-function edit was performed by this work package."
+  ],
+  "base_sha": "a9c20cd663f5cbd1540460b41329928617fba8e2",
+  "branch": "codex/operations-evidence-integrity",
+  "source_hashes": {
+    "backend/organism/live_engine_fills.py": "138906ac893fb177591597f4fb964b69c31ac8c70f0ed458983bf83c21eeda4b",
+    "tests/test_live_engine_fill_accounting.py": "df3cca430a29cfb3c31b4650bb42ffd66af37efd11195719e7087cbfa884561b",
+    "tests/test_pending_close_accounting.py": "ab8cec11e3fe70a37ac1768472a1776b6daf4a598921b2b2d137890bd6b49244"
+  },
+  "daily_gate_coordination": "Daily evidence owner confirmed all replaced forward orders block quality with replacement_execution_lineage_unverified, including zero-fill predecessors."
+}

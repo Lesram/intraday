@@ -1,72 +1,82 @@
 {
-  "source_sha": "3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f",
-  "unique_tests_passed": 889,
+  "source_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "unique_tests_passed": 950,
   "tests_failed": 0,
   "skipped": 0,
   "suites": [
     {
-      "junit": "artifacts/operations_evidence/operational_final.xml",
-      "passed": 644,
+      "junit": "artifacts/operations_evidence/monday_operational.xml",
+      "passed": 734,
       "failed": 0,
-      "skipped": 0
-    },
-    {
-      "junit": "artifacts/operations_evidence/workflow_contract.xml",
-      "passed": 29,
-      "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "e47382c39a3bca47e5985dacbc7d4d7e372cfe6d0b6e14e0494b0f36837e79f9"
     },
     {
       "junit": "artifacts/organism_live_engine.junit.xml",
       "passed": 26,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "19afdb20b7bf5c9c06d0e443f714102475f7302468acddb853013fa65038df13"
     },
     {
       "junit": "artifacts/organism_engine_scenarios.junit.xml",
       "passed": 31,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "720e794f4a5f1958a41529eca6519a64688b40c88e1ab66b9be14cb60d3e8686"
     },
     {
       "junit": "artifacts/multi_tick_state.junit.xml",
       "passed": 9,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "aace7c71f73c5da2fbff5d3721a7ccbe49177b6aeee58bf0bef8daca4c765def"
     },
     {
       "junit": "artifacts/safety_invariants.junit.xml",
       "passed": 29,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "acf7bd32c166a40761769539bb42fbb74bed36c2f8e5950675cc13df537d4d52"
     },
     {
       "junit": "artifacts/self_evolution.junit.xml",
       "passed": 15,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "4c20c675b3e84b0ba4b0a0ad162bff4297e878d968c8c93d1cb57a54858aa821"
     },
     {
       "junit": "artifacts/algorithm_improvements.junit.xml",
       "passed": 58,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "7a6d99a5f638e85c09e854280f726edca159e83e54a6b7d5a4d71e6de31fc050"
     },
     {
       "junit": "artifacts/replay_simulator.junit.xml",
       "passed": 28,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "14b678c82dfac1d57302155d79dc0a43702959d7ef5e28c0a8a3b46dba5aa839"
     },
     {
       "junit": "artifacts/semantic_invariants.junit.xml",
       "passed": 20,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "sha256": "61f188b2feb81f6bd8730e5a845fbf047d07e97ad73da44011e4363214d2cc3e"
     }
   ],
-  "count_method": "Unique (JUnit classname,case name) across accepted final runs; exploratory/repeated runs are not added.",
+  "count_method": "Unique (JUnit classname, case name) across the source-bound final operational and full artifact runs; prior targeted, Linux and repeated runs not added",
   "full_artifact_pack": "pass",
   "freeze_verification": "pass",
-  "deployed": false
+  "image_linux_daily_tests": {
+    "passed": 79,
+    "failed": 0,
+    "included_in_unique_count": false
+  },
+  "synthetic_cli_replay": "positive and withheld examples reproduce expected statuses; fixtures only",
+  "deployed": false,
+  "hosted_check_status": "pending_after_push"
 }

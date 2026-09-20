@@ -1,7 +1,7 @@
 {
   "task_id": "operations-evidence-integrity-20260919",
   "summary": "Deferred exact close accounting and complete read-only daily paper evidence",
-  "status": "implemented_validated_for_pull_request",
+  "status": "amended_source_validated_hosted_pending",
   "user_authorization": "2026-09-19: remain focused and start implementing improvements as planned",
   "implementation_role_constraint": "Resolved: Marsel explicitly authorized Codex direct implementation for this release",
   "branch": "codex/operations-evidence-integrity",
@@ -136,5 +136,6 @@
     "Research candidate preregistration"
   ],
   "implementation_role_approval": "Codex can implement directly. Do you need anything else from me?",
-  "source_sha": "3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f"
+  "source_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "amendment_plan": "monday_preparation_plan.json"
 }

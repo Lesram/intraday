@@ -1,0 +1,178 @@
+{
+  "task_id": "monday-static-delta-validation",
+  "status": "passed_delta_checks",
+  "base_sha": "a9c20cd663f5cbd1540460b41329928617fba8e2",
+  "candidate_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "scope": "Read-only Ruff delta comparison for changed Python files and Bandit high-severity checks for changed production Python files.",
+  "constraints": [
+    "No source edits",
+    "No root artifact changes",
+    "No secret-exposure scan; release owner handles it"
+  ],
+  "plan": [
+    "Extract exact committed Python files at both revisions to temporary directories",
+    "Run identical repository Ruff configuration against both revisions and compare normalized findings",
+    "Run Bandit high-severity checks on changed production Python at both revisions",
+    "Record commands, source hashes, findings and limits"
+  ],
+  "files_checked": [
+    "backend/organism/live_engine_fills.py",
+    "scripts/ops/paper_daily_evidence.py",
+    "tests/test_live_engine_fill_accounting.py",
+    "tests/test_paper_daily_evidence.py",
+    "tests/test_pending_close_accounting.py"
+  ],
+  "production_files_checked": [
+    "backend/organism/live_engine_fills.py",
+    "scripts/ops/paper_daily_evidence.py"
+  ],
+  "tools": {
+    "ruff": "0.15.12",
+    "bandit": "1.9.4"
+  },
+  "network_access": "denied by sandbox-exec",
+  "source_hashes": {
+    "pyproject.toml": "cf0c86fa39147a2cc93ba4a184bf40f74221aa448d8d0f0a0a520977e7410ab0",
+    "backend/organism/live_engine_fills.py": "138906ac893fb177591597f4fb964b69c31ac8c70f0ed458983bf83c21eeda4b",
+    "scripts/ops/paper_daily_evidence.py": "6559119cf26745216c266dde4012d0dd550afa847a402a7ffbf02407d0a3e6c0",
+    "tests/test_live_engine_fill_accounting.py": "df3cca430a29cfb3c31b4650bb42ffd66af37efd11195719e7087cbfa884561b",
+    "tests/test_paper_daily_evidence.py": "b0efeb3e86016a28f3239e662e49bdcf14936d567ec3c20ac76196c0e2c771d7",
+    "tests/test_pending_close_accounting.py": "ab8cec11e3fe70a37ac1768472a1776b6daf4a598921b2b2d137890bd6b49244"
+  },
+  "runs": {
+    "base": {
+      "revision": "a9c20cd663f5cbd1540460b41329928617fba8e2",
+      "ruff_command": [
+        "ruff",
+        "check",
+        "--no-cache",
+        "--output-format",
+        "json",
+        "backend/organism/live_engine_fills.py",
+        "scripts/ops/paper_daily_evidence.py",
+        "tests/test_live_engine_fill_accounting.py",
+        "tests/test_paper_daily_evidence.py",
+        "tests/test_pending_close_accounting.py"
+      ],
+      "ruff_exit_code": 1,
+      "ruff_findings": [
+        {
+          "file": "backend/organism/live_engine_fills.py",
+          "rule": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "source_line": "except Exception as e:",
+          "line": 334
+        },
+        {
+          "file": "backend/organism/live_engine_fills.py",
+          "rule": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "source_line": "except Exception as e:",
+          "line": 371
+        }
+      ],
+      "bandit_command": [
+        "bandit",
+        "-c",
+        "pyproject.toml",
+        "-lll",
+        "--confidence-level",
+        "all",
+        "-f",
+        "json",
+        "backend/organism/live_engine_fills.py",
+        "scripts/ops/paper_daily_evidence.py"
+      ],
+      "bandit_exit_code": 0,
+      "bandit_high_severity_findings": [],
+      "bandit_metrics": {
+        "CONFIDENCE.HIGH": 3,
+        "CONFIDENCE.LOW": 0,
+        "CONFIDENCE.MEDIUM": 0,
+        "CONFIDENCE.UNDEFINED": 0,
+        "SEVERITY.HIGH": 0,
+        "SEVERITY.LOW": 3,
+        "SEVERITY.MEDIUM": 0,
+        "SEVERITY.UNDEFINED": 0,
+        "loc": 994,
+        "nosec": 0,
+        "skipped_tests": 0
+      },
+      "config_sha256": "cf0c86fa39147a2cc93ba4a184bf40f74221aa448d8d0f0a0a520977e7410ab0"
+    },
+    "candidate": {
+      "revision": "05e67e176ec1830553a26d15e25f821aeff127c8",
+      "ruff_command": [
+        "ruff",
+        "check",
+        "--no-cache",
+        "--output-format",
+        "json",
+        "backend/organism/live_engine_fills.py",
+        "scripts/ops/paper_daily_evidence.py",
+        "tests/test_live_engine_fill_accounting.py",
+        "tests/test_paper_daily_evidence.py",
+        "tests/test_pending_close_accounting.py"
+      ],
+      "ruff_exit_code": 1,
+      "ruff_findings": [
+        {
+          "file": "backend/organism/live_engine_fills.py",
+          "rule": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "source_line": "except Exception as e:",
+          "line": 365
+        },
+        {
+          "file": "backend/organism/live_engine_fills.py",
+          "rule": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "source_line": "except Exception as e:",
+          "line": 402
+        }
+      ],
+      "bandit_command": [
+        "bandit",
+        "-c",
+        "pyproject.toml",
+        "-lll",
+        "--confidence-level",
+        "all",
+        "-f",
+        "json",
+        "backend/organism/live_engine_fills.py",
+        "scripts/ops/paper_daily_evidence.py"
+      ],
+      "bandit_exit_code": 0,
+      "bandit_high_severity_findings": [],
+      "bandit_metrics": {
+        "CONFIDENCE.HIGH": 3,
+        "CONFIDENCE.LOW": 0,
+        "CONFIDENCE.MEDIUM": 0,
+        "CONFIDENCE.UNDEFINED": 0,
+        "SEVERITY.HIGH": 0,
+        "SEVERITY.LOW": 3,
+        "SEVERITY.MEDIUM": 0,
+        "SEVERITY.UNDEFINED": 0,
+        "loc": 1110,
+        "nosec": 0,
+        "skipped_tests": 0
+      },
+      "config_sha256": "cf0c86fa39147a2cc93ba4a184bf40f74221aa448d8d0f0a0a520977e7410ab0"
+    }
+  },
+  "limits": [
+    "Only Python files changed between the two named commits were checked.",
+    "Ruff findings compared by path, rule, message, and source line; line-number shifts alone are ignored.",
+    "Bandit checked high severity at every confidence level with repository skip rules; this is not a full security audit or secret scan."
+  ],
+  "harness_note": "Initial path normalization encountered macOS /tmp -> /private/tmp alias; rerun uses resolved temporary paths.",
+  "ruff_delta": {
+    "new_findings": [],
+    "base_count": 2,
+    "candidate_count": 2,
+    "removed_count": 0
+  },
+  "bandit_high_severity_count": 0,
+  "configuration_identical": true
+}

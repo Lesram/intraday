@@ -1,14 +1,11 @@
 # Live Audit Index
 
-Candidate validation only: this index and its resolved values describe the isolated
-`3fd6a3f71f` source build. They do not describe the installed paper process. The
-network-denied live snapshot is explicitly unreachable. Deployment remains PR #17
-until a separate accepted activation; see `artifacts/task_report.json` and
-`artifacts/operations_evidence/final_validation.json` for current evidence.
+> **Candidate evidence only:** SHA 05e67e176ec1830553a26d15e25f821aeff127c8. Generated configuration uses isolated test defaults, not the installed runtime. The actual PR17 runtime observation is `artifacts/operations_evidence/monday_runtime_readiness.json`; candidate activation and natural-session acceptance are pending.
 
-Generated: 2026-09-19T23:52:01Z
-PR: n/a
-SHA: `3fd6a3f71f`
+
+Generated: 2026-09-20T00:44:47Z
+PR: [#19](https://github.com/Lesram/intraday/pull/19)
+SHA: `05e67e176e`
 Branch: `codex/operations-evidence-integrity`
 Scope: **backend_logic**
 Change scope: `base` (`ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD`)
@@ -22,9 +19,9 @@ Change scope: `base` (`ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD`)
 | Scripts | 3 | `scripts/ops/paper_daily_evidence.py`, `scripts/ops/standdown_session_row.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
 | Tests | 10 | `tests/test_entry_evidence.py`, `tests/test_live_engine_fill_accounting.py`, `tests/test_organism_engine_scenarios.py`, `tests/test_organism_live_engine.py`, `tests/test_paper_daily_evidence.py`, `tests/test_pending_close_accounting.py`, `tests/test_replay_close_accounting.py`, `tests/test_runtime_snapshot_auth.py`, `tests/test_standdown_session_row.py`, `tests/test_walkforward_persistence.py` |
-| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_DAILY_EVIDENCE.md` |
+| Docs | 5 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/MONDAY_PREPARATION_2026-09-21.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_DAILY_EVIDENCE.md` |
 
-## Resolved constants — candidate validation environment
+## Candidate constants in isolated test environment
 
 Source: `resolved_config_snapshot.json`
 
@@ -61,3 +58,7 @@ Source: `resolved_config_snapshot.json`
 ## Open risks
 
 - 7 organism file(s) changed — require replay verification
+
+- Automatic replacement-chain accounting remains unsupported; quality results stay withheld for replacement ambiguity.
+- Natural-session and unattended-operation acceptance remain pending; current Mac battery operation requires AC power before the session.
+- Complete release risks and follow-ups: `artifacts/task_report.json`; fresh closed-market evidence: `artifacts/operations_evidence/monday_runtime_readiness.json`.
