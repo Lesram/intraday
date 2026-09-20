@@ -117,6 +117,9 @@ def test_all_27_observed_positions_replay_to_broker_cash_flows_without_mutation(
 @pytest.mark.parametrize("change", [
     {"filled_qty": Decimal(1)}, {"filled_qty": Decimal(3)},
     {"status": "partially_filled"}, {"status": "accepted"},
+    {"status": "replaced"}, {"status": "pending_replace"},
+    {"status": "pending_cancel"}, {"status": "done_for_day"},
+    {"status": "stopped"}, {"status": "calculated"},
     {"avg_fill_price": Decimal("NaN")}, {"avg_fill_price": Decimal("Infinity")},
     {"avg_fill_price": Decimal(0)}, {"filled_qty": Decimal(-1)},
     {"broker_order_id": None}, {"broker_order_id": "synthetic-1"},
@@ -146,6 +149,16 @@ def test_missing_anchor_duplicate_anchor_fractional_or_unbalanced_position():
     assert calculate([entry, order(2, "sell", 3, 103)]) is None
     assert calculate([order(1, "buy", 1.5, 100), order(2, "sell", 1.5, 103)]) is None
     assert calculate([entry, order(2, "sell", 2, 103)], direction=0) is None
+
+
+def test_balanced_replacement_summaries_and_links_do_not_prove_exact_cashflows():
+    predecessor = order(1, "buy", 2, 100, qty=Decimal(6), status="replaced",
+                        attributes={"source": "organism", "replaced_by": "synthetic-2"})
+    successor = order(2, "buy", 4, 100,
+                      attributes={"source": "organism", "replaces": "synthetic-1"})
+    rows = [predecessor, successor, order(3, "sell", 6, 99)]
+    assert sum(row["filled_qty"] * (1 if row["side"] == "buy" else -1) for row in rows) == 0
+    assert calculate(rows) is None  # Summary-derived links/fills are insufficient proof.
 
 
 @pytest.fixture

@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 import csv
 import io
 import json
-from pathlib import Path
 import pytest
 from scripts.ops import paper_daily_evidence as daily
 
@@ -210,12 +209,12 @@ def test_immutable_idempotent_concurrent_publication_and_replay(host, tmp_path):
 def test_interrupted_publish_never_creates_final_manifest_pack(host, tmp_path, monkeypatch):
     inputs, collection, paths = run_host(host)
     report = daily.analyze(inputs, collection)
-    real = Path.rename
-    def fail(self, target):
-        if self.name.startswith('.incomplete-'):
+    real = daily.os.rename
+    def fail(source, target, *args, **kwargs):
+        if str(source).startswith('.incomplete-'):
             raise OSError('injected interruption')
-        return real(self, target)
-    monkeypatch.setattr(Path, 'rename', fail)
+        return real(source, target, *args, **kwargs)
+    monkeypatch.setattr(daily.os, 'rename', fail)
     output = tmp_path / 'packs'
     with pytest.raises(OSError):
         daily.publish(output, inputs, collection, report, paths)
@@ -513,3 +512,199 @@ async def test_real_entry_observers_publish_receipt_accepted_by_daily_collector(
     assert report['strategy_gate']['momentum']['state'] == 'INSUFFICIENT'
     assert report['reconciliation']['cost_scenarios']['6_bps_round_trip']['broker_modeled_net'] == -2.36
     assert inputs['local/entry_evidence.jsonl'] == before == receipt_file.read_bytes()
+
+
+@pytest.mark.parametrize('alias_kind', ['hardlink', 'symlink_parent', 'symlink_leaf'])
+def test_stable_read_refuses_linked_input_paths(tmp_path, alias_kind):
+    original = tmp_path / 'original'
+    original.mkdir()
+    source = original / 'ledger.csv'
+    source.write_bytes(b'private fixture bytes\n')
+    if alias_kind == 'hardlink':
+        alias = tmp_path / 'linked-ledger.csv'
+        alias.hardlink_to(source)
+    elif alias_kind == 'symlink_parent':
+        directory_alias = tmp_path / 'directory-alias'
+        directory_alias.symlink_to(original, target_is_directory=True)
+        alias = directory_alias / 'ledger.csv'
+    else:
+        alias = tmp_path / 'linked-ledger.csv'
+        alias.symlink_to(source)
+    with pytest.raises(daily.EvidenceError):
+        daily.stable_read(alias)
+    assert source.read_bytes() == b'private fixture bytes\n'
+
+
+@pytest.mark.parametrize('field,value', [
+    ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+    ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+    ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+    ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+])
+def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+    row, receipt, orders = exact_trade_inputs(host)
+    receipt[field] = value
+    # json.dumps deliberately admits NaN/Infinity to model externally supplied
+    # invalid JSON constants accepted by the standard library decoder.
+    (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+    inputs, collection, _ = run_host(host, FakeTransport(orders))
+    report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+    assert report['status'] == 'BLOCKED'
+    assert report['strategy_gate']['state'] == 'WITHHELD'
+
+
+@pytest.mark.parametrize('node_kind', ['fifo', 'directory', 'symlink_loop'])
+@pytest.mark.timeout(2)
+def test_stable_read_refuses_nonregular_and_looping_inputs_without_blocking(tmp_path, node_kind):
+    path = tmp_path / 'input'
+    if node_kind == 'fifo':
+        daily.os.mkfifo(path)
+    elif node_kind == 'directory':
+        path.mkdir()
+    else:
+        path.symlink_to(path)
+    with pytest.raises(daily.EvidenceError):
+        daily.stable_read(path)
+
+
+@pytest.mark.parametrize('replacement', ['symlink', 'fifo', 'hardlink'])
+@pytest.mark.timeout(2)
+def test_stable_read_refuses_path_replacement_between_stat_and_open(tmp_path, monkeypatch, replacement):
+    source = tmp_path / 'input'
+    source.write_bytes(b'approved input\n')
+    other = tmp_path / 'unapproved'
+    other.write_bytes(b'unapproved bytes\n')
+    original_open = daily.os.open
+    swapped = False
+
+    def replace_before_open(path, flags, *args, **kwargs):
+        nonlocal swapped
+        if path == source.name and kwargs.get('dir_fd') is not None and not swapped:
+            swapped = True
+            source.unlink()
+            if replacement == 'symlink':
+                source.symlink_to(other)
+            elif replacement == 'hardlink':
+                source.hardlink_to(other)
+            else:
+                daily.os.mkfifo(source)
+        return original_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(daily.os, 'open', replace_before_open)
+    with pytest.raises(daily.EvidenceError):
+        daily.stable_read(source)
+    assert swapped and other.read_bytes() == b'unapproved bytes\n'
+
+
+@pytest.mark.parametrize('field,value', [
+    ('direction', '1'), ('direction', 10 ** 400), ('frame_rows', '100'),
+    ('frame_rows', 100.0), ('frame_rows', -1), ('bar_age_seconds', float('inf')),
+    ('bar_age_seconds', float('-inf')), ('shares', True), ('shares', float('nan')),
+    ('tick', '100'), ('tick', 0.5), ('tick', -1), ('frame_hash', 'z' * 64),
+])
+def test_receipt_schema_rejects_coercible_counts_nonfinite_values_and_nonhex_hash(host, field, value):
+    row, receipt, orders = exact_trade_inputs(host)
+    receipt[field] = value
+    (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+    inputs, collection, _ = run_host(host, FakeTransport(orders))
+    report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+    assert report['status'] == 'BLOCKED'
+    assert report['strategy_gate']['state'] == 'WITHHELD'
+
+
+def test_capture_set_detects_same_size_mutation_with_restored_mtime(host, monkeypatch):
+    ledger = host[0] / 'organism_brain/trade_history.csv'
+    original_bytes, original_stat = ledger.read_bytes(), ledger.stat()
+    real_read = daily.stable_read
+
+    def mutate_prior_input(path):
+        raw = real_read(path)
+        if path.name == 'strategy_evidence_events.jsonl':
+            ledger.write_bytes(b'X' + original_bytes[1:])
+            daily.os.utime(ledger, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
+        return raw
+
+    monkeypatch.setattr(daily, 'stable_read', mutate_prior_input)
+    inputs, collection, _ = run_host(host)
+    assert inputs['local/trades.csv'] == original_bytes
+    assert ledger.stat().st_size == original_stat.st_size
+    assert ledger.stat().st_mtime_ns == original_stat.st_mtime_ns
+    assert 'input_set_changed_during_capture' in collection['issues']
+    assert daily.analyze(inputs, collection)['status'] == 'BLOCKED'
+
+
+def test_pinned_read_does_not_follow_ancestor_swapped_during_open(tmp_path, monkeypatch):
+    parent = tmp_path / 'source'
+    parent.mkdir()
+    source = parent / 'input'
+    source.write_bytes(b'approved bytes\n')
+    other = tmp_path / 'other'
+    other.mkdir()
+    (other / 'input').write_bytes(b'unapproved bytes\n')
+    moved = tmp_path / 'original-source'
+    real_open = daily.os.open
+    swapped = False
+
+    def swap_ancestor(path, flags, *args, **kwargs):
+        nonlocal swapped
+        if path == 'input' and kwargs.get('dir_fd') is not None and not swapped:
+            swapped = True
+            parent.rename(moved)
+            parent.symlink_to(other, target_is_directory=True)
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(daily.os, 'open', swap_ancestor)
+    assert daily.stable_read(source) == b'approved bytes\n'
+    assert swapped and source.read_bytes() == b'unapproved bytes\n'
+    # A later independent read refuses the now-symlinked ancestor outright.
+    with pytest.raises(daily.EvidenceError):
+        daily.stable_read(source)
+
+
+def test_publication_date_swap_cannot_redirect_writes_into_brain(host, monkeypatch):
+    inputs, collection, paths = run_host(host)
+    report = daily.analyze(inputs, collection)
+    output = host[0] / 'packs'
+    day = output / DAY
+    day.mkdir(parents=True)
+    brain = host[0] / 'organism_brain'
+    before = {p.name: p.read_bytes() for p in brain.iterdir()}
+    moved = output / 'original-day'
+    real_mkdir = daily.os.mkdir
+    swapped = False
+
+    def swap_before_staging(path, mode=0o777, *, dir_fd=None):
+        nonlocal swapped
+        if str(path).startswith('.incomplete-') and dir_fd is not None and not swapped:
+            swapped = True
+            day.rename(moved)
+            day.symlink_to(brain, target_is_directory=True)
+        return real_mkdir(path, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(daily.os, 'mkdir', swap_before_staging)
+    with pytest.raises(daily.EvidenceError):
+        daily.publish(output, inputs, collection, report, paths)
+    assert swapped
+    assert {p.name: p.read_bytes() for p in brain.iterdir()} == before
+    assert not list(moved.iterdir())
+
+
+@pytest.mark.parametrize('filled_qty', ['0', '3'])
+def test_every_replaced_order_withholds_verdict_until_lineage_is_available(host, filled_qty):
+    replaced = order('replaced-predecessor', 'buy', int(filled_qty), 100,
+                     '2026-09-21T14:00:00Z', 'replaced')
+    inputs, collection, _ = run_host(host, FakeTransport([replaced]))
+    report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+    assert report['status'] == 'BLOCKED'
+    assert 'replacement_execution_lineage_unverified' in report['issues']
+    assert report['strategy_gate']['state'] == 'WITHHELD'
+
+
+def test_extreme_broker_cashflow_is_controlled_blocked_report(host):
+    enormous = order('enormous', 'buy', 10 ** 400, 100, '2026-09-21T14:00:00Z')
+    inputs, collection, paths = run_host(host, FakeTransport([enormous]))
+    report = daily.analyze(inputs, collection)
+    assert report['status'] == 'BLOCKED'
+    assert report['strategy_gate']['state'] == 'WITHHELD'
+    pack = daily.publish(host[0] / 'packs', inputs, collection, report, paths)
+    daily.verify_pack(pack)

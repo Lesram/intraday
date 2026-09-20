@@ -13,7 +13,7 @@ import pytest
 
 from backend.organism import close_accounting
 from backend.organism.live_engine import OrganismLiveEngine
-from backend.organism.live_engine_fills import ClosedPositionFills
+from backend.organism.live_engine_fills import ClosedPositionFills, REPLACEMENT_PENDING_REASON
 import test_live_engine_fill_accounting as fill_fixtures
 from test_live_engine_fill_accounting import ANCHOR, CLOSE, START, order, store_rows
 
@@ -223,7 +223,11 @@ async def test_complete_later_close_waits_for_earlier_close_and_ties_are_stable(
     assert_consumers(engine, 2, -12)
 
 
-@pytest.mark.parametrize("status,filled,cleared", [("rejected", 0, True), ("canceled", 0, True), ("new", 0, False), ("canceled", 1, False)])
+@pytest.mark.parametrize("status,filled,cleared", [
+    ("rejected", 0, True), ("canceled", 0, True), ("new", 0, False), ("canceled", 1, False),
+    ("replaced", 0, False), ("pending_replace", 0, False), ("pending_cancel", 0, False),
+    ("done_for_day", 0, False), ("stopped", 0, False), ("calculated", 0, False),
+])
 async def test_only_verified_terminal_zero_fill_cleans_up(database, tmp_path, status, filled, cleared):
     await store_rows(database, [order(1, "buy", filled, 100, qty=Decimal(6), status=status)])
     engine = engine_at(tmp_path, database)
@@ -231,6 +235,67 @@ async def test_only_verified_terminal_zero_fill_cleans_up(database, tmp_path, st
     await engine._reconcile_fills({})
     assert ("TSLA" not in engine._entry_metadata) is cleared
     assert_consumers(engine, 0, 0)
+
+
+@pytest.mark.parametrize("successor", ["missing", "new", "pending_replace", "canceled", "filled", "partial_chain"])
+async def test_replaced_entry_remains_visible_pending_across_repeat_and_restart(database, tmp_path, successor):
+    partial = successor == "partial_chain"
+    rows = [order(1, "buy", 2 if partial else 0, 100, qty=Decimal(6), status="replaced",
+                  attributes={"source": "organism", "replaced_by": "synthetic-2"})]
+    if successor != "missing":
+        status = "filled" if partial else successor
+        qty = 4 if partial else 6
+        rows.append(order(2, "buy", qty if status == "filled" else 0, 100,
+                          qty=Decimal(qty), status=status,
+                          attributes={"source": "organism", "replaces": "synthetic-1"}))
+        if status == "filled":
+            rows.append(order(3, "sell", 6, 99))
+    later_entry = order(4, "buy", 6, 100, symbol="AMD")
+    await store_rows(database, rows + [later_entry, order(5, "sell", 6, 99, symbol="AMD")])
+    # Even matching Execution rows do not establish independently verified
+    # lineage: production derives these rows from the same Order summaries.
+    if partial:
+        from backend.infra.schemas import Execution
+        async with database() as session:
+            session.add_all([Execution(order_id=row["id"], fill_qty=row["filled_qty"],
+                                       fill_price=row["avg_fill_price"], ts=row["submitted_at"], venue="fixture")
+                             for row in rows])
+            await session.commit()
+    engine = engine_at(tmp_path, database)
+    track(engine)
+    track(engine, "AMD", later_entry["id"])
+    for _ in range(2):
+        await engine._reconcile_fills({})
+        assert_consumers(engine, 0, 0)
+        pending = engine.status()["close_accounting"]["pending"]["TSLA"]
+        assert pending["accounting_hold_reason"] == REPLACEMENT_PENDING_REASON
+        assert pending["observed_at"] == CLOSE.isoformat()
+        assert pending["exit_reason"] == "stop_loss"
+        assert not engine._accounting_completed_entries
+        assert "AMD" in engine._entry_metadata  # The unresolved earlier close retains queue order.
+    restarted = engine_at(tmp_path, database, now=CLOSE + timedelta(minutes=10))
+    await restarted.initialize()
+    await restarted._reconcile_fills({})
+    assert_consumers(restarted, 0, 0)
+    pending = restarted.status()["close_accounting"]["pending"]["TSLA"]
+    assert pending["accounting_hold_reason"] == REPLACEMENT_PENDING_REASON
+    assert pending["observed_at"] == CLOSE.isoformat()
+
+
+async def test_stale_replacement_diagnostic_clears_when_supported_evidence_resolves(database, tmp_path):
+    await missing_partial(database)
+    engine = engine_at(tmp_path, database)
+    track(engine)
+    await engine._reconcile_fills({})
+    # A restored diagnostic is not evidence; the next successful DB lookup
+    # evaluates current rows and must not let this stale label block resolution.
+    pending = engine._entry_metadata["TSLA"]["pending_close"]
+    pending["accounting_hold_reason"] = REPLACEMENT_PENDING_REASON
+    await complete_partial(database)
+    await engine._reconcile_fills({})
+    assert_consumers(engine, 1, -2)
+    assert "accounting_hold_reason" not in pending
+    assert "TSLA" not in engine._entry_metadata
 
 
 @pytest.mark.parametrize("damage", ["checksum", "version", "json"])

@@ -12,6 +12,7 @@ import io
 import json
 import math
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -20,6 +21,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
@@ -158,19 +160,49 @@ def collect_orders(recorder: Recorder, cutoff: str, captured_at: str, *,
 
 
 def stable_read(path: Path) -> bytes:
-    if path.is_symlink():
-        raise EvidenceError("symlink_input")
-    before = path.stat()
-    if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_LOCAL_BYTES:
-        raise EvidenceError("invalid_or_oversized_input")
-    with path.open("rb") as source:
-        content = source.read(MAX_LOCAL_BYTES + 1)
-        after_fd = os.fstat(source.fileno())
-    after = path.stat()
-    signature = lambda item: (item.st_dev, item.st_ino, item.st_size, item.st_mtime_ns)
-    if signature(before) != signature(after) or signature(before) != signature(after_fd) or len(content) != before.st_size:
-        raise EvidenceError("input_changed_during_capture")
-    return content
+    """Read a single-link regular file through pinned, no-follow directories.
+
+    Path.resolve() would erase evidence of a symlinked ancestor. Walk each
+    component with directory descriptors instead, then compare the opened
+    file's identity with both the before/after directory entry. O_NONBLOCK
+    keeps a concurrent FIFO replacement from hanging this read-only tool.
+    """
+    absolute = path.absolute()
+    directory_fd = None
+    file_fd = None
+    try:
+        directory_fd = os.open(absolute.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        for component in absolute.parts[1:-1]:
+            next_fd = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+        before = os.stat(absolute.name, dir_fd=directory_fd, follow_symlinks=False)
+        if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_LOCAL_BYTES or before.st_nlink != 1:
+            raise EvidenceError("input_not_single_link_regular_file")
+        file_fd = os.open(absolute.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd)
+        opened = os.fstat(file_fd)
+        if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
+            raise EvidenceError("input_not_single_link_regular_file")
+        with os.fdopen(file_fd, "rb") as source:
+            file_fd = None  # the context now owns this descriptor
+            content = source.read(MAX_LOCAL_BYTES + 1)
+            after_fd = os.fstat(source.fileno())
+        after = os.stat(absolute.name, dir_fd=directory_fd, follow_symlinks=False)
+        if any(file_signature(before) != file_signature(item) for item in (opened, after_fd, after)) or len(content) != before.st_size:
+            raise EvidenceError("input_changed_during_capture")
+        return content
+    except OSError:
+        raise EvidenceError("unsafe_or_unavailable_input_path") from None
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+        if directory_fd is not None:
+            os.close(directory_fd)
+
+
+def file_signature(item) -> tuple:
+    return (item.st_dev, item.st_ino, item.st_mode, item.st_nlink,
+            item.st_size, item.st_mtime_ns, item.st_ctime_ns)
 
 
 def capture_local(root: Path, freeze: Path, activation: Path, release: Path, baseline: Path | None,
@@ -195,7 +227,7 @@ def capture_local(root: Path, freeze: Path, activation: Path, release: Path, bas
         inputs[name] = stable_read(path)
     for name, path in mapping.items():
         before, after = states[name], path.stat()
-        if (before.st_ino, before.st_size, before.st_mtime_ns) != (after.st_ino, after.st_size, after.st_mtime_ns):
+        if file_signature(before) != file_signature(after):
             raise EvidenceError("input_set_changed_during_capture")
     if logs != sorted((root / "logs").glob("application.log*")):
         raise EvidenceError("log_rotation_during_capture")
@@ -356,6 +388,8 @@ def analyze(inputs: dict[str, bytes], collection: dict, *, gate_fn: Callable = n
             issues.append("broker_clock_not_closed_or_fresh")
         if any(order.get("status") not in TERMINAL for order in orders):
             issues.append("nonterminal_order_at_close")
+        if any(order.get("status") == "replaced" for order in orders):
+            issues.append("replacement_execution_lineage_unverified")
         reconciliation = reconcile(orders, ledger, cutoff)
         report["reconciliation"] = reconciliation
         no_trade = (not forward and reconciliation["counts"]["organism_filled_orders"] == 0
@@ -379,7 +413,7 @@ def analyze(inputs: dict[str, bytes], collection: dict, *, gate_fn: Callable = n
             report["status"] = "READY_FOR_REVIEW"
     except EvidenceError as exc:
         issues.append(str(exc))
-    except (OSError, ValueError, KeyError, TypeError, AttributeError, UnicodeError):
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, UnicodeError, ArithmeticError):
         issues.append("missing_or_invalid_analysis_input")
     report["issues"] = sorted(set(issues))
     return report
@@ -441,7 +475,7 @@ def entry_quality(inputs, forward, issues, report):
     receipts, duplicates, malformed = {}, 0, 0
     for raw in inputs.get("local/entry_evidence.jsonl", b"").splitlines():
         try:
-            receipt = json.loads(raw)
+            receipt = json.loads(raw, parse_constant=reject_json_constant)
             entry = receipt["entry_order_id"]
             if not entry:
                 raise ValueError("missing_entry")
@@ -488,7 +522,7 @@ def entry_quality(inputs, forward, issues, report):
                 raise ValueError("anchor_receipt_not_in_cycle")
             verified += 1
             verified_buys += len(buys)
-        except (ValueError, KeyError, TypeError, AttributeError):
+        except (ValueError, KeyError, TypeError, AttributeError, ArithmeticError):
             issues.append(f"entry_decision_provenance_unverified:{index}")
     report["decision_provenance"] = {
         "state": "OBSERVED" if forward and verified == len(forward) else "UNVERIFIED" if forward else "NO_FORWARD_DECISIONS",
@@ -497,19 +531,43 @@ def entry_quality(inputs, forward, issues, report):
         "limits": ["Every buy decision in the matched cycle needs its own exact receipt; frame hashes are not provider archives or proof of edge."]}
 
 
+def reject_json_constant(_value):
+    """Nonstandard NaN/Infinity are never provenance observations."""
+    raise ValueError("nonfinite_receipt_json")
+
+
+def receipt_number(receipt, field, *, integer=False, minimum=None):
+    """Require the producer's JSON type, not float/bool/string coercion."""
+    value = receipt.get(field)
+    if type(value) not in ((int,) if integer else (int, float)):
+        raise ValueError("invalid_receipt_numeric_type")
+    try:
+        finite = math.isfinite(value)
+    except OverflowError:
+        finite = False
+    if not finite or minimum is not None and value < minimum:
+        raise ValueError("invalid_receipt_numeric_value")
+    return value
+
+
 def validate_entry_receipt(receipt, row, order, identities, feed, release, freeze):
     """Apply identical provenance checks to initial entries and pyramid adds."""
     if receipt.get("schema") != "intra_entry_evidence_v1" or receipt.get("status") != "OBSERVED" or receipt.get("reasons"):
         raise ValueError("missing_or_unverified_receipt")
     if (receipt.get("git_sha"), receipt.get("image_sha"), receipt.get("runtime_config_hash")) not in identities:
         raise ValueError("unapproved_entry_identity")
+    direction = receipt_number(receipt, "direction")
+    receipt_number(receipt, "frame_rows", integer=True, minimum=1)
+    receipt_number(receipt, "tick", integer=True, minimum=0)
+    reported_age = receipt_number(receipt, "bar_age_seconds", minimum=0)
+    requested = receipt_number(receipt, "shares", integer=True, minimum=1)
     if (not feed or receipt.get("feed") != feed or receipt.get("symbol") != row["symbol"]
-            or receipt.get("entry_source") != row["entry_source"] or receipt.get("direction", 0) <= 0
+            or receipt.get("entry_source") != row["entry_source"] or direction <= 0
             or row.get("strategy_id") and receipt.get("strategy_id") != row["strategy_id"]):
         raise ValueError("entry_receipt_context")
     if (receipt.get("gate_passed") is not True or receipt.get("timestamp_complete") is not True
-            or receipt.get("timestamp_ordered") is not True or receipt.get("frame_rows", 0) <= 0
-            or not isinstance(receipt.get("frame_hash"), str) or len(receipt["frame_hash"]) != 64):
+            or receipt.get("timestamp_ordered") is not True
+            or not isinstance(receipt.get("frame_hash"), str) or re.fullmatch(r"[0-9a-f]{64}", receipt["frame_hash"]) is None):
         raise ValueError("entry_frame_unverified")
     if receipt.get("method") != "pandas_hash_v1" or receipt.get("timeframe") != release.get("timeframe"):
         raise ValueError("entry_frame_method_or_timeframe_unverified")
@@ -517,12 +575,16 @@ def validate_entry_receipt(receipt, row, order, identities, feed, release, freez
                                           ("captured_at", "submitted_at", "recorded_at", "last_bar_at")]
     age = (submitted - bar).total_seconds()
     if (not timestamp(freeze["FROZEN_AT"]) < captured <= submitted <= recorded <= timestamp(row["closed_at"])
-            or not 0 <= age <= 120 or abs(age - float(receipt["bar_age_seconds"])) > 0.001
+            or not 0 <= age <= 120 or abs(age - reported_age) > 0.001
             or (submitted - captured).total_seconds() > 120
             or abs((timestamp(order["submitted_at"]) - submitted).total_seconds()) > 120):
         raise ValueError("entry_frame_time_unverified")
-    requested, filled = float(receipt["shares"]), float(order.get("filled_qty", 0))
-    if (not math.isfinite(requested) or not math.isfinite(filled) or not 0 < filled <= requested
+    # Alpaca deliberately represents quantities as decimal strings. Receipt
+    # counts above are stricter because our own producer emits JSON integers.
+    if type(order.get("filled_qty")) not in (str, int, float):
+        raise ValueError("invalid_broker_quantity_type")
+    filled = float(order["filled_qty"])
+    if (not math.isfinite(filled) or not 0 < filled <= requested
             or order.get("symbol") != row["symbol"] or order.get("side") != "buy"
             or receipt.get("broker_order_id") and receipt["broker_order_id"] != order["id"]):
         raise ValueError("entry_broker_join_mismatch")
@@ -584,35 +646,54 @@ def publish(output: Path, inputs: dict[str, bytes], collection: dict, report: di
     target = root / collection["session_date"] / pack_id
     if target.parent.is_symlink() or target.is_symlink():
         raise EvidenceError("symlink_pack_destination")
-    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if target.exists():
-        verify_pack(target)
-        if (target / "manifest.json").read_bytes() != encoded(manifest):
-            raise EvidenceError("existing_pack_conflict")
-        return target
-    staging = Path(tempfile.mkdtemp(prefix=".incomplete-", dir=target.parent))
+    anchor_fd = os.open(root.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    parent_fd = None
+    staging_fd = None
+    staging_name = None
+    staging_created = False
     try:
+        parent_fd = open_directories(anchor_fd, target.parent.parts[1:], create=True)
+        if target.exists():
+            verify_pack(target)
+            if stable_read(target / "manifest.json") != encoded(manifest):
+                raise EvidenceError("existing_pack_conflict")
+            return target
+        staging_name = ".incomplete-" + uuid.uuid4().hex
+        os.mkdir(staging_name, mode=0o700, dir_fd=parent_fd)
+        staging_created = True
+        staging_fd = os.open(staging_name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd)
         for name, raw in inputs.items():
             if Path(name).is_absolute() or ".." in Path(name).parts:
                 raise EvidenceError("unsafe_input_name")
-            path = staging / "inputs" / name
-            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-            durable_write(path, raw)
-        durable_write(staging / "report.json", encoded(report))
-        durable_write(staging / "manifest.json", encoded(manifest))
-        verify_pack(staging, verify_name=False)
+            durable_write_at(staging_fd, Path("inputs") / name, raw)
+        durable_write_at(staging_fd, Path("report.json"), encoded(report))
+        durable_write_at(staging_fd, Path("manifest.json"), encoded(manifest))
+        # Verification refuses any ancestor swapped since the output directory
+        # was pinned. All writes above remained relative to the original fd.
+        verify_pack(target.parent / staging_name, verify_name=False)
         try:
-            staging.rename(target)
+            os.rename(staging_name, pack_id, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
         except OSError:
             if not target.exists():
                 raise
             verify_pack(target)
-            if (target / "manifest.json").read_bytes() != encoded(manifest):
+            if stable_read(target / "manifest.json") != encoded(manifest):
                 raise EvidenceError("concurrent_pack_conflict")
+        verify_pack(target)
         return target
     finally:
-        if staging.exists():
-            shutil.rmtree(staging)
+        if staging_fd is not None:
+            os.close(staging_fd)
+        try:
+            if staging_created and parent_fd is not None:
+                try:
+                    shutil.rmtree(staging_name, dir_fd=parent_fd)
+                except FileNotFoundError:
+                    pass  # committed by rename
+        finally:
+            if parent_fd is not None:
+                os.close(parent_fd)
+            os.close(anchor_fd)
 
 
 def verify_pack(path: Path, *, verify_name: bool = True) -> tuple[dict, dict]:
@@ -637,11 +718,39 @@ def verify_pack(path: Path, *, verify_name: bool = True) -> tuple[dict, dict]:
     return inputs, manifest["collection"]
 
 
-def durable_write(path: Path, content: bytes) -> None:
-    with path.open("xb") as stream:
-        stream.write(content)
-        stream.flush()
-        os.fsync(stream.fileno())
+def open_directories(base_fd: int, components, *, create=False) -> int:
+    """Return a pinned child directory; never follow a swapped path component."""
+    directory_fd = os.dup(base_fd)
+    try:
+        for component in components:
+            try:
+                next_fd = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory_fd)
+            except FileNotFoundError:
+                if not create:
+                    raise
+                try:
+                    os.mkdir(component, mode=0o700, dir_fd=directory_fd)
+                except FileExistsError:
+                    pass  # concurrent publisher; no-follow open still required
+                next_fd = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+        return directory_fd
+    except OSError:
+        os.close(directory_fd)
+        raise EvidenceError("unsafe_output_directory") from None
+
+
+def durable_write_at(base_fd: int, path: Path, content: bytes) -> None:
+    directory_fd = open_directories(base_fd, path.parts[:-1], create=True)
+    try:
+        fd = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=directory_fd)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+    finally:
+        os.close(directory_fd)
 
 
 def collect(root: Path, freeze: Path, activation: Path, release: Path, baseline: Path | None,
