@@ -29,7 +29,12 @@ frontend/dist
 !.env.example
 
 # Generated audit/test artifacts and local reports
-artifacts
+artifacts/**
+!artifacts/phase2/
+artifacts/phase2/**
+# Approved prediction baseline only; runtime history and evaluation cutoff are
+# never baked into an image.
+!artifacts/phase2/research_policy_baseline.json
 docs/engineering/audits/archive
 docs/engineering/daily_report
 docs/engineering/overnight_audit

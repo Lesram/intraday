@@ -34,6 +34,7 @@ def documented_frozen_environment(monkeypatch):
     monkeypatch.setenv("ORGANISM_MIN_AVG_DOLLAR_VOLUME", "50000")
     monkeypatch.setenv("ORGANISM_FRAMEWORK_ROUTING_V2", "true")
     monkeypatch.setenv("ORGANISM_ROUTING_RANK_POLICY", "flat_policy")
+    monkeypatch.setenv("ORGANISM_APPROVED_POLICY_BASELINE", "/app/artifacts/phase2/research_policy_baseline.json")
 
 
 @pytest.fixture(scope="module")
@@ -63,6 +64,14 @@ def test_freeze_covers_full_decision_surface(freeze):
     assert "strategy_config" in freeze["surface"]
     assert "exit_env" in freeze["surface"]
     assert "regime_policy" in freeze["surface"]
+    assert freeze["surface"]["research_policy"]["locked"] is True
+    assert freeze["surface"]["research_policy"]["qualified_trade_count"] is None
+    assert set(freeze["surface"]["research_policy_sources"]) == {
+        "policy", "phase", "trainer", "startup", "sync_training", "phase_resolution",
+        "ml_isolation", "fixed_risk", "settings_update",
+        "baseline_verification",
+        "parameter_application", "settings_api", "scheduler",
+    }
     rde = freeze["surface"]["routing_data_env"]
     assert set(rde) >= {"ALPACA_DATA_FEED", "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
                         "ORGANISM_FRAMEWORK_ROUTING_V2",
@@ -118,11 +127,20 @@ def test_verify_mode_reports_missing_artifact(tmp_path, monkeypatch):
     assert verify() == 2
 
 
+def test_verify_detects_policy_unlock_without_rewriting_boundary(monkeypatch):
+    from backend.organism import research_policy
+    before = Path(FREEZE_PATH).read_bytes()
+    monkeypatch.setattr(research_policy, "RESEARCH_POLICY_LOCKED", False)
+    assert verify() == 1
+    assert Path(FREEZE_PATH).read_bytes() == before
+
+
 @pytest.mark.parametrize("key", [
     "ALPACA_DATA_FEED",
     "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
     "ORGANISM_FRAMEWORK_ROUTING_V2",
     "ORGANISM_ROUTING_RANK_POLICY",
+    "ORGANISM_APPROVED_POLICY_BASELINE",
 ])
 def test_verify_mode_detects_missing_deployment_env(key, monkeypatch):
     """Missing deployed inputs must still fail without changing the freeze."""

@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from backend.utils.logger import get_logger
+from backend.organism import research_policy
 
 logger = get_logger(__name__)
 
@@ -82,6 +83,9 @@ def _train_in_process(
     import pandas as pd
 
     t0 = time.time()
+    if research_policy.RESEARCH_POLICY_LOCKED:
+        return {"accepted": False, "rejection_reason": research_policy.RESEARCH_POLICY_REASON,
+                "duration_s": time.time() - t0}
 
     try:
         from backend.organism.ml_signal import MLSignalGenerator
@@ -334,6 +338,8 @@ class BackgroundTrainer:
 
     async def start(self) -> None:
         """Initialize the process pool executor."""
+        if research_policy.RESEARCH_POLICY_LOCKED:
+            return
         self._executor = ProcessPoolExecutor(max_workers=1)
         logger.info("BackgroundTrainer started (ProcessPoolExecutor, max_workers=1)")
 
@@ -378,6 +384,8 @@ class BackgroundTrainer:
         Serializes the current state and submits to the executor.
         Non-blocking — returns immediately.
         """
+        if research_policy.RESEARCH_POLICY_LOCKED:
+            return
         if not ML_RETRAIN_ENABLED:
             if not getattr(self, "_ml_retrain_disabled_logged", False):
                 logger.info(
@@ -484,6 +492,18 @@ class BackgroundTrainer:
 
         if not self._future.done():
             return False, None
+
+        if research_policy.RESEARCH_POLICY_LOCKED:
+            # A result submitted before the lock cannot promote on completion,
+            # nor trigger the live tick's synchronous training-error fallback.
+            if not self._future.cancelled():
+                self._future.exception()  # Consume a worker failure without promoting/falling back.
+            self._is_training = False
+            self._future = None
+            self._last_result = TrainResult(
+                accepted=False, rejection_reason=research_policy.RESEARCH_POLICY_REASON,
+            )
+            return True, self._last_result
 
         # Training complete
         self._is_training = False
@@ -689,6 +709,8 @@ class BackgroundTrainer:
         """
         import pickle
 
+        if research_policy.RESEARCH_POLICY_LOCKED:
+            return evolved_params
         result = self._last_result
         if result is None or not result.accepted:
             return evolved_params
@@ -828,6 +850,7 @@ class BackgroundTrainer:
     def get_stats(self) -> dict[str, Any]:
         """Return trainer statistics."""
         return {
+            "policy_lock": research_policy.policy_status(),
             "is_training": self._is_training,
             "train_count": self._train_count,
             "last_result": {

@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from backend.infra.security import AuthenticatedUser, require_admin
+from backend.organism import research_policy
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -157,6 +158,8 @@ async def get_organism_settings(
 def _check_governance(request: Request) -> None:
     """H5: Enforce governance controls on settings mutations.
     Raises HTTPException if organism is frozen or halted."""
+    if research_policy.RESEARCH_POLICY_LOCKED:
+        raise HTTPException(status_code=403, detail=research_policy.RESEARCH_POLICY_REASON)
     governance = getattr(request.app.state, "organism_governance", None)
     if governance:
         if getattr(governance, "is_frozen", False):

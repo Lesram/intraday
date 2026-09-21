@@ -12,6 +12,11 @@ import numpy as np
 
 
 class TestBackgroundTrainerEvolutionFreeze:
+
+    @pytest.fixture(autouse=True)
+    def unlocked_legacy_training_policy(self, monkeypatch):
+        """Exercise retained trainer primitives; runtime default stays locked."""
+        monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
     """Verify evolution freeze is enforced in background trainer."""
 
     def _make_trainer_with_result(self, evolved_params_dict):

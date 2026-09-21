@@ -152,20 +152,20 @@ class TestH4_ConsistentLearningMode:
         from backend.organism.trading_phase import resolve_trading_phase
         phase = resolve_trading_phase(100)
         assert phase["is_learning"] is True
-        assert phase["phase"] == "learning"
+        assert phase["raw_phase"] == "learning"
 
     def test_resolver_at_boundary_199(self):
         from backend.organism.trading_phase import resolve_trading_phase
         phase = resolve_trading_phase(199)
         assert phase["is_learning"] is True
-        assert phase["phase"] == "learning"
+        assert phase["raw_phase"] == "learning"
 
     def test_resolver_at_boundary_200(self):
         from backend.organism.trading_phase import resolve_trading_phase
         phase = resolve_trading_phase(200)
         assert phase["is_learning"] is False
         assert phase["is_frozen"] is True
-        assert phase["phase"] == "production_frozen"
+        assert phase["raw_phase"] == "production_frozen"
 
     def test_resolver_at_boundary_299(self):
         from backend.organism.trading_phase import resolve_trading_phase
@@ -177,8 +177,9 @@ class TestH4_ConsistentLearningMode:
         from backend.organism.trading_phase import resolve_trading_phase
         phase = resolve_trading_phase(300)
         assert phase["is_learning"] is False
-        assert phase["is_frozen"] is False
-        assert phase["phase"] == "production"
+        assert phase["is_frozen"] is True
+        assert phase["phase"] == "research_locked"
+        assert phase["raw_phase"] == "production"
 
     def test_live_engine_uses_shared_threshold(self):
         """live_engine._is_learning_mode must reference trading_phase."""
@@ -213,7 +214,7 @@ class TestH4_ConsistentLearningMode:
     def test_startup_log_function_exists(self):
         from backend.organism.trading_phase import log_trading_phase
         phase = log_trading_phase(181)
-        assert phase["phase"] == "learning"
+        assert phase["raw_phase"] == "learning"
         assert phase["trades_to_ml_exit"] == 19
 
     def test_ml_isolation_and_freeze_are_distinct(self):
@@ -223,13 +224,14 @@ class TestH4_ConsistentLearningMode:
         assert EVOLUTION_FREEZE_TRADES == 300
         assert ML_ISOLATION_TRADES < EVOLUTION_FREEZE_TRADES
 
-    def test_phase_at_250_ml_active_freeze_active(self):
-        """At 250 trades: ML active (>200), evolution frozen (<300)."""
+    def test_phase_at_250_raw_threshold_passed_policy_still_locked(self):
+        """Raw bootstrap ends at 200; the research lock keeps ML off."""
         from backend.organism.trading_phase import resolve_trading_phase
         phase = resolve_trading_phase(250)
-        assert phase["is_learning"] is False  # ML active
+        assert phase["is_learning"] is False
+        assert phase["ml_influence_enabled"] is False
         assert phase["is_frozen"] is True     # evolution frozen
-        assert phase["phase"] == "production_frozen"
+        assert phase["raw_phase"] == "production_frozen"
 
     def test_live_engine_and_kelly_use_same_200(self):
         """Both live_engine and kelly_sizer derive from same ML_ISOLATION_TRADES=200."""

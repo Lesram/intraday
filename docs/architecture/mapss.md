@@ -4404,7 +4404,8 @@ StalenessReasons (enum):
 | Alpha composite minimum | 0.15 | alpha_scanner | Minimum score to be a candidate |
 | Breakout composite minimum | 0.20 | breakout_scanner | Minimum breakout score |
 | Pure breakout entry threshold | 0.55 | live_engine | Breakout-only entries need high score |
-| Full production promotion gate | strategy-only total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase + `/api/v1/health/strategy` | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled; reconciliation bookkeeping is exposed separately as all-record expectancy |
+| Research paper policy lock | `paper_research_locked_v1`, locked by default, no environment unlock | research_policy + trading_phase | `research_locked`: no automatic model/parameter training or ML/Kelly promotion; retained-model reversal exits and protective controls remain. Raw counts do not qualify evidence; qualified count is null until independently verified. |
+| Full production promotion gate (retained unlocked primitive only) | strategy-only total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase + `/api/v1/health/strategy` | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled; reconciliation bookkeeping is exposed separately as all-record expectancy |
 | Strategy live-order gate | `StrategyGovernor.authorize_signal(..., live_intent=True)` must allow before OrderService entry submission | live_engine + strategy_governor | Blocks unknown, shadow-only, live-disabled, insufficient-evidence strategy IDs before any entry order can reach the broker path |
 | Phase 9D portfolio construction gate | ≥2 portfolio-eligible strategies from ≥2 independent families, each with positive after-cost alpha, positive avg R, PF ≥1.20, concentration within limits, correlation ≤0.75, weighted beta ≤0.35 | `evidence/portfolio_construction.py` + `scripts/phase9d_portfolio_construction.py` | Advisory only: no live sizing/order/promotion changes; blocks portfolio scaling when evidence is replay-only or one-family |
 | Symbol fitness gate | **0 (learning, no gate)** / 0.45 (production, 10+ trades) | live_engine | improve9 B1: unified canonical system. Learning = soft ranking only. Production = hard reject for established losers |
@@ -4445,7 +4446,7 @@ StalenessReasons (enum):
 | Alpha+breakout bad-regime filter | enabled by default | live_engine | Blocks alpha+breakout entries in chop/trending_down; records blocked candidates with `live_pipeline_candidate=false` for evidence |
 | Symbol circuit breaker | (a) 2+ consec losses + 0 wins, (b) PnL ≤ -max($25, 0.10% eq), (c) 2+ SL in 30min | live_engine | Ban symbol for session (improve8 enhanced) |
 | Regime evolution freeze | 200+ total trades AND 30+ per regime | kelly_sizer | Evolved regime scales locked until statistically stable (improve7) |
-| Full evolution freeze | **300+ total trades** | live_engine | improve9 B5: ALL self-evolution frozen until 300 clean trades. Only ML retraining runs. |
+| Full evolution freeze | Research policy lock supersedes the legacy 300-trade threshold | live_engine + research_policy | No background/sync retraining, evolved-parameter mutation or transfer warm-start while locked. Restore the reviewed saved parameter/model baseline; do not count inherited history as a fresh qualified sample. |
 | Horizon timeout | **18 bars** (learning only) | adaptive_exits | improve9 A3: Hard exit at H=15 + 3 grace bars. Aligns exits to thesis horizon |
 | Burst entry cap | **4 per rolling 15 min** | live_engine | improve8 C2: Prevents bursty post-hotfix entry cascades |
 | Stop-loss re-entry cooldown | **180 ticks** (30 min) | live_engine | improve8: Extended cooldown after stop-loss exit |
@@ -4967,3 +4968,14 @@ Default training config:
 ---
 
 *This document covers 100% of the platform's Python modules across organism/ (37), infra/ (24), integrations/ (6), api/ (15+), services/ (27), ml/ (17), models/ (6), config/ (5), data/ (5), utils/ (9), risk/ (12), and monitoring/ (7). Every threshold, every flow, every decision path, every endpoint, and every inter-module dependency is documented for visual diagramming.*
+
+
+## September 21 paper policy and evidence authority
+
+The explicitly authorized `paper_research_locked_v1` release retains the original six frozen source groups and all existing strategy/feed settings. Its expanded freeze covers policy control sources and `artifacts/phase2/research_policy_baseline.json`. The active engine publishes `policy_lock` (mapped to `research_policy` in runtime snapshot files) including the actual effective parameter projection/hash, raw strategy count, null qualified count and retained-model reversal policy. Runtime snapshots must observe this object from the installed process; candidate defaults are not deployment evidence.
+
+The lock blocks automatic ML/Kelly promotion, worker/synchronous retraining, stale worker application, transfer warm-start and manual organism/risk/ML setting mutation before persistence. Normal session risk management, accounting, protective exits and EOD stay active. Model and trade history remain intact; the learning flag retains its genuine count meaning. The original automatic 200/300-trade phases remain testable primitives, but cannot unlock the installed baseline. Releasing this lock requires explicit review and a recorded forward-boundary decision.
+
+The actual activation archives the previous active freeze and records a new UTC cutoff, immutable image/source/config identity and current backup evidence. CI's freeze timestamp is a verification fixture only. Daily qualification additionally requires full broker/ledger/entry-receipt reconciliation, actual session coverage and the primary 6bps round-trip research cost. Missing replacement lineage remains an explicit hold, never an approximate qualified result.
+
+The configured `ORGANISM_APPROVED_POLICY_BASELINE` points to the approved JSON baked into the immutable image. Startup verifies model/cache fingerprints, feature order, ensemble weights, thresholds, calibration map and actual applied scanner/exit/sizer values before engine reconstruction, training or ticks. A mismatch leaves the scheduler stopped; generic API readiness alone is insufficient. Existing lifespan startup cancels outstanding orders before engine initialization, so controlled rollout additionally requires a freshly verified flat account with no open orders. Legacy retrain activity messages can still say submitted when the locked trainer declines the request; `policy_lock` and actual trainer state are authoritative.

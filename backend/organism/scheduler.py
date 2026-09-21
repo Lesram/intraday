@@ -36,6 +36,7 @@ import random
 from datetime import UTC, datetime
 from typing import Any
 
+from backend.organism import research_policy
 from backend.utils.logger import get_logger
 from backend.utils.market_hours import (
     ET as _ET,
@@ -244,6 +245,8 @@ class OrganismScheduler:
         Updates tick interval, engine params, and streaming subscriptions.
         Returns a dict of parameters that were actually changed.
         """
+        if config and research_policy.RESEARCH_POLICY_LOCKED:
+            raise ValueError(research_policy.RESEARCH_POLICY_REASON)
         changed: dict[str, Any] = {}
 
         if "tick_interval_seconds" in config:

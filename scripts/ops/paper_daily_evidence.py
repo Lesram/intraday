@@ -238,12 +238,17 @@ def rows_from(raw: bytes) -> list[dict]:
     return list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
 
 
+def historical_baseline_reference(activation: dict) -> dict:
+    """New activations distinguish retained history from fresh recovery backups."""
+    return activation["historical_baseline"] if "historical_baseline" in activation else activation["backups"]["brain"]
+
+
 def approved_baseline(inputs: dict[str, bytes], activation: dict, ledger: list[dict]) -> int:
     """Only a checksum-pinned activation backup can exempt old undated records."""
     if "baseline/trades.csv" not in inputs:
         return 0
     receipt_raw = inputs["baseline/backup_manifest.json"]
-    if digest(receipt_raw) != activation["backups"]["brain"]["manifest_sha256"]:
+    if digest(receipt_raw) != historical_baseline_reference(activation)["manifest_sha256"]:
         raise EvidenceError("baseline_manifest_unapproved")
     receipt = json.loads(receipt_raw)
     raw = inputs["baseline/trades.csv"]

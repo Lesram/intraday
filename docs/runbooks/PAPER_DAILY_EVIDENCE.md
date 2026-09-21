@@ -9,7 +9,7 @@ Use the actual operating checkout as `--root`, including its mounted brain and l
 - `--freeze`: approved active host `param_freeze.json`. Never generate a new freeze to satisfy this report.
 - `--activation`: immutable cutoff approval/activation manifest, including the approved freeze hash, cutoff and verified flat/no-open-order state. This remains the original measurement boundary across later repairs.
 - `--release`: separately approved identity of the *currently deployed* release. Required JSON fields are `source_sha`, `image_sha`, `image_digest`, `runtime_config_hash`, and `timeframe`. The observer's `image_sha` commonly equals the source SHA; `image_digest` is the actual immutable Docker image digest. Do not substitute one for the other. If qualified forward entries span several approved releases, `approved_entry_identities` may contain their reviewed `{source_sha,image_sha,runtime_config_hash}` identities. This is a reviewed release inventory, not permission to whitelist an unexplained mismatch.
-- `--baseline-dir`: original activation brain backup directory containing `backup_manifest.json` and `trade_history.csv`. Its manifest hash must match `activation.backups.brain.manifest_sha256`; its ledger checksum/length must match the backup receipt. Only an unchanged prefix of that ledger can exempt known historical rows with missing dates. No baseline means unscoped rows block the verdict.
+- `--baseline-dir`: original activation brain backup directory containing `backup_manifest.json` and `trade_history.csv`. Its manifest hash must match `activation.historical_baseline.manifest_sha256` when explicitly present, otherwise the older schema's `activation.backups.brain.manifest_sha256`; its ledger checksum/length must match the backup receipt. A new activation can retain the original historical baseline while recording a distinct fresh recovery backup under `backups.brain`. Only an unchanged prefix of the original ledger can exempt known historical rows with missing dates. No baseline means unscoped rows block the verdict.
 - Current paper credentials in `ALPACA_API_KEY_ID`/`ALPACA_API_SECRET_KEY` (legacy alternate names supported), and a previously issued read-only observer token in `INTRA_MONITOR_TOKEN`. The runner does not read `.env`, print tokens, request tokens or issue POST requests. Use the existing authorized credential mechanism; do not put secrets in command arguments, reports or Git.
 
 The root must expose the new exact-accounting policy and the entry-receipt observer before new forward trades can qualify. A previous release is expected to produce `BLOCKED`, not a retrospective pass.
@@ -67,3 +67,48 @@ PYTHONPATH=. venv/bin/python scripts/ops/paper_daily_evidence.py \
 Replay validates every input checksum and recomputes collection and quality checks without network access. The CLI labels the result as replayed; it is not a new broker observation. The local receipt is reproducible evidence, not a cryptographically signed broker attestation.
 
 The standalone `standdown_session_row.py` remains diagnostic only. Its `--force` cannot create completed-session evidence. Prefer the daily runner's stored diagnostic and authoritative broker calendar for acceptance.
+
+## Reviewed actual-host execution
+
+`scripts/ops/paper_daily_host.py` is the credential adapter for the installed host. It authenticates the existing private observer account locally, verifies that its returned role is exactly `paper_monitor`, and obtains paper credentials from the running API container inside the same process. Docker inspection is restricted to that known container's identity, labels and environment; neither credentials nor the environment are printed, written into packs or put in process arguments. The only POST is local observer login. All broker requests use the existing fixed-paper GET transport with redirects and proxies disabled. The wrapper neither recovers services nor sends notifications.
+
+Before installation, retain the original activation's `backup_manifest.json` and `trade_history.csv` together in a private directory outside `organism_brain_archive/` and the operating checkout. Preserve their exact bytes and keep the directory mode `0700`; do not generate a replacement receipt. Automated 30-day archive pruning must never remove the daily report's baseline. The wrapper verifies the original activation, current activation and retained manifest all name the same original baseline hash, plus the ledger's checksum and length.
+
+Create a reviewed binding at `~/Library/Application Support/Intra/daily-evidence-binding.json`, owned by the operator with mode `0600`. This document is also the collector's release identity. It pins the **new explicitly approved** policy-lock cutoff and freeze without rewriting the original activation or historical learner counters. The following is a schema example with placeholders, not an approved release:
+
+```json
+{
+  "schema": "paper_daily_host_v1",
+  "approval_reference": "Recorded operator approval and accepted release",
+  "approved_at": "APPROVED_UTC_TIMESTAMP",
+  "measurement_cutoff": "NEW_APPROVED_FROZEN_AT",
+  "source_sha": "40_CHARACTER_SOURCE_SHA",
+  "image_sha": "40_CHARACTER_IMAGE_SOURCE_SHA",
+  "image_digest": "sha256:64_CHARACTER_DOCKER_DIGEST",
+  "runtime_config_hash": "VERIFIED_RUNTIME_CONFIG_HASH",
+  "timeframe": "1Min",
+  "effective_policy_hash": "64_CHARACTER_REVIEWED_PARAMETER_HASH",
+  "root": "/Users/marselkei/VS/intra",
+  "output": "/Users/marselkei/Library/Application Support/Intra/daily-evidence",
+  "freeze": {"path": "/absolute/path/to/new/param_freeze.json", "sha256": "EXACT_FILE_HASH"},
+  "activation": {"path": "/absolute/path/to/new/activation_manifest.json", "sha256": "EXACT_FILE_HASH"},
+  "original_activation": {"path": "/absolute/path/to/original/activation_manifest.json", "sha256": "EXACT_FILE_HASH"},
+  "policy_baseline": {"path": "/absolute/path/to/research_policy_baseline.json", "sha256": "EXACT_FILE_HASH"},
+  "baseline": {"path": "/absolute/path/to/private/retained-original-baseline", "manifest_sha256": "ORIGINAL_RECEIPT_HASH"}
+}
+```
+
+The cutoff must match both the approved freeze and current activation receipt. The activation must attest a verified paper endpoint, zero positions and zero open orders. Its explicit `historical_baseline` points to the preserved original history; its `backups.brain` may contain a different fresh recovery snapshot. The policy artifact's canonical parameter hash must equal `effective_policy_hash`; its exact file hash, including the approved model fingerprints and prediction context, must match the freeze's `effective_policy_baseline.artifact_sha256`. The observer must report the exact approved source, image-source and runtime-configuration identities; Docker must report the approved immutable image and exact Compose project/service. The engine's observed `policy_lock` must say `locked=true`, `automatic_promotion_enabled=false` and `frozen_models=true`, with identical effective parameter values/hash. Its startup `baseline` receipt must report `configured=true`, `verified=true` and the exact approved policy artifact SHA-256. Matching parameter values alone cannot certify unpinned models. ML influence must be off and fixed-risk sizing on. Missing fields never inherit reassuring defaults. Policy is checked again against the collector's captured status before statistical analysis.
+
+Run the adapter manually only after the approved release and binding are installed:
+
+```sh
+./venv/bin/python -B scripts/ops/paper_daily_host.py \
+  --binding '/Users/marselkei/Library/Application Support/Intra/daily-evidence-binding.json'
+```
+
+The default session date is today's US Eastern date. `--session YYYY-MM-DD` is available for an explicit same-day check; past sessions require immutable offline replay instead. An invocation before calendar close plus five minutes is blocked. A confirmed holiday produces `NO_SESSION`. A private per-output lock excludes overlapping invocations. Every invocation with a valid binding/output writes a private receipt under `OUTPUT/host-runs/`, including blocked authentication or collection attempts. Invalid bindings and duplicate invocations report their failure on stdout without fabricating a completed pack. Exit `0` means `READY_FOR_REVIEW` or `NO_SESSION`; exit `1` means attention is required. These outcomes never authorize trading or automatic promotion.
+
+`ops/launchd/com.intra.paper.daily-evidence.plist` is a separate, deployment-ready template; adding the file does **not** install it. It runs daily at **13:10 Mac local time**, intended for the verified America/Los_Angeles host: 20:10 UTC during PDT and 21:10 UTC during PST. This is ten minutes after a regular session close; early closes are also handled by the broker calendar. `RunAtLoad` is false, so installation does not accidentally run a pre-close report. No credentials are embedded in the template. Keep the existing five-minute recovery watchdog and backup schedules unchanged.
+
+Installation belongs to the reviewed deployment step: copy the accepted script/dependencies, pin and validate the final binding, ensure the output and Application Support directory are private, precreate `daily-evidence-job.log` with mode `0600`, then load the template in the logged-in user's LaunchAgents. Verify the loaded schedule, manual exit code, receipt and resulting immutable pack. A logged-in, awake Mac, working Docker and available observer/broker endpoints are required. A missed run after logout/power-off cannot be reconstructed from the next day's current broker state. The job has no automatic recovery, retry or notification mechanism; its launchd exit status, private job log and run receipts must be reviewed after close. Correct a reported cause and rerun while it is still the same Eastern session date; retain every failed receipt and earlier pack.

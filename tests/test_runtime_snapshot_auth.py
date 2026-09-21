@@ -4,6 +4,21 @@ import os
 from unittest.mock import MagicMock, patch
 
 
+def test_research_policy_snapshot_requires_actual_process_observation():
+    import scripts.runtime.write_runtime_snapshot as snap_mod
+    observed = {"locked": True, "qualified_trade_count": None, "effective_params_sha256": "abc"}
+    for fields, expected in (({}, None), ({"policy_lock": observed}, observed)):
+        with (
+            patch.object(snap_mod, "_find_api_container", return_value=""),
+            patch.object(snap_mod, "_curl_organism_status", return_value={
+                "live_engine": {"engine": fields},
+            }),
+        ):
+            result = snap_mod._build_live_process_snapshot()
+        assert result["live"]["research_policy"] == expected
+        assert ("research_policy" in result["source_annotations"]) == bool(fields)
+
+
 def test_live_accounting_policy_is_observed_not_inferred_from_candidate():
     """A candidate snapshot must not certify its policy as already deployed."""
     import scripts.runtime.write_runtime_snapshot as snap_mod

@@ -1,6 +1,6 @@
 # Monday paper session preparation — September 21, 2026
 
-This is the current preparation record. Earlier September readiness reports are historical. The running release is PR17; PR19 is a repair candidate and has not been activated. Neither healthy services nor passing software tests establish a profitable strategy.
+This is the historical preparation record, superseded for September21 deployment by `artifacts/operations_evidence/final_readiness_plan.json` and the eventual `artifacts/paper_activation/2026-09-21/` receipts. Earlier September readiness reports are historical. The running release is PR17; PR19 is a repair candidate and has not been activated. Neither healthy services nor passing software tests establish a profitable strategy.
 
 ## Closed-market checks completed
 
@@ -41,3 +41,7 @@ The daily collector has no installed schedule. GitHub's credential-free post-clo
 Natural-session acceptance, visible alert delivery and full-host restart/recovery remain unproved. Off-machine alerts and off-host backups are not configured by this work. Complete these resilience checks before claiming unattended operation. No blanket security or all-repository defect-free certification is implied.
 
 While the market is closed, strategy work can prepare one preregistered shadow hypothesis and a reproducible research dataset with explicit quality/exclusion reasons, costs and an untouched evaluation period. Historical data can inform diagnostics and hypothesis generation where its lineage is known; it cannot substitute for clean forward evidence. Keep the frozen baseline unchanged, use the existing 6-bps primary evaluation protocol and 60/120-trade looks, and distinguish operational readiness from edge validation.
+
+## Final preopen work on September21
+
+Fresh06:34UTC checks found AC power connected, all three services healthy, four host recovery/backup jobs loaded, backups under8hours old and paper account ACTIVE/unblocked with zero positions/open orders. The authorized final release adds an explicit research policy lock, retained model/component baseline verification and actual-host daily evidence schedule. Activation advances and archives the forward boundary deliberately; it does not rewrite old trades or reset learners. The final activation receipt, rather than this earlier PR17 observation, must identify the installed source/image/config and verified policy.

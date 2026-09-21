@@ -91,6 +91,8 @@ def _make_features(n=400, seed=7):
 
 @pytest.mark.slow
 def test_worker_same_holdout_eval_when_old_artifacts_present(monkeypatch):
+    # Explicitly test the retained unlocked worker; runtime is locked by default.
+    monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
     """End-to-end through the worker function: with old clf/reg pickles in
     signal_gen_state, the gate must receive a same-holdout old_metrics
     (fair_baseline path), not the stale metrics dict."""

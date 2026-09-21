@@ -52,6 +52,7 @@ from backend.organism import close_accounting
 from backend.organism import entry_evidence
 from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
+from backend.organism import research_policy
 from backend.organism.live_engine_data import _DataFeederMixin
 from backend.organism.live_engine_fills import _FillLookupMixin
 from backend.organism.live_engine_state import _StateReconstructionMixin
@@ -1362,12 +1363,35 @@ class OrganismLiveEngine(
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "Trading phase resolver failed; falling back to count-only "
-                "learning mode check: %s",
+                "Trading phase resolver failed; preserving protective "
+                "phase controls: %s",
                 exc,
             )
-            from backend.organism.trading_phase import resolve_trading_phase
-            phase = resolve_trading_phase(len(trades))
+            from backend.organism.trading_phase import ML_ISOLATION_TRADES, EVOLUTION_FREEZE_TRADES
+            # Do not call the failed resolver again. A diagnostics failure
+            # must neither promote risk nor abort the tick before risk exits.
+            is_learning = len(trades) < ML_ISOLATION_TRADES
+            phase = {
+                "phase": "research_locked" if research_policy.RESEARCH_POLICY_LOCKED else "production_guarded",
+                "is_learning": is_learning, "is_frozen": True,
+                "is_guarded": not is_learning, "ml_influence_enabled": False,
+                "fixed_risk_sizing": True, "total_trades": len(trades),
+                "ml_isolation_threshold": ML_ISOLATION_TRADES,
+                "freeze_threshold": EVOLUTION_FREEZE_TRADES,
+                "trades_to_ml_exit": max(0, ML_ISOLATION_TRADES - len(trades)),
+                "trades_to_freeze_exit": max(0, EVOLUTION_FREEZE_TRADES - len(trades)),
+                "promotion_blockers": ["phase_resolver_unavailable"],
+                "resolver_error": type(exc).__name__,
+                "raw_phase": "unknown",
+                "policy_lock": {
+                    "id": research_policy.RESEARCH_POLICY_ID,
+                    "locked": research_policy.RESEARCH_POLICY_LOCKED,
+                    "reason": research_policy.RESEARCH_POLICY_REASON,
+                    "raw_strategy_trade_count": len(trades),
+                    "qualified_trade_count": None,
+                    "qualification_status": "unverified",
+                },
+            }
 
         self._trading_phase_tick_cache = (tick, phase)
         return phase
@@ -1411,12 +1435,12 @@ class OrganismLiveEngine(
     @property
     def _ml_isolation_mode(self) -> bool:
         """True when ML must not influence main-book ranking/gates."""
-        return not bool(self._trading_phase.get("ml_influence_enabled", False))
+        return research_policy.RESEARCH_POLICY_LOCKED or not bool(self._trading_phase.get("ml_influence_enabled", False))
 
     @property
     def _fixed_risk_sizing_mode(self) -> bool:
         """True when Kelly sizing must be bypassed for fixed ATR risk."""
-        return bool(self._trading_phase.get("fixed_risk_sizing", False))
+        return research_policy.RESEARCH_POLICY_LOCKED or bool(self._trading_phase.get("fixed_risk_sizing", False))
 
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
@@ -1716,6 +1740,9 @@ class OrganismLiveEngine(
                 )
                 _EVOLUTION_FREEZE_TRADES = 300
                 _trade_count = len(self.brain.get_trade_records() or [])
+                # Restore the persisted reviewed baseline, including actual
+                # component values. The policy lock blocks new evolution, not
+                # restoration: reverting these values to defaults is a change.
                 if _trade_count >= _EVOLUTION_FREEZE_TRADES:
                     apply_evolved_params(
                         self.evolved_params,
@@ -2141,7 +2168,7 @@ class OrganismLiveEngine(
         # learning phase and can override the conservative defaults.
         _EVOLUTION_FREEZE_TRADES = 300
         _current_trade_count = len(self._all_trades)
-        if _current_trade_count >= _EVOLUTION_FREEZE_TRADES:
+        if _current_trade_count >= _EVOLUTION_FREEZE_TRADES and not research_policy.RESEARCH_POLICY_LOCKED:
             try:
                 tk_loaded = self.transfer_engine.load_knowledge()
                 if tk_loaded:
@@ -2168,9 +2195,17 @@ class OrganismLiveEngine(
                 logger.debug("Transfer learning warm-start skipped: %s", e)
         else:
             logger.info(
-                "Transfer learning warm-start skipped — evolution freeze "
-                "active (%d/%d trades)", _current_trade_count, _EVOLUTION_FREEZE_TRADES,
+                "Transfer learning warm-start skipped — policy lock=%s, "
+                "trades=%d/%d", research_policy.RESEARCH_POLICY_LOCKED,
+                _current_trade_count, _EVOLUTION_FREEZE_TRADES,
             )
+
+        # A configured reviewed baseline is a startup assertion, including
+        # models restored through legacy recovery and accounting authority.
+        from backend.organism.research_baseline import verify_configured_baseline
+        self._research_baseline_verification = verify_configured_baseline(
+            self, brain_loaded=brain_loaded,
+        )
 
         # Reconstruct live positions → exit levels + pyramid state
         await self._reconstruct_position_state()
@@ -7197,6 +7232,8 @@ class OrganismLiveEngine(
         regime: str,
     ) -> None:
         """Retrain ML model and run self-evolution on accumulated trades."""
+        if research_policy.RESEARCH_POLICY_LOCKED:
+            return
         # Retrain
         accepted, train_metrics = self.learner.retrain(features_by_symbol)
         if train_metrics:
@@ -7925,6 +7962,12 @@ class OrganismLiveEngine(
             "data_stale": self._data_stale,
             "learning_mode": self._is_learning_mode,
             "trading_phase": trading_phase.get("phase", ""),
+            "policy_lock": {
+                **research_policy.policy_status(len(self._strategy_trades()), evolved_params=self.evolved_params),
+                "raw_ledger_trade_count": len(self._all_trades),
+                "inherited_learner_trade_count": self.learner.state.total_trades,
+                "baseline": getattr(self, "_research_baseline_verification", None),
+            },
             "guarded_mode": trading_phase.get("is_guarded", False),
             "ml_influence_enabled": trading_phase.get(
                 "ml_influence_enabled",
@@ -7947,6 +7990,10 @@ class OrganismLiveEngine(
 
         Returns a dict of parameters that were actually changed.
         """
+        if config and research_policy.RESEARCH_POLICY_LOCKED:
+            # This endpoint changes the decision surface, sometimes by
+            # recreating scanners. Emergency halt is a separate control.
+            raise ValueError(research_policy.RESEARCH_POLICY_REASON)
         global MAX_OPEN_POSITIONS, RETRAIN_INTERVAL, LIVE_LOOKBACK, MIN_BARS, LONG_ONLY
 
         changed: dict[str, Any] = {}

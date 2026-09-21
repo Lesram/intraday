@@ -32,16 +32,17 @@ def test_losing_mature_brain_is_guarded_not_full_production():
         strategy_expectancy=_losing_expectancy(),
     )
 
-    assert phase["phase"] == "production_guarded"
+    assert phase["phase"] == "research_locked"
+    assert phase["raw_phase"] == "production_guarded"
     assert phase["is_learning"] is False
-    assert phase["is_frozen"] is False
+    assert phase["is_frozen"] is True
     assert phase["is_guarded"] is True
     assert phase["ml_influence_enabled"] is False
     assert phase["fixed_risk_sizing"] is True
     assert any("total_pnl" in b for b in phase["promotion_blockers"])
 
 
-def test_profitable_mature_brain_promotes_to_full_production():
+def test_profitable_mature_brain_remains_locked_despite_raw_promotion():
     from backend.organism.trading_phase import resolve_trading_phase
 
     phase = resolve_trading_phase(
@@ -49,19 +50,20 @@ def test_profitable_mature_brain_promotes_to_full_production():
         strategy_expectancy=_profitable_expectancy(),
     )
 
-    assert phase["phase"] == "production"
-    assert phase["is_guarded"] is False
-    assert phase["ml_influence_enabled"] is True
-    assert phase["fixed_risk_sizing"] is False
-    assert phase["promotion_blockers"] == []
+    assert phase["phase"] == "research_locked"
+    assert phase["raw_phase"] == "production"
+    assert phase["is_guarded"] is True
+    assert phase["ml_influence_enabled"] is False
+    assert phase["fixed_risk_sizing"] is True
+    assert phase["promotion_blockers"] == [phase["policy_lock"]["reason"]]
 
 
-def test_missing_expectancy_payload_preserves_count_only_compatibility():
+def test_missing_expectancy_retains_raw_count_classification_under_lock():
     from backend.organism.trading_phase import resolve_trading_phase
 
-    assert resolve_trading_phase(199)["phase"] == "learning"
-    assert resolve_trading_phase(250)["phase"] == "production_frozen"
-    assert resolve_trading_phase(300)["phase"] == "production"
+    assert resolve_trading_phase(199)["raw_phase"] == "learning"
+    assert resolve_trading_phase(250)["raw_phase"] == "production_frozen"
+    assert resolve_trading_phase(300)["raw_phase"] == "production"
 
 
 def test_live_engine_phase_cache_demotes_losing_brain_without_learning_gates():
@@ -79,7 +81,8 @@ def test_live_engine_phase_cache_demotes_losing_brain_without_learning_gates():
 
     phase = engine._trading_phase
 
-    assert phase["phase"] == "production_guarded"
+    assert phase["phase"] == "research_locked"
+    assert phase["raw_phase"] == "production_guarded"
     assert phase["total_trades"] == 501
     assert engine._is_learning_mode is False
     assert engine._is_guarded_production_mode is True

@@ -97,6 +97,9 @@ jobs:
             tests/test_runtime_snapshot_auth.py \
             tests/test_walkforward_persistence.py \
             tests/test_paper_daily_evidence.py \
+            tests/test_paper_daily_host.py \
+            tests/test_research_policy_lock.py \
+            tests/test_research_baseline.py \
             tests/test_standdown_session_row.py \
             tests/test_phase3_attribution_report.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
