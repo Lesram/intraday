@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/frontend
+
+ ✓ src/services/marketDataWebSocketService.test.ts (8 tests) 33ms
+ ✓ src/hooks/useScannerWebSocket.test.tsx (7 tests) 15ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  02:33:54
+   Duration  405ms (transform 63ms, setup 94ms, collect 48ms, tests 47ms, environment 286ms, prepare 60ms)
+
+JUNIT report written to /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/frontend_streaming_final.xml

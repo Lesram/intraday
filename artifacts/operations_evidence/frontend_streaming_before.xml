@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="15" failures="13" errors="0" time="0.051068791">
+    <testsuite name="src/hooks/useScannerWebSocket.test.tsx" timestamp="2026-09-21T09:33:03.447Z" hostname="Marsels-MacBook-Pro.local" tests="7" failures="6" errors="0" skipped="0" time="0.017050583">
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; connects without require and preserves the encoded query-token route" time="0.010765667">
+            <failure message="expected [] to have a length of 1 but got +0" type="AssertionError">
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/hooks/useScannerWebSocket.test.tsx:68:34
+            </failure>
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; preserves the explicit secure WebSocket base override" time="0.001267417">
+            <failure message="Cannot read properties of undefined (reading &apos;url&apos;)" type="TypeError">
+TypeError: Cannot read properties of undefined (reading &apos;url&apos;)
+ ❯ src/hooks/useScannerWebSocket.test.tsx:83:19
+            </failure>
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; reads a refreshed token when the reconnect timer actually fires" time="0.001167459">
+            <failure message="expected [] to have a length of 1 but got +0" type="AssertionError">
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/hooks/useScannerWebSocket.test.tsx:88:34
+            </failure>
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not reconnect after logout even if a legacy token remains" time="0.001177167">
+            <failure message="expected [] to have a length of 1 but got +0" type="AssertionError">
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/hooks/useScannerWebSocket.test.tsx:98:34
+            </failure>
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not open an unauthenticated socket" time="0.000802875">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; cancels a scheduled reconnect on explicit disconnect" time="0.000690084">
+            <failure message="expected [] to have a length of 1 but got +0" type="AssertionError">
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/hooks/useScannerWebSocket.test.tsx:117:34
+            </failure>
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not log URL-bearing error events or constructor failures" time="0.000619">
+            <failure message="expected [] to have a length of 1 but got +0" type="AssertionError">
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/hooks/useScannerWebSocket.test.tsx:127:34
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/marketDataWebSocketService.test.ts" timestamp="2026-09-21T09:33:03.449Z" hostname="Marsels-MacBook-Pro.local" tests="8" failures="7" errors="0" skipped="0" time="0.034018208">
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; uses the actual current store token rather than a stale caller argument" time="0.020976208">
+            <failure message="expected [ [ &apos;token&apos;, …(1) ] ] to deeply equal [ [ &apos;token&apos;, …(1) ] ]" type="AssertionError">
+AssertionError: expected [ [ &apos;token&apos;, …(1) ] ] to deeply equal [ [ &apos;token&apos;, …(1) ] ]
+
+- Expected
++ Received
+
+  [
+    [
+      &quot;token&quot;,
+-     &quot;synthetic-initial+/?&amp;token=extra&quot;,
++     &quot;synthetic-stale-caller&quot;,
+    ],
+  ]
+
+ ❯ src/services/marketDataWebSocketService.test.ts:82:35
+            </failure>
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; reconnects without require and ignores a stale legacy token" time="0.0027685">
+            <failure message="expected &apos;synthetic-legacy&apos; to be &apos;synthetic-refreshed+/?&amp;token=extra&apos; // Object.is equality" type="AssertionError">
+AssertionError: expected &apos;synthetic-legacy&apos; to be &apos;synthetic-refreshed+/?&amp;token=extra&apos; // Object.is equality
+
+Expected: &quot;synthetic-refreshed+/?&amp;token=extra&quot;
+Received: &quot;synthetic-legacy&quot;
+
+ ❯ src/services/marketDataWebSocketService.test.ts:95:61
+            </failure>
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; reconnects from the current store when there is no legacy storage" time="0.002131792">
+            <failure message="expected [ MockSocket{ …(7) } ] to have a length of 2 but got 1" type="AssertionError">
+AssertionError: expected [ MockSocket{ …(7) } ] to have a length of 2 but got 1
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/services/marketDataWebSocketService.test.ts:104:34
+            </failure>
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; does not reuse captured or legacy credentials after logout during backoff" time="0.00125775">
+            <failure message="expected [ MockSocket{ …(7) }, …(1) ] to have a length of 1 but got 2" type="AssertionError">
+AssertionError: expected [ MockSocket{ …(7) }, …(1) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/services/marketDataWebSocketService.test.ts:116:34
+            </failure>
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; rejects missing current credentials even when a caller supplies an old token" time="0.0021805">
+            <failure message="expected [ MockSocket{ …(7) } ] to have a length of +0 but got 1" type="AssertionError">
+AssertionError: expected [ MockSocket{ …(7) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/services/marketDataWebSocketService.test.ts:126:34
+            </failure>
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; cancels the reconnect timer on explicit disconnect" time="0.001297375">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; does not log encoded credentials or raw URL-bearing events" time="0.001552958">
+            <failure message="expected &apos;&quot;[MarketData] State changed:&quot; &quot;CONNEC…&apos; not to contain &apos;synthetic-initial%2B%2F%3F%26token%3D…&apos;" type="AssertionError">
+AssertionError: expected &apos;&quot;[MarketData] State changed:&quot; &quot;CONNEC…&apos; not to contain &apos;synthetic-initial%2B%2F%3F%26token%3D…&apos;
+
+Expected: &quot;synthetic-initial%2B%2F%3F%26token%3Dextra&quot;
+Received: &quot;&quot;[MarketData] State changed:&quot; &quot;CONNECTING&quot; &quot;[MarketData] Connecting to:&quot; &quot;ws://localhost:3000/api/v1/market-data/ws?token=synthetic-initial%2B%2F%3F%26token%3Dextra&quot; &quot;[MarketData] Connected&quot; &quot;[MarketData] State changed:&quot; &quot;CONNECTED&quot; &quot;[MarketData] WebSocket error:&quot; {&quot;target&quot;:{&quot;url&quot;:&quot;ws://localhost:3000/api/v1/market-data/ws?token=synthetic-initial%2B%2F%3F%26token%3Dextra&quot;}}&quot;
+
+ ❯ src/services/marketDataWebSocketService.test.ts:143:26
+            </failure>
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; sanitizes constructor errors and refreshes credentials before a failed-connect retry" time="0.001216667">
+            <failure message="expected &apos;Failed to open ws://localhost:3000/ap…&apos; not to contain &apos;synthetic-initial%2B%2F%3F%26token%3D…&apos;" type="AssertionError">
+AssertionError: expected &apos;Failed to open ws://localhost:3000/ap…&apos; not to contain &apos;synthetic-initial%2B%2F%3F%26token%3D…&apos;
+
+Expected: &quot;synthetic-initial%2B%2F%3F%26token%3Dextra&quot;
+Received: &quot;Failed to open ws://localhost:3000/api/v1/market-data/ws?token=synthetic-initial%2B%2F%3F%26token%3Dextra&quot;
+
+ ❯ src/services/marketDataWebSocketService.test.ts:150:33
+            </failure>
+        </testcase>
+    </testsuite>
+</testsuites>

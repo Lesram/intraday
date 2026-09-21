@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "candidate_source": "33db40171a2414162544a7b2794df19756561e36",
-  "candidate_image": "sha256:40e30e2548f259ff554ffb1665cbd1ac2ed8df996ab255bd52b170d81b774c0b",
+  "candidate_source": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+  "candidate_image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
   "deserialization_started": true,
   "independent_assertion_negative_controls_passed": 4,
   "preflight_all_9_models_verified": true,
@@ -25,7 +25,7 @@
       "verified": true
     },
     "call_ledger": [],
-    "candidate_source": "33db40171a2414162544a7b2794df19756561e36",
+    "candidate_source": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
     "deliberate_counter_mismatch_rejected": true,
     "effective_policy_hash": null,
     "every_ledger_and_learner_row_core_values_match_original_csv": true,
@@ -72,7 +72,7 @@
       "configured_initially_unhalted_verified": true,
       "durable_halt_survives_full_save_and_initialize": true,
       "offline_scheduler_degraded_acknowledgement_verified": true,
-      "operator_record_checksum": "0645c37188a90d22c665381e48601b984a8cb4baf5ee66b9228b42a798a47d4a",
+      "operator_record_checksum": "90ddddfc723b48a8e6fb2da1869194c2f1a47051ef1033ad679b094bacbeae45",
       "second_disposable_copy_only": true
     },
     "signing_limitation": "Observed deployed development fallback provides corruption detection, not independent secret-key authentication.",

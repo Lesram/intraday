@@ -88,4 +88,4 @@ tests/test_risk_manager_service_comprehensive.py::TestIsEmergencyStopActive::tes
     self.triggered_at = datetime.utcnow()
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-1399 passed, 1 skipped, 42 warnings in 32.76s
+1399 passed, 1 skipped, 42 warnings in 32.43s

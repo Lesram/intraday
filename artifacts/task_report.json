@@ -1,7 +1,7 @@
 {
   "task_id": "monday-final-readiness-20260921",
-  "summary": "Exact accounting and receipt integrity, explicit locked paper research policy, retained model/component startup baseline, durable authoritative operator halt and verified entry cancellation, authenticated daily evidence and watchdog policy/control observation; repair production dashboard dependency initialization and username access, with a browser startup gate",
-  "sha": "33db40171a2414162544a7b2794df19756561e36",
+  "summary": "Exact accounting and receipt integrity, explicit locked paper research policy, retained model/component startup baseline, durable authoritative operator halt and verified entry cancellation, authenticated daily evidence and watchdog policy/control observation; production login initialization and streaming authentication repairs",
+  "sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
   "branch": "codex/operations-evidence-integrity",
   "change_scope": "base",
   "change_ref": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD",
@@ -29,6 +29,48 @@
     "artifacts/operations_evidence/freeze_reference_comparison.json",
     "artifacts/operations_evidence/freeze_verification.txt",
     "artifacts/operations_evidence/freeze_verification_tracked.txt",
+    "artifacts/operations_evidence/frontend_browser_bad_c11/login.png",
+    "artifacts/operations_evidence/frontend_browser_bad_c11/preview.log",
+    "artifacts/operations_evidence/frontend_browser_bad_c11/result.json",
+    "artifacts/operations_evidence/frontend_browser_controls/close_ack_failure/login.png",
+    "artifacts/operations_evidence/frontend_browser_controls/close_ack_failure/preview.log",
+    "artifacts/operations_evidence/frontend_browser_controls/close_ack_failure/result.json",
+    "artifacts/operations_evidence/frontend_browser_controls/controls.json",
+    "artifacts/operations_evidence/frontend_browser_controls/missing_build/result.json",
+    "artifacts/operations_evidence/frontend_browser_controls/occupied_port/preview.log",
+    "artifacts/operations_evidence/frontend_browser_controls/occupied_port/result.json",
+    "artifacts/operations_evidence/frontend_browser_controls/prohibited_transport/login.png",
+    "artifacts/operations_evidence/frontend_browser_controls/prohibited_transport/preview.log",
+    "artifacts/operations_evidence/frontend_browser_controls/prohibited_transport/result.json",
+    "artifacts/operations_evidence/frontend_browser_controls/sigterm/preview.log",
+    "artifacts/operations_evidence/frontend_browser_controls/sigterm/result.json",
+    "artifacts/operations_evidence/frontend_browser_final/login.png",
+    "artifacts/operations_evidence/frontend_browser_final/preview.log",
+    "artifacts/operations_evidence/frontend_browser_final/result.json",
+    "artifacts/operations_evidence/frontend_browser_fixed/login.png",
+    "artifacts/operations_evidence/frontend_browser_fixed/preview.log",
+    "artifacts/operations_evidence/frontend_browser_fixed/result.json",
+    "artifacts/operations_evidence/frontend_browser_react_only/login.png",
+    "artifacts/operations_evidence/frontend_browser_react_only/preview.log",
+    "artifacts/operations_evidence/frontend_browser_react_only/result.json",
+    "artifacts/operations_evidence/frontend_browser_review.json",
+    "artifacts/operations_evidence/frontend_browser_smoke_freeze.txt",
+    "artifacts/operations_evidence/frontend_browser_smoke_plan.json",
+    "artifacts/operations_evidence/frontend_browser_smoke_report.json",
+    "artifacts/operations_evidence/frontend_chunk_after_graph.json",
+    "artifacts/operations_evidence/frontend_chunk_automatic_build.log",
+    "artifacts/operations_evidence/frontend_chunk_automatic_eslint.log",
+    "artifacts/operations_evidence/frontend_chunk_automatic_freeze.log",
+    "artifacts/operations_evidence/frontend_chunk_automatic_graph.json",
+    "artifacts/operations_evidence/frontend_chunk_before_graph.json",
+    "artifacts/operations_evidence/frontend_chunk_build.log",
+    "artifacts/operations_evidence/frontend_chunk_eslint.log",
+    "artifacts/operations_evidence/frontend_chunk_freeze.log",
+    "artifacts/operations_evidence/frontend_chunk_implementation.json",
+    "artifacts/operations_evidence/frontend_chunk_repair_plan.json",
+    "artifacts/operations_evidence/frontend_release_final.log",
+    "artifacts/operations_evidence/frontend_release_final.xml",
+    "artifacts/operations_evidence/frontend_release_final_build.log",
     "artifacts/operations_evidence/full_pack.log",
     "artifacts/operations_evidence/lint_delta.json",
     "artifacts/operations_evidence/monday_accounting_implementation.json",
@@ -59,6 +101,12 @@
     "artifacts/operations_evidence/monday_static_validation.json",
     "artifacts/operations_evidence/operational_final.xml",
     "artifacts/operations_evidence/operational_validation.log",
+    "artifacts/operations_evidence/operator_browser_accepted.json",
+    "artifacts/operations_evidence/operator_browser_accepted.png",
+    "artifacts/operations_evidence/operator_browser_initial.json",
+    "artifacts/operations_evidence/operator_browser_initial.png",
+    "artifacts/operations_evidence/operator_browser_second.json",
+    "artifacts/operations_evidence/operator_browser_second.png",
     "artifacts/operations_evidence/operator_controls_before.txt",
     "artifacts/operations_evidence/operator_controls_implementation.json",
     "artifacts/operations_evidence/operator_controls_plan.json",
@@ -285,6 +333,10 @@
     "frontend/src/features/organism/organismApi.ts",
     "frontend/src/features/risk/KillSwitchButton.tsx",
     "frontend/src/features/risk/RiskDashboard.tsx",
+    "frontend/src/hooks/useScannerWebSocket.test.tsx",
+    "frontend/src/hooks/useScannerWebSocket.ts",
+    "frontend/src/services/marketDataWebSocketService.test.ts",
+    "frontend/src/services/marketDataWebSocketService.ts",
     "frontend/vite.config.ts",
     "ops/launchd/com.intra.paper.daily-evidence.plist",
     "ops/launchd/com.intra.paper.watchdog.plist",
@@ -343,8 +395,7 @@
     "python scripts/ci/generate_audit_index.py",
     "Exact git-archive immutable Docker build; read-only network-none source/freeze verification",
     "Isolated trusted signed-model load/save/reload and negative pinned-baseline controls",
-    "Bounded current secret scan; scoped Ruff/workflow/plist review",
-    "Production frontend build and pinned isolated browser verification; real broken builds rejected and repaired login rendered"
+    "Bounded current secret scan; scoped Ruff/workflow/plist review"
   ],
   "tests_passed": [
     "artifacts/operations_evidence/monday_operational.xml:1399",
@@ -391,8 +442,8 @@
   "artifact_pack_errors": [],
   "unique_tests_passed": 1615,
   "validation": {
-    "source_sha": "33db40171a2414162544a7b2794df19756561e36",
-    "created_at_utc": "2026-09-21T09:14:59.794578+00:00",
+    "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+    "created_at_utc": "2026-09-21T09:40:57.302987+00:00",
     "unique_tests_passed": 1615,
     "tests_failed": 0,
     "skipped": 1,
@@ -411,63 +462,63 @@
         "passed": 1399,
         "failed": 0,
         "skipped": 1,
-        "sha256": "fb1e3ec40860a336deaef773e352134ca25d124068e9b9168b143192614d2477"
+        "sha256": "b3191228b70a78a87c2eb4c11ea29b67df34a569d5c65dde00a25a3387298238"
       },
       {
         "junit": "artifacts/organism_live_engine.junit.xml",
         "passed": 26,
         "failed": 0,
         "skipped": 0,
-        "sha256": "125cd3f8874d08ac80f5fb82c593198d72a8fa00b5958e24354a3ada656e2e03"
+        "sha256": "4c330238d9174ae692579c8bf363debce2cc38c66c4e72f6c48a118ded0df8f6"
       },
       {
         "junit": "artifacts/organism_engine_scenarios.junit.xml",
         "passed": 31,
         "failed": 0,
         "skipped": 0,
-        "sha256": "38280d091eed74d221da3e8d80b9125f70d10caf62e0819810f2c1079f239bdf"
+        "sha256": "272328aa35d31d74a1526774ba938c96968cbfe2cb23c00bd9167f0019926ef8"
       },
       {
         "junit": "artifacts/multi_tick_state.junit.xml",
         "passed": 9,
         "failed": 0,
         "skipped": 0,
-        "sha256": "c3de7a22e6650c0f2ccc8902bab0407c9f3df4cb50147b33fcd70d3c0f777bad"
+        "sha256": "c96fe75cd4dc2a1eb9aeb9e2174dd196b005f2071019b10816ce5da650602c4d"
       },
       {
         "junit": "artifacts/safety_invariants.junit.xml",
         "passed": 29,
         "failed": 0,
         "skipped": 0,
-        "sha256": "a22ef4b62f0dd1f677b1399991186df47f7c8164b7baaad9ef9654aec1bb39ad"
+        "sha256": "573e0849fe3e1606c3603687f21743b695d70b27549eed1369f437ff379f588d"
       },
       {
         "junit": "artifacts/self_evolution.junit.xml",
         "passed": 15,
         "failed": 0,
         "skipped": 0,
-        "sha256": "d0e51892fb71df326d0bc5770555def8e7012868f777ddb28ca434af908d39a0"
+        "sha256": "0d8b247391cc5b402f3ce95e4caaa5c9ac0980782d592b27ec625854a058ebee"
       },
       {
         "junit": "artifacts/algorithm_improvements.junit.xml",
         "passed": 58,
         "failed": 0,
         "skipped": 0,
-        "sha256": "e3584efd38202b71d85912129dc378e66f3123237b0174df4e04bbbbcdc8b91a"
+        "sha256": "0c42dbf975814e60e2d83d5a49aa3feeda0e365ce4b76470e279da743b1b4c02"
       },
       {
         "junit": "artifacts/replay_simulator.junit.xml",
         "passed": 28,
         "failed": 0,
         "skipped": 0,
-        "sha256": "12cacb8a84945bc26a6d2e0b37bbda126ded7d22fb83b80b05948b2b934f2cd8"
+        "sha256": "1e651ef7f991c8431bae19532516bef6fe005cee70b38b6605d74b4d9544a220"
       },
       {
         "junit": "artifacts/semantic_invariants.junit.xml",
         "passed": 20,
         "failed": 0,
         "skipped": 0,
-        "sha256": "01c8c586381e0b5d404b7e3d2daa4796e9bb1656c3a02119c99edfba3156cf88"
+        "sha256": "c05b9d8b3fc86fdeb4a5c744f4b5ad8d14378928e64edb1438c868dfdc2eb712"
       }
     ],
     "count_method": "Unique JUnit classname and case name across final operational and required full artifact runs; repeated/targeted/broad nightly/environment runs are not added",
@@ -482,23 +533,23 @@
     },
     "full_artifact_pack": "pass",
     "freeze_verification": "pass",
-    "immutable_image": "sha256:40e30e2548f259ff554ffb1665cbd1ac2ed8df996ab255bd52b170d81b774c0b",
+    "immutable_image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
     "isolated_signed_backup_warm_start": "pass; initial load and saved reload preserve pinned models/components and ledger; negative corruption fails before engine effects",
     "frontend": {
       "build": "pass",
-      "focused_cases_passed": 22,
+      "focused_cases_passed": 37,
       "junit": "artifacts/operations_evidence/frontend_release_final.xml",
-      "junit_sha256": "820f2ffba6a297b8a6abfcbf6b688db6fcb05f0ecbcd753dc48f675877ad0724",
+      "junit_sha256": "6206a30492f06e19f29a9b7e8c42a7d5d664765cdfcf48a05b5ced0417b11789",
       "log": "artifacts/operations_evidence/frontend_release_final.log",
-      "react_review": "Actual manual halt and incomplete outcomes; username-or-email login, production bypass disabled, honest recovery guidance. Existing chart mocks emit non-failing canvas warnings",
+      "react_review": "Actual manual halt and incomplete outcomes; username-or-email login, production bypass disabled, honest recovery guidance; browser-compatible scanner connection and current-token market-data reconnect. Existing chart mocks emit non-failing canvas warnings",
       "build_log": "artifacts/operations_evidence/frontend_release_final_build.log",
       "production_browser": {
         "status": "passed",
         "url": "http://127.0.0.1:5197/login",
         "browser_version": "0.38.1",
-        "index_sha256": "db102494af435244b78612f7d437a25a409c14b49eed2319f3bbcc589bf59eda",
-        "dist_sha256": "41cd8a216e797f31466ff2cc11b2c31bad8083feb00a84de6d22b9c238677fc8",
-        "checkout_sha": "33db40171a2414162544a7b2794df19756561e36",
+        "index_sha256": "6ea8be6993dcb651867ddc9b28e6128ece2d9730ae4dbd210ec7f224b1c0deea",
+        "dist_sha256": "76c6b86d9b0cedc978c6237d065ee813e89dac526634caf9d1bcf2aed1eec488",
+        "checkout_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
         "checkout_source_dirty": false,
         "build_provenance": "dist bytes hashed; checkout identity alone does not attest build origin",
         "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
@@ -517,10 +568,35 @@
         "page_error_types": [],
         "browser_closed": true,
         "preview_stopped": true,
-        "elapsed_seconds": 5.77
+        "elapsed_seconds": 5.74
       },
-      "production_browser_result_sha256": "d98c80d53dabf5884b4ada0fc728653517b0c7a5fd016ce4bb3a6413e6bd3b8b",
+      "production_browser_result_sha256": "0e83cf52d06259dd3a849505c1c1a7026670f0035708d2bac73413b6cea7ea31",
       "browser_review": "artifacts/operations_evidence/frontend_browser_review.json",
+      "streaming_bundle": {
+        "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+        "js_files_inspected": 115,
+        "browser_incompatible_auth_require_matches": [],
+        "lazy_chunks": {
+          "ScannerPage": [
+            {
+              "path": "assets/ScannerPage-Bx1huhx1.js",
+              "sha256": "1babd5232170901b522aaa6ce85070191d81c502f6e375455a137dbf0582a98b"
+            }
+          ],
+          "TradingPage": [
+            {
+              "path": "assets/TradingPage-CrIh3uye.js",
+              "sha256": "2e33daa8671dbc0325ff6eed42a243449646e27ea485d30a5556775fdfc3e77b"
+            }
+          ]
+        },
+        "focused_frontend_passed": 37,
+        "backend_authentication_changed": false,
+        "actual_authenticated_streaming_verified": false,
+        "scope": "Compiled scanner/trading dependency bytes and mocked current-token connection contracts; production unauthenticated login browser gate recorded separately"
+      },
+      "streaming_review": "artifacts/operations_evidence/frontend_streaming_review.json",
+      "streaming_review_sha256": "9c64b70edab914e3922cf446f813f8c80185d34e6d42e8bec5fcd9c160fd7d1a",
       "retained_browser_failures": [
         "artifacts/operations_evidence/operator_browser_initial.json",
         "artifacts/operations_evidence/operator_browser_second.json"

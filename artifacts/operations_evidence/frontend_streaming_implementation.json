@@ -1,0 +1,69 @@
+{
+  "task_id": "browser-streaming-current-token-contract",
+  "status": "TARGETED_ACCEPTED_SOURCE_STABLE",
+  "reviewed_at_utc": "2026-09-21T09:36:02.768861+00:00",
+  "starting_sha": "96ad40ee4241cf20fd5a25ee572c5d12ffd45a49",
+  "implementation": [
+    "Static existing getAuthToken helper replaces browser-incompatible runtime require",
+    "Scanner query credentials encoded at every actual attempt; absent token opens no socket",
+    "Market connect retains callable signature but authoritative current store supersedes captured caller token",
+    "Reconnect refresh/logout checked at timer execution; legacy localStorage never revives credentials",
+    "Connection diagnostic events/errors and close reasons do not expose URL credentials",
+    "Existing readiness step includes both focused test files; budgets unchanged"
+  ],
+  "files": {
+    "frontend/src/hooks/useScannerWebSocket.ts": "41a2fc8cb17768c84a6d1517a7a719b305cd15d6771877f659b2b289a254126d",
+    "frontend/src/services/marketDataWebSocketService.ts": "19f95f895dcc272188adf43ebc006cc494cde84f2fd71b54d93073bcfb7e9b40",
+    "frontend/src/hooks/useScannerWebSocket.test.tsx": "2d5f2571e653a89044da4366b07da45d94725b9152ede37aea6055d2447f28f8",
+    "frontend/src/services/marketDataWebSocketService.test.ts": "c3ccc931a92526aa09bec0d9fbabbe6ad96a62c19ba15ad16dd1c2d36a96d6fe",
+    ".github/workflows/paper-readiness.yml": "bdbe98ed69e60a5c74c609b4b8993d9c817007730d0eb45483b92cbade6a28a3"
+  },
+  "tests": {
+    "before_corrected_harness": {
+      "tests": 15,
+      "failed": 13,
+      "skipped": 0
+    },
+    "after": {
+      "tests": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "workflow_budget": {
+      "tests": 3,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "checks": {
+    "scoped_eslint": 0,
+    "actionlint": 0,
+    "freeze_verify": 0,
+    "git_diff_check": 0
+  },
+  "evidence": {
+    "frontend_streaming_before.log": "a31f8b7e5786a6e928752b037cff7edd7b179eef0e0ac1521cb6c7fd016467be",
+    "frontend_streaming_before.xml": "4ea5fedd6e33b80f7ace5070d9de05927b377cde68946605fb586bc7b663426d",
+    "frontend_streaming_final.log": "d50aba3c8688c020be3e1ec3c4fdf6a7a00dc7c0ad3d38ee962bab1f33f7e411",
+    "frontend_streaming_final.xml": "1a6cb6f32124d347209f6383a279d8b5657f686582e4832b53bbd81289d540a6",
+    "frontend_streaming_freeze.log": "7329a92cc712e5836f29bc1d7246b41029f62d2b5cace3bed718defc4ff27a63",
+    "frontend_streaming_initial_harness.log": "ef27c19ce8fa51f7e5b66613ba0e785836f781bfcafc58b8ed3e50fd84f34a2f",
+    "frontend_streaming_initial_harness.xml": "dfc713ecccd46d64e0f0ebcfce1a80fb1d7557707c5596be6f14e882108c14cf",
+    "frontend_streaming_lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "frontend_streaming_workflow_budget.log": "6290507a1c5bd1fc30cdabd2930ada2e3e69931c1f6870352764e703bc873f76",
+    "frontend_streaming_workflow_budget.xml": "ae9031fd3dabb682ab24965933489067b9b95bb592cecc6765e77e423c966d2f",
+    "frontend_streaming_workflow_lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "isolation": {
+    "network": "sandbox denied; mock WebSocket and throwing fetch/XHR",
+    "credentials": "synthetic fixture tokens only",
+    "runtime_changes": false,
+    "brokers_or_browser_access": false
+  },
+  "initial_harness_note": "First local run had Node25 localStorage getter mismatch; retained separately as initial_harness. Tests now use an isolated in-memory legacy-storage stub; corrected red run has no storage harness errors. Do not add duplicate runs.",
+  "limitations": [
+    "Mock transport validates auth/connection boundary, not actual authenticated handshake or live streaming.",
+    "Parent owns final committed production build, generated-bundle require check, browser acceptance, full safety artifact pack, PR/CI/deployment.",
+    "No backend, route protocol, role, proxy, frozen strategy, or trading behavior changes."
+  ]
+}

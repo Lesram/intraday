@@ -2,9 +2,9 @@
   "status": "passed",
   "url": "http://127.0.0.1:5197/login",
   "browser_version": "0.38.1",
-  "index_sha256": "db102494af435244b78612f7d437a25a409c14b49eed2319f3bbcc589bf59eda",
-  "dist_sha256": "41cd8a216e797f31466ff2cc11b2c31bad8083feb00a84de6d22b9c238677fc8",
-  "checkout_sha": "33db40171a2414162544a7b2794df19756561e36",
+  "index_sha256": "6ea8be6993dcb651867ddc9b28e6128ece2d9730ae4dbd210ec7f224b1c0deea",
+  "dist_sha256": "76c6b86d9b0cedc978c6237d065ee813e89dac526634caf9d1bcf2aed1eec488",
+  "checkout_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
   "checkout_source_dirty": false,
   "build_provenance": "dist bytes hashed; checkout identity alone does not attest build origin",
   "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
@@ -23,5 +23,5 @@
   "page_error_types": [],
   "browser_closed": true,
   "preview_stopped": true,
-  "elapsed_seconds": 5.77
+  "elapsed_seconds": 5.74
 }

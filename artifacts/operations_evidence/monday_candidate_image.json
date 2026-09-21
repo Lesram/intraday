@@ -1,8 +1,8 @@
 {
-  "source_sha": "33db40171a2414162544a7b2794df19756561e36",
-  "created_at_utc": "2026-09-21T09:11:01.757401+00:00",
-  "tag": "intra-api:operations-33db40171a24",
-  "image_digest": "sha256:40e30e2548f259ff554ffb1665cbd1ac2ed8df996ab255bd52b170d81b774c0b",
+  "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+  "created_at_utc": "2026-09-21T09:36:40.336735+00:00",
+  "tag": "intra-api:operations-055f2b988645",
+  "image_digest": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
   "build_context": "git archive of exact committed source; .dockerignore applied",
   "source_files": {
     "backend/api/routes/risk.py": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",

@@ -1,11 +1,11 @@
 # Live Audit Index
 
-> **Candidate evidence only:** source `33db40171a2414162544a7b2794df19756561e36`. Generated root configuration uses isolated test defaults, not the installed runtime. The approved paper activation will publish actual observed snapshots under `artifacts/paper_activation/2026-09-21/`. Natural-session acceptance remains pending.
+> **Candidate evidence only:** source `055f2b98864519ce0cea6af3ca17d4a8d8ea191b`. Generated root configuration uses isolated test defaults, not the installed runtime. The approved paper activation will publish actual observed snapshots under `artifacts/paper_activation/2026-09-21/`. Natural-session acceptance remains pending.
 
 
-Generated: 2026-09-21T09:14:59Z
+Generated: 2026-09-21T09:40:57Z
 PR: n/a
-SHA: `33db40171a`
+SHA: `055f2b9886`
 Branch: `codex/operations-evidence-integrity`
 Scope: **backend_logic**
 Change scope: `base` (`ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD`)

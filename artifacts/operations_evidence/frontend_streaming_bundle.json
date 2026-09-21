@@ -1,0 +1,23 @@
+{
+  "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+  "js_files_inspected": 115,
+  "browser_incompatible_auth_require_matches": [],
+  "lazy_chunks": {
+    "ScannerPage": [
+      {
+        "path": "assets/ScannerPage-Bx1huhx1.js",
+        "sha256": "1babd5232170901b522aaa6ce85070191d81c502f6e375455a137dbf0582a98b"
+      }
+    ],
+    "TradingPage": [
+      {
+        "path": "assets/TradingPage-CrIh3uye.js",
+        "sha256": "2e33daa8671dbc0325ff6eed42a243449646e27ea485d30a5556775fdfc3e77b"
+      }
+    ]
+  },
+  "focused_frontend_passed": 37,
+  "backend_authentication_changed": false,
+  "actual_authenticated_streaming_verified": false,
+  "scope": "Compiled scanner/trading dependency bytes and mocked current-token connection contracts; production unauthenticated login browser gate recorded separately"
+}
