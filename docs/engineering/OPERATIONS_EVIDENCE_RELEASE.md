@@ -131,3 +131,11 @@ actual built login page in a fresh local browser with outbound connections and
 form submission blocked, requires visible login controls and no page errors,
 and removes only its own browser and preview processes. Component tests and a
 successful build alone do not satisfy this browser gate.
+
+The scanner and market-data connections use the existing centralized auth helper
+instead of browser-incompatible CommonJS calls. Each actual connection attempt
+reads the current login token, including after reconnect delays; logout cannot
+fall back to an obsolete local-storage token. Query-token authentication and
+backend roles stay unchanged, and connection diagnostics omit token-bearing
+URLs and socket events. Mocked connection, refresh and logout regressions cover
+these boundaries; they do not certify an authenticated live dashboard session.

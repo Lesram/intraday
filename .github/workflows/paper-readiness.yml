@@ -183,6 +183,8 @@ jobs:
           npx --no-install vitest run \
             src/features/organism/__tests__/OrganismDashboard.test.tsx \
             src/features/auth/LoginPage.test.tsx \
+            src/hooks/useScannerWebSocket.test.tsx \
+            src/services/marketDataWebSocketService.test.ts \
             --reporter=junit --outputFile=../artifacts/monday_readiness/github_frontend.xml
           npm run build 2>&1 | tee ../artifacts/monday_readiness/github_frontend_build.log
           npx --yes agent-browser@0.38.1 --version

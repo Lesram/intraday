@@ -7,6 +7,7 @@
  * Based on backend protocol: backend/api/routes/market_data.py
  */
 
+import { getAuthToken } from '@/utils/auth';
 import { ConnectionState } from '../types/marketData';
 import type {
   MarketDataMessage,
@@ -103,18 +104,25 @@ export class MarketDataWebSocketService {
   /**
    * Connect to WebSocket server
    */
-  public async connect(token: string): Promise<void> {
+  public async connect(_token: string): Promise<void> {
     if (this.connectionState === ConnectionState.CONNECTED || 
         this.connectionState === ConnectionState.CONNECTING) {
       console.log('[MarketData] Already connected or connecting');
       return;
     }
 
+    // Keep the caller signature, but never reuse a credential captured before
+    // a refresh or logout (including the caller's delayed manual reconnect).
+    const token = getAuthToken();
+    if (!token) {
+      this.setConnectionState(ConnectionState.FAILED);
+      throw new Error('Authentication required');
+    }
     this.setConnectionState(ConnectionState.CONNECTING);
 
     try {
       const wsUrl = `${this.config.wsUrl}?token=${encodeURIComponent(token)}`;
-      console.log('[MarketData] Connecting to:', wsUrl.replace(token, '***'));
+      console.log('[MarketData] Connecting');
 
       this.ws = new WebSocket(wsUrl);
       
@@ -125,11 +133,12 @@ export class MarketDataWebSocketService {
 
       // Wait for connection with timeout
       await this.waitForConnection(5000);
-    } catch (error) {
-      console.error('[MarketData] Connection failed:', error);
+    } catch {
+      // Browser exceptions can contain the full credential-bearing socket URL.
+      console.error('[MarketData] Connection failed');
       this.setConnectionState(ConnectionState.FAILED);
-      this.scheduleReconnect(token);
-      throw error;
+      this.scheduleReconnect();
+      throw new Error('Market data connection failed');
     }
   }
 
@@ -449,15 +458,15 @@ export class MarketDataWebSocketService {
   /**
    * Handle WebSocket error
    */
-  private handleError(event: Event): void {
-    console.error('[MarketData] WebSocket error:', event);
+  private handleError(): void {
+    console.error('[MarketData] WebSocket error');
   }
 
   /**
    * Handle WebSocket close
    */
   private handleClose(event: CloseEvent): void {
-    console.log('[MarketData] Disconnected:', event.code, event.reason);
+    console.log('[MarketData] Disconnected:', event.code);
     
     this.stopHeartbeat();
     
@@ -465,14 +474,7 @@ export class MarketDataWebSocketService {
     if (event.code !== 1000 && this.connectionState !== ConnectionState.DISCONNECTED) {
       this.setConnectionState(ConnectionState.RECONNECTING);
       
-      // Get token from URL or storage
-      const token = this.getStoredToken();
-      if (token) {
-        this.scheduleReconnect(token);
-      } else {
-        console.error('[MarketData] Cannot reconnect: no token available');
-        this.setConnectionState(ConnectionState.FAILED);
-      }
+      this.scheduleReconnect();
     } else {
       this.setConnectionState(ConnectionState.DISCONNECTED);
     }
@@ -481,7 +483,12 @@ export class MarketDataWebSocketService {
   /**
    * Schedule reconnection attempt
    */
-  private scheduleReconnect(token: string): void {
+  private scheduleReconnect(): void {
+    if (!getAuthToken()) {
+      console.error('[MarketData] Cannot reconnect: authentication required');
+      this.setConnectionState(ConnectionState.FAILED);
+      return;
+    }
     if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
       console.error('[MarketData] Max reconnection attempts reached');
       this.setConnectionState(ConnectionState.FAILED);
@@ -502,8 +509,9 @@ export class MarketDataWebSocketService {
     );
     
     this.reconnectTimeout = setTimeout(() => {
-      this.connect(token).catch(error => {
-        console.error('[MarketData] Reconnection failed:', error);
+      this.reconnectTimeout = null;
+      this.connect(getAuthToken() ?? '').catch(() => {
+        console.error('[MarketData] Reconnection failed');
       });
     }, delay);
     
@@ -571,21 +579,7 @@ export class MarketDataWebSocketService {
     }
   }
 
-  /**
-   * Get stored auth token from centralized auth store
-   */
-  private getStoredToken(): string | null {
-    // Use the centralized auth store instead of localStorage
-    // This ensures consistency with the rest of the application
-    try {
-      // Dynamic import to avoid circular dependencies
-      const { useAuthStore } = require('@/store/authStore');
-      return useAuthStore.getState().accessToken;
-    } catch {
-      // Fallback to localStorage if auth store not available
-      return localStorage.getItem('auth_token');
-    }
-  }
+
 }
 
 /**

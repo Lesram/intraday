@@ -17,6 +17,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { message } from 'antd';
+import { getAuthToken } from '@/utils/auth';
 
 // ============================================================================
 // TYPES
@@ -105,11 +106,11 @@ export const useScannerWebSocket = (autoConnect: boolean = false) => {
   // current page origin (no explicit port — the proxy/gateway routes
   // /api/v1/scanner/ws on the same scheme/host).
   const getWebSocketUrl = useCallback(() => {
-    const { useAuthStore } = require('@/store/authStore');
-    const token = useAuthStore.getState().accessToken;
-    const tokenQS = token ? `?token=${token}` : '';
+    const token = getAuthToken();
+    if (!token) throw new Error('Authentication required');
+    const tokenQS = `?token=${encodeURIComponent(token)}`;
 
-    const override = (import.meta as any).env?.VITE_WS_BASE_URL;
+    const override = import.meta.env.VITE_WS_BASE_URL;
     if (override) {
       return `${override.replace(/\/$/, '')}/api/v1/scanner/ws${tokenQS}`;
     }
@@ -173,15 +174,15 @@ export const useScannerWebSocket = (autoConnect: boolean = false) => {
         }
       };
       
-      ws.onerror = (event) => {
-        console.error('Scanner WebSocket error:', event);
+      ws.onerror = () => {
+        console.error('Scanner WebSocket error');
         setConnectionStatus('error');
         setError('WebSocket connection error');
         message.error('Scanner connection error');
       };
       
       ws.onclose = (event) => {
-        console.log('Scanner WebSocket closed:', event.code, event.reason);
+        console.log('Scanner WebSocket closed:', event.code);
         setConnectionStatus('disconnected');
         setIsScanning(false);
         
@@ -201,10 +202,11 @@ export const useScannerWebSocket = (autoConnect: boolean = false) => {
       };
       
       wsRef.current = ws;
-    } catch (err) {
-      console.error('Failed to connect scanner WebSocket:', err);
+    } catch {
+      // Browser errors can include the socket URL and its query credential.
+      console.error('Failed to connect scanner WebSocket');
       setConnectionStatus('error');
-      setError(`Connection failed: ${err}`);
+      setError('Scanner connection failed. Check your connection and sign-in status.');
     }
   }, [getWebSocketUrl, autoConnect]);
   
