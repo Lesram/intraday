@@ -8,7 +8,7 @@ permissions:
   issues: write
 jobs:
   reviewed-audit:
-    uses: Lesram/intraday/.github/workflows/paper-postclose-audit.yml@33db40171a2414162544a7b2794df19756561e36
+    uses: Lesram/intraday/.github/workflows/paper-postclose-audit.yml@055f2b98864519ce0cea6af3ca17d4a8d8ea191b
     with:
-      source_sha: 33db40171a2414162544a7b2794df19756561e36
+      source_sha: 055f2b98864519ce0cea6af3ca17d4a8d8ea191b
       notify_issues: true
