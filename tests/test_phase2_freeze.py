@@ -35,6 +35,7 @@ def documented_frozen_environment(monkeypatch):
     monkeypatch.setenv("ORGANISM_FRAMEWORK_ROUTING_V2", "true")
     monkeypatch.setenv("ORGANISM_ROUTING_RANK_POLICY", "flat_policy")
     monkeypatch.setenv("ORGANISM_APPROVED_POLICY_BASELINE", "/app/artifacts/phase2/research_policy_baseline.json")
+    monkeypatch.setenv("ORGANISM_OPERATOR_CONTROL_STATE", "/app/data/operator_control_state.json")
 
 
 @pytest.fixture(scope="module")
@@ -71,6 +72,8 @@ def test_freeze_covers_full_decision_surface(freeze):
         "ml_isolation", "fixed_risk", "settings_update",
         "baseline_verification",
         "parameter_application", "settings_api", "scheduler",
+        "operator_controls", "governance", "entry_admission", "operator_api",
+        "emergency_stop_api", "emergency_stop_service", "entry_cancellation",
     }
     rde = freeze["surface"]["routing_data_env"]
     assert set(rde) >= {"ALPACA_DATA_FEED", "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
