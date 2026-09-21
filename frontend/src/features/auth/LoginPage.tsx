@@ -1,6 +1,6 @@
 /**
  * Login Page
- * User authentication with email and password
+ * User authentication with username or email and password
  */
 
 import { useEffect, useRef } from 'react';
@@ -12,7 +12,8 @@ import { colors } from '@/styles/theme';
 
 const { Title, Text } = Typography;
 
-const DEV_BYPASS_AUTH = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+const DEV_BYPASS_AUTH =
+  import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
 const LoginPage = () => {
   const { mutate: login, isPending } = useLogin();
@@ -25,10 +26,9 @@ const LoginPage = () => {
     login({ username: 'admin@example.com', password: 'admin123' });
   }, [login]);
 
-  const onFinish = (values: { email: string; password: string }) => {
-    // Backend expects 'username' field, but we collect 'email'
+  const onFinish = (values: { username: string; password: string }) => {
     login({
-      username: values.email,
+      username: values.username.trim(),
       password: values.password,
     });
   };
@@ -72,16 +72,16 @@ const LoginPage = () => {
             size="large"
           >
             <Form.Item
-              name="email"
+              name="username"
               rules={[
-                { required: true, message: 'Please enter your email!' },
-                { type: 'email', message: 'Please enter a valid email address!' },
+                { required: true, whitespace: true, message: 'Please enter your username or email!' },
               ]}
             >
               <Input
                 prefix={<UserOutlined style={{ color: colors.text.tertiary }} />}
-                placeholder="Email"
-                autoComplete="email"
+                placeholder="Username or email"
+                aria-label="Username or email"
+                autoComplete="username"
               />
             </Form.Item>
 
@@ -95,19 +95,15 @@ const LoginPage = () => {
               <Input.Password
                 prefix={<LockOutlined style={{ color: colors.text.tertiary }} />}
                 placeholder="Password"
+                aria-label="Password"
                 autoComplete="current-password"
               />
             </Form.Item>
 
             <Form.Item style={{ marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Link
-                  to="/forgot-password"
-                  style={{ color: colors.brand.primary, fontSize: '14px' }}
-                >
-                  Forgot password?
-                </Link>
-              </div>
+              <Text style={{ color: colors.text.secondary, fontSize: '14px' }}>
+                Password recovery is currently unavailable. Contact your administrator if you cannot sign in.
+              </Text>
             </Form.Item>
 
             <Form.Item style={{ marginBottom: '16px' }}>

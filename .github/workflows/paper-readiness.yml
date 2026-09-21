@@ -100,6 +100,8 @@ jobs:
             tests/test_paper_daily_host.py \
             tests/test_operator_controls.py \
             tests/test_operator_emergency_stop.py \
+            tests/test_apr7_p0_p1_fixes.py \
+            tests/test_phase9_strategy_governance.py \
             tests/test_risk_manager_comprehensive.py \
             tests/test_risk_manager_service_comprehensive.py \
             tests/test_research_policy_lock.py \
@@ -164,6 +166,25 @@ jobs:
         if: always()
         timeout-minutes: 1
         run: python scripts/ci/generate_audit_index.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Verify operator dashboard and login
+        timeout-minutes: 10
+        working-directory: frontend
+        env:
+          VITE_DEV_BYPASS_AUTH: 'false'
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+          npx --no-install vitest run \
+            src/features/organism/__tests__/OrganismDashboard.test.tsx \
+            src/features/auth/LoginPage.test.tsx \
+            --reporter=junit --outputFile=../artifacts/monday_readiness/github_frontend.xml
+          npm run build 2>&1 | tee ../artifacts/monday_readiness/github_frontend_build.log
       - uses: actions/upload-artifact@v4
         if: always()
         timeout-minutes: 2

@@ -108,3 +108,18 @@ broker check withholds completion; protective and unrelated orders are retained.
 A stopped or uninitialized engine can retain a durable halt but cannot certify
 tick drain or active exit management. Its API response and UI must show that
 limitation. The independent review checks these failure cases explicitly.
+
+## Dashboard access
+
+The login form accepts a username or email and trims only that identifier;
+password bytes are preserved. Automatic development login requires both a
+development build and the explicit development flag. Production builds never
+attempt that login. The unfinished password-reset link is replaced with honest
+guidance; this release does not implement password recovery or alter accounts.
+
+The paper engine runs independently of the dashboard. A local preview may serve
+the installed production build on `127.0.0.1:5173`, opened as
+`http://localhost:5173`, using the existing API and WebSocket configuration.
+Browser smoke checks establish rendering and authentication boundaries, not
+administrator access without an existing authorized login. The preview is a
+temporary process, not a newly installed startup service.
