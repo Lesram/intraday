@@ -229,8 +229,9 @@ def test_bypass_audit_manifest_write_callsites():
             "print(len(hits));"
             "[print(f'  L{n}: {l}') for n, l in hits]",
         ],
-        capture_output=True, text=True, cwd="/Users/marselkei/VS/intra",
+        capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1],
     )
+    assert result.returncode == 0, result.stderr
     output = result.stdout.strip()
     count = int(output.split("\n")[0])
     assert count == 2, (
