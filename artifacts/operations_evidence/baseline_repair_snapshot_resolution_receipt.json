@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "task_id": "baseline-repair-stopped-config-evidence",
+  "status": "CONFIGURATION_RESOLVED_RUNTIME_UNVERIFIED",
+  "evidence_scope": "stopped_container_expected_configuration_not_runtime_observation",
+  "observed_at_utc": "2026-09-21T11:19:29.457063+00:00",
+  "source_sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+  "candidate_image_digest": "sha256:a276b7d98e10aa9823acf6f2d8cea7ba0a85cee673de131ad84e0166bfe057b8",
+  "approved_baseline_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+  "cutoff_preserved": "2026-09-21T10:10:39.684894+00:00",
+  "inspected_old_container": {
+    "id": "73dc7871d68559a229831f8013ffefb8240143a999a0df2e7e457c80e3b51d7d",
+    "image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
+    "name": "intra-api-1",
+    "status": "exited",
+    "running": false,
+    "started_at": "2026-09-21T10:11:11.379812916Z",
+    "finished_at": "2026-09-21T10:11:20.295855296Z",
+    "exit_code": 0,
+    "source_revision_label": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b"
+  },
+  "inspected_environment_identity": {
+    "GIT_SHA": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+    "IMAGE_SHA": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+    "APP_ENVIRONMENT": "development",
+    "ALPACA_PAPER": "true"
+  },
+  "candidate_image_revision_label": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+  "candidate_not_yet_installed": true,
+  "generator": {
+    "path": "scripts/runtime/write_runtime_snapshot.py",
+    "sha256": "abf05c1c5da7f321931885e1d03a827d227e09ce3e52ad2b817a2a67053e2ee9",
+    "functions": [
+      "_build_defaults_snapshot",
+      "_build_resolved_config_snapshot",
+      "_build_legacy_runtime_snapshot"
+    ],
+    "container_env_injection": "Only _find_api_container and _docker_exec(env) were replaced in a private harness to supply inspected allowlisted Config.Env; no actual docker exec/API access",
+    "dotenv_read": false,
+    "raw_Config_Env_persisted": false,
+    "allowlist": [
+      "ORGANISM_DRAWDOWN_KILL_PCT",
+      "ORGANISM_DRAWDOWN_COOLDOWN_S",
+      "ORGANISM_MAX_CHANGES_PER_DAY",
+      "ORGANISM_MAX_POSITIONS",
+      "ORGANISM_MAX_DAILY_LOSS",
+      "ORGANISM_MAX_NOTIONAL",
+      "ORGANISM_TICK_INTERVAL_SECONDS",
+      "ORGANISM_APPROVED_POLICY_BASELINE",
+      "ORGANISM_EXPLORATION_ENABLED",
+      "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED",
+      "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED",
+      "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+      "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED",
+      "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+      "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
+      "ORGANISM_ALPHA_TOP_N",
+      "ORGANISM_LIVE_TIMEFRAME",
+      "APP_ENVIRONMENT",
+      "ALPACA_PAPER",
+      "ORGANISM_OPERATOR_CONTROL_STATE"
+    ],
+    "allowlisted_config": {
+      "ORGANISM_DRAWDOWN_KILL_PCT": "0.10",
+      "ORGANISM_DRAWDOWN_COOLDOWN_S": "300",
+      "ORGANISM_MAX_CHANGES_PER_DAY": "500",
+      "ORGANISM_MAX_POSITIONS": "8",
+      "ORGANISM_MAX_DAILY_LOSS": "1100",
+      "ORGANISM_MAX_NOTIONAL": "2000",
+      "ORGANISM_TICK_INTERVAL_SECONDS": "10",
+      "ORGANISM_APPROVED_POLICY_BASELINE": "/app/artifacts/phase2/research_policy_baseline.json",
+      "ORGANISM_EXPLORATION_ENABLED": "false",
+      "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED": "false",
+      "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH": "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+      "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED": "true",
+      "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH": "organism_brain/strategy_evidence_events.jsonl",
+      "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED": "false",
+      "ORGANISM_ALPHA_TOP_N": "5",
+      "ORGANISM_LIVE_TIMEFRAME": "1Min",
+      "APP_ENVIRONMENT": "development",
+      "ALPACA_PAPER": "true",
+      "ORGANISM_OPERATOR_CONTROL_STATE": "/app/data/operator_control_state.json"
+    },
+    "allowlisted_config_sha256": "e10ffc157767451ae14e5abb2901f602b1cdaa7ddf5a0f478e9bb5e3065cb4f6",
+    "code_defaults_builder_timeframe": "1Day"
+  },
+  "original_snapshots": {
+    "artifacts/resolved_config_snapshot.json": {
+      "archive": "artifacts/operations_evidence/baseline_repair_snapshot_offline_test_original_resolved_config_snapshot.json",
+      "sha256": "d3bd5a13b79ebfd504b6b0ed40e1cef90aee478a036de4d5f5abf0c5b288047f",
+      "classification": "original offline test-generated snapshot; not installed configuration or observed engine state"
+    },
+    "artifacts/runtime_config_snapshot.json": {
+      "archive": "artifacts/operations_evidence/baseline_repair_snapshot_offline_test_original_runtime_config_snapshot.json",
+      "sha256": "c4d4cc857a549188898c1d9ab1ebeefd3ece1e092777251ce0cb4f3aac630f59",
+      "classification": "original offline test-generated snapshot; not installed configuration or observed engine state"
+    }
+  },
+  "new_artifacts": {
+    "artifacts/resolved_config_snapshot.json": "ed039154afff310de91fa40fdf5db26f9dbb4b11f486d31c91bdf61b724d6ea9",
+    "artifacts/runtime_config_snapshot.json": "679d092d4c70fedf636ab066894d92485948ee89992109f3b0c49fd49b0b089e"
+  },
+  "audit_index_sha256": "a2a885832ac49ff226219e4d93c7dcb2390591f499bb6119b6572cb583cc1c57",
+  "unchanged_artifacts": {
+    "artifacts/runtime_defaults_snapshot.json": "c4a5330c56ef7772b18b83c5462645dc420eb7e9cff55602f0db88c0363b27bd",
+    "artifacts/live_process_runtime_snapshot.json": "bc3238e58f18c349366e5dcaa6e1c1a5d53b4ba6802a95122513349eab426099",
+    "artifacts/phase2/param_freeze.json": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+    "artifacts/phase2/research_policy_baseline.json": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93"
+  },
+  "validation": {
+    "container_identity_and_full_Config_Env_unchanged_before_after": true,
+    "stopped_before_after": true,
+    "snapshot_timeframe": "1Min",
+    "timeframe_resolution_source": "container_env",
+    "snapshot_live_process_reachable": false,
+    "freeze_verify_exit_code": 0,
+    "freeze_log": "artifacts/operations_evidence/baseline_repair_snapshot_freeze_verification.log",
+    "model_files_read": false,
+    "runtime_or_host_configuration_changed": false,
+    "container_or_API_started": false,
+    "broker_network_calls": false,
+    "generator_subprocess_network": "denied"
+  },
+  "limitations": [
+    "Stopped Config.Env is observed configuration, not process memory. Recheck environment at planned installation.",
+    "Inspected container is prior source055f/imagee6; candidate sourcea3/imagea276 and baseline0b7 are separate reviewed identities.",
+    "Resolved policy fields without an explicit environment resolution source are candidate source expectations, not observed/applied saved policy or actual model state.",
+    "Defaults and unreachable actual-process artifact are retained unchanged; original offline snapshots remain byte archived.",
+    "Hosted full-pack runs can generate separate1Day offline snapshots again; they must not be treated as installed configuration or runtime truth."
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "schema": "intra_snapshot_evidence_independent_review_v1",
+  "reviewed_at_utc": "2026-09-21T11:22:57.465018+00:00",
+  "reviewer": "combined_acceptance_review",
+  "verdict": "EVIDENCE_ONLY_SNAPSHOT_CORRECTION_ACCEPTED_FRESH_HEAD_HOSTED_GATE_REQUIRED",
+  "source_sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+  "image_digest": "sha256:a276b7d98e10aa9823acf6f2d8cea7ba0a85cee673de131ad84e0166bfe057b8",
+  "baseline_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+  "cutoff_preserved": "2026-09-21T10:10:39.684894+00:00",
+  "artifact_hashes": {
+    "artifacts/resolved_config_snapshot.json": "ed039154afff310de91fa40fdf5db26f9dbb4b11f486d31c91bdf61b724d6ea9",
+    "artifacts/runtime_config_snapshot.json": "679d092d4c70fedf636ab066894d92485948ee89992109f3b0c49fd49b0b089e",
+    "artifacts/operations_evidence/baseline_repair_snapshot_offline_test_original_resolved_config_snapshot.json": "d3bd5a13b79ebfd504b6b0ed40e1cef90aee478a036de4d5f5abf0c5b288047f",
+    "artifacts/operations_evidence/baseline_repair_snapshot_offline_test_original_runtime_config_snapshot.json": "c4d4cc857a549188898c1d9ab1ebeefd3ece1e092777251ce0cb4f3aac630f59",
+    "artifacts/operations_evidence/baseline_repair_snapshot_resolution_receipt.json": "bc23b2be6b77d6ce93b8c24a4bc67b1776c02dc053f80789f1067e2f22dd5bc4",
+    "artifacts/operations_evidence/baseline_repair_snapshot_freeze_verification.log": "bc36b72c82fc0f6d70040dc1f2fb5b3eff02be2ab7c801250fe38490d3dba035",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "a2a885832ac49ff226219e4d93c7dcb2390591f499bb6119b6572cb583cc1c57"
+  },
+  "private_harness_hashes": {
+    "/tmp/intra-baseline-snapshot-correction/resolve.py": "403bee2bbc11828e2138379b38e06d8ed1abe5e4688574a4df4833afb0f342f9",
+    "/tmp/intra-baseline-snapshot-correction/regenerate.py": "b8deb11317299411df234bf4ff4f63f1010ae04e209f180c690ec4399886715a"
+  },
+  "blocking_findings": [],
+  "independently_verified": [
+    "Both original offline snapshots are archived byte-for-byte against current committed HEAD, with matching recorded hashes.",
+    "The new legacy flat values exactly match all resolved values; resolution sources and provenance agree.",
+    "Timeframe 1Min, alpha_top_n 5, risk limits and present shadow switches/paths resolve from the recorded stopped-container allowlist. No inherited isolated test paths remain.",
+    "Runtime truth explicitly remains unverified: engine_observed false and live_process_reachable false. Empty mismatch lists are expressly not runtime agreement.",
+    "Old stopped container/source/image are distinguished from the uninstalled candidate source/image and corrected baseline.",
+    "Private harness derives its exact allowlist from the unchanged generator AST, handles full configuration only in memory, substitutes only read-only environment acquisition, blocks API/live/.env reads, and runs the resolver in a fresh process with network and protected live-file access denied.",
+    "The candidate defaults are retained as defaults; saved applied parameters/model state are not synthesized or claimed observed.",
+    "Recorded freeze verification passed; all 66 image-bound source files, approved baseline and candidate freeze bytes remain unchanged.",
+    "Audit index labels expected configuration and retains the hosted-default regeneration caveat.",
+    "Only the seven expected artifact/document outputs are changed by this correction; no application, workflow, helper, image or runtime change."
+  ],
+  "review_threads_addressed": [
+    "https://github.com/Lesram/intraday/pull/23#discussion_r4061395580",
+    "https://github.com/Lesram/intraday/pull/23#discussion_r4061395642"
+  ],
+  "conditions": [
+    "Commit the evidence correction and bind a fresh required hosted run to its new head before merge.",
+    "Recheck installed environment/source/image and actual initialized engine after the corrective startup.",
+    "Treat subsequent hosted default-generated snapshots as offline test evidence; this committed expected-config capture does not certify process memory."
+  ],
+  "limitations": [
+    "Reviewer inspected the private harness and receipts without executing them or making host/container/API/broker calls.",
+    "Recorded stopped-container acquisition/preservation claims are supported by the owner harness; this review did not independently re-query the container.",
+    "Natural-session behavior and profitability remain pending."
+  ],
+  "reviewer_executed_generator_or_runtime": false
+}
