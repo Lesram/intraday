@@ -24,7 +24,12 @@
     "tests/test_research_baseline.py",
     ".dockerignore",
     "backend/api/routes/settings.py",
-    "backend/organism/scheduler.py"
+    "backend/organism/scheduler.py",
+    "scripts/ops/paper_watchdog.py",
+    "ops/launchd/com.intra.paper.watchdog.plist",
+    "tests/test_paper_watchdog.py",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "seven legacy regression fixture files"
   ],
   "tests": [
     "targeted policy/startup/background/sync/exception and snapshot/freeze tests",
@@ -50,5 +55,7 @@
     "Old PR17 cannot safely consume new authority/receipt state; recovery must preserve candidate state",
     "Current model signing development fallback is a separate hardening follow-up"
   ],
-  "startup_baseline_refinement": "Independent review found legacy fallback could select different model/params. Pin actual loaded model fingerprints and prediction context in approved read-only image baseline; configured restart must verify before position reconstruction."
+  "startup_baseline_refinement": "Independent review found legacy fallback could select different model/params. Pin actual loaded model fingerprints and prediction context in approved read-only image baseline; configured restart must verify before position reconstruction.",
+  "watchdog_refinement": "New startup refusal leaves API healthy but scheduler stopped; optional authenticated policy/scheduler probe now reports sanitized attention without restarting an otherwise healthy API.",
+  "regression_refinement": "Broader nightly identified17 outdated accounting/policy fixtures,27isolated-harness failures and1implicit installed-data dependency. Fixtures repaired without runtime relaxation; unavailable installed data is an explicit opt-in audit."
 }

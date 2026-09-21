@@ -8,7 +8,11 @@ This file exists to:
    values (not on string presence).
 2. Lock the V12 starting baseline so any regression caused by V12
    waves is observable: the classifier output, the strategy
-   expectancy, and the V11 commit head are all asserted here.
+   expectancy snapshot, and the V11 commit head are asserted here.
+3. Optionally audit an explicitly supplied installed-history CSV for shrinkage.
+   Set INTRA_INSTALLED_HISTORY_CSV to its absolute path. Clean-checkout CI
+   reports this installed-data audit unavailable (skipped), never as passing
+   evidence about a deployed history. No private brain is read implicitly.
 
 V12 commitment: this file uses behavioral fixtures + AST-parse
 assertions, NOT ``inspect.getsource`` greps.  If you find yourself
@@ -20,6 +24,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import subprocess
 import textwrap
 from pathlib import Path
@@ -32,6 +37,7 @@ CLASSIFIER = REPO_ROOT / "scripts" / "ci" / "classify_wave_tests.py"
 EXPECTANCY_TOOL = REPO_ROOT / "scripts" / "ci" / "compute_strategy_expectancy.py"
 V12_BASELINE = REPO_ROOT / "artifacts" / "audit" / "v12" / "v12_baseline.json"
 V12_STATE = REPO_ROOT / "artifacts" / "audit" / "v12" / "v12_state.json"
+V12_EXPECTANCY_SNAPSHOT = REPO_ROOT / "artifacts" / "audit" / "v12" / "v12_baseline_expectancy.json"
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -220,32 +226,57 @@ def test_baseline_marker_only_count_matches_committed():
 #    real CSV — this is a *behavioral* invariant, not a marker.
 # ────────────────────────────────────────────────────────────────────
 
-def test_baseline_expectancy_module_runs():
-    """The expectancy computer must be importable and runnable."""
+def test_baseline_expectancy_module_runs(tmp_path):
+    """Missing input is unavailable evidence, not a zero-trade audit success."""
     sys.path.insert(0, str(REPO_ROOT / "scripts" / "ci"))
     import compute_strategy_expectancy as cse  # noqa: E402
-    out = cse.compute(REPO_ROOT / "organism_brain" / "trade_history.csv")
-    assert "n_trades" in out
-    assert out["n_trades"] >= 0
+    missing = tmp_path / "unavailable_history.csv"
+    out = cse.compute(missing)
+    assert out["csv_exists"] is False
+    assert out["csv_path"] == str(missing)
+    assert out["csv_mtime"] is None
+    assert out["error"] == "trade_history.csv not found"
+    assert out["n_trades"] == 0
 
 
 def test_baseline_expectancy_reflects_committed_baseline():
-    """The committed baseline must equal what compute_strategy_expectancy
-    sees today (subject to any new trades added since).  We assert on
-    *integer* trade count and *signed* total_pnl class — exact float
-    drift is acceptable across reads."""
+    """The two committed May snapshots must retain their real recorded values.
+
+    This deterministic check does not recompute historical PnL without its
+    unavailable raw CSV and does not attest to any currently installed brain.
+    """
     baseline = json.loads(V12_BASELINE.read_text())
+    recorded = baseline["strategy_expectancy"]
+    snapshot = json.loads(V12_EXPECTANCY_SNAPSHOT.read_text())
+    for key in ("csv_exists", "csv_mtime", "csv_path", "n_trades", "n_wins",
+                "n_losses", "total_pnl", "win_rate", "max_drawdown", "mean_pnl", "median_pnl"):
+        assert snapshot[key] == recorded[key], key
+    assert snapshot["sharpe_ratio_per_trade"] == recorded["sharpe_ratio"]
+    for size in (25, 50):
+        for metric in ("mean_pnl", "win_rate"):
+            assert snapshot[f"last_{size}_{metric}"] == recorded[f"last_{size}"][metric]
+    assert recorded["csv_exists"] is True
+    assert recorded["n_trades"] == 498
+    assert recorded["total_pnl"] == -634.9
+    assert baseline["captured_at"] == "2026-05-03"
+
+
+def test_installed_history_has_not_shrunk_from_committed_baseline():
+    """Optional installed-data audit; absent private data is reported unavailable."""
+    configured = os.environ.get("INTRA_INSTALLED_HISTORY_CSV")
+    if not configured:
+        pytest.skip("Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim")
+    csv_path = Path(configured)
+    assert csv_path.is_absolute(), "Installed-history audit requires an explicit absolute CSV path"
+    assert csv_path.is_file(), "Configured installed-history CSV is unavailable"
     sys.path.insert(0, str(REPO_ROOT / "scripts" / "ci"))
     import compute_strategy_expectancy as cse  # noqa: E402
-    current = cse.compute(REPO_ROOT / "organism_brain" / "trade_history.csv")
-    base_exp = baseline["strategy_expectancy"]
-    # Trade count can grow as new trades land; never shrink.
+    current = cse.compute(csv_path)
+    assert current["csv_exists"] is True and "error" not in current
+    base_exp = json.loads(V12_BASELINE.read_text())["strategy_expectancy"]
     assert current["n_trades"] >= base_exp["n_trades"], (
         f"trade history shrank: was {base_exp['n_trades']}, now {current['n_trades']}"
     )
-    # Sign of expectancy at baseline is the auditor's headline finding.
-    # If post-V12 the brain becomes profitable, this assertion will need
-    # to be updated together with the celebration.
     assert base_exp["total_pnl"] < 0, (
         "Baseline must reflect the auditor's finding — brain was unprofitable."
     )

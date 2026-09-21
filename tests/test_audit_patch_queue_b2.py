@@ -292,8 +292,9 @@ class TestMLConfidenceLeakage:
         assert signals_high[0].target_exposure > signals_low[0].target_exposure, \
             "Learning mode: higher composite_score should increase target_exposure"
 
-    def test_production_mode_uses_ml_confidence(self):
-        """In production mode, ML confidence should affect target_exposure."""
+    def test_production_mode_uses_ml_confidence(self, monkeypatch):
+        """The retained unlocked production primitive uses ML confidence."""
+        monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
         engine = self._make_engine()
         # Make it production mode by adding enough trades
         from backend.organism.continuous_learner import TradeRecord

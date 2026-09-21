@@ -111,17 +111,18 @@ def test_save_force_true_still_full_save(tmp_path):
 
 
 # ─────────────────────────────────────────────────────────────
-# 3-5, 10. OrganismLiveEngine.force_save_brain() — unit tests with a
-#          hand-built stub engine. We deliberately do NOT spin up
-#          a full OrganismLiveEngine; we bind the unbound method to a
-#          minimal namespace to exercise the save path logic.
+# 3-5, 10. OrganismLiveEngine.force_save_brain() — constructor-backed
+#          accounting state with only legacy save I/O stubbed. Constructing
+#          the engine starts no services and every write stays in tmp_path.
 # ─────────────────────────────────────────────────────────────
 
 from backend.organism.live_engine import OrganismLiveEngine
+from backend.organism.self_evolution import EvolvedParams
 
 
-def _make_stub_engine():
+def _make_stub_engine(tmp_path):
     brain = MagicMock()
+    brain.brain_dir = tmp_path / "brain"
     brain.save = MagicMock()
     brain.walk_forward_gate = MagicMock(return_value=(True, "ok"))
     stub = SimpleNamespace(
@@ -141,7 +142,7 @@ def _make_stub_engine():
         _watchdog_last_brain_save_tick=0,
         universe_selector=SimpleNamespace(to_dict=lambda: {}),
         kelly_sizer=SimpleNamespace(regime_stats_to_dict=lambda: {}),
-        evolved_params=SimpleNamespace(to_dict=lambda: {}),
+        evolved_params=EvolvedParams(),
         governance=None,
         regime_detector=None,
         _persist_exit_levels_standalone=MagicMock(),
@@ -160,11 +161,18 @@ def _make_stub_engine():
     # force_save_brain.  Provide a no-op MagicMock if missing.
     if not hasattr(stub, "_persist_pyramid_positions_standalone"):
         stub._persist_pyramid_positions_standalone = MagicMock()
-    return stub
+    # Keep the complete accounting consumer projection and serialization
+    # state from the real constructor, while stubbing only legacy save I/O.
+    engine = OrganismLiveEngine(
+        data_client=MagicMock(), order_service=MagicMock(), positions_service=MagicMock(),
+        brain_dir=str(tmp_path / "brain"), universe=["AAPL"],
+    )
+    engine.__dict__.update(vars(stub))
+    return engine
 
 
-def test_force_save_brain_calls_brain_save_force_true():
-    stub = _make_stub_engine()
+def test_force_save_brain_calls_brain_save_force_true(tmp_path):
+    stub = _make_stub_engine(tmp_path)
     result = OrganismLiveEngine.force_save_brain(stub)
     assert stub.brain.save.called
     kwargs = stub.brain.save.call_args.kwargs
@@ -182,8 +190,8 @@ def test_force_save_brain_calls_brain_save_force_true():
     assert result["feature_count"] == 79
 
 
-def test_force_save_brain_bypasses_walk_forward_gate():
-    stub = _make_stub_engine()
+def test_force_save_brain_bypasses_walk_forward_gate(tmp_path):
+    stub = _make_stub_engine(tmp_path)
     # Set up a "would-fail" gate
     stub.brain.walk_forward_gate = MagicMock(return_value=(False, "regression"))
     result = OrganismLiveEngine.force_save_brain(stub)
@@ -194,21 +202,21 @@ def test_force_save_brain_bypasses_walk_forward_gate():
     assert result["success"] is True
 
 
-def test_force_save_brain_updates_watchdog_tick():
-    stub = _make_stub_engine()
+def test_force_save_brain_updates_watchdog_tick(tmp_path):
+    stub = _make_stub_engine(tmp_path)
     stub._tick_count = 9999
     OrganismLiveEngine.force_save_brain(stub)
     assert stub._watchdog_last_brain_save_tick == 9999
 
 
-def test_force_save_brain_persists_exit_levels():
-    stub = _make_stub_engine()
+def test_force_save_brain_persists_exit_levels(tmp_path):
+    stub = _make_stub_engine(tmp_path)
     OrganismLiveEngine.force_save_brain(stub)
     assert stub._persist_exit_levels_standalone.called
 
 
-def test_force_save_brain_graceful_exception():
-    stub = _make_stub_engine()
+def test_force_save_brain_graceful_exception(tmp_path):
+    stub = _make_stub_engine(tmp_path)
     stub.brain.save = MagicMock(side_effect=RuntimeError("disk full"))
     result = OrganismLiveEngine.force_save_brain(stub)
     assert result["success"] is False
@@ -217,8 +225,8 @@ def test_force_save_brain_graceful_exception():
     assert result["tick"] == 4242
 
 
-def test_force_save_brain_nonfinite_sharpe_returns_none():
-    stub = _make_stub_engine()
+def test_force_save_brain_nonfinite_sharpe_returns_none(tmp_path):
+    stub = _make_stub_engine(tmp_path)
     stub.learner.state.best_sharpe = float("-inf")
     result = OrganismLiveEngine.force_save_brain(stub)
     assert result["best_sharpe"] is None

@@ -99,6 +99,8 @@ class TestPendingEntryOrphanPersistence:
         from backend.organism.live_engine import OrganismLiveEngine
 
         engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+        from threading import RLock
+        engine._accounting_lock = RLock()
         engine._pending_entry_order_ids = {"AAPL": "order-123", "MSFT": "order-456"}
 
         # Mock brain.brain_dir

@@ -415,3 +415,157 @@ def test_simultaneous_critical_alert_does_not_hide_backup_failure(watchdog, monk
 def test_reviewed_watchdog_agent_enables_backup_check():
     template = plistlib.loads((ROOT / 'ops/launchd/com.intra.paper.watchdog.plist').read_bytes())
     assert '--check-backups' in template['ProgramArguments']
+
+
+@pytest.fixture
+def policy_probe(monkeypatch):
+    """Actual shared verifier, with credentials/HTTP/Docker entirely replaced."""
+    from scripts.ops import paper_daily_host as host
+
+    params = {"stop_atr_scale": 0.985}
+    baseline_sha = 'b' * 64
+    binding = {"source_sha": '1' * 40, "image_sha": '2' * 40,
+               "image_digest": 'sha256:' + '3' * 64, "runtime_config_hash": '4' * 64,
+               "effective_policy_hash": host.policy_hash(params),
+               "policy_baseline": {"sha256": baseline_sha}}
+    deployment = {key: binding[key] for key in ('source_sha', 'image_sha', 'runtime_config_hash')}
+    container = {"name": "/intra-api-1", "project": "intra", "service": "api",
+                 "image_digest": binding['image_digest']}
+    engine = {"initialized": True, "ml_influence_enabled": False, "fixed_risk_sizing": True,
+              "policy_lock": {"locked": True, "automatic_promotion_enabled": False,
+                              "frozen_models": True, "effective_policy_params": params,
+                              "effective_policy_hash": binding['effective_policy_hash'],
+                              "baseline": {"configured": True, "verified": True, "sha256": baseline_sha}}}
+    status = {"live_engine": {"running": True, "engine": engine}}
+    calls = []
+    monkeypatch.setattr(host, 'load_binding', lambda path: (copy.deepcopy(binding), {'binding_sha256': '5' * 64}, []))
+    monkeypatch.setattr(host, 'observer_token', lambda path: 'private-observer-token')
+    monkeypatch.setattr(host, 'container_credentials', lambda *args: pytest.fail('broker credentials forbidden'))
+    monkeypatch.setattr(host.urllib.request.OpenerDirector, 'open', lambda *a, **kw: pytest.fail('real HTTP forbidden'))
+
+    def get(transport, origin, path, params):
+        assert transport.paper_headers == {'APCA-API-KEY-ID': '', 'APCA-API-SECRET-KEY': ''}
+        assert transport.local_headers == {'Authorization': 'Bearer private-observer-token'}
+        assert origin == 'local' and params == {}
+        calls.append(path)
+        return json.dumps(deployment if path.endswith('/deploy') else status).encode()
+
+    monkeypatch.setattr(host.daily.GetTransport, 'get', get)
+    monkeypatch.setattr(host.daily.GetTransport, 'container_identity', lambda self: json.dumps(container).encode())
+    return {'host': host, 'binding': binding, 'deployment': deployment, 'container': container,
+            'status': status, 'engine': engine, 'calls': calls}
+
+
+def test_policy_probe_checks_actual_shared_identity_and_startup_contract(watchdog, policy_probe):
+    result = watchdog.observe_policy()
+    assert result == {'enabled': True, 'status': 'ok', 'problems': [], 'binding_sha256': '5' * 64}
+    assert policy_probe['calls'] == ['/api/v1/paper-monitor/deploy', '/api/v1/paper-monitor/organism/status']
+    assert 'private-observer-token' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('fault', [
+    'source', 'image_source', 'image_digest', 'config', 'unlocked', 'promotion', 'models_unfrozen',
+    'unconfigured_baseline', 'unverified_baseline', 'wrong_baseline', 'changed_params', 'ml_enabled',
+    'kelly_enabled', 'no_scheduler', 'scheduler_stopped', 'uninitialized', 'running_integer',
+])
+def test_policy_probe_rejects_healthy_api_with_wrong_runtime(watchdog, policy_probe, fault):
+    p = policy_probe
+    engine = p['engine']; policy = engine['policy_lock']
+    if fault in {'source', 'image_source', 'config'}:
+        p['deployment'][{'source': 'source_sha', 'image_source': 'image_sha', 'config': 'runtime_config_hash'}[fault]] = 'changed'
+    elif fault == 'image_digest': p['container']['image_digest'] = 'changed'
+    elif fault == 'unlocked': policy['locked'] = False
+    elif fault == 'promotion': policy['automatic_promotion_enabled'] = True
+    elif fault == 'models_unfrozen': policy['frozen_models'] = False
+    elif fault == 'unconfigured_baseline': policy['baseline']['configured'] = False
+    elif fault == 'unverified_baseline': policy['baseline']['verified'] = False
+    elif fault == 'wrong_baseline': policy['baseline']['sha256'] = 'changed'
+    elif fault == 'changed_params': policy['effective_policy_params']['stop_atr_scale'] = 9
+    elif fault == 'ml_enabled': engine['ml_influence_enabled'] = True
+    elif fault == 'kelly_enabled': engine['fixed_risk_sizing'] = False
+    elif fault == 'no_scheduler': p['status']['live_engine'] = None
+    elif fault == 'scheduler_stopped': p['status']['live_engine']['running'] = False
+    elif fault == 'uninitialized': engine['initialized'] = False
+    elif fault == 'running_integer': p['status']['live_engine']['running'] = 1
+    result = watchdog.observe_policy()
+    assert result['status'] != 'ok' and len(result['problems']) == 1
+    observation = healthy(watchdog)
+    observation['problems'].extend(result['problems'])
+    assert watchdog.choose_recovery(observation, True) is None
+
+
+@pytest.mark.parametrize('stage', ['binding', 'authentication', 'runtime_verification'])
+def test_policy_probe_sanitizes_all_exception_bodies(watchdog, monkeypatch, policy_probe, stage):
+    host = policy_probe['host']
+    def fail(*args, **kwargs):
+        raise ValueError('private-observer-token secret-password broker-body')
+    monkeypatch.setattr(host, {'binding': 'load_binding', 'authentication': 'observer_token',
+                              'runtime_verification': 'verify_runtime'}[stage], fail)
+    result = watchdog.observe_policy()
+    assert result['status'] == stage and result['problems'] == ['policy_' + stage]
+    assert not any(secret in json.dumps(result) for secret in ('private-observer-token', 'secret-password', 'broker-body'))
+
+
+def test_policy_probe_rejects_binding_changed_across_collection(watchdog, monkeypatch, policy_probe):
+    receipts = iter(['5' * 64, '6' * 64])
+    monkeypatch.setattr(policy_probe['host'], 'load_binding', lambda path: (
+        policy_probe['binding'], {'binding_sha256': next(receipts)}, []))
+    assert watchdog.observe_policy()['problems'] == ['policy_binding_changed']
+
+
+def test_policy_transport_refuses_broker_routes_before_any_transport_call(watchdog, monkeypatch, policy_probe):
+    monkeypatch.setattr(policy_probe['host'], 'verify_runtime', lambda transport, binding: transport.get('paper', '/v2/account', {}))
+    assert watchdog.observe_policy()['problems'] == ['policy_runtime_verification']
+    assert policy_probe['calls'] == []
+
+
+def test_policy_probe_is_opt_in(watchdog, monkeypatch, tmp_path):
+    monkeypatch.setattr(watchdog, 'observe', lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog, 'observe_policy', lambda: pytest.fail('private policy paths require opt-in'))
+    assert watchdog.run_watchdog(tmp_path)['policy_monitor'] == {'enabled': False}
+
+
+def test_policy_attention_retries_without_service_recovery_or_private_payloads(watchdog, monkeypatch, tmp_path, policy_probe):
+    monkeypatch.setattr(watchdog, 'observe', lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog, 'command', lambda *a, **kw: pytest.fail('policy failure must not recover healthy service'))
+    policy_probe['status']['live_engine']['running'] = False
+    notices = []; deliveries = iter([False, True, True])
+    monkeypatch.setattr(watchdog, 'notify_local', lambda message: notices.append(message) or next(deliveries))
+    first = watchdog.run_watchdog(tmp_path, recover=True, local_notifications=True, check_policy=True)
+    second = watchdog.run_watchdog(tmp_path, recover=True, local_notifications=True, check_policy=True)
+    third = watchdog.run_watchdog(tmp_path, recover=True, local_notifications=True, check_policy=True)
+    assert first['healthy'] is False and first['actions'] == []
+    assert first['notification']['delivered'] is False
+    assert second['notification']['delivered'] is True and third['notification']['attempted'] is False
+    policy_probe['status']['live_engine']['running'] = True
+    recovered = watchdog.run_watchdog(tmp_path, recover=True, local_notifications=True, check_policy=True)
+    assert recovered['healthy'] is True and recovered['actions'] == []
+    assert recovered['notification']['delivered'] is True and len(notices) == 3
+    saved = (tmp_path / 'logs/paper_watchdog_events.jsonl').read_text()
+    assert 'policy_scheduler_not_running' in saved
+    assert 'private-observer-token' not in saved + ''.join(notices)
+
+
+def test_policy_attention_respects_maintenance_pause(watchdog, monkeypatch, tmp_path, policy_probe):
+    (tmp_path / 'logs').mkdir(); (tmp_path / 'logs/paper_watchdog.pause').touch()
+    monkeypatch.setattr(watchdog, 'observe', lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog, 'command', lambda *a, **kw: pytest.fail('no service action'))
+    monkeypatch.setattr(watchdog, 'notify_local', lambda *a: pytest.fail('no real notification'))
+    policy_probe['engine']['initialized'] = False
+    result = watchdog.run_watchdog(tmp_path, recover=True, local_notifications=True, check_policy=True)
+    assert result['paused'] is True and result['healthy'] is False and result['actions'] == []
+    assert result['problems'] == ['policy_engine_not_initialized']
+
+
+def test_reviewed_watchdog_agent_enables_policy_check():
+    template = plistlib.loads((ROOT / 'ops/launchd/com.intra.paper.watchdog.plist').read_bytes())
+    assert '--check-policy' in template['ProgramArguments']
+
+
+def test_cli_passes_policy_opt_in(watchdog, monkeypatch, tmp_path):
+    monkeypatch.setattr(watchdog, 'ROOT', tmp_path)
+    monkeypatch.setattr(watchdog.sys, 'argv', ['paper_watchdog.py', '--check-policy'])
+    calls = []
+    monkeypatch.setattr(watchdog, 'run_watchdog', lambda root, **kwargs: calls.append(kwargs) or {'healthy': False, 'paused': False})
+    assert watchdog.main() == 1
+    assert calls[0]['check_policy'] is True

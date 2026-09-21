@@ -100,6 +100,13 @@ jobs:
             tests/test_paper_daily_host.py \
             tests/test_research_policy_lock.py \
             tests/test_research_baseline.py \
+            tests/test_apr10_patch_f4_forensic_guard.py \
+            tests/test_apr8_patch_a_force_save.py \
+            tests/test_audit_patch_queue_b1.py \
+            tests/test_audit_patch_queue_j6.py \
+            tests/test_remediation_wave_b.py \
+            tests/test_audit_patch_queue_b2.py \
+            tests/test_v12_baseline_invariants.py \
             tests/test_standdown_session_row.py \
             tests/test_phase3_attribution_report.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
@@ -128,8 +135,6 @@ jobs:
             tests/test_strategy_engine_comprehensive.py \
             tests/test_organism_integration_smoke.py \
             tests/test_phase2_freeze.py \
-            tests/test_v12_baseline_invariants.py::test_baseline_classifier_runs_on_repo \
-            tests/test_v12_baseline_invariants.py::test_baseline_marker_only_count_matches_committed \
             --junitxml=artifacts/nightly_test_harness/github_targeted.xml \
             2>&1 | tee artifacts/nightly_test_harness/github_targeted.log
       - name: Verify unchanged frozen decision surface
