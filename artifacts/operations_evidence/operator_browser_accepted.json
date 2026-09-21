@@ -1,0 +1,19 @@
+{
+  "status": "PASSED_PRODUCTION_LOGIN_BROWSER",
+  "base_source_sha": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
+  "vite_config_sha256": "26f8975661d9362947ad7c762b211bc7d63625fcdc59d9e180b89284b5835aca",
+  "index_sha256": "db102494af435244b78612f7d437a25a409c14b49eed2319f3bbcc589bf59eda",
+  "url": "http://localhost:5173/login",
+  "username_password_signin_visible": true,
+  "recovery_guidance_visible": true,
+  "error_overlay": false,
+  "page_errors": [],
+  "console_messages": [],
+  "request_count": 5,
+  "only_GET_requests": true,
+  "api_socket_or_auth_requests": 0,
+  "credentials_used": false,
+  "administrator_session_verified": false,
+  "backend_deployed": false,
+  "screenshot": "artifacts/operations_evidence/operator_browser_accepted.png"
+}

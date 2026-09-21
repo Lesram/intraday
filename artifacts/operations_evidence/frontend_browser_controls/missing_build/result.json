@@ -1,0 +1,7 @@
+{
+  "status": "failed",
+  "url": "http://127.0.0.1:5197/login",
+  "browser_version": "0.38.1",
+  "failure": "production dist/index.html is missing; build frontend first",
+  "elapsed_seconds": 0.0
+}

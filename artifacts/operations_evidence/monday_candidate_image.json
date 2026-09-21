@@ -1,8 +1,8 @@
 {
-  "source_sha": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
-  "created_at_utc": "2026-09-21T08:50:23.541309+00:00",
-  "tag": "intra-api:operations-c11cd17beb01",
-  "image_digest": "sha256:1b6ba8b30f44b3d80bbe98b59c899e065a187bc3395eb3bb3c8fecb44f9e7183",
+  "source_sha": "33db40171a2414162544a7b2794df19756561e36",
+  "created_at_utc": "2026-09-21T09:11:01.757401+00:00",
+  "tag": "intra-api:operations-33db40171a24",
+  "image_digest": "sha256:40e30e2548f259ff554ffb1665cbd1ac2ed8df996ab255bd52b170d81b774c0b",
   "build_context": "git archive of exact committed source; .dockerignore applied",
   "source_files": {
     "backend/api/routes/risk.py": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
@@ -24,6 +24,7 @@
     "backend/organism/scheduler.py": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c",
     "backend/organism/trading_phase.py": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
     "backend/services/risk_manager.py": "d3efb81f9e5ae6f6d3036133786dddff5f824028d95a80465cdb5385cb20b5ca",
+    "scripts/ci/check_frontend_preview.py": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
     "scripts/ops/paper_daily_evidence.py": "90ecb533fff61f69d18a4fff06fab69900b5fa7db762832c3c04c86679f72217",
     "scripts/ops/paper_daily_host.py": "5687bacd6cc9732f57357f8ef8bc9ccfa520687ce79164d86b44c43b0685365c",
     "scripts/ops/paper_watchdog.py": "a1809fb9dfbe6098b4e0cc22e533c8c7c242a279ab3813f152787cb1ced11baf",
@@ -70,7 +71,7 @@
     "tests/test_walkforward_persistence.py": "f39f701c0d44734ba2abf3698476b35a7d67ab062f31a0fe7d938cf22ac7a049"
   },
   "source_hash_check": {
-    "files_verified": 63,
+    "files_verified": 64,
     "mismatches": []
   },
   "freeze_check_exit_code": 0,

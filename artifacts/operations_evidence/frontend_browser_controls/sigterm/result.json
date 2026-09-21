@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "url": "http://127.0.0.1:5197/login",
+  "browser_version": "0.38.1",
+  "index_sha256": "db102494af435244b78612f7d437a25a409c14b49eed2319f3bbcc589bf59eda",
+  "dist_sha256": "41cd8a216e797f31466ff2cc11b2c31bad8083feb00a84de6d22b9c238677fc8",
+  "checkout_sha": "17f14e1896d324959a8a928d34c9c296c2a56077",
+  "checkout_source_dirty": true,
+  "build_provenance": "dist bytes hashed; checkout identity alone does not attest build origin",
+  "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
+  "browser_closed": true,
+  "preview_stopped": true,
+  "failure": "smoke check interrupted",
+  "elapsed_seconds": 2.46
+}

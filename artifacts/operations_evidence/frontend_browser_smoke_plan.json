@@ -1,0 +1,26 @@
+{
+  "task_id": "production_frontend_browser_smoke",
+  "scope": "Add a bounded fresh-browser production /login smoke check to catch blank pages and JavaScript bootstrap errors after successful builds.",
+  "owned_files": [
+    "scripts/ci/check_frontend_preview.py"
+  ],
+  "commands": [
+    "Python runner owns a strict-port127.0.0.1:5197 preview and a unique agent-browser0.38.1 headless session",
+    "Capture DOM form contract, page errors, nonblank root, no overlay, and screenshot",
+    "Always close the owned browser and preview; never auth or interact with backend/broker"
+  ],
+  "constraints": [
+    "No package/lockfile changes",
+    "No credentials/state restore",
+    "Only local browser URLs",
+    "Do not touch preview5173 or intra-readiness session",
+    "Maximum3minutes after browser dependencies installed"
+  ],
+  "validation": [
+    "Known failing c11 dist must fail with startup TypeError",
+    "Repaired production build must pass meaningful login DOM assertions",
+    "Missingbuild/preview startup error must fail and cleanup"
+  ],
+  "source_sha": "17f14e1896d324959a8a928d34c9c296c2a56077",
+  "retained_bad_dist": "/tmp/intra-frontend-smoke-bad-c11"
+}

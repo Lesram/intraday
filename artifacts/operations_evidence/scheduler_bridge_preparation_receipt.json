@@ -7,25 +7,26 @@
     ".github/workflows/nightly.yml",
     ".github/workflows/paper-postclose-audit.yml"
   ],
-  "local_contract_guard": "passed against exact local c11cd17 reusable sources; remote source not yet verified",
+  "local_contract_guard": "passed against exact local and GitHub-published c11cd17 reusable sources",
   "actionlint": "1.7.12 passed",
   "staging_changes": false,
   "unchanged_staging_lint_diagnostics": 4,
   "tracked_artifact_changes": false,
   "runtime_behavior_changed": false,
   "deployment_performed": false,
-  "remote_source_verified": false,
+  "remote_source_verified": true,
   "pr_created": true,
   "workflow_hashes": {
     ".github/workflows/nightly.yml": "dd617f41c81d905cbe8dc3593607c3810264436b56f9600043aab99a5759a7b5",
     ".github/workflows/paper-postclose-audit.yml": "0266b790a65a7a48902363a0c760b70952fc86be48768efb013e7fa6cc707557"
   },
-  "head_sha": null,
+  "head_sha": "e3c48bcdd71e53127d4a23500e7f5e788b576fe0",
   "pr_url": "https://github.com/Lesram/intraday/pull/22",
-  "hosted_bridge_check": "pending_new_head",
+  "hosted_bridge_check": "success",
   "merge_performed": false,
-  "classification_evidence": "/tmp/intra-policy-scheduler-bridge/hosted_check_classification.json",
-  "hosted_bridge_run": null,
-  "status": "prepared_locally_waiting_root_remote_notice",
-  "local_guard_report": "/tmp/intra-policy-scheduler-bridge/local-guard-c11cd17/task_report.json"
+  "classification_evidence": "/tmp/intra-policy-scheduler-bridge/hosted_check_classification_e3c48bc.json",
+  "hosted_bridge_run": "https://github.com/Lesram/intraday/actions/runs/35580432817",
+  "status": "hosted_passed_release_owner_holds_pending_new_frontend_source",
+  "local_guard_report": "/tmp/intra-policy-scheduler-bridge/local-guard-c11cd17/task_report.json",
+  "remote_guard_report": "/tmp/intra-policy-scheduler-bridge/remote-guard/task_report.json"
 }

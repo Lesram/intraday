@@ -1,0 +1,6 @@
+error when starting preview server:
+Error: Port 5197 is already in use
+    at Server.onError$1 (file:///Users/marselkei/VS/intra/frontend/node_modules/vite/dist/node/chunks/config.js:15006:28)
+    at Server.emit (node:events:508:20)
+    at emitErrorNT (node:net:1976:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)

@@ -1,0 +1,17 @@
+{
+  "result": "FAILED_PRODUCTION_PAGE_BLANK_AFTER_REACT_SCHEDULER_COLOCATION",
+  "base_source": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
+  "vite_config_sha256": "9c10da29a526a63260d53b50d4cfd0206409662b1ea7d6ec822af9545e0ee39a",
+  "page_errors": [
+    {
+      "column": 1321,
+      "line": 57,
+      "text": "TypeError: Cannot read properties of undefined (reading 'primary')\n    at http://localhost:5173/assets/antd-icons-U5jMHIFb.js:58:1322",
+      "url": null
+    }
+  ],
+  "body_text_empty": true,
+  "interactive_elements": 0,
+  "credentials_used": false,
+  "trading_controls_used": false
+}

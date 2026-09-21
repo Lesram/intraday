@@ -4,4 +4,4 @@ tests/test_organism_live_engine.py::TestOrganismLiveEngine::test_initialize_fres
   <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-26 passed, 1 warning in 17.63s
+26 passed, 1 warning in 17.85s

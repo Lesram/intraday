@@ -1,6 +1,6 @@
 {
-  "source_sha": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
-  "created_at_utc": "2026-09-21T08:54:14.168871+00:00",
+  "source_sha": "33db40171a2414162544a7b2794df19756561e36",
+  "created_at_utc": "2026-09-21T09:14:59.794578+00:00",
   "unique_tests_passed": 1615,
   "tests_failed": 0,
   "skipped": 1,
@@ -19,63 +19,63 @@
       "passed": 1399,
       "failed": 0,
       "skipped": 1,
-      "sha256": "b59f4e097ba83ebf2faa89f389e5209185e968c218e3f928847bf047e81ac432"
+      "sha256": "fb1e3ec40860a336deaef773e352134ca25d124068e9b9168b143192614d2477"
     },
     {
       "junit": "artifacts/organism_live_engine.junit.xml",
       "passed": 26,
       "failed": 0,
       "skipped": 0,
-      "sha256": "5ee88861195ab9bb6de387b4c9a53352c6447854881881315c63c9858b99e951"
+      "sha256": "125cd3f8874d08ac80f5fb82c593198d72a8fa00b5958e24354a3ada656e2e03"
     },
     {
       "junit": "artifacts/organism_engine_scenarios.junit.xml",
       "passed": 31,
       "failed": 0,
       "skipped": 0,
-      "sha256": "b28d1d14d2888aa645b3b0370b74b0ee90ac11dad19fc750c9f0dbeacd8c9af5"
+      "sha256": "38280d091eed74d221da3e8d80b9125f70d10caf62e0819810f2c1079f239bdf"
     },
     {
       "junit": "artifacts/multi_tick_state.junit.xml",
       "passed": 9,
       "failed": 0,
       "skipped": 0,
-      "sha256": "22d3bba90ab1551021ae7ffe72078de38e96a2b8b1898adb9ddc9ba29debd7b6"
+      "sha256": "c3de7a22e6650c0f2ccc8902bab0407c9f3df4cb50147b33fcd70d3c0f777bad"
     },
     {
       "junit": "artifacts/safety_invariants.junit.xml",
       "passed": 29,
       "failed": 0,
       "skipped": 0,
-      "sha256": "005b0c511807ed226b9be3afe64609db9360aa8021abf1ef96e29b634b2e5ad8"
+      "sha256": "a22ef4b62f0dd1f677b1399991186df47f7c8164b7baaad9ef9654aec1bb39ad"
     },
     {
       "junit": "artifacts/self_evolution.junit.xml",
       "passed": 15,
       "failed": 0,
       "skipped": 0,
-      "sha256": "10e6c151b969f5e58868be9b9b0bade443368b5d4dfb1d0a7864efdddbbb847f"
+      "sha256": "d0e51892fb71df326d0bc5770555def8e7012868f777ddb28ca434af908d39a0"
     },
     {
       "junit": "artifacts/algorithm_improvements.junit.xml",
       "passed": 58,
       "failed": 0,
       "skipped": 0,
-      "sha256": "ad6a886705927d5575c4b34259fbd0cbdffc6f2694fb67f806063a501ea6276d"
+      "sha256": "e3584efd38202b71d85912129dc378e66f3123237b0174df4e04bbbbcdc8b91a"
     },
     {
       "junit": "artifacts/replay_simulator.junit.xml",
       "passed": 28,
       "failed": 0,
       "skipped": 0,
-      "sha256": "44ebb12365e9caa2776e33879b06d9e843201099fc7e568d81b150983313bdea"
+      "sha256": "12cacb8a84945bc26a6d2e0b37bbda126ded7d22fb83b80b05948b2b934f2cd8"
     },
     {
       "junit": "artifacts/semantic_invariants.junit.xml",
       "passed": 20,
       "failed": 0,
       "skipped": 0,
-      "sha256": "f5c9c76c31536c43e44b2a648e6f074468b3da87fbd16ef06f3d6edd66280529"
+      "sha256": "01c8c586381e0b5d404b7e3d2daa4796e9bb1656c3a02119c99edfba3156cf88"
     }
   ],
   "count_method": "Unique JUnit classname and case name across final operational and required full artifact runs; repeated/targeted/broad nightly/environment runs are not added",
@@ -90,15 +90,49 @@
   },
   "full_artifact_pack": "pass",
   "freeze_verification": "pass",
-  "immutable_image": "sha256:1b6ba8b30f44b3d80bbe98b59c899e065a187bc3395eb3bb3c8fecb44f9e7183",
+  "immutable_image": "sha256:40e30e2548f259ff554ffb1665cbd1ac2ed8df996ab255bd52b170d81b774c0b",
   "isolated_signed_backup_warm_start": "pass; initial load and saved reload preserve pinned models/components and ledger; negative corruption fails before engine effects",
   "frontend": {
     "build": "pass",
     "focused_cases_passed": 22,
-    "junit": "artifacts/operations_evidence/operator_login_final.xml",
-    "junit_sha256": "a21564f03981144555c9fa2386557933b93d1ed79d78a2d1628a664bbbfca36e",
-    "log": "artifacts/operations_evidence/operator_login_final.log",
-    "react_review": "Actual manual halt and incomplete outcomes; username-or-email login, production bypass disabled, honest recovery guidance. Existing chart mocks emit non-failing canvas warnings"
+    "junit": "artifacts/operations_evidence/frontend_release_final.xml",
+    "junit_sha256": "820f2ffba6a297b8a6abfcbf6b688db6fcb05f0ecbcd753dc48f675877ad0724",
+    "log": "artifacts/operations_evidence/frontend_release_final.log",
+    "react_review": "Actual manual halt and incomplete outcomes; username-or-email login, production bypass disabled, honest recovery guidance. Existing chart mocks emit non-failing canvas warnings",
+    "build_log": "artifacts/operations_evidence/frontend_release_final_build.log",
+    "production_browser": {
+      "status": "passed",
+      "url": "http://127.0.0.1:5197/login",
+      "browser_version": "0.38.1",
+      "index_sha256": "db102494af435244b78612f7d437a25a409c14b49eed2319f3bbcc589bf59eda",
+      "dist_sha256": "41cd8a216e797f31466ff2cc11b2c31bad8083feb00a84de6d22b9c238677fc8",
+      "checkout_sha": "33db40171a2414162544a7b2794df19756561e36",
+      "checkout_source_dirty": false,
+      "build_provenance": "dist bytes hashed; checkout identity alone does not attest build origin",
+      "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
+      "checks": {
+        "fields_empty": true,
+        "login_url": true,
+        "no_error_overlay": true,
+        "nonblank": true,
+        "password_visible": true,
+        "recovery_visible": true,
+        "signin_visible": true,
+        "transport_violations": [],
+        "username_visible": true
+      },
+      "page_error_count": 0,
+      "page_error_types": [],
+      "browser_closed": true,
+      "preview_stopped": true,
+      "elapsed_seconds": 5.77
+    },
+    "production_browser_result_sha256": "d98c80d53dabf5884b4ada0fc728653517b0c7a5fd016ce4bb3a6413e6bd3b8b",
+    "browser_review": "artifacts/operations_evidence/frontend_browser_review.json",
+    "retained_browser_failures": [
+      "artifacts/operations_evidence/operator_browser_initial.json",
+      "artifacts/operations_evidence/operator_browser_second.json"
+    ]
   },
   "deployed": false,
   "hosted_check_status": "pending_after_push",

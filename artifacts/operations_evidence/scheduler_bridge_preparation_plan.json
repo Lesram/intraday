@@ -1,6 +1,6 @@
 {
   "task_id": "paper-policy-scheduler-bridge",
-  "status": "prepared_locally_waiting_root_remote_notice",
+  "status": "hosted_passed_release_owner_holds_pending_new_frontend_source",
   "base_sha": "fe67883626669f6508f79011ba636b1d3cbcc65d",
   "branch": "codex/paper-policy-scheduler-bridge",
   "scope": "Update the two main-branch scheduler wrappers to audit the final immutable reviewed policy-lock source supplied by release owner.",

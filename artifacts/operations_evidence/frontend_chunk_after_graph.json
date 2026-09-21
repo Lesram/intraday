@@ -1,0 +1,63 @@
+{
+  "task_id": "production-react-chunk-graph-diagnostic",
+  "dist_dir": "/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/frontend/dist",
+  "generated_js_files": 37,
+  "react_chunks": [
+    "vendor-react-CcQYBu4l.js"
+  ],
+  "react_direct_imports": {
+    "vendor-react-CcQYBu4l.js": []
+  },
+  "react_static_cycles": [],
+  "all_static_cycles": [
+    [
+      "network-socketio-BBhms3KO.js",
+      "vendor-other-SyI2UUTb.js"
+    ],
+    [
+      "antd-CNNZ60q6.js",
+      "antd-icons-U5jMHIFb.js"
+    ]
+  ],
+  "status": "NO_REACT_STATIC_IMPORT_CYCLE",
+  "files_sha256": {
+    "ArchitecturePage-C4_g0cYh.js": "19437347937d4b8eaa2cf54484c458892e9ccacd74147e08f94f9b18d0e781ba",
+    "BacktestingPage-CEL2s3lk.js": "39f4c5d9202efff4aea6240bd1ede828504a1ec627053c86d950f948d4f7aa54",
+    "ComingSoon-DucDosCp.js": "125046bc60c142c1a6d581de9530a4f60ddde2c2c08e6e0d2bf3fb8e2387c078",
+    "FeatureImportance-CkYiCiWQ.js": "0ba82998b33fb266887fc6f813c18aa0398b995d9dfd149360498986829f3fe6",
+    "MLModelsPage-C5VcG5YP.js": "3a5430ff30fdfac161011564d5a0d35a84aa4a83288096612dde9fcf1d178391",
+    "ModelComparison-5dVmhNoE.js": "e1b52ff12bf2dbca3c9bed05774fd6eadb09dccaaa92c0b441764ea5b59d5deb",
+    "OrdersPage-BkBaSkt-.js": "98f89eed9e7399f776eff615c1470dc3f8f4b02d9a680d50bfc6db176e5e8115",
+    "OrganismDashboard-B0ScJ_4d.js": "d4aa972c5918c3bd30da5a3140ea59ac2b718a3f34ac3b2fdf8a318917300a5a",
+    "PerformanceCharts-C86b5UIm.js": "66d35d4d48d4fe422ded8272a04ba1713cbc1ad49d136870fed5fa56830f5a18",
+    "PortfolioPage-B8I1gLOc.js": "f5c6780e55233dcd5c579040897be54d6ea36caf961c8c0315f66eac1bf15c6e",
+    "PositionsPage-BjOG0ObO.js": "455059401ca215c52208ee63f76bee84a7fd12a18b1661f05de68ddfaa3e0e77",
+    "ScannerPage-Br9TDYxv.js": "75e7e2c3103461858722a8b13bec9ab218730c002fead9e9e81e46bfceb8280e",
+    "SettingsPage-BFD-etxk.js": "bcd0be73daadac90e1f8b6fc0af97c8db69fed3c5c71191338253a30968b47fb",
+    "StrategiesList-DgwW4Swz.js": "96f4961bd453ce31fa1cf081ffaf3753032ff551e483c1c108262ad8451eac1b",
+    "StrategiesPage-CRg5RMjF.js": "d865f011e42884e312fc5754396ed664ca54bfb47c390bfd53d5f0d2fa68cdd7",
+    "StrategyBuilderPage-DIwClW_X.js": "9412e6d522e00153ac65cdaa2c0ad9dafc3c7793f1156548384806b85d0d7e88",
+    "StrategyDetail-DIgpy9-T.js": "add9bcf428a5c21fcad413e8a58b813a09c3509a0a55d11f778fa890ea2fdcff",
+    "StrategyForm-os9zriP8.js": "a8e24ac3b70a7333bf72abede6c8d1b4613cf272e996ecea1bd1798cfb204cd2",
+    "StrategyStatusBadge-Dy8wFnza.js": "226d0f84d55dc180ce9b50fd8f545b2c30a4541a747e3d8ba7f410bdbee09981",
+    "TradesPage-BkUq6uPq.js": "debdad63edb7910dbccecad0c2ccbfa9de7d90431dfa42a2f31b0a56c9139418",
+    "TradingPage-BA9gSb7I.js": "3ef669a5b5a7214ee65eeb91fe2f77d794dfeaba785c2751db4cea12d69a942c",
+    "antd-CNNZ60q6.js": "99a92376b59ac57a567cd34b4760aa1c42e6a216585c890899ac8a39ad57489b",
+    "antd-icons-U5jMHIFb.js": "76eb93a7c48cedd237cb577d91bc5ab4333e43b0b8ac0e1d82cd7ca0224b6418",
+    "charts-chartjs-BPTepac1.js": "37497dd79c6606ab53056fd483a52415078bcc20e4a17574d2e6f76f32a43b19",
+    "charts-lightweight-D0qd2qwt.js": "9eef77b3afeb6e70da2e3efdd38accb0ca901b01094ad4f8252dc279964fd9ce",
+    "dnd-CYIbKcJs.js": "b8d2ec1e73421ac97cb90229d6e4a4efec79afbdb67d6c0fd0bf1ee977af7787",
+    "index-5oIRDfkV.js": "e8b2ab21b55a4f1b98b87c2588fccda1587ed04e2812482ae6e8bcced918e3e5",
+    "index-DSAXHTcX.js": "91080670f2bd6dd89e66ec9f8e113cb918238d3359b1c064bd7a5449159e2f36",
+    "marketDataApi-Cj75bvfU.js": "2f43106479ce9f69c4ed519622bba585eadbb78c6d06fa9691cfe307f5a58a74",
+    "mermaid-DQ-pPeuU.js": "8df94864f7d97538935dd5b84e7300afe678ca8abb979b0f731330a3ecc44511",
+    "network-axios-BCd0cTir.js": "6857c445891bdcc245a0e718935f2d3a65dce85a36577ea46c6ae684cd5c5fa9",
+    "network-socketio-BBhms3KO.js": "315bf966ad3675e9257c596340a7ad2aa27606544b623ded9a6fa7fa9ab41b39",
+    "state-query-De7r_q1T.js": "cdec10cee0cffc9af1509b2aa034b65bb684101fa5f950b651ed6efebf1b0d77",
+    "state-zustand-Dw2kJs8i.js": "283c8944a5c94edbfa7d67bf33d264d6e039e9d2d2ac15058897ac7d1ca3e4a4",
+    "vendor-other-SyI2UUTb.js": "fa9c6f71a5a24001cd3b9d7e3b487a59ea3772cf1ddf2851155db62e5dc2f29e",
+    "vendor-react-CcQYBu4l.js": "f1b9ae4df926b18988be9eb49bca9e0d6521a7e0aa3e0995e032c2edb0862495",
+    "vendor-router-DtHzbVN-.js": "3d6a7fb2892f65d6d5f5ef2925090a5c7203747467cd4100fcb3f22c7f5d036b"
+  },
+  "limit": "Private diagnostic of static generated module graph; actual browser smoke is required and authoritative for rendering."
+}

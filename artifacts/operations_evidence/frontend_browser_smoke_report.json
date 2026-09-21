@@ -1,0 +1,46 @@
+{
+  "task_id": "production_frontend_browser_smoke",
+  "status": "complete_uncommitted_root_release_owner",
+  "files_changed": [
+    "scripts/ci/check_frontend_preview.py"
+  ],
+  "checkout_sha": "17f14e1896d324959a8a928d34c9c296c2a56077",
+  "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
+  "commands": [
+    "Pinned cached agent-browser0.38.1 + owned strict5197 preview",
+    "Two retained actual broken production bundles rejected",
+    "Actual repaired automatic-chunk production bundle rendered login",
+    "Missingdist, occupiedport, prohibitedfetch, lost-close-ack controls",
+    "Actual SIGTERM cleanup",
+    "Ruff check/format and network-denied freeze verify"
+  ],
+  "validation": {
+    "original_bad_c11": "expected failure:1TypeError and no login mount",
+    "react_only_repair": "expected failure:1TypeError and no login mount",
+    "fixed_build": "pass:8DOM assertions,0pageerrors,0CSPviolations",
+    "negative_controls": "4passed; see frontend_browser_controls/controls.json",
+    "sigterm": "pass:failed result with browser/preview closed",
+    "ruff": "pass",
+    "freeze": "pass"
+  },
+  "limits": [
+    "Checks unauthenticated production login bootstrap, not successful authentication or authenticated screens.",
+    "CSP intentionally denies all data/auth transports; unexpected attempts fail and cannot reach a backend.",
+    "Checkout SHA is distinct from verified built-source provenance; exact dist/checker hashes retained, final release run owned by root.",
+    "Lost-close acknowledgment is injected after a real successfulclose; it proves preview teardown and failure reporting, not arbitrary browser-hang recovery.",
+    "Browser commandclose failure is reported failed/unconfirmed with60-second owned-daemon idle cutoff; no claim that an unresponsive external runtime is perfectly recoverable."
+  ],
+  "runtime_behavior_changed": false,
+  "commit_performed": false,
+  "artifact_dirs": [
+    "frontend_browser_bad_c11",
+    "frontend_browser_react_only",
+    "frontend_browser_fixed",
+    "frontend_browser_controls/sigterm"
+  ],
+  "freeze_cutoff": "2026-09-21T08:20:53.394292+00:00",
+  "follow_ups": [
+    "Root wires script after productionbuild, caches exact browserCLI and provides installedChromium/systemChrome.",
+    "Root reruns smoke on final committed source/build and refreshes release evidence."
+  ]
+}
