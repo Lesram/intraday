@@ -257,11 +257,16 @@ def test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence():
         "tests/test_v12_w77_findings_ledger.py", "tests/test_v12_w81_ci_cleanup.py",
         "tests/unit/test_auth_security_phase4.py", "tests/test_strategy_engine_comprehensive.py",
         "tests/test_organism_integration_smoke.py", "tests/test_phase2_freeze.py",
-        "tests/test_v12_baseline_invariants.py::test_baseline_classifier_runs_on_repo",
-        "tests/test_v12_baseline_invariants.py::test_baseline_marker_only_count_matches_committed",
     }
     import shlex
     assert {word for word in shlex.split(run) if word.startswith("tests/")} == expected
+    operational = next(candidate for candidate in job["steps"]
+                       if candidate.get("name") == "Verify operational fixes and trading safety")
+    # The full file now covers both classifier cases and deterministic snapshot
+    # checks; it must not disappear when the old individual nodeids are removed.
+    operational_tests = {word for word in shlex.split(operational["run"])
+                         if word.startswith("tests/")}
+    assert "tests/test_v12_baseline_invariants.py" in operational_tests
     assert "--timeout=30" in run and "--junitxml=" in run
     assert "rm -f artifacts/nightly_test_harness/github_targeted.xml" in run
     upload = next(step for step in job["steps"]
