@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "candidate_source": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
-  "candidate_image": "sha256:5f3d03a0761c8cb2e48116ab7c8997d43b7a923a4482d9d22bfdd476bb07e0e3",
+  "candidate_source": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+  "candidate_image": "sha256:fce9e9519cdd67eb2c4ca0d27d502964c1e9f3510f59c87ddc16c150ccdee3d1",
   "deserialization_started": true,
   "independent_assertion_negative_controls_passed": 4,
   "preflight_all_9_models_verified": true,
@@ -25,7 +25,7 @@
       "verified": true
     },
     "call_ledger": [],
-    "candidate_source": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
+    "candidate_source": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
     "deliberate_counter_mismatch_rejected": true,
     "effective_policy_hash": null,
     "every_ledger_and_learner_row_core_values_match_original_csv": true,
@@ -40,7 +40,7 @@
       "The clock is fixed to the saved brain timestamp to isolate preservation from session transitions.",
       "Initialization runs its built-in zero-vector model sanity probes; no predictive-performance claim is made.",
       "Legacy source contains no saved per-symbol daily PnL/loss-map baseline, so preservation of those absent maps is not attested.",
-      "No legacy full-save, model promotion or natural-session acceptance claimed."
+      "Full save exercised only on a second disposable copy; no model promotion or natural-session acceptance claimed."
     ],
     "models": {
       "cache_shapes": {
@@ -67,16 +67,26 @@
       ]
     },
     "models_verified_before_deserialization": 9,
+    "operator_controls": {
+      "accounting_learner_models_preserved_after_full_save": true,
+      "configured_initially_unhalted_verified": true,
+      "durable_halt_survives_full_save_and_initialize": true,
+      "offline_scheduler_degraded_acknowledgement_verified": true,
+      "operator_record_checksum": "d915d93b943535d74663e8dfd0c6cac0730b8a4f8d2d5dd1bc42721525db56b2",
+      "second_disposable_copy_only": true
+    },
     "signing_limitation": "Observed deployed development fallback provides corruption detection, not independent secret-key authentication.",
     "source_files": 27,
     "status": "passed",
     "stubbed_calls": {
-      "diagnostics": 2,
-      "position_reconstruction": 2,
-      "trainer_start": 2
+      "diagnostics": 4,
+      "position_reconstruction": 4,
+      "trainer_start": 4
     },
     "suppressed_ensemble_failure_rejected": true,
     "validation_warnings": [
+      [],
+      [],
       [],
       [],
       []

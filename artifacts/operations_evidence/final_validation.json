@@ -1,7 +1,7 @@
 {
-  "source_sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
-  "created_at_utc": "2026-09-21T07:40:28.259355+00:00",
-  "unique_tests_passed": 1366,
+  "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+  "created_at_utc": "2026-09-21T08:29:51.443026+00:00",
+  "unique_tests_passed": 1592,
   "tests_failed": 0,
   "skipped": 1,
   "skip_details": [
@@ -16,73 +16,88 @@
   "suites": [
     {
       "junit": "artifacts/operations_evidence/monday_operational.xml",
-      "passed": 1150,
+      "passed": 1376,
       "failed": 0,
       "skipped": 1,
-      "sha256": "387861cd43e43ade5c0bce19068a977e4c80575e30057cf86ef8616db65eb37c"
+      "sha256": "8c85a9c33353543bf79309b8ec3e703bd85bf016af77566418ade42826a1ae55"
     },
     {
       "junit": "artifacts/organism_live_engine.junit.xml",
       "passed": 26,
       "failed": 0,
       "skipped": 0,
-      "sha256": "1d97f31f35b13d9720f328bb3c41eacc5d7433c07348b4257f5955adfc5d8bd8"
+      "sha256": "ce13a23fcbb1886e04b26fc904b51ac79c792089652ebff2a33ea7dbd6720673"
     },
     {
       "junit": "artifacts/organism_engine_scenarios.junit.xml",
       "passed": 31,
       "failed": 0,
       "skipped": 0,
-      "sha256": "bce7bf5fe0379676ef70818ff42fbe287d0e73d271b71448adfe3aad5e0f2363"
+      "sha256": "10f910cfb5f5a396219c2895d1c6dc8c10a9d53ac766f7227817e9c8908f67b4"
     },
     {
       "junit": "artifacts/multi_tick_state.junit.xml",
       "passed": 9,
       "failed": 0,
       "skipped": 0,
-      "sha256": "a4cbbf33b70ab0e6ac238eded2f9d2fde394696116cbe8eae688b45f55ae3c42"
+      "sha256": "8d27befc66a7a1f1ba13aadde503aaeb30a3149336438872fa31ebdfec8ab6a8"
     },
     {
       "junit": "artifacts/safety_invariants.junit.xml",
       "passed": 29,
       "failed": 0,
       "skipped": 0,
-      "sha256": "3bb6f923d8a1dc2640cd415316c873ab81b8774635521b7e995af90bf76d84d8"
+      "sha256": "493e269cf0e34ea1305e55071c53162a101665a2b0b2d151362387f241102af7"
     },
     {
       "junit": "artifacts/self_evolution.junit.xml",
       "passed": 15,
       "failed": 0,
       "skipped": 0,
-      "sha256": "f8455eb59812c738a1fd4b9a4e30b1dd36811ff28b5d6fe1070b1395e7fe5c56"
+      "sha256": "b6ccb540b51d6616714fd45db319dd90758d0b391c070ec06ae5c0d23a521772"
     },
     {
       "junit": "artifacts/algorithm_improvements.junit.xml",
       "passed": 58,
       "failed": 0,
       "skipped": 0,
-      "sha256": "db80a8a86769fdb7c6e04d1b59ee4d3cf2ced88b33db8aaacbe050f54c2ee014"
+      "sha256": "fba9a15baed2959176606380ec885cdeb9f694cf902643d3b4cfe1574a6da788"
     },
     {
       "junit": "artifacts/replay_simulator.junit.xml",
       "passed": 28,
       "failed": 0,
       "skipped": 0,
-      "sha256": "1329b0553d8fdd8e4461486368782c99d7b9d4929e280d39ca8960460c652407"
+      "sha256": "9d66c02a24b481b1303750e4ae96bb664015f935ea6615c8f7551d8f087eaaf7"
     },
     {
       "junit": "artifacts/semantic_invariants.junit.xml",
       "passed": 20,
       "failed": 0,
       "skipped": 0,
-      "sha256": "dbafaea2acd5ec69892d8f0167d52cf274d18bc4b805d24ecfd10ade922ef9a4"
+      "sha256": "ef750877ddfce679a2e787118865d6b36ca935df9f7e9a5d1a931f698f1c8a1d"
     }
   ],
   "count_method": "Unique JUnit classname and case name across final operational and required full artifact runs; repeated/targeted/broad nightly/environment runs are not added",
+  "initial_operator_run": {
+    "source_sha": "4c742dac61a683c7f3ec20b941ff3cb69678082d",
+    "operational": "1372passed,4failures,1skip; explicit expandedfreezefixture inputs/expectedkeys repaired in80987",
+    "full_pack": "all8suitesgreen;pack rejected a concurrent test-fixturecommit SHA mismatch, rerun on stable80987",
+    "retained_logs": [
+      "artifacts/operations_evidence/operator_first_operational.log",
+      "artifacts/operations_evidence/operator_first_full.log"
+    ]
+  },
   "full_artifact_pack": "pass",
   "freeze_verification": "pass",
-  "immutable_image": "sha256:5f3d03a0761c8cb2e48116ab7c8997d43b7a923a4482d9d22bfdd476bb07e0e3",
+  "immutable_image": "sha256:fce9e9519cdd67eb2c4ca0d27d502964c1e9f3510f59c87ddc16c150ccdee3d1",
   "isolated_signed_backup_warm_start": "pass; initial load and saved reload preserve pinned models/components and ledger; negative corruption fails before engine effects",
+  "frontend": {
+    "build": "pass",
+    "dashboard_operator_cases_passed": 12,
+    "log": "artifacts/operations_evidence/operator_frontend_tests.log",
+    "react_review": "Checked event-driven mutations, derived research lock/manual halt, explicit incomplete outcomes; existing chart mocks emit non-failing canvas warnings"
+  },
   "deployed": false,
   "hosted_check_status": "pending_after_push",
   "broad_nightly": {
@@ -93,13 +108,5 @@
     "xfail": 2,
     "classification": "27 environment failures passed isolated reruns;17 stale accounting/policy fixtures repaired and covered by final required selection;1 installed-history dependency now explicit unavailable skip. Original failed receipt retained.",
     "details": "artifacts/operations_evidence/policy_nightly.classification.json"
-  },
-  "linux_operational": {
-    "passed": 910,
-    "skipped": 1,
-    "failed": 0,
-    "scope": "Exact42workflowfiles; source045 archive + only repaired test overlay equal source49 test/runtime tree",
-    "details": "artifacts/operations_evidence/policy_linux_fixture_implementation.json",
-    "not_added_to_unique_count": true
   }
 }

@@ -1,11 +1,11 @@
 # Live Audit Index
 
-> **Candidate evidence only:** source `49d3e31479a7bea7e68108689f3584684e7bb6a8`. Generated root configuration uses isolated test defaults, not the installed runtime. The approved paper activation will publish actual observed snapshots under `artifacts/paper_activation/2026-09-21/`. Natural-session acceptance remains pending.
+> **Candidate evidence only:** source `80987c00837e4d4cb8c36228c78bc7b9fac2debe`. Generated root configuration uses isolated test defaults, not the installed runtime. The approved paper activation will publish actual observed snapshots under `artifacts/paper_activation/2026-09-21/`. Natural-session acceptance remains pending.
 
 
-Generated: 2026-09-21T07:40:28Z
+Generated: 2026-09-21T08:29:43Z
 PR: n/a
-SHA: `49d3e31479`
+SHA: `80987c0083`
 Branch: `codex/operations-evidence-integrity`
 Scope: **backend_logic**
 Change scope: `base` (`ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD`)
@@ -14,11 +14,11 @@ Change scope: `base` (`ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 13 | `backend/api/routes/settings.py`, `backend/organism/background_trainer.py`, `backend/organism/brain_persistence.py`, `backend/organism/close_accounting.py`, `backend/organism/continuous_learner.py`, `backend/organism/entry_evidence.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/replay_simulator.py`, `backend/organism/research_baseline.py` |
-| Organism | 12 | `backend/organism/background_trainer.py`, `backend/organism/brain_persistence.py`, `backend/organism/close_accounting.py`, `backend/organism/continuous_learner.py`, `backend/organism/entry_evidence.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/replay_simulator.py`, `backend/organism/research_baseline.py`, `backend/organism/research_policy.py` |
+| Backend | 19 | `backend/api/routes/risk.py`, `backend/api/routes/settings.py`, `backend/organism/background_trainer.py`, `backend/organism/brain_persistence.py`, `backend/organism/close_accounting.py`, `backend/organism/continuous_learner.py`, `backend/organism/entry_evidence.py`, `backend/organism/governance.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py` |
+| Organism | 16 | `backend/organism/background_trainer.py`, `backend/organism/brain_persistence.py`, `backend/organism/close_accounting.py`, `backend/organism/continuous_learner.py`, `backend/organism/entry_evidence.py`, `backend/organism/governance.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/operator_cancellation.py`, `backend/organism/operator_controls.py` |
 | Scripts | 6 | `scripts/ops/paper_daily_evidence.py`, `scripts/ops/paper_daily_host.py`, `scripts/ops/paper_watchdog.py`, `scripts/ops/standdown_session_row.py`, `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 33 | `tests/test_apr10_patch_f4_forensic_guard.py`, `tests/test_apr8_patch_a_force_save.py`, `tests/test_audit_0_2_bg_trainer_same_holdout.py`, `tests/test_audit_2_3_2_5_promotion_evolution.py`, `tests/test_audit_patch_queue_a.py`, `tests/test_audit_patch_queue_b1.py`, `tests/test_audit_patch_queue_b2.py`, `tests/test_audit_patch_queue_f3.py`, `tests/test_audit_patch_queue_f4.py`, `tests/test_audit_patch_queue_h3.py` |
+| Tests | 36 | `tests/test_apr10_patch_f4_forensic_guard.py`, `tests/test_apr8_patch_a_force_save.py`, `tests/test_audit_0_2_bg_trainer_same_holdout.py`, `tests/test_audit_2_3_2_5_promotion_evolution.py`, `tests/test_audit_patch_queue_a.py`, `tests/test_audit_patch_queue_b1.py`, `tests/test_audit_patch_queue_b2.py`, `tests/test_audit_patch_queue_f3.py`, `tests/test_audit_patch_queue_f4.py`, `tests/test_audit_patch_queue_h3.py` |
 | Docs | 6 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/MONDAY_PREPARATION_2026-09-21.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_DAILY_EVIDENCE.md`, `docs/runbooks/PAPER_UPTIME.md` |
 
 ## Live constants
@@ -57,4 +57,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 12 organism file(s) changed — require replay verification
+- 16 organism file(s) changed — require replay verification

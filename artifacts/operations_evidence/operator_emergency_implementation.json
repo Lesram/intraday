@@ -1,0 +1,53 @@
+{
+  "task_id": "operator-emergency-stop-truthful-cancellation",
+  "status": "targeted_green_pending_consolidated_acceptance",
+  "files_changed": [
+    "backend/api/routes/risk.py",
+    "backend/services/risk_manager.py",
+    "backend/organism/operator_cancellation.py",
+    "tests/test_operator_emergency_stop.py",
+    "tests/test_risk_manager_service_comprehensive.py"
+  ],
+  "file_sha256": {
+    "backend/api/routes/risk.py": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
+    "backend/services/risk_manager.py": "d3efb81f9e5ae6f6d3036133786dddff5f824028d95a80465cdb5385cb20b5ca",
+    "backend/organism/operator_cancellation.py": "682ca48c61f0ce2899048b642be4f552c4ec166ca29afeabef91e528b8935984",
+    "tests/test_operator_emergency_stop.py": "8900fff46f6e0eb97d528897b34c6fb77790202460172d4650db4ca6356b6c4e",
+    "tests/test_risk_manager_service_comprehensive.py": "9b67a2be5da0a6e91a9667804475c9b6145b14a2f37470019944513426bd09ea"
+  },
+  "tests_passed": 100,
+  "tests_failed": 0,
+  "tests_network_denied": true,
+  "tests_artifact": "artifacts/operations_evidence/operator_emergency_targeted.xml",
+  "commands": [
+    "Isolated sandbox-exec network-denied pytest with explicit asyncio/timeout and scratch brain/state",
+    "Ruff new helper and new tests: clean",
+    "phase2_freeze.py --verify: expected expanded approved operator source hashes and pinned environment pending root regeneration"
+  ],
+  "runtime_behavior_changed": true,
+  "live_runtime_or_broker_mutations_performed": false,
+  "authority": "operator_controls.halt_entries before opening DB; operation_lock through bounded cancellation/audit; tick lock released for exits",
+  "cancellation_scope": "Independent bounded paper broker open inventory before/after, exact DB broker/client identity including locally terminal orders plus nonterminal and tracked entries. Only attributed organism entries can be canceled; protected/foreign orders preserved; unmatched/full-page/changed inventory incomplete.",
+  "truthful_outcomes": [
+    "Pending-cancel/unknown/replaced/linked/missing-identity/timeout result503 incomplete",
+    "Partial fill remainder may cancel; confirmation count retained, fill exposure remains incomplete pending reconciliation",
+    "No DB Order status or local tracking mutation",
+    "Audit cannot succeed without control_result.operator_halted true; DB failure never undoes latch",
+    "Authenticated /active returns actual live-engine operator halt or fault without database dependency; unverified resumed authority returns503; audit resolve never resumes",
+    "Empty DB inventory is complete only after independent confirmed empty broker-open GET before/after",
+    "Real isolated SQLite query discovers broker-open entries in every DBterminal status without rewriting statuses",
+    "Final same-epoch durable fault-free halt and runtime-exit readiness required; concurrent newer halt persistence failure returns503 with audit ID"
+  ],
+  "risks": [
+    "Retained legacy OrderService.cancel_order and drawdown cancellation helper are not reused or repaired by this scope.",
+    "Frozen verification/baseline source regeneration and broad required pack remain root-owned."
+  ],
+  "commit_or_push_performed": false,
+  "follow_ups": [
+    "Root consolidated safety/replay/artifact pack, approved freeze regeneration, CI/review and runtime acceptance remain required."
+  ],
+  "review_findings_repaired": [
+    "historical DB fake cancellation cannot hide an observed broker-open entry",
+    "newer halt persistence failure during cancellation cannot be acknowledged as successful"
+  ]
+}

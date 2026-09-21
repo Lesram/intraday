@@ -1,0 +1,21 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_admin_halt_reaches_distinct_live_engine_governance ____________
+
+    async def test_admin_halt_reaches_distinct_live_engine_governance():
+        app, engine = make_app()
+        assert engine.governance is not app.state.organism_governance
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/organism/halt")
+            assert response.status_code == 200
+>           assert engine.governance.is_trading_halted
+E           assert False
+E            +  where False = <backend.organism.governance.GovernanceController object at 0x10a38e450>.is_trading_halted
+E            +    where <backend.organism.governance.GovernanceController object at 0x10a38e450> = namespace(governance=<backend.organism.governance.GovernanceController object at 0x10a38e450>, _tick_lock=<asyncio.locks.Lock object at 0x10a38e4e0 [unlocked]>, _tick_count=0).governance
+
+tests/test_operator_controls.py:33: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.governance:governance.py:216 {"event": "Organism trading HALTED", "logger": "backend.organism.governance", "level": "warning", "timestamp": "2026-09-21T07:50:01.148892Z"}
+=========================== short test summary info ============================
+FAILED tests/test_operator_controls.py::test_admin_halt_reaches_distinct_live_engine_governance
+1 failed in 0.25s

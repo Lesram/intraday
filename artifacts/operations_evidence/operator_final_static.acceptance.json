@@ -1,0 +1,66 @@
+{
+  "task_id": "operator-final-static-contextual-acceptance",
+  "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+  "base_sha": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
+  "reviewed_at_utc": "2026-09-21T08:25:42.084359+00:00",
+  "status": "PASSED_NO_NEW_FINDINGS_AFTER_CONTEXTUAL_ADJUDICATION",
+  "raw_reports_preserved": {
+    "artifacts/operations_evidence/operator_final_static.json": "4c265f215fb15bd71d6ac1dc069ae58fc8d00c86797c4a5ca4bf533db865873e",
+    "artifacts/operations_evidence/operator_final_static.eslint.json": "aafa5b5c49dacdf739bc85aed6dd7d00262ea24ba91f306b3ca2730a921ca9b1",
+    "artifacts/operations_evidence/operator_final_secret_scan.json": "4680b329e06b89ffe20f0e09c03ea69ded0d716e70ca984b7a5709ffbaafd55f"
+  },
+  "ruff": {
+    "changed_python_files": 61,
+    "base_findings": 162,
+    "candidate_findings": 151,
+    "actual_new_findings": 0,
+    "inherited_changed_line_finding": {
+      "base": {
+        "revision": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
+        "function": "test_trigger_emergency_stop",
+        "line": 564,
+        "source_line": "            result = await manager.trigger_emergency_stop(user_id, request, triggered_by)",
+        "rule": "F841",
+        "unused_variable": "result",
+        "variable_has_no_load_in_function": true
+      },
+      "candidate": {
+        "revision": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+        "function": "test_trigger_emergency_stop",
+        "line": 564,
+        "source_line": "            result = await manager.trigger_emergency_stop(user_id, request, triggered_by, control_result={\"operator_halted\": True, \"cancellation\": {\"confirmed_cancelled\": 0, \"status\": \"complete\"}})",
+        "rule": "F841",
+        "unused_variable": "result",
+        "variable_has_no_load_in_function": true
+      }
+    },
+    "proof": "Both exact revisions have F841 for the same unused result assignment in the same function. Removing only the new control_result keyword from candidate AST yields the identical baseline assignment AST; result is never read in either function. Strict raw line-content delta retained without suppression."
+  },
+  "bandit": {
+    "severity": "HIGH",
+    "new_findings": 0,
+    "candidate_findings": 0,
+    "production_files_scanned": 25,
+    "repository_test_exclusions_honored": true
+  },
+  "eslint": {
+    "changed_files": 5,
+    "new_findings": 0,
+    "base_findings": 6,
+    "candidate_findings": 5
+  },
+  "known_secret_scan": {
+    "files_scanned": 299,
+    "flagged_files": [],
+    "private_values_printed_or_persisted": false,
+    "final_artifact_rescan_required": true
+  },
+  "source_edits": false,
+  "runtime_mutations": false,
+  "network_denied_for_static_tools": true,
+  "limits": [
+    "Scoped delta retains existing lint backlog; not a full repository or universal security certification.",
+    "Bandit uses existing repository HIGH severity/test-exclusion configuration.",
+    "Known-secret scan uses configured values in memory; root will rescan final artifact bytes."
+  ]
+}

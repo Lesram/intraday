@@ -1,0 +1,229 @@
+{
+  "observed_at_utc": "2026-09-21T08:18:04.625964+00:00",
+  "read_only": true,
+  "broker_mutations": false,
+  "scheduler_changes": false,
+  "requests": [
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/account",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/positions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/clock",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/calendar",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "local_observer",
+      "path": "deploy",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "local_observer",
+      "path": "organism/status",
+      "status": 200
+    }
+  ],
+  "issues": [
+    "trading_frontend_not_currently_served"
+  ],
+  "container": {
+    "name": "/intra-api-1",
+    "running": true,
+    "health": "healthy",
+    "image": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+    "source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "configured_policy_lock": false,
+    "configured_operator_authority": false
+  },
+  "broker": {
+    "paper_endpoint_verified": true,
+    "account_status": "ACTIVE",
+    "account_blocked": false,
+    "trading_blocked": false,
+    "positions": 0,
+    "open_orders": 0,
+    "clock": {
+      "is_open": false,
+      "next_close": "2026-09-21T16:00:00-04:00",
+      "next_open": "2026-09-21T09:30:00-04:00",
+      "timestamp": "2026-09-21T04:18:05.195642619-04:00"
+    },
+    "calendar": [
+      {
+        "close": "16:00",
+        "date": "2026-09-21",
+        "open": "09:30",
+        "session_close": "2000",
+        "session_open": "0400",
+        "settlement_date": "2026-09-22"
+      }
+    ]
+  },
+  "observer_authenticated": true,
+  "runtime": {
+    "legacy_governance": {
+      "frozen": false,
+      "trading_halted": false,
+      "halted": false,
+      "drawdown_triggered": false,
+      "disabled_strategies": [],
+      "policy_version": "",
+      "config_hash": "",
+      "change_count_today": 0,
+      "max_changes_per_day": 500,
+      "change_budget_remaining": 500
+    },
+    "engine_governance": {
+      "frozen": false,
+      "trading_halted": false,
+      "halted": false,
+      "drawdown_triggered": false,
+      "disabled_strategies": [],
+      "policy_version": "",
+      "config_hash": "",
+      "change_count_today": 8,
+      "max_changes_per_day": 500,
+      "change_budget_remaining": 492
+    },
+    "tick_count": 114480,
+    "last_tick_timestamp": null,
+    "scheduler_running": true,
+    "policy_lock": null,
+    "trading_phase": "production_guarded",
+    "deployment": {
+      "git_sha": null,
+      "image_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+      "runtime_config_hash": "ffc18df3e0051af4",
+      "status": null
+    }
+  },
+  "services": [
+    {
+      "name": "intra-redis-1",
+      "running": true,
+      "health": "healthy"
+    },
+    {
+      "name": "trading_platform_db_paper",
+      "running": true,
+      "health": "healthy"
+    }
+  ],
+  "launch_agents": {
+    "com.intra.paper": {
+      "installed": true,
+      "loaded": true,
+      "disabled": false,
+      "state": "not running",
+      "last_exit_code": 0,
+      "start_interval": null,
+      "start_calendar_interval": null
+    },
+    "com.intra.paper.watchdog": {
+      "installed": true,
+      "loaded": true,
+      "disabled": false,
+      "state": "not running",
+      "last_exit_code": 0,
+      "start_interval": 300,
+      "start_calendar_interval": null
+    },
+    "com.intra.brain-backup": {
+      "installed": true,
+      "loaded": true,
+      "disabled": false,
+      "state": "not running",
+      "last_exit_code": 0,
+      "start_interval": null,
+      "start_calendar_interval": {
+        "Hour": 16,
+        "Minute": 30
+      }
+    },
+    "com.intra.postgres-backup": {
+      "installed": true,
+      "loaded": true,
+      "disabled": false,
+      "state": "not running",
+      "last_exit_code": 0,
+      "start_interval": null,
+      "start_calendar_interval": {
+        "Hour": 16,
+        "Minute": 45
+      }
+    },
+    "com.intra.paper.daily-evidence": {
+      "installed": false,
+      "loaded": false,
+      "disabled": false,
+      "state": null,
+      "last_exit_code": null,
+      "start_interval": null,
+      "start_calendar_interval": null
+    }
+  },
+  "watchdog_paused": false,
+  "power": {
+    "battery": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=7077987)\t100%; charged; 0:00 remaining present: true",
+    "custom": "Battery Power:\n Sleep On Power Button 1\n powermode            0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           1\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n powermode            0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         10\n womp                 1\n networkoversleep     0\n sleep                0\n tcpkeepalive         1\n disksleep            10"
+  },
+  "backups": {
+    "brain": {
+      "manifest_path": "/Users/marselkei/VS/intra/organism_brain_archive/2026-09-20T233004.301500Z/backup_manifest.json",
+      "manifest_sha256": "975bf8f07fedd6cfce94da5f0aee59505539c9b1029734b5a93e45bea9ab9ce8",
+      "created_at": "2026-09-20T23:30:04.418150+00:00",
+      "age_seconds": 31680,
+      "files": 26,
+      "full_hash_reverification_performed": false
+    },
+    "postgres": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/backups/postgres/paper-postgres-20260920T234502249370Z.dump",
+      "bytes": 1342431,
+      "modified_utc": "2026-09-20T23:45:02.449330+00:00",
+      "age_seconds": 30782,
+      "restore_reverification_performed": false
+    }
+  },
+  "ui": {
+    "listener_processes": {
+      "3000": [],
+      "4173": [],
+      "5173": [],
+      "8000": [
+        "com.docker.backend"
+      ],
+      "8080": []
+    },
+    "trading_frontend_served_on_expected_ports": false,
+    "api_listener": true,
+    "documented_frontend_dev": "frontend/package.json: npm run dev; frontend/vite.config.ts: port5173, /api and WebSocket proxy to localhost8000",
+    "frontend_in_paper_compose": false,
+    "api_static_frontend_mount_found": false,
+    "new_server_started": false
+  },
+  "result": "OBSERVED_CURRENT_RUNTIME_ONLY_CANDIDATE_NOT_DEPLOYED"
+}

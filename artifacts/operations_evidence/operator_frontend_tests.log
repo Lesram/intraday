@@ -1,0 +1,84 @@
+
+ RUN  v3.2.6 /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/frontend
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows the research lock and disables training without blocking the entry halt
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > does not display active operation for an uninitialized engine
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > does not claim entries resumed when another risk block remains
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > does not claim entries resumed when another risk block remains
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > does not claim entries resumed when another risk block remains
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > reports a retained halt from a structured incomplete response
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > reports a retained halt from a structured incomplete response
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > reports a retained halt from a structured incomplete response
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > renders the dashboard title
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > displays engine performance stats
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows regime tag
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > renders the tabs
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows the position heatmap
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows position symbols in heatmap
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows the P&L waterfall
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows the regime timeline
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ ✓ src/features/organism/__tests__/OrganismDashboard.test.tsx (12 tests) 1805ms
+   ✓ OrganismDashboard > shows the research lock and disables training without blocking the entry halt  422ms
+   ✓ OrganismDashboard > does not claim entries resumed when another risk block remains  328ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  01:16:58
+   Duration  2.89s (transform 98ms, setup 46ms, collect 705ms, tests 1.81s, environment 139ms, prepare 27ms)
+

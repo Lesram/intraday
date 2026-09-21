@@ -1,0 +1,105 @@
+{
+  "task_id": "authoritative_operator_controls",
+  "status": "implemented_pending_independent_review",
+  "summary": "Admin controls now reach live-engine governance; a durable operator latch survives daily recovery, legacy restores and brain directory replacement. Halt acknowledgement drains the current tick, preserving protective exits. Resume preserves other safety halts and the research lock.",
+  "sha": "9bda9ff72501b44f74604d279e52074d2e40b233",
+  "branch": "codex/operations-evidence-integrity",
+  "files_changed": [
+    "backend/organism/routes.py",
+    "backend/organism/governance.py",
+    "backend/organism/operator_controls.py",
+    "backend/organism/live_engine.py",
+    "tests/test_operator_controls.py"
+  ],
+  "source_sha256": {
+    "backend/organism/routes.py": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
+    "backend/organism/governance.py": "68a47b4a76f832e69ef1c9972b847598c92ed59c75f3531209f961aeedc8075d",
+    "backend/organism/operator_controls.py": "1542fa02cfd5d755fc4f9a3360595d8b8f0227cc023d80432cc1633816083da3",
+    "backend/organism/live_engine.py": "4ec76a2e0548f9cbcbc8be294c169cc6d2ab732933054bcbe48a05ed52313ca9",
+    "tests/test_operator_controls.py": "de1f9374e747b27a464dbaafcea7a98bfbb0c8ec59289429b7a6cdfaf8ca7fa8"
+  },
+  "reproduction": {
+    "artifact": "artifacts/operations_evidence/operator_controls_before.txt",
+    "expected_failures": 1,
+    "evidence": "Actual admin endpoint returned200 halted while distinct real engine governance remainedFalse"
+  },
+  "commands": [
+    "Isolated network-denied pytest tests/test_operator_controls.py",
+    "Isolated network-denied pytest operator controls + governance drawdown + blueprint persistence + engine scenarios + policy lock + organism live engine + safety invariants + multi-tick state + replay",
+    "ruff check backend/organism/operator_controls.py tests/test_operator_controls.py",
+    "scripts/phase2_freeze.py --verify; then exact six-source-group comparison"
+  ],
+  "tests_passed": 117,
+  "tests_failed": 0,
+  "targeted_tests": {
+    "passed": 42,
+    "failed": 0,
+    "included_in_regression": true
+  },
+  "regression_artifact": "artifacts/operations_evidence/operator_controls_restart_regression.txt",
+  "runtime_behavior_changed": true,
+  "six_original_hashes_unchanged": true,
+  "six_source_hashes": {
+    "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
+    "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
+    "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",
+    "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
+    "entry_gates_dispatch": "85ef0b9525f7cb4b2b8b343942f67a50833c36bdde4b644446f99de923f172a6",
+    "selector_routing": "bed6a91e7f95f3ad11e159767ecdb6d54b42c022997df3b801bcbe20ad8628d2"
+  },
+  "expanded_freeze": "Root owns authorized expanded-surface fixture regeneration; old fixture intentionally fails new source keys until regenerated.",
+  "docs_updated": "Root owns architecture/snapshot/release updates",
+  "durable_contract": {
+    "environment": "ORGANISM_OPERATOR_CONTROL_STATE",
+    "approved_container_path": "/app/data/operator_control_state.json",
+    "schema": "intra_operator_controls_v1",
+    "checksum": "sha256 canonical JSON payload excluding checksum, sorted keys, compact separators",
+    "startup_missing_or_invalid": "operator halt+fault; protective exits remain active",
+    "halt": "independent latch and verified atomic receipt before first await; tick-lock drain before200",
+    "resume": "after serialized drain, persist verified operatorfalse; leave legacy raw risk/environment/drawdown/research locks unchanged",
+    "orders": "halt does not cancel existing orders or flatten positions",
+    "startup": "Every governance constructor reads configured authority; engine initialize revalidates path outside brain before recovery",
+    "availability": "Missing, uninitialized, stopped or stopping live engine: durable latch remains,503,drainedFalse,protective_exits_activeFalse. Readiness rechecked after drain."
+  },
+  "private_preparation": {
+    "executed": false,
+    "scripts": [
+      "/tmp/intra-run-final-warmstart.py",
+      "/tmp/intra-policy-rollout.py",
+      "/tmp/intra-policy-transition.py"
+    ],
+    "prepared_probe_compile_passed": true,
+    "scope": "Text/parse preparation only; no live API requests, container run, credentials/state read or rollout mutations",
+    "offline_rehearsal_ack": "Expected degraded unavailable scheduler response; validates durable record/fullsave/reload only, never claims running scheduler"
+  },
+  "risks": [
+    "Runtime requires configured external authority; unconfigured controls refuse durable success and halt in memory. Root owns reviewed bootstrap and deployment.",
+    "A drained engine tick does not prove cancellation of previously accepted/outbox broker orders; separate emergency cancellation path owns verification.",
+    "Legacy raw safety halt remains until its original recovery mechanism; operator resume deliberately cannot override it.",
+    "No installed-runtime or natural-session acceptance claimed."
+  ],
+  "follow_ups": [
+    "Independent reviewer source acceptance",
+    "Root source-bound expanded freeze, artifact pack and full CI",
+    "Root isolated image warm-start and controlled rollout only after release gates"
+  ],
+  "previous_broader_regression": {
+    "passed": 205,
+    "failed": 0,
+    "before_final_constructor_and_lifecycle_corrections": true,
+    "artifact": "artifacts/operations_evidence/operator_controls_regression.txt"
+  },
+  "final_scoped_regression": {
+    "passed": 117,
+    "failed": 0,
+    "artifact": "artifacts/operations_evidence/operator_controls_restart_regression.txt",
+    "suites": [
+      "operator_controls",
+      "governance_drawdown_canonical",
+      "organism_blueprint_persistence",
+      "organism_integration_smoke",
+      "research_policy_lock"
+    ]
+  },
+  "read_only_host_observation": "artifacts/operations_evidence/operator_host_observation_20260921T081804Z.json"
+}

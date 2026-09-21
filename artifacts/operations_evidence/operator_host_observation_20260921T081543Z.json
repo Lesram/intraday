@@ -1,0 +1,87 @@
+{
+  "observed_at_utc": "2026-09-21T08:15:43.833189+00:00",
+  "read_only": true,
+  "broker_mutations": false,
+  "scheduler_changes": false,
+  "requests": [
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/account",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/positions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/clock",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "paper_broker",
+      "path": "/v2/calendar",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "local_observer",
+      "path": "deploy",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "surface": "local_observer",
+      "path": "organism/status",
+      "status": 200
+    }
+  ],
+  "issues": [],
+  "container": {
+    "name": "/intra-api-1",
+    "running": true,
+    "health": "healthy",
+    "image": "sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c",
+    "source_sha": "274d0c47ea6c4a092667cc65f813a96a2264e676",
+    "configured_policy_lock": false,
+    "configured_operator_authority": false
+  },
+  "broker": {
+    "paper_endpoint_verified": true,
+    "account_status": "ACTIVE",
+    "account_blocked": false,
+    "trading_blocked": false,
+    "positions": 0,
+    "open_orders": 0,
+    "clock": {
+      "is_open": false,
+      "next_close": "2026-09-21T16:00:00-04:00",
+      "next_open": "2026-09-21T09:30:00-04:00",
+      "timestamp": "2026-09-21T04:15:44.412320059-04:00"
+    },
+    "calendar": [
+      {
+        "close": "16:00",
+        "date": "2026-09-21",
+        "open": "09:30",
+        "session_close": "2000",
+        "session_open": "0400",
+        "settlement_date": "2026-09-22"
+      }
+    ]
+  },
+  "observer_authenticated": true,
+  "result": "OBSERVATION_INCOMPLETE",
+  "failure_type": "AttributeError"
+}

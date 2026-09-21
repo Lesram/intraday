@@ -1,19 +1,23 @@
-........................................................................ [  6%]
-........................................................................ [ 12%]
-........................................................................ [ 18%]
-........................................................................ [ 25%]
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 20%]
+........................................................................ [ 26%]
 ........................................................................ [ 31%]
-........................................................................ [ 37%]
-........................................................................ [ 43%]
-........................................................................ [ 50%]
-........................................................................ [ 56%]
+........................................................................ [ 36%]
+........................................................................ [ 41%]
+........................................................................ [ 47%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
 ........................................................................ [ 62%]
-........................................................................ [ 68%]
-........................................................................ [ 75%]
-.............................s.......................................... [ 81%]
-........................................................................ [ 87%]
-........................................................................ [ 93%]
-.......................................................................  [100%]
+........................................................................ [ 67%]
+........................................................................ [ 73%]
+........................................................................ [ 78%]
+......................................s................................. [ 83%]
+........................................................................ [ 88%]
+........................................................................ [ 94%]
+........................................................................ [ 99%]
+.........                                                                [100%]
 =============================== warnings summary ===============================
 backend/models/order_integrity.py:62
   /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
@@ -50,5 +54,38 @@ tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit
   /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/config/coordinator.py:22: DeprecationWarning: backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.
     from backend.config.unified import UnifiedSettings, get_unified_settings
 
+tests/test_risk_manager_service_comprehensive.py: 10 warnings
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:27: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py: 10 warnings
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:28: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.updated_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:42: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.last_updated = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:43: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetRecentViolations::test_get_violations_with_custom_hours
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_trigger_emergency_stop
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_trigger_emergency_stop
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:95: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_resolve_emergency_stop
+tests/test_risk_manager_service_comprehensive.py::TestGetActiveEmergencyStop::test_get_active_stop_when_exists
+tests/test_risk_manager_service_comprehensive.py::TestIsEmergencyStopActive::test_returns_true_when_active
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:73: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.triggered_at = datetime.utcnow()
+
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-1150 passed, 1 skipped, 12 warnings in 33.69s
+1376 passed, 1 skipped, 42 warnings in 30.11s
