@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
+import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -47,8 +48,11 @@ from backend.organism.candidate_shadow_telemetry import (
     infer_entry_source,
 )
 from backend.organism.continuous_learner import ContinuousLearner, TradeRecord
+from backend.organism import close_accounting
+from backend.organism import entry_evidence, operator_controls
 from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
+from backend.organism import research_policy
 from backend.organism.live_engine_data import _DataFeederMixin
 from backend.organism.live_engine_fills import _FillLookupMixin
 from backend.organism.live_engine_state import _StateReconstructionMixin
@@ -898,6 +902,9 @@ class OrganismLiveEngine(
         self._pyramid_positions: dict[str, PyramidPosition] = {}
         # Maps symbol → entry metadata for TradeRecord creation
         self._entry_metadata: dict[str, dict[str, Any]] = {}
+        self._accounting_lock = threading.RLock()
+        self._accounting_completed_entries: dict[str, str] = {}
+        self._accounting_error: str = ""
         # Symbols with recent exit orders — cooldown prevents wash trade rejections
         # Maps symbol → tick number when exit was submitted
         self._exit_cooldown: dict[str, int] = {}
@@ -1356,12 +1363,35 @@ class OrganismLiveEngine(
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "Trading phase resolver failed; falling back to count-only "
-                "learning mode check: %s",
+                "Trading phase resolver failed; preserving protective "
+                "phase controls: %s",
                 exc,
             )
-            from backend.organism.trading_phase import resolve_trading_phase
-            phase = resolve_trading_phase(len(trades))
+            from backend.organism.trading_phase import ML_ISOLATION_TRADES, EVOLUTION_FREEZE_TRADES
+            # Do not call the failed resolver again. A diagnostics failure
+            # must neither promote risk nor abort the tick before risk exits.
+            is_learning = len(trades) < ML_ISOLATION_TRADES
+            phase = {
+                "phase": "research_locked" if research_policy.RESEARCH_POLICY_LOCKED else "production_guarded",
+                "is_learning": is_learning, "is_frozen": True,
+                "is_guarded": not is_learning, "ml_influence_enabled": False,
+                "fixed_risk_sizing": True, "total_trades": len(trades),
+                "ml_isolation_threshold": ML_ISOLATION_TRADES,
+                "freeze_threshold": EVOLUTION_FREEZE_TRADES,
+                "trades_to_ml_exit": max(0, ML_ISOLATION_TRADES - len(trades)),
+                "trades_to_freeze_exit": max(0, EVOLUTION_FREEZE_TRADES - len(trades)),
+                "promotion_blockers": ["phase_resolver_unavailable"],
+                "resolver_error": type(exc).__name__,
+                "raw_phase": "unknown",
+                "policy_lock": {
+                    "id": research_policy.RESEARCH_POLICY_ID,
+                    "locked": research_policy.RESEARCH_POLICY_LOCKED,
+                    "reason": research_policy.RESEARCH_POLICY_REASON,
+                    "raw_strategy_trade_count": len(trades),
+                    "qualified_trade_count": None,
+                    "qualification_status": "unverified",
+                },
+            }
 
         self._trading_phase_tick_cache = (tick, phase)
         return phase
@@ -1405,12 +1435,12 @@ class OrganismLiveEngine(
     @property
     def _ml_isolation_mode(self) -> bool:
         """True when ML must not influence main-book ranking/gates."""
-        return not bool(self._trading_phase.get("ml_influence_enabled", False))
+        return research_policy.RESEARCH_POLICY_LOCKED or not bool(self._trading_phase.get("ml_influence_enabled", False))
 
     @property
     def _fixed_risk_sizing_mode(self) -> bool:
         """True when Kelly sizing must be bypassed for fixed ATR risk."""
-        return bool(self._trading_phase.get("fixed_risk_sizing", False))
+        return research_policy.RESEARCH_POLICY_LOCKED or bool(self._trading_phase.get("fixed_risk_sizing", False))
 
     @property
     def _dynamic_max_entries_per_hour(self) -> int:
@@ -1477,6 +1507,7 @@ class OrganismLiveEngine(
             return False
         return True
 
+    @entry_evidence.observe_gate
     def _passes_entry_gates(
         self,
         symbol: str,
@@ -1686,6 +1717,11 @@ class OrganismLiveEngine(
 
         Returns True if brain was loaded (continuing from previous run).
         """
+        self._accounting_owner_loop = asyncio.get_running_loop()
+        operator_controls.restore_engine_controls(self)
+        # Read authority before legacy recovery can restore an older backup.
+        # Corrupt/unsupported accounting state aborts startup instead of replaying.
+        accounting_state = close_accounting.read(self.brain.brain_dir)
         brain_loaded = self.brain.load() if self.brain.exists else False
 
         if brain_loaded:
@@ -1705,6 +1741,9 @@ class OrganismLiveEngine(
                 )
                 _EVOLUTION_FREEZE_TRADES = 300
                 _trade_count = len(self.brain.get_trade_records() or [])
+                # Restore the persisted reviewed baseline, including actual
+                # component values. The policy lock blocks new evolution, not
+                # restoration: reverting these values to defaults is a change.
                 if _trade_count >= _EVOLUTION_FREEZE_TRADES:
                     apply_evolved_params(
                         self.evolved_params,
@@ -1875,7 +1914,10 @@ class OrganismLiveEngine(
                     stale_symbols = set(saved_entry_meta.keys()) - broker_symbols
                     if stale_symbols:
                         for sym in stale_symbols:
-                            saved_entry_meta.pop(sym, None)
+                            saved_meta = saved_entry_meta[sym]
+                            identified_entry = bool(saved_meta.get("entry_order_id")) and saved_meta.get("entry_source") != "reconciliation_orphan"
+                            if not saved_meta.get("pending_close") and not identified_entry:
+                                saved_entry_meta.pop(sym, None)
                         logger.warning(
                             "Pruned %d stale entry metadata (no broker position): %s",
                             len(stale_symbols),
@@ -2104,6 +2146,12 @@ class OrganismLiveEngine(
         else:
             logger.info("Organism live engine starting fresh (no brain)")
 
+        if accounting_state is not None:
+            close_accounting.restore(self, accounting_state, startup=True)
+            # Legacy recovery may have replaced the sidecar: republish authority.
+            with self._accounting_lock:
+                close_accounting.write(self)
+
         # H4 / Phase 2: log resolved trading phase using shared resolver.
         # Use strategy-trade count plus expectancy so a high-trade losing
         # brain is logged as production_guarded rather than full production.
@@ -2121,7 +2169,7 @@ class OrganismLiveEngine(
         # learning phase and can override the conservative defaults.
         _EVOLUTION_FREEZE_TRADES = 300
         _current_trade_count = len(self._all_trades)
-        if _current_trade_count >= _EVOLUTION_FREEZE_TRADES:
+        if _current_trade_count >= _EVOLUTION_FREEZE_TRADES and not research_policy.RESEARCH_POLICY_LOCKED:
             try:
                 tk_loaded = self.transfer_engine.load_knowledge()
                 if tk_loaded:
@@ -2148,9 +2196,17 @@ class OrganismLiveEngine(
                 logger.debug("Transfer learning warm-start skipped: %s", e)
         else:
             logger.info(
-                "Transfer learning warm-start skipped — evolution freeze "
-                "active (%d/%d trades)", _current_trade_count, _EVOLUTION_FREEZE_TRADES,
+                "Transfer learning warm-start skipped — policy lock=%s, "
+                "trades=%d/%d", research_policy.RESEARCH_POLICY_LOCKED,
+                _current_trade_count, _EVOLUTION_FREEZE_TRADES,
             )
+
+        # A configured reviewed baseline is a startup assertion, including
+        # models restored through legacy recovery and accounting authority.
+        from backend.organism.research_baseline import verify_configured_baseline
+        self._research_baseline_verification = verify_configured_baseline(
+            self, brain_loaded=brain_loaded,
+        )
 
         # Reconstruct live positions → exit levels + pyramid state
         await self._reconstruct_position_state()
@@ -2246,6 +2302,7 @@ class OrganismLiveEngine(
         scheduler indefinitely.  On timeout: alert operator, increment
         watchdog counter, return a degraded LiveTickResult.
         """
+        self._accounting_owner_loop = asyncio.get_running_loop()
         async with self._tick_lock:
             try:
                 result = await asyncio.wait_for(
@@ -6179,6 +6236,10 @@ class OrganismLiveEngine(
         shadow_only: bool,
     ) -> None:
         """Hard governor checkpoint before any live entry order is submitted."""
+        # Recheck at submission: a halt may arrive after the tick's cached gate.
+        # Both new entries and pyramid adds use this seam; exits do not.
+        if self.governance.is_trading_halted:
+            raise RuntimeError("Governance halted new entry submission")
         governor = getattr(self, "_strategy_governor", None)
         if governor is None:
             governor = StrategyGovernor()
@@ -6221,6 +6282,7 @@ class OrganismLiveEngine(
                 f"{symbol}/{strategy_id}: {decision.reason}"
             )
 
+    @entry_evidence.observe_submission
     async def _submit_entry_order(
         self,
         symbol: str,
@@ -6456,6 +6518,12 @@ class OrganismLiveEngine(
     # at the broker yet when reconciliation runs on the same tick.
     _RECONCILE_GRACE_TICKS = 3
 
+    def _clear_closed_tracking(self, symbol: str) -> None:
+        """Clear one fully accounted or verified unfilled position lifetime."""
+        for name in close_accounting.TRACKING_FIELDS:
+            target = getattr(self, name)
+            target.discard(symbol) if isinstance(target, set) else target.pop(symbol, None)
+
     async def _reconcile_fills(
         self,
         features_by_symbol: dict[str, pd.DataFrame],
@@ -6470,6 +6538,7 @@ class OrganismLiveEngine(
         have no tracking metadata) and reconstructs tracking state
         so they can be properly managed.
         """
+        self._accounting_owner_loop = asyncio.get_running_loop()
         try:
             current_positions = await self._positions_service.get_all_positions()
         except Exception as e:
@@ -6479,8 +6548,22 @@ class OrganismLiveEngine(
         # Cache for sync callers (e.g. _retrain_and_evolve universe rotation)
         self._last_positions = current_positions
 
+        observed_at = self._now_fn().astimezone(UTC)
         current_symbols = set(current_positions.keys())
         tracked_symbols = set(self._entry_metadata.keys())
+        # A temporary flat snapshot is not proof of a completed lifetime.
+        with self._accounting_lock:
+            reappeared = [sym for sym in current_symbols & tracked_symbols
+                          if self._entry_metadata[sym].get("pending_close")]
+            if reappeared:
+                before_reappearance = close_accounting.capture(self)
+                for sym in reappeared:
+                    self._entry_metadata[sym].pop("pending_close", None)
+                try:
+                    close_accounting.write(self)
+                except Exception:
+                    close_accounting.restore(self, before_reappearance)
+                    raise
 
         # Sync entry prices from broker for tracked positions:
         # The broker's avg_entry_price is the true cost-weighted fill
@@ -6570,7 +6653,7 @@ class OrganismLiveEngine(
                 continue
             entry_tick = meta.get("entry_tick", 0)
             ticks_held = self._tick_count - entry_tick
-            if ticks_held < self._RECONCILE_GRACE_TICKS:
+            if not meta.get("pending_close") and ticks_held < self._RECONCILE_GRACE_TICKS:
                 # Order may still be settling — skip for now
                 logger.debug(
                     "Skipping reconciliation for %s (entered %d ticks ago, "
@@ -6582,344 +6665,407 @@ class OrganismLiveEngine(
                 continue
             closed.add(sym)
 
-        for sym in closed:
-            meta = self._entry_metadata.pop(sym, None)
+        # Persist the whole newly-flat batch before committing any member.
+        # Stable ordering prevents delayed DB legs from reordering learner/risk
+        # history relative to later, already-complete closes on other symbols.
+        with self._accounting_lock:
+            newly_closed = [sym for sym in closed if "pending_close" not in self._entry_metadata[sym]]
+            before_pending = close_accounting.capture(self) if newly_closed else None
+            for sym in newly_closed:
+                meta = self._entry_metadata[sym]
+                if "pending_close" not in meta:
+                    lvl = self._exit_levels.get(sym)
+                    meta["pending_close"] = {
+                        "observed_at": observed_at.isoformat(),
+                        "tick": self._tick_count,
+                        "tick_interval_seconds": max(1, int(os.getenv("ORGANISM_TICK_INTERVAL_SECONDS", "60"))),
+                        "exit_reason": self._last_exit_reason.get(sym, "live_close"),
+                        "real_fill": self._last_exit_fill_price.get(sym),
+                        "regime": self._last_regime if self._last_regime != "unknown" else getattr(self.regime_detector, "current_regime", "unknown"),
+                        "exit_level": dict(vars(lvl)) if lvl is not None else None,
+                        "status": "awaiting_complete_position_fills",
+                    }
+            if newly_closed:
+                try:
+                    close_accounting.write(self)
+                    self._accounting_error = ""
+                except Exception as exc:
+                    close_accounting.restore(self, before_pending)
+                    self._accounting_error = f"pending checkpoint failed: {type(exc).__name__}"
+                    raise
+
+        ordered_closed = sorted(closed, key=lambda sym: (
+            self._entry_metadata[sym]["pending_close"]["observed_at"],
+            str(self._entry_metadata[sym].get("entry_order_id", "")), sym,
+        ))
+        for sym in ordered_closed:
+            meta = self._entry_metadata.get(sym)
             if meta is None:
                 continue
-
-            # Account for every confirmed exit leg, including
-            # ml_reversal scale-outs whose reason does not contain "partial".
-            # Only a complete attributed position can replace legacy prices.
+            pending = meta["pending_close"]
+            closed_at = datetime.fromisoformat(pending["observed_at"])
             position_fills = await self._lookup_closed_position_fills_from_db(
-                sym, meta, closed_at=self._now_fn().astimezone(UTC),
+                sym, meta, closed_at=closed_at,
             )
+            if position_fills is None and await self._entry_verified_unfilled(sym, meta):
+                with self._accounting_lock:
+                    before_zero = close_accounting.capture(self)
+                    self._clear_closed_tracking(sym)
+                    self._accounting_completed_entries[str(meta["entry_order_id"])] = "verified_unfilled"
+                    try:
+                        close_accounting.write(self)
+                    except Exception:
+                        close_accounting.restore(self, before_zero)
+                        raise
+                continue
+            if position_fills is None and meta.get("entry_source") != "reconciliation_orphan":
+                # Unknown attribution, DB errors and incomplete fills stay
+                # visible/pending. Later closes wait behind this outcome.
+                break
+            # Orphan bookkeeping retains its exclusion from all learning.
+            # Fetch legacy fallbacks outside the serialized no-await commit.
+            fallback_exit = fallback_entry = None
+            if position_fills is None:
+                fallback_exit = await self._lookup_exit_fill_from_db(sym)
+                fallback_entry = await self._lookup_entry_fill_from_db(sym, meta)
 
-            # Use real fill price from exit order when available.
-            # Audit 2026-06-11 (measurement integrity): tag WHICH rung of
-            # the fallback ladder priced this exit. Rows priced from a bar
-            # close or quote (not a broker fill) diverge from realized PnL
-            # and must be identifiable downstream.
-            real_fill = self._last_exit_fill_price.pop(sym, None)
-            exit_price: float | None = None
-            _price_source = ""
-            if position_fills is not None:
-                exit_price = position_fills.exit_price
-                _price_source = "db_position_fills"
-            elif real_fill and real_fill > 0:
-                exit_price = real_fill
-                _price_source = "fill"
-            else:
-                # Try DB-based fill price (actual filled exit order)
-                exit_price = await self._lookup_exit_fill_from_db(sym)
-                if exit_price is not None:
-                    _price_source = "db_fill"
-                if exit_price is None:
-                    # Get last known price for exit — never fall back to entry_price
-                    # (that would create phantom 0-PnL trades).
-                    feat_df = features_by_symbol.get(sym)
-                    if feat_df is not None and len(feat_df) > 0:
-                        exit_price = float(feat_df["close"].iloc[-1])
-                        _price_source = "bar_close"
+            with self._accounting_lock:
+                before_commit = close_accounting.capture(self)
+                try:
+                    # Use real fill price from exit order when available.
+                    # Audit 2026-06-11 (measurement integrity): tag WHICH rung of
+                    # the fallback ladder priced this exit. Rows priced from a bar
+                    # close or quote (not a broker fill) diverge from realized PnL
+                    # and must be identifiable downstream.
+                    real_fill = pending.get("real_fill")
+                    exit_price: float | None = None
+                    _price_source = ""
+                    if position_fills is not None:
+                        exit_price = position_fills.exit_price
+                        _price_source = position_fills.price_source
+                    elif real_fill and real_fill > 0:
+                        exit_price = real_fill
+                        _price_source = "fill"
                     else:
-                        # Try latest quote from streaming data provider
-                        quote = self._data_client.get_latest_quote(sym)
-                        bid = quote.get("bid")
-                        ask = quote.get("ask")
-                        if bid and ask and bid > 0 and ask > 0:
-                            exit_price = (bid + ask) / 2.0
-                            _price_source = "quote_mid"
-                            logger.info(
-                                "Using quote midpoint for %s exit price: $%.2f "
-                                "(no bar features available)",
-                                sym, exit_price,
+                        # Try DB-based fill price (actual filled exit order)
+                        exit_price = fallback_exit
+                        if exit_price is not None:
+                            _price_source = "db_fill"
+                        if exit_price is None:
+                            # Get last known price for exit — never fall back to entry_price
+                            # (that would create phantom 0-PnL trades).
+                            feat_df = features_by_symbol.get(sym)
+                            if feat_df is not None and len(feat_df) > 0:
+                                exit_price = float(feat_df["close"].iloc[-1])
+                                _price_source = "bar_close"
+                            else:
+                                # Try latest quote from streaming data provider
+                                quote = self._data_client.get_latest_quote(sym)
+                                bid = quote.get("bid")
+                                ask = quote.get("ask")
+                                if bid and ask and bid > 0 and ask > 0:
+                                    exit_price = (bid + ask) / 2.0
+                                    _price_source = "quote_mid"
+                                    logger.info(
+                                        "Using quote midpoint for %s exit price: $%.2f "
+                                        "(no bar features available)",
+                                        sym, exit_price,
+                                    )
+                                elif bid and bid > 0:
+                                    exit_price = bid
+                                    _price_source = "quote_bid"
+                                elif ask and ask > 0:
+                                    exit_price = ask
+                                    _price_source = "quote_ask"
+
+                    if position_fills is None and _price_source in {"fill", "db_fill"}:
+                        # A genuine FINAL price is not proof of full-position PnL.
+                        # Keep legacy fallback amounts but label that uncertainty.
+                        _price_source += "_approximate"
+
+                    if exit_price is None:
+                        logger.warning(
+                            "Skipping trade record for %s — no exit price available "
+                            "(features and quotes both missing). Entry was $%.2f",
+                            sym, meta["entry_price"],
+                        )
+                        break
+
+                    direction = meta.get("direction", 1.0)
+                    shares = 0
+                    pyr = self._pyramid_positions.get(sym)
+                    if pyr and pyr.total_shares > 0:
+                        shares = pyr.total_shares
+                        # Use cost-weighted average entry from all pyramid legs
+                        # instead of stale first-fill price from metadata
+                        entry_price = pyr.avg_entry
+                    else:
+                        entry_price = meta["entry_price"]
+
+                    if position_fills is not None:
+                        entry_price = position_fills.entry_price
+                        shares = position_fills.shares
+                    else:
+                        entry_fill = fallback_entry
+                        if entry_fill is not None:
+                            db_entry_price, db_entry_qty = entry_fill
+                            if db_entry_price > 0:
+                                entry_price = db_entry_price
+                            if db_entry_qty > 0:
+                                shares = int(round(db_entry_qty))
+
+                    if shares == 0:
+                        # Fallback to tracked filled_shares from entry metadata
+                        shares = meta.get("filled_shares", 0)
+                    if shares == 0:
+                        logger.error("Zero shares for closed position %s — skipping trade record", sym)
+                        break
+
+                    if position_fills is not None:
+                        pnl = position_fills.pnl
+                    elif direction > 0:
+                        pnl = (exit_price - entry_price) * shares
+                    else:
+                        pnl = (entry_price - exit_price) * shares
+
+                    actual_return = (
+                        (exit_price - entry_price) / entry_price * direction
+                        if entry_price > 0
+                        else 0
+                    )
+
+                    _is_exploration = meta.get("exploration", False)
+
+                    # Compute causal fields (improve7)
+                    _exit_lvl = (type("CloseLevels", (), pending["exit_level"])()
+                                 if pending.get("exit_level") else None)
+                    _mfe = 0.0
+                    _mae = 0.0
+                    _bars_held = 0
+                    _regime_at_entry = meta.get("regime_at_entry", "unknown")
+                    _regime_at_exit = pending["regime"]
+                    if _exit_lvl is not None:
+                        _bars_held = _exit_lvl.bars_held
+                        # MFE: max favorable excursion in dollars
+                        _highest = _exit_lvl.highest_favorable
+                        _mfe = (_highest - entry_price) * direction * shares
+                        # MAE (audit 2026-06-11): use the REAL tracked worst-adverse
+                        # price when available; fall back to the legacy
+                        # stop-distance proxy only for positions whose levels
+                        # predate the worst_adverse tracker.
+                        _worst = getattr(_exit_lvl, "worst_adverse", 0.0)
+                        if _worst and _worst > 0:
+                            _mae = max(
+                                0.0, (entry_price - _worst) * direction * shares
                             )
-                        elif bid and bid > 0:
-                            exit_price = bid
-                            _price_source = "quote_bid"
-                        elif ask and ask > 0:
-                            exit_price = ask
-                            _price_source = "quote_ask"
+                        else:
+                            _stop_dist = abs(entry_price - _exit_lvl.stop_loss)
+                            _mae = _stop_dist * shares
+                    _entry_time = meta.get("entry_time", 0)
+                    _time_in_trade = closed_at.timestamp() - _entry_time if _entry_time > 0 else 0.0
 
-            if position_fills is None and _price_source in {"fill", "db_fill"}:
-                # A genuine FINAL price is not proof of full-position PnL.
-                # Keep legacy fallback amounts but label that uncertainty.
-                _price_source += "_approximate"
+                    _exit_reason = pending["exit_reason"]
+                    # Tag reconciliation adjustments: position disappeared from
+                    # broker without a normal exit order.  These are cross-session
+                    # carryover cleanups or orphan metadata, not strategy trades.
+                    _is_reconciliation = False
+                    if position_fills is None and _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
+                        _exit_reason = "reconciliation_adjustment"
+                        _is_reconciliation = True
+                        logger.warning(
+                            "Reconciliation adjustment: %s had stale entry metadata "
+                            "(entry=$%.2f) with no broker position or exit fill — "
+                            "tagging as non-strategy PnL",
+                            sym, entry_price,
+                        )
+                    # Audit-G BUG-G (2026-05-01): also flag orphan-adopted positions
+                    # so their exit trades don't pollute learning. The orphan
+                    # adoption code sets entry_source="reconciliation_orphan".
+                    elif meta.get("entry_source") == "reconciliation_orphan":
+                        _is_reconciliation = True
+                        logger.info(
+                            "Orphan-adopted position closed: %s pnl=$%.2f "
+                            "(non-strategy artifact)",
+                            sym, pnl,
+                        )
 
-            if exit_price is None:
-                logger.warning(
-                    "Skipping trade record for %s — no exit price available "
-                    "(features and quotes both missing). Entry was $%.2f",
-                    sym, meta["entry_price"],
-                )
-                # Still clean up tracking state so we don't leak metadata
-                self._exit_levels.pop(sym, None)
-                self._pyramid_positions.pop(sym, None)
-                self._ml_reversal_used.discard(sym)
-                self._last_bar_times.pop(sym, None)
-                continue
-
-            direction = meta.get("direction", 1.0)
-            shares = 0
-            pyr = self._pyramid_positions.get(sym)
-            if pyr and pyr.total_shares > 0:
-                shares = pyr.total_shares
-                # Use cost-weighted average entry from all pyramid legs
-                # instead of stale first-fill price from metadata
-                entry_price = pyr.avg_entry
-            else:
-                entry_price = meta["entry_price"]
-
-            if position_fills is not None:
-                entry_price = position_fills.entry_price
-                shares = position_fills.shares
-            else:
-                entry_fill = await self._lookup_entry_fill_from_db(sym, meta)
-                if entry_fill is not None:
-                    db_entry_price, db_entry_qty = entry_fill
-                    if db_entry_price > 0:
-                        entry_price = db_entry_price
-                    if db_entry_qty > 0:
-                        shares = int(round(db_entry_qty))
-
-            if shares == 0:
-                # Fallback to tracked filled_shares from entry metadata
-                shares = meta.get("filled_shares", 0)
-            if shares == 0:
-                logger.error("Zero shares for closed position %s — skipping trade record", sym)
-                continue
-
-            if position_fills is not None:
-                pnl = position_fills.pnl
-            elif direction > 0:
-                pnl = (exit_price - entry_price) * shares
-            else:
-                pnl = (entry_price - exit_price) * shares
-
-            actual_return = (
-                (exit_price - entry_price) / entry_price * direction
-                if entry_price > 0
-                else 0
-            )
-
-            _is_exploration = meta.get("exploration", False)
-
-            # Compute causal fields (improve7)
-            _exit_lvl = self._exit_levels.get(sym)
-            _mfe = 0.0
-            _mae = 0.0
-            _bars_held = 0
-            _regime_at_entry = meta.get("regime_at_entry", "unknown")
-            _regime_at_exit = self._last_regime if self._last_regime != "unknown" else getattr(self.regime_detector, "current_regime", "unknown")
-            if _exit_lvl is not None:
-                _bars_held = _exit_lvl.bars_held
-                # MFE: max favorable excursion in dollars
-                _highest = _exit_lvl.highest_favorable
-                _mfe = (_highest - entry_price) * direction * shares
-                # MAE (audit 2026-06-11): use the REAL tracked worst-adverse
-                # price when available; fall back to the legacy
-                # stop-distance proxy only for positions whose levels
-                # predate the worst_adverse tracker.
-                _worst = getattr(_exit_lvl, "worst_adverse", 0.0)
-                if _worst and _worst > 0:
-                    _mae = max(
-                        0.0, (entry_price - _worst) * direction * shares
+                    trade = TradeRecord(
+                        symbol=sym,
+                        direction=direction,
+                        entry_price=entry_price,
+                        exit_price=exit_price,
+                        entry_bar=meta.get("entry_tick", 0),
+                        exit_bar=pending["tick"],
+                        shares=shares,
+                        pnl=pnl,
+                        exit_reason=_exit_reason,
+                        predicted_return=meta.get("predicted_return", 0),
+                        actual_return=actual_return,
+                        confidence=meta.get("confidence", 0),
+                        is_exploration=_is_exploration,
+                        # Audit-G BUG-G (2026-05-01): first-class flag for reconciliation
+                        # artifacts. Filtered by all 5+ learning consumers below.
+                        is_reconciliation_artifact=_is_reconciliation,
+                        entry_source=meta.get("entry_source", ""),
+                        strategy_id=meta.get(
+                            "strategy_id",
+                            infer_strategy_id(meta.get("entry_source", "")),
+                        ),
+                        regime_at_entry=_regime_at_entry,
+                        regime_at_exit=_regime_at_exit,
+                        mfe=round(_mfe, 2),
+                        mae=round(_mae, 2),
+                        bars_held_at_exit=_bars_held,
+                        time_in_trade_seconds=round(_time_in_trade, 1),
+                        closed_at=closed_at.isoformat(),
+                        # Audit 2026-06-11 (measurement integrity): fidelity fields.
+                        predicted_return_signed=meta.get("predicted_return_signed"),
+                        ml_spoke=bool(meta.get("ml_spoke", False)),
+                        entry_order_id=str(meta.get("entry_order_id") or ""),
+                        price_source=_price_source,
+                        had_partial_exits=(position_fills.had_partial_exits if position_fills is not None
+                                           else bool(meta.get("had_partial_exits", False))),
                     )
-                else:
-                    _stop_dist = abs(entry_price - _exit_lvl.stop_loss)
-                    _mae = _stop_dist * shares
-            _entry_time = meta.get("entry_time", 0)
-            _time_in_trade = self._time_fn() - _entry_time if _entry_time > 0 else 0.0
+                    self._all_trades.append(trade)
+                    # Audit-G BUG-G: do NOT feed reconciliation artifacts into the
+                    # learner. learner.record_trade() updates Kelly stats,
+                    # ML calibration, and trade history used by every learning
+                    # consumer downstream. Reconciliation_adjustment is bookkeeping,
+                    # not strategy outcome.
+                    if not _is_reconciliation:
+                        self.learner.record_trade(trade)
+                    else:
+                        logger.info(
+                            "Skipped learner.record_trade for reconciliation_adjustment: "
+                            "%s pnl=$%.2f (non-strategy artifact)",
+                            sym, pnl,
+                        )
 
-            _exit_reason = self._last_exit_reason.pop(sym, "live_close")
-            # Tag reconciliation adjustments: position disappeared from
-            # broker without a normal exit order.  These are cross-session
-            # carryover cleanups or orphan metadata, not strategy trades.
-            _is_reconciliation = False
-            if _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
-                _exit_reason = "reconciliation_adjustment"
-                _is_reconciliation = True
-                logger.warning(
-                    "Reconciliation adjustment: %s had stale entry metadata "
-                    "(entry=$%.2f) with no broker position or exit fill — "
-                    "tagging as non-strategy PnL",
-                    sym, entry_price,
-                )
-            # Audit-G BUG-G (2026-05-01): also flag orphan-adopted positions
-            # so their exit trades don't pollute learning. The orphan
-            # adoption code sets entry_source="reconciliation_orphan".
-            elif meta.get("entry_source") == "reconciliation_orphan":
-                _is_reconciliation = True
-                logger.info(
-                    "Orphan-adopted position closed: %s pnl=$%.2f "
-                    "(non-strategy artifact)",
-                    sym, pnl,
-                )
+                    # B1 (improve9): Canonical symbol trade count — increment
+                    # at the source so it stays consistent regardless of whether
+                    # evolution is frozen (B5) or running.
+                    # Audit-G BUG-G: skip reconciliation artifacts so fitness gate
+                    # isn't polluted (symbol_trade_counts feeds the fitness gate).
+                    if not _is_reconciliation:
+                        self.evolved_params.symbol_trade_counts[sym] = (
+                            self.evolved_params.symbol_trade_counts.get(sym, 0) + 1
+                        )
+                        # V12 W72 / DD5-3: parallel SEPARATE runtime accumulator.
+                        # This must NOT just snapshot evolved_params — the whole
+                        # point is to advance during evolution freeze when
+                        # evolved_params is intentionally pinned.
+                        self._symbol_trade_counts_runtime[sym] = (
+                            self._symbol_trade_counts_runtime.get(sym, 0) + 1
+                        )
 
-            trade = TradeRecord(
-                symbol=sym,
-                direction=direction,
-                entry_price=entry_price,
-                exit_price=exit_price,
-                entry_bar=meta.get("entry_tick", 0),
-                exit_bar=self._tick_count,
-                shares=shares,
-                pnl=pnl,
-                exit_reason=_exit_reason,
-                predicted_return=meta.get("predicted_return", 0),
-                actual_return=actual_return,
-                confidence=meta.get("confidence", 0),
-                is_exploration=_is_exploration,
-                # Audit-G BUG-G (2026-05-01): first-class flag for reconciliation
-                # artifacts. Filtered by all 5+ learning consumers below.
-                is_reconciliation_artifact=_is_reconciliation,
-                entry_source=meta.get("entry_source", ""),
-                strategy_id=meta.get(
-                    "strategy_id",
-                    infer_strategy_id(meta.get("entry_source", "")),
-                ),
-                regime_at_entry=_regime_at_entry,
-                regime_at_exit=_regime_at_exit,
-                mfe=round(_mfe, 2),
-                mae=round(_mae, 2),
-                bars_held_at_exit=_bars_held,
-                time_in_trade_seconds=round(_time_in_trade, 1),
-                closed_at=datetime.fromtimestamp(self._time_fn(), tz=UTC).isoformat() if self._time_fn() > 0 else "",
-                # Audit 2026-06-11 (measurement integrity): fidelity fields.
-                predicted_return_signed=meta.get("predicted_return_signed"),
-                ml_spoke=bool(meta.get("ml_spoke", False)),
-                price_source=_price_source,
-                had_partial_exits=(position_fills.had_partial_exits if position_fills is not None
-                                   else bool(meta.get("had_partial_exits", False))),
-            )
-            self._all_trades.append(trade)
-            # Audit-G BUG-G: do NOT feed reconciliation artifacts into the
-            # learner. learner.record_trade() updates Kelly stats,
-            # ML calibration, and trade history used by every learning
-            # consumer downstream. Reconciliation_adjustment is bookkeeping,
-            # not strategy outcome.
-            if not _is_reconciliation:
-                self.learner.record_trade(trade)
-            else:
-                logger.info(
-                    "Skipped learner.record_trade for reconciliation_adjustment: "
-                    "%s pnl=$%.2f (non-strategy artifact)",
-                    sym, pnl,
-                )
+                    same_session = close_accounting.session_date(closed_at) == close_accounting.session_date(self._now_fn())
+                    # v5 (improve8): Session-aware symbol loss gating
+                    # Audit-G BUG-G: skip reconciliation artifacts to avoid
+                    # symbol-ban triggers from non-strategy PnL.
+                    if same_session and not _is_exploration and not _is_reconciliation:
+                        self._symbol_daily_pnl[sym] = self._symbol_daily_pnl.get(sym, 0.0) + pnl
+                        self._symbol_closed_today[sym] = self._symbol_closed_today.get(sym, 0) + 1
+                        if pnl <= 0:
+                            self._symbol_consecutive_losses[sym] = (
+                                self._symbol_consecutive_losses.get(sym, 0) + 1
+                            )
+                        else:
+                            self._symbol_consecutive_losses[sym] = 0
+                            self._symbol_wins_today[sym] = self._symbol_wins_today.get(sym, 0) + 1
 
-            # B1 (improve9): Canonical symbol trade count — increment
-            # at the source so it stays consistent regardless of whether
-            # evolution is frozen (B5) or running.
-            # Audit-G BUG-G: skip reconciliation artifacts so fitness gate
-            # isn't polluted (symbol_trade_counts feeds the fitness gate).
-            if not _is_reconciliation:
-                self.evolved_params.symbol_trade_counts[sym] = (
-                    self.evolved_params.symbol_trade_counts.get(sym, 0) + 1
-                )
-                # V12 W72 / DD5-3: parallel SEPARATE runtime accumulator.
-                # This must NOT just snapshot evolved_params — the whole
-                # point is to advance during evolution freeze when
-                # evolved_params is intentionally pinned.
-                self._symbol_trade_counts_runtime[sym] = (
-                    self._symbol_trade_counts_runtime.get(sym, 0) + 1
-                )
+                        # Track stop-loss exit timestamps for rolling 30-min window
+                        _exit_reason = trade.exit_reason
+                        if _exit_reason in ("stop_loss", "safety_net"):
+                            if sym not in self._symbol_stop_loss_times:
+                                self._symbol_stop_loss_times[sym] = []
+                            self._symbol_stop_loss_times[sym].append(closed_at.timestamp())
 
-            # v5 (improve8): Session-aware symbol loss gating
-            # Audit-G BUG-G: skip reconciliation artifacts to avoid
-            # symbol-ban triggers from non-strategy PnL.
-            if not _is_exploration and not _is_reconciliation:
-                self._symbol_daily_pnl[sym] = self._symbol_daily_pnl.get(sym, 0.0) + pnl
-                self._symbol_closed_today[sym] = self._symbol_closed_today.get(sym, 0) + 1
-                if pnl <= 0:
-                    self._symbol_consecutive_losses[sym] = (
-                        self._symbol_consecutive_losses.get(sym, 0) + 1
-                    )
-                else:
-                    self._symbol_consecutive_losses[sym] = 0
-                    self._symbol_wins_today[sym] = self._symbol_wins_today.get(sym, 0) + 1
+                        # A3 (improve8): Session-aware ban conditions
+                        _equity = self._peak_equity if self._peak_equity > 0 else 100000.0
+                        _ban_pnl_threshold = -max(25.0, _equity * 0.0010)
+                        _sym_wins = self._symbol_wins_today.get(sym, 0)
+                        _sym_consec = self._symbol_consecutive_losses.get(sym, 0)
+                        _sym_pnl = self._symbol_daily_pnl.get(sym, 0.0)
 
-                # Track stop-loss exit timestamps for rolling 30-min window
-                _exit_reason = trade.exit_reason
-                if _exit_reason in ("stop_loss", "safety_net"):
-                    if sym not in self._symbol_stop_loss_times:
-                        self._symbol_stop_loss_times[sym] = []
-                    self._symbol_stop_loss_times[sym].append(self._time_fn())
+                        # Rolling 30-min stop-loss window
+                        _now_ts = self._time_fn()
+                        _sl_times = self._symbol_stop_loss_times.get(sym, [])
+                        _sl_times_30m = [t for t in _sl_times if _now_ts - t < 1800]
+                        self._symbol_stop_loss_times[sym] = _sl_times_30m
 
-                # A3 (improve8): Session-aware ban conditions
-                _equity = self._peak_equity if self._peak_equity > 0 else 100000.0
-                _ban_pnl_threshold = -max(25.0, _equity * 0.0010)
-                _sym_wins = self._symbol_wins_today.get(sym, 0)
-                _sym_consec = self._symbol_consecutive_losses.get(sym, 0)
-                _sym_pnl = self._symbol_daily_pnl.get(sym, 0.0)
+                        if sym not in self._symbol_banned and (
+                            (_sym_consec >= self._SYMBOL_BAN_CONSEC_LOSSES and _sym_wins == 0)
+                            or _sym_pnl <= _ban_pnl_threshold
+                            or len(_sl_times_30m) >= 2
+                        ):
+                            self._symbol_banned.add(sym)
+                            logger.warning(
+                                "Symbol circuit breaker: %s BANNED for session "
+                                "(daily_pnl=$%.2f, consec_losses=%d, wins=%d, "
+                                "stop_losses_30m=%d, ban_threshold=$%.2f)",
+                                sym, _sym_pnl, _sym_consec, _sym_wins,
+                                len(_sl_times_30m), _ban_pnl_threshold,
+                            )
 
-                # Rolling 30-min stop-loss window
-                _now_ts = self._time_fn()
-                _sl_times = self._symbol_stop_loss_times.get(sym, [])
-                _sl_times_30m = [t for t in _sl_times if _now_ts - t < 1800]
-                self._symbol_stop_loss_times[sym] = _sl_times_30m
+                    if same_session:
+                        # C2 (improve8): Track per-exit-type cooldowns
+                        _exit_type = trade.exit_reason
+                        if _exit_type in ("stop_loss", "safety_net"):
+                            self._symbol_exit_type[sym] = "stop_loss"
+                        elif _exit_type == "ftf_loss" or (_exit_type == "ftf_chop" and pnl <= 0):
+                            self._symbol_exit_type[sym] = "ftf_loss"
+                        else:
+                            self._symbol_exit_type[sym] = _exit_type
+                        # A restart can restore an older tick coordinate. Never
+                        # manufacture a fresh cooldown for time spent pending.
+                        elapsed_ticks = int(max(0, self._time_fn() - closed_at.timestamp())
+                                            / pending.get("tick_interval_seconds", 60))
+                        self._symbol_exit_tick[sym] = min(pending["tick"], self._tick_count - elapsed_ticks)
 
-                if sym not in self._symbol_banned and (
-                    (_sym_consec >= self._SYMBOL_BAN_CONSEC_LOSSES and _sym_wins == 0)
-                    or _sym_pnl <= _ban_pnl_threshold
-                    or len(_sl_times_30m) >= 2
-                ):
-                    self._symbol_banned.add(sym)
-                    logger.warning(
-                        "Symbol circuit breaker: %s BANNED for session "
-                        "(daily_pnl=$%.2f, consec_losses=%d, wins=%d, "
-                        "stop_losses_30m=%d, ban_threshold=$%.2f)",
-                        sym, _sym_pnl, _sym_consec, _sym_wins,
-                        len(_sl_times_30m), _ban_pnl_threshold,
+                    # Record for regime-stratified Kelly (skip exploration to prevent
+                    # micro-size trades from polluting main Kelly statistics).
+                    # Audit-G v2 GAP-3 (2026-05-02): also skip reconciliation artifacts
+                    # so non-strategy PnL doesn't pollute regime Kelly stats persisted
+                    # to brain manifest.
+                    if not _is_exploration and not _is_reconciliation:
+                        exit_lvl = _exit_lvl
+                        regime_at_trade = (
+                            exit_lvl.regime_at_entry if exit_lvl else "unknown"
+                        )
+                        self.kelly_sizer.record_trade(regime_at_trade, pnl)
+
+                    # Record for ML calibration.
+                    # Audit-G v2 GAP-3: skip reconciliation artifacts (their
+                    # confidence=0.5 default would skew calibration map).
+                    # V8 DD2-2 / Wave-33: pass raw_confidence (when available) so
+                    # outcome-binning matches calibrate_confidence's lookup axis.
+                    if meta.get("confidence") is not None and not _is_reconciliation:
+                        was_correct = actual_return > 0
+                        self.signal_gen.record_prediction_outcome(
+                            meta["confidence"],
+                            was_correct,
+                            raw_confidence=meta.get("ml_raw_confidence"),
+                        )
+
+                    self._clear_closed_tracking(sym)
+                    entry_identity = str(meta.get("entry_order_id") or "")
+                    if entry_identity:
+                        self._accounting_completed_entries[entry_identity] = closed_at.isoformat()
+                    # All consumers and pending removal become durable in one replace.
+                    close_accounting.write(self)
+                    self._accounting_error = ""
+
+                    logger.info(
+                        "Trade recorded: %s %s PnL=$%.2f",
+                        sym,
+                        "LONG" if direction > 0 else "SHORT",
+                        pnl,
                     )
 
-            # C2 (improve8): Track per-exit-type cooldowns
-            _exit_type = trade.exit_reason
-            if _exit_type in ("stop_loss", "safety_net"):
-                self._symbol_exit_type[sym] = "stop_loss"
-            elif _exit_type == "ftf_loss" or (_exit_type == "ftf_chop" and pnl <= 0):
-                self._symbol_exit_type[sym] = "ftf_loss"
-            else:
-                self._symbol_exit_type[sym] = _exit_type
-            self._symbol_exit_tick[sym] = self._tick_count
-
-            # Record for regime-stratified Kelly (skip exploration to prevent
-            # micro-size trades from polluting main Kelly statistics).
-            # Audit-G v2 GAP-3 (2026-05-02): also skip reconciliation artifacts
-            # so non-strategy PnL doesn't pollute regime Kelly stats persisted
-            # to brain manifest.
-            if not _is_exploration and not _is_reconciliation:
-                exit_lvl = self._exit_levels.get(sym)
-                regime_at_trade = (
-                    exit_lvl.regime_at_entry if exit_lvl else "unknown"
-                )
-                self.kelly_sizer.record_trade(regime_at_trade, pnl)
-
-            # Record for ML calibration.
-            # Audit-G v2 GAP-3: skip reconciliation artifacts (their
-            # confidence=0.5 default would skew calibration map).
-            # V8 DD2-2 / Wave-33: pass raw_confidence (when available) so
-            # outcome-binning matches calibrate_confidence's lookup axis.
-            if meta.get("confidence") is not None and not _is_reconciliation:
-                was_correct = actual_return > 0
-                self.signal_gen.record_prediction_outcome(
-                    meta["confidence"],
-                    was_correct,
-                    raw_confidence=meta.get("ml_raw_confidence"),
-                )
-
-            # Clean up tracking state
-            self._exit_levels.pop(sym, None)
-            self._pyramid_positions.pop(sym, None)
-            self._ml_reversal_used.discard(sym)
-            self._last_bar_times.pop(sym, None)
-            self._last_exit_reason.pop(sym, None)
-            self._last_exit_fill_price.pop(sym, None)
-
-            logger.info(
-                "Trade recorded: %s %s PnL=$%.2f",
-                sym,
-                "LONG" if direction > 0 else "SHORT",
-                pnl,
-            )
+                except Exception as exc:
+                    close_accounting.restore(self, before_commit)
+                    self._accounting_error = f"close commit failed: {type(exc).__name__}"
+                    raise
 
         # Save brain immediately after recording fills to prevent data loss.
         # V4 Q-Q15 (2026-05-02): the Phase-1 fix at line 3823 wrapped
@@ -7091,6 +7237,8 @@ class OrganismLiveEngine(
         regime: str,
     ) -> None:
         """Retrain ML model and run self-evolution on accumulated trades."""
+        if research_policy.RESEARCH_POLICY_LOCKED:
+            return
         # Retrain
         accepted, train_metrics = self.learner.retrain(features_by_symbol)
         if train_metrics:
@@ -7291,6 +7439,7 @@ class OrganismLiveEngine(
             ),
         }
 
+    @close_accounting.save_serialized
     def force_save_brain(self) -> dict:
         """Admin-only recovery path: persist the full brain bypassing the
         walk-forward gate.
@@ -7368,6 +7517,7 @@ class OrganismLiveEngine(
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
+    @close_accounting.save_serialized
     def _save_brain(self) -> None:
         """Save full brain state to disk (with walk-forward gate).
 
@@ -7560,6 +7710,7 @@ class OrganismLiveEngine(
         except Exception as e:
             logger.error("Brain save failed: %s", e)
 
+    @close_accounting.serialized
     def _persist_exit_levels_standalone(
         self,
         exit_levels: dict[str, Any],
@@ -7786,6 +7937,11 @@ class OrganismLiveEngine(
             "universe_size": len(self._universe),
             "universe_symbols": list(self._universe),
             "positions_tracked": len(self._entry_metadata),
+            "close_accounting": {
+                "policy": close_accounting.ACCOUNTING_POLICY,
+                "error": self._accounting_error,
+                "pending": {sym: meta["pending_close"] for sym, meta in self._entry_metadata.items() if meta.get("pending_close")},
+            },
             # Performance stats
             "cumulative_pnl": round(cumulative_pnl, 2),
             "win_rate": round(win_rate, 4),
@@ -7811,6 +7967,12 @@ class OrganismLiveEngine(
             "data_stale": self._data_stale,
             "learning_mode": self._is_learning_mode,
             "trading_phase": trading_phase.get("phase", ""),
+            "policy_lock": {
+                **research_policy.policy_status(len(self._strategy_trades()), evolved_params=self.evolved_params),
+                "raw_ledger_trade_count": len(self._all_trades),
+                "inherited_learner_trade_count": self.learner.state.total_trades,
+                "baseline": getattr(self, "_research_baseline_verification", None),
+            },
             "guarded_mode": trading_phase.get("is_guarded", False),
             "ml_influence_enabled": trading_phase.get(
                 "ml_influence_enabled",
@@ -7833,6 +7995,10 @@ class OrganismLiveEngine(
 
         Returns a dict of parameters that were actually changed.
         """
+        if config and research_policy.RESEARCH_POLICY_LOCKED:
+            # This endpoint changes the decision surface, sometimes by
+            # recreating scanners. Emergency halt is a separate control.
+            raise ValueError(research_policy.RESEARCH_POLICY_REASON)
         global MAX_OPEN_POSITIONS, RETRAIN_INTERVAL, LIVE_LOOKBACK, MIN_BARS, LONG_ONLY
 
         changed: dict[str, Any] = {}

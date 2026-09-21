@@ -1,0 +1,143 @@
+{
+  "task_id": "operations-evidence-integrity-20260919",
+  "summary": "Deferred exact close accounting and complete read-only daily paper evidence",
+  "status": "historical_scope_superseded",
+  "user_authorization": "2026-09-19: remain focused and start implementing improvements as planned",
+  "implementation_role_constraint": "Resolved: Marsel explicitly authorized Codex direct implementation for this release",
+  "branch": "codex/operations-evidence-integrity",
+  "base_sha": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
+  "frozen_surface_changes": false,
+  "runtime_behavior_changed": true,
+  "runtime_behavior": "Incomplete identified strategy closes will be held from downstream outcome consumers until complete fills; effective future risk/learning responses change",
+  "no_deployment_or_new_scheduler_in_this_change": true,
+  "tasks": [
+    {
+      "id": "A",
+      "owner": "Codex accounting implementer",
+      "files": [
+        "backend/organism/live_engine.py (only un-hashed reconciliation/startup/status/persistence seams)",
+        "backend/organism/live_engine_fills.py",
+        "backend/organism/brain_persistence.py (bounded atomic accounting checkpoint if needed)",
+        "TradeRecord serialization paths if durable identity required",
+        "tests/test_live_engine_fill_accounting.py",
+        "new targeted crash consistency tests"
+      ],
+      "acceptance": [
+        "Incomplete strategy closes remain durable and visible without outcome-consumer mutation",
+        "Later complete fill evidence resolves once using original close identity/time/reason",
+        "Restart and injected write failure cannot yield mixed committed accounting states",
+        "Cross-session resolution does not apply old loss cooldown to a new session",
+        "Definitively unfilled entry cleans up without trade; unknown/manual attribution stays unqualified"
+      ]
+    },
+    {
+      "id": "B",
+      "owner": "Codex daily evidence implementer",
+      "files": [
+        "scripts/ops/paper_daily_evidence.py",
+        "scripts/ops/standdown_session_row.py",
+        "tests/test_paper_daily_evidence.py",
+        "tests/test_standdown_session_row.py",
+        "scripts/research/paper_fill_reconciliation.py only if demonstrable blocker"
+      ],
+      "acceptance": [
+        "Fixed-paper GET-only collector captures all statuses with bounded complete pagination or BLOCKED",
+        "Snapshot hashes match exact analyzed bytes; immutable idempotent publication",
+        "Market calendar guards future/pre-close/non-session dates; all rotations inventoried with unknown coverage explicit",
+        "Reconciliation/provenance gaps prevent exposed statistical PASS",
+        "Existing native gate runs at explicit 6bps; 3bps runtime unchanged",
+        "Complete flat no-trade session distinguished from missing evidence"
+      ]
+    },
+    {
+      "id": "C",
+      "owner": "Codex architecture/release/review",
+      "files": [
+        "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
+        "docs/architecture/mapss.md (accounting explanation only)",
+        "docs/engineering/LIVE_AUDIT_INDEX.md (generator)",
+        ".github/workflows/paper-readiness.yml (new targeted suite inclusion only)",
+        "artifacts/operations_evidence/",
+        "artifacts/task_report.json and required pack",
+        "scripts/runtime/write_runtime_snapshot.py",
+        "tests/test_runtime_snapshot_auth.py",
+        "backend/organism/entry_evidence.py",
+        "tests/test_entry_evidence.py",
+        "tests/test_organism_live_engine.py (pending-close expectation)",
+        "tests/test_walkforward_persistence.py (isolated gate harness)",
+        "tests/test_organism_engine_scenarios.py (legacy-route isolation and pending-close expectation)"
+      ],
+      "acceptance": [
+        "Independent review fixes addressed",
+        "Mandatory required tests and full artifact pack green",
+        "Freeze check passes against approved surface; cutoff unchanged",
+        "Feature branch pushed with reviewable PR and evidence attached",
+        "Telemetry-only non-hashed gate/submission wrappers bind actual entry identity to observed causal frame/runtime receipt; decisions and returns unchanged"
+      ]
+    },
+    {
+      "id": "A-replay",
+      "owner": "Codex accounting implementer",
+      "files": [
+        "backend/organism/replay_simulator.py",
+        "backend/organism/live_engine_fills.py (explicit source label)",
+        "backend/organism/live_engine.py (non-hashed source label only)",
+        "tests/test_replay_close_accounting.py"
+      ],
+      "acceptance": [
+        "Executed simulated fills reach engine accounting/learner exactly once",
+        "Partial exits and pyramid entries conserve simulated quantities and PnL",
+        "Deferred simulated order IDs join actual execution IDs",
+        "Simulated evidence is labeled distinctly and cannot certify paper-broker provenance"
+      ],
+      "reason": "Integration audit reproduced broker gross -2 with learner0 and pending forever because ReplayEngine has no database adapter."
+    }
+  ],
+  "tests": [
+    "tests/test_live_engine_fill_accounting.py",
+    "new pending-close persistence/crash fixtures",
+    "tests/test_paper_daily_evidence.py",
+    "tests/test_standdown_session_row.py",
+    "tests/test_paper_fill_reconciliation.py",
+    "tests/test_organism_live_engine.py",
+    "tests/test_organism_engine_scenarios.py",
+    "tests/test_multi_tick_state.py",
+    "tests/test_safety_invariants.py",
+    "tests/test_replay_simulator.py",
+    "tests/test_self_evolution.py",
+    "tests/test_order_integrity_comprehensive.py",
+    "tests/test_position_reconciliation.py",
+    "tests/test_position_reconciliation_comprehensive.py",
+    "tests/test_settings_comprehensive.py",
+    "tests/test_config_coordinator_comprehensive.py",
+    "tests/test_system_integration.py",
+    "tests/test_runtime_snapshot_auth.py",
+    "tests/test_entry_evidence.py",
+    "tests/test_walkforward_persistence.py",
+    "tests/test_replay_close_accounting.py"
+  ],
+  "validation_commands": [
+    "python scripts/ci/generate_artifacts.py full",
+    "python scripts/ci/generate_audit_index.py",
+    "PYTHONPATH=. python scripts/phase2_freeze.py --verify (approved non-secret freeze env)"
+  ],
+  "constraints": [
+    "No tests on live brain/database or broker credentials",
+    "No forced broker trades/cancels",
+    "No frozen six source groups/config/feed changes",
+    "No learner/history/cutoff reset",
+    "No parked refactor or CI trio cleanup",
+    "No operating platform restart, rollout or notification destination selection"
+  ],
+  "follow_ups": [
+    "Candidate deployment and natural session acceptance after review",
+    "Unattended host/alert/off-host acceptance",
+    "Remaining operator UI/security coverage",
+    "Research candidate preregistration"
+  ],
+  "implementation_role_approval": "Codex can implement directly. Do you need anything else from me?",
+  "source_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "amendment_plan": "monday_preparation_plan.json",
+  "superseded_by": "artifacts/operations_evidence/final_readiness_plan.json",
+  "scope_note": "Original September19 plan retained for history; September21 plan authorizes policy-lock expansion, explicit boundary transition, deployment and actual-host schedule."
+}

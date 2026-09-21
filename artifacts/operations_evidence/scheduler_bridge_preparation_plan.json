@@ -1,0 +1,30 @@
+{
+  "task_id": "paper-policy-scheduler-bridge",
+  "status": "hosted_passed_release_owner_holds_pending_new_frontend_source",
+  "base_sha": "fe67883626669f6508f79011ba636b1d3cbcc65d",
+  "branch": "codex/paper-policy-scheduler-bridge",
+  "scope": "Update the two main-branch scheduler wrappers to audit the final immutable reviewed policy-lock source supplied by release owner.",
+  "owned_files": [
+    ".github/workflows/nightly.yml",
+    ".github/workflows/paper-postclose-audit.yml"
+  ],
+  "constraints": [
+    "Preserve schedule cron, workflow_dispatch, permissions and notify_issues=true.",
+    "Both uses@SHA and source_sha must be the same full immutable source SHA in both wrappers.",
+    "Do not modify main operating checkout, staging workflow, scheduler guard or runtime source.",
+    "Do not open PR before root supplies final source SHA.",
+    "Plan/receipt remain local only: a tracked artifact path would trigger main staging push because exactly four bridge workflow paths are excluded."
+  ],
+  "validation": [
+    "Only four uses@/source_sha replacements in two wrappers",
+    "Actionlint1.7.12",
+    "Exact existing remote guard after approved source available",
+    "Source-bound scheduler/workflow contracts"
+  ],
+  "follow_ups": [
+    "Wait for root accepted-review/remote-source notice before any runtime-source push",
+    "Commit/push only two wrappers; update existing PR22 body; never merge"
+  ],
+  "source_sha": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
+  "previous_source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe"
+}

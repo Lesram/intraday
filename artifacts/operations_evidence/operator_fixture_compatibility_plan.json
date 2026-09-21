@@ -1,0 +1,36 @@
+{
+  "task_id": "operator-admission-legacy-test-fixtures",
+  "status": "applied_and_verified_after_nightly_receipt",
+  "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+  "scope": "Complete exactly three __new__ engine fixtures with real, explicitly nonhalted governance; preserve production fail-closed admission and every existing test assertion.",
+  "files": [
+    "tests/test_apr7_p0_p1_fixes.py",
+    "tests/test_phase9_strategy_governance.py"
+  ],
+  "before_sha256": {
+    "tests/test_apr7_p0_p1_fixes.py": "e691553f1bcb6588e3d9daaa384bcea9059737779d2cc56374756837f8bf07e3",
+    "tests/test_phase9_strategy_governance.py": "295e0765837c24a21a6563e56917645777153732b8ec97ccc71204b1be87156c"
+  },
+  "tests": [
+    "tests/test_apr7_p0_p1_fixes.py",
+    "tests/test_phase9_strategy_governance.py"
+  ],
+  "acceptance": [
+    "Counter increments for each admitted submit; halted attempt neither calls broker nor increments counter",
+    "Unknown strategy still rejected by real StrategyGovernor, no broker call/counter",
+    "Allowed submit retains exact strategy identity fields and count1"
+  ],
+  "isolation": "env-i mock/shadow test flags; network-denied; no app services/live state",
+  "production_changes": false,
+  "broad_fixture_or_policy_unlock": false,
+  "patch": "/tmp/intra-operator-fixture-compatibility.patch",
+  "apply_gate": "Nightly completes and agent confirms start/end source hashes recorded unchanged",
+  "commit": "Root only",
+  "nightly_gate": {
+    "source_bytes_unchanged": true,
+    "passed": 8415,
+    "failed": 20,
+    "new_fixture_failures": 3,
+    "known_network_denied_loopback_failures": 17
+  }
+}

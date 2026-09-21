@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0 -- /Users/marselkei/VS/intra/venv/bin/python
+rootdir: /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra
+configfile: pytest.ini
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 30.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 10 items
+
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[False-failure-False-False-paper-postclose-audit.yml-collect-and-audit] PASSED [ 10%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[False-failure-False-False-nightly.yml-deep-tests] PASSED [ 20%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-success-False-False-paper-postclose-audit.yml-collect-and-audit] PASSED [ 30%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-success-False-False-nightly.yml-deep-tests] PASSED [ 40%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-False-paper-postclose-audit.yml-collect-and-audit] PASSED [ 50%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-False-nightly.yml-deep-tests] PASSED [ 60%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-cancelled-True-False-paper-postclose-audit.yml-collect-and-audit] PASSED [ 70%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-cancelled-True-False-nightly.yml-deep-tests] PASSED [ 80%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-True-paper-postclose-audit.yml-collect-and-audit] PASSED [ 90%]
+tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-True-nightly.yml-deep-tests] PASSED [100%]
+
+- generated xml file: /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/policy_nightly.node.xml -
+============================== 10 passed in 0.51s ==============================

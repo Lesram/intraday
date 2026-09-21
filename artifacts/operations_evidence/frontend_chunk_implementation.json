@@ -1,0 +1,64 @@
+{
+  "task_id": "production-frontend-chunk-initialization",
+  "created_at_utc": "2026-09-21T09:04:33.992595+00:00",
+  "status": "SOURCE_STABLE_ROOT_BROWSER_ACCEPTED_PENDING_CONSOLIDATED_RELEASE",
+  "base_source_sha": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
+  "files_changed": [
+    "frontend/vite.config.ts"
+  ],
+  "source_sha256": {
+    "frontend/vite.config.ts": "26f8975661d9362947ad7c762b211bc7d63625fcdc59d9e180b89284b5835aca"
+  },
+  "scope": "Remove manual vendor partitioning; Rollup chooses dependency-aware chunks. No other Vite configuration changes.",
+  "diagnosis": {
+    "first_failure": "vendor-other-rKjPd79a.js:1:9108 -> rc-util/es/ref.js:6:31 reads uninitialized React.version through React/scheduler/vendor-other cycle",
+    "second_failure": "antd-icons-U5jMHIFb.js:58:1322 -> nested AntdIcon.js:17:21 reads uninitialized blue.primary through antd/icons cycle",
+    "root_cause": "Handwritten substring-based manual chunks broke dependency initialization across multiple library cycles"
+  },
+  "abandoned_partial_fix": {
+    "change": "Co-locate scheduler with React",
+    "result": "React cycle removed, but actual browser exposed separate AntD cycle; not accepted for release",
+    "evidence_preserved": true,
+    "failed_dist": "/tmp/intra-frontend-smoke-react-only-c11"
+  },
+  "final_change": "Remove only manualChunks callback, retaining hashed output naming, plugins, aliases, API/WebSocket proxies, minification/target/tree-shaking and test configuration.",
+  "validation": {
+    "production_build_exit_code": 0,
+    "production_env": "VITE_DEV_BYPASS_AUTH=false",
+    "eslint_exit_code": 0,
+    "freeze_verify_exit_code": 0,
+    "config_remainder_exactly_matches_base": true,
+    "generated_static_chunk_cycles": 0,
+    "generated_js_files": 115,
+    "root_actual_browser": {
+      "result": "PASS",
+      "observed_by": "root",
+      "rendered": "Username/password/sign-in/sign-up/recovery guidance at /login",
+      "javascript_errors": [],
+      "console_messages": [],
+      "screenshot": "/tmp/intra-candidate-ui-accepted.png",
+      "request_log": "/tmp/intra-browser-accepted-requests.json",
+      "actual_admin_login_claimed": false
+    },
+    "independent_browser_regression": "Accounting agent owns isolated5197 old-bundle failure/fixed-bundle success script and evidence"
+  },
+  "artifact_sha256": {
+    "artifacts/operations_evidence/frontend_chunk_repair_plan.json": "9e6c39b229984cec6670dbffb3189d96df188ab0e6f9eb0bd8476e742cede7aa",
+    "artifacts/operations_evidence/frontend_chunk_before_graph.json": "ec51c21f0069c95251cfbae40d82c88c5f6a0bcb3a3177af97bf70bcd9efdec0",
+    "artifacts/operations_evidence/frontend_chunk_build.log": "0d85cc5b12afc00640ba4052fe39e2a8fa6fbb02c5bb887244cc1978a457d15b",
+    "artifacts/operations_evidence/frontend_chunk_after_graph.json": "602dc9f592f49e5051e4aec782444da13cf839c6bbb64417e9e6d73f8a743116",
+    "artifacts/operations_evidence/frontend_chunk_automatic_build.log": "a6c1cc5ee4d2ab5d3cb4d9149f5dbee1f912855a313a978db78b3e6eab0834d0",
+    "artifacts/operations_evidence/frontend_chunk_automatic_graph.json": "4768d8d1b932a390ef6e49516d49db7a3f6061c4e6f2cac4192a5aee701e5892",
+    "artifacts/operations_evidence/frontend_chunk_automatic_eslint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifacts/operations_evidence/frontend_chunk_automatic_freeze.log": "7329a92cc712e5836f29bc1d7246b41029f62d2b5cace3bed718defc4ff27a63"
+  },
+  "backend_strategy_or_broker_changes": false,
+  "proxy_changes": false,
+  "runtime_actions_by_this_agent": false,
+  "commit_or_push": false,
+  "limits": [
+    "Actual browser rendering is accepted; administrator credentials/session remain unverified.",
+    "Existing non-failing bundle-size warnings remain.",
+    "Root owns final commit/CI/image/deployment and final-artifact secret scan."
+  ]
+}

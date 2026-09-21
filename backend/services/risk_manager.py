@@ -6,6 +6,7 @@ Handles real-time risk metric calculations, violation detection, and emergency s
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import logging
+import json
 import uuid
 from uuid import UUID
 
@@ -668,12 +669,20 @@ class RiskManager:
         user_id: UUID,
         request: TriggerEmergencyStopRequest,
         triggered_by: UUID,
+        *,
+        control_result: dict | None = None,
     ) -> EmergencyStop:
-        """
-        CRITICAL: Trigger emergency stop
+        """Record a latched operator stop and confirmed entry cancellations.
 
-        Stops all strategies and cancels all open orders
+        The route performs authoritative halt and broker confirmation first.
+        This audit method never fabricates order status or cancels risk exits.
         """
+        if not isinstance(control_result, dict) or control_result.get("operator_halted") is not True:
+            raise ValueError("authoritative_operator_halt_required")
+        cancellation = control_result.get("cancellation") or {}
+        confirmed = cancellation.get("confirmed_cancelled", 0)
+        if type(confirmed) is not int or confirmed < 0:
+            raise ValueError("invalid_confirmed_cancellation_count")
         logger.critical(
             f"EMERGENCY STOP triggered by {triggered_by} for user {user_id}: {request.reason}"
         )
@@ -704,7 +713,7 @@ class RiskManager:
             )
 
         strategies_stopped = 0
-        orders_cancelled = 0
+        orders_cancelled = confirmed
 
         try:
             # 1. Stop all active strategies (no user filtering - system-wide)
@@ -718,23 +727,21 @@ class RiskManager:
                 strategy.stopped_at = datetime.now(UTC)
                 strategies_stopped += 1
 
-            # 2. Cancel all open orders (no user filtering - system-wide)
-            result = await self.db.execute(
-                select(Order).where(
-                    Order.status.in_(["pending", "new", "partially_filled"])
-                )
-            )
-            orders = result.scalars().all()
-
-            for order in orders:
-                order.status = "cancelled"
-                orders_cancelled += 1
+            # Broker confirmations are supplied by the bounded operator path.
+            # Order status/fills remain owned by stream and reconciliation.
+            audit_reason = request.reason + "\nOperator control: " + json.dumps({
+                "operator_halted": control_result.get("operator_halted"),
+                "entries_halted": control_result.get("entries_halted"),
+                "drained": control_result.get("drained"),
+                "persistence": control_result.get("persistence"),
+                "cancellation": cancellation,
+            }, sort_keys=True, allow_nan=False)
 
             # 3. Create emergency stop record
             db_stop = DBEmergencyStop(
                 user_id=user_id,
                 triggered_by=triggered_by,
-                reason=request.reason,
+                reason=audit_reason,
                 strategies_stopped=strategies_stopped,
                 orders_cancelled=orders_cancelled,
                 status=EmergencyStopStatus.ACTIVE.value,

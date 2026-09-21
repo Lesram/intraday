@@ -1,0 +1,42 @@
+{
+  "verdict": "LOCAL_SOURCE_AND_ARTIFACTS_ACCEPTED_HOSTED_PENDING",
+  "reviewer": "combined_acceptance_review",
+  "source_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "supersedes_acceptance_for_prior_source": "3fd6a3f71f8724c0e3f92265a8ea3b1f3a84f11f",
+  "prior_review_in_git": "a9c20cd:artifacts/operations_evidence/source_review.json",
+  "scope": "Existing PR19 plus bounded replacement diagnosis, input/publication race and numeric receipt hardening",
+  "remaining_source_blockers": [],
+  "reviewed_hashes": {
+    "backend/organism/live_engine_fills.py": "138906ac893fb177591597f4fb964b69c31ac8c70f0ed458983bf83c21eeda4b",
+    "scripts/ops/paper_daily_evidence.py": "6559119cf26745216c266dde4012d0dd550afa847a402a7ffbf02407d0a3e6c0"
+  },
+  "targeted_evidence": {
+    "daily_junit_independently_counted": {
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0
+    },
+    "accounting_implementer_reported": {
+      "passed": 98,
+      "failed": 0
+    }
+  },
+  "verified": [
+    "Unsupported replacement orders remain pending and block daily qualification, including zero-fill predecessors",
+    "Input hardlinks, symlink ancestors, nonregular files and concurrent mutation are rejected",
+    "Pinned output publication prevents path-swap writes into protected brain state",
+    "Finite and typed receipt validation cannot expose an invalid favourable gate",
+    "Frozen functions, parameters, feed and submission paths unchanged"
+  ],
+  "remaining_limits": [
+    "Replacement-chain ingestion/cashflow reconciliation remains unsupported; historical ambiguity can hold later outcomes",
+    "Current DB has no replaced or pending_replace rows among1653, but this is not future safety proof",
+    "Candidate deployment, natural-session operation, unattended operation and profitability remain unproved"
+  ],
+  "final_acceptance_requires": [
+    "Fresh source-bound full artifact pack and tests",
+    "Image identity and source/freeze verification",
+    "Required hosted check green before merge"
+  ],
+  "final_artifact_review": "monday_final_review.json"
+}

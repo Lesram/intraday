@@ -10,6 +10,12 @@ from types import SimpleNamespace
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def unlocked_legacy_governance_policy(monkeypatch):
+    """Exercise the older governance layer; default lock has separate tests."""
+    monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
+
+
 def _make_request(frozen=False, halted=False):
     gov = SimpleNamespace(is_frozen=frozen, is_trading_halted=halted)
     app = SimpleNamespace(state=SimpleNamespace(organism_governance=gov))

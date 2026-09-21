@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="15" failures="0" errors="0" time="0.047493834">
+    <testsuite name="src/hooks/useScannerWebSocket.test.tsx" timestamp="2026-09-21T09:33:55.336Z" hostname="Marsels-MacBook-Pro.local" tests="7" failures="0" errors="0" skipped="0" time="0.01482575">
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; connects without require and preserves the encoded query-token route" time="0.009021167">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; preserves the explicit secure WebSocket base override" time="0.000991541">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; reads a refreshed token when the reconnect timer actually fires" time="0.001406458">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not reconnect after logout even if a legacy token remains" time="0.000868375">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not open an unauthenticated socket" time="0.000611375">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; cancels a scheduled reconnect on explicit disconnect" time="0.000644125">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not log URL-bearing error events or constructor failures" time="0.000695125">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/marketDataWebSocketService.test.ts" timestamp="2026-09-21T09:33:55.337Z" hostname="Marsels-MacBook-Pro.local" tests="8" failures="0" errors="0" skipped="0" time="0.032668084">
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; uses the actual current store token rather than a stale caller argument" time="0.023191167">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; reconnects without require and ignores a stale legacy token" time="0.001825">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; reconnects from the current store when there is no legacy storage" time="0.00102525">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; does not reuse captured or legacy credentials after logout during backoff" time="0.001041541">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; rejects missing current credentials even when a caller supplies an old token" time="0.001806542">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; cancels the reconnect timer on explicit disconnect" time="0.001122541">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; does not log encoded credentials or raw URL-bearing events" time="0.00093375">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; sanitizes constructor errors and refreshes credentials before a failed-connect retry" time="0.001077792">
+        </testcase>
+    </testsuite>
+</testsuites>

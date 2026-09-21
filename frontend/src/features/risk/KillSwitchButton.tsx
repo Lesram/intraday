@@ -7,6 +7,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button, Modal, Typography, Alert, Space, message } from 'antd';
 import { FireOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { riskApi } from '../../services/riskApi';
 import type { TriggerEmergencyStopRequest } from '../../types/risk';
 import './KillSwitchButton.css';
@@ -44,14 +45,22 @@ const KillSwitchButton: React.FC<KillSwitchButtonProps> = ({
   const emergencyStopMutation = useMutation({
     mutationFn: (request: TriggerEmergencyStopRequest) => riskApi.triggerEmergencyStop(request),
     onSuccess: () => {
-      message.success('Emergency stop activated successfully');
+      message.success('New entries halted. Entry order cancellation confirmed; protective exits remain active.');
       queryClient.invalidateQueries({ queryKey: ['risk'] });
       setShowConfirmModal(false);
       onConfirm?.();
     },
     onError: (error: unknown) => {
-      const err = error as { message?: string };
-      message.error(`Failed to activate emergency stop: ${err.message}`);
+      const detail = isAxiosError(error) ? error.response?.data?.detail : undefined;
+      queryClient.invalidateQueries({ queryKey: ['risk'] });
+      if (detail?.control?.entries_halted === true) {
+        const exits = detail.control.protective_exits_active === true
+          ? 'Protective exits remain active.'
+          : 'Exit management could not be verified; check engine and broker positions immediately.';
+        message.warning(`New entries are halted, but the emergency stop is incomplete. Check pending entry orders and the audit status. ${exits}`, 12);
+      } else {
+        message.error('Emergency stop could not be confirmed. Check engine status and broker orders immediately.', 12);
+      }
     },
   });
 
@@ -77,9 +86,6 @@ const KillSwitchButton: React.FC<KillSwitchButtonProps> = ({
   const handleConfirmEmergencyStop = () => {
     const request: TriggerEmergencyStopRequest = {
       reason: reason || 'Manual emergency stop triggered',
-      stop_all_strategies: true,
-      cancel_all_orders: true,
-      notify_admin: true,
     };
 
     emergencyStopMutation.mutate(request);
@@ -136,20 +142,20 @@ const KillSwitchButton: React.FC<KillSwitchButtonProps> = ({
         <Alert
           type="error"
           showIcon
-          message="WARNING: This will immediately stop all trading activity"
+          message="Halt new entries and cancel verified pending entry orders"
           description={
             <div style={{ marginTop: 16 }}>
               <p><strong>This action will:</strong></p>
               <ul>
-                <li>Stop all active trading strategies</li>
-                <li>Cancel all pending orders</li>
-                <li>Halt all automated trading</li>
-                <li>Notify system administrators</li>
-                <li>Create an audit trail record</li>
+                <li>Block new entries and additions to positions</li>
+                <li>Request cancellation of entry orders verified as belonging to this engine</li>
+                <li>Leave protective exits and end-of-day management enabled; confirm the engine is running</li>
+                <li>Preserve other orders and report incomplete cancellations</li>
+                <li>Record the outcome in the audit trail</li>
               </ul>
               <p style={{ marginTop: 16 }}>
                 <strong>This action cannot be undone automatically.</strong> 
-                Manual intervention will be required to resume trading.
+                An operator must explicitly resume entries. Other risk blocks remain in force.
               </p>
               
               <div style={{ marginTop: 16 }}>

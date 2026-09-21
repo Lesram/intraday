@@ -97,6 +97,11 @@ class TestXgbParamsSerialization:
 
 class TestRejectionVsError:
 
+    @pytest.fixture(autouse=True)
+    def unlocked_legacy_training_policy(self, monkeypatch):
+        """Exercise retained trainer primitives; runtime default stays locked."""
+        monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
+
     def test_train_result_has_rejection_reason_field(self):
         """TrainResult must have a rejection_reason field."""
         result = TrainResult()
@@ -200,6 +205,11 @@ class TestRejectionVsError:
 # ==============================================================================
 
 class TestApplyResultMetrics:
+
+    @pytest.fixture(autouse=True)
+    def unlocked_legacy_training_policy(self, monkeypatch):
+        """Exercise retained trainer primitives; runtime default stays locked."""
+        monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
 
     def _make_accepted_result(self) -> TrainResult:
         import pickle

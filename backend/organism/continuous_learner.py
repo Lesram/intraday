@@ -259,6 +259,7 @@ class TradeRecord:
     ml_spoke: bool = False
     price_source: str = ""
     had_partial_exits: bool = False
+    entry_order_id: str = ""  # Stable position-lifetime identity for accounting.
 
     @property
     def correct_direction(self) -> bool:

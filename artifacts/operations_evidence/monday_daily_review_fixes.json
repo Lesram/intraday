@@ -1,0 +1,68 @@
+{
+  "branch": "codex/operations-evidence-integrity",
+  "commands": [
+    "Network-denied sandbox-exec, env-i, mock broker/data, disabled pytest plugin autoload: tests/test_paper_daily_evidence.py tests/test_standdown_session_row.py tests/test_paper_fill_reconciliation.py tests/test_phase3_attribution_report.py with monday_daily_targeted.xml",
+    "ruff check scripts/ops/paper_daily_evidence.py tests/test_paper_daily_evidence.py",
+    "Network-denied, isolated brain/database, approved frozen non-secret env: python scripts/phase2_freeze.py --verify"
+  ],
+  "committed": false,
+  "covered_cases": [
+    "Leaf/ancestor symlink, hardlink, nonregular/FIFO/loop rejection",
+    "Leaf replacement between stat/open cannot follow symlink/FIFO/hardlink",
+    "Pinned ancestor traversal reads original authorized bytes, never swapped target",
+    "Whole capture detects same-size mutation with restored mtime via ctime/link/device signature",
+    "Date-directory swap during staging does not write any bytes into protected brain",
+    "Receipt finite/type/count/hash validation prevents exposed PASS",
+    "Extreme broker cashflow produces controlled BLOCKED pack",
+    "Zero-filled and positive-filled replaced predecessors block daily quality",
+    "Actual entry observer\u2192JSONL\u2192collector\u2192analyzer integration retained"
+  ],
+  "docs_updated": [
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md"
+  ],
+  "files_changed": [
+    "scripts/ops/paper_daily_evidence.py",
+    "tests/test_paper_daily_evidence.py",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md"
+  ],
+  "follow_ups": [
+    "Root commits source and runs consolidated full regression/artifact pack.",
+    "Root binds candidate image and operating deployment separately; no deployment performed by this task."
+  ],
+  "freeze_verification": {
+    "artifact": "artifacts/operations_evidence/monday_daily_freeze.txt",
+    "artifact_bytes_unchanged": true,
+    "exit_code": 0
+  },
+  "lint": "passed",
+  "no_live_calls": true,
+  "no_platform_state_writes": true,
+  "reproduction": {
+    "artifact": "artifacts/operations_evidence/monday_daily_reproduction.xml",
+    "before_fix_failures": 15,
+    "existing_leaf_symlink_rejection_passed": 1,
+    "expected_red_regression_only": true
+  },
+  "review_ids": [
+    "r4055307829",
+    "r4055307844"
+  ],
+  "risks": [
+    "Replacement chains remain deliberately unqualified until reliable execution lineage exists; no summing of cumulative replacement summaries is certified.",
+    "Input paths must now be canonical single-link regular files; symlink convenience paths such as macOS /tmp are explicitly rejected.",
+    "Historical checkpoint NaN values remain preserved and separately scoped; the strict JSON numeric rule applies to provenance receipts.",
+    "The expected-red reproduction XML is historical defect evidence, not the final test verdict."
+  ],
+  "runtime_behavior_changed": false,
+  "sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "source_sha256": {
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md": "d959e3f955ec8f92217aa75b33844c4db4ae5b36cee1f260b4936e158e50740e",
+    "scripts/ops/paper_daily_evidence.py": "6559119cf26745216c266dde4012d0dd550afa847a402a7ffbf02407d0a3e6c0",
+    "tests/test_paper_daily_evidence.py": "b0efeb3e86016a28f3239e662e49bdcf14936d567ec3c20ac76196c0e2c771d7"
+  },
+  "summary": "Reproduced and closed linked-input and nonfinite/coerced receipt acceptance defects; extended the same integrity contract through capture-set signatures, descriptor-relative publication and replaced-order withholding.",
+  "task_id": "pr19-daily-hostile-input-review-fixes",
+  "test_evidence": "artifacts/operations_evidence/monday_daily_targeted.xml",
+  "tests_failed": 0,
+  "tests_passed": 114
+}

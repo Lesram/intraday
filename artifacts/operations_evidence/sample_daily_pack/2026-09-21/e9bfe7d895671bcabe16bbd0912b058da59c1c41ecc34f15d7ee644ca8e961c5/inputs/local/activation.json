@@ -1,0 +1,9 @@
+{
+  "activation_timestamp_utc": "2026-09-19T21:55:01.857005+00:00",
+  "active_freeze_sha256": "164efc37fc4b329c7c0dd83941de4122c27ff36d789ec8c799f6e77973521648",
+  "broker_before_transition": {
+    "open_orders": 0,
+    "paper_endpoint_verified": true,
+    "positions": 0
+  }
+}

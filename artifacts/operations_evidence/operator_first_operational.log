@@ -1,0 +1,136 @@
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 20%]
+........................................................................ [ 26%]
+........................................................................ [ 31%]
+........................................................................ [ 36%]
+........................................................................ [ 41%]
+........................................................................ [ 47%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 62%]
+........................................................................ [ 67%]
+........................................................................ [ 73%]
+........................................................................ [ 78%]
+......................................s................................. [ 83%]
+........................................................................ [ 88%]
+.....FFF........F....................................................... [ 94%]
+........................................................................ [ 99%]
+.........                                                                [100%]
+=================================== FAILURES ===================================
+___________________ test_freeze_covers_full_decision_surface ___________________
+tests/test_phase2_freeze.py:69: in test_freeze_covers_full_decision_surface
+    assert set(freeze["surface"]["research_policy_sources"]) == {
+E   AssertionError: assert {'baseline_ve...ed_risk', ...} == {'baseline_ve...olution', ...}
+E     
+E     Extra items in the left set:
+E     'operator_api'
+E     'governance'
+E     'emergency_stop_service'
+E     'entry_cancellation'
+E     'emergency_stop_api'...
+E     
+E     ...Full output truncated (3 lines hidden), use '-vv' to show
+_______________________ test_decision_surface_unchanged ________________________
+tests/test_phase2_freeze.py:84: in test_decision_surface_unchanged
+    assert current == freeze["surface"], (
+E   AssertionError: DECISION-SURFACE DRIFT since FROZEN_AT — the forward corpus is contaminated. Re-run scripts/phase2_freeze.py to re-stamp FROZEN_AT and RESET the accumulation clock. (This is the designed reset signal, not a flake.)
+E   assert {'effective_p...ue, ...}, ...} == {'effective_p...ue, ...}, ...}
+E     
+E     Omitting 9 identical items, use -vv to show
+E     Differing items:
+E     {'research_policy_enforcement_env': {'ORGANISM_APPROVED_POLICY_BASELINE': '/app/artifacts/phase2/research_policy_baseline.json', 'ORGANISM_OPERATOR_CONTROL_STATE': None}} != {'research_policy_enforcement_env': {'ORGANISM_APPROVED_POLICY_BASELINE': '/app/artifacts/phase2/research_policy_baseline.json', 'ORGANISM_OPERATOR_CONTROL_STATE': '/app/data/operator_control_state.json'}}
+E     Use -v to get more diff
+_________________ test_verify_mode_passes_on_unchanged_surface _________________
+tests/test_phase2_freeze.py:99: in test_verify_mode_passes_on_unchanged_surface
+    assert verify() == 0
+E   assert 1 == 0
+E    +  where 1 = verify()
+----------------------------- Captured stdout call -----------------------------
+DRIFT-VERIFY FAIL: decision surface DRIFTED from freeze (FROZEN_AT=2026-09-21T08:20:53.394292+00:00) — the forward clock would reset. Offending keys:
+    research_policy_enforcement_env.ORGANISM_OPERATOR_CONTROL_STATE: frozen='/app/data/operator_control_state.json' current=None
+_ test_verify_mode_detects_missing_deployment_env[ORGANISM_OPERATOR_CONTROL_STATE] _
+tests/test_phase2_freeze.py:149: in test_verify_mode_detects_missing_deployment_env
+    monkeypatch.delenv(key)
+../../../../VS/intra/venv/lib/python3.12/site-packages/_pytest/monkeypatch.py:340: in delenv
+    self.delitem(environ, name, raising=raising)
+../../../../VS/intra/venv/lib/python3.12/site-packages/_pytest/monkeypatch.py:307: in delitem
+    raise KeyError(name)
+E   KeyError: 'ORGANISM_OPERATOR_CONTROL_STATE'
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/test_paper_monitor_access.py::test_authentication_and_dedicated_role_required[None-401]
+tests/test_paper_runtime_config.py::test_app_settings_respects_explicit_use_mock_data_false_in_development
+tests/test_paper_runtime_config.py::test_app_settings_keeps_development_mock_default_when_unspecified
+tests/test_paper_runtime_config.py::test_app_settings_respects_explicit_alpaca_paper_false_in_development
+tests/test_paper_runtime_config.py::test_signals_market_data_client_uses_real_client_when_mock_false
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_websocket_and_signal_service.py:70: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("MSFT", data)
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal_with_empty_data
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_websocket_and_signal_service.py:81: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("TSLA", {})
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_config_coordinator_comprehensive.py:17: DeprecationWarning: backend.config.coordinator is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.coordinator import ConfigurationCoordinator
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/config/coordinator.py:22: DeprecationWarning: backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.unified import UnifiedSettings, get_unified_settings
+
+tests/test_risk_manager_service_comprehensive.py: 10 warnings
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:27: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py: 10 warnings
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:28: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.updated_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:42: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.last_updated = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:43: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetRecentViolations::test_get_violations_with_custom_hours
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_trigger_emergency_stop
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_trigger_emergency_stop
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:95: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_resolve_emergency_stop
+tests/test_risk_manager_service_comprehensive.py::TestGetActiveEmergencyStop::test_get_active_stop_when_exists
+tests/test_risk_manager_service_comprehensive.py::TestIsEmergencyStopActive::test_returns_true_when_active
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:73: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.triggered_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_phase2_freeze.py::test_freeze_covers_full_decision_surface
+FAILED tests/test_phase2_freeze.py::test_decision_surface_unchanged - Asserti...
+FAILED tests/test_phase2_freeze.py::test_verify_mode_passes_on_unchanged_surface
+FAILED tests/test_phase2_freeze.py::test_verify_mode_detects_missing_deployment_env[ORGANISM_OPERATOR_CONTROL_STATE]
+4 failed, 1372 passed, 1 skipped, 42 warnings in 31.24s

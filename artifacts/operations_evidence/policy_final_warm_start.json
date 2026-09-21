@@ -1,0 +1,97 @@
+{
+  "status": "passed",
+  "candidate_source": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+  "candidate_image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
+  "deserialization_started": true,
+  "independent_assertion_negative_controls_passed": 4,
+  "preflight_all_9_models_verified": true,
+  "trusted_backup_manifest_verified": true,
+  "signing_source_identical": true,
+  "container_exit_code": 0,
+  "source_hashes_unchanged": true,
+  "result": {
+    "accounting_projection_roundtrip_equal": true,
+    "added_scratch_files": [
+      ".brain.lock",
+      "close_accounting.json"
+    ],
+    "all_model_and_cache_fingerprints_match_verified_artifacts": true,
+    "all_original_file_hashes_unchanged": true,
+    "approved_baseline_verified": {
+      "configured": true,
+      "path": "/app/artifacts/phase2/research_policy_baseline.json",
+      "runtime_identity_sha256": "b6a417d156d7dd2d709a5c1ec24251864809dfb7752e4bebeb1df5fd3d47e608",
+      "sha256": "1c31a7eddd75444fd46cea81260fb27f92646634ccbd36fa0e53779bce849be4",
+      "verified": true
+    },
+    "call_ledger": [],
+    "candidate_source": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+    "deliberate_counter_mismatch_rejected": true,
+    "effective_policy_hash": null,
+    "every_ledger_and_learner_row_core_values_match_original_csv": true,
+    "first_load_legacy_kelly_calibration_and_counters_match": true,
+    "learner_cumulative_pnl_preserved": true,
+    "learner_generation": 389,
+    "learner_state_roundtrip_equal": true,
+    "learner_total_trades": 609,
+    "ledger_rows": 610,
+    "limits": [
+      "No trading, external position validation, database, scheduler, diagnostic checks or trainer tested.",
+      "The clock is fixed to the saved brain timestamp to isolate preservation from session transitions.",
+      "Initialization runs its built-in zero-vector model sanity probes; no predictive-performance claim is made.",
+      "Legacy source contains no saved per-symbol daily PnL/loss-map baseline, so preservation of those absent maps is not attested.",
+      "Full save exercised only on a second disposable copy; no model promotion or natural-session acceptance claimed."
+    ],
+    "models": {
+      "cache_shapes": {
+        "_last_val_X": [
+          95,
+          79
+        ],
+        "_last_val_y_dir": [
+          95
+        ],
+        "_last_val_y_ret": [
+          95
+        ]
+      },
+      "ensemble_names": [
+        "rf",
+        "xgb"
+      ],
+      "feature_count": 79,
+      "generation": 390,
+      "primary_classes": [
+        "XGBClassifier",
+        "XGBRegressor"
+      ]
+    },
+    "models_verified_before_deserialization": 9,
+    "operator_controls": {
+      "accounting_learner_models_preserved_after_full_save": true,
+      "configured_initially_unhalted_verified": true,
+      "durable_halt_survives_full_save_and_initialize": true,
+      "offline_scheduler_degraded_acknowledgement_verified": true,
+      "operator_record_checksum": "90ddddfc723b48a8e6fb2da1869194c2f1a47051ef1033ad679b094bacbeae45",
+      "second_disposable_copy_only": true
+    },
+    "signing_limitation": "Observed deployed development fallback provides corruption detection, not independent secret-key authentication.",
+    "source_files": 27,
+    "status": "passed",
+    "stubbed_calls": {
+      "diagnostics": 4,
+      "position_reconstruction": 4,
+      "trainer_start": 4
+    },
+    "suppressed_ensemble_failure_rejected": true,
+    "validation_warnings": [
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  "signing_limitation": "Observed deployed publicly derivable development fallback provides corruption detection, not independent secret-key authentication. Separate security-hardening follow-up; no key/config changes performed.",
+  "private_input_inventory_retained": true
+}

@@ -1,0 +1,23 @@
+{
+  "task_id": "pr19-terminal-replaced-accounting",
+  "scope": "Verify and repair terminal replaced-order accounting without relaxing replacement-chain attribution safety or changing frozen decision surfaces.",
+  "resolved_scope": "Make unsupported replacement lineage explicit in pending status, retain accounting and cleanup barriers, and reject unsafe mechanical terminal-list expansion. Replacement-chain accounting support is deferred because current ingestion lacks authoritative lineage.",
+  "status": "implemented_targeted_validation_passed",
+  "owned_files": [
+    "backend/organism/live_engine_fills.py",
+    "tests/test_live_engine_fill_accounting.py",
+    "tests/test_pending_close_accounting.py"
+  ],
+  "steps": [
+    "Inspect local broker, persistence, and collection replacement contracts.",
+    "Implement the smallest coherent terminal-state and replacement-attribution repair.",
+    "Add nonvacuous zero-fill replaced, partial replaced, and ambiguous-chain regression cases.",
+    "Run isolated network-denied targeted tests and frozen-surface verification.",
+    "Report changed files, validation, and remaining limits to the release owner."
+  ],
+  "constraints": [
+    "No frozen functions, strategy parameters, live state, or historical resets.",
+    "No commit or deployment; release owner handles consolidated validation and PR.",
+    "Preserve concurrent edits and fail closed on uncertain replacement identity."
+  ]
+}

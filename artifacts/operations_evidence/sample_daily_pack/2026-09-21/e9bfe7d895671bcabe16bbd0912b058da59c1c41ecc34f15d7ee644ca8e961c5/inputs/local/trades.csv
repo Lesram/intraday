@@ -1,0 +1,2 @@
+symbol,closed_at,shares,entry_price,exit_price,pnl,had_partial_exits,entry_source,regime_at_entry,price_source,entry_order_id
+XYZ,2026-09-21T16:00:20Z,6,100,99.6667,-2,True,alpha,trending_up,db_position_fills,database-entry-id

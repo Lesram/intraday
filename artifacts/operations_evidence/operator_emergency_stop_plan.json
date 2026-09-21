@@ -1,0 +1,37 @@
+{
+  "task_id": "operator-emergency-stop-truthful-cancellation",
+  "created_at": "2026-09-21T07:48:58.396435+00:00",
+  "scope": "Bind generic emergency stop to authoritative durable organism halt; cancel only exactly attributed entry orders with broker terminal confirmation; preserve protective exits and all fill evidence.",
+  "ownership": [
+    "backend/api/routes/risk.py",
+    "backend/services/risk_manager.py",
+    "backend/organism/operator_cancellation.py",
+    "tests/test_operator_emergency_stop.py",
+    "tests/test_risk_manager_service_comprehensive.py"
+  ],
+  "collaborators": "Accounting agent owns operator_controls authoritative halt/persistence; root owns frontend/models coordination and consolidated regression. Preserve others edits.",
+  "plan": [
+    "Coordinate synchronous durable halt API and latch before any endpoint await",
+    "Drain in-flight tick with bounded wait and snapshot entry identities without clearing tracking",
+    "Resolve DB identity/source role, cancel broker entry remainder only and confirm terminal status with bounded GET polling",
+    "Return explicit incomplete503 for ambiguity/unavailable identity/partial execution/fill race; retain halt and audit where possible",
+    "Remove fake DB order cancellation from risk service; counts only broker-confirmed cancellation",
+    "Add hostile async/mocked route/service/inventory tests; run network-denied targeted tests and frozen verification",
+    "Make authenticated /emergency-stop/active report authoritative engine manual halt/control fault, with no DB dependency; unavailable or unverified unhalted authority returns503. Resolve remains audit-only.",
+    "Independent bounded paper broker open inventory before/after; include exact broker/client identity in DB query regardless of terminal DBstatus; unresolved/unmatched inventory blocks completion",
+    "Require final same-epoch durable fault-free authoritative halt; a concurrent newer halt failure must return503"
+  ],
+  "tests": [
+    "tests/test_operator_emergency_stop.py",
+    "tests/test_risk_manager_service_comprehensive.py",
+    "related existing risk API tests"
+  ],
+  "prohibited": [
+    "No actual broker/API mutations or host runtime changes",
+    "No all-orders cancellation sweep",
+    "No fabricated DB status updates or local fill/tracking deletion",
+    "No frozen strategy function changes/tuning",
+    "No commit/push"
+  ],
+  "status": "review_repairs_targeted_green_pending_final_review"
+}

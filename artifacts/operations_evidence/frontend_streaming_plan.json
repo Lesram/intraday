@@ -1,0 +1,31 @@
+{
+  "task_id": "browser-streaming-current-token-contract",
+  "scope": "Repair browser-only scanner and market streaming token access using existing static getAuthToken helper; keep backend token query contract and WebSocket proxies unchanged",
+  "ownership": [
+    "frontend/src/hooks/useScannerWebSocket.ts",
+    "frontend/src/services/marketDataWebSocketService.ts",
+    "frontend/src/hooks/useScannerWebSocket.test.tsx",
+    "frontend/src/services/marketDataWebSocketService.test.ts",
+    ".github/workflows/paper-readiness.yml"
+  ],
+  "diagnosis": [
+    "Browser has no CommonJS require; scanner throws before WebSocket construction",
+    "Market fallback silently uses obsolete localStorage auth_token instead of current central store",
+    "Reconnect scheduling captures stale token before refresh/logout",
+    "URL redaction of raw token fails for encoded characters"
+  ],
+  "plan": [
+    "Write focused mock-WebSocket tests that fail with browser-style missing require on unchanged implementation",
+    "Use static centralized auth helper and encoded query token at actual connection attempt",
+    "Read current store again when reconnect timer fires; do not reuse legacy tokens after logout",
+    "Preserve callable service interface and backend protocol; token-free connection diagnostics",
+    "Run focused tests, scoped lint, production build, frozen verification; parent owns actual browser/CI/release",
+    "Add focused streaming test paths to existing frontend readiness step without altering time budgets"
+  ],
+  "constraints": [
+    "No real tokens/credentials, network/RPC/broker calls or browser/server actions",
+    "No backend or frozen strategy changes",
+    "No commit/push; preserve other agents changes"
+  ],
+  "status": "planned_before_edits"
+}

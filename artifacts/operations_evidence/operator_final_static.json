@@ -1,0 +1,2921 @@
+{
+  "base_sha": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
+  "changed_python_files": [
+    "backend/api/routes/risk.py",
+    "backend/api/routes/settings.py",
+    "backend/organism/background_trainer.py",
+    "backend/organism/brain_persistence.py",
+    "backend/organism/close_accounting.py",
+    "backend/organism/continuous_learner.py",
+    "backend/organism/entry_evidence.py",
+    "backend/organism/governance.py",
+    "backend/organism/live_engine.py",
+    "backend/organism/live_engine_fills.py",
+    "backend/organism/operator_cancellation.py",
+    "backend/organism/operator_controls.py",
+    "backend/organism/replay_simulator.py",
+    "backend/organism/research_baseline.py",
+    "backend/organism/research_policy.py",
+    "backend/organism/routes.py",
+    "backend/organism/scheduler.py",
+    "backend/organism/trading_phase.py",
+    "backend/services/risk_manager.py",
+    "scripts/ops/paper_daily_evidence.py",
+    "scripts/ops/paper_daily_host.py",
+    "scripts/ops/paper_watchdog.py",
+    "scripts/ops/standdown_session_row.py",
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_apr10_patch_f4_forensic_guard.py",
+    "tests/test_apr8_patch_a_force_save.py",
+    "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+    "tests/test_audit_2_3_2_5_promotion_evolution.py",
+    "tests/test_audit_patch_queue_a.py",
+    "tests/test_audit_patch_queue_b1.py",
+    "tests/test_audit_patch_queue_b2.py",
+    "tests/test_audit_patch_queue_f3.py",
+    "tests/test_audit_patch_queue_f4.py",
+    "tests/test_audit_patch_queue_h3.py",
+    "tests/test_audit_patch_queue_i1.py",
+    "tests/test_audit_patch_queue_j6.py",
+    "tests/test_entry_evidence.py",
+    "tests/test_h5_h4_h3_fixes.py",
+    "tests/test_h5_settings_governance.py",
+    "tests/test_live_engine_fill_accounting.py",
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_operator_controls.py",
+    "tests/test_operator_emergency_stop.py",
+    "tests/test_organism_engine_scenarios.py",
+    "tests/test_organism_live_engine.py",
+    "tests/test_paper_daily_evidence.py",
+    "tests/test_paper_daily_host.py",
+    "tests/test_paper_watchdog.py",
+    "tests/test_pending_close_accounting.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_phase2_guarded_promotion.py",
+    "tests/test_remediation_wave_b.py",
+    "tests/test_replay_close_accounting.py",
+    "tests/test_research_baseline.py",
+    "tests/test_research_policy_lock.py",
+    "tests/test_risk_manager_service_comprehensive.py",
+    "tests/test_runtime_snapshot_auth.py",
+    "tests/test_standdown_session_row.py",
+    "tests/test_v12_baseline_invariants.py",
+    "tests/test_walkforward_persistence.py"
+  ],
+  "configuration": {
+    "bandit_confidence": "all",
+    "bandit_repository_excludes_tests": true,
+    "bandit_severity": "HIGH",
+    "identical_at_revisions": true,
+    "path": "pyproject.toml",
+    "sha256": "cf0c86fa39147a2cc93ba4a184bf40f74221aa448d8d0f0a0a520977e7410ab0"
+  },
+  "delta": {
+    "bandit": {
+      "base_findings": 0,
+      "candidate_findings": 0,
+      "existing_findings": 0,
+      "new_findings": [],
+      "resolved_findings": []
+    },
+    "ruff": {
+      "base_findings": 162,
+      "candidate_findings": 151,
+      "existing_findings": 150,
+      "new_findings": [
+        {
+          "count": 1,
+          "file": "tests/test_risk_manager_service_comprehensive.py",
+          "message": "Local variable `result` is assigned to but never used",
+          "rule": "F841",
+          "source_line": "result = await manager.trigger_emergency_stop(user_id, request, triggered_by, control_result={\"operator_halted\": True, \"cancellation\": {\"confirmed_cancelled\": 0, \"status\": \"complete\"}})"
+        }
+      ],
+      "resolved_findings": [
+        {
+          "count": 2,
+          "file": "backend/api/routes/risk.py",
+          "message": "Do not catch blind exception: `Exception`",
+          "rule": "BLE001",
+          "source_line": "except Exception as e:"
+        },
+        {
+          "count": 1,
+          "file": "backend/api/routes/risk.py",
+          "message": "Logging statement uses f-string",
+          "rule": "G004",
+          "source_line": "f\"EMERGENCY STOP triggered: user={user_id}, \""
+        },
+        {
+          "count": 1,
+          "file": "backend/api/routes/risk.py",
+          "message": "Logging statement uses f-string",
+          "rule": "G004",
+          "source_line": "logger.error(f\"Error checking emergency stop status: {e}\")"
+        },
+        {
+          "count": 1,
+          "file": "backend/api/routes/risk.py",
+          "message": "Logging statement uses f-string",
+          "rule": "G004",
+          "source_line": "logger.error(f\"Error triggering emergency stop: {e}\")"
+        },
+        {
+          "count": 1,
+          "file": "tests/test_audit_patch_queue_a.py",
+          "message": "`pytest` imported but unused",
+          "rule": "F401",
+          "source_line": "import pytest"
+        },
+        {
+          "count": 1,
+          "file": "tests/test_audit_patch_queue_f3.py",
+          "message": "`pytest` imported but unused",
+          "rule": "F401",
+          "source_line": "import pytest"
+        },
+        {
+          "count": 1,
+          "file": "tests/test_audit_patch_queue_f4.py",
+          "message": "`pytest` imported but unused",
+          "rule": "F401",
+          "source_line": "import pytest"
+        },
+        {
+          "count": 1,
+          "file": "tests/test_audit_patch_queue_h3.py",
+          "message": "`pytest` imported but unused",
+          "rule": "F401",
+          "source_line": "import pytest"
+        },
+        {
+          "count": 1,
+          "file": "tests/test_audit_patch_queue_i1.py",
+          "message": "`pytest` imported but unused",
+          "rule": "F401",
+          "source_line": "import pytest"
+        },
+        {
+          "count": 1,
+          "file": "tests/test_risk_manager_service_comprehensive.py",
+          "message": "Local variable `result` is assigned to but never used",
+          "rule": "F841",
+          "source_line": "result = await manager.trigger_emergency_stop(user_id, request, triggered_by)"
+        },
+        {
+          "count": 1,
+          "file": "tests/test_v12_baseline_invariants.py",
+          "message": "`pytest` imported but unused",
+          "rule": "F401",
+          "source_line": "import pytest"
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Scoped static delta is not a full codebase/security audit or secret scan.",
+    "Existing findings are retained, not silenced.",
+    "Repository Bandit configuration excludes tests; selected excluded paths are listed explicitly.",
+    "No source edits, test-suite reruns, runtime access or deployment was performed."
+  ],
+  "network_access": "Denied by sandbox-exec around orchestration and child tools",
+  "no_application_import_or_live_access": true,
+  "plan": [
+    "Extract exact named revisions without touching worktree source",
+    "Run pinned Ruff and installed Bandit on identical relative paths/configuration under network denial",
+    "Compare multisets of file/rule/message/source-line; ignore only pure line-number shifts",
+    "Publish only this static report and same-prefix raw outputs; do not fix parked backlog"
+  ],
+  "reviewed_at_utc": "2026-09-21T08:24:16.924970+00:00",
+  "runs": {
+    "base": {
+      "bandit": {
+        "command": [
+          "/Users/marselkei/VS/intra/venv/bin/bandit",
+          "-c",
+          "pyproject.toml",
+          "-lll",
+          "--confidence-level",
+          "all",
+          "-f",
+          "json",
+          "backend/api/routes/risk.py",
+          "backend/api/routes/settings.py",
+          "backend/organism/background_trainer.py",
+          "backend/organism/brain_persistence.py",
+          "backend/organism/continuous_learner.py",
+          "backend/organism/governance.py",
+          "backend/organism/live_engine.py",
+          "backend/organism/live_engine_fills.py",
+          "backend/organism/replay_simulator.py",
+          "backend/organism/routes.py",
+          "backend/organism/scheduler.py",
+          "backend/organism/trading_phase.py",
+          "backend/services/risk_manager.py",
+          "scripts/ops/paper_watchdog.py",
+          "scripts/ops/standdown_session_row.py",
+          "scripts/phase2_freeze.py",
+          "scripts/runtime/write_runtime_snapshot.py",
+          "tests/test_apr10_patch_f4_forensic_guard.py",
+          "tests/test_apr8_patch_a_force_save.py",
+          "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+          "tests/test_audit_2_3_2_5_promotion_evolution.py",
+          "tests/test_audit_patch_queue_a.py",
+          "tests/test_audit_patch_queue_b1.py",
+          "tests/test_audit_patch_queue_b2.py",
+          "tests/test_audit_patch_queue_f3.py",
+          "tests/test_audit_patch_queue_f4.py",
+          "tests/test_audit_patch_queue_h3.py",
+          "tests/test_audit_patch_queue_i1.py",
+          "tests/test_audit_patch_queue_j6.py",
+          "tests/test_h5_h4_h3_fixes.py",
+          "tests/test_h5_settings_governance.py",
+          "tests/test_live_engine_fill_accounting.py",
+          "tests/test_monday_ci_workflows.py",
+          "tests/test_organism_engine_scenarios.py",
+          "tests/test_organism_live_engine.py",
+          "tests/test_paper_watchdog.py",
+          "tests/test_phase2_freeze.py",
+          "tests/test_phase2_guarded_promotion.py",
+          "tests/test_remediation_wave_b.py",
+          "tests/test_risk_manager_service_comprehensive.py",
+          "tests/test_runtime_snapshot_auth.py",
+          "tests/test_v12_baseline_invariants.py",
+          "tests/test_walkforward_persistence.py"
+        ],
+        "exit_code": 0,
+        "files_scanned": [
+          "backend/api/routes/risk.py",
+          "backend/api/routes/settings.py",
+          "backend/organism/background_trainer.py",
+          "backend/organism/brain_persistence.py",
+          "backend/organism/continuous_learner.py",
+          "backend/organism/governance.py",
+          "backend/organism/live_engine.py",
+          "backend/organism/live_engine_fills.py",
+          "backend/organism/replay_simulator.py",
+          "backend/organism/routes.py",
+          "backend/organism/scheduler.py",
+          "backend/organism/trading_phase.py",
+          "backend/services/risk_manager.py",
+          "scripts/ops/paper_watchdog.py",
+          "scripts/ops/standdown_session_row.py",
+          "scripts/phase2_freeze.py",
+          "scripts/runtime/write_runtime_snapshot.py"
+        ],
+        "findings": [],
+        "metrics": {
+          "CONFIDENCE.HIGH": 67,
+          "CONFIDENCE.LOW": 0,
+          "CONFIDENCE.MEDIUM": 0,
+          "CONFIDENCE.UNDEFINED": 0,
+          "SEVERITY.HIGH": 0,
+          "SEVERITY.LOW": 57,
+          "SEVERITY.MEDIUM": 10,
+          "SEVERITY.UNDEFINED": 0,
+          "loc": 14372,
+          "nosec": 0,
+          "skipped_tests": 0
+        },
+        "raw_stderr": "artifacts/operations_evidence/operator_final_static.base.bandit.stderr.log",
+        "raw_stdout": "artifacts/operations_evidence/operator_final_static.base.bandit.json",
+        "raw_stdout_sha256": "7bff4105ff4fe828d56aba49417173b728f28dff85746f7ecc3f174cd0b5eccb",
+        "scan_errors": [],
+        "selected_files_excluded_by_repository_config": [
+          "tests/test_apr10_patch_f4_forensic_guard.py",
+          "tests/test_apr8_patch_a_force_save.py",
+          "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+          "tests/test_audit_2_3_2_5_promotion_evolution.py",
+          "tests/test_audit_patch_queue_a.py",
+          "tests/test_audit_patch_queue_b1.py",
+          "tests/test_audit_patch_queue_b2.py",
+          "tests/test_audit_patch_queue_f3.py",
+          "tests/test_audit_patch_queue_f4.py",
+          "tests/test_audit_patch_queue_h3.py",
+          "tests/test_audit_patch_queue_i1.py",
+          "tests/test_audit_patch_queue_j6.py",
+          "tests/test_h5_h4_h3_fixes.py",
+          "tests/test_h5_settings_governance.py",
+          "tests/test_live_engine_fill_accounting.py",
+          "tests/test_monday_ci_workflows.py",
+          "tests/test_organism_engine_scenarios.py",
+          "tests/test_organism_live_engine.py",
+          "tests/test_paper_watchdog.py",
+          "tests/test_phase2_freeze.py",
+          "tests/test_phase2_guarded_promotion.py",
+          "tests/test_remediation_wave_b.py",
+          "tests/test_risk_manager_service_comprehensive.py",
+          "tests/test_runtime_snapshot_auth.py",
+          "tests/test_v12_baseline_invariants.py",
+          "tests/test_walkforward_persistence.py"
+        ]
+      },
+      "ruff": {
+        "command": [
+          "/Users/marselkei/VS/intra/venv/bin/ruff",
+          "check",
+          "--no-cache",
+          "--no-fix",
+          "--output-format",
+          "json",
+          "backend/api/routes/risk.py",
+          "backend/api/routes/settings.py",
+          "backend/organism/background_trainer.py",
+          "backend/organism/brain_persistence.py",
+          "backend/organism/continuous_learner.py",
+          "backend/organism/governance.py",
+          "backend/organism/live_engine.py",
+          "backend/organism/live_engine_fills.py",
+          "backend/organism/replay_simulator.py",
+          "backend/organism/routes.py",
+          "backend/organism/scheduler.py",
+          "backend/organism/trading_phase.py",
+          "backend/services/risk_manager.py",
+          "scripts/ops/paper_watchdog.py",
+          "scripts/ops/standdown_session_row.py",
+          "scripts/phase2_freeze.py",
+          "scripts/runtime/write_runtime_snapshot.py",
+          "tests/test_apr10_patch_f4_forensic_guard.py",
+          "tests/test_apr8_patch_a_force_save.py",
+          "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+          "tests/test_audit_2_3_2_5_promotion_evolution.py",
+          "tests/test_audit_patch_queue_a.py",
+          "tests/test_audit_patch_queue_b1.py",
+          "tests/test_audit_patch_queue_b2.py",
+          "tests/test_audit_patch_queue_f3.py",
+          "tests/test_audit_patch_queue_f4.py",
+          "tests/test_audit_patch_queue_h3.py",
+          "tests/test_audit_patch_queue_i1.py",
+          "tests/test_audit_patch_queue_j6.py",
+          "tests/test_h5_h4_h3_fixes.py",
+          "tests/test_h5_settings_governance.py",
+          "tests/test_live_engine_fill_accounting.py",
+          "tests/test_monday_ci_workflows.py",
+          "tests/test_organism_engine_scenarios.py",
+          "tests/test_organism_live_engine.py",
+          "tests/test_paper_watchdog.py",
+          "tests/test_phase2_freeze.py",
+          "tests/test_phase2_guarded_promotion.py",
+          "tests/test_remediation_wave_b.py",
+          "tests/test_risk_manager_service_comprehensive.py",
+          "tests/test_runtime_snapshot_auth.py",
+          "tests/test_v12_baseline_invariants.py",
+          "tests/test_walkforward_persistence.py"
+        ],
+        "exit_code": 1,
+        "findings": [
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 71,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 72,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error fetching risk dashboard: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 100,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 101,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error fetching risk metrics: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 126,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 127,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error calculating risk metrics: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 161,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 162,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error fetching risk violations: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 185,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 186,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error fetching risk limits: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 227,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 228,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error updating risk limit: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 248,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 249,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error deleting risk limit: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 296,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "f\"EMERGENCY STOP triggered: user={user_id}, \""
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 302,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 303,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error triggering emergency stop: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 340,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Emergency stop {stop_id} resolved by user {user_id}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 345,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 346,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error resolving emergency stop: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 364,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 365,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error checking emergency stop status: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 49,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 60,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 320,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 343,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 343,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 27,
+            "message": "`copy` imported but unused",
+            "rule": "F401",
+            "source_line": "import copy"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 29,
+            "message": "`time` imported but unused",
+            "rule": "F401",
+            "source_line": "import time"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 31,
+            "message": "`dataclasses.field` imported but unused",
+            "rule": "F401",
+            "source_line": "from dataclasses import dataclass, field"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 78,
+            "message": "Redefinition of unused `copy` from line 27: `copy` redefined here",
+            "rule": "F811",
+            "source_line": "import copy"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 78,
+            "message": "`copy` imported but unused",
+            "rule": "F401",
+            "source_line": "import copy"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 79,
+            "message": "Redefinition of unused `time` from line 29: `time` redefined here",
+            "rule": "F811",
+            "source_line": "import time"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 88,
+            "message": "`backend.organism.ml_features.compute_ml_features` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.ml_features import compute_ml_features, FEATURE_COLUMNS"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 89,
+            "message": "`backend.organism.continuous_learner.ContinuousLearner` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.continuous_learner import ContinuousLearner"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 91,
+            "message": "`backend.organism.self_evolution.apply_evolved_params` imported but unused",
+            "rule": "F401",
+            "source_line": "EvolutionEngine, EvolvedParams, apply_evolved_params,"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 304,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 304,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 309,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 354,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 406,
+            "message": "`try`-`except`-`continue` detected, consider logging the exception",
+            "rule": "S112",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 406,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 430,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 473,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 492,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 502,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 502,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 528,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 528,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 551,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 551,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 572,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as _alert_err:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 612,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 612,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 649,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 706,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as _preserve_err:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 716,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 723,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 730,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 730,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 791,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/governance.py",
+            "line": 251,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/governance.py",
+            "line": 293,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as _alert_err:"
+          },
+          {
+            "file": "backend/organism/live_engine_fills.py",
+            "line": 297,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/live_engine_fills.py",
+            "line": 334,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/replay_simulator.py",
+            "line": 46,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/replay_simulator.py",
+            "line": 46,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/replay_simulator.py",
+            "line": 721,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/replay_simulator.py",
+            "line": 778,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 159,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 159,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 377,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 377,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 504,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 518,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 530,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 542,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 548,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 671,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 721,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 165,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 212,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 212,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 220,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 262,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 285,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 285,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 300,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 300,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 312,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 360,
+            "message": "Redundant exception object included in `logging.exception` call",
+            "rule": "TRY401",
+            "source_line": "e,"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 132,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Calculating risk metrics for user {user_id}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 169,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Calculated {len(metrics)} risk metrics for user {user_id}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 208,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 209,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.warning(f\"Could not calculate daily loss for user {user_id}: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 251,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 252,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.warning(f\"Could not calculate max drawdown for user {user_id}: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 382,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 383,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.warning(f\"Could not calculate buying power for user {user_id}: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 538,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.warning(f\"Risk violation created: {message}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 554,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 556,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Failed to send risk violation alert: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 638,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Updated risk limit {limit_name} for user {user_id}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 664,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Deleted risk limit {limit_id} for user {user_id}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 678,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "f\"EMERGENCY STOP triggered by {triggered_by} for user {user_id}: {request.reason}\""
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 700,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as _alert_err:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 749,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "f\"EMERGENCY STOP executed: \""
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 758,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Emergency stop failed: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 786,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Emergency stop {stop_id} resolved by {resolved_by}\")"
+          },
+          {
+            "file": "tests/test_apr10_patch_f4_forensic_guard.py",
+            "line": 19,
+            "message": "`unittest.mock.patch` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import MagicMock, patch"
+          },
+          {
+            "file": "tests/test_apr8_patch_a_force_save.py",
+            "line": 21,
+            "message": "`numpy` imported but unused",
+            "rule": "F401",
+            "source_line": "import numpy as np"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 4,
+            "message": "`types` imported but unused",
+            "rule": "F401",
+            "source_line": "import types"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 6,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 8,
+            "message": "`numpy` imported but unused",
+            "rule": "F401",
+            "source_line": "import numpy as np"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 59,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = trainer.apply_result("
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 73,
+            "message": "`backend.organism.background_trainer._train_in_process` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.background_trainer import _train_in_process"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 118,
+            "message": "Local variable `tree` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "tree = ast.parse(source)"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 4,
+            "message": "`unittest.mock.AsyncMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 4,
+            "message": "`unittest.mock.patch` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 5,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 6,
+            "message": "`pandas` imported but unused",
+            "rule": "F401",
+            "source_line": "import pandas as pd"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 7,
+            "message": "`numpy` imported but unused",
+            "rule": "F401",
+            "source_line": "import numpy as np"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b2.py",
+            "line": 5,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_f3.py",
+            "line": 4,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_f3.py",
+            "line": 7,
+            "message": "`backend.organism.background_trainer._train_in_process` imported but unused",
+            "rule": "F401",
+            "source_line": "BackgroundTrainer, TrainResult, _train_in_process,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_f3.py",
+            "line": 134,
+            "message": "`asyncio` imported but unused",
+            "rule": "F401",
+            "source_line": "import asyncio"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_f4.py",
+            "line": 6,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_h3.py",
+            "line": 6,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_h3.py",
+            "line": 10,
+            "message": "`backend.organism.continuous_learner.ContinuousLearner` imported but unused",
+            "rule": "F401",
+            "source_line": "ContinuousLearner,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_h3.py",
+            "line": 12,
+            "message": "`backend.organism.continuous_learner.MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE` imported but unused",
+            "rule": "F401",
+            "source_line": "MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 5,
+            "message": "`math` imported but unused",
+            "rule": "F401",
+            "source_line": "import math"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 7,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 9,
+            "message": "`backend.organism.ml_signal.MLSignal` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.ml_signal import MLSignal, MLSignalGenerator, ModelMetrics"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 11,
+            "message": "`backend.organism.continuous_learner.ContinuousLearner` imported but unused",
+            "rule": "F401",
+            "source_line": "ContinuousLearner,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 13,
+            "message": "`backend.organism.continuous_learner.MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE` imported but unused",
+            "rule": "F401",
+            "source_line": "MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 14,
+            "message": "`math` imported but unused",
+            "rule": "F401",
+            "source_line": "import math"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 16,
+            "message": "`struct` imported but unused",
+            "rule": "F401",
+            "source_line": "import struct"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 19,
+            "message": "`unittest.mock.AsyncMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 21,
+            "message": "`numpy` imported but unused",
+            "rule": "F401",
+            "source_line": "import numpy as np"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 254,
+            "message": "Redefinition of unused `AsyncMock` from line 19: `AsyncMock` redefined here",
+            "rule": "F811",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock"
+          },
+          {
+            "file": "tests/test_h5_h4_h3_fixes.py",
+            "line": 11,
+            "message": "`unittest.mock.MagicMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import MagicMock"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 17,
+            "message": "`os` imported but unused",
+            "rule": "F401",
+            "source_line": "import os"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 18,
+            "message": "`dataclasses.dataclass` imported but unused",
+            "rule": "F401",
+            "source_line": "from dataclasses import dataclass"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 21,
+            "message": "`unittest.mock.AsyncMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 21,
+            "message": "`unittest.mock.MagicMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 508,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await engine.live_tick()"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 672,
+            "message": "Local variable `has_data` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "has_data = any(r.signals_generated > 0 or r.regime != \"unknown\" for r in results)"
+          },
+          {
+            "file": "tests/test_remediation_wave_b.py",
+            "line": 12,
+            "message": "`unittest.mock.AsyncMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock"
+          },
+          {
+            "file": "tests/test_remediation_wave_b.py",
+            "line": 12,
+            "message": "`unittest.mock.patch` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock"
+          },
+          {
+            "file": "tests/test_remediation_wave_b.py",
+            "line": 12,
+            "message": "`unittest.mock.PropertyMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 7,
+            "message": "`datetime.UTC` imported but unused",
+            "rule": "F401",
+            "source_line": "from datetime import UTC, datetime, timedelta"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 7,
+            "message": "`datetime.timedelta` imported but unused",
+            "rule": "F401",
+            "source_line": "from datetime import UTC, datetime, timedelta"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 10,
+            "message": "`uuid.UUID` imported but unused",
+            "rule": "F401",
+            "source_line": "from uuid import uuid4, UUID"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 285,
+            "message": "Local variable `mock_from_orm` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "with patch('backend.models.risk.RiskMetric.from_orm') as mock_from_orm:"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 437,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await manager.update_risk_limit(user_id, \"daily_loss\", request, updated_by)"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 460,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await manager.update_risk_limit(user_id, \"new_limit\", request, updated_by)"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 564,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await manager.trigger_emergency_stop(user_id, request, triggered_by)"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 607,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await manager.resolve_emergency_stop(stop_id, user_id, resolved_by)"
+          },
+          {
+            "file": "tests/test_v12_baseline_invariants.py",
+            "line": 27,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_walkforward_persistence.py",
+            "line": 37,
+            "message": "`backend.organism.continuous_learner.TradeRecord` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.continuous_learner import TradeRecord"
+          },
+          {
+            "file": "tests/test_walkforward_persistence.py",
+            "line": 313,
+            "message": "`backend.organism.brain_persistence.OrganismBrain` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.brain_persistence import OrganismBrain"
+          },
+          {
+            "file": "tests/test_walkforward_persistence.py",
+            "line": 411,
+            "message": "`importlib` imported but unused",
+            "rule": "F401",
+            "source_line": "import importlib"
+          }
+        ],
+        "raw_stderr": "artifacts/operations_evidence/operator_final_static.base.ruff.stderr.log",
+        "raw_stdout": "artifacts/operations_evidence/operator_final_static.base.ruff.json",
+        "raw_stdout_sha256": "835a996c3222ff6e91e08326e133abeadd484835048488d05287c8a1249f6184"
+      }
+    },
+    "candidate": {
+      "bandit": {
+        "command": [
+          "/Users/marselkei/VS/intra/venv/bin/bandit",
+          "-c",
+          "pyproject.toml",
+          "-lll",
+          "--confidence-level",
+          "all",
+          "-f",
+          "json",
+          "backend/api/routes/risk.py",
+          "backend/api/routes/settings.py",
+          "backend/organism/background_trainer.py",
+          "backend/organism/brain_persistence.py",
+          "backend/organism/close_accounting.py",
+          "backend/organism/continuous_learner.py",
+          "backend/organism/entry_evidence.py",
+          "backend/organism/governance.py",
+          "backend/organism/live_engine.py",
+          "backend/organism/live_engine_fills.py",
+          "backend/organism/operator_cancellation.py",
+          "backend/organism/operator_controls.py",
+          "backend/organism/replay_simulator.py",
+          "backend/organism/research_baseline.py",
+          "backend/organism/research_policy.py",
+          "backend/organism/routes.py",
+          "backend/organism/scheduler.py",
+          "backend/organism/trading_phase.py",
+          "backend/services/risk_manager.py",
+          "scripts/ops/paper_daily_evidence.py",
+          "scripts/ops/paper_daily_host.py",
+          "scripts/ops/paper_watchdog.py",
+          "scripts/ops/standdown_session_row.py",
+          "scripts/phase2_freeze.py",
+          "scripts/runtime/write_runtime_snapshot.py",
+          "tests/test_apr10_patch_f4_forensic_guard.py",
+          "tests/test_apr8_patch_a_force_save.py",
+          "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+          "tests/test_audit_2_3_2_5_promotion_evolution.py",
+          "tests/test_audit_patch_queue_a.py",
+          "tests/test_audit_patch_queue_b1.py",
+          "tests/test_audit_patch_queue_b2.py",
+          "tests/test_audit_patch_queue_f3.py",
+          "tests/test_audit_patch_queue_f4.py",
+          "tests/test_audit_patch_queue_h3.py",
+          "tests/test_audit_patch_queue_i1.py",
+          "tests/test_audit_patch_queue_j6.py",
+          "tests/test_entry_evidence.py",
+          "tests/test_h5_h4_h3_fixes.py",
+          "tests/test_h5_settings_governance.py",
+          "tests/test_live_engine_fill_accounting.py",
+          "tests/test_monday_ci_workflows.py",
+          "tests/test_operator_controls.py",
+          "tests/test_operator_emergency_stop.py",
+          "tests/test_organism_engine_scenarios.py",
+          "tests/test_organism_live_engine.py",
+          "tests/test_paper_daily_evidence.py",
+          "tests/test_paper_daily_host.py",
+          "tests/test_paper_watchdog.py",
+          "tests/test_pending_close_accounting.py",
+          "tests/test_phase2_freeze.py",
+          "tests/test_phase2_guarded_promotion.py",
+          "tests/test_remediation_wave_b.py",
+          "tests/test_replay_close_accounting.py",
+          "tests/test_research_baseline.py",
+          "tests/test_research_policy_lock.py",
+          "tests/test_risk_manager_service_comprehensive.py",
+          "tests/test_runtime_snapshot_auth.py",
+          "tests/test_standdown_session_row.py",
+          "tests/test_v12_baseline_invariants.py",
+          "tests/test_walkforward_persistence.py"
+        ],
+        "exit_code": 0,
+        "files_scanned": [
+          "backend/api/routes/risk.py",
+          "backend/api/routes/settings.py",
+          "backend/organism/background_trainer.py",
+          "backend/organism/brain_persistence.py",
+          "backend/organism/close_accounting.py",
+          "backend/organism/continuous_learner.py",
+          "backend/organism/entry_evidence.py",
+          "backend/organism/governance.py",
+          "backend/organism/live_engine.py",
+          "backend/organism/live_engine_fills.py",
+          "backend/organism/operator_cancellation.py",
+          "backend/organism/operator_controls.py",
+          "backend/organism/replay_simulator.py",
+          "backend/organism/research_baseline.py",
+          "backend/organism/research_policy.py",
+          "backend/organism/routes.py",
+          "backend/organism/scheduler.py",
+          "backend/organism/trading_phase.py",
+          "backend/services/risk_manager.py",
+          "scripts/ops/paper_daily_evidence.py",
+          "scripts/ops/paper_daily_host.py",
+          "scripts/ops/paper_watchdog.py",
+          "scripts/ops/standdown_session_row.py",
+          "scripts/phase2_freeze.py",
+          "scripts/runtime/write_runtime_snapshot.py"
+        ],
+        "findings": [],
+        "metrics": {
+          "CONFIDENCE.HIGH": 74,
+          "CONFIDENCE.LOW": 0,
+          "CONFIDENCE.MEDIUM": 0,
+          "CONFIDENCE.UNDEFINED": 0,
+          "SEVERITY.HIGH": 0,
+          "SEVERITY.LOW": 64,
+          "SEVERITY.MEDIUM": 10,
+          "SEVERITY.UNDEFINED": 0,
+          "loc": 16892,
+          "nosec": 0,
+          "skipped_tests": 0
+        },
+        "raw_stderr": "artifacts/operations_evidence/operator_final_static.candidate.bandit.stderr.log",
+        "raw_stdout": "artifacts/operations_evidence/operator_final_static.candidate.bandit.json",
+        "raw_stdout_sha256": "31b8514d08b6525514386754258c7c1b1cde5045e2dc348a4a8ef1e88ba9fecf",
+        "scan_errors": [],
+        "selected_files_excluded_by_repository_config": [
+          "tests/test_apr10_patch_f4_forensic_guard.py",
+          "tests/test_apr8_patch_a_force_save.py",
+          "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+          "tests/test_audit_2_3_2_5_promotion_evolution.py",
+          "tests/test_audit_patch_queue_a.py",
+          "tests/test_audit_patch_queue_b1.py",
+          "tests/test_audit_patch_queue_b2.py",
+          "tests/test_audit_patch_queue_f3.py",
+          "tests/test_audit_patch_queue_f4.py",
+          "tests/test_audit_patch_queue_h3.py",
+          "tests/test_audit_patch_queue_i1.py",
+          "tests/test_audit_patch_queue_j6.py",
+          "tests/test_entry_evidence.py",
+          "tests/test_h5_h4_h3_fixes.py",
+          "tests/test_h5_settings_governance.py",
+          "tests/test_live_engine_fill_accounting.py",
+          "tests/test_monday_ci_workflows.py",
+          "tests/test_operator_controls.py",
+          "tests/test_operator_emergency_stop.py",
+          "tests/test_organism_engine_scenarios.py",
+          "tests/test_organism_live_engine.py",
+          "tests/test_paper_daily_evidence.py",
+          "tests/test_paper_daily_host.py",
+          "tests/test_paper_watchdog.py",
+          "tests/test_pending_close_accounting.py",
+          "tests/test_phase2_freeze.py",
+          "tests/test_phase2_guarded_promotion.py",
+          "tests/test_remediation_wave_b.py",
+          "tests/test_replay_close_accounting.py",
+          "tests/test_research_baseline.py",
+          "tests/test_research_policy_lock.py",
+          "tests/test_risk_manager_service_comprehensive.py",
+          "tests/test_runtime_snapshot_auth.py",
+          "tests/test_standdown_session_row.py",
+          "tests/test_v12_baseline_invariants.py",
+          "tests/test_walkforward_persistence.py"
+        ]
+      },
+      "ruff": {
+        "command": [
+          "/Users/marselkei/VS/intra/venv/bin/ruff",
+          "check",
+          "--no-cache",
+          "--no-fix",
+          "--output-format",
+          "json",
+          "backend/api/routes/risk.py",
+          "backend/api/routes/settings.py",
+          "backend/organism/background_trainer.py",
+          "backend/organism/brain_persistence.py",
+          "backend/organism/close_accounting.py",
+          "backend/organism/continuous_learner.py",
+          "backend/organism/entry_evidence.py",
+          "backend/organism/governance.py",
+          "backend/organism/live_engine.py",
+          "backend/organism/live_engine_fills.py",
+          "backend/organism/operator_cancellation.py",
+          "backend/organism/operator_controls.py",
+          "backend/organism/replay_simulator.py",
+          "backend/organism/research_baseline.py",
+          "backend/organism/research_policy.py",
+          "backend/organism/routes.py",
+          "backend/organism/scheduler.py",
+          "backend/organism/trading_phase.py",
+          "backend/services/risk_manager.py",
+          "scripts/ops/paper_daily_evidence.py",
+          "scripts/ops/paper_daily_host.py",
+          "scripts/ops/paper_watchdog.py",
+          "scripts/ops/standdown_session_row.py",
+          "scripts/phase2_freeze.py",
+          "scripts/runtime/write_runtime_snapshot.py",
+          "tests/test_apr10_patch_f4_forensic_guard.py",
+          "tests/test_apr8_patch_a_force_save.py",
+          "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+          "tests/test_audit_2_3_2_5_promotion_evolution.py",
+          "tests/test_audit_patch_queue_a.py",
+          "tests/test_audit_patch_queue_b1.py",
+          "tests/test_audit_patch_queue_b2.py",
+          "tests/test_audit_patch_queue_f3.py",
+          "tests/test_audit_patch_queue_f4.py",
+          "tests/test_audit_patch_queue_h3.py",
+          "tests/test_audit_patch_queue_i1.py",
+          "tests/test_audit_patch_queue_j6.py",
+          "tests/test_entry_evidence.py",
+          "tests/test_h5_h4_h3_fixes.py",
+          "tests/test_h5_settings_governance.py",
+          "tests/test_live_engine_fill_accounting.py",
+          "tests/test_monday_ci_workflows.py",
+          "tests/test_operator_controls.py",
+          "tests/test_operator_emergency_stop.py",
+          "tests/test_organism_engine_scenarios.py",
+          "tests/test_organism_live_engine.py",
+          "tests/test_paper_daily_evidence.py",
+          "tests/test_paper_daily_host.py",
+          "tests/test_paper_watchdog.py",
+          "tests/test_pending_close_accounting.py",
+          "tests/test_phase2_freeze.py",
+          "tests/test_phase2_guarded_promotion.py",
+          "tests/test_remediation_wave_b.py",
+          "tests/test_replay_close_accounting.py",
+          "tests/test_research_baseline.py",
+          "tests/test_research_policy_lock.py",
+          "tests/test_risk_manager_service_comprehensive.py",
+          "tests/test_runtime_snapshot_auth.py",
+          "tests/test_standdown_session_row.py",
+          "tests/test_v12_baseline_invariants.py",
+          "tests/test_walkforward_persistence.py"
+        ],
+        "exit_code": 1,
+        "findings": [
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 73,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 74,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error fetching risk dashboard: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 102,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 103,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error fetching risk metrics: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 128,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 129,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error calculating risk metrics: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 163,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 164,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error fetching risk violations: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 187,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 188,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error fetching risk limits: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 229,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 230,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error updating risk limit: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 250,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 251,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error deleting risk limit: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 372,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Emergency stop {stop_id} resolved by user {user_id}\")"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 377,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/risk.py",
+            "line": 378,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Error resolving emergency stop: {e}\")"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 50,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 61,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 323,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 346,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/api/routes/settings.py",
+            "line": 346,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 27,
+            "message": "`copy` imported but unused",
+            "rule": "F401",
+            "source_line": "import copy"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 29,
+            "message": "`time` imported but unused",
+            "rule": "F401",
+            "source_line": "import time"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 31,
+            "message": "`dataclasses.field` imported but unused",
+            "rule": "F401",
+            "source_line": "from dataclasses import dataclass, field"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 79,
+            "message": "Redefinition of unused `copy` from line 27: `copy` redefined here",
+            "rule": "F811",
+            "source_line": "import copy"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 79,
+            "message": "`copy` imported but unused",
+            "rule": "F401",
+            "source_line": "import copy"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 80,
+            "message": "Redefinition of unused `time` from line 29: `time` redefined here",
+            "rule": "F811",
+            "source_line": "import time"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 92,
+            "message": "`backend.organism.ml_features.compute_ml_features` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.ml_features import compute_ml_features, FEATURE_COLUMNS"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 93,
+            "message": "`backend.organism.continuous_learner.ContinuousLearner` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.continuous_learner import ContinuousLearner"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 95,
+            "message": "`backend.organism.self_evolution.apply_evolved_params` imported but unused",
+            "rule": "F401",
+            "source_line": "EvolutionEngine, EvolvedParams, apply_evolved_params,"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 308,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 308,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 313,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 360,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 414,
+            "message": "`try`-`except`-`continue` detected, consider logging the exception",
+            "rule": "S112",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 414,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 438,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 481,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 512,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 522,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 522,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 548,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 548,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 571,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 571,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 592,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as _alert_err:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 632,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 632,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 669,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 728,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as _preserve_err:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 738,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 745,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 752,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 752,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/background_trainer.py",
+            "line": 813,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/governance.py",
+            "line": 265,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/governance.py",
+            "line": 307,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as _alert_err:"
+          },
+          {
+            "file": "backend/organism/live_engine_fills.py",
+            "line": 365,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/live_engine_fills.py",
+            "line": 402,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/replay_simulator.py",
+            "line": 46,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/replay_simulator.py",
+            "line": 46,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/replay_simulator.py",
+            "line": 807,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/replay_simulator.py",
+            "line": 869,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 160,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 160,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 385,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 385,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 512,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 526,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 538,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 550,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 556,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 679,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/routes.py",
+            "line": 729,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 166,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 213,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 213,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 221,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 265,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 288,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 288,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 303,
+            "message": "`try`-`except`-`pass` detected, consider logging the exception",
+            "rule": "S110",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 303,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 315,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/organism/scheduler.py",
+            "line": 363,
+            "message": "Redundant exception object included in `logging.exception` call",
+            "rule": "TRY401",
+            "source_line": "e,"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 133,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Calculating risk metrics for user {user_id}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 170,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Calculated {len(metrics)} risk metrics for user {user_id}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 209,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 210,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.warning(f\"Could not calculate daily loss for user {user_id}: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 252,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 253,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.warning(f\"Could not calculate max drawdown for user {user_id}: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 383,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 384,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.warning(f\"Could not calculate buying power for user {user_id}: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 539,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.warning(f\"Risk violation created: {message}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 555,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as e:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 557,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Failed to send risk violation alert: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 639,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Updated risk limit {limit_name} for user {user_id}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 665,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Deleted risk limit {limit_id} for user {user_id}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 687,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "f\"EMERGENCY STOP triggered by {triggered_by} for user {user_id}: {request.reason}\""
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 709,
+            "message": "Do not catch blind exception: `Exception`",
+            "rule": "BLE001",
+            "source_line": "except Exception as _alert_err:"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 756,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "f\"EMERGENCY STOP executed: \""
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 765,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.error(f\"Emergency stop failed: {e}\")"
+          },
+          {
+            "file": "backend/services/risk_manager.py",
+            "line": 793,
+            "message": "Logging statement uses f-string",
+            "rule": "G004",
+            "source_line": "logger.info(f\"Emergency stop {stop_id} resolved by {resolved_by}\")"
+          },
+          {
+            "file": "tests/test_apr10_patch_f4_forensic_guard.py",
+            "line": 21,
+            "message": "`unittest.mock.patch` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import MagicMock, patch"
+          },
+          {
+            "file": "tests/test_apr8_patch_a_force_save.py",
+            "line": 21,
+            "message": "`numpy` imported but unused",
+            "rule": "F401",
+            "source_line": "import numpy as np"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 4,
+            "message": "`types` imported but unused",
+            "rule": "F401",
+            "source_line": "import types"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 8,
+            "message": "`numpy` imported but unused",
+            "rule": "F401",
+            "source_line": "import numpy as np"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 64,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = trainer.apply_result("
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 78,
+            "message": "`backend.organism.background_trainer._train_in_process` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.background_trainer import _train_in_process"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_a.py",
+            "line": 123,
+            "message": "Local variable `tree` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "tree = ast.parse(source)"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 4,
+            "message": "`unittest.mock.AsyncMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 4,
+            "message": "`unittest.mock.patch` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 5,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 6,
+            "message": "`pandas` imported but unused",
+            "rule": "F401",
+            "source_line": "import pandas as pd"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b1.py",
+            "line": 7,
+            "message": "`numpy` imported but unused",
+            "rule": "F401",
+            "source_line": "import numpy as np"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_b2.py",
+            "line": 5,
+            "message": "`pytest` imported but unused",
+            "rule": "F401",
+            "source_line": "import pytest"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_f3.py",
+            "line": 7,
+            "message": "`backend.organism.background_trainer._train_in_process` imported but unused",
+            "rule": "F401",
+            "source_line": "BackgroundTrainer, TrainResult, _train_in_process,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_f3.py",
+            "line": 139,
+            "message": "`asyncio` imported but unused",
+            "rule": "F401",
+            "source_line": "import asyncio"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_h3.py",
+            "line": 10,
+            "message": "`backend.organism.continuous_learner.ContinuousLearner` imported but unused",
+            "rule": "F401",
+            "source_line": "ContinuousLearner,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_h3.py",
+            "line": 12,
+            "message": "`backend.organism.continuous_learner.MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE` imported but unused",
+            "rule": "F401",
+            "source_line": "MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 5,
+            "message": "`math` imported but unused",
+            "rule": "F401",
+            "source_line": "import math"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 9,
+            "message": "`backend.organism.ml_signal.MLSignal` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.ml_signal import MLSignal, MLSignalGenerator, ModelMetrics"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 11,
+            "message": "`backend.organism.continuous_learner.ContinuousLearner` imported but unused",
+            "rule": "F401",
+            "source_line": "ContinuousLearner,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_i1.py",
+            "line": 13,
+            "message": "`backend.organism.continuous_learner.MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE` imported but unused",
+            "rule": "F401",
+            "source_line": "MIN_CALIBRATION_SAMPLES_FOR_ACCEPTANCE,"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 14,
+            "message": "`math` imported but unused",
+            "rule": "F401",
+            "source_line": "import math"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 16,
+            "message": "`struct` imported but unused",
+            "rule": "F401",
+            "source_line": "import struct"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 19,
+            "message": "`unittest.mock.AsyncMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 21,
+            "message": "`numpy` imported but unused",
+            "rule": "F401",
+            "source_line": "import numpy as np"
+          },
+          {
+            "file": "tests/test_audit_patch_queue_j6.py",
+            "line": 258,
+            "message": "Redefinition of unused `AsyncMock` from line 19: `AsyncMock` redefined here",
+            "rule": "F811",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock"
+          },
+          {
+            "file": "tests/test_h5_h4_h3_fixes.py",
+            "line": 11,
+            "message": "`unittest.mock.MagicMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import MagicMock"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 17,
+            "message": "`os` imported but unused",
+            "rule": "F401",
+            "source_line": "import os"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 18,
+            "message": "`dataclasses.dataclass` imported but unused",
+            "rule": "F401",
+            "source_line": "from dataclasses import dataclass"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 21,
+            "message": "`unittest.mock.AsyncMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 21,
+            "message": "`unittest.mock.MagicMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 507,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await engine.live_tick()"
+          },
+          {
+            "file": "tests/test_organism_live_engine.py",
+            "line": 671,
+            "message": "Local variable `has_data` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "has_data = any(r.signals_generated > 0 or r.regime != \"unknown\" for r in results)"
+          },
+          {
+            "file": "tests/test_remediation_wave_b.py",
+            "line": 12,
+            "message": "`unittest.mock.AsyncMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock"
+          },
+          {
+            "file": "tests/test_remediation_wave_b.py",
+            "line": 12,
+            "message": "`unittest.mock.patch` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock"
+          },
+          {
+            "file": "tests/test_remediation_wave_b.py",
+            "line": 12,
+            "message": "`unittest.mock.PropertyMock` imported but unused",
+            "rule": "F401",
+            "source_line": "from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 7,
+            "message": "`datetime.UTC` imported but unused",
+            "rule": "F401",
+            "source_line": "from datetime import UTC, datetime, timedelta"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 7,
+            "message": "`datetime.timedelta` imported but unused",
+            "rule": "F401",
+            "source_line": "from datetime import UTC, datetime, timedelta"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 10,
+            "message": "`uuid.UUID` imported but unused",
+            "rule": "F401",
+            "source_line": "from uuid import uuid4, UUID"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 285,
+            "message": "Local variable `mock_from_orm` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "with patch('backend.models.risk.RiskMetric.from_orm') as mock_from_orm:"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 437,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await manager.update_risk_limit(user_id, \"daily_loss\", request, updated_by)"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 460,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await manager.update_risk_limit(user_id, \"new_limit\", request, updated_by)"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 564,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await manager.trigger_emergency_stop(user_id, request, triggered_by, control_result={\"operator_halted\": True, \"cancellation\": {\"confirmed_cancelled\": 0, \"status\": \"complete\"}})"
+          },
+          {
+            "file": "tests/test_risk_manager_service_comprehensive.py",
+            "line": 607,
+            "message": "Local variable `result` is assigned to but never used",
+            "rule": "F841",
+            "source_line": "result = await manager.resolve_emergency_stop(stop_id, user_id, resolved_by)"
+          },
+          {
+            "file": "tests/test_walkforward_persistence.py",
+            "line": 37,
+            "message": "`backend.organism.continuous_learner.TradeRecord` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.continuous_learner import TradeRecord"
+          },
+          {
+            "file": "tests/test_walkforward_persistence.py",
+            "line": 313,
+            "message": "`backend.organism.brain_persistence.OrganismBrain` imported but unused",
+            "rule": "F401",
+            "source_line": "from backend.organism.brain_persistence import OrganismBrain"
+          },
+          {
+            "file": "tests/test_walkforward_persistence.py",
+            "line": 414,
+            "message": "`importlib` imported but unused",
+            "rule": "F401",
+            "source_line": "import importlib"
+          }
+        ],
+        "raw_stderr": "artifacts/operations_evidence/operator_final_static.candidate.ruff.stderr.log",
+        "raw_stdout": "artifacts/operations_evidence/operator_final_static.candidate.ruff.json",
+        "raw_stdout_sha256": "67d506beebb3a8c6c17168f9e0c5e4865bc10640d041cd5553576a82dbb71aa7"
+      }
+    }
+  },
+  "scope": "Exact committed changed Python source/tests; identical repository pyproject configuration on both revisions. Tests included in Ruff; Bandit honors repository test exclusions.",
+  "source_hashes": {
+    "base": {
+      "backend/api/routes/risk.py": "35fc0fdb88d05462ae183d0168b63219b399e2f8dfd7c6ae4236bec208a1d8ec",
+      "backend/api/routes/settings.py": "a0a96a6a7f83adb35c8a4a4a225cfda8e57ed9f56f385a140ff631fb8c1cc860",
+      "backend/organism/background_trainer.py": "3153641e403fc0a1177698b105e4d06f87910e2189104539412bf6531d89e0f0",
+      "backend/organism/brain_persistence.py": "0f6e9af63c2e9b781a8f2c4b2db977ce385ef8fe4917d09703bc6cf1cbf7a3df",
+      "backend/organism/continuous_learner.py": "2c235f704cc57fb6c12113e762e6cf4775ea2195c79e165f4c0d87013b8d5bee",
+      "backend/organism/governance.py": "efae046f82506f70172e8c2f414e8be8b59d0de9bf98642835febdf5b4152c9a",
+      "backend/organism/live_engine.py": "921fd933db1e0a1c7a132154667e028c298ff9da8c2c507879b63fe363b4d6a7",
+      "backend/organism/live_engine_fills.py": "9267e7a341c3e414b28b5061bcfcb79941413c1f162a66b700563049070f5750",
+      "backend/organism/replay_simulator.py": "117b3552422cb581f3cb59dc77f756b08c086c01a154d95ee1e93e190ba6256a",
+      "backend/organism/routes.py": "bbbb70647d902088386a6edad803fa6be2723892e75949ba855d49d7ac9ed04d",
+      "backend/organism/scheduler.py": "94c065d7f2a248732eba71208de49685d32113278b1a87331fa92df45624c179",
+      "backend/organism/trading_phase.py": "cd25c94847e2507c5d81a81fe70c78e7c343ed6d151e12e43cf2bd946135bc5a",
+      "backend/services/risk_manager.py": "3317daed9bbce789be685f7f8f973ac5d29c0f0548813f3cff42644b10d590b8",
+      "scripts/ops/paper_watchdog.py": "a164fcc2e4347ff27c90085f828757b5cf59e5a8b36546199e2d2ab6ee48fef6",
+      "scripts/ops/standdown_session_row.py": "75cfa6dfdbff89c2b688a93fa89314ec2321e1e19b9ed76c2fd66ecc90f76465",
+      "scripts/phase2_freeze.py": "cd1ec178e4b09c076b9184dacbc9dde7e411a6754b588dddc478fb87ac8a40cb",
+      "scripts/runtime/write_runtime_snapshot.py": "b2e42c2d081c6d7e00a83e93f422b418bd7fc11142572dbca9fe8baa3695d883",
+      "tests/test_apr10_patch_f4_forensic_guard.py": "0bf728a023cb268884e74ccb50aa9948f2189554f23f4f4806a720ef1f6c176c",
+      "tests/test_apr8_patch_a_force_save.py": "4ec3c61568fbab11dac7e1b3972c1f23a5d0799affedc0299228fcb275b4d19f",
+      "tests/test_audit_0_2_bg_trainer_same_holdout.py": "05d21f6a156820351b2ac9671c43f15ed724c75510dc6763e38119193329a4d0",
+      "tests/test_audit_2_3_2_5_promotion_evolution.py": "0490f3d2f01479a9f24a3938fa54f2084b69390e450adb17e6343881e9ceadc1",
+      "tests/test_audit_patch_queue_a.py": "26d7d6004e033e660539bea532cb0f0b107c31ea931c44c3c3ce89b95f14b350",
+      "tests/test_audit_patch_queue_b1.py": "fb1e2957614d17866cfd46ae8d479573048ac51d15a9a596b3881bc5721388c1",
+      "tests/test_audit_patch_queue_b2.py": "e5f69724babaf2c2d5b0753735d5ee95d321e1afdeba1cbee69cd927f8075667",
+      "tests/test_audit_patch_queue_f3.py": "24d73915deb0516f02022d6807fee6b98b07ca9d28d9f05a39b427e66248c9d2",
+      "tests/test_audit_patch_queue_f4.py": "6ba8170eaa46337fdc6a6b3107cd457924e36dfad690b146759d8dc865b0d5ab",
+      "tests/test_audit_patch_queue_h3.py": "e7ecf76ab30deb1f84480bdeffcee9e0df06c5e63889a9c2f70ca726b182aa17",
+      "tests/test_audit_patch_queue_i1.py": "659db5a6e29b4cb92a52c173a70cc90b400d1a1df76d19d588d1c0b7e8ffdd89",
+      "tests/test_audit_patch_queue_j6.py": "60b8e57d0246fb7ba723d769a300566074e60f4a7acf752e5dcb296f767c03b9",
+      "tests/test_h5_h4_h3_fixes.py": "7cd39e83bbe04fbaa55531ce65a14aa9029fcbf9b33d2a7af8e8bc3b3208fd9e",
+      "tests/test_h5_settings_governance.py": "257edc5ede28cfd4de429ac4e5dcc5d7a63986acea5f24c63be76cb6cb47db07",
+      "tests/test_live_engine_fill_accounting.py": "6547fe52de926e9605812f297df5042d5a035dcbc9eb27a3fa1ba1b9084f3552",
+      "tests/test_monday_ci_workflows.py": "7e40eefab53b9a0dbab9e400f2439d592587e7b577ca76b4a67ebb49ffcd07bb",
+      "tests/test_organism_engine_scenarios.py": "dacaa38cdc7edcfacb13ba771c739007315d9cc9e7ce57daa855ca18c9cae36a",
+      "tests/test_organism_live_engine.py": "a096c91b69ccf02a3e79c7d4cae443755851eb17607c0a418a66e549f37f3344",
+      "tests/test_paper_watchdog.py": "c99bb0d5ebed9ff25a1a43453189769ca4d001ed3af9c2ec10af0d7f7a316e49",
+      "tests/test_phase2_freeze.py": "4d3a5a12524c3fe104bf242e56938083e87281d49d9d8c9b7b1cd7d69e01542e",
+      "tests/test_phase2_guarded_promotion.py": "21da672f1d07c8d8bd266ffaee91a9117c47a2d43fe1e337df7a3fb2745dffc3",
+      "tests/test_remediation_wave_b.py": "13b5e88bce57b7c60e03c9eacdc0b442ff4925c59a87fe88365d59981c45ab09",
+      "tests/test_risk_manager_service_comprehensive.py": "3648e4026a6a20f4439235e86d2c143b37698202ce6301fda8566e082d5b692e",
+      "tests/test_runtime_snapshot_auth.py": "cb1f22a2214c75bb5281c58de9e1de6b10111aa42fea613199cebce15192d31f",
+      "tests/test_v12_baseline_invariants.py": "bc95f532fd470ef31ae35dfbed397844165440b6477af05871896c4ac193714b",
+      "tests/test_walkforward_persistence.py": "2c18a364aef626f0e6a2bff5a1fd492695c7712908659cc0a8761ab22e4838bd"
+    },
+    "candidate": {
+      "backend/api/routes/risk.py": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
+      "backend/api/routes/settings.py": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
+      "backend/organism/background_trainer.py": "38d283265f0242001249b6ace042e9da1e30b13311bf4fc19bc25a72fb4748b2",
+      "backend/organism/brain_persistence.py": "5b0d876402f85cebeb3b1082ecb3d4abc1a9fef1aaa729dea4a4b603ab6f280f",
+      "backend/organism/close_accounting.py": "26aea3cf6c1b2929f14d9c03dcb66998e87b65c780bd68744eed3743c7e9a2c9",
+      "backend/organism/continuous_learner.py": "1dc5b21b936abddaf0e335e26a1b16a8298ca1659d8781abb06fb76fc905772f",
+      "backend/organism/entry_evidence.py": "2d049c536bbcbea2b5349f4a771ab83eb20ab6aca0c46b941e8f9a806335f6ef",
+      "backend/organism/governance.py": "68a47b4a76f832e69ef1c9972b847598c92ed59c75f3531209f961aeedc8075d",
+      "backend/organism/live_engine.py": "4ec76a2e0548f9cbcbc8be294c169cc6d2ab732933054bcbe48a05ed52313ca9",
+      "backend/organism/live_engine_fills.py": "138906ac893fb177591597f4fb964b69c31ac8c70f0ed458983bf83c21eeda4b",
+      "backend/organism/operator_cancellation.py": "682ca48c61f0ce2899048b642be4f552c4ec166ca29afeabef91e528b8935984",
+      "backend/organism/operator_controls.py": "1542fa02cfd5d755fc4f9a3360595d8b8f0227cc023d80432cc1633816083da3",
+      "backend/organism/replay_simulator.py": "d991bcca5e65021fee059d2c41aa9df6e2a762f4f29c6a8857a67d00f868b763",
+      "backend/organism/research_baseline.py": "598af0f5aa6a2bb0b09964316cfc28e3840fdcfa3219c8cbf737a90e56f492bb",
+      "backend/organism/research_policy.py": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
+      "backend/organism/routes.py": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
+      "backend/organism/scheduler.py": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c",
+      "backend/organism/trading_phase.py": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
+      "backend/services/risk_manager.py": "d3efb81f9e5ae6f6d3036133786dddff5f824028d95a80465cdb5385cb20b5ca",
+      "scripts/ops/paper_daily_evidence.py": "90ecb533fff61f69d18a4fff06fab69900b5fa7db762832c3c04c86679f72217",
+      "scripts/ops/paper_daily_host.py": "5687bacd6cc9732f57357f8ef8bc9ccfa520687ce79164d86b44c43b0685365c",
+      "scripts/ops/paper_watchdog.py": "a1809fb9dfbe6098b4e0cc22e533c8c7c242a279ab3813f152787cb1ced11baf",
+      "scripts/ops/standdown_session_row.py": "9d49764a3b3a8abe8550b608dd56b797cfc8b987c86f677ad7c9aa93cb497a35",
+      "scripts/phase2_freeze.py": "3a3d679aedc0c47a73bd4f6997031fb38422dd59f1e1ec464334eeacb66103a2",
+      "scripts/runtime/write_runtime_snapshot.py": "abf05c1c5da7f321931885e1d03a827d227e09ce3e52ad2b817a2a67053e2ee9",
+      "tests/test_apr10_patch_f4_forensic_guard.py": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
+      "tests/test_apr8_patch_a_force_save.py": "d2f4e1ea0117e65b534c4730ce72b009b02fc5cf55b834ec9d23e2ff9000b750",
+      "tests/test_audit_0_2_bg_trainer_same_holdout.py": "e6693f2062a53c14b87cf4a0a36cf8d1782ef00e59bf3f19b5e95f01c197e1fb",
+      "tests/test_audit_2_3_2_5_promotion_evolution.py": "6c0ec592fb94936938108aac3ee7ac06ee9b62f5037d9666e05ac1083fbfe2cf",
+      "tests/test_audit_patch_queue_a.py": "ad49775c100e3d36e84cdc02b278bea36ae7ff8b9e66db023145c86ed4ace3d6",
+      "tests/test_audit_patch_queue_b1.py": "cc2b1f842c917928476c72ab8eb378566da243d8f6cd280cb8ed802f9663ff64",
+      "tests/test_audit_patch_queue_b2.py": "84355c438a072d2d72cee13fc1d2325cb8bd94e19748835570bbb2504070b152",
+      "tests/test_audit_patch_queue_f3.py": "a336dcdfb44af9e1a16db86567b55139f4535ae9e8b31523eabf6e9b6d6a6eca",
+      "tests/test_audit_patch_queue_f4.py": "ffede7219b14ff22f3b7262e3681114392a75595598969b6d590c422b2e6aff2",
+      "tests/test_audit_patch_queue_h3.py": "7d2b8a4a12e692b5f3552f4a5f6de2115498cfbf15c406ab6f1770e5f5ebf3b2",
+      "tests/test_audit_patch_queue_i1.py": "8f2376126a954f991dda602d96de889319b8fa8f1bb57200480598765d8b82f1",
+      "tests/test_audit_patch_queue_j6.py": "a513ac713a72637ec31265284af8ff2754a53ce1e6c4120a710103ba293b415e",
+      "tests/test_entry_evidence.py": "b1373eb24451c8fb2438d8f047ff70312ae887b940b454a2f953237eea76e863",
+      "tests/test_h5_h4_h3_fixes.py": "18b5281f93941216c87058ed7f2df0b6516e1f42330323383bd3d7d751ccb94c",
+      "tests/test_h5_settings_governance.py": "13e7b28a464477dcc94c3b6fea48ce9626b0f517decc2ba4319d08faee6a20e9",
+      "tests/test_live_engine_fill_accounting.py": "df3cca430a29cfb3c31b4650bb42ffd66af37efd11195719e7087cbfa884561b",
+      "tests/test_monday_ci_workflows.py": "557064d1910823f4c0e7d7510d59dfb3ce2cf9247a1b89a29f963253aa84233d",
+      "tests/test_operator_controls.py": "de1f9374e747b27a464dbaafcea7a98bfbb0c8ec59289429b7a6cdfaf8ca7fa8",
+      "tests/test_operator_emergency_stop.py": "8900fff46f6e0eb97d528897b34c6fb77790202460172d4650db4ca6356b6c4e",
+      "tests/test_organism_engine_scenarios.py": "d5fa2b39e397f53849c6596e5f11b03665a81b8e63f71d86bde4878cc885fe14",
+      "tests/test_organism_live_engine.py": "4589b991e800a6f8334445d87e91fbc4ded878733296a335295c521eb4f7b49a",
+      "tests/test_paper_daily_evidence.py": "b0efeb3e86016a28f3239e662e49bdcf14936d567ec3c20ac76196c0e2c771d7",
+      "tests/test_paper_daily_host.py": "34b7ffb8793f3e30c51b54a9222924994d60f328b5d033a38d86251b15a9fc64",
+      "tests/test_paper_watchdog.py": "0776fcb62a3c77e631085e3cce8a645bb6e7aed64345c6f759162bea4fa8bb7e",
+      "tests/test_pending_close_accounting.py": "ab8cec11e3fe70a37ac1768472a1776b6daf4a598921b2b2d137890bd6b49244",
+      "tests/test_phase2_freeze.py": "4d7dafe5e742e1a25144b90eed08c8da63744028c32be71047d30b430fcf8143",
+      "tests/test_phase2_guarded_promotion.py": "6e1ec898a848ea330f9e7b9a2a23f6043ac9c03dd0bd752f71a204c66cdc261f",
+      "tests/test_remediation_wave_b.py": "0e85234402c0ed3c06edb40fee4c3228e529acdd09b054903ab45b4fd9c14473",
+      "tests/test_replay_close_accounting.py": "a039b256ca27b103b54683d5e3f6efe86f438de2fe3d1ff16db8bc0fe69f051c",
+      "tests/test_research_baseline.py": "e30b69bb90014058c70fd72e7cce29ac7dcf1aca8ea528ed6f9f901df1cf3d29",
+      "tests/test_research_policy_lock.py": "d51b0d17626b6a169507b9ba4797bd6cbb74288376e19d48f4c0206ccb31f384",
+      "tests/test_risk_manager_service_comprehensive.py": "9b67a2be5da0a6e91a9667804475c9b6145b14a2f37470019944513426bd09ea",
+      "tests/test_runtime_snapshot_auth.py": "d4824a9e81bf1e029d0db15bfef900373b140ef3c4456e2ed23e33098dc397c8",
+      "tests/test_standdown_session_row.py": "a8098b13160f276ed00845a19315447b9a8c6befa210e51ac870b33e2d11db71",
+      "tests/test_v12_baseline_invariants.py": "d00573c0c0065cfcbf7752ad4dddb49297fc3f2006c5f441432fe271fd7bfa0c",
+      "tests/test_walkforward_persistence.py": "f39f701c0d44734ba2abf3698476b35a7d67ab062f31a0fe7d938cf22ac7a049"
+    }
+  },
+  "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+  "status": "NEW_FINDINGS_OR_TOOL_ERRORS",
+  "task_id": "operator-final-static-delta",
+  "tool_errors": [],
+  "tools": {
+    "bandit": "1.9.4",
+    "ruff": "0.15.12"
+  }
+}

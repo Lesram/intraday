@@ -1,0 +1,24 @@
+{
+  "source_sha": "20420916dfee1f3957a6278065b7e654c144a2e1",
+  "started_at_utc": "2026-09-21T06:57:09.646546+00:00",
+  "selection": "tests/ -m 'not slow'",
+  "timeout_seconds": 2700,
+  "test_timeout_seconds": 30,
+  "network": "denied",
+  "sensitive_production_state": "read/write denied",
+  "database": "isolated SQLite; hosted nightly instead supplies isolated PostgreSQL/Redis",
+  "coverage": "omitted, as requested",
+  "plugins": [
+    "pytest_asyncio.plugin",
+    "pytest_timeout",
+    "no:cacheprovider"
+  ],
+  "scratch": "/private/tmp/intra-policy-nightly-657mca6p",
+  "log": "/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/policy_nightly.log",
+  "junit": "/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/policy_nightly.xml",
+  "pid": 23780,
+  "exit_code": 1,
+  "elapsed_seconds": 492.54,
+  "finished_at_utc": "2026-09-21T07:05:22.186039+00:00",
+  "ending_sha": "20420916dfee1f3957a6278065b7e654c144a2e1"
+}

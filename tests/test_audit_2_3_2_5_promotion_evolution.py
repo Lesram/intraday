@@ -19,6 +19,8 @@ from backend.organism.self_evolution import EvolutionEngine, EvolvedParams
 
 
 def test_apply_result_preserves_incumbent(tmp_path, monkeypatch):
+    # Explicitly exercise swap rollback behavior outside the runtime lock.
+    monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
     from backend.organism.background_trainer import BackgroundTrainer
 
     monkeypatch.setenv("ORGANISM_BRAIN_DIR", str(tmp_path))

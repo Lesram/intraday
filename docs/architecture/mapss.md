@@ -4,7 +4,26 @@
 
 ---
 
-## CURRENT PAPER RUNTIME NOTE (2026-05-06)
+## Current authority and accounting repair (2026-09-19)
+
+The accepted paper deployment is application source `274d0c47ea6c4a092667cc65f813a96a2264e676`,
+merged by PR #17 as `ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189`. Its image is
+`sha256:86952abc7865191f1fc3a287ebfc61205b6682213cf9a0b54d697f8df68d917c`.
+The explicitly approved reporting cutoff is `2026-09-19T21:55:01.857005+00:00`.
+This cutoff did not reset historical learner, risk or evolution state. Reporting
+uses 6 bps round-trip as the primary cost; the 3 bps runtime setting is unchanged.
+
+The next accounting/evidence repair is specified in
+`docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`. Its source and runtime snapshot
+must be distinguished from the installed deployment until a separate activation
+receipt exists. An absent live `close_accounting` status means the new policy is
+unverified in the running process, even if the local candidate snapshot declares it.
+Use the generated `docs/engineering/LIVE_AUDIT_INDEX.md` and source-bound artifact
+pack for candidate validation; they do not, by themselves, prove installation.
+
+The runtime observations below are historical, not current account state.
+
+## Historical paper runtime note (2026-05-06)
 
 This file is the long-form architecture map. For the latest deploy truth, use
 `docs/engineering/PHASE7_CLOSE_REPORT.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`,
@@ -1061,70 +1080,82 @@ Configuration (legacy, no effect):
 
 ## 13. PHASE 10: FILL RECONCILIATION
 
-**ALWAYS runs, even when entries blocked.**
+**ALWAYS runs, even when entries are blocked.** Candidate policy:
+`exact_position_fills_or_pending_v1` (September 2026 operations repair).
+The installed process must report this policy before it can be treated as active.
 
 ```
-RECONCILE FILLS
-  │
-  ├── DETECT CLOSED POSITIONS:
-  │   ├── tracked_symbols = symbols in _entry_metadata
-  │   ├── broker_symbols = symbols at broker
-  │   ├── candidates = tracked - broker (gone from broker)
-  │   │
-  │   ├── Grace period: skip if held < 3 ticks (may still be settling)
-  │   │
-  │   └── FOR EACH confirmed closed:
-  │       ├── Pop _entry_metadata[sym]
-  │       │
-  │       ├── Get exit price (4-tier fill price chain):
-  │       │   ├── 1st: _last_exit_fill_price (synchronous fill from exit order response)
-  │       │   ├── 2nd: _lookup_exit_fill_from_db() (DB query: most recent filled sell
-  │       │   │        order with source=organism, ordered by updated_at DESC)
-  │       │   ├── 3rd: features DataFrame close price / broker quote midpoint
-  │       │   └── 4th: SKIP trade record (no phantom 0-PnL trades)
-  │       │
-  │       ├── Get shares (pyramid layers fallback to filled_shares)
-  │       ├── Compute PnL = (exit - entry) × shares × direction
-  │       │
-  │       ├── Create TradeRecord with:
-  │       │   ├── exit_reason = _last_exit_reason.pop(sym, "live_close")
-  │       │   │   (real reason from _submit_exit_order, NOT hard-coded)
-  │       │   ├── confidence = real blended confidence from entry metadata
-  │       │   ├── is_exploration = meta.get("exploration", False)
-  │       │   └── Causal provenance fields (improve7):
-  │       │       ├── entry_source: from entry metadata ("alpha"/"breakout"/"alpha+breakout"/"exploration")
-  │       │       ├── regime_at_entry: from entry metadata
-  │       │       ├── regime_at_exit: current regime at close
-  │       │       ├── mfe: (highest_favorable - entry) × direction × shares ($)
-  │       │       ├── mae: stop_distance × shares ($, conservative proxy)
-  │       │       ├── bars_held_at_exit: from ExitLevels.bars_held
-  │       │       └── time_in_trade_seconds: wall-clock from entry_time to now
-  │       │
-  │       ├── Update symbol circuit breaker (improve7, non-exploration only):
-  │       │   ├── _symbol_daily_pnl[sym] += pnl
-  │       │   ├── _symbol_consecutive_losses[sym] (reset on win, increment on loss)
-  │       │   └── BAN if: consec_losses >= 2 OR daily_pnl <= -$15
-  │       │
-  │       ├── Record to continuous_learner (ALL trades including exploration)
-  │       ├── Record to kelly_sizer (regime-stratified) — SKIP if exploration trade
-  │       │   (prevents micro-size trades from polluting Kelly statistics)
-  │       ├── Record to signal_gen calibration
-  │       │
-  │       ├── Immediate brain save after fills (prevent data loss on crash)
-  │       └── Clean up _exit_levels, _pyramid_positions, _ml_reversal_used,
-  │           _last_exit_reason, _last_exit_fill_price
-  │
-  └── DETECT ORPHANED POSITIONS (at broker but no metadata):
-      ├── SKIP if in _exit_levels (actively managed)
-      ├── SKIP if qty <= 0 or avg_entry <= 0
-      ├── SKIP if LONG_ONLY and not long
-      │
-      └── ADOPT:
-          ├── Create _entry_metadata stub
-          ├── Create exit levels (if features available)
-          ├── Create pyramid position
-          └── Log adoption
+Broker snapshot + tracked entry identities
+  → Existing grace period for newly submitted entries
+  → Persist first observed-flat time, entry ID, reason and exit context
+  → Retry complete attributed entry/exit fills through that original bound
+      incomplete/unknown → keep pending; no strategy outcome or consumer update
+      verified zero execution → clear unfilled entry, retain completed identity
+      exact quantity-conserving fills → finalize in observed-close order
+  → One coherent ledger/learner/Kelly/calibration/symbol-state checkpoint
+  → Legacy brain files remain recoverable projections of accounting state
 ```
+
+The authoritative file is `organism_brain/close_accounting.json`: a versioned,
+checksummed, atomically replaced projection of close outcomes, consumer state,
+pending metadata and completed entry identities. It is loaded before legacy
+brain recovery and reapplied afterward. Corruption fails initialization; it is
+not silently replaced with an older backup. Publication rejects regressed
+learner counts, missing history/completed identities, or changed PnL without a
+new outcome. Brain swaps preserve this authority and append-only telemetry.
+
+The owner event loop captures and publishes accounting before a background
+legacy save. A shared lock serializes publication and legacy file swaps; a late
+background save cannot republish an older captured accounting state. Consumer
+or pre-publication failures restore the in-memory preimage. Tests inject faults
+between legacy writes and verify actual restart recovery. This establishes the
+tested process-crash boundary; it is not a guarantee against failed storage.
+
+Strategy outcomes require `price_source=db_position_fills`, the original entry
+order identity, and complete attributed position cashflows (including partial
+exits). Uncertain prices do not update the learner, Kelly, calibration, symbol
+counts or daily risk history. Pending symbols retain the existing entry-metadata
+block. Later closes wait behind earlier unresolved closes to preserve consumer
+chronology. A reappearing position cancels its pending-close marker and remains
+managed. Verified-unfilled cleanup checks both Order and Execution evidence.
+
+Deferred outcomes retain the original observed close time/reason. Prior-session
+outcomes do not create current-day loss counts or a new cooldown. The persisted
+tick floor and elapsed time prevent restart from extending old cooldowns.
+Identified open metadata survives a flat restart; an exit while the process was
+down uses the first restarted observation as its close bound. The absence of an
+observation during downtime is an explicit timing limitation, not invented
+historical precision.
+
+Explicitly adopted orphans retain their non-strategy classification and may
+retain labeled approximate bookkeeping; they never become strategy evidence.
+No strategy rule, risk threshold, exploration path or frozen hash changes.
+
+Replay uses its own executed-order adapter for the same conserved-cashflow
+contract; its outcomes carry `simulated_position_fills`, distinct from paper
+`db_position_fills`. A separate broker PnL log cannot establish that engine
+accounting, learner and risk consumers processed an outcome. Simulated entries
+and exits must exercise those consumers in regression tests.
+
+### Prospective entry evidence
+
+`entry_evidence.jsonl` observes the actual causal feature frame supplied to a
+passed shared entry gate, then binds its fingerprint, timestamps, feed and
+runtime identity to the database order ID and actual client idempotency key
+returned by submission. Broker IDs may only become available later; the daily
+collector joins the client key to the broker inventory. Telemetry errors remain
+visible as missing/unverified evidence and never retry or fail an accepted order.
+
+These receipts do not change gate decisions or order arguments. A frame digest
+supports provenance checks but is not a full archive of provider inputs. Runtime
+identity uses the existing configuration fingerprint plus the approved release
+and freeze manifests; it is not a claim that every environment field is hashed.
+
+The manual `scripts/ops/paper_daily_evidence.py` runner uses these receipts,
+complete paper-broker snapshots, pinned historical baseline, calendar and log
+coverage, and the authoritative checkpoint. Any unresolved integrity issue
+blocks exposure of a strategy verdict. Its primary modeled cost is explicitly
+6 bps; runtime cost and the registered statistical thresholds remain unchanged.
 
 ---
 
@@ -4373,7 +4404,8 @@ StalenessReasons (enum):
 | Alpha composite minimum | 0.15 | alpha_scanner | Minimum score to be a candidate |
 | Breakout composite minimum | 0.20 | breakout_scanner | Minimum breakout score |
 | Pure breakout entry threshold | 0.55 | live_engine | Breakout-only entries need high score |
-| Full production promotion gate | strategy-only total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase + `/api/v1/health/strategy` | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled; reconciliation bookkeeping is exposed separately as all-record expectancy |
+| Research paper policy lock | `paper_research_locked_v1`, locked by default, no environment unlock | research_policy + trading_phase | `research_locked`: no automatic model/parameter training or ML/Kelly promotion; retained-model reversal exits and protective controls remain. Raw counts do not qualify evidence; qualified count is null until independently verified. |
+| Full production promotion gate (retained unlocked primitive only) | strategy-only total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase + `/api/v1/health/strategy` | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled; reconciliation bookkeeping is exposed separately as all-record expectancy |
 | Strategy live-order gate | `StrategyGovernor.authorize_signal(..., live_intent=True)` must allow before OrderService entry submission | live_engine + strategy_governor | Blocks unknown, shadow-only, live-disabled, insufficient-evidence strategy IDs before any entry order can reach the broker path |
 | Phase 9D portfolio construction gate | ≥2 portfolio-eligible strategies from ≥2 independent families, each with positive after-cost alpha, positive avg R, PF ≥1.20, concentration within limits, correlation ≤0.75, weighted beta ≤0.35 | `evidence/portfolio_construction.py` + `scripts/phase9d_portfolio_construction.py` | Advisory only: no live sizing/order/promotion changes; blocks portfolio scaling when evidence is replay-only or one-family |
 | Symbol fitness gate | **0 (learning, no gate)** / 0.45 (production, 10+ trades) | live_engine | improve9 B1: unified canonical system. Learning = soft ranking only. Production = hard reject for established losers |
@@ -4414,7 +4446,7 @@ StalenessReasons (enum):
 | Alpha+breakout bad-regime filter | enabled by default | live_engine | Blocks alpha+breakout entries in chop/trending_down; records blocked candidates with `live_pipeline_candidate=false` for evidence |
 | Symbol circuit breaker | (a) 2+ consec losses + 0 wins, (b) PnL ≤ -max($25, 0.10% eq), (c) 2+ SL in 30min | live_engine | Ban symbol for session (improve8 enhanced) |
 | Regime evolution freeze | 200+ total trades AND 30+ per regime | kelly_sizer | Evolved regime scales locked until statistically stable (improve7) |
-| Full evolution freeze | **300+ total trades** | live_engine | improve9 B5: ALL self-evolution frozen until 300 clean trades. Only ML retraining runs. |
+| Full evolution freeze | Research policy lock supersedes the legacy 300-trade threshold | live_engine + research_policy | No background/sync retraining, evolved-parameter mutation or transfer warm-start while locked. Restore the reviewed saved parameter/model baseline; do not count inherited history as a fresh qualified sample. |
 | Horizon timeout | **18 bars** (learning only) | adaptive_exits | improve9 A3: Hard exit at H=15 + 3 grace bars. Aligns exits to thesis horizon |
 | Burst entry cap | **4 per rolling 15 min** | live_engine | improve8 C2: Prevents bursty post-hotfix entry cascades |
 | Stop-loss re-entry cooldown | **180 ticks** (30 min) | live_engine | improve8: Extended cooldown after stop-loss exit |
@@ -4936,3 +4968,63 @@ Default training config:
 ---
 
 *This document covers 100% of the platform's Python modules across organism/ (37), infra/ (24), integrations/ (6), api/ (15+), services/ (27), ml/ (17), models/ (6), config/ (5), data/ (5), utils/ (9), risk/ (12), and monitoring/ (7). Every threshold, every flow, every decision path, every endpoint, and every inter-module dependency is documented for visual diagramming.*
+
+
+## September 21 paper policy and evidence authority
+
+The explicitly authorized `paper_research_locked_v1` release retains the original six frozen source groups and all existing strategy/feed settings. Its expanded freeze covers policy control sources and `artifacts/phase2/research_policy_baseline.json`. The active engine publishes `policy_lock` (mapped to `research_policy` in runtime snapshot files) including the actual effective parameter projection/hash, raw strategy count, null qualified count and retained-model reversal policy. Runtime snapshots must observe this object from the installed process; candidate defaults are not deployment evidence.
+
+The lock blocks automatic ML/Kelly promotion, worker/synchronous retraining, stale worker application, transfer warm-start and manual organism/risk/ML setting mutation before persistence. Normal session risk management, accounting, protective exits and EOD stay active. Model and trade history remain intact; the learning flag retains its genuine count meaning. The original automatic 200/300-trade phases remain testable primitives, but cannot unlock the installed baseline. Releasing this lock requires explicit review and a recorded forward-boundary decision.
+
+The actual activation archives the previous active freeze and records a new UTC cutoff, immutable image/source/config identity and current backup evidence. CI's freeze timestamp is a verification fixture only. Daily qualification additionally requires full broker/ledger/entry-receipt reconciliation, actual session coverage and the primary 6bps round-trip research cost. Missing replacement lineage remains an explicit hold, never an approximate qualified result.
+
+The configured `ORGANISM_APPROVED_POLICY_BASELINE` points to the approved JSON baked into the immutable image. Startup verifies model/cache fingerprints, feature order, ensemble weights, thresholds, calibration map and actual applied scanner/exit/sizer values before engine reconstruction, training or ticks. A mismatch leaves the scheduler stopped; generic API readiness alone is insufficient. Existing lifespan startup cancels outstanding orders before engine initialization, so controlled rollout additionally requires a freshly verified flat account with no open orders. Legacy retrain activity messages can still say submitted when the locked trainer declines the request; `policy_lock` and actual trainer state are authoritative.
+
+
+## Durable operator halt and verified emergency cancellation
+
+The September 21 safety repair connects both operator endpoints to the actual
+scheduler engine governance, while keeping the legacy controller coherent.
+`ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json` stores
+an independent, checksummed manual halt in the existing data bind, outside the
+brain save/recovery directory. Deployment initializes this record only while
+recovery is held and fresh broker evidence is closed/flat with no orders, after
+observing that the previous engine is not halted. Missing or corrupt configured
+state blocks entries and exposes a control fault; it never silently resumes.
+
+The manual halt is set and persisted before awaiting an in-flight tick. A success
+acknowledgment requires that tick to drain; a timeout or persistence error reports
+an incomplete result with the halt retained. Final entry admission rechecks
+governance, including pyramid additions. Stop, partial-exit and end-of-day
+management remain active. Automatic daily-loss/cooldown recovery cannot clear the
+manual latch. Explicit resume clears only that latch, preserving environment and
+automatic risk blocks and the research lock.
+
+`POST /risk/emergency-stop` halts the actual engine before opening the audit DB
+session. It requests cancellation only for verified engine entry orders and
+confirms their terminal status at the broker. Protective and unrelated orders
+are preserved. Unsupported replacement lineage, ambiguous attribution, remaining
+fill exposure, broker failure, persistence failure or unavailable audit storage
+produces a structured incomplete response; it must not claim all orders were
+cancelled or the portfolio is flat. Database order rows are not falsely stamped
+cancelled. The UI distinguishes a retained entry halt from incomplete
+cancellation/audit work. No administrator notification is promised by this path.
+
+The expanded freeze covers governance, operator controls, the entry admission
+seam and emergency cancellation/API/service sources, plus the configured state
+path. The original six source hashes, strategy parameters and data feed remain
+unchanged. Runtime snapshots report observed `operator_governance`; missing
+legacy fields remain unknown. The actual-host daily runner and watchdog check
+configured/verified fault-free authority, its approved path, and correspondence
+between the current durable record and engine status. They allow a legitimate
+manual halt and never clear it to make a readiness check pass.
+
+
+Emergency-stop completion additionally requires bounded broker open-order
+inventory before and after cancellation, independently of DB terminal flags.
+An absent/stopped/uninitialized scheduler cannot acknowledge active exit
+management: durable halt may succeed, but overall control completion is 503.
+`GET /risk/emergency-stop/active` reports the actual operator latch/fault without
+DB access; unknown authority is 503. Historical audit resolution never resumes
+entries. The risk dashboard labels its stored record as an unresolved audit;
+current entry authority is shown by the organism dashboard.

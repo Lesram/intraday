@@ -253,9 +253,12 @@ def test_update_watchdog_c1_fires_critical_when_truly_idle():
 def test_submit_entry_order_counters_increment(monkeypatch):
     """Authoritative counter must bump on every successful submit."""
     import asyncio
+    from backend.organism.governance import GovernanceController
     from backend.organism.live_engine import OrganismLiveEngine
 
     eng = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    eng.governance = GovernanceController()
+    assert not eng.governance.is_trading_halted
     eng._total_orders_submitted = 0
     eng._total_exits_submitted = 0
     eng._tick_count = 42
@@ -270,7 +273,9 @@ def test_submit_entry_order_counters_increment(monkeypatch):
     eng._now_fn = lambda: datetime.now(UTC)
     eng._time_fn = _time.time
 
+    calls = []
     async def fake_submit(**kwargs):
+        calls.append(kwargs)
         return {"order_id": "abc", "filled_qty": 10}
     eng._order_service = SimpleNamespace(submit_symbol_order=fake_submit)
 
@@ -279,6 +284,14 @@ def test_submit_entry_order_counters_increment(monkeypatch):
 
     asyncio.run(eng._submit_entry_order("AAPL", 10))
     assert eng._total_orders_submitted == 2
+    assert len(calls) == 2
+
+    # A denied entry must not be counted as a successful submission.
+    eng.governance.halt_trading()
+    with pytest.raises(RuntimeError, match="Governance halted"):
+        asyncio.run(eng._submit_entry_order("AAPL", 10))
+    assert eng._total_orders_submitted == 2
+    assert len(calls) == 2
 
 
 def test_save_essential_state_does_not_reset_watchdog_tick(tmp_path):

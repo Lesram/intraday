@@ -199,6 +199,7 @@ class TestEquityStatusReporting:
         engine._epoch_metrics = []
         engine._universe = {"AAPL", "MSFT"}
         engine._entry_metadata = {}
+        engine._accounting_error = ""
         engine._data_stale = False
         engine._scanner_candidates = []
         engine.market_scanner = None
@@ -212,6 +213,7 @@ class TestEquityStatusReporting:
         engine.governance = MagicMock()
         engine.governance.to_dict.return_value = {}
         engine.learner = MagicMock(generation_metrics=[])
+        engine.learner.state.total_trades = 0
         # _is_learning_mode is a property based on len(_all_trades) < _LEARNING_MODE_TRADES
         # With _all_trades=[] and default _LEARNING_MODE_TRADES=200, it will be True.
         engine._LEARNING_MODE_TRADES = 200

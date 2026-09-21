@@ -1,0 +1,12 @@
+{
+  "positive": {
+    "exit_code": 0,
+    "stdout": "{\"status\": \"READY_FOR_REVIEW\", \"pack\": \"/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/monday_sample_replay/positive/2026-09-21/717350ce5a1d41cb876a12c7e24e71c130c16b46890511422497bfa298e85d47\", \"replayed\": true, \"issues\": []}\n",
+    "stderr": ""
+  },
+  "blocked": {
+    "exit_code": 1,
+    "stdout": "{\"status\": \"BLOCKED\", \"pack\": \"/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/monday_sample_replay/blocked/2026-09-21/d3fd8c0b5b9e529096b2fe10c1a6279192982e59cd6f9d45dd5e5d31a7079c5a\", \"replayed\": true, \"issues\": [\"entry_decision_provenance_unverified:0\"]}\n",
+    "stderr": ""
+  }
+}

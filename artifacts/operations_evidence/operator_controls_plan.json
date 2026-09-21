@@ -1,0 +1,40 @@
+{
+  "task_id": "authoritative_operator_controls",
+  "scope": "Make admin halt/resume/status control the same governance used by the live engine, with independent durable operator latch and explicit tick-drain acknowledgement. Keep legacy runner coherent.",
+  "owned_files": [
+    "backend/organism/routes.py",
+    "backend/organism/governance.py",
+    "backend/organism/operator_controls.py",
+    "tests/test_operator_controls.py",
+    "backend/organism/live_engine.py (initialize and _authorize_live_entry_order only)"
+  ],
+  "pending_root_coordination": [],
+  "invariants": [
+    "Do not change six frozen function groups or strategy parameters",
+    "Do not cancel scheduler/ticks/protective exits",
+    "Operator resume never clears daily-loss, drawdown, environment halt, or research lock",
+    "No live API calls or real state writes",
+    "Halt errors retain blocked entries and return degraded result"
+  ],
+  "steps": [
+    "Reproduce actual admin endpoint mismatch using distinct real governance objects",
+    "Add independent operator latch and durable external receipt",
+    "Wire authoritative status and synchronized legacy controllers",
+    "Halt immediately, await bounded complete tick drain, then acknowledge; distinguish safety blockers after resume",
+    "Test persistence failures, restart/fallback survival, day roll, in-flight submit ordering and protective exits",
+    "Run isolated targeted suites and frozen-surface verification; request review before commit"
+  ],
+  "tests": [
+    "tests/test_operator_controls.py",
+    "tests/test_governance_drawdown_canonical.py",
+    "tests/test_organism_engine_scenarios.py",
+    "tests/test_research_policy_lock.py"
+  ],
+  "cancellation": "Owned by another agent; helper releases tick lock before any cancellation work",
+  "status": "implemented; final targeted green; awaiting independent source review",
+  "accepted_scope_extensions": [
+    "Independent operator latch in governance constructor + external authority before legacy recovery",
+    "Submission-time governance recheck for new entries and pyramid adds",
+    "Truthful unavailable/stopped scheduler response503 despite durable halt"
+  ]
+}

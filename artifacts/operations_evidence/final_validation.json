@@ -1,0 +1,425 @@
+{
+  "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+  "created_at_utc": "2026-09-21T09:40:57.302987+00:00",
+  "unique_tests_passed": 1615,
+  "tests_failed": 0,
+  "skipped": 1,
+  "skip_details": [
+    {
+      "test": [
+        "tests.test_v12_baseline_invariants",
+        "test_installed_history_has_not_shrunk_from_committed_baseline"
+      ],
+      "reason": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim"
+    }
+  ],
+  "suites": [
+    {
+      "junit": "artifacts/operations_evidence/monday_operational.xml",
+      "passed": 1399,
+      "failed": 0,
+      "skipped": 1,
+      "sha256": "b3191228b70a78a87c2eb4c11ea29b67df34a569d5c65dde00a25a3387298238"
+    },
+    {
+      "junit": "artifacts/organism_live_engine.junit.xml",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "4c330238d9174ae692579c8bf363debce2cc38c66c4e72f6c48a118ded0df8f6"
+    },
+    {
+      "junit": "artifacts/organism_engine_scenarios.junit.xml",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "272328aa35d31d74a1526774ba938c96968cbfe2cb23c00bd9167f0019926ef8"
+    },
+    {
+      "junit": "artifacts/multi_tick_state.junit.xml",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "c96fe75cd4dc2a1eb9aeb9e2174dd196b005f2071019b10816ce5da650602c4d"
+    },
+    {
+      "junit": "artifacts/safety_invariants.junit.xml",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "573e0849fe3e1606c3603687f21743b695d70b27549eed1369f437ff379f588d"
+    },
+    {
+      "junit": "artifacts/self_evolution.junit.xml",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "0d8b247391cc5b402f3ce95e4caaa5c9ac0980782d592b27ec625854a058ebee"
+    },
+    {
+      "junit": "artifacts/algorithm_improvements.junit.xml",
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "0c42dbf975814e60e2d83d5a49aa3feeda0e365ce4b76470e279da743b1b4c02"
+    },
+    {
+      "junit": "artifacts/replay_simulator.junit.xml",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "1e651ef7f991c8431bae19532516bef6fe005cee70b38b6605d74b4d9544a220"
+    },
+    {
+      "junit": "artifacts/semantic_invariants.junit.xml",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "c05b9d8b3fc86fdeb4a5c744f4b5ad8d14378928e64edb1438c868dfdc2eb712"
+    }
+  ],
+  "count_method": "Unique JUnit classname and case name across final operational and required full artifact runs; repeated/targeted/broad nightly/environment runs are not added",
+  "initial_operator_run": {
+    "source_sha": "4c742dac61a683c7f3ec20b941ff3cb69678082d",
+    "operational": "1372passed,4failures,1skip; explicit expandedfreezefixture inputs/expectedkeys repaired in80987",
+    "full_pack": "all8suitesgreen;pack rejected a concurrent test-fixturecommit SHA mismatch, rerun on stable80987",
+    "retained_logs": [
+      "artifacts/operations_evidence/operator_first_operational.log",
+      "artifacts/operations_evidence/operator_first_full.log"
+    ]
+  },
+  "full_artifact_pack": "pass",
+  "freeze_verification": "pass",
+  "immutable_image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
+  "isolated_signed_backup_warm_start": "pass; initial load and saved reload preserve pinned models/components and ledger; negative corruption fails before engine effects",
+  "frontend": {
+    "build": "pass",
+    "focused_cases_passed": 37,
+    "junit": "artifacts/operations_evidence/frontend_release_final.xml",
+    "junit_sha256": "6206a30492f06e19f29a9b7e8c42a7d5d664765cdfcf48a05b5ced0417b11789",
+    "log": "artifacts/operations_evidence/frontend_release_final.log",
+    "react_review": "Actual manual halt and incomplete outcomes; username-or-email login, production bypass disabled, honest recovery guidance; browser-compatible scanner connection and current-token market-data reconnect. Existing chart mocks emit non-failing canvas warnings",
+    "build_log": "artifacts/operations_evidence/frontend_release_final_build.log",
+    "production_browser": {
+      "status": "passed",
+      "url": "http://127.0.0.1:5197/login",
+      "browser_version": "0.38.1",
+      "index_sha256": "6ea8be6993dcb651867ddc9b28e6128ece2d9730ae4dbd210ec7f224b1c0deea",
+      "dist_sha256": "76c6b86d9b0cedc978c6237d065ee813e89dac526634caf9d1bcf2aed1eec488",
+      "checkout_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+      "checkout_source_dirty": false,
+      "build_provenance": "dist bytes hashed; checkout identity alone does not attest build origin",
+      "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
+      "checks": {
+        "fields_empty": true,
+        "login_url": true,
+        "no_error_overlay": true,
+        "nonblank": true,
+        "password_visible": true,
+        "recovery_visible": true,
+        "signin_visible": true,
+        "transport_violations": [],
+        "username_visible": true
+      },
+      "page_error_count": 0,
+      "page_error_types": [],
+      "browser_closed": true,
+      "preview_stopped": true,
+      "elapsed_seconds": 5.74
+    },
+    "production_browser_result_sha256": "0e83cf52d06259dd3a849505c1c1a7026670f0035708d2bac73413b6cea7ea31",
+    "browser_review": "artifacts/operations_evidence/frontend_browser_review.json",
+    "streaming_bundle": {
+      "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+      "js_files_inspected": 115,
+      "browser_incompatible_auth_require_matches": [],
+      "lazy_chunks": {
+        "ScannerPage": [
+          {
+            "path": "assets/ScannerPage-Bx1huhx1.js",
+            "sha256": "1babd5232170901b522aaa6ce85070191d81c502f6e375455a137dbf0582a98b"
+          }
+        ],
+        "TradingPage": [
+          {
+            "path": "assets/TradingPage-CrIh3uye.js",
+            "sha256": "2e33daa8671dbc0325ff6eed42a243449646e27ea485d30a5556775fdfc3e77b"
+          }
+        ]
+      },
+      "focused_frontend_passed": 37,
+      "backend_authentication_changed": false,
+      "actual_authenticated_streaming_verified": false,
+      "scope": "Compiled scanner/trading dependency bytes and mocked current-token connection contracts; production unauthenticated login browser gate recorded separately"
+    },
+    "streaming_review": "artifacts/operations_evidence/frontend_streaming_review.json",
+    "streaming_review_sha256": "9c64b70edab914e3922cf446f813f8c80185d34e6d42e8bec5fcd9c160fd7d1a",
+    "retained_browser_failures": [
+      "artifacts/operations_evidence/operator_browser_initial.json",
+      "artifacts/operations_evidence/operator_browser_second.json"
+    ]
+  },
+  "deployed": false,
+  "hosted_check_status": "pending_after_push",
+  "workflow_budget_repair": {
+    "prior_source": "afbcd5e67fb68043b917999ee327ea609fe33da1",
+    "initial_result": "1398 passed, 1 failed, 1 skipped; total job budget below expanded step allowances",
+    "correction": "Job timeout100 exceeds step total91 plus required5-minute overhead; no runtime source change",
+    "retained_log": "artifacts/operations_evidence/operator_final_budget_attempt.log"
+  },
+  "prior_policy_broad_nightly": {
+    "source": "20420916dfee1f3957a6278065b7e654c144a2e1",
+    "passed": 8246,
+    "failed": 45,
+    "skipped": 721,
+    "xfail": 2,
+    "classification": "27 environment failures passed isolated reruns;17 stale accounting/policy fixtures repaired and covered by final required selection;1 installed-history dependency now explicit unavailable skip. Original failed receipt retained.",
+    "details": "artifacts/operations_evidence/policy_nightly.classification.json"
+  },
+  "broad_nightly": {
+    "task_id": "operator-final-broad-nightly-classification",
+    "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+    "status": "COMPLETE_WITH_CLASSIFIED_FAILURES",
+    "source_bytes_unchanged": true,
+    "original_run": {
+      "selection": "tests/ -m 'not slow'",
+      "passed": 8415,
+      "failed": 20,
+      "errors": 0,
+      "skipped": 721,
+      "xfailed": 2,
+      "deselected": 28,
+      "elapsed_seconds": 526.8,
+      "network": "OS denied",
+      "sqlite": "scratch only",
+      "production_credentials_or_state_used": false,
+      "source_mutations_during_run": false
+    },
+    "categories": {
+      "new_incomplete_governance_fixture": 3,
+      "known_host_network_denial_loopback": 17
+    },
+    "failures": [
+      {
+        "nodeid": "tests/test_apr7_p0_p1_fixes.py::test_submit_entry_order_counters_increment",
+        "when": "call",
+        "trace": "tests/test_apr7_p0_p1_fixes.py:277: in test_submit_entry_order_counters_increment\n    asyncio.run(eng._submit_entry_order(\"AAPL\", 10))\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run\n    return runner.run(main)\n           ^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run\n    return self._loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete\n    return future.result()\n           ^^^^^^^^^^^^^^^\nbackend/organism/entry_evidence.py:152: in observed\n    result = await method(engine, *args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/organism/live_engine.py:6308: in _submit_entry_order\n    self._authorize_live_entry_order(\nbackend/organism/live_engine.py:6241: in _authorize_live_entry_order\n    if self.governance.is_trading_halted:\n       ^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute 'governance'",
+        "category": "new_incomplete_governance_fixture",
+        "follow_up": "Accounting agent owns minimal real GovernanceController initialization in these3 __new__ fixtures; only after original source-bound run ended. Production guard is preserved."
+      },
+      {
+        "nodeid": "tests/test_phase9_strategy_governance.py::test_live_entry_order_uses_strategy_governor_as_hard_gate",
+        "when": "call",
+        "trace": "tests/test_phase9_strategy_governance.py:282: in test_live_entry_order_uses_strategy_governor_as_hard_gate\n    asyncio.run(\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run\n    return runner.run(main)\n           ^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run\n    return self._loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete\n    return future.result()\n           ^^^^^^^^^^^^^^^\nbackend/organism/entry_evidence.py:152: in observed\n    result = await method(engine, *args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/organism/live_engine.py:6308: in _submit_entry_order\n    self._authorize_live_entry_order(\nbackend/organism/live_engine.py:6241: in _authorize_live_entry_order\n    if self.governance.is_trading_halted:\n       ^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute 'governance'",
+        "category": "new_incomplete_governance_fixture",
+        "follow_up": "Accounting agent owns minimal real GovernanceController initialization in these3 __new__ fixtures; only after original source-bound run ended. Production guard is preserved."
+      },
+      {
+        "nodeid": "tests/test_phase9_strategy_governance.py::test_live_entry_order_persists_strategy_identity_on_allowed_submit",
+        "when": "call",
+        "trace": "tests/test_phase9_strategy_governance.py:316: in test_live_entry_order_persists_strategy_identity_on_allowed_submit\n    result = asyncio.run(\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run\n    return runner.run(main)\n           ^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run\n    return self._loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete\n    return future.result()\n           ^^^^^^^^^^^^^^^\nbackend/organism/entry_evidence.py:152: in observed\n    result = await method(engine, *args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/organism/live_engine.py:6308: in _submit_entry_order\n    self._authorize_live_entry_order(\nbackend/organism/live_engine.py:6241: in _authorize_live_entry_order\n    if self.governance.is_trading_halted:\n       ^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute 'governance'",
+        "category": "new_incomplete_governance_fixture",
+        "follow_up": "Accounting agent owns minimal real GovernanceController initialization in these3 __new__ fixtures; only after original source-bound run ended. Production guard is preserved."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestIsPortAvailable::test_unavailable_port",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:69: in test_unavailable_port\n    sock.bind(('127.0.0.1', 0))  # Let OS pick a port\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   PermissionError: [Errno 1] Operation not permitted",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_default",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:87: in test_find_free_port_default\n    port = port_manager.find_free_port()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_preferred",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:95: in test_find_free_port_preferred\n    port = port_manager.find_free_port(preferred_port=preferred)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 15000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_tracks_allocation",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:102: in test_find_free_port_tracks_allocation\n    port1 = port_manager.find_free_port()\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_skips_allocated",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:112: in test_find_free_port_skips_allocated\n    port1 = port_manager.find_free_port()\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestReleasePort::test_release_allocated_port",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:129: in test_release_allocated_port\n    port = port_manager.find_free_port()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_allocates_port",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:151: in test_context_manager_allocates_port\n    with port_manager.get_port() as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exit",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:157: in test_context_manager_releases_on_exit\n    with port_manager.get_port() as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exception",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:166: in test_context_manager_releases_on_exception\n    with port_manager.get_port() as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_preferred_port",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:176: in test_context_manager_preferred_port\n    with port_manager.get_port(preferred_port=12000) as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 12000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestEdgeCases::test_multiple_managers_isolated",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:201: in test_multiple_managers_isolated\n    port1 = pm1.find_free_port()\n            ^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 100 attempts starting from 20000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortInfo::test_get_info_for_available_port",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:217: in test_get_info_for_available_port\n    port = port_manager.find_free_port()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:360: in test_get_free_port\n    port = get_free_port()\n           ^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:319: in get_free_port\n    return port_manager.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 100 attempts starting from 8001",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port_preferred",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:368: in test_get_free_port_preferred\n    port = get_free_port(preferred_port=30000)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:319: in get_free_port\n    return port_manager.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 100 attempts starting from 30000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_free_port_context_function",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:397: in test_free_port_context_function\n    with free_port_context(40000) as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:340: in free_port_context\n    with port_manager.get_port(preferred_port) as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 100 attempts starting from 40000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_success",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:547: in test_start_server_success\n    host, port = await tsm.start_test_server(\"test_server\", mock_app)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:226: in start_test_server\n    port = self.port_manager.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      },
+      {
+        "nodeid": "tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_failure_releases_port",
+        "when": "call",
+        "trace": "tests/test_port_management_comprehensive.py:563: in test_start_server_failure_releases_port\n    await tsm.start_test_server(\"test_server\", mock_app)\nbackend/utils/port_management.py:226: in start_test_server\n    port = self.port_manager.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000\n\nDuring handling of the above exception, another exception occurred:\ntests/test_port_management_comprehensive.py:562: in test_start_server_failure_releases_port\n    with pytest.raises(RuntimeError, match=\"Failed to start server\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: Regex pattern did not match.\nE     Expected regex: 'Failed to start server'\nE     Actual message: 'Could not find a free port after 50 attempts starting from 10000'",
+        "category": "known_host_network_denial_loopback",
+        "previous_category": "host_network_denial_loopback",
+        "follow_up": "Passed separately in immutable80987 image with networknone/private loopback; original failed receipt retained."
+      }
+    ],
+    "previous_environment_cases": {
+      "node_path": {
+        "known_cases": 10,
+        "passed_in_original_run": 10,
+        "reason": "Node included on explicit clean PATH; no network exception"
+      },
+      "loopback": {
+        "known_cases": 17,
+        "failed_in_original_run": 17,
+        "separate_rerun": {
+          "passed": 17,
+          "failed": 0,
+          "image": "sha256:fce9e9519cdd67eb2c4ca0d27d502964c1e9f3510f59c87ddc16c150ccdee3d1",
+          "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+          "network": "none; container-local loopback only",
+          "root_filesystem": "read-only",
+          "host_mounts": [],
+          "published_ports": [],
+          "junit": "artifacts/operations_evidence/operator_nightly.ports.xml",
+          "cleanup_succeeded": true
+        }
+      }
+    },
+    "installed_history_audit": {
+      "result": "SKIPPED_UNAVAILABLE",
+      "message": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim",
+      "live_history_preservation_claim": false
+    },
+    "remaining_original_source_failures": 3,
+    "required_follow_up": "Root accepts and commits the separately tested fixture corrections, then binds final source/image/CI; original80987 broad run remains historically failed with classified causes.",
+    "artifact_sha256": {
+      "artifacts/operations_evidence/operator_nightly.log": "497cd2bbe9854153deb8a70cb97855ee2563af472939e705d7ae55a3c4d8c41d",
+      "artifacts/operations_evidence/operator_nightly.xml": "72337fe2c1420e6dec2339769c50a9f56c4b4e76105d04aacf5e80875ad1f2f6",
+      "artifacts/operations_evidence/operator_nightly.failures.jsonl": "f351e66d617ccc195b3fa8ece8a900865d4e1291d44bedf1b331a2974aeac9db",
+      "artifacts/operations_evidence/operator_nightly.provenance.json": "5009729393224a8d34f6270672a600b8c2a5bfd8dceb819927c641ad4e66d6ff",
+      "artifacts/operations_evidence/operator_nightly.ports.log": "dcd3c62ec1aa95c643b0f40cd7c7f3b96c072dab18a1dd8bc16b8f356d491b2d",
+      "artifacts/operations_evidence/operator_nightly.ports.xml": "ee2862e69359394c5c80dc43ea005824d263342256561a2ed8e1f78c0267a579",
+      "artifacts/operations_evidence/operator_nightly.ports.provenance.json": "45c5845c42f4d496ce2a3c24d4d3d655b5d716ebf73a5d1292d7d40704fb46aa"
+    },
+    "interpretation": [
+      "The original broad source80987 run remains failed; its red receipts are retained.",
+      "The17environment reruns are separate results and are not added to the8415original passed total.",
+      "No additional normally initialized runtime defect was established by the3missing-governance fixtures; they require explicit repair/acceptance.",
+      "This is the nightly not-slow selection with isolated SQLite and explicit skips, not a claim that every repository test passed."
+    ],
+    "separate_fixture_repair": {
+      "owner_report": "artifacts/operations_evidence/operator_fixture_compatibility_report.json",
+      "owner_report_sha256": "f5756b73cc4506d902b62ea8b03f7a07c9f680931764999e528c2c2b3b437614",
+      "tests_passed": 23,
+      "tests_failed": 0,
+      "files": [
+        "tests/test_apr7_p0_p1_fixes.py",
+        "tests/test_phase9_strategy_governance.py"
+      ],
+      "source_sha256": {
+        "tests/test_apr7_p0_p1_fixes.py": "1ae05464ed36acca70d82f46f9a9878733f51e1b3daadcfffc9cb090b59c01c2",
+        "tests/test_phase9_strategy_governance.py": "2881af34fcd26787e17485d91d151f8e1e2f42d791c7c478397cc27037ca4e0a"
+      },
+      "runtime_behavior_changed": false,
+      "commit_state": "complete_uncommitted_root_release_owner",
+      "original_failed_run_rewritten": false,
+      "counts_added_to_original_pass_total": false
+    }
+  }
+}

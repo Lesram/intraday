@@ -1,0 +1,80 @@
+{
+  "task_id": "monday-final-readiness-20260921",
+  "summary": "Finish proposed research policy lock, preserve reviewed effective baseline and existing history, certify source-bound paper release, install controlled paper rollout and actual-host daily evidence.",
+  "authorization": {
+    "user_request": "Make sure you are ready for tomorrows trading day, please go through everything and confirm, and if there are steps you must take to get fully ready please do so noq.",
+    "interpretation": "Direct instruction follows presented policy-lock proposal and authorizes that named lock plus explicitly recorded freeze/cutoff transition and controlled paper deployment; no real-money trading or model/history reset."
+  },
+  "affected_files": [
+    "backend/organism/{research_policy,trading_phase,background_trainer,live_engine}.py",
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "scripts/ops/paper_daily_host.py",
+    "ops/launchd/com.intra.paper.daily-evidence.plist",
+    "tests/test_research_policy_lock.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_runtime_snapshot_auth.py",
+    "tests/test_paper_daily_host.py",
+    "docs/architecture/mapss.md",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
+    "artifacts/phase2/param_freeze.json",
+    "artifacts/operations_evidence/*",
+    "backend/organism/research_baseline.py",
+    "tests/test_research_baseline.py",
+    ".dockerignore",
+    "backend/api/routes/settings.py",
+    "backend/organism/scheduler.py",
+    "scripts/ops/paper_watchdog.py",
+    "ops/launchd/com.intra.paper.watchdog.plist",
+    "tests/test_paper_watchdog.py",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "seven legacy regression fixture files"
+  ],
+  "tests": [
+    "targeted policy/startup/background/sync/exception and snapshot/freeze tests",
+    "operational-safety tests including broker/reconciliation/config/state persistence",
+    "all six mandated organism suites and replay/semantic artifacts",
+    "credential wrapper tests and installed preclose collection refusal",
+    "isolated signed-model warm-reload preserving ledger/counters/models and effective policy",
+    "immutable image/source/config/freeze verification",
+    "hosted operational-safety and independent review"
+  ],
+  "deployment_gates": [
+    "closed paper market and broker flat",
+    "accepted reviewed source and hosted checks green",
+    "fresh verified state/database backups",
+    "pause recovery authority during bounded rollout",
+    "preserve old dirty artifacts/freeze/env/history and immutable image",
+    "authenticated installed lock/accounting/evidence/source/config checks",
+    "watchdog resumed and final flat account check"
+  ],
+  "risks": [
+    "First market session remains unproven; no profitability claim",
+    "Replaced-order lineage remains an explicit accounting/evidence hold",
+    "Old PR17 cannot safely consume new authority/receipt state; recovery must preserve candidate state",
+    "Current model signing development fallback is a separate hardening follow-up"
+  ],
+  "startup_baseline_refinement": "Independent review found legacy fallback could select different model/params. Pin actual loaded model fingerprints and prediction context in approved read-only image baseline; configured restart must verify before position reconstruction.",
+  "watchdog_refinement": "New startup refusal leaves API healthy but scheduler stopped; optional authenticated policy/scheduler probe now reports sanitized attention without restarting an otherwise healthy API.",
+  "regression_refinement": "Broader nightly identified17 outdated accounting/policy fixtures,27isolated-harness failures and1implicit installed-data dependency. Fixtures repaired without runtime relaxation; unavailable installed data is an explicit opt-in audit.",
+  "operator_control_refinement": "Authoritative durable operator halt and truthful entry cancellation repair required by newly discovered disconnected UI/DB-only stop. See operator_readiness_plan.json.",
+  "operator_control_root_scope": [
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "scripts/ops/paper_daily_host.py",
+    "tests/test_paper_daily_host.py",
+    "tests/test_paper_watchdog.py",
+    "tests/test_runtime_snapshot_auth.py",
+    "tests/test_phase2_freeze.py",
+    ".github/workflows/paper-readiness.yml",
+    "frontend/src/features/risk/KillSwitchButton.tsx",
+    "docs/architecture/mapss.md",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
+    "frontend/src/features/organism/OrganismDashboard.tsx",
+    "frontend/src/features/organism/organismApi.ts",
+    "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx",
+    "frontend/src/features/risk/RiskDashboard.tsx"
+  ]
+}

@@ -1,0 +1,240 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.99kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 1.23kB done
+#3 DONE 0.0s
+
+#4 [builder 1/5] FROM docker.io/library/python:3.12-slim@sha256:ccc7089399c8bb65dd1fb3ed6d55efa538a3f5e7fca3f5988ac3b5b87e593bf0
+#4 resolve docker.io/library/python:3.12-slim@sha256:ccc7089399c8bb65dd1fb3ed6d55efa538a3f5e7fca3f5988ac3b5b87e593bf0 done
+#4 CACHED
+
+#5 [internal] load build context
+#5 transferring context: 22.93MB 0.2s done
+#5 DONE 0.2s
+
+#6 [builder 2/5] RUN apt-get update && apt-get install -y --no-install-recommends     gcc     g++     libpq-dev     python3-dev     build-essential     && rm -rf /var/lib/apt/lists/*
+#6 CACHED
+
+#7 [builder 3/5] RUN python -m venv /opt/venv
+#7 CACHED
+
+#8 [builder 4/5] COPY requirements.txt requirements.lock ./
+#8 CACHED
+
+#9 [builder 5/5] RUN pip install --upgrade pip wheel setuptools &&     pip install -r requirements.lock
+#9 CACHED
+
+#10 [runtime  2/10] RUN apt-get update && apt-get install -y --no-install-recommends     libpq5     curl     bash     && rm -rf /var/lib/apt/lists/*     && apt-get clean
+#10 0.168 Get:1 http://deb.debian.org/debian trixie InRelease [140 kB]
+#10 0.238 Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+#10 0.266 Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+#10 0.298 Get:4 http://deb.debian.org/debian trixie/main arm64 Packages [9614 kB]
+#10 0.488 Get:5 http://deb.debian.org/debian trixie-updates/main arm64 Packages [4424 B]
+#10 0.518 Get:6 http://deb.debian.org/debian-security trixie-security/main arm64 Packages [263 kB]
+#10 1.069 Fetched 10.1 MB in 1s (10.5 MB/s)
+#10 1.069 Reading package lists...
+#10 1.373 Reading package lists...
+#10 1.673 Building dependency tree...
+#10 1.761 Reading state information...
+#10 1.885 The following additional packages will be installed:
+#10 1.885   libbrotli1 libcom-err2 libcurl4t64 libgnutls30t64 libgssapi-krb5-2 libidn2-0
+#10 1.885   libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0 libldap2 libnghttp2-14
+#10 1.885   libnghttp3-9 libp11-kit0 libpsl5t64 librtmp1 libsasl2-2 libsasl2-modules-db
+#10 1.885   libssh2-1t64 libtasn1-6 libunistring5
+#10 1.886 Suggested packages:
+#10 1.886   gnutls-bin krb5-doc krb5-user
+#10 1.886 Recommended packages:
+#10 1.886   bash-completion krb5-locales libldap-common publicsuffix libsasl2-modules
+#10 1.987 The following NEW packages will be installed:
+#10 1.987   curl libbrotli1 libcom-err2 libcurl4t64 libgnutls30t64 libgssapi-krb5-2
+#10 1.987   libidn2-0 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0 libldap2
+#10 1.987   libnghttp2-14 libnghttp3-9 libp11-kit0 libpq5 libpsl5t64 librtmp1 libsasl2-2
+#10 1.987   libsasl2-modules-db libssh2-1t64 libtasn1-6 libunistring5
+#10 1.987 The following packages will be upgraded:
+#10 1.988   bash
+#10 2.052 1 upgraded, 23 newly installed, 0 to remove and 28 not upgraded.
+#10 2.052 Need to get 6336 kB of archives.
+#10 2.052 After this operation, 16.8 MB of additional disk space will be used.
+#10 2.052 Get:1 http://deb.debian.org/debian trixie/main arm64 bash arm64 5.2.37-2+b10 [1456 kB]
+#10 2.189 Get:2 http://deb.debian.org/debian trixie/main arm64 libbrotli1 arm64 1.1.0-2+b7 [308 kB]
+#10 2.194 Get:3 http://deb.debian.org/debian trixie/main arm64 libkrb5support0 arm64 1.21.3-5+deb13u1 [32.5 kB]
+#10 2.194 Get:4 http://deb.debian.org/debian trixie/main arm64 libcom-err2 arm64 1.47.2-3+b12 [24.9 kB]
+#10 2.194 Get:5 http://deb.debian.org/debian trixie/main arm64 libk5crypto3 arm64 1.21.3-5+deb13u1 [81.4 kB]
+#10 2.195 Get:6 http://deb.debian.org/debian trixie/main arm64 libkeyutils1 arm64 1.6.3-6 [9716 B]
+#10 2.219 Get:7 http://deb.debian.org/debian trixie/main arm64 libkrb5-3 arm64 1.21.3-5+deb13u1 [308 kB]
+#10 2.224 Get:8 http://deb.debian.org/debian trixie/main arm64 libgssapi-krb5-2 arm64 1.21.3-5+deb13u1 [128 kB]
+#10 2.228 Get:9 http://deb.debian.org/debian trixie/main arm64 libunistring5 arm64 1.3-2 [453 kB]
+#10 2.236 Get:10 http://deb.debian.org/debian trixie/main arm64 libidn2-0 arm64 2.3.8-2 [107 kB]
+#10 2.237 Get:11 http://deb.debian.org/debian trixie/main arm64 libsasl2-modules-db arm64 2.1.28+dfsg1-9 [20.1 kB]
+#10 2.237 Get:12 http://deb.debian.org/debian trixie/main arm64 libsasl2-2 arm64 2.1.28+dfsg1-9 [55.6 kB]
+#10 2.250 Get:13 http://deb.debian.org/debian trixie/main arm64 libldap2 arm64 2.6.10+dfsg-1 [179 kB]
+#10 2.257 Get:14 http://deb.debian.org/debian trixie/main arm64 libnghttp2-14 arm64 1.64.0-1.1+deb13u1 [71.6 kB]
+#10 2.258 Get:15 http://deb.debian.org/debian trixie/main arm64 libnghttp3-9 arm64 1.8.0-1 [63.2 kB]
+#10 2.258 Get:16 http://deb.debian.org/debian trixie/main arm64 libpsl5t64 arm64 0.21.2-1.1+b1 [57.1 kB]
+#10 2.292 Get:17 http://deb.debian.org/debian trixie/main arm64 libp11-kit0 arm64 0.25.5-3 [409 kB]
+#10 2.297 Get:18 http://deb.debian.org/debian trixie/main arm64 libtasn1-6 arm64 4.20.0-2+deb13u1 [47.3 kB]
+#10 2.297 Get:19 http://deb.debian.org/debian trixie/main arm64 libgnutls30t64 arm64 3.8.9-3+deb13u4 [1379 kB]
+#10 2.311 Get:20 http://deb.debian.org/debian trixie/main arm64 librtmp1 arm64 2.4+20151223.gitfa8646d.1-2+b5 [56.8 kB]
+#10 2.312 Get:21 http://deb.debian.org/debian trixie/main arm64 libssh2-1t64 arm64 1.11.1-1+deb13u2 [236 kB]
+#10 2.338 Get:22 http://deb.debian.org/debian trixie/main arm64 libcurl4t64 arm64 8.14.1-2+deb13u5 [360 kB]
+#10 2.358 Get:23 http://deb.debian.org/debian trixie/main arm64 curl arm64 8.14.1-2+deb13u5 [262 kB]
+#10 2.378 Get:24 http://deb.debian.org/debian trixie/main arm64 libpq5 arm64 17.11-0+deb13u1 [230 kB]
+#10 2.461 debconf: unable to initialize frontend: Dialog
+#10 2.461 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#10 2.461 debconf: falling back to frontend: Readline
+#10 2.461 debconf: unable to initialize frontend: Readline
+#10 2.461 debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC entries checked: /etc/perl /usr/local/lib/aarch64-linux-gnu/perl/5.40.1 /usr/local/share/perl/5.40.1 /usr/lib/aarch64-linux-gnu/perl5/5.40 /usr/share/perl5 /usr/lib/aarch64-linux-gnu/perl-base /usr/lib/aarch64-linux-gnu/perl/5.40 /usr/share/perl/5.40 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 8, <STDIN> line 24.)
+#10 2.461 debconf: falling back to frontend: Teletype
+#10 2.463 debconf: unable to initialize frontend: Teletype
+#10 2.463 debconf: (This frontend requires a controlling tty.)
+#10 2.463 debconf: falling back to frontend: Noninteractive
+#10 2.761 Fetched 6336 kB in 0s (16.3 MB/s)
+#10 2.769 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 5643 files and directories currently installed.)
+#10 2.775 Preparing to unpack .../bash_5.2.37-2+b10_arm64.deb ...
+#10 2.778 update-alternatives: warning: alternative /usr/share/man/man7/bash-builtins.7.gz (part of link group builtins.7.gz) doesn't exist; removing from list of alternatives
+#10 2.778 update-alternatives: warning: /etc/alternatives/builtins.7.gz is dangling; it will be updated with best choice
+#10 2.780 Unpacking bash (5.2.37-2+b10) over (5.2.37-2+b7) ...
+#10 2.848 Setting up bash (5.2.37-2+b10) ...
+#10 2.853 update-alternatives: error: alternative path /usr/share/man/man7/bash-builtins.7.gz doesn't exist
+#10 2.864 Selecting previously unselected package libbrotli1:arm64.
+#10 2.864 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 5643 files and directories currently installed.)
+#10 2.866 Preparing to unpack .../00-libbrotli1_1.1.0-2+b7_arm64.deb ...
+#10 2.867 Unpacking libbrotli1:arm64 (1.1.0-2+b7) ...
+#10 2.888 Selecting previously unselected package libkrb5support0:arm64.
+#10 2.888 Preparing to unpack .../01-libkrb5support0_1.21.3-5+deb13u1_arm64.deb ...
+#10 2.889 Unpacking libkrb5support0:arm64 (1.21.3-5+deb13u1) ...
+#10 2.897 Selecting previously unselected package libcom-err2:arm64.
+#10 2.898 Preparing to unpack .../02-libcom-err2_1.47.2-3+b12_arm64.deb ...
+#10 2.899 Unpacking libcom-err2:arm64 (1.47.2-3+b12) ...
+#10 2.907 Selecting previously unselected package libk5crypto3:arm64.
+#10 2.908 Preparing to unpack .../03-libk5crypto3_1.21.3-5+deb13u1_arm64.deb ...
+#10 2.908 Unpacking libk5crypto3:arm64 (1.21.3-5+deb13u1) ...
+#10 2.919 Selecting previously unselected package libkeyutils1:arm64.
+#10 2.919 Preparing to unpack .../04-libkeyutils1_1.6.3-6_arm64.deb ...
+#10 2.920 Unpacking libkeyutils1:arm64 (1.6.3-6) ...
+#10 2.928 Selecting previously unselected package libkrb5-3:arm64.
+#10 2.928 Preparing to unpack .../05-libkrb5-3_1.21.3-5+deb13u1_arm64.deb ...
+#10 2.929 Unpacking libkrb5-3:arm64 (1.21.3-5+deb13u1) ...
+#10 2.951 Selecting previously unselected package libgssapi-krb5-2:arm64.
+#10 2.951 Preparing to unpack .../06-libgssapi-krb5-2_1.21.3-5+deb13u1_arm64.deb ...
+#10 2.952 Unpacking libgssapi-krb5-2:arm64 (1.21.3-5+deb13u1) ...
+#10 2.965 Selecting previously unselected package libunistring5:arm64.
+#10 2.965 Preparing to unpack .../07-libunistring5_1.3-2_arm64.deb ...
+#10 2.966 Unpacking libunistring5:arm64 (1.3-2) ...
+#10 2.994 Selecting previously unselected package libidn2-0:arm64.
+#10 2.994 Preparing to unpack .../08-libidn2-0_2.3.8-2_arm64.deb ...
+#10 2.995 Unpacking libidn2-0:arm64 (2.3.8-2) ...
+#10 3.006 Selecting previously unselected package libsasl2-modules-db:arm64.
+#10 3.007 Preparing to unpack .../09-libsasl2-modules-db_2.1.28+dfsg1-9_arm64.deb ...
+#10 3.008 Unpacking libsasl2-modules-db:arm64 (2.1.28+dfsg1-9) ...
+#10 3.016 Selecting previously unselected package libsasl2-2:arm64.
+#10 3.016 Preparing to unpack .../10-libsasl2-2_2.1.28+dfsg1-9_arm64.deb ...
+#10 3.017 Unpacking libsasl2-2:arm64 (2.1.28+dfsg1-9) ...
+#10 3.027 Selecting previously unselected package libldap2:arm64.
+#10 3.027 Preparing to unpack .../11-libldap2_2.6.10+dfsg-1_arm64.deb ...
+#10 3.028 Unpacking libldap2:arm64 (2.6.10+dfsg-1) ...
+#10 3.043 Selecting previously unselected package libnghttp2-14:arm64.
+#10 3.043 Preparing to unpack .../12-libnghttp2-14_1.64.0-1.1+deb13u1_arm64.deb ...
+#10 3.044 Unpacking libnghttp2-14:arm64 (1.64.0-1.1+deb13u1) ...
+#10 3.054 Selecting previously unselected package libnghttp3-9:arm64.
+#10 3.054 Preparing to unpack .../13-libnghttp3-9_1.8.0-1_arm64.deb ...
+#10 3.055 Unpacking libnghttp3-9:arm64 (1.8.0-1) ...
+#10 3.065 Selecting previously unselected package libpsl5t64:arm64.
+#10 3.065 Preparing to unpack .../14-libpsl5t64_0.21.2-1.1+b1_arm64.deb ...
+#10 3.066 Unpacking libpsl5t64:arm64 (0.21.2-1.1+b1) ...
+#10 3.076 Selecting previously unselected package libp11-kit0:arm64.
+#10 3.076 Preparing to unpack .../15-libp11-kit0_0.25.5-3_arm64.deb ...
+#10 3.077 Unpacking libp11-kit0:arm64 (0.25.5-3) ...
+#10 3.099 Selecting previously unselected package libtasn1-6:arm64.
+#10 3.099 Preparing to unpack .../16-libtasn1-6_4.20.0-2+deb13u1_arm64.deb ...
+#10 3.100 Unpacking libtasn1-6:arm64 (4.20.0-2+deb13u1) ...
+#10 3.110 Selecting previously unselected package libgnutls30t64:arm64.
+#10 3.111 Preparing to unpack .../17-libgnutls30t64_3.8.9-3+deb13u4_arm64.deb ...
+#10 3.111 Unpacking libgnutls30t64:arm64 (3.8.9-3+deb13u4) ...
+#10 3.157 Selecting previously unselected package librtmp1:arm64.
+#10 3.158 Preparing to unpack .../18-librtmp1_2.4+20151223.gitfa8646d.1-2+b5_arm64.deb ...
+#10 3.159 Unpacking librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+#10 3.168 Selecting previously unselected package libssh2-1t64:arm64.
+#10 3.168 Preparing to unpack .../19-libssh2-1t64_1.11.1-1+deb13u2_arm64.deb ...
+#10 3.169 Unpacking libssh2-1t64:arm64 (1.11.1-1+deb13u2) ...
+#10 3.183 Selecting previously unselected package libcurl4t64:arm64.
+#10 3.183 Preparing to unpack .../20-libcurl4t64_8.14.1-2+deb13u5_arm64.deb ...
+#10 3.184 Unpacking libcurl4t64:arm64 (8.14.1-2+deb13u5) ...
+#10 3.204 Selecting previously unselected package curl.
+#10 3.205 Preparing to unpack .../21-curl_8.14.1-2+deb13u5_arm64.deb ...
+#10 3.206 Unpacking curl (8.14.1-2+deb13u5) ...
+#10 3.222 Selecting previously unselected package libpq5:arm64.
+#10 3.223 Preparing to unpack .../22-libpq5_17.11-0+deb13u1_arm64.deb ...
+#10 3.223 Unpacking libpq5:arm64 (17.11-0+deb13u1) ...
+#10 3.242 Setting up libkeyutils1:arm64 (1.6.3-6) ...
+#10 3.245 Setting up libbrotli1:arm64 (1.1.0-2+b7) ...
+#10 3.249 Setting up libnghttp2-14:arm64 (1.64.0-1.1+deb13u1) ...
+#10 3.250 Setting up libcom-err2:arm64 (1.47.2-3+b12) ...
+#10 3.252 Setting up libkrb5support0:arm64 (1.21.3-5+deb13u1) ...
+#10 3.254 Setting up libsasl2-modules-db:arm64 (2.1.28+dfsg1-9) ...
+#10 3.255 Setting up libp11-kit0:arm64 (0.25.5-3) ...
+#10 3.257 Setting up libunistring5:arm64 (1.3-2) ...
+#10 3.258 Setting up libk5crypto3:arm64 (1.21.3-5+deb13u1) ...
+#10 3.260 Setting up libsasl2-2:arm64 (2.1.28+dfsg1-9) ...
+#10 3.262 Setting up libnghttp3-9:arm64 (1.8.0-1) ...
+#10 3.263 Setting up libtasn1-6:arm64 (4.20.0-2+deb13u1) ...
+#10 3.265 Setting up libkrb5-3:arm64 (1.21.3-5+deb13u1) ...
+#10 3.266 Setting up libssh2-1t64:arm64 (1.11.1-1+deb13u2) ...
+#10 3.268 Setting up libldap2:arm64 (2.6.10+dfsg-1) ...
+#10 3.270 Setting up libidn2-0:arm64 (2.3.8-2) ...
+#10 3.271 Setting up libgssapi-krb5-2:arm64 (1.21.3-5+deb13u1) ...
+#10 3.274 Setting up libgnutls30t64:arm64 (3.8.9-3+deb13u4) ...
+#10 3.275 Setting up libpsl5t64:arm64 (0.21.2-1.1+b1) ...
+#10 3.277 Setting up libpq5:arm64 (17.11-0+deb13u1) ...
+#10 3.278 Setting up librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+#10 3.280 Setting up libcurl4t64:arm64 (8.14.1-2+deb13u5) ...
+#10 3.282 Setting up curl (8.14.1-2+deb13u5) ...
+#10 3.284 Processing triggers for debianutils (5.23.2) ...
+#10 3.300 Processing triggers for libc-bin (2.41-12+deb13u1) ...
+#10 DONE 3.4s
+
+#11 [runtime  3/10] RUN useradd -u 10001 -r -g 0 -d /app -s /sbin/nologin -c "Application User" appuser
+#11 0.095 useradd warning: appuser's uid 10001 is greater than SYS_UID_MAX 999
+#11 DONE 0.1s
+
+#12 [runtime  4/10] COPY --from=builder /opt/venv /opt/venv
+#12 DONE 10.2s
+
+#13 [runtime  5/10] RUN mkdir -p /app /app/logs /app/tmp &&     chown -R appuser:root /app &&     chmod -R g=u /app
+#13 DONE 0.2s
+
+#14 [runtime  6/10] WORKDIR /app
+#14 DONE 0.0s
+
+#15 [runtime  7/10] COPY --chown=appuser:root . .
+#15 DONE 0.2s
+
+#16 [runtime  8/10] RUN mkdir -p logs tmp data
+#16 DONE 0.1s
+
+#17 [runtime  9/10] COPY --chown=appuser:root docker-entrypoint.sh /app/docker-entrypoint.sh
+#17 DONE 0.0s
+
+#18 [runtime 10/10] RUN chmod +x /app/docker-entrypoint.sh
+#18 DONE 0.1s
+
+#19 exporting to image
+#19 exporting layers
+#19 exporting layers 55.0s done
+#19 exporting manifest sha256:0818b2d8588d8f39c56f79b4e7d4afbcc241333a3b52da687b53c902259502d0 done
+#19 exporting config sha256:8f01b53e81b167f985539a433b33df0374a7eec660466dfbc23833f827b02fd1 done
+#19 exporting attestation manifest sha256:bf90eea3a113359d67f91b6a39c91264eabcecce516a86dbfb59acfa62344237 done
+#19 exporting manifest list sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d done
+#19 naming to docker.io/library/intra-api:operations-055f2b988645 done
+#19 unpacking to docker.io/library/intra-api:operations-055f2b988645
+#19 unpacking to docker.io/library/intra-api:operations-055f2b988645 12.7s done
+#19 DONE 67.8s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/qm9139mibtljp30qm1mzaoa1t

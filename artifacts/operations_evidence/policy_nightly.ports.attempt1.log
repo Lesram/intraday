@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.2, pluggy-1.6.0 -- /opt/venv/bin/python
+rootdir: /app
+configfile: pytest.ini
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 30.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 17 items
+
+../app/tests/test_port_management_comprehensive.py::TestIsPortAvailable::test_unavailable_port PASSED [  5%]
+../app/tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_default PASSED [ 11%]
+../app/tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_preferred PASSED [ 17%]
+../app/tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_tracks_allocation PASSED [ 23%]
+../app/tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_skips_allocated PASSED [ 29%]
+../app/tests/test_port_management_comprehensive.py::TestReleasePort::test_release_allocated_port PASSED [ 35%]
+../app/tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_allocates_port PASSED [ 41%]
+../app/tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exit PASSED [ 47%]
+../app/tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exception PASSED [ 52%]
+../app/tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_preferred_port PASSED [ 58%]
+../app/tests/test_port_management_comprehensive.py::TestEdgeCases::test_multiple_managers_isolated PASSED [ 64%]
+../app/tests/test_port_management_comprehensive.py::TestGetPortInfo::test_get_info_for_available_port PASSED [ 70%]
+../app/tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port PASSED [ 76%]
+../app/tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port_preferred PASSED [ 82%]
+../app/tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_free_port_context_function PASSED [ 88%]
+../app/tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_success PASSED [ 94%]
+../app/tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_failure_releases_port PASSED [100%]
+
+-------------- generated xml file: /tmp/policy_nightly_ports.xml ---------------
+============================== 17 passed in 0.59s ==============================

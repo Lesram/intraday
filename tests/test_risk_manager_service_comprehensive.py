@@ -558,18 +558,18 @@ class TestEmergencyStop:
         with patch('backend.models.risk.EmergencyStop.from_orm') as mock_from_orm:
             mock_stop = MagicMock()
             mock_stop.strategies_stopped = 2
-            mock_stop.orders_cancelled = 2
+            mock_stop.orders_cancelled = 0
             mock_from_orm.return_value = mock_stop
             
-            result = await manager.trigger_emergency_stop(user_id, request, triggered_by)
+            result = await manager.trigger_emergency_stop(user_id, request, triggered_by, control_result={"operator_halted": True, "cancellation": {"confirmed_cancelled": 0, "status": "complete"}})
         
         # Verify strategies were stopped
         for strategy in strategies:
             assert strategy.status == "inactive"
         
-        # Verify orders were cancelled
-        for order in orders:
-            assert order.status == "cancelled"
+        # Audit must never invent broker cancellation by changing DB orders.
+        assert [order.status for order in orders] == ["pending", "new"]
+        assert mock_db.execute.await_count == 1  # Strategy audit only; no order sweep.
         
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
@@ -586,7 +586,7 @@ class TestEmergencyStop:
         request.reason = "Test"
         
         with pytest.raises(Exception, match="Database error"):
-            await manager.trigger_emergency_stop(user_id, request, triggered_by)
+            await manager.trigger_emergency_stop(user_id, request, triggered_by, control_result={"operator_halted": True, "cancellation": {"confirmed_cancelled": 0, "status": "complete"}})
         
         mock_db.rollback.assert_called_once()
 

@@ -105,6 +105,8 @@ vi.mock('@/store/portfolioStore', () => ({
 }));
 
 import OrganismDashboard from '../OrganismDashboard';
+import { organismApi } from '../organismApi';
+import { message } from 'antd';
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -118,6 +120,51 @@ const createWrapper = () => {
 describe('OrganismDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('shows the research lock and disables training without blocking the entry halt', async () => {
+    vi.mocked(organismApi.getStatus).mockResolvedValueOnce({
+      enabled: true, governance: { halted: false, operator_halted: false },
+      live_engine: { running: true, engine: { initialized: true, policy_lock: { locked: true } } },
+    });
+    render(<OrganismDashboard />, { wrapper: createWrapper() });
+    expect(await screen.findByText('RESEARCH LOCKED')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Research Policy Locked' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Trigger Training' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Halt Entries' })).toBeEnabled();
+  });
+
+  it('does not display active operation for an uninitialized engine', async () => {
+    vi.mocked(organismApi.getStatus).mockResolvedValueOnce({
+      enabled: true, governance: { halted: false },
+      live_engine: { running: false, engine: { initialized: false } },
+    });
+    render(<OrganismDashboard />, { wrapper: createWrapper() });
+    expect(await screen.findByText('UNAVAILABLE')).toBeInTheDocument();
+    expect(screen.getByText('Engine operation is not confirmed')).toBeInTheDocument();
+  });
+
+  it('does not claim entries resumed when another risk block remains', async () => {
+    vi.mocked(organismApi.getStatus).mockResolvedValueOnce({
+      enabled: true, governance: { halted: true, operator_halted: true },
+      live_engine: { running: true, engine: { initialized: true } },
+    });
+    vi.mocked(organismApi.action).mockResolvedValueOnce({ status: 'still_halted', entries_halted: true });
+    const warning = vi.spyOn(message, 'warning').mockImplementation(() => ({}) as ReturnType<typeof message.warning>);
+    render(<OrganismDashboard />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole('button', { name: 'Resume Entries' }));
+    expect(organismApi.action).toHaveBeenCalledWith('resume');
+    await waitFor(() => expect(warning).toHaveBeenCalledWith('Operator halt cleared; another risk control still blocks entries.'));
+    warning.mockRestore();
+  });
+
+  it('reports a retained halt from a structured incomplete response', async () => {
+    vi.mocked(organismApi.action).mockRejectedValueOnce({ response: { data: { detail: { entries_halted: true, drained: false } } } });
+    const warning = vi.spyOn(message, 'warning').mockImplementation(() => ({}) as ReturnType<typeof message.warning>);
+    render(<OrganismDashboard />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole('button', { name: 'Halt Entries' }));
+    await waitFor(() => expect(warning).toHaveBeenCalledWith('Entries are halted, but the control request is incomplete. Check control status before resuming.'));
+    warning.mockRestore();
   });
 
   it('renders the dashboard title', async () => {

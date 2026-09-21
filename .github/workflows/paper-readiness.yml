@@ -11,7 +11,7 @@ permissions:
 jobs:
   operational-safety:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 100
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       PYTHONPATH: .
@@ -91,6 +91,29 @@ jobs:
             tests/unit/test_streaming_data_provider.py \
             tests/unit/test_paper_data_freshness.py \
             tests/test_live_engine_fill_accounting.py \
+            tests/test_pending_close_accounting.py \
+            tests/test_replay_close_accounting.py \
+            tests/test_entry_evidence.py \
+            tests/test_runtime_snapshot_auth.py \
+            tests/test_walkforward_persistence.py \
+            tests/test_paper_daily_evidence.py \
+            tests/test_paper_daily_host.py \
+            tests/test_operator_controls.py \
+            tests/test_operator_emergency_stop.py \
+            tests/test_apr7_p0_p1_fixes.py \
+            tests/test_phase9_strategy_governance.py \
+            tests/test_risk_manager_comprehensive.py \
+            tests/test_risk_manager_service_comprehensive.py \
+            tests/test_research_policy_lock.py \
+            tests/test_research_baseline.py \
+            tests/test_apr10_patch_f4_forensic_guard.py \
+            tests/test_apr8_patch_a_force_save.py \
+            tests/test_audit_patch_queue_b1.py \
+            tests/test_audit_patch_queue_j6.py \
+            tests/test_remediation_wave_b.py \
+            tests/test_audit_patch_queue_b2.py \
+            tests/test_v12_baseline_invariants.py \
+            tests/test_standdown_session_row.py \
             tests/test_phase3_attribution_report.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
             2>&1 | tee artifacts/monday_readiness/github_operational.log
@@ -118,8 +141,6 @@ jobs:
             tests/test_strategy_engine_comprehensive.py \
             tests/test_organism_integration_smoke.py \
             tests/test_phase2_freeze.py \
-            tests/test_v12_baseline_invariants.py::test_baseline_classifier_runs_on_repo \
-            tests/test_v12_baseline_invariants.py::test_baseline_marker_only_count_matches_committed \
             --junitxml=artifacts/nightly_test_harness/github_targeted.xml \
             2>&1 | tee artifacts/nightly_test_harness/github_targeted.log
       - name: Verify unchanged frozen decision surface
@@ -145,6 +166,33 @@ jobs:
         if: always()
         timeout-minutes: 1
         run: python scripts/ci/generate_audit_index.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Verify operator dashboard and login
+        timeout-minutes: 10
+        working-directory: frontend
+        env:
+          VITE_DEV_BYPASS_AUTH: 'false'
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+          npx --no-install vitest run \
+            src/features/organism/__tests__/OrganismDashboard.test.tsx \
+            src/features/auth/LoginPage.test.tsx \
+            src/hooks/useScannerWebSocket.test.tsx \
+            src/services/marketDataWebSocketService.test.ts \
+            --reporter=junit --outputFile=../artifacts/monday_readiness/github_frontend.xml
+          npm run build 2>&1 | tee ../artifacts/monday_readiness/github_frontend_build.log
+          npx --yes agent-browser@0.38.1 --version
+          task_browser_path="$(command -v google-chrome)"
+          test -x "$task_browser_path"
+          AGENT_BROWSER_EXECUTABLE_PATH="$task_browser_path" \
+            python ../scripts/ci/check_frontend_preview.py \
+              --output-dir ../artifacts/monday_readiness/frontend_browser
       - uses: actions/upload-artifact@v4
         if: always()
         timeout-minutes: 2

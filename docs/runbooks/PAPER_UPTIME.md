@@ -1,6 +1,6 @@
 # Paper-trading uptime
 
-Owner: Marsel. Updated 2026-09-19.
+Owner: Marsel. Updated 2026-09-21.
 
 Docker Desktop must start at login and the Mac must remain awake on AC power.
 The September readiness audit confirmed both settings. User LaunchAgents require
@@ -34,6 +34,9 @@ From the installed repository, a check without recovery or notifications is:
 
 Add `--check-backups` to include the read-only backup checks described below.
 Without this option, the command does not access backup directories.
+Add `--check-policy` for the authenticated, read-only policy and scheduler check.
+Without this option, it does not read the private daily-evidence binding or
+observer credentials.
 It writes the status and event files. `make paper-watchdog` invokes the recovery
 wrapper; `make paper-up` invokes Compose and can apply current configuration.
 Use those only with the reviewed deployment checkout.
@@ -92,6 +95,29 @@ or restore anything. A successful check validates the archive bytes, not databas
 restore semantics; retain the separate restore rehearsal.
 
 ## Installation and maintenance
+
+The reviewed LaunchAgent also enables `--check-policy`. It uses the private
+daily-evidence release binding and dedicated observer account described in
+[PAPER_DAILY_EVIDENCE.md](PAPER_DAILY_EVIDENCE.md). It checks the approved
+source/image/configuration identity, exact effective parameters, locked risk
+modes, and configured/verified retained-model baseline hash. It additionally
+requires the scheduler to be running and the engine to be initialized: Docker
+health and `/readyz` can remain healthy after a rejected engine startup.
+
+This probe uses only local observer login, two local GET routes and read-only
+Docker identity inspection. It neither obtains broker credentials nor calls the
+broker, and never loads executable model files. A missing/corrupt binding,
+observer failure, identity mismatch or stopped scheduler produces a sanitized
+`policy_*` problem in `policy_monitor` and the existing status/notification path.
+No exception body, credential or token is persisted. These problems never cause
+an otherwise healthy API to restart. Existing bounded service recovery remains
+separate; a policy failure requires operator investigation. The check confirms
+current reported startup identity, not broker-fill reconciliation, continuous
+model attestation, completed-session evidence or profitability.
+
+Install the reviewed private binding and observer credentials before enabling
+the updated agent. The probe rechecks the binding after collection; a concurrent
+binding replacement blocks the observation instead of certifying mixed releases.
 
 Apply the reviewed code to `/Users/marselkei/VS/intra` before loading the templates;
 they deliberately refer to that checkout and its Python 3.12 virtual environment.

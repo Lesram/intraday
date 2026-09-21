@@ -19,7 +19,7 @@ import math
 import os
 import tempfile
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -123,6 +123,10 @@ class SimulatedBroker:
         self._bar_provider: HistoricalBarProvider | None = None
 
         self.filled_orders: list[dict[str, Any]] = []
+        self.rejected_orders: list[dict[str, Any]] = []
+        self._order_sequence = 0
+        self._order_namespace = uuid.uuid4().int & ~((1 << 64) - 1)
+        self._now_fn = lambda: datetime.now(UTC)
         self.trade_log: list[dict[str, Any]] = []
         self._equity_curve: list[float] = [initial_cash]
 
@@ -247,16 +251,32 @@ class SimulatedBroker:
 
     # ── OrderService interface ──────────────────────────────────────
 
+    def _reject_order(self, kwargs: dict[str, Any], order_id: str, reason: str) -> dict[str, Any]:
+        receipt = {
+            "id": order_id, "order_id": order_id,
+            "symbol": kwargs["symbol"], "side": kwargs["side"],
+            "qty": str(kwargs["qty"]), "filled_qty": "0",
+            "status": "rejected", "reason": reason,
+            "submitted_at": self._now_fn().astimezone(UTC).isoformat(),
+            "execution_sequence": self._order_sequence,
+            "attributes": {"source": "organism", **(kwargs.get("attributes") or {}),
+                           "execution_environment": "simulation"},
+        }
+        self.rejected_orders.append(receipt)
+        return receipt
+
     async def submit_symbol_order(self, **kwargs: Any) -> dict[str, Any]:
         symbol = kwargs["symbol"]
         side = kwargs["side"]
         qty = int(float(kwargs["qty"]))
+        self._order_sequence += 1
+        order_id = str(uuid.UUID(int=self._order_namespace | self._order_sequence))
         # With delay_fill, orders observe the current bar's close but fill
         # at next bar's open (more realistic). Without it, fill at current.
         price = self._fill_price(symbol)
 
         if price <= 0:
-            return {"id": str(uuid.uuid4()), "status": "rejected", "reason": "no_price"}
+            return self._reject_order(kwargs, order_id, "no_price")
 
         # Plan 1.1: slippage + half-spread move the fill against the trader.
         fill_price = self._apply_costs(price, side, symbol)
@@ -267,7 +287,7 @@ class SimulatedBroker:
                 # Partial fill — buy what we can afford
                 qty = int(self.cash / fill_price) if fill_price > 0 else 0
                 if qty <= 0:
-                    return {"id": str(uuid.uuid4()), "status": "rejected", "reason": "insufficient_cash"}
+                    return self._reject_order(kwargs, order_id, "insufficient_cash")
                 cost = fill_price * qty
 
             self.cash -= cost
@@ -297,9 +317,12 @@ class SimulatedBroker:
         elif side == "sell":
             pos = self._positions.get(symbol)
             if pos is None or pos["qty"] <= 0:
-                return {"id": str(uuid.uuid4()), "status": "rejected", "reason": "no_position"}
+                return self._reject_order(kwargs, order_id, "no_position")
 
             sell_qty = min(qty, int(pos["qty"]))
+            # The executed order receipt must describe the shares actually
+            # sold, including quantity clipping, not the oversized request.
+            qty = sell_qty
             proceeds = fill_price * sell_qty
             self.cash += proceeds
 
@@ -325,7 +348,8 @@ class SimulatedBroker:
         # Plan 1.1: commission as a per-share cash debit (both sides).
         _commission = self._charge_commission(qty)
 
-        order_id = str(uuid.uuid4())
+        # Stable within this isolated broker; sequential IDs preserve execution
+        # order when multiple legs share the exact same simulated bar time.
         order_record = {
             "id": order_id,
             "order_id": order_id,
@@ -335,6 +359,11 @@ class SimulatedBroker:
             "filled_qty": str(qty),
             "status": "filled",
             "avg_fill_price": str(fill_price),
+            "broker_order_id": f"simulated-{order_id}",
+            "submitted_at": self._now_fn().astimezone(UTC).isoformat(),
+            "execution_sequence": self._order_sequence,
+            "attributes": {"source": "organism", **(kwargs.get("attributes") or {}),
+                           "execution_environment": "simulation"},
             "commission": round(_commission, 6),
             "idempotency_key": kwargs.get("idempotency_key", ""),
         }
@@ -345,6 +374,51 @@ class SimulatedBroker:
         self._equity_curve.append(total)
 
         return order_record
+
+    async def lookup_closed_position_fills(
+        self, symbol: str, meta: dict[str, Any], *, closed_at: datetime,
+    ):
+        """Replay-only authority from actual simulated execution receipts.
+
+        Never derives PnL from bar marks, and never supplies a fallback to the
+        production DB lookup. Incomplete or conflicting receipts remain pending.
+        """
+        from backend.organism.live_engine_fills import _closed_position_fills
+        if meta.get("entry_source") == "reconciliation_orphan":
+            return None
+        try:
+            entry_id = uuid.UUID(str(meta.get("entry_order_id") or ""))
+            direction = float(meta.get("direction", 1))
+        except (ValueError, TypeError):
+            return None
+        rows = [dict(row) for row in self.filled_orders if row.get("symbol") == symbol]
+        anchors = [i for i, row in enumerate(rows) if str(row.get("id")) == str(entry_id)]
+        if len(anchors) != 1:
+            return None
+        # A second lifetime can open in the same bar after the first finalized.
+        # Receipt order is the simulator's actual execution sequence; earlier
+        # flat lifetimes do not belong to this entry identity.
+        rows = rows[anchors[0]:]
+        try:
+            for row in rows:
+                row["submitted_at"] = datetime.fromisoformat(row["submitted_at"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        result = _closed_position_fills(
+            rows, entry_order_id=entry_id, symbol=symbol,
+            direction=direction, closed_at=closed_at,
+        )
+        return replace(result, price_source="simulated_position_fills") if result else None
+
+    async def entry_verified_unfilled(self, symbol: str, meta: dict[str, Any]) -> bool:
+        """A simulator rejection is definitive only for its unexecuted ID."""
+        identity = str(meta.get("entry_order_id") or "")
+        if not identity or any(str(row["id"]) == identity for row in self.filled_orders):
+            return False
+        rows = [row for row in self.rejected_orders if str(row["id"]) == identity]
+        return (len(rows) == 1 and rows[0]["symbol"] == symbol
+                and rows[0]["status"] == "rejected" and rows[0]["filled_qty"] == "0"
+                and rows[0]["attributes"].get("source") == "organism")
 
     # ── Extra service methods the engine may call ───────────────────
 
@@ -475,6 +549,10 @@ class ReplayResult:
     ticks: int = 0
     orders: list[dict] = field(default_factory=list)
     trades: list[dict] = field(default_factory=list)
+    # Broker trade_log remains per-exit-leg. These separate fields expose real
+    # engine outcome consumption and unresolved closes instead of conflating it.
+    accounted_trades: list[dict] = field(default_factory=list)
+    accounting_pending: dict[str, dict] = field(default_factory=dict)
     equity_curve: list[float] = field(default_factory=list)
     regime_history: list[str] = field(default_factory=list)
     signals_log: list[dict] = field(default_factory=list)
@@ -529,6 +607,8 @@ class ReplayResult:
             "=" * 50,
             f"  Ticks:          {self.ticks}",
             f"  Trades:         {len(self.trades)}",
+            f"  Engine closes:  {len(self.accounted_trades)}",
+            f"  Pending closes: {len(self.accounting_pending)}",
             f"  Total PnL:      ${self.total_pnl:,.2f}",
             f"  Win Rate:       {self.win_rate:.1%}",
             f"  Max Drawdown:   {self.max_drawdown:.2%}",
@@ -669,6 +749,11 @@ class ReplayEngine:
         _replay_time = lambda: bar_provider.current_simulated_time
         engine._time_fn = _replay_time
         engine._now_fn = _replay_now
+        # Only this explicitly simulated engine uses the in-memory execution
+        # adapter. Production keeps its DB authority and fails closed without it.
+        broker._now_fn = _replay_now
+        engine._lookup_closed_position_fills_from_db = broker.lookup_closed_position_fills
+        engine._entry_verified_unfilled = broker.entry_verified_unfilled
 
         _now_fn_components = (
             "regime_detector",
@@ -696,6 +781,7 @@ class ReplayEngine:
         engine._entry_throttle_override_per_hour = self.max_entries_per_hour
 
         result = ReplayResult()
+        initial_accounted_trades = len(engine._all_trades)
         tick_count = 0
 
         while bar_provider.advance():
@@ -733,6 +819,11 @@ class ReplayEngine:
         result.ticks = tick_count
         result.orders = list(broker.filled_orders)
         result.trades = list(broker.trade_log)
+        result.accounted_trades = [asdict(trade) for trade in engine._all_trades[initial_accounted_trades:]]
+        result.accounting_pending = {
+            sym: dict(meta["pending_close"]) for sym, meta in engine._entry_metadata.items()
+            if meta.get("pending_close")
+        }
 
         return result
 

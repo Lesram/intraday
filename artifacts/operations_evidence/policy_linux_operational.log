@@ -1,0 +1,51 @@
+........................................................................ [  7%]
+........................................................................ [ 15%]
+........................................................................ [ 23%]
+........................................................................ [ 31%]
+........................................................................ [ 39%]
+........................................................................ [ 47%]
+........................................................................ [ 55%]
+........................................................................ [ 63%]
+........................................................................ [ 71%]
+........................................................................ [ 79%]
+........................................................................ [ 86%]
+........................................................................ [ 94%]
+.............................s.................                          [100%]
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /tmp/worktree/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /tmp/worktree/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /tmp/worktree/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/test_paper_monitor_access.py::test_authentication_and_dedicated_role_required[None-401]
+tests/test_paper_runtime_config.py::test_app_settings_respects_explicit_use_mock_data_false_in_development
+tests/test_paper_runtime_config.py::test_app_settings_keeps_development_mock_default_when_unspecified
+tests/test_paper_runtime_config.py::test_app_settings_respects_explicit_alpaca_paper_false_in_development
+tests/test_paper_runtime_config.py::test_signals_market_data_client_uses_real_client_when_mock_false
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal
+  /tmp/worktree/tests/test_websocket_and_signal_service.py:70: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("MSFT", data)
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal_with_empty_data
+  /tmp/worktree/tests/test_websocket_and_signal_service.py:81: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("TSLA", {})
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /tmp/worktree/tests/test_config_coordinator_comprehensive.py:17: DeprecationWarning: backend.config.coordinator is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.coordinator import ConfigurationCoordinator
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /tmp/worktree/backend/config/coordinator.py:22: DeprecationWarning: backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.unified import UnifiedSettings, get_unified_settings
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+910 passed, 1 skipped, 12 warnings in 40.40s

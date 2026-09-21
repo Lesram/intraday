@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "task_id": "independent-browser-streaming-auth-review",
+  "reviewed_at_utc": "2026-09-21T09:38:15.251422+00:00",
+  "verdict": "STREAMING_SOURCE_ACCEPTED_RELEASE_GATES_PENDING",
+  "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+  "base_sha": "96ad40ee4241cf20fd5a25ee572c5d12ffd45a49",
+  "scope": "Read-only independent review of the two frontend connection implementations, their two mocked regression files, existing hosted selection and release documentation; no whole-codebase or live-session certification.",
+  "reviewed_files": {
+    "frontend/src/hooks/useScannerWebSocket.ts": "41a2fc8cb17768c84a6d1517a7a719b305cd15d6771877f659b2b289a254126d",
+    "frontend/src/services/marketDataWebSocketService.ts": "19f95f895dcc272188adf43ebc006cc494cde84f2fd71b54d93073bcfb7e9b40",
+    "frontend/src/hooks/useScannerWebSocket.test.tsx": "2d5f2571e653a89044da4366b07da45d94725b9152ede37aea6055d2447f28f8",
+    "frontend/src/services/marketDataWebSocketService.test.ts": "c3ccc931a92526aa09bec0d9fbabbe6ad96a62c19ba15ad16dd1c2d36a96d6fe",
+    ".github/workflows/paper-readiness.yml": "bdbe98ed69e60a5c74c609b4b8993d9c817007730d0eb45483b92cbade6a28a3",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "bc73797424d1c324c0d2bc7ed1beb50a78cabf05780b6e6f54430f2c69b51b66"
+  },
+  "blocking_findings": [],
+  "accepted_contract": [
+    "Both browser connection paths statically import the existing centralized getAuthToken helper; its store import has no service dependency cycle.",
+    "Every actual new socket attempt reads the authoritative current store. A stale caller argument, refresh after retry scheduling, and logout during backoff cannot select legacy localStorage credentials.",
+    "Absent current credentials create no new WebSocket. Scanner query encoding is now explicit; route/query protocol and market encoding remain compatible.",
+    "Socket events, close reasons and constructor errors are not echoed into connection diagnostics; fixed errors protect both raw and encoded query credentials.",
+    "Tests use the real store/helper with synthetic credentials, undefined browser require, mock WebSocket, throwing fetch/XHR and controlled timers. They assert socket creation, exact token/route and preserved start/subscribe actions.",
+    "Workflow delta only adds two test paths to the existing required frontend step; budgets, permissions, browser gate and production auth-bypass setting remain unchanged.",
+    "Documentation describes new-connection guarantees and explicitly excludes live authenticated-session certification."
+  ],
+  "evidence": {
+    "implementation_report": {
+      "path": "artifacts/operations_evidence/frontend_streaming_implementation.json",
+      "sha256": "9cdb17a502191d8ab724f20c35ca2a068f9ef4698f619aa110085d9bb21878c5"
+    },
+    "corrected_pre_fix": {
+      "tests": 15,
+      "unique": 15,
+      "passed": 2,
+      "failed": 13,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "4ea5fedd6e33b80f7ace5070d9de05927b377cde68946605fb586bc7b663426d"
+    },
+    "repaired_targeted": {
+      "tests": 15,
+      "unique": 15,
+      "passed": 15,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "1a6cb6f32124d347209f6383a279d8b5657f686582e4832b53bbd81289d540a6"
+    },
+    "workflow_budget": {
+      "tests": 3,
+      "unique": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "ae9031fd3dabb682ab24965933489067b9b95bb592cecc6765e77e423c966d2f"
+    },
+    "owner_checks_verified_by_receipt_hash": {
+      "scoped_eslint": 0,
+      "actionlint": 0,
+      "freeze_verify": 0,
+      "git_diff_check": 0
+    },
+    "reviewer_validation": "Inspected source/test/workflow/docs diff; recomputed all owner source and evidence SHA256 values; parsed JUnit testcase uniqueness/results. No duplicate test execution.",
+    "committed_source_frontend": {
+      "validated_at_utc": "2026-09-21T09:39:07.619491+00:00",
+      "junit": {
+        "path": "artifacts/operations_evidence/frontend_release_final.xml",
+        "sha256": "6206a30492f06e19f29a9b7e8c42a7d5d664765cdfcf48a05b5ced0417b11789",
+        "tests": 37,
+        "unique": 37,
+        "passed": 37,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "bundle": {
+        "path": "artifacts/operations_evidence/frontend_streaming_bundle.json",
+        "sha256": "3997985ea1c6e1b18b9b760df12b41854179f85035f05733adb7450c12fb6ddc",
+        "js_files": 115,
+        "auth_store_require_matches": 0,
+        "lazy_chunks": {
+          "ScannerPage": [
+            {
+              "path": "assets/ScannerPage-Bx1huhx1.js",
+              "sha256": "1babd5232170901b522aaa6ce85070191d81c502f6e375455a137dbf0582a98b"
+            }
+          ],
+          "TradingPage": [
+            {
+              "path": "assets/TradingPage-CrIh3uye.js",
+              "sha256": "2e33daa8671dbc0325ff6eed42a243449646e27ea485d30a5556775fdfc3e77b"
+            }
+          ]
+        }
+      },
+      "production_login_browser": {
+        "path": "artifacts/operations_evidence/frontend_browser_final/result.json",
+        "sha256": "0e83cf52d06259dd3a849505c1c1a7026670f0035708d2bac73413b6cea7ea31",
+        "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+        "checkout_source_dirty": false,
+        "dom_checks": 8,
+        "page_errors": 0,
+        "csp_transport_violations": 0,
+        "owned_cleanup_verified": true,
+        "dist_sha256": "76c6b86d9b0cedc978c6237d065ee813e89dac526634caf9d1bcf2aed1eec488",
+        "index_sha256": "6ea8be6993dcb651867ddc9b28e6128ece2d9730ae4dbd210ec7f224b1c0deea",
+        "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96"
+      },
+      "reviewer_validation": "Recomputed all current dist file hashes using the checker manifest algorithm, inspected all 115 compiled JavaScript files for authStore require calls, verified both lazy chunk hashes and parsed 37 unique passing JUnit cases. Browser run was performed by parent, not repeated by reviewer."
+    }
+  },
+  "invariants": {
+    "backend_diff_since_80987": [],
+    "frozen_strategy_runtime_config_or_feed_changed": false,
+    "backend_auth_roles_or_websocket_protocol_changed": false,
+    "learning_ml_kelly_order_submission_surface_changed": false
+  },
+  "remaining_release_gates": [
+    "Fresh required operational/full artifact pack, immutable source-bound image, warm-start and source/evidence-only-head verification.",
+    "Fresh required hosted acceptance for this new source; prior source33 hosted pass is not substituted.",
+    "Refresh private helper release identity and preserve controlled paper activation/rollback gates before any deployment."
+  ],
+  "limitations": [
+    "Mocked connection tests do not prove authenticated backend handshakes, feed delivery, trading-page rendering after login or credential validity.",
+    "Existing open or in-flight sockets are not revoked merely by clearing the auth store; this review covers actual new connection attempts, not a redesign of all connection lifecycle behavior.",
+    "Query-token protocol remains unchanged. Application log sanitization does not remove URLs from browser/network/server infrastructure.",
+    "Pre-fix red results and initial harness failures remain historical evidence; they are not added to successful-case counts.",
+    "No source edits, browser/server startup, live credentials, broker/admin calls, merge, rollout or deployment were performed by this review."
+  ]
+}

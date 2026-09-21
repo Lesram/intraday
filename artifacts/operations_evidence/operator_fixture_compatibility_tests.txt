@@ -1,0 +1,7 @@
+.......................                                                  [100%]
+=============================== warnings summary ===============================
+tests/test_apr7_p0_p1_fixes.py::test_submit_entry_order_counters_increment
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+23 passed, 1 warning in 1.30s

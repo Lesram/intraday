@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 FREEZE_PATH = Path("artifacts/phase2/param_freeze.json")
+POLICY_BASELINE_PATH = Path(__file__).resolve().parents[1] / "artifacts/phase2/research_policy_baseline.json"
 N_TARGET = 60                  # pinned to the prior (t≈1.0 @ n≈18 ⇒ ~50–70 to clear)
 N_TARGET_RANGE = [50, 70]
 PROVENANCE = ("no reconstructable fit-date; all pre-cutoff data contaminated by "
@@ -70,6 +71,9 @@ def compute_surface() -> dict:
     from backend.organism.kelly_sizer import KellySizer
     from backend.organism.live_engine import OrganismLiveEngine
     from backend.organism.regime import RegimeDetector
+    from backend.organism import research_policy, research_baseline, trading_phase, background_trainer
+    from backend.organism import governance, operator_controls
+    from backend.organism.self_evolution import apply_evolved_params
     from backend.organism.strategies.strategy_config import (
         REGIME_POLICY, STRATEGY_CONFIG,
     )
@@ -86,6 +90,11 @@ def compute_surface() -> dict:
             + inspect.getsource(OrganismLiveEngine._scan_all_strategies_v2)
             + inspect.getsource(OrganismLiveEngine._scan_entry_candidates)),
     }
+    policy_baseline_bytes = POLICY_BASELINE_PATH.read_bytes()
+    policy_baseline = json.loads(policy_baseline_bytes)
+    baseline_params = policy_baseline["effective_policy_params"]
+    if research_policy.effective_policy_hash(baseline_params) != policy_baseline["effective_policy_hash"]:
+        raise ValueError("Research policy baseline hash mismatch")
     surface = {
         "source_hashes": source_hashes,
         "strategy_config": STRATEGY_CONFIG,
@@ -93,6 +102,41 @@ def compute_surface() -> dict:
         "regime_policy": REGIME_POLICY,
         "exit_env": {k: os.getenv(k) for k in EXIT_ENV_VARS},
         "routing_data_env": {k: os.getenv(k) for k in ROUTING_DATA_ENV_VARS},
+        # The September paper lock closes promotion/training seams that were
+        # outside the original six hashes. Changing these also requires an
+        # explicitly approved new forward boundary.
+        "research_policy": research_policy.policy_status(),
+        "effective_policy_baseline": {
+            "effective_policy_hash": policy_baseline["effective_policy_hash"],
+            "effective_policy_params": baseline_params,
+            "artifact_sha256": hashlib.sha256(policy_baseline_bytes).hexdigest(),
+        },
+        "research_policy_enforcement_env": {
+            research_baseline.BASELINE_ENV: os.getenv(research_baseline.BASELINE_ENV),
+            operator_controls.STATE_ENV: os.getenv(operator_controls.STATE_ENV),
+        },
+        "research_policy_sources": {
+            "policy": _h(inspect.getsource(research_policy)),
+            "baseline_verification": _h(inspect.getsource(research_baseline)),
+            "phase": _h(inspect.getsource(trading_phase)),
+            "trainer": _h(inspect.getsource(background_trainer)),
+            "startup": _h(inspect.getsource(OrganismLiveEngine.initialize)),
+            "sync_training": _h(inspect.getsource(OrganismLiveEngine._retrain_and_evolve)),
+            "phase_resolution": _h(inspect.getsource(OrganismLiveEngine._trading_phase.fget)),
+            "ml_isolation": _h(inspect.getsource(OrganismLiveEngine._ml_isolation_mode.fget)),
+            "fixed_risk": _h(inspect.getsource(OrganismLiveEngine._fixed_risk_sizing_mode.fget)),
+            "settings_update": _h(inspect.getsource(OrganismLiveEngine.update_config)),
+            "parameter_application": _h(inspect.getsource(apply_evolved_params)),
+            "settings_api": _h((Path(__file__).resolve().parents[1] / "backend/api/routes/settings.py").read_text()),
+            "scheduler": _h((Path(__file__).resolve().parents[1] / "backend/organism/scheduler.py").read_text()),
+            "operator_controls": _h(inspect.getsource(operator_controls)),
+            "governance": _h(inspect.getsource(governance)),
+            "entry_admission": _h(inspect.getsource(OrganismLiveEngine._authorize_live_entry_order)),
+            "operator_api": _h((Path(__file__).resolve().parents[1] / "backend/organism/routes.py").read_text()),
+            "emergency_stop_api": _h((Path(__file__).resolve().parents[1] / "backend/api/routes/risk.py").read_text()),
+            "emergency_stop_service": _h((Path(__file__).resolve().parents[1] / "backend/services/risk_manager.py").read_text()),
+            "entry_cancellation": _h((Path(__file__).resolve().parents[1] / "backend/organism/operator_cancellation.py").read_text()),
+        },
     }
     # Normalize to the JSON representation so on-disk vs in-memory compare cleanly.
     return json.loads(json.dumps(surface, sort_keys=True, default=str))

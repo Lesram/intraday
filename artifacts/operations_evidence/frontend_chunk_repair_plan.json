@@ -1,0 +1,50 @@
+{
+  "task_id": "production-react-chunk-initialization",
+  "base_source_sha": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
+  "scope": "Remove only unsafe manualChunks callback in frontend/vite.config.ts; preserve output naming/proxies and all other build/backend settings",
+  "ownership": [
+    "frontend/vite.config.ts"
+  ],
+  "diagnosis": {
+    "failure": "TypeError reading React.version",
+    "generated": "vendor-other-rKjPd79a.js:1:9108",
+    "original": "node_modules/rc-util/es/ref.js:6:31",
+    "cycle": [
+      "vendor-react imports scheduler from vendor-other",
+      "vendor-other imports React from vendor-react"
+    ],
+    "react_chunk_only_outgoing_edge": "vendor-other",
+    "bad_bundle_sha256": "84073f42c6ea15728e42ad93e2538cb2da060720d402cb5e048f85a6b4db8f01"
+  },
+  "plan": [
+    "Preserve failing dist with accounting agent for isolated real-browser regression",
+    "Capture exact source-map/static-import graph diagnostic in artifacts",
+    "Add scheduler package to existing React/ReactDOM chunk only",
+    "Run production build and after graph diagnostic; root owns real5173browserreload and accounting owns independent5197browser regression script",
+    "No source changes beyond owned Vite config; no commit/push/backend/order/session changes"
+  ],
+  "required_acceptance": [
+    "Production build success",
+    "React-containing static import cycle removed",
+    "Actual browser renders login with noJavaScript errors"
+  ],
+  "other_agents": "Accounting owns browser smoke script; root owns source/CI/release; preserve all others edits",
+  "status": "scheduler_only_fix_insufficient_actual_browser_found_second_cycle",
+  "second_diagnosis": {
+    "generated": "antd-icons-U5jMHIFb.js:58:1322",
+    "original": "antd/node_modules/@ant-design/icons/es/components/AntdIcon.js:17:21",
+    "failure": "setTwoToneColor(blue.primary) reads uninitialized blue",
+    "cycle": [
+      "antd-icons imports blue from antd",
+      "antd imports icons from antd-icons"
+    ],
+    "root_cause": "manual substring partitioning assigns nested dependency modules across cycles",
+    "retained_failed_dist": "/tmp/intra-frontend-smoke-react-only-c11"
+  },
+  "revised_plan": [
+    "Retain both failed actual-browser builds and distinct graph/build receipts",
+    "Remove manualChunks callback so Rollup orders dependency-aware chunks",
+    "Build production bundle; inspect complete static graph; root and accounting require positive actual browser proof",
+    "Do not treat graph-only success as rendering acceptance"
+  ]
+}

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="22" failures="0" errors="0" time="4.387005333">
+    <testsuite name="src/features/auth/LoginPage.test.tsx" timestamp="2026-09-21T08:45:18.345Z" hostname="Marsels-MacBook-Pro.local" tests="10" failures="0" errors="0" skipped="0" time="2.459660458">
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in production even with the bypass flag enabled" time="0.930805292">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in development without explicit opt-in" time="0.032456042">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; retains the explicit development opt-in and only attempts once under StrictMode" time="0.044011">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed plain username without changing the password" time="0.226241042">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed email without changing the password" time="0.2056785">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;&quot;)" time="0.241090459">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;   &quot;)" time="0.234160458">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;&quot;)" time="0.22992025">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;short&quot;)" time="0.226189083">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; provides honest recovery guidance without a dead recovery link" time="0.088444833">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/organism/__tests__/OrganismDashboard.test.tsx" timestamp="2026-09-21T08:45:18.346Z" hostname="Marsels-MacBook-Pro.local" tests="12" failures="0" errors="0" skipped="0" time="1.927344875">
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the research lock and disables training without blocking the entry halt" time="0.45106575">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; does not display active operation for an uninitialized engine" time="0.124373709">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; does not claim entries resumed when another risk block remains" time="0.350982709">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; reports a retained halt from a structured incomplete response" time="0.303782625">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; renders the dashboard title" time="0.104193292">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; displays engine performance stats" time="0.10278375">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows regime tag" time="0.09683875">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; renders the tabs" time="0.081894">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the position heatmap" time="0.080765958">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows position symbols in heatmap" time="0.079618584">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the P&amp;L waterfall" time="0.077594041">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the regime timeline" time="0.072653542">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+    </testsuite>
+</testsuites>

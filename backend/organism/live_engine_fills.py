@@ -1,8 +1,8 @@
 """DB fill-lookup helpers for the live engine.
 
-Legacy entry/final-exit lookups remain the approximate fallback. Complete
-position accounting additionally requires an identified entry and conserved
-quantities across every attributed order. All database access is read-only.
+Strategy outcomes require an identified entry and conserved quantities across
+every attributed order. Legacy entry/final-exit lookups remain available for
+excluded orphan bookkeeping. All database access is read-only.
 """
 from __future__ import annotations
 
@@ -16,6 +16,21 @@ from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
 
+# These are accounting-eligible terminal states, not the broker's complete
+# lifecycle vocabulary. `replaced` is terminal for an old order but says nothing
+# about its successor. Current ingestion does not retain authoritative lineage,
+# and its Execution rows derive from cumulative Order summaries. Neither flat
+# positions nor conserved summary quantities can prove replacement cash flows.
+ACCOUNTABLE_TERMINAL_STATUSES = frozenset({"filled", "canceled", "cancelled", "expired", "rejected"})
+REPLACEMENT_PENDING_REASON = "replacement_lineage_unverified"
+
+
+def _replacement_pending(meta: dict[str, Any]) -> None:
+    """Expose a diagnostic through existing pending status without finalizing it."""
+    pending = meta.get("pending_close")
+    if isinstance(pending, dict):
+        pending["accounting_hold_reason"] = REPLACEMENT_PENDING_REASON
+
 
 @dataclass(frozen=True)
 class ClosedPositionFills:
@@ -26,6 +41,7 @@ class ClosedPositionFills:
     exit_price: float
     pnl: float
     had_partial_exits: bool
+    price_source: str = "db_position_fills"
 
 
 def _closed_position_fills(
@@ -37,9 +53,10 @@ def _closed_position_fills(
     The entry-order ID anchors the lifetime. Subsequent orders must form exactly
     one flat-to-flat position, with no remaining active order that could fill
     later. Terminal canceled/expired orders contribute any confirmed fills.
-    Reason labels are deliberately irrelevant to scale-out accounting.
+    Reason labels are deliberately irrelevant to scale-out accounting. Replaced
+    legs remain unsupported until complete authoritative lineage is ingested;
+    even reciprocal attributes alone do not prove nonduplicated cash flows.
     """
-    terminal = {"filled", "canceled", "cancelled", "expired", "rejected"}
 
     def utc(value: datetime) -> datetime:
         # PostgreSQL returns aware values; SQLite test fixtures can return naive
@@ -76,7 +93,7 @@ def _closed_position_fills(
                 return None
             seen_ids.add(identity)
             status = str(row["status"]).lower()
-            if status not in terminal:
+            if status not in ACCOUNTABLE_TERMINAL_STATUSES:
                 return None
             qty, requested = decimal(row["filled_qty"]), decimal(row["qty"])
             if qty < 0 or requested <= 0 or qty > requested:
@@ -131,14 +148,54 @@ class _FillLookupMixin:
     SQLAlchemy sessionmaker or ``None``).
     """
 
+    async def _entry_verified_unfilled(self, symbol: str, meta: dict[str, Any]) -> bool:
+        """Only a terminal, identified entry with no execution can be discarded.
+
+        Any other order in its lifetime makes cleanup uncertain. This is
+        deliberately stricter than missing position data or a missing DB row.
+        """
+        if not self._sessionmaker:
+            return False
+        try:
+            from sqlalchemy import select
+            from backend.infra.schemas import Execution, Order
+            entry_id = uuid.UUID(str(meta.get("entry_order_id") or ""))
+            async with self._sessionmaker() as session:
+                row = (await session.execute(select(Order).where(
+                    Order.id == entry_id, Order.symbol == symbol,
+                ))).scalar_one_or_none()
+                if row is None or (row.attributes or {}).get("source") != "organism":
+                    return False
+                status = str(row.status).lower()
+                if status == "replaced":
+                    _replacement_pending(meta)
+                    return False  # Zero predecessor fills do not prove a zero-fill successor.
+                if status not in ACCOUNTABLE_TERMINAL_STATUSES - {"filled"}:
+                    return False
+                if row.filled_qty is None or Decimal(str(row.filled_qty)) != 0:
+                    return False
+                executions = (await session.execute(select(Execution.id).where(
+                    Execution.order_id == entry_id,
+                ).limit(1))).scalar_one_or_none()
+                if executions is not None:
+                    return False  # Order summaries can lag individual fills.
+                other = (await session.execute(select(Order.id).where(
+                    Order.symbol == symbol, Order.submitted_at >= row.submitted_at,
+                    Order.id != entry_id,
+                ).limit(1))).scalar_one_or_none()
+                return other is None
+        except Exception as exc:  # noqa: BLE001 - any lookup failure must retain unresolved accounting.
+            logger.debug("Zero-fill verification unavailable for %s: %s", symbol, exc)
+            return False
+
     async def _lookup_closed_position_fills_from_db(
         self, symbol: str, meta: dict[str, Any], *, closed_at: datetime,
     ) -> ClosedPositionFills | None:
         """Read all confirmed fill legs for an identified, closed position.
 
         Read-only, bounded to the DB entry timestamp and this reconciliation
-        time. Unknown identity, incomplete quantities or DB failure retains the
-        caller's legacy approximate fallback; no stored order/corpus is edited.
+        time. Unknown identity, incomplete quantities or DB failure leaves the
+        strategy close pending; no stored order/corpus is edited.
         """
         if not self._sessionmaker or meta.get("entry_source") == "reconciliation_orphan":
             return None
@@ -158,15 +215,26 @@ class _FillLookupMixin:
                 entry_time = (await session.execute(anchor_stmt)).scalar_one_or_none()
                 if entry_time is None:
                     return None
+                # A replaced predecessor can hide a missing/active successor,
+                # including an older order that can affect this lifetime. Keep
+                # the existing conservative scope but make the hold actionable.
+                replacement_stmt = select(Order.id).where(
+                    Order.symbol == symbol, Order.submitted_at <= closed_at,
+                    func.lower(Order.status) == "replaced",
+                ).limit(1)
+                if (await session.execute(replacement_stmt)).scalar_one_or_none() is not None:
+                    _replacement_pending(meta)
+                    return None
+                pending = meta.get("pending_close")
+                if isinstance(pending, dict) and pending.get("accounting_hold_reason") == REPLACEMENT_PENDING_REASON:
+                    pending.pop("accounting_hold_reason", None)
                 # A pre-entry order can still execute during this lifetime.
                 # Reject older active orders and older fills updated since
                 # entry: their attribution cannot be established here.
                 ambiguous_stmt = select(Order.id).where(
                     Order.symbol == symbol, Order.submitted_at <= closed_at,
                     or_(
-                        func.lower(Order.status).not_in(
-                            ("filled", "canceled", "cancelled", "expired", "rejected"),
-                        ),
+                        func.lower(Order.status).not_in(ACCOUNTABLE_TERMINAL_STATUSES),
                         (Order.submitted_at < entry_time)
                         & (Order.filled_qty > 0) & (Order.updated_at >= entry_time),
                     ),

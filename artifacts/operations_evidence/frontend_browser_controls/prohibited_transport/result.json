@@ -1,0 +1,32 @@
+{
+  "status": "failed",
+  "url": "http://127.0.0.1:5197/login",
+  "browser_version": "0.38.1",
+  "index_sha256": "68a1888054e75b92431f254a39ae83ef7d6c8a6d2920d5b00c54ad291d6eb4de",
+  "dist_sha256": "098511035d209a3f95ea9858f8bd7bddfa14c8d79fbde64db1173d32bc489bd0",
+  "checkout_sha": "17f14e1896d324959a8a928d34c9c296c2a56077",
+  "checkout_source_dirty": true,
+  "build_provenance": "dist bytes hashed; checkout identity alone does not attest build origin",
+  "checker_sha256": "934cf1e819750e921fdda9fa1f2b28ad44af2436bac3e498fc4260f203937121",
+  "checks": {
+    "fields_empty": true,
+    "login_url": true,
+    "no_error_overlay": true,
+    "nonblank": true,
+    "password_visible": true,
+    "recovery_visible": true,
+    "signin_visible": true,
+    "transport_violations": [
+      "connect-src"
+    ],
+    "username_visible": true
+  },
+  "page_error_count": 1,
+  "page_error_types": [
+    "TypeError"
+  ],
+  "browser_closed": true,
+  "preview_stopped": true,
+  "failure": "page errors or prohibited transport attempts detected",
+  "elapsed_seconds": 5.46
+}

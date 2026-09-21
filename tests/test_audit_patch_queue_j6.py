@@ -187,6 +187,8 @@ class TestExitLevelsPersistence:
 
             # Create a minimal mock engine
             engine = object.__new__(OrganismLiveEngine)
+            from threading import RLock
+            engine._accounting_lock = RLock()
             mock_brain = MagicMock()
             mock_brain.brain_dir = brain_dir
             engine.brain = mock_brain
@@ -219,6 +221,8 @@ class TestExitLevelsPersistence:
             }))
 
             engine = object.__new__(OrganismLiveEngine)
+            from threading import RLock
+            engine._accounting_lock = RLock()
             mock_brain = MagicMock()
             mock_brain.brain_dir = brain_dir
             engine.brain = mock_brain

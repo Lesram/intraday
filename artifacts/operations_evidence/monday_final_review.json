@@ -1,0 +1,187 @@
+{
+  "schema": "intra_independent_release_review_v1",
+  "reviewer": "combined_acceptance_review",
+  "reviewed_at_utc": "2026-09-20T00:49:10.038081+00:00",
+  "verdict": "LOCAL_SOURCE_AND_ARTIFACTS_ACCEPTED_HOSTED_PENDING",
+  "source_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "image_digest": "sha256:33b9d06f966009b69d119a3e078d1aee07b3dfb58d081cd384dc454048b76cf8",
+  "pull_request": "https://github.com/Lesram/intraday/pull/19",
+  "scope": "Final artifact acceptance for the previously independently reviewed PR19 accounting, entry evidence and replay changes, including the bounded Monday review repairs.",
+  "remaining_local_source_or_artifact_blockers": [],
+  "source_integrity": {
+    "committed_and_worktree_files_verified": 25,
+    "mismatches": [],
+    "candidate_image_receipt_files_verified": 20,
+    "image_receipt_matches_source_manifest": true,
+    "local_image_id_independently_inspected": "sha256:33b9d06f966009b69d119a3e078d1aee07b3dfb58d081cd384dc454048b76cf8",
+    "image_hash_execution_note": "Root produced the isolated image hash verification receipt; reviewer checked its 20 bindings against exact committed and working-tree bytes and inspected the local image ID without starting a container.",
+    "source_changes_since_prior_hash_review": false
+  },
+  "test_acceptance": {
+    "unique_test_cases": 950,
+    "executions_counted": 950,
+    "duplicate_cases": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "count_method": "Reviewer parsed the nine named final JUnit files and counted unique (classname, name); all artifact checksums match final_validation.json.",
+    "final_runs_start_after_source_commit": true,
+    "suites": [
+      {
+        "junit": "artifacts/operations_evidence/monday_operational.xml",
+        "passed": 734,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "e47382c39a3bca47e5985dacbc7d4d7e372cfe6d0b6e14e0494b0f36837e79f9",
+        "errors": 0
+      },
+      {
+        "junit": "artifacts/organism_live_engine.junit.xml",
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "19afdb20b7bf5c9c06d0e443f714102475f7302468acddb853013fa65038df13",
+        "errors": 0
+      },
+      {
+        "junit": "artifacts/organism_engine_scenarios.junit.xml",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "720e794f4a5f1958a41529eca6519a64688b40c88e1ab66b9be14cb60d3e8686",
+        "errors": 0
+      },
+      {
+        "junit": "artifacts/multi_tick_state.junit.xml",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "aace7c71f73c5da2fbff5d3721a7ccbe49177b6aeee58bf0bef8daca4c765def",
+        "errors": 0
+      },
+      {
+        "junit": "artifacts/safety_invariants.junit.xml",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "acf7bd32c166a40761769539bb42fbb74bed36c2f8e5950675cc13df537d4d52",
+        "errors": 0
+      },
+      {
+        "junit": "artifacts/self_evolution.junit.xml",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "4c20c675b3e84b0ba4b0a0ad162bff4297e878d968c8c93d1cb57a54858aa821",
+        "errors": 0
+      },
+      {
+        "junit": "artifacts/algorithm_improvements.junit.xml",
+        "passed": 58,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "7a6d99a5f638e85c09e854280f726edca159e83e54a6b7d5a4d71e6de31fc050",
+        "errors": 0
+      },
+      {
+        "junit": "artifacts/replay_simulator.junit.xml",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "14b678c82dfac1d57302155d79dc0a43702959d7ef5e28c0a8a3b46dba5aa839",
+        "errors": 0
+      },
+      {
+        "junit": "artifacts/semantic_invariants.junit.xml",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "sha256": "61f188b2feb81f6bd8730e5a845fbf047d07e97ad73da44011e4363214d2cc3e",
+        "errors": 0
+      }
+    ],
+    "excluded_from_count": [
+      "Prior 889-test source acceptance",
+      "Targeted and historical reproduction runs",
+      "79 Linux daily tests on the candidate image"
+    ],
+    "linux_image_daily_tests": {
+      "passed": 79,
+      "failed": 0,
+      "evidence": "artifacts/operations_evidence/monday_image_daily_tests.log",
+      "added_to_unique_total": false
+    },
+    "reviewer_test_reruns": 0
+  },
+  "artifact_checks": {
+    "full_pack": "pass",
+    "audit_index": "generated; explicitly candidate-only",
+    "grep_assertions": "pass",
+    "snapshot_generation": "pass",
+    "spec_drift": {
+      "keys_checked": 9,
+      "drifts": 0
+    },
+    "candidate_and_image_freeze": "DRIFT-VERIFY OK against unchanged tracked July reference",
+    "tracked_freeze_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+    "installed_cutoff": "2026-09-19T21:55:01.857005+00:00",
+    "cutoff_note": "Candidate verification uses the tracked July reference with the same frozen decision surface. Root current-runtime receipt confirms the separately approved September operating cutoff is unchanged; this review does not publish or reset either reference.",
+    "synthetic_replay": "Both newly replayed packs have valid content IDs and exact checksums for all 20 inputs and report. Positive is READY_FOR_REVIEW with strategy results INSUFFICIENT; negative is BLOCKED/WITHHELD. These are fixtures, not market observations.",
+    "image_verifier_retry": "Initial read-only /app logger write failed. Same image passed with verifier working directory /tmp; application filesystem stayed read-only, network disabled, and no runtime-state mount or application startup occurred.",
+    "ruff_delta": "No new findings; two pre-existing BLE001 catches remain",
+    "bandit": "No high-severity findings in the two changed production Python files; bounded scope and repository exclusions apply",
+    "secret_scan": "Root receipt records 144 files and zero flagged files using bounded known-secret comparison; reviewer did not inspect secrets or repeat the scan",
+    "generated_live_process_snapshot": "reachable=false in the isolated test harness; it is not candidate runtime acceptance"
+  },
+  "hosted_checks": {
+    "status": "pending_after_push",
+    "required_before_merge": true,
+    "human_github_approval_claimed": false
+  },
+  "deployment": {
+    "candidate_deployed": false,
+    "activation_approved_by_this_report": false,
+    "currently_observed_release": "PR17",
+    "natural_session_verified": false
+  },
+  "residual_limits": [
+    "Replacement lineage and exact replacement cashflows remain unsupported. Such orders stay pending and withhold daily qualification; historical same-symbol ambiguity can block later outcomes through the preserved ordered accounting queue.",
+    "Root sanitized inventory contains 1653 orders with zero replaced and pending_replace rows. This establishes no present observed replacement backlog, not future replacement support.",
+    "The 6-bps primary reporting convention and existing forward gates remain; software acceptance is not evidence of profitability.",
+    "Existing synchronous next-open replay execution remains a simulation limitation; broker exit-leg and engine accounting diagnostics remain separate.",
+    "Natural-session data freshness, entry-to-close accounting, EOD behavior and the manual actual-host post-close pack still require observation after approved activation.",
+    "The latest host readiness receipt found battery power. Host power, awake login and connectivity, visible alert delivery and full-host recovery remain operational prerequisites or unproved resilience surfaces.",
+    "No scheduler was added for the daily host collector. Off-machine alerting and off-host backups are not configured by this work.",
+    "Approval is bounded to this reviewed release. It does not certify all repository tests, all security surfaces, unattended operation or a safe rollback after new activity."
+  ],
+  "next_gates": [
+    "Commit and publish the final evidence package without changing the reviewed source; preserve source/image bindings if an artifact-only commit changes PR head.",
+    "Required hosted operational-safety checks must pass on the final PR head before merge; retain inherited failures explicitly rather than relabeling them green.",
+    "Any activation must follow the documented maintenance procedure, preserve the approved cutoff and history, and verify the exact installed source/image and state before restoring automatic recovery.",
+    "Complete supervised natural-session and actual-host post-close acceptance without forcing trades or fabricating missing evidence."
+  ],
+  "evidence_sha256": {
+    "artifacts/operations_evidence/final_validation.json": "57eb3a7d19c842c36e80f299462b08ee8a2525d7b26539dc0b3ec1a028eb1750",
+    "artifacts/operations_evidence/validated_source.json": "05a067ccb7e14ceb5dd2e46f5cb1e2ec3f0bfab54be3473897a3b316cbdf3de4",
+    "artifacts/operations_evidence/monday_candidate_image.json": "c3efce0a3f765ee20d1e28f39760ac75963bffef00cf4608ebeab988309ee048",
+    "artifacts/operations_evidence/monday_image_daily_tests.log": "d67ecb88c5d16b9ae0e8a6e704b37d93855b2a871d8334aff598ac88d75c8fee",
+    "artifacts/operations_evidence/monday_image_freeze.log": "ad0e2678ea0b417188c3ee09bbd988cafd9927846b982c19f6d1e9d8844549bf",
+    "artifacts/operations_evidence/monday_image_freeze_initial.log": "603731b27d9e666ba0a2b4c8389a6c486540f5a7d71aa5a5e65741236228019d",
+    "artifacts/operations_evidence/monday_freeze_verification.txt": "ad0e2678ea0b417188c3ee09bbd988cafd9927846b982c19f6d1e9d8844549bf",
+    "artifacts/operations_evidence/monday_static_validation.json": "3790a0f6c54e449081be7d043452092f66e912988d378319190eb17448e74eaa",
+    "artifacts/operations_evidence/monday_secret_scan.json": "91ef84f24c05a3a718d7e5e5a372dde4ef8e212419125dd9685e755c44bf5ac4",
+    "artifacts/operations_evidence/monday_sample_replay.json": "8fe81fb9eb932a1dd359c7837604bbeeb7e313c305caa58edda494594303f87e",
+    "artifacts/operations_evidence/monday_runtime_readiness.json": "bf8e3f09f5157af59ba8337dc1d0e29b71347436237823ff300cba0092a558c1",
+    "artifacts/operations_evidence/source_review.json": "e67479036f4113cd9cc0bcdfbcf21aeaf459de640ba3f93c0b6afecd354937ca",
+    "artifacts/operations_evidence/validation_history.json": "148b8e44c4eb63990814509bc1b568f5acfe8918c64d71f13f7989a4291ca3b9",
+    "artifacts/task_report.json": "6fd252989ec35cc6a5c0cc8a5012b5d368c107b6fe754f33a9e3d07f55d096ee",
+    "artifacts/test_summary.json": "6adea4e46cf05771058978ad619103a521a9c03c660ce44cc6d20c10c4709419",
+    "artifacts/replay_summary.json": "7ab4a2e2dd27c76aa8e946db3a0d5213fa0b9688c692762a9f52ddae7881b742",
+    "artifacts/grep_assertions.json": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b",
+    "artifacts/runtime_snapshot_summary.json": "91bddc913cc9b836688a6ea85b933884798a0aa5f1a14e71c81da619775f7858",
+    "artifacts/spec_drift_summary.json": "a62b1ad802616692a989aafe1d57f5e6865554f48d8196d82aaa3bb23a530c3f",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "56f3998310e5ee2061ccd02d8c1b1b7f596827223caa75422f06a09433b27a33",
+    "docs/engineering/MONDAY_PREPARATION_2026-09-21.md": "2030fdb918a940722b466baf251a177d052e981a9a2119544df13fd41293eddc"
+  },
+  "review_write_scope": "Only artifacts/operations_evidence/monday_final_review.json was written by this review."
+}

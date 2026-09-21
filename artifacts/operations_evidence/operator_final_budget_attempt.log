@@ -1,0 +1,99 @@
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 20%]
+........................................................................ [ 25%]
+........................................................................ [ 30%]
+........................................................................ [ 36%]
+........................................................................ [ 41%]
+........................................................................ [ 46%]
+........................................................................ [ 51%]
+........................................................................ [ 56%]
+........................................................................ [ 61%]
+........................................................................ [ 66%]
+........................................................................ [ 72%]
+........................................................................ [ 77%]
+.............................................................s.......... [ 82%]
+...........................................F............................ [ 87%]
+........................................................................ [ 92%]
+........................................................................ [ 97%]
+................................                                         [100%]
+=================================== FAILURES ===================================
+___ test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence ___
+tests/test_monday_ci_workflows.py:275: in test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence
+    assert job["timeout-minutes"] >= sum(step.get("timeout-minutes", 0)
+E   assert 90 >= (91 + 5)
+E    +  where 91 = sum(<generator object test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence.<locals>.<genexpr> at 0x118fa7760>)
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/test_paper_monitor_access.py::test_authentication_and_dedicated_role_required[None-401]
+tests/test_paper_runtime_config.py::test_app_settings_respects_explicit_use_mock_data_false_in_development
+tests/test_paper_runtime_config.py::test_app_settings_keeps_development_mock_default_when_unspecified
+tests/test_paper_runtime_config.py::test_app_settings_respects_explicit_alpaca_paper_false_in_development
+tests/test_paper_runtime_config.py::test_signals_market_data_client_uses_real_client_when_mock_false
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_websocket_and_signal_service.py:70: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("MSFT", data)
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal_with_empty_data
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_websocket_and_signal_service.py:81: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("TSLA", {})
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_config_coordinator_comprehensive.py:17: DeprecationWarning: backend.config.coordinator is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.coordinator import ConfigurationCoordinator
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/config/coordinator.py:22: DeprecationWarning: backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.unified import UnifiedSettings, get_unified_settings
+
+tests/test_risk_manager_service_comprehensive.py: 10 warnings
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:27: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py: 10 warnings
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:28: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.updated_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:42: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.last_updated = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:43: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetRecentViolations::test_get_violations_with_custom_hours
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_trigger_emergency_stop
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_trigger_emergency_stop
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:95: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_resolve_emergency_stop
+tests/test_risk_manager_service_comprehensive.py::TestGetActiveEmergencyStop::test_get_active_stop_when_exists
+tests/test_risk_manager_service_comprehensive.py::TestIsEmergencyStopActive::test_returns_true_when_active
+  /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/tests/test_risk_manager_service_comprehensive.py:73: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.triggered_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_monday_ci_workflows.py::test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence
+1 failed, 1398 passed, 1 skipped, 42 warnings in 31.54s

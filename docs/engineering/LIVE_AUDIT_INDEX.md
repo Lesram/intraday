@@ -1,26 +1,27 @@
 # Live Audit Index
 
-Generated: 2026-09-19T21:02:16Z
+> **Candidate evidence only:** source `055f2b98864519ce0cea6af3ca17d4a8d8ea191b`. Generated root configuration uses isolated test defaults, not the installed runtime. The approved paper activation will publish actual observed snapshots under `artifacts/paper_activation/2026-09-21/`. Natural-session acceptance remains pending.
+
+
+Generated: 2026-09-21T09:40:57Z
 PR: n/a
-SHA: `79a898697e`
-Branch: `codex/paper-corrections-candidate`
+SHA: `055f2b9886`
+Branch: `codex/operations-evidence-integrity`
 Scope: **backend_logic**
-Change scope: `base` (`3fa2199df04d75ea0552a5aa08d1f59ba844b211...HEAD`)
+Change scope: `base` (`ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 5 | `backend/integrations/alpaca_data.py`, `backend/organism/continuous_learner.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/streaming_data_provider.py` |
-| Organism | 4 | `backend/organism/continuous_learner.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/streaming_data_provider.py` |
-| Scripts | 1 | `scripts/phase3_attribution_report.py` |
+| Backend | 19 | `backend/api/routes/risk.py`, `backend/api/routes/settings.py`, `backend/organism/background_trainer.py`, `backend/organism/brain_persistence.py`, `backend/organism/close_accounting.py`, `backend/organism/continuous_learner.py`, `backend/organism/entry_evidence.py`, `backend/organism/governance.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py` |
+| Organism | 16 | `backend/organism/background_trainer.py`, `backend/organism/brain_persistence.py`, `backend/organism/close_accounting.py`, `backend/organism/continuous_learner.py`, `backend/organism/entry_evidence.py`, `backend/organism/governance.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_fills.py`, `backend/organism/operator_cancellation.py`, `backend/organism/operator_controls.py` |
+| Scripts | 7 | `scripts/ci/check_frontend_preview.py`, `scripts/ops/paper_daily_evidence.py`, `scripts/ops/paper_daily_host.py`, `scripts/ops/paper_watchdog.py`, `scripts/ops/standdown_session_row.py`, `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 8 | `tests/fixtures/paper_fill_accounting_forward_20260919.json`, `tests/test_live_engine_fill_accounting.py`, `tests/test_monday_ci_workflows.py`, `tests/test_phase3_attribution_report.py`, `tests/test_phase3_candidate_shadow_telemetry.py`, `tests/unit/test_alpaca_data_comprehensive.py`, `tests/unit/test_paper_data_freshness.py`, `tests/unit/test_streaming_data_provider.py` |
-| Docs | 1 | `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Tests | 38 | `tests/test_apr10_patch_f4_forensic_guard.py`, `tests/test_apr7_p0_p1_fixes.py`, `tests/test_apr8_patch_a_force_save.py`, `tests/test_audit_0_2_bg_trainer_same_holdout.py`, `tests/test_audit_2_3_2_5_promotion_evolution.py`, `tests/test_audit_patch_queue_a.py`, `tests/test_audit_patch_queue_b1.py`, `tests/test_audit_patch_queue_b2.py`, `tests/test_audit_patch_queue_f3.py`, `tests/test_audit_patch_queue_f4.py` |
+| Docs | 6 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/MONDAY_PREPARATION_2026-09-21.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_DAILY_EVIDENCE.md`, `docs/runbooks/PAPER_UPTIME.md` |
 
 ## Live constants
-
-**Evidence scope:** These are isolated mock/test settings for the combined proposal. They are not the stopped paper runtime or an activated candidate. The API remains held; the July cutoff is unchanged. The prebuilt image is source-bound and verified without application startup. Primary prospective research reports are proposed at 6 bps round trip using report-process-only configuration; native/runtime costing remains unchanged. See `reports/PAPER_CORRECTIONS_ACTIVATION_PROPOSAL_2026-09-19.md` and `artifacts/corrections_candidate/`.
 
 Source: `resolved_config_snapshot.json`
 
@@ -56,4 +57,4 @@ Source: `resolved_config_snapshot.json`
 
 ## Open risks
 
-- 4 organism file(s) changed — require replay verification
+- 16 organism file(s) changed — require replay verification

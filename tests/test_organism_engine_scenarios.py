@@ -374,10 +374,14 @@ async def test_all_ml_neutral_still_produces_candidates(broker, brain_dir):
 
 
 @pytest.mark.asyncio
-async def test_alpha_breakout_bad_regime_filter_blocks_main_book_orders(broker, brain_dir):
+async def test_alpha_breakout_bad_regime_filter_blocks_main_book_orders(broker, brain_dir, monkeypatch):
     """Evidence-backed filter blocks alpha+breakout in chop before sizing/orders."""
     from backend.organism.alpha_scanner import AlphaCandidate
     from backend.organism.ml_signal import MLSignal
+
+    # This scenario exercises the legacy alpha+breakout filter. Pin that path
+    # rather than inheriting a host's framework-routing override.
+    monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
 
     engine = _make_engine(broker, brain_dir=brain_dir, universe=["AAPL", "MSFT", "SPY"])
     await engine.initialize()
@@ -634,7 +638,7 @@ async def test_multiple_tightening_doesnt_overclamp(broker, brain_dir):
 
 @pytest.mark.asyncio
 async def test_reconcile_detects_closed_position(broker, brain_dir):
-    """Remove position from broker mid-run — TradeRecord should be created."""
+    """A disappeared position without identified fills remains pending."""
     engine = _make_engine(broker, brain_dir=brain_dir)
     await engine.initialize()
 
@@ -662,10 +666,9 @@ async def test_reconcile_detects_closed_position(broker, brain_dir):
     engine._tick_count = 10  # Ensure past grace period
     await engine.live_tick()
 
-    # Check the AAPL closure was recorded. Reconciliation can record more
-    # than one stale metadata adjustment in the same tick, so ordering is not
-    # the contract under test here.
-    assert any(trade.symbol == "AAPL" for trade in engine._all_trades)
+    assert not any(trade.symbol == "AAPL" for trade in engine._all_trades)
+    assert engine._entry_metadata["AAPL"]["pending_close"]["observed_at"]
+    assert engine.learner.state.total_trades == 0
 
 
 @pytest.mark.asyncio

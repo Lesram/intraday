@@ -1,0 +1,169 @@
+{
+  "accounting_checkpoint": {
+    "authoritative_trades": 1,
+    "pending_closes": 0,
+    "policy": "exact_position_fills_or_pending_v1"
+  },
+  "approved_historical_rows": 0,
+  "captured_at": "2026-09-21T20:10:00+00:00",
+  "decision_provenance": {
+    "duplicate_identical_receipts": 0,
+    "forward_trades": 1,
+    "limits": [
+      "Every buy decision in the matched cycle needs its own exact receipt; frame hashes are not provider archives or proof of edge."
+    ],
+    "malformed_receipts": 0,
+    "state": "UNVERIFIED",
+    "verified_buy_decisions": 0,
+    "verified_entries": 0
+  },
+  "example_only": true,
+  "issues": [
+    "entry_decision_provenance_unverified:0"
+  ],
+  "limits": [
+    "Manual evidence pack; no scheduler installed or operational acceptance awarded.",
+    "Paper fills do not establish live-market execution or profitability.",
+    "Runtime snapshot is capture-time evidence, not per-decision freshness proof."
+  ],
+  "primary_cost_bps_round_trip": 6,
+  "promotion_authorized": false,
+  "reconciliation": {
+    "cost_scenarios": {
+      "3_bps_round_trip": {
+        "broker_modeled_net": -2.18,
+        "ledger_modeled_net": -2.18
+      },
+      "6_bps_round_trip": {
+        "broker_modeled_net": -2.36,
+        "ledger_modeled_net": -2.36
+      }
+    },
+    "counts": {
+      "broker_cycles": 1,
+      "entry_price_differences_over_tolerance": 0,
+      "forward_ledger_rows": 1,
+      "ignored_unfilled_orders": 0,
+      "ledger_rows_without_close_at": 0,
+      "matched_closes": 1,
+      "organism_filled_orders": 3,
+      "partial_flag_differences": 0,
+      "pnl_differences_over_one_cent": 0
+    },
+    "entry_price_tolerance": {
+      "absolute_usd_per_share": "0.00005",
+      "comparison": "inclusive; unrounded Decimal prices",
+      "equivalent_notional_tolerance": "matched quantity times 0.00005 USD",
+      "reason": "half the persisted ledger's four-decimal price quantum"
+    },
+    "frozen_at": "2026-09-19T21:55:01.857005+00:00",
+    "gross": {
+      "broker_pnl": -2.0,
+      "ledger_minus_broker": 0.0,
+      "ledger_pnl": -2.0
+    },
+    "issues": [],
+    "limits": [
+      "Saved order export only; completeness depends on export pagination and scope.",
+      "Long-only flat-to-flat cash flows; carry-in positions require earlier fills.",
+      "Per-order filled averages; broker fees are not included.",
+      "3 bps round trip is the declared runtime model; 6 is research-brief sensitivity.",
+      "Neither modeled scenario changes runtime configuration or the frozen corpus.",
+      "No strategy significance statistic, promotion decision or execution test."
+    ],
+    "matches": [
+      {
+        "broker_average_entry": 100.0,
+        "broker_average_exit": 99.666667,
+        "broker_first_fill": "2026-09-21T14:00:01+00:00",
+        "broker_last_fill": "2026-09-21T16:00:00+00:00",
+        "broker_pnl": -2.0,
+        "broker_qty": 6.0,
+        "closed_at": "2026-09-21T16:00:20Z",
+        "entry_notional_delta": 0.0,
+        "entry_price_delta_unrounded": "0",
+        "entry_price_matches": true,
+        "ledger_entry": 100.0,
+        "ledger_minus_broker": 0.0,
+        "ledger_partial_flag": true,
+        "ledger_pnl": -2.0,
+        "order_refs": [
+          "1210c2d21efec514",
+          "9834a14ab9bcaa0f",
+          "2443630b4620165c"
+        ],
+        "partial_flag_matches": true,
+        "sell_orders": 2,
+        "symbol": "XYZ"
+      }
+    ],
+    "schema": "paper_fill_reconciliation_v1",
+    "status": "RECONCILED"
+  },
+  "runtime_identity": {
+    "image_sha": "source",
+    "runtime_config_hash": "config",
+    "source_sha": "source"
+  },
+  "runtime_state": {
+    "live_engine": {
+      "engine": {
+        "close_accounting": {
+          "error": null,
+          "pending": {},
+          "policy": "exact_position_fills_or_pending_v1"
+        }
+      },
+      "running": true
+    }
+  },
+  "schema": "paper_daily_evidence_v1",
+  "session": {
+    "close": "2026-09-21T20:00:00+00:00",
+    "date": "2026-09-21",
+    "eligible_at": "2026-09-21T20:05:00+00:00",
+    "open": "2026-09-21T13:30:00+00:00",
+    "state": "CLOSED"
+  },
+  "session_date": "2026-09-21",
+  "standdown": {
+    "counts": {
+      "direction_zero": 0,
+      "evidence_events": 0,
+      "ledger_closes": 1,
+      "liquidity_blocks": 0,
+      "live_candidates": 0,
+      "orders": 0,
+      "scanner_empty": 0,
+      "stale_bars": 0,
+      "successful_ticks": 196,
+      "tick_errors": 0
+    },
+    "coverage": "OBSERVED_TICK_COVERAGE",
+    "coverage_gap_budget_seconds": 120,
+    "date": "2026-09-21",
+    "duplicate_log_records": 0,
+    "limitations": [
+      "Tick logs attest observations, not uninterrupted host availability or all trading paths.",
+      "Missing/unparseable logs make counters lower bounds, never complete zeros."
+    ],
+    "log_files": [
+      "logs/application.log",
+      "logs/application.log.9"
+    ],
+    "malformed": {
+      "events": 0,
+      "ledger": 0,
+      "logs": 0
+    },
+    "max_successful_tick_gap_seconds": 120.0,
+    "regimes": {}
+  },
+  "status": "BLOCKED",
+  "strategy_gate": {
+    "reason": "evidence_quality",
+    "state": "WITHHELD"
+  },
+  "trade_observation": "FORWARD_TRADES_PRESENT",
+  "unobserved_paths": []
+}

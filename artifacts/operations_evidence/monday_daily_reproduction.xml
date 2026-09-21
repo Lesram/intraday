@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="15" skipped="0" tests="16" time="0.189" timestamp="2026-09-19T17:31:30.380426-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_paper_daily_evidence" name="test_stable_read_refuses_linked_input_paths[hardlink]" time="0.003"><failure message="Failed: DID NOT RAISE &lt;class 'scripts.ops.paper_daily_evidence.EvidenceError'&gt;">tmp_path = PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_stable_read_refuses_linke0')
+alias_kind = 'hardlink'
+
+    @pytest.mark.parametrize('alias_kind', ['hardlink', 'symlink_parent', 'symlink_leaf'])
+    def test_stable_read_refuses_linked_input_paths(tmp_path, alias_kind):
+        original = tmp_path / 'original'
+        original.mkdir()
+        source = original / 'ledger.csv'
+        source.write_bytes(b'private fixture bytes\n')
+        if alias_kind == 'hardlink':
+            alias = tmp_path / 'linked-ledger.csv'
+            alias.hardlink_to(source)
+        elif alias_kind == 'symlink_parent':
+            directory_alias = tmp_path / 'directory-alias'
+            directory_alias.symlink_to(original, target_is_directory=True)
+            alias = directory_alias / 'ledger.csv'
+        else:
+            alias = tmp_path / 'linked-ledger.csv'
+            alias.symlink_to(source)
+&gt;       with pytest.raises(daily.EvidenceError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE &lt;class 'scripts.ops.paper_daily_evidence.EvidenceError'&gt;
+
+tests/test_paper_daily_evidence.py:534: Failed</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_stable_read_refuses_linked_input_paths[symlink_parent]" time="0.001"><failure message="Failed: DID NOT RAISE &lt;class 'scripts.ops.paper_daily_evidence.EvidenceError'&gt;">tmp_path = PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_stable_read_refuses_linke1')
+alias_kind = 'symlink_parent'
+
+    @pytest.mark.parametrize('alias_kind', ['hardlink', 'symlink_parent', 'symlink_leaf'])
+    def test_stable_read_refuses_linked_input_paths(tmp_path, alias_kind):
+        original = tmp_path / 'original'
+        original.mkdir()
+        source = original / 'ledger.csv'
+        source.write_bytes(b'private fixture bytes\n')
+        if alias_kind == 'hardlink':
+            alias = tmp_path / 'linked-ledger.csv'
+            alias.hardlink_to(source)
+        elif alias_kind == 'symlink_parent':
+            directory_alias = tmp_path / 'directory-alias'
+            directory_alias.symlink_to(original, target_is_directory=True)
+            alias = directory_alias / 'ledger.csv'
+        else:
+            alias = tmp_path / 'linked-ledger.csv'
+            alias.symlink_to(source)
+&gt;       with pytest.raises(daily.EvidenceError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE &lt;class 'scripts.ops.paper_daily_evidence.EvidenceError'&gt;
+
+tests/test_paper_daily_evidence.py:534: Failed</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_stable_read_refuses_linked_input_paths[symlink_leaf]" time="0.001" /><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[direction-nan]" time="0.004"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f0'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f0/release.json'))
+field = 'direction', value = nan
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[direction-inf]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f1'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f1/release.json'))
+field = 'direction', value = inf
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[direction-True]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f2'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f2/release.json'))
+field = 'direction', value = True
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[frame_rows-nan]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f3'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f3/release.json'))
+field = 'frame_rows', value = nan
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[frame_rows-inf]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f4'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f4/release.json'))
+field = 'frame_rows', value = inf
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[frame_rows-True]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f5'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f5/release.json'))
+field = 'frame_rows', value = True
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[frame_rows-1.5]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f6'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f6/release.json'))
+field = 'frame_rows', value = 1.5
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[bar_age_seconds-nan]" time="0.010"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f7'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f7/release.json'))
+field = 'bar_age_seconds', value = nan
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[bar_age_seconds-60]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f8'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f8/release.json'))
+field = 'bar_age_seconds', value = '60'
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[shares-6]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f9'), PosixPath('/private/tmp/pyte...ctivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f9/release.json'))
+field = 'shares', value = '6'
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[shares-6.5]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f10'), PosixPath('/private/tmp/pyt...tivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f10/release.json'))
+field = 'shares', value = 6.5
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[tick-True]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f11'), PosixPath('/private/tmp/pyt...tivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f11/release.json'))
+field = 'tick', value = True
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase><testcase classname="tests.test_paper_daily_evidence" name="test_hostile_receipt_numeric_fields_block_positive_gate[tick-nan]" time="0.003"><failure message="AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'&#10;  &#10;  - BLOCKED&#10;  + READY_FOR_REVIEW">host = (PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f12'), PosixPath('/private/tmp/pyt...tivation.json'), PosixPath('/private/tmp/pytest-of-marselkei/pytest-28/test_hostile_receipt_numeric_f12/release.json'))
+field = 'tick', value = nan
+
+    @pytest.mark.parametrize('field,value', [
+        ('direction', float('nan')), ('direction', float('inf')), ('direction', True),
+        ('frame_rows', float('nan')), ('frame_rows', float('inf')), ('frame_rows', True),
+        ('frame_rows', 1.5), ('bar_age_seconds', float('nan')), ('bar_age_seconds', '60'),
+        ('shares', '6'), ('shares', 6.5), ('tick', True), ('tick', float('nan')),
+    ])
+    def test_hostile_receipt_numeric_fields_block_positive_gate(host, field, value):
+        row, receipt, orders = exact_trade_inputs(host)
+        receipt[field] = value
+        # json.dumps deliberately admits NaN/Infinity to model externally supplied
+        # invalid JSON constants accepted by the standard library decoder.
+        (host[0] / 'organism_brain/entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+        inputs, collection, _ = run_host(host, FakeTransport(orders))
+        report = daily.analyze(inputs, collection, gate_fn=lambda *_: {'momentum': {'state': 'PASS'}})
+&gt;       assert report['status'] == 'BLOCKED'
+E       AssertionError: assert 'READY_FOR_REVIEW' == 'BLOCKED'
+E         
+E         - BLOCKED
+E         + READY_FOR_REVIEW
+
+tests/test_paper_daily_evidence.py:553: AssertionError</failure></testcase></testsuite></testsuites>

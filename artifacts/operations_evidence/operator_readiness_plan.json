@@ -1,0 +1,37 @@
+{
+  "task_id": "paper-operator-control-readiness",
+  "trigger": "Read-only integration audit found UI halt targets detached governance and generic emergency stop falsely marks database orders cancelled. Readiness cannot be certified with these gaps.",
+  "authorization": "Necessary trading-safety repair within user instruction to complete remaining readiness; no strategy tuning or six-original-function edits; explicitly recorded expanded policy freeze and one actual activation boundary remain required.",
+  "scope": [
+    "Authoritative durable operator entry-halt separate from automatic daily/drawdown gates",
+    "Safe in-flight drain acknowledgment, persistent external control record, status reflects actual engine",
+    "Entry-only broker cancellation with authoritative identity+terminal verification; retain protective exits and all fill/reconciliation evidence",
+    "Never fabricate DB cancellation; honest incomplete response retains halt",
+    "Existing normal risk exits/EOD continue",
+    "Observe actual runtime control schema and configured durable path; isolated auth/API/race/restart/exit tests"
+  ],
+  "ownership": {
+    "accounting": "governance.py,operator_controls.py,organism/routes.py,minimal initialize hook,tests/test_operator_controls.py",
+    "daily": "risk API/service,operator_cancellation.py,tests/test_operator_emergency_stop.py,targeted legacy service tests",
+    "root": "freeze/snapshot/docs/workflow/release artifacts and controlled rollout; no active-host mutation before gates",
+    "reviewer": "independent integration/safety review"
+  },
+  "tests": [
+    "Real admin route with distinct actual and app governance",
+    "In-flight tick/drain and persistence failure",
+    "Manual latch survives automatic risk reset, save/swap/restart; resume preserves independent risk blocks",
+    "Halted open-position partial/stop/EOD exits continue; no forced real orders",
+    "Mixed entry/protective/foreign orders, partial fills, cancel rejection/pending/replaced/unknown states",
+    "Targeted risk/service/security/order reconciliation checks",
+    "Full organism/state/exits/sizing/replay artifact pack and semantic/freeze checks",
+    "Exact-source immutable image and retained-model warm-start",
+    "Fresh hosted acceptance and actual source/config/status/read-only broker checks"
+  ],
+  "deployment_config": {
+    "approved_operator_path": "/app/data/operator_control_state.json",
+    "existing_bind": "/Users/marselkei/VS/intra/data:/app/data",
+    "initialization": "Create reviewed initial valid unhalted record only after fresh existing engine unhalted, closed-market/flat broker observation and held state; no implicit resume from missing/corrupt record",
+    "not_yet_installed": true
+  },
+  "frozen_surface": "Original six function bodies/feed/strategy parameters unchanged; expanded initialization/governance/operator/API enforcement hashes and nonsecret configured control path included. Active old cutoff untouched until explicit approved transition."
+}

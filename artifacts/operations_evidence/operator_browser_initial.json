@@ -1,0 +1,18 @@
+{
+  "source_sha": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
+  "result": "FAILED_PRODUCTION_PAGE_BLANK",
+  "url": "http://localhost:5173/",
+  "body_text_empty": true,
+  "interactive_elements": 0,
+  "page_errors": [
+    {
+      "column": 9107,
+      "line": 0,
+      "text": "TypeError: Cannot read properties of undefined (reading 'version')\n    at http://localhost:5173/assets/vendor-other-rKjPd79a.js:1:9108",
+      "url": null
+    }
+  ],
+  "all_observed_requests": "GET only; no credentials, auth actions or trading controls",
+  "deployed_backend_changed": false,
+  "screenshot": "artifacts/operations_evidence/operator_browser_initial.png"
+}

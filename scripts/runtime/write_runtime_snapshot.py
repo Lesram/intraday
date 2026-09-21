@@ -29,6 +29,8 @@ def _build_defaults_snapshot() -> dict:
     try:
         from backend.organism.adaptive_exits import AdaptiveExitEngine
         from backend.organism.alpha_scanner import AlphaScanner
+        from backend.organism.close_accounting import ACCOUNTING_POLICY
+        from backend.organism.research_policy import policy_status
         from backend.organism.governance import (
             DEFAULT_DRAWDOWN_COOLDOWN_S,
             DEFAULT_DRAWDOWN_KILL_PCT,
@@ -67,6 +69,8 @@ def _build_defaults_snapshot() -> dict:
 
         return {
             "source": "code_defaults",
+            "close_accounting_policy": ACCOUNTING_POLICY,
+            "research_policy": policy_status(),
             "timeframe": LIVE_TIMEFRAME,
             "lookback": LIVE_LOOKBACK,
             "min_bars": MIN_BARS,
@@ -233,6 +237,7 @@ def _build_resolved_config_snapshot() -> dict:
                 "ORGANISM_MAX_DAILY_LOSS": env_map.get("ORGANISM_MAX_DAILY_LOSS"),
                 "ORGANISM_MAX_NOTIONAL": env_map.get("ORGANISM_MAX_NOTIONAL"),
                 "ORGANISM_TICK_INTERVAL_SECONDS": env_map.get("ORGANISM_TICK_INTERVAL_SECONDS"),
+                "ORGANISM_APPROVED_POLICY_BASELINE": env_map.get("ORGANISM_APPROVED_POLICY_BASELINE"),
                 "ORGANISM_EXPLORATION_ENABLED": env_map.get("ORGANISM_EXPLORATION_ENABLED"),
                 "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED": env_map.get(
                     "ORGANISM_ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED"
@@ -256,6 +261,7 @@ def _build_resolved_config_snapshot() -> dict:
                 "ORGANISM_LIVE_TIMEFRAME": env_map.get("ORGANISM_LIVE_TIMEFRAME"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
                 "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
+                "ORGANISM_OPERATOR_CONTROL_STATE": env_map.get("ORGANISM_OPERATOR_CONTROL_STATE"),
             }
             resolved["container_env"] = container_env
 
@@ -359,6 +365,9 @@ def _build_resolved_config_snapshot() -> dict:
     )
 
     resolved["resolved"] = {
+        # This describes the checked-out candidate. Only live status below
+        # establishes which accounting policy the installed process runs.
+        "close_accounting_policy": defaults.get("close_accounting_policy"),
         "drawdown_kill_pct": _resolve_float(
             "ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct", "drawdown_kill_pct",
         ),
@@ -411,6 +420,7 @@ def _build_resolved_config_snapshot() -> dict:
         "learning_mode_threshold_trades": defaults.get("learning_mode_threshold_trades"),
         "evolution_freeze_until_trades": defaults.get("evolution_freeze_until_trades"),
         "production_promotion_gate": defaults.get("production_promotion_gate"),
+        "research_policy": defaults.get("research_policy"),
         "horizon_timeout_bars": defaults.get("horizon_timeout_bars"),
         "bar_boundary_entry_only": defaults.get("bar_boundary_entry_only"),
         "confidence_gate_baseline": defaults.get("confidence_gate_baseline"),
@@ -583,6 +593,8 @@ def _build_live_process_snapshot() -> dict:
                 "IMAGE_SHA": env_map.get("IMAGE_SHA"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
                 "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
+                "ORGANISM_APPROVED_POLICY_BASELINE": env_map.get("ORGANISM_APPROVED_POLICY_BASELINE"),
+                "ORGANISM_OPERATOR_CONTROL_STATE": env_map.get("ORGANISM_OPERATOR_CONTROL_STATE"),
                 "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
                 "ORGANISM_DRAWDOWN_COOLDOWN_S": env_map.get("ORGANISM_DRAWDOWN_COOLDOWN_S"),
                 "ORGANISM_MAX_CHANGES_PER_DAY": env_map.get("ORGANISM_MAX_CHANGES_PER_DAY"),
@@ -649,6 +661,16 @@ def _build_live_process_snapshot() -> dict:
         )
         live["promotion_blockers"] = _pick_annotated(
             "promotion_blockers", "promotion_blockers",
+        )
+        live["close_accounting"] = _pick_annotated(
+            "close_accounting", "close_accounting",
+        )
+        live["research_policy"] = _pick_annotated(
+            "research_policy", "policy_lock",
+        )
+        # Report actual in-memory authority; absent legacy fields stay unknown.
+        live["operator_governance"] = _pick_annotated(
+            "operator_governance", "governance",
         )
         live["brain_generation"] = _pick_annotated("brain_generation", "brain_generation")
         live["uptime_seconds"] = _pick_annotated("uptime_seconds", "uptime_seconds")

@@ -1,0 +1,375 @@
+{
+  "accepted_behavior": [
+    "Raw inherited strategy/ledger/learner counts remain diagnostic; raw learning classification is retained and qualified_trade_count is null/unverified. Neither 300 trades nor profitable expectancy can enable main-book ML or Kelly under the code-controlled default lock.",
+    "ML-isolation and fixed-risk checks short-circuit to protective values. Phase-resolver failure uses a direct protective dictionary instead of calling a failed resolver again.",
+    "Background start, submit, worker, result application and synchronous retraining/evolution are blocked. Completed accepted/rejected/error/cancelled worker paths cannot change the retained model or trigger an effective synchronous fallback. Startup transfer warm-start is blocked.",
+    "Configured startup baseline compares saved effective parameters, actual applied alpha/breakout/exit/sizer values, primary/ensemble/model-cache fingerprints, feature order, model generation/trained flags, ensemble weights, thresholds, feature weights, XGBoost configuration and calibration map. Missing/corrupt/mismatched configured baseline raises before engine position reconstruction, trainer and tick creation.",
+    "API, scheduler and engine reject nonempty settings mutation before persistence, tick/subscription updates or component changes. Emergency halt is a separate control.",
+    "The six original decision functions and prior strategy/feed/exit/regime surface remain byte/hash-equivalent. Retained fixed-model reversal exits, normal risk management, accounting and EOD are preserved; ML isolation does not mean no model-dependent exits.",
+    "Host wrapper pins source/image/config/new cutoff/baseline, verifies exact observer role and fixed paper endpoint/container, requires actual configured/verified baseline hash and locked modes before collection and on captured status, and passes captured bytes to the existing immutable evidence analyzer.",
+    "Original historical exemption ledger remains checksum-pinned separately from fresh transition recovery backup. No new activation can silently replace historical-prefix provenance through that backup field.",
+    "No credential values are printed or included in command arguments or evidence; only in-process fixed-container inspection and local observer login acquire credentials. Broker calls remain GET-only. launchd template is separate and not self-installing."
+  ],
+  "findings_resolved": [
+    {
+      "id": "effective-baseline",
+      "issue": "Saved evolved-parameter identity alone did not prove scanner/exit/sizer fields were actually applied.",
+      "resolution": "Added actual component projection and negative mutations with unchanged saved parameters."
+    },
+    {
+      "id": "host-model-pin",
+      "issue": "Host wrapper initially checked lock/parameter flags without configured model-baseline verification.",
+      "resolution": "Requires configured=true, verified=true and approved full artifact SHA; freeze carries the same artifact hash."
+    },
+    {
+      "id": "history-versus-recovery",
+      "issue": "Forcing fresh backup manifest equal to original historical baseline conflated two different purposes.",
+      "resolution": "Explicit historical_baseline reference with fail-closed validation; older-schema fallback only when the key is absent; positive real collector fixture uses distinct recovery receipt."
+    },
+    {
+      "id": "scope-docs",
+      "issue": "Original task plan excluded deployment/scheduling and engine/snapshot policy names differed.",
+      "resolution": "Historical plan explicitly superseded; final plan names authorized rollout; docs describe policy_lock to snapshot research_policy mapping."
+    }
+  ],
+  "frozen_surface": {
+    "actual_deployment_cutoff_requires_separate_archived_host_transition": true,
+    "approved_baseline_artifact_pinned": true,
+    "comparison_source_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+    "expanded_policy_controls": true,
+    "fixture_FROZEN_AT": "2026-09-21T06:54:41.006178+00:00",
+    "fixture_is_actual_activation": false,
+    "original_groups_identical": {
+      "exit_env": true,
+      "regime_policy": true,
+      "routing_data_env": true,
+      "source_hashes": true,
+      "strategy_config": true
+    },
+    "six_original_function_hashes": {
+      "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
+      "entry_gates_dispatch": "85ef0b9525f7cb4b2b8b343942f67a50833c36bdde4b644446f99de923f172a6",
+      "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
+      "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
+      "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",
+      "selector_routing": "bed6a91e7f95f3ad11e159767ecdb6d54b42c022997df3b801bcbe20ad8628d2"
+    }
+  },
+  "portability_repair_addendum": {
+    "assertion_weakened": false,
+    "changed_previous_bindings": [
+      "tests/test_apr10_patch_f4_forensic_guard.py"
+    ],
+    "documentation_delta": "Monday runbook now consistently names explicitly approved expanded freeze/new cutoff and reviewed 13:10 Pacific daily schedule; actual installation remains receipt-gated.",
+    "file_sha256": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
+    "full_pack_image_hosted_runtime_acceptance_for_new_source": "pending separate root evidence",
+    "identical_previous_bindings": 38,
+    "only_changed_python_file": "tests/test_apr10_patch_f4_forensic_guard.py",
+    "previous_bindings": 39,
+    "prior_source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+    "production_scripts_workflows_deployment_freeze_and_static_config_identical": true,
+    "remaining_concrete_source_findings": [],
+    "reviewed_change": "Derive subprocess cwd from Path(__file__).resolve().parents[1] rather than developer absolute path; require successful subprocess exit before parsing its output. Existing exact-two guarded manifest-write callsite assertion remains unchanged.",
+    "runtime_behavior_changed": false,
+    "source_sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
+    "static_equivalence": {
+      "application_imports": false,
+      "changed_test_same_config_ruff": {
+        "045681d2e097000628bc97f3a31d57130d71a69a": {
+          "exit_code": 1,
+          "file_sha256": "a8399fca2d69473461d97e95f528c4a1e4fb7e293552d6be871761731e4acb3e",
+          "findings": 1,
+          "stdout_sha256": "445b67929c21455e0915342497165fcfb794996b16669e8bd37584793ba1fec0"
+        },
+        "49d3e31479a7bea7e68108689f3584684e7bb6a8": {
+          "exit_code": 1,
+          "file_sha256": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
+          "findings": 1,
+          "stdout_sha256": "445b67929c21455e0915342497165fcfb794996b16669e8bd37584793ba1fec0"
+        }
+      },
+      "existing_95_ruff_findings_not_claimed_clean": true,
+      "network_denied": true,
+      "new_ruff_findings": 0,
+      "prior_full_report": "artifacts/operations_evidence/policy_final_static.json",
+      "prior_report_sha256": "1abc4fb59225daca4f729a575ba644fc5e3aa9f733c78185c1b09ea473d15685",
+      "production_high_severity_bandit_results_transfer_by_byte_identity": true,
+      "unchanged_python_ruff_results_transfer_by_byte_identity": true
+    },
+    "validation": "Reviewer performed source/hash equivalence and narrow Ruff delta only, no unit/integration tests rerun. Root owns fresh local full pack, exact image and hosted retry; prior failed hosted run remains failed historical evidence.",
+    "verdict": "ACCEPTED"
+  },
+  "pr19_thread_dispositions": [
+    {
+      "discussion": "https://github.com/Lesram/intraday/pull/19#discussion_r4055307783",
+      "disposition": "PARTIALLY_ADDRESSED_UNSAFE_RECOMMENDATION_DECLINED",
+      "reason": "Replaced zero-fill lifecycle status does not prove successor lineage. Explicit pending diagnostic and withholding tests added; replacement support remains deferred."
+    },
+    {
+      "discussion": "https://github.com/Lesram/intraday/pull/19#discussion_r4055307798",
+      "disposition": "PARTIALLY_ADDRESSED_FAIL_CLOSED",
+      "reason": "Daily quality blocks replaced orders; exact reconciliation eligibility intentionally remains narrower until reliable replacement lineage exists."
+    },
+    {
+      "discussion": "https://github.com/Lesram/intraday/pull/19#discussion_r4055307829",
+      "disposition": "FIXED",
+      "reason": "Pinned no-follow descriptor reads, hardlink refusal, full file signatures and adversarial path-swap tests prevent untrusted snapshots."
+    },
+    {
+      "discussion": "https://github.com/Lesram/intraday/pull/19#discussion_r4055307844",
+      "disposition": "FIXED",
+      "reason": "Finite-number and exact JSON-type validation rejects malformed receipt direction/frame/age fields."
+    }
+  ],
+  "pull_request": "https://github.com/Lesram/intraday/pull/19",
+  "remaining_release_gates": [
+    "Consolidated required organism/state/exits/sizing/reconciliation/config tests and full replay/artifact pack for this committed source, fresh index/snapshot/grep/spec drift and bounded secret scan. Preserve explicit installed-history unavailable skip and original failed-nightly receipts; never count repeated environmental or targeted cases twice.",
+    "Required hosted acceptance for current PR source plus explicit review evidence; this artifact is not a human GitHub approval.",
+    "New immutable image built from this source, actual source hashes/freeze/baseline and isolated signed-backup warm-start/model/component preservation verified. Earlier 05e67 image/rehearsal is insufficient.",
+    "Closed paper market, fresh broker-flat/no-open-order observation, fresh verified DB/brain backups, archived prior freeze and exact approved new UTC cutoff; recovery controls held during transition.",
+    "Authenticated installed source/image/config, scheduler running=true, engine initialized=true, research_locked, ML=false/fixed-risk=true, configured verified baseline/hash, clear exact accounting and preserved history. Generic API readiness alone is insufficient.",
+    "Install final reviewed private daily binding/script/plist and retained original history; verify secure permissions, loaded schedule and controlled preclose refusal/receipt. Restore recovery only after installed acceptance.",
+    "Natural Monday session, realized fills, pending-close recovery, EOD flatten and after-close complete evidence remain unproven until observed; no profitability or clean-cohort claim."
+  ],
+  "residual_limitations": [
+    "Existing lifespan attempts cancel_all_open_orders before baseline verification. A failed baseline leaves no organism tick task, but lifespan catches the error and can continue serving API. Controlled flat/no-open-order rollout and actual scheduler acceptance are mandatory.",
+    "Unconfigured baseline returns explicitly unverified rather than stopping all test/research engines. Actual deployment must pin the configured path and reject unverified state; host wrapper does so.",
+    "Frozen caller can emit training-submitted activity and training metadata even when trainer submission is a locked no-op. policy_lock and actual trainer state, not those legacy messages, govern interpretation.",
+    "Trade/risk/session bookkeeping continues. The lock pins influencing policy/models; it does not erase lifetime history or certify inherited clean evidence.",
+    "Replacement lineage remains unsupported; future replaced orders produce pending accounting and BLOCKED evidence. Earlier read-only aggregate showed no existing replaced/pending_replace backlog, which is not proof of future support.",
+    "Observed development-fallback model signing is corruption detection, not independent secret-key authenticity; no key bypass or guessed key is authorized.",
+    "Host job requires awake logged-in Mac, Docker and endpoint availability; no automatic notification/recovery/retry, and next-day broker state cannot reconstruct a missed same-day attestation."
+  ],
+  "review_scope": "Read-only bounded review of default research policy lock, configured retained-model/component baseline, error and startup propagation, admin mutation guards, host evidence adapter, freeze/snapshot/docs and PR19 thread dispositions. This is not a new full-codebase or deployment audit. Addendum independently reviews seven tests-only compatibility repairs and workflow coverage delta at91d02bf, and binds root independent watchdog review. Final addendum reviews only checkout-relative forensic-test subprocess cwd and explicit success assertion at49d3e314; all runtime source unchanged.",
+  "reviewed_at_utc": "2026-09-21T07:38:15.663854+00:00",
+  "reviewer_actions": {
+    "broker_calls": false,
+    "github_approval_or_thread_resolution": false,
+    "merge_or_deployment": false,
+    "only_written_file": "artifacts/operations_evidence/policy_lock_review.json",
+    "runtime_actions": false,
+    "scope_note": "This addendum changed only this review artifact. Earlier separate watchdog implementation was performed by this agent and is covered by root independent review, not this agent self-approval.",
+    "source_edits": false,
+    "tests_rerun": false
+  },
+  "rollback": {
+    "reason": "PR17 ignores close_accounting.json/entry_evidence.jsonl and its full brain save can delete them; it can also re-enable promotion/transfer/training. Never boot PR17 against candidate state after candidate activity.",
+    "required": "Preserve full candidate DB/brain/broker evidence and every cutoff; reconcile intervening fills and use separately validated recovery migration/copy. Do not erase the new evaluation boundary or historical rows.",
+    "rule": "STOP_AND_PRESERVE"
+  },
+  "schema_version": 1,
+  "source_equivalence": {
+    "core_policy_baseline_freeze_source_hashes_all_identical": true,
+    "entire_backend_tree_identical": true,
+    "identical_previous_bindings": 24,
+    "previous_binding_count": 26,
+    "prior_source_sha": "20420916dfee1f3957a6278065b7e654c144a2e1",
+    "reviewed_changed_previous_bindings": {
+      ".github/workflows/paper-readiness.yml": "Adds all seven repaired test modules to operational step; removes two duplicate individual nodes from later step without removing coverage.",
+      "artifacts/operations_evidence/final_readiness_plan.json": "Explicitly expands scope for watchdog policy observation and classified fixture/environment follow-ups."
+    }
+  },
+  "source_review_history": [
+    {
+      "original_source_sha256": {
+        ".dockerignore": "4abe59e5c2105174af1e7fa210a79c570aa6bf86486c8e7c2c36e15e670baffc",
+        ".github/workflows/paper-readiness.yml": "73f6211117af53037ff12871e874fac630a00ed225117d697071cfb38a0245b3",
+        "artifacts/operations_evidence/final_readiness_plan.json": "40fd8c8b5d27d012d11026c9c677c8598a1f59c46693b26e4dcce5abcf549414",
+        "artifacts/operations_evidence/task_plan.json": "38259c63d2895b54531cd2c51de57cef8bd51769140a9f4fec61a2bc5ff7632e",
+        "artifacts/phase2/param_freeze.json": "4cbbdb73357d28f25c491a675469a73dbb9d71aa2eb41669182ae16ef97db02b",
+        "artifacts/phase2/research_policy_baseline.json": "1c31a7eddd75444fd46cea81260fb27f92646634ccbd36fa0e53779bce849be4",
+        "backend/api/routes/settings.py": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
+        "backend/organism/background_trainer.py": "38d283265f0242001249b6ace042e9da1e30b13311bf4fc19bc25a72fb4748b2",
+        "backend/organism/live_engine.py": "9a842d77ac202ee0823a6da9edf512c4fab2ea697c825130d4777f8e00d43212",
+        "backend/organism/research_baseline.py": "598af0f5aa6a2bb0b09964316cfc28e3840fdcfa3219c8cbf737a90e56f492bb",
+        "backend/organism/research_policy.py": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
+        "backend/organism/scheduler.py": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c",
+        "backend/organism/trading_phase.py": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
+        "docs/architecture/mapss.md": "3244e20cd083d159e2ee7018c8bb15f76a42b68ddc2a7dafde18641ac76805d4",
+        "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "c092d9210a63dae65ea24e2ac6abd8a105894394bcdc9d93f31a1207be48339d",
+        "docs/runbooks/PAPER_DAILY_EVIDENCE.md": "326610550c3ce00b404131892c2a3ace88dcfec0a7d9ba2292a4a858bf509a07",
+        "ops/launchd/com.intra.paper.daily-evidence.plist": "fd24239f4cac3dc8774972c15d543f06a152c7c7a519f197f4cb7923554cf28b",
+        "scripts/ops/paper_daily_evidence.py": "90ecb533fff61f69d18a4fff06fab69900b5fa7db762832c3c04c86679f72217",
+        "scripts/ops/paper_daily_host.py": "70a872fac977aad653fe12276c5743e7e7297f4009eff18c6362580d3108d148",
+        "scripts/phase2_freeze.py": "c1ce6bb37dc36acefef9ef9b7da841f6b6869c497787c8ad29b01a3642492d48",
+        "scripts/runtime/write_runtime_snapshot.py": "8de4d7d366f4e9e40dc468d37c2fa6354d8018d6f729582419bbead63ef574f3",
+        "tests/test_paper_daily_host.py": "8af74ad093ebfb6935f96fa594c90b85aef5f36b45f2b57910e4c2c7033f5df1",
+        "tests/test_phase2_freeze.py": "b4c440d9366cb676c891139da47d7372f2be5b94c30e276f3a4e095fd0590d7e",
+        "tests/test_research_baseline.py": "e30b69bb90014058c70fd72e7cce29ac7dcf1aca8ea528ed6f9f901df1cf3d29",
+        "tests/test_research_policy_lock.py": "d51b0d17626b6a169507b9ba4797bd6cbb74288376e19d48f4c0206ccb31f384",
+        "tests/test_runtime_snapshot_auth.py": "9cdbe2d9c1ab467bc8b7f6ecdf85d1f05eca264aa8b466b50f286658c5451617"
+      },
+      "review_artifact_sha256": "b0c73c170b741bbee3e7f9059dcb116babd9817d7c84490d341c8519dd551190",
+      "source_sha": "20420916dfee1f3957a6278065b7e654c144a2e1",
+      "verdict": "SOURCE_REVIEW_ACCEPTED_RELEASE_GATES_PENDING"
+    },
+    {
+      "review_artifact_sha256": "81102aff090dff7bfb21ec11778dce0501d57e589b653f1ea5329c816c715219",
+      "source_sha": "91d02bf158312a82bba9bf76262b5f6511ff3b31",
+      "verdict": "SOURCE_REVIEW_ACCEPTED_RELEASE_GATES_PENDING"
+    },
+    {
+      "review_artifact_sha256": "8f35a72744f6aba5f1fa1e45f59a25d9c6ddaf1e1626b13449956106ee1ab8b4",
+      "source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+      "verdict": "SOURCE_REVIEW_ACCEPTED_RELEASE_GATES_PENDING"
+    }
+  ],
+  "source_sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
+  "source_sha256": {
+    ".dockerignore": "4abe59e5c2105174af1e7fa210a79c570aa6bf86486c8e7c2c36e15e670baffc",
+    ".github/workflows/paper-readiness.yml": "e6f039a622cbfe9a301b518be271e4978bf98a61560c3b8dfc5b46d571ebd586",
+    "artifacts/operations_evidence/final_readiness_plan.json": "95a7c3aa7850cfaf5b89d49848f9239bab5898bc65c84ad805a9b655a2830a32",
+    "artifacts/operations_evidence/task_plan.json": "38259c63d2895b54531cd2c51de57cef8bd51769140a9f4fec61a2bc5ff7632e",
+    "artifacts/operations_evidence/watchdog_policy_review.json": "70b62f17a9717c41c2f1ebbc160b12674764de69b66b571aa1537c957a06b55c",
+    "artifacts/phase2/param_freeze.json": "4cbbdb73357d28f25c491a675469a73dbb9d71aa2eb41669182ae16ef97db02b",
+    "artifacts/phase2/research_policy_baseline.json": "1c31a7eddd75444fd46cea81260fb27f92646634ccbd36fa0e53779bce849be4",
+    "backend/api/routes/settings.py": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
+    "backend/organism/background_trainer.py": "38d283265f0242001249b6ace042e9da1e30b13311bf4fc19bc25a72fb4748b2",
+    "backend/organism/live_engine.py": "9a842d77ac202ee0823a6da9edf512c4fab2ea697c825130d4777f8e00d43212",
+    "backend/organism/research_baseline.py": "598af0f5aa6a2bb0b09964316cfc28e3840fdcfa3219c8cbf737a90e56f492bb",
+    "backend/organism/research_policy.py": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
+    "backend/organism/scheduler.py": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c",
+    "backend/organism/trading_phase.py": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
+    "docs/architecture/mapss.md": "3244e20cd083d159e2ee7018c8bb15f76a42b68ddc2a7dafde18641ac76805d4",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "c092d9210a63dae65ea24e2ac6abd8a105894394bcdc9d93f31a1207be48339d",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md": "326610550c3ce00b404131892c2a3ace88dcfec0a7d9ba2292a4a858bf509a07",
+    "docs/runbooks/PAPER_UPTIME.md": "75a0657011ee5de286bc4fb6ddad8d1dccee9c9aaf8f277a950a471f09183678",
+    "ops/launchd/com.intra.paper.daily-evidence.plist": "fd24239f4cac3dc8774972c15d543f06a152c7c7a519f197f4cb7923554cf28b",
+    "ops/launchd/com.intra.paper.watchdog.plist": "a88c1be536dd328dc877bfc0cc822b89f09b2596ad3be719844f8ea310965742",
+    "scripts/ops/paper_daily_evidence.py": "90ecb533fff61f69d18a4fff06fab69900b5fa7db762832c3c04c86679f72217",
+    "scripts/ops/paper_daily_host.py": "70a872fac977aad653fe12276c5743e7e7297f4009eff18c6362580d3108d148",
+    "scripts/ops/paper_watchdog.py": "a1809fb9dfbe6098b4e0cc22e533c8c7c242a279ab3813f152787cb1ced11baf",
+    "scripts/phase2_freeze.py": "c1ce6bb37dc36acefef9ef9b7da841f6b6869c497787c8ad29b01a3642492d48",
+    "scripts/runtime/write_runtime_snapshot.py": "8de4d7d366f4e9e40dc468d37c2fa6354d8018d6f729582419bbead63ef574f3",
+    "tests/test_apr10_patch_f4_forensic_guard.py": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
+    "tests/test_apr8_patch_a_force_save.py": "d2f4e1ea0117e65b534c4730ce72b009b02fc5cf55b834ec9d23e2ff9000b750",
+    "tests/test_audit_patch_queue_b1.py": "cc2b1f842c917928476c72ab8eb378566da243d8f6cd280cb8ed802f9663ff64",
+    "tests/test_audit_patch_queue_b2.py": "84355c438a072d2d72cee13fc1d2325cb8bd94e19748835570bbb2504070b152",
+    "tests/test_audit_patch_queue_j6.py": "a513ac713a72637ec31265284af8ff2754a53ce1e6c4120a710103ba293b415e",
+    "tests/test_monday_ci_workflows.py": "557064d1910823f4c0e7d7510d59dfb3ce2cf9247a1b89a29f963253aa84233d",
+    "tests/test_paper_daily_host.py": "8af74ad093ebfb6935f96fa594c90b85aef5f36b45f2b57910e4c2c7033f5df1",
+    "tests/test_paper_watchdog.py": "125fc665cf2f3c9c7a33d4666121c25c67e065ee25c35e16a0ee4310968ea1c7",
+    "tests/test_phase2_freeze.py": "b4c440d9366cb676c891139da47d7372f2be5b94c30e276f3a4e095fd0590d7e",
+    "tests/test_remediation_wave_b.py": "0e85234402c0ed3c06edb40fee4c3228e529acdd09b054903ab45b4fd9c14473",
+    "tests/test_research_baseline.py": "e30b69bb90014058c70fd72e7cce29ac7dcf1aca8ea528ed6f9f901df1cf3d29",
+    "tests/test_research_policy_lock.py": "d51b0d17626b6a169507b9ba4797bd6cbb74288376e19d48f4c0206ccb31f384",
+    "tests/test_runtime_snapshot_auth.py": "9cdbe2d9c1ab467bc8b7f6ecdf85d1f05eca264aa8b466b50f286658c5451617",
+    "tests/test_v12_baseline_invariants.py": "d00573c0c0065cfcbf7752ad4dddb49297fc3f2006c5f441432fe271fd7bfa0c"
+  },
+  "task_id": "monday-paper-policy-lock-independent-source-review",
+  "test_fixture_repair_review": {
+    "acceptance": [
+      "Real constructor supplies complete close-accounting state while mocked clients and private tmp_path retain isolation.",
+      "Standalone sidecar tests add actual RLock and status fixtures supply explicit accounting error/raw count; no global runtime bypass.",
+      "One legacy production-ML primitive test locally monkeypatches the lock false; locked production behavior tests remain unchanged.",
+      "Regressive save now must raise at authoritative publication before any checkpoint is written; old manifest bytes and195 trade count are preserved.",
+      "Committed May snapshots are compared with their actual498-trade/-634.9 provenance; missing raw input explicitly reports unavailable. No invented or copied raw history.",
+      "Optional installed nonshrink audit still enforces>=498 when provided; absent input skips with explicit reason instead of claiming a deployed-data pass."
+    ],
+    "evidence_report": "artifacts/operations_evidence/policy_legacy_fixture_implementation.json",
+    "evidence_report_sha256": "421862f36bae98cdce4654ec7dee616271a88920b8c881b6137b479e6ec9e64b",
+    "files": {
+      "tests/test_apr10_patch_f4_forensic_guard.py": "a8399fca2d69473461d97e95f528c4a1e4fb7e293552d6be871761731e4acb3e",
+      "tests/test_apr8_patch_a_force_save.py": "d2f4e1ea0117e65b534c4730ce72b009b02fc5cf55b834ec9d23e2ff9000b750",
+      "tests/test_audit_patch_queue_b1.py": "cc2b1f842c917928476c72ab8eb378566da243d8f6cd280cb8ed802f9663ff64",
+      "tests/test_audit_patch_queue_b2.py": "84355c438a072d2d72cee13fc1d2325cb8bd94e19748835570bbb2504070b152",
+      "tests/test_audit_patch_queue_j6.py": "a513ac713a72637ec31265284af8ff2754a53ce1e6c4120a710103ba293b415e",
+      "tests/test_remediation_wave_b.py": "0e85234402c0ed3c06edb40fee4c3228e529acdd09b054903ab45b4fd9c14473",
+      "tests/test_v12_baseline_invariants.py": "d00573c0c0065cfcbf7752ad4dddb49297fc3f2006c5f441432fe271fd7bfa0c"
+    },
+    "findings": [],
+    "limits": [
+      "Snapshot self-consistency does not independently recompute historical metrics without the original CSV.",
+      "Root still owns actual installed history preservation and complete source-bound suite acceptance."
+    ],
+    "runtime_behavior_changed": false,
+    "skip_reason": "Installed-history audit unavailable without explicit absolute INTRA_INSTALLED_HISTORY_CSV; no installed preservation attestation from this suite.",
+    "targeted_result": {
+      "failed": 0,
+      "passed": 91,
+      "skipped": 1
+    },
+    "verdict": "ACCEPTED"
+  },
+  "validation_evidence": {
+    "do_not_sum_overlapping_targeted_runs": true,
+    "environment_followups": {
+      "classification": "10 Node execution environment plus17 isolated loopback cases passed in suitable isolated environments. Original broad-nightly red run remains historical failed evidence; these are distinct reruns, not retroactive pass.",
+      "final_source_full_pack_pending": true,
+      "independently_parsed": [
+        {
+          "cases": 10,
+          "errors": 0,
+          "failures": 0,
+          "path": "artifacts/operations_evidence/policy_nightly.node.xml",
+          "sha256": "9a3f33c29f1eff734f95bac00e98f0a526c82a90d1d351a2cb36e3b03f1c65ab",
+          "skips": 0
+        },
+        {
+          "cases": 17,
+          "errors": 0,
+          "failures": 0,
+          "path": "artifacts/operations_evidence/policy_nightly.ports.xml",
+          "sha256": "1805e8784f2b5954937d39ecf41270d06080cc702a6d58a6b3f5398949a158e4",
+          "skips": 0
+        }
+      ]
+    },
+    "full_pack_for_this_source_pending": true,
+    "independently_parsed_existing_junit": [
+      {
+        "cases": 45,
+        "errors": 0,
+        "failures": 0,
+        "path": "artifacts/operations_evidence/policy_baseline_final.xml",
+        "sha256": "6fca2ba08c90a16afa45a7e6d95ec0b2746df9d4124d7a52feaaef883157d251",
+        "skips": 0
+      },
+      {
+        "cases": 140,
+        "errors": 0,
+        "failures": 0,
+        "path": "artifacts/operations_evidence/monday_daily_host.xml",
+        "sha256": "2171fe286f105661d9b7ba3d7d4774040c89d1ec68b3558545d8c3405f6d7429",
+        "skips": 0
+      },
+      {
+        "cases": 12,
+        "errors": 0,
+        "failures": 0,
+        "path": "artifacts/operations_evidence/policy_freeze_targeted.xml",
+        "sha256": "617f37ec309aea08af07ef28d9312ce056d8d5737101cf6d13842bb93811bb2a",
+        "skips": 0
+      }
+    ],
+    "old_950_case_pack_does_not_certify_new_policy_delta": true,
+    "policy_agent_report": "artifacts/operations_evidence/policy_lock_implementation.json",
+    "policy_agent_targeted_reported": {
+      "failed": 0,
+      "passed": 294,
+      "reviewer_did_not_rerun": true
+    }
+  },
+  "verdict": "SOURCE_REVIEW_ACCEPTED_RELEASE_GATES_PENDING",
+  "watchdog_independent_review_dependency": {
+    "file_bindings_verified": true,
+    "implementer": "this review agent, separate bounded implementation task",
+    "independent_review_artifact_unchanged": true,
+    "note": "No self-approval of watchdog implementation is claimed; root independently accepted the exact four-file delta.",
+    "path": "artifacts/operations_evidence/watchdog_policy_review.json",
+    "reviewer": "root",
+    "sha256": "70b62f17a9717c41c2f1ebbc160b12674764de69b66b571aa1537c957a06b55c",
+    "status": "accepted_source"
+  },
+  "workflow_contract_repair_addendum": {
+    "all38_previous_bindings_identical": true,
+    "final_consolidated_validation_pending": true,
+    "only_changed_file": "tests/test_monday_ci_workflows.py",
+    "prior_source_sha": "91d02bf158312a82bba9bf76262b5f6511ff3b31",
+    "reason": "Test now checks full baseline-invariants module is included in operational step when former two selected nodes leave later step; preserves coverage assertion and existing timeout/JUnit/durable upload checks. No test suppression or production change.",
+    "runtime_and_workflow_configuration_unchanged": true,
+    "source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+    "test_rerun_by_reviewer": false,
+    "verdict": "ACCEPTED"
+  }
+}

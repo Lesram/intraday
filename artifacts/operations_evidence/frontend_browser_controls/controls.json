@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "checks": [
+    "missing_build_fails",
+    "occupied_port_fails_without_killing_existing_server",
+    "prohibited_auth_transport_blocked_and_fails",
+    "close_failure_cannot_skip_preview_cleanup_or_pass"
+  ],
+  "limit": "Close fault injected after real browser close, exercising lost-ack cleanup path; no browser intentionally leaked."
+}

@@ -265,9 +265,12 @@ def test_live_entry_order_uses_strategy_governor_as_hard_gate() -> None:
 
     import pytest
 
+    from backend.organism.governance import GovernanceController
     from backend.organism.live_engine import OrganismLiveEngine
 
     engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine.governance = GovernanceController()
+    assert not engine.governance.is_trading_halted
     engine._tick_count = 7
     engine._session_id = "test"
     engine._streaming_provider = None
@@ -298,9 +301,12 @@ def test_live_entry_order_persists_strategy_identity_on_allowed_submit() -> None
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
 
+    from backend.organism.governance import GovernanceController
     from backend.organism.live_engine import OrganismLiveEngine
 
     engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine.governance = GovernanceController()
+    assert not engine.governance.is_trading_halted
     engine._tick_count = 8
     engine._session_id = "test"
     engine._streaming_provider = None

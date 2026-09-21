@@ -1,0 +1,47 @@
+{
+  "task_id": "monday-preparation-20260920",
+  "scope": "Repair verified PR19 review findings and verify closed-market operational readiness for Monday September 21",
+  "branch": "codex/operations-evidence-integrity",
+  "base_candidate": "a9c20cd663f5cbd1540460b41329928617fba8e2",
+  "code_owners": {
+    "accounting_contract": [
+      "backend/organism/live_engine_fills.py",
+      "tests/test_live_engine_fill_accounting.py",
+      "tests/test_pending_close_accounting.py"
+    ],
+    "daily_evidence_contract": [
+      "scripts/ops/paper_daily_evidence.py",
+      "tests/test_paper_daily_evidence.py",
+      "docs/runbooks/PAPER_DAILY_EVIDENCE.md"
+    ],
+    "root": [
+      "docs/engineering/MONDAY_PREPARATION_2026-09-21.md",
+      "artifacts/operations_evidence/",
+      "required generated artifacts and audit index"
+    ]
+  },
+  "acceptance": [
+    "Reproduce and fix valid review findings with regression tests",
+    "Independent review of final source",
+    "Required organism, reconciliation, safety and replay tests pass",
+    "Full artifact pack and audit index updated",
+    "Frozen surface verifies without reset",
+    "Feature branch and existing PR updated",
+    "Fresh runtime, broker and backup evidence distinguished from candidate acceptance"
+  ],
+  "operational_checks": [
+    "Authenticated read-only observer identity/status",
+    "Paper broker account, positions, open orders and calendar GET checks",
+    "Watchdog and schedules",
+    "Latest database backup isolated restore and brain archive verification",
+    "Monday pre-open, session and post-close acceptance runbook",
+    "Prebuild immutable candidate image from committed source; read-only network-disabled source/freeze verification without starting service"
+  ],
+  "constraints": [
+    "No strategy tuning or frozen change",
+    "No cutoff or learner reset",
+    "No operating deployment/restart or broker mutation",
+    "No new scheduler or alert messages",
+    "No credentials or private datasets in committed evidence"
+  ]
+}

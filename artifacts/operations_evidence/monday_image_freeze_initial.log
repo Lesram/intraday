@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "/app/scripts/phase2_freeze.py", line 192, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/app/scripts/phase2_freeze.py", line 180, in main
+    return verify()
+           ^^^^^^^^
+  File "/app/scripts/phase2_freeze.py", line 165, in verify
+    current = compute_surface()
+              ^^^^^^^^^^^^^^^^^
+  File "/app/scripts/phase2_freeze.py", line 69, in compute_surface
+    from backend.organism.alpha_scanner import AlphaScanner
+  File "/app/backend/organism/alpha_scanner.py", line 28, in <module>
+    from backend.utils.logger import get_logger
+  File "/app/backend/utils/logger.py", line 414, in <module>
+    audit_logger = AuditLogger()
+                   ^^^^^^^^^^^^^
+  File "/app/backend/utils/logger.py", line 224, in __init__
+    file_handler = logging.FileHandler(self.log_file)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/logging/__init__.py", line 1231, in __init__
+    StreamHandler.__init__(self, self._open())
+                                 ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/logging/__init__.py", line 1263, in _open
+    return open_func(self.baseFilename, self.mode,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 30] Read-only file system: '/app/audit_trail.log'

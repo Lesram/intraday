@@ -1,0 +1,8 @@
+{
+  "active_reference_sha256": "06d73b05cd31b99540e352226260b2aedb10ea83563caa4d7ddc73d1d4f625dc",
+  "tracked_reference_sha256": "0f2e6048cd08df5d113fc4f7613fe4beea242cf020552d6070e471c78a0c6697",
+  "active_cutoff": "2026-09-19T21:55:01.857005+00:00",
+  "tracked_historical_cutoff": "2026-07-07T20:36:49.008305+00:00",
+  "decision_surfaces_equal": true,
+  "reference_note": "Copied active metadata used only for validation; no clock reset or freeze change belongs to this PR. Original operating checkout untouched."
+}

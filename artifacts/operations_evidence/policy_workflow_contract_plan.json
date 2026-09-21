@@ -1,0 +1,23 @@
+{
+  "task_id": "policy-workflow-contract",
+  "scope": "Tests only: recognize that the full V12 baseline invariants file moved into the operational readiness command, replacing two classifier-only nodeids in the nightly harness command.",
+  "owned_files": [
+    "tests/test_monday_ci_workflows.py"
+  ],
+  "steps": [
+    "Remove stale individual-nodeid expectations from nightly harness contract.",
+    "Explicitly require the full V12 file in the operational readiness command.",
+    "Run targeted workflow tests network-denied withNodePATH."
+  ],
+  "constraints": [
+    "No runtime or workflow source changes.",
+    "Preserve durable failure-output assertions.",
+    "No commit; rootownsrelease."
+  ],
+  "status": "complete_targeted_green",
+  "tests_passed": 29,
+  "tests_failed": 0,
+  "runtime_behavior_changed": false,
+  "ruff": "passed",
+  "file_sha256": "557064d1910823f4c0e7d7510d59dfb3ce2cf9247a1b89a29f963253aa84233d"
+}

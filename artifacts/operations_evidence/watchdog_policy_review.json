@@ -1,0 +1,25 @@
+{
+  "reviewer": "root, independent of implementing agent",
+  "status": "accepted_source",
+  "reviewed_at_utc": "2026-09-21T07:10:02.061941+00:00",
+  "files": {
+    "scripts/ops/paper_watchdog.py": "a1809fb9dfbe6098b4e0cc22e533c8c7c242a279ab3813f152787cb1ced11baf",
+    "ops/launchd/com.intra.paper.watchdog.plist": "a88c1be536dd328dc877bfc0cc822b89f09b2596ad3be719844f8ea310965742",
+    "tests/test_paper_watchdog.py": "125fc665cf2f3c9c7a33d4666121c25c67e065ee25c35e16a0ee4310968ea1c7",
+    "docs/runbooks/PAPER_UPTIME.md": "75a0657011ee5de286bc4fb6ddad8d1dccee9c9aaf8f277a950a471f09183678"
+  },
+  "findings": [],
+  "acceptance": [
+    "Opt-in policy check uses local observer routes and Dockeridentityonly; brokerkeys never acquired",
+    "Exact shared release/policy/model-baseline verifier used",
+    "Scheduler running/engineinitialized explicitlyrequired",
+    "Policy failures appended afterservice recoverydecision; nohealthyAPIrestart",
+    "Fixed sanitized problems; notifications through existing opt-in mechanism",
+    "Bindingrechecked aftercollection; privatebytes/token notpersisted"
+  ],
+  "tests": "80targetedpassed byimplementer; fullcombinedrootrerunfollows",
+  "limitations": [
+    "Checks reportedstartupidentity, notcontinuousmodelmemoryattestation",
+    "No fullhostrebootdrill or externalnotificationtest"
+  ]
+}

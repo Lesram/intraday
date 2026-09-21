@@ -1,0 +1,95 @@
+{
+  "task_id": "research-paper-runtime-policy-lock",
+  "status": "implemented_targeted_green",
+  "base_sha": "bb74da3b2456e3bc016a4985424c35fef534b809",
+  "branch": "codex/operations-evidence-integrity",
+  "summary": "Default-safe explicit research lock preserves actual saved baseline and history while blocking automatic ML/Kelly promotion, transfer warm-start, background/synchronous training and settings mutation. Configured baseline startup assertion is wired before position reconstruction/trainer; root owns verifier implementation and approved identity artifact.",
+  "files_changed": [
+    "backend/organism/research_policy.py",
+    "backend/organism/trading_phase.py",
+    "backend/organism/background_trainer.py",
+    "backend/organism/live_engine.py",
+    "backend/organism/scheduler.py",
+    "backend/api/routes/settings.py",
+    "tests/test_research_policy_lock.py",
+    "tests/test_phase2_guarded_promotion.py",
+    "tests/test_h5_h4_h3_fixes.py",
+    "tests/test_h5_settings_governance.py",
+    "tests/test_audit_patch_queue_a.py",
+    "tests/test_audit_patch_queue_f3.py",
+    "tests/test_audit_patch_queue_f4.py",
+    "tests/test_audit_patch_queue_h3.py",
+    "tests/test_audit_patch_queue_i1.py",
+    "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+    "tests/test_audit_2_3_2_5_promotion_evolution.py"
+  ],
+  "source_hashes": {
+    "backend/organism/research_policy.py": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
+    "backend/organism/trading_phase.py": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
+    "backend/organism/background_trainer.py": "38d283265f0242001249b6ace042e9da1e30b13311bf4fc19bc25a72fb4748b2",
+    "backend/organism/live_engine.py": "9a842d77ac202ee0823a6da9edf512c4fab2ea697c825130d4777f8e00d43212",
+    "backend/organism/scheduler.py": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c",
+    "backend/api/routes/settings.py": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
+    "tests/test_research_policy_lock.py": "d51b0d17626b6a169507b9ba4797bd6cbb74288376e19d48f4c0206ccb31f384",
+    "tests/test_phase2_guarded_promotion.py": "6e1ec898a848ea330f9e7b9a2a23f6043ac9c03dd0bd752f71a204c66cdc261f",
+    "tests/test_h5_h4_h3_fixes.py": "18b5281f93941216c87058ed7f2df0b6516e1f42330323383bd3d7d751ccb94c",
+    "tests/test_h5_settings_governance.py": "13e7b28a464477dcc94c3b6fea48ce9626b0f517decc2ba4319d08faee6a20e9",
+    "tests/test_audit_patch_queue_a.py": "ad49775c100e3d36e84cdc02b278bea36ae7ff8b9e66db023145c86ed4ace3d6",
+    "tests/test_audit_patch_queue_f3.py": "a336dcdfb44af9e1a16db86567b55139f4535ae9e8b31523eabf6e9b6d6a6eca",
+    "tests/test_audit_patch_queue_f4.py": "ffede7219b14ff22f3b7262e3681114392a75595598969b6d590c422b2e6aff2",
+    "tests/test_audit_patch_queue_h3.py": "7d2b8a4a12e692b5f3552f4a5f6de2115498cfbf15c406ab6f1770e5f5ebf3b2",
+    "tests/test_audit_patch_queue_i1.py": "8f2376126a954f991dda602d96de889319b8fa8f1bb57200480598765d8b82f1",
+    "tests/test_audit_0_2_bg_trainer_same_holdout.py": "e6693f2062a53c14b87cf4a0a36cf8d1782ef00e59bf3f19b5e95f01c197e1fb",
+    "tests/test_audit_2_3_2_5_promotion_evolution.py": "6c0ec592fb94936938108aac3ee7ac06ee9b62f5037d9666e05ac1083fbfe2cf"
+  },
+  "commands": [
+    "Isolated network-denied pytest via env -i with mock broker/data, test/shadow, disabled plugin autoload, pytest_asyncio/pytest_timeout/no cacheprovider; exact module selection in policy_lock_targeted_output.txt",
+    "ruff check changed runtime sources + new lock tests, compared by file/rule/message against HEAD; no new findings",
+    "python scripts/phase2_freeze.py --verify using reviewed IEX/V2/flat_policy/50000 and configured approved baseline path"
+  ],
+  "tests_passed": 294,
+  "tests_failed": 0,
+  "targeted_output": "artifacts/operations_evidence/policy_lock_targeted_output.txt",
+  "ruff_delta": {
+    "current_findings": 50,
+    "base_findings": 50,
+    "new_findings": []
+  },
+  "freeze": {
+    "verified": true,
+    "FROZEN_AT": "2026-09-21T06:49:03.260617+00:00",
+    "original_six_sources_modified": false,
+    "semantic_surface_changed": true,
+    "authorization": "Release owner confirmed explicit user policy-lock/freeze transition authorization; root published expanded policy surface and new boundary."
+  },
+  "runtime_behavior_changed": true,
+  "docs_updated": "Root owns architecture/snapshot/release updates.",
+  "acceptance": [
+    "44 new policy cases retain honest bootstrap classification and unknown qualified count, all counts/expectancy unable to promote.",
+    "Mature profitable engine uses actual ATR fixed risk sizer with nonzero shares and zero Kelly contributions.",
+    "No background executor or worker training, accepted/rejected/error/cancelled in-flight completions cannot swap or trigger fallback, sync training cannot mutate model/calibration map/evolution.",
+    "Real synthetic300-trade brain save/reload retains nondefault exit scales/feature weights/generation/history/cumulative PnL; no transfer warm-start.",
+    "Configured baseline verifier failure aborts initialize before broker reconstruction/trainer/initialized flag.",
+    "API403 precedes settings save/broadcast/dispatch with or without scheduler; scheduler guard precedes tick/subscription mutation; engine defense precedes component mutation.",
+    "Legacy training/governance tests locally opt out only to exercise retained primitives; production default and new lock tests remain locked."
+  ],
+  "warm_reload_assertions": [
+    "Verify configured baseline is true/verified with approved content hash before readiness.",
+    "Exact effective_policy_params/hash must match approved actual saved baseline; raw ledger/learner counts and prior model identities remain unchanged.",
+    "ML isolation true, fixed risk true, actual is_learning false for mature history, research_locked phase, qualified_trade_count null.",
+    "Background executor absent, train_count unchanged, no transfer/warm-start invocation; retained saved ML-reversal model/calibration MAP fingerprints equal baseline.",
+    "Negative mismatched baseline/model/context must raise before position reconstruction/trainer startup."
+  ],
+  "risks": [
+    "No claim of profitability or clean qualified historical evidence.",
+    "Saved-model reversal exits intentionally remain active; main-book ML influence and future model promotion are locked.",
+    "Protective exit/EOD and full replay regression acceptance owned by root consolidated suites.",
+    "Policy source constant has no environment unlock; changes require reviewed release/new forward boundary.",
+    "Automatic accumulated bookkeeping/outcome counts are retained; influencing parameter/model projection is pinned."
+  ],
+  "follow_ups": [
+    "Root full safety/replay/artifact pack, reviewer approval, source commit/PR and controlled deployment.",
+    "Root verified real-state updated candidate rehearsal with configured baseline.",
+    "Continue deferred replacement-lineage ingestion/security signing hardening separately."
+  ]
+}

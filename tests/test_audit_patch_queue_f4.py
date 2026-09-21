@@ -35,6 +35,11 @@ class TestTrainResultField:
 
 class TestGetResultPreservesIsTrained:
 
+    @pytest.fixture(autouse=True)
+    def unlocked_legacy_training_policy(self, monkeypatch):
+        """Exercise retained trainer primitives; runtime default stays locked."""
+        monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
+
     def _make_trainer_with_raw(self, raw: dict) -> BackgroundTrainer:
         trainer = BackgroundTrainer()
         trainer._is_training = True
@@ -92,6 +97,11 @@ class TestGetResultPreservesIsTrained:
 # ==============================================================================
 
 class TestApplyResultIsTrained:
+
+    @pytest.fixture(autouse=True)
+    def unlocked_legacy_training_policy(self, monkeypatch):
+        """Exercise retained trainer primitives; runtime default stays locked."""
+        monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
 
     def test_is_trained_false_does_not_flip_to_true(self):
         """Accepted result with clf+reg state but is_trained=False must NOT
@@ -188,6 +198,11 @@ class TestApplyResultIsTrained:
 # ==============================================================================
 
 class TestRejectedResultUnchanged:
+
+    @pytest.fixture(autouse=True)
+    def unlocked_legacy_training_policy(self, monkeypatch):
+        """Exercise retained trainer primitives; runtime default stays locked."""
+        monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
 
     def test_rejected_result_does_not_touch_is_trained(self):
         """Rejected result must not modify signal_gen._is_trained."""

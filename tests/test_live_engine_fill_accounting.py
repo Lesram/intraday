@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from backend.infra.schemas import Order
+from backend.infra.schemas import Execution, Order
 from backend.organism.live_engine_fills import _FillLookupMixin, _closed_position_fills
 
 START = datetime(2026, 8, 3, 14, tzinfo=UTC)
@@ -117,6 +117,9 @@ def test_all_27_observed_positions_replay_to_broker_cash_flows_without_mutation(
 @pytest.mark.parametrize("change", [
     {"filled_qty": Decimal(1)}, {"filled_qty": Decimal(3)},
     {"status": "partially_filled"}, {"status": "accepted"},
+    {"status": "replaced"}, {"status": "pending_replace"},
+    {"status": "pending_cancel"}, {"status": "done_for_day"},
+    {"status": "stopped"}, {"status": "calculated"},
     {"avg_fill_price": Decimal("NaN")}, {"avg_fill_price": Decimal("Infinity")},
     {"avg_fill_price": Decimal(0)}, {"filled_qty": Decimal(-1)},
     {"broker_order_id": None}, {"broker_order_id": "synthetic-1"},
@@ -148,11 +151,22 @@ def test_missing_anchor_duplicate_anchor_fractional_or_unbalanced_position():
     assert calculate([entry, order(2, "sell", 2, 103)], direction=0) is None
 
 
+def test_balanced_replacement_summaries_and_links_do_not_prove_exact_cashflows():
+    predecessor = order(1, "buy", 2, 100, qty=Decimal(6), status="replaced",
+                        attributes={"source": "organism", "replaced_by": "synthetic-2"})
+    successor = order(2, "buy", 4, 100,
+                      attributes={"source": "organism", "replaces": "synthetic-1"})
+    rows = [predecessor, successor, order(3, "sell", 6, 99)]
+    assert sum(row["filled_qty"] * (1 if row["side"] == "buy" else -1) for row in rows) == 0
+    assert calculate(rows) is None  # Summary-derived links/fills are insufficient proof.
+
+
 @pytest.fixture
 async def database(tmp_path):
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'orders.db'}")
     async with engine.begin() as conn:
         await conn.run_sync(Order.__table__.create)
+        await conn.run_sync(Execution.__table__.create)
     maker = async_sessionmaker(engine, expire_on_commit=False)
     try:
         yield maker
@@ -225,7 +239,6 @@ async def test_missing_identity_or_database_failure_is_unknown():
 
 @pytest.mark.parametrize("complete,expected,source,partial,restarted", [
     (True, 5.78, "db_position_fills", True, False),
-    (False, 4.86, "db_fill_approximate", False, False),
     (True, 5.78, "db_position_fills", True, True),
 ])
 async def test_real_reconciliation_updates_future_risk_once_and_keeps_fallback(
@@ -265,17 +278,10 @@ async def test_real_reconciliation_updates_future_risk_once_and_keeps_fallback(
     assert trade.pnl == pytest.approx(expected)
     assert trade.shares == 6 and trade.price_source == source
     assert trade.had_partial_exits is partial
-    assert trade.is_reconciliation_artifact is restarted
-    if restarted:
-        # Preserve the existing restart/artifact classification boundary.
-        assert trade.exit_reason == "reconciliation_adjustment"
-        assert engine.learner.state.cumulative_pnl == 0
-        assert "TSLA" not in engine._symbol_daily_pnl
-        engine.kelly_sizer.record_trade.assert_not_called()
-    else:
-        assert engine.learner.state.cumulative_pnl == pytest.approx(expected)
-        assert engine._symbol_daily_pnl["TSLA"] == pytest.approx(expected)
-        engine.kelly_sizer.record_trade.assert_called_once_with("unknown", pytest.approx(expected))
+    assert trade.is_reconciliation_artifact is False
+    assert engine.learner.state.cumulative_pnl == pytest.approx(expected)
+    assert engine._symbol_daily_pnl["TSLA"] == pytest.approx(expected)
+    engine.kelly_sizer.record_trade.assert_called_once_with("unknown", pytest.approx(expected))
     engine._save_brain.assert_called_once()
     if complete:
         engine._lookup_exit_fill_from_db.assert_not_awaited()

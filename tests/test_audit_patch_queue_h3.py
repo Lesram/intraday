@@ -257,6 +257,11 @@ class TestPerSignalVsAggregateReturnDamping:
 
 class TestApplyResultPreservesCalibration:
 
+    @pytest.fixture(autouse=True)
+    def unlocked_legacy_training_policy(self, monkeypatch):
+        """Exercise retained trainer primitives; runtime default stays locked."""
+        monkeypatch.setattr("backend.organism.research_policy.RESEARCH_POLICY_LOCKED", False)
+
     def _make_signal_gen(self) -> MLSignalGenerator:
         return MLSignalGenerator()
 

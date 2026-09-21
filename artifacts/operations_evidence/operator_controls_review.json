@@ -1,0 +1,181 @@
+{
+  "accepted_contract": [
+    "Resume clears only manual latch; environment/daily-loss/drawdown and research locks remain. Failed persistence keeps entries halted.",
+    "No forced flatten/tick cancellation; protective exit and EOD source unchanged. Only exact attributed organism entry orders are cancellation candidates; protective/unrelated orders are preserved.",
+    "Partial fills, replacement linkage, unknown status, missing IDs, timeout or audit failure produce explicit incomplete outcomes.",
+    "Daily/watchdog validate the current durable record against actual engine state, permit legitimate manual halt and refuse faults/mismatch.",
+    "Main-book ML/Kelly isolation and retained model baseline remain intact; docs and snapshot cover new operator sources/config/status."
+  ],
+  "blocking_findings": [],
+  "comparison_source_sha": "9bda9ff72501b44f74604d279e52074d2e40b233",
+  "frozen_surface": {
+    "actual_archived_transition_required": true,
+    "engine_dispatch_routing_and_exit_methods_source_identical": true,
+    "expanded_operator_sources_and_environment_included": true,
+    "fixture_cutoff": "2026-09-21T08:20:53.394292+00:00",
+    "fixture_is_actual_deployment": false,
+    "fixture_sha256": "47224d7a1567ddeb360f7b9945aae3503a7782d32449bdd55d931858b9a798b4",
+    "original_groups_identical": {
+      "exit_env": true,
+      "regime_policy": true,
+      "routing_data_env": true,
+      "source_hashes": true,
+      "strategy_config": true,
+      "strategy_config_hash": true
+    },
+    "original_six_hashes": {
+      "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
+      "entry_gates_dispatch": "85ef0b9525f7cb4b2b8b343942f67a50833c36bdde4b644446f99de923f172a6",
+      "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
+      "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
+      "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",
+      "selector_routing": "bed6a91e7f95f3ad11e159767ecdb6d54b42c022997df3b801bcbe20ad8628d2"
+    }
+  },
+  "pull_request": "https://github.com/Lesram/intraday/pull/19",
+  "remaining_gates": [
+    "Fresh required regression/replay/artifact pack, index/snapshot/grep/spec drift and secret/static delta acceptance.",
+    "New immutable image source/freeze/baseline verification and isolated trusted full-save/control/model preservation rehearsal.",
+    "Current PR hosted operational acceptance and review; this is not a merge or human GitHub approval.",
+    "Update private SOURCE/APPROVED_HEAD and bind all private helper hashes to final release; old49/9bda pins are not current approval.",
+    "Approved held backups, immutable prior freeze archive and actual cutoff, followed by authenticated installed runtime/control/source/image/config and host recovery acceptance.",
+    "Observe natural data/ticks, fills, close accounting, EOD and after-close evidence; no forced trades."
+  ],
+  "residual_limitations": [
+    "Command serialization assumes one API process; current Dockerfile explicitly uses one uvicorn worker. Multi-worker operation requires another design/review.",
+    "Drained engine tick does not prove cancellation of asynchronous outbox/broker orders already admitted. Emergency cancellation may correctly remain incomplete until reconciled.",
+    "Cancellation accepts at most256 broker-open orders, with12-second total deadline; oversized/unknown/linked/replaced/changing inventory is withheld.",
+    "Other existing drawdown/OrderService cancellation mechanisms are outside this repair. Replacement fill attribution remains unsupported and blocks qualification.",
+    "External operator authority survives brain replacement; full-host loss must fail closed and needs reviewed restoration. Existing jobs do not certify off-host/full-host recovery.",
+    "Existing lifespan startup cancellation precedes engine baseline verification: rollout remains closed-market, flat/no-orders and recovery held.",
+    "Offline warm-start uses explicit unavailable scheduler acknowledgement and controlled fixtures; no installed admin rehearsal, natural-session fill/EOD proof or profitability is claimed.",
+    "Observed development-fallback model signatures do not establish independent secret-key authenticity. No key change/bypass performed.",
+    "Legacy CI/dependency debt remains outside this scoped approval. Prior candidate hosted success does not accept new code."
+  ],
+  "resolved_findings": [
+    {
+      "id": "detached_governance",
+      "resolution": "Actual engine governance is authoritative; commands synchronize legacy controllers; constructor and early initialize restore independent durable control."
+    },
+    {
+      "id": "daily_recovery_restart",
+      "resolution": "Separate manual/environment latches cannot be cleared by daily-loss recovery or legacy brain restore. Control authority lives outside brain save/recovery paths."
+    },
+    {
+      "id": "entry_admission_race",
+      "resolution": "Latch and atomic persistence precede first await; final entry/pyramid authorization rechecks governance. Bounded tick-lock drain never cancels the tick; already admitted outbox/broker orders are explicitly separate."
+    },
+    {
+      "id": "false_exit_availability",
+      "resolution": "Requires actual initialized engine, running scheduler and no stop event before/after drain. Unavailable protection returns503 with durable halt, drained=false, protective_exits_active=false; UI preserves this distinction."
+    },
+    {
+      "id": "false_database_cancellation",
+      "resolution": "Mandatory broker-open inventory before/after, including empty DB. Exact broker/client joins include locally terminal rows. No Order status mutation; unknown/oversized/changed/ambiguous inventory withholds completion."
+    },
+    {
+      "id": "newer_halt_failure_race",
+      "resolution": "Operator lock spans bounded cancellation/audit while tick lock stays free. Final same-epoch, fault-free verified durable halt and runtime readiness required; newer failed halt yields503 with audit ID."
+    },
+    {
+      "id": "historical_status_ambiguity",
+      "resolution": "/active observes actual operator halt/fault without DB; unknown resumed authority returns503. Audit resolve never resumes; UI labels audit history separately."
+    }
+  ],
+  "reviewed_at_utc": "2026-09-21T08:25:55.148237+00:00",
+  "reviewed_runtime_source_sha": "4c742dac61a683c7f3ec20b941ff3cb69678082d",
+  "reviewer": "combined_acceptance_review",
+  "reviewer_actions": {
+    "broker_or_admin_calls": false,
+    "merge_or_push": false,
+    "only_written_file": "artifacts/operations_evidence/operator_controls_review.json",
+    "runtime_mutations": false,
+    "source_edits": false
+  },
+  "schema_version": 1,
+  "scope": "Bounded independent review of durable operator halt, cancellation/status, monitor/snapshot/freeze integration, UI wording and tests; no full-codebase or installed-runtime certification.",
+  "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+  "source_sha256": {
+    ".github/workflows/paper-readiness.yml": "9f89a3e2887bb394b80d11142f2e9248d167f66f6e8c9d7e0ba68c076a5bbf2b",
+    "artifacts/monday_readiness/freeze_environment.json": "fb7cb7f32607a3d6f5a10da9f9f9aabd1e38a37a7cb1c167d72a19982a6d0989",
+    "artifacts/monday_readiness/frozen_surface_reference.json": "47224d7a1567ddeb360f7b9945aae3503a7782d32449bdd55d931858b9a798b4",
+    "artifacts/operations_evidence/final_readiness_plan.json": "acfebc3880dcc3ef0c2e85406186a09f43460a6f3c1bb8e998e84a231d663073",
+    "artifacts/operations_evidence/operator_readiness_plan.json": "d7e59f4afc4b1392275c45ad6de7a24271f069da8088c23b031e95da1510543b",
+    "artifacts/phase2/param_freeze.json": "47224d7a1567ddeb360f7b9945aae3503a7782d32449bdd55d931858b9a798b4",
+    "backend/api/routes/risk.py": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
+    "backend/organism/governance.py": "68a47b4a76f832e69ef1c9972b847598c92ed59c75f3531209f961aeedc8075d",
+    "backend/organism/live_engine.py": "4ec76a2e0548f9cbcbc8be294c169cc6d2ab732933054bcbe48a05ed52313ca9",
+    "backend/organism/operator_cancellation.py": "682ca48c61f0ce2899048b642be4f552c4ec166ca29afeabef91e528b8935984",
+    "backend/organism/operator_controls.py": "1542fa02cfd5d755fc4f9a3360595d8b8f0227cc023d80432cc1633816083da3",
+    "backend/organism/routes.py": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
+    "backend/services/risk_manager.py": "d3efb81f9e5ae6f6d3036133786dddff5f824028d95a80465cdb5385cb20b5ca",
+    "docs/architecture/mapss.md": "9aaf95e7a99ca2e5c47770df1cd7708da7b1629f767dfffbfe71d3a649ca2721",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "a950ea592f166de6565484b7cc0bebe25d992dba81480227fd8db25f0c0f6468",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md": "5b7a65449a92a939eac37aea8358a4b49bfd5e32a40016f3962eba248d0245da",
+    "frontend/src/features/organism/OrganismDashboard.tsx": "ef05edd0e7bfca1d6385e9445ee60583868674dab600cf17b5ef3afd2da904d8",
+    "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx": "657d3d2ca13428b1cc6861e770a7f86c3f1ff6195148b65ca4cb49d4732e1cdb",
+    "frontend/src/features/organism/organismApi.ts": "765d21b8394d06a78d3aa942d3ca380d9f92ec12d53d55d89f1e7ef7c8a570b6",
+    "frontend/src/features/risk/KillSwitchButton.tsx": "bdad52ebb278f561e4faf3361434760b9285a2e291bdf6a72d09878b3e30d8b2",
+    "frontend/src/features/risk/RiskDashboard.tsx": "89db7ac295219b4203c82065e0ea3defe6e57350fbe31a9ea8361a8b65da170c",
+    "scripts/ops/paper_daily_host.py": "5687bacd6cc9732f57357f8ef8bc9ccfa520687ce79164d86b44c43b0685365c",
+    "scripts/phase2_freeze.py": "3a3d679aedc0c47a73bd4f6997031fb38422dd59f1e1ec464334eeacb66103a2",
+    "scripts/runtime/write_runtime_snapshot.py": "abf05c1c5da7f321931885e1d03a827d227e09ce3e52ad2b817a2a67053e2ee9",
+    "tests/test_operator_controls.py": "de1f9374e747b27a464dbaafcea7a98bfbb0c8ec59289429b7a6cdfaf8ca7fa8",
+    "tests/test_operator_emergency_stop.py": "8900fff46f6e0eb97d528897b34c6fb77790202460172d4650db4ca6356b6c4e",
+    "tests/test_paper_daily_host.py": "34b7ffb8793f3e30c51b54a9222924994d60f328b5d033a38d86251b15a9fc64",
+    "tests/test_paper_watchdog.py": "0776fcb62a3c77e631085e3cce8a645bb6e7aed64345c6f759162bea4fa8bb7e",
+    "tests/test_phase2_freeze.py": "4d7dafe5e742e1a25144b90eed08c8da63744028c32be71047d30b430fcf8143",
+    "tests/test_risk_manager_service_comprehensive.py": "9b67a2be5da0a6e91a9667804475c9b6145b14a2f37470019944513426bd09ea",
+    "tests/test_runtime_snapshot_auth.py": "d4824a9e81bf1e029d0db15bfef900373b140ef3c4456e2ed23e33098dc397c8"
+  },
+  "task_id": "operator-controls-independent-acceptance",
+  "test_fixture_addendum": {
+    "accepted": true,
+    "only_change_since_reviewed_runtime": "tests/test_phase2_freeze.py",
+    "reason": "Explicit approved operator path in documented test environment plus all seven required operator source keys; preserves strict coverage assertion. Runtime and freeze bytes unchanged. Initial four failing fixture cases remain failed historical evidence; fresh consolidated run pending."
+  },
+  "validation": {
+    "fresh_full_pack_image_hosted": "pending root source-bound evidence",
+    "frontend_reported_by_root": {
+      "build": "passed",
+      "not_independently_rerun": true,
+      "passed": 12
+    },
+    "implementation_reports": {
+      "operator_controls_implementation.json": {
+        "reported_failed": 0,
+        "reported_passed": 117,
+        "sha256": "93d6b2f491a5c9aaa72fb0c788a2a3d292421f4e4c1dfd18aa83fa7789359c8e",
+        "source_file_hashes_verified": true
+      },
+      "operator_emergency_implementation.json": {
+        "reported_failed": 0,
+        "reported_passed": 100,
+        "sha256": "e1e64c99bd5d342bc4a884ae8580ac9b63c66eb03d0f5fc7e4eaf3a04798ec41",
+        "source_file_hashes_verified": true
+      }
+    },
+    "independently_parsed_junit": [
+      {
+        "cases": 100,
+        "failed": 0,
+        "passed": 100,
+        "path": "artifacts/operations_evidence/operator_emergency_targeted.xml",
+        "sha256": "67b5f87da8b8009b7574f81cf217d0ae0289aee9c6394c0ae8e2c529c73db8ee",
+        "skipped": 0
+      },
+      {
+        "cases": 123,
+        "failed": 0,
+        "passed": 123,
+        "path": "artifacts/operations_evidence/operator_root_tests.xml",
+        "sha256": "3239399b9d858b2c26343b5dffbb4b79d303b29d4726856256dd548685310c37",
+        "skipped": 0
+      }
+    ],
+    "previous_205_controls_run_precedes_final_corrections": true,
+    "targeted_counts_must_not_be_summed": true,
+    "tests_rerun_by_reviewer": false
+  },
+  "verdict": "SOURCE_REVIEW_ACCEPTED_RELEASE_GATES_PENDING"
+}

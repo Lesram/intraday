@@ -1,0 +1,100 @@
+{
+  "task_id": "production-frontend-browser-independent-review",
+  "reviewer": "combined_acceptance_review",
+  "reviewed_at_utc": "2026-09-21T09:11:35.716258+00:00",
+  "verdict": "BROWSER_REPAIR_SOURCE_ACCEPTED_RELEASE_GATES_PENDING",
+  "checkout_head_at_report": "33db40171a2414162544a7b2794df19756561e36",
+  "binding": "Exact four source-file bytes reviewed; checkout head is observation, not standalone compiled-build attestation.",
+  "reviewed_files_sha256": {
+    "frontend/vite.config.ts": "26f8975661d9362947ad7c762b211bc7d63625fcdc59d9e180b89284b5835aca",
+    "scripts/ci/check_frontend_preview.py": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
+    ".github/workflows/paper-readiness.yml": "56c35f71a0ebb1f9f13945d559f69ab13a4b73e56ad280f77ea6cefe0bef82fa",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "4cbcbc4d0d69c4e430034f3811e907547dc597acc452a0099176542bbe965406"
+  },
+  "remaining_concrete_source_blockers": [],
+  "accepted_contracts": [
+    "Removal of manualChunks alone resolves dependency initialization partitioning; proxy, aliases, output naming, minify/target/tree-shake and test settings remain unchanged. Automatic-build diagnostic has115JS and zero static chunk cycles; actual login rendering is required separately.",
+    "Checker uses production dist, random fresh browser namespace/session and explicit empty browser config; no credentials, login submission, stored browser state or authenticated controls. Preview binds only127.0.0.1:5197 with strictPort, explicit no backend proxy, CSP denying connect/form/frame/object and local HTTP probe disabling proxies/redirects.",
+    "Per-run response nonce, exact index hash and owned-process liveness distinguish the newly launched preview from stale/occupied-port servers. Report hashes the dist and checker, distinguishes checkout HEAD/dirty source from build provenance, and validates response schema.",
+    "Acceptance requires actual visible username/password/sign-in controls, empty fields, recovery text, correct loginURL, nonblank root, no error overlay, zero uncaught page errors and no prohibited transport attempts. It cannot pass merely because HTTP or build succeeds.",
+    "Nested finally tears down owned preview even on browser close failure. SIGTERM/SIGINT enter cleanup. Close acknowledgement must explicitly succeed; failure or uncertainty produces failed status, not a readiness claim. Process-group termination targets only the Popen-created preview.",
+    "Pinned browserCLI0.38.1, installed Chrome executable check and actual checker run follow build inside existing10-minute frontend step; job100-minute budget and other91-minute explicit allowances remain unchanged. Failure propagates and artifacts upload always.",
+    "Docs accurately describe actual built-login browser gate and do not equate it with authenticated administrator access."
+  ],
+  "resolved_review_findings": [
+    {
+      "finding": "Browser-close exception could skip preview teardown",
+      "resolution": "Nested finally plus failed/unconfirmed close status, bounded owned-process termination."
+    },
+    {
+      "finding": "Fixed CSP header could accept stale server during strictPort exit race",
+      "resolution": "Per-run response nonce, exact fetched index hash and process-alive checks."
+    },
+    {
+      "finding": "Missing page-errors schema silently defaulted to empty",
+      "resolution": "Strict list/schema requirement and explicit failed status."
+    },
+    {
+      "finding": "Arbitrary page message could be persisted as an error type",
+      "resolution": "Only fixed TypeError/JavaScriptError classification and count retained."
+    },
+    {
+      "finding": "Readiness urllib could inherit proxy settings",
+      "resolution": "Explicit ProxyHandler({}) and NoRedirect local opener."
+    },
+    {
+      "finding": "Uncommitted/overridden build could be labeled only with HEAD",
+      "resolution": "Checkout identity/dirty source and exact dist/checker hashes distinguished; final committed build remains required."
+    }
+  ],
+  "validation_reviewed": {
+    "reviewer_actionlint": {
+      "exit_code": 0,
+      "log": "/tmp/intra-browser-review-actionlint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "exact_final_checker": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
+    "bad_original_bundle": "rejected:blank login,1TypeError; owned browser/preview closed",
+    "bad_scheduler_only_bundle": "rejected:blank login,1TypeError; owned browser/preview closed",
+    "fixed_bundle": "passed:8DOM checks,0page errors,0CSP violations; owned browser/preview closed",
+    "sigterm": "failed as intended; owned browser/preview closed",
+    "earlier_negative_controls": {
+      "cases": [
+        "missing build",
+        "occupied port preserves existing server",
+        "prohibited auth fetch blocked and failed",
+        "lost close acknowledgement reports failure and stops preview"
+      ],
+      "checker_sha256": "934cf1e819750e921fdda9fa1f2b28ad44af2436bac3e498fc4260f203937121",
+      "equivalence_limit": "Immediately preceding checker; final added containment is no-proxy/no-redirect readiness. Not relabeled as tests run on finalhash."
+    },
+    "root_browser": "Visible login, no page/console errors,5GET requests,0API/socket/auth requests; actual administrator session unverified",
+    "owner_lint_build_freeze": "Passed receipts inspected; reviewer did not rerun browser/build/freeze."
+  },
+  "evidence_sha256": {
+    "artifacts/operations_evidence/frontend_browser_smoke_report.json": "985001c918275b47f5a15cc2a5e4ee8ef42e9134892fe43672277fae32de8a80",
+    "artifacts/operations_evidence/frontend_chunk_implementation.json": "018a35d93b5e490b9fb802c0a5a55e9b5ef49a4824b53578af9c108dc4be5a90",
+    "artifacts/operations_evidence/operator_browser_accepted.json": "c25cadd0ae12c7d1c7f0b473239f898b664bafc792ed29fce09cec81730a4630",
+    "artifacts/operations_evidence/frontend_browser_bad_c11/result.json": "8cc4773cd0e41df23b0751dfc91d31d349395782558241e16df6d3578c9ac962",
+    "artifacts/operations_evidence/frontend_browser_react_only/result.json": "9496ee3f0933d8694b10f5dfa1ff523b5d3720686cdb50702a693d0aec786e04",
+    "artifacts/operations_evidence/frontend_browser_fixed/result.json": "b87cec4efb793cb29932fd44a52c301ee7aee7b6c825d5faa2ba010564f601a9",
+    "artifacts/operations_evidence/frontend_browser_controls/sigterm/result.json": "4610594520da82052c3f1394cf29af2802b7426ab7f05c9b0d57399eaeeb4b6c",
+    "artifacts/operations_evidence/frontend_browser_controls/controls.json": "e6585a87e9e4b0177343b9e9bf087514ee519271c8116d4bc794179e4e76d504"
+  },
+  "remaining_release_gates": [
+    "Committed-source production build and exact checker rerun with final dist/source provenance.",
+    "New final source/evidence-head/image/full-pack/freeze/warm-start/security acceptance and refreshed seven-helper identity receipt.",
+    "Fresh required hosted CI for final head; prior c11 acceptance cannot satisfy new source.",
+    "Controlled authorized paper deployment and actual runtime acceptance remain separate; no merge/deploy approval inferred from this source review."
+  ],
+  "limitations": [
+    "Unauthenticated login bootstrap only; successful login and authenticated/lazy screens are not certified.",
+    "Dedicated smoke preview disables proxies to prevent backend access; actual application proxy behavior is outside this smoke and was separately checked read-only by root.",
+    "Lost-close-ack control occurs after a real close; no claim that an arbitrary hung browser is always recoverable. Unconfirmed close fails and owned daemon has60-second idle cutoff.",
+    "Existing bundle-size warnings retained; no blanket frontend/security/project completion claim."
+  ],
+  "source_edits_by_reviewer": false,
+  "reviewer_browser_or_preview_execution": false,
+  "reviewer_runtime_or_broker_actions": false,
+  "reviewer_commit_merge_or_deploy": false
+}

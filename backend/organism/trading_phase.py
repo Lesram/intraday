@@ -23,6 +23,8 @@ Two distinct thresholds:
 import logging
 from typing import Any
 
+from backend.organism import research_policy
+
 logger = logging.getLogger(__name__)
 
 # ML-isolation threshold: below this, ML weight = 0 in confidence,
@@ -142,14 +144,26 @@ def resolve_trading_phase(
     else:
         phase = "production"
 
-    ml_influence_enabled = not is_learning and not is_guarded
-    fixed_risk_sizing = is_learning or is_guarded
+    raw_phase = phase
+    policy = research_policy.policy_status(total_trades)
+    if policy["locked"]:
+        # Keep the real bootstrap classification: learning mode also relaxes
+        # entry gates and changes exits, so it cannot stand in for this lock.
+        phase = "research_locked"
+        is_frozen = True
+        is_guarded = not is_learning
+        blockers.append(policy["reason"])
+
+    ml_influence_enabled = not is_learning and not is_guarded and not policy["locked"]
+    fixed_risk_sizing = is_learning or is_guarded or policy["locked"]
 
     return {
         "is_learning": is_learning,
         "is_frozen": is_frozen,
         "is_guarded": is_guarded,
         "phase": phase,
+        "raw_phase": raw_phase,
+        "policy_lock": policy,
         "ml_influence_enabled": ml_influence_enabled,
         "fixed_risk_sizing": fixed_risk_sizing,
         "total_trades": total_trades,

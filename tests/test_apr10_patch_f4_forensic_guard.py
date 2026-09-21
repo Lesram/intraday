@@ -3,7 +3,7 @@
 Tests:
 1. Forensic guard logs CRITICAL on learner replacement
 2. Forensic guard logs CRITICAL on signal_gen replacement
-3. Forensic guard blocks save when trained disk + fresh/untrained runtime
+3. Authoritative accounting guard blocks trained-disk regression before save
 4. Bypass audit: only 2 _write_json(MANIFEST_FILE) callsites exist
 5. Full-stack wipe simulation: trained disk + regressive incoming → blocked + instrumented
 """
@@ -14,6 +14,8 @@ import json
 import logging
 import subprocess
 import sys
+
+import pytest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -57,6 +59,7 @@ def _make_signal_gen(is_trained=False, feature_count=0):
         train_window=1000,
         _latest_metrics=None,
         _ensemble=None,
+        calibration_to_dict=lambda: {},
     )
 
 
@@ -91,7 +94,10 @@ def test_forensic_guard_learner_replacement(tmp_path, caplog):
     """If self.learner is replaced after __init__, _save_brain logs CRITICAL."""
     from backend.organism.live_engine import OrganismLiveEngine
 
-    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine = OrganismLiveEngine(
+        data_client=MagicMock(), order_service=MagicMock(), positions_service=MagicMock(),
+        brain_dir=str(tmp_path / "brain"), universe=["AAPL"],
+    )
     # Minimal init for forensic guard
     engine.signal_gen = _make_signal_gen(is_trained=True, feature_count=79)
     engine.learner = _make_learner(total_trades=200, generation=27)
@@ -133,7 +139,10 @@ def test_forensic_guard_learner_replacement(tmp_path, caplog):
 def test_forensic_guard_signal_gen_replacement(tmp_path, caplog):
     from backend.organism.live_engine import OrganismLiveEngine
 
-    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine = OrganismLiveEngine(
+        data_client=MagicMock(), order_service=MagicMock(), positions_service=MagicMock(),
+        brain_dir=str(tmp_path / "brain"), universe=["AAPL"],
+    )
     engine.signal_gen = _make_signal_gen(is_trained=True, feature_count=79)
     engine.learner = _make_learner(total_trades=200, generation=27)
     engine._forensic_signal_gen_id = id(engine.signal_gen)
@@ -164,15 +173,18 @@ def test_forensic_guard_signal_gen_replacement(tmp_path, caplog):
 
 
 # ─────────────────────────────────────────────────────────────
-# Test 3: Forensic guard blocks save when disk trained + runtime fresh
+# Test 3: Accounting guard blocks save when disk trained + runtime fresh
 # ─────────────────────────────────────────────────────────────
 
 def test_forensic_guard_blocks_regression(tmp_path, caplog):
     """If learner.state.total_trades=0 but disk shows trained,
-    _save_brain aborts with CRITICAL."""
+    authoritative publication aborts before any regressive save."""
     from backend.organism.live_engine import OrganismLiveEngine
 
-    engine = OrganismLiveEngine.__new__(OrganismLiveEngine)
+    engine = OrganismLiveEngine(
+        data_client=MagicMock(), order_service=MagicMock(), positions_service=MagicMock(),
+        brain_dir=str(tmp_path / "brain"), universe=["AAPL"],
+    )
     engine.signal_gen = _make_signal_gen(is_trained=False)
     engine.learner = _make_learner(total_trades=0)
     engine._forensic_signal_gen_id = id(engine.signal_gen)
@@ -189,19 +201,14 @@ def test_forensic_guard_blocks_regression(tmp_path, caplog):
     engine._tick_count = 100
     engine._watchdog_last_brain_save_tick = 0
 
-    with caplog.at_level(logging.CRITICAL):
+    before = (brain_dir / MANIFEST_FILE).read_bytes()
+    # The authoritative checkpoint now rejects regression before the legacy
+    # save body can run; a failed save must not publish regressive authority.
+    with pytest.raises(ValueError, match="publication refused.*legacy manifest"):
         engine._save_brain()
-
-    # Regression guard should have aborted
-    assert any(
-        "FORENSIC GUARD" in r.getMessage()
-        and "Learner state regressed" in r.getMessage()
-        for r in caplog.records
-    ), f"Expected regression CRITICAL. Got: {[r.getMessage()[:80] for r in caplog.records]}"
-
-    # Manifest on disk unchanged
-    after = _read_manifest_from_path(brain_dir)
-    assert after["total_trades"] == 195
+    assert not (brain_dir / "close_accounting.json").exists()
+    assert (brain_dir / MANIFEST_FILE).read_bytes() == before
+    assert _read_manifest_from_path(brain_dir)["total_trades"] == 195
 
 
 # ─────────────────────────────────────────────────────────────
@@ -222,8 +229,9 @@ def test_bypass_audit_manifest_write_callsites():
             "print(len(hits));"
             "[print(f'  L{n}: {l}') for n, l in hits]",
         ],
-        capture_output=True, text=True, cwd="/Users/marselkei/VS/intra",
+        capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1],
     )
+    assert result.returncode == 0, result.stderr
     output = result.stdout.strip()
     count = int(output.split("\n")[0])
     assert count == 2, (

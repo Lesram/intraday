@@ -1,0 +1,30 @@
+{
+  "status": "failed",
+  "url": "http://127.0.0.1:5197/login",
+  "browser_version": "0.38.1",
+  "index_sha256": "c4b9521edfc3d91d3ab36de305fd5a09a4d3ca1423d12d8090cf1be34c4efef0",
+  "dist_sha256": "dd66d7a866881967117e36314e301c6a15a100f0c0aef97f653bf651e1116acc",
+  "checkout_sha": "17f14e1896d324959a8a928d34c9c296c2a56077",
+  "checkout_source_dirty": true,
+  "build_provenance": "dist bytes hashed; checkout identity alone does not attest build origin",
+  "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
+  "checks": {
+    "fields_empty": false,
+    "login_url": true,
+    "no_error_overlay": true,
+    "nonblank": false,
+    "password_visible": false,
+    "recovery_visible": false,
+    "signin_visible": false,
+    "transport_violations": [],
+    "username_visible": false
+  },
+  "page_error_count": 1,
+  "page_error_types": [
+    "TypeError"
+  ],
+  "browser_closed": true,
+  "preview_stopped": true,
+  "failure": "production login DOM contract failed",
+  "elapsed_seconds": 5.47
+}

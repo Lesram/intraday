@@ -2,8 +2,8 @@
   "overall": "pass",
   "core_keys_checked": 9,
   "sources": {
-    "runtime_defaults": 47,
-    "mapss_constants": 8,
+    "runtime_defaults": 49,
+    "mapss_constants": 7,
     "manifest_constants": 11
   },
   "drifts": {},
@@ -12,5 +12,5 @@
   "timed_out": false,
   "error": "",
   "output_file": "artifacts/spec_drift.log",
-  "output_tail": "{\n  \"overall\": \"pass\",\n  \"core_keys_checked\": 9,\n  \"sources\": {\n    \"runtime_defaults\": 47,\n    \"mapss_constants\": 8,\n    \"manifest_constants\": 11\n  },\n  \"drifts\": {},\n  \"drift_count\": 0\n}\n"
+  "output_tail": "{\n  \"overall\": \"pass\",\n  \"core_keys_checked\": 9,\n  \"sources\": {\n    \"runtime_defaults\": 49,\n    \"mapss_constants\": 7,\n    \"manifest_constants\": 11\n  },\n  \"drifts\": {},\n  \"drift_count\": 0\n}\n"
 }

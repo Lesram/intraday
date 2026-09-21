@@ -12,6 +12,7 @@ from pathlib import Path
 import stat
 import subprocess
 import re
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -323,8 +324,64 @@ def observe_backups(root: Path, now: float) -> dict:
     return result
 
 
+def observe_policy() -> dict:
+    """Check the pinned paper policy using local observer access only.
+
+    This check never acquires paper-broker credentials or chooses recovery.
+    All external failures use fixed codes: exception bodies may contain secrets.
+    """
+    result = {"enabled": True, "status": "unavailable", "problems": []}
+    stage = "binding"
+    try:
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from scripts.ops import paper_daily_host as host
+
+        binding, paths, _ = host.load_binding(host.DEFAULT_BINDING)
+        result["binding_sha256"] = paths["binding_sha256"]
+
+        class LocalObserverTransport(host.daily.GetTransport):
+            captured_status = None
+
+            def get(self, origin, path, params):
+                if origin != "local" or params or path not in {
+                    "/api/v1/paper-monitor/deploy",
+                    "/api/v1/paper-monitor/organism/status",
+                }:
+                    raise ValueError("local_observer_routes_only")
+                raw = super().get(origin, path, params)
+                if path.endswith("/organism/status"):
+                    self.captured_status = json.loads(raw)
+                return raw
+
+        stage = "authentication"
+        token = host.observer_token(host.DEFAULT_CREDENTIALS)
+        # Broker credentials are intentionally absent; the route guard above
+        # also rejects any future attempt to use a broker transport route.
+        transport = LocalObserverTransport("", "", token)
+        stage = "runtime_verification"
+        host.verify_runtime(transport, binding)
+        scheduler = transport.captured_status["live_engine"]
+        stage = "scheduler_not_running"
+        if scheduler.get("running") is not True:
+            raise ValueError("scheduler_not_running")
+        stage = "engine_not_initialized"
+        if scheduler["engine"].get("initialized") is not True:
+            raise ValueError("engine_not_initialized")
+        stage = "binding_changed"
+        _, rechecked, _ = host.load_binding(host.DEFAULT_BINDING)
+        if rechecked["binding_sha256"] != paths["binding_sha256"]:
+            raise ValueError("binding_changed")
+        result["status"] = "ok"
+    except Exception:  # noqa: BLE001 - Never persist credentials or transport bodies.
+        result["status"] = stage
+        result["problems"] = ["policy_" + stage]
+    return result
+
+
 def run_watchdog(root: Path, *, recover: bool = False, reopen_docker: bool = False,
-                 local_notifications: bool = False, check_backups: bool = False) -> dict:
+                 local_notifications: bool = False, check_backups: bool = False,
+                 check_policy: bool = False) -> dict:
     logs = root / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     status_path = logs / "paper_watchdog_status.json"
@@ -395,6 +452,13 @@ def run_watchdog(root: Path, *, recover: bool = False, reopen_docker: bool = Fal
     if check_backups:
         result["problems"].extend(result["backup_monitor"]["problems"])
         result["healthy"] = not result["problems"]
+    # Policy/scheduler failures use the existing attention path only. Adding
+    # them after recovery decisions prevents a healthy API from being restarted
+    # because its research baseline or scheduler needs operator review.
+    result["policy_monitor"] = observe_policy() if check_policy else {"enabled": False}
+    if check_policy:
+        result["problems"].extend(result["policy_monitor"]["problems"])
+        result["healthy"] = not result["problems"]
     changed = previous.get("problems") != result["problems"] or previous.get("healthy") != result["healthy"]
     pending_events = monitor.get("pending_events", monitor["new_events"])
     prior_notice = previous.get("notification") or {}
@@ -422,6 +486,7 @@ def main() -> int:
     parser.add_argument("--reopen-docker", action="store_true")
     parser.add_argument("--notify-local", action="store_true")
     parser.add_argument("--check-backups", action="store_true")
+    parser.add_argument("--check-policy", action="store_true")
     args = parser.parse_args()
     logs = ROOT / "logs"
     logs.mkdir(parents=True, exist_ok=True)
@@ -432,7 +497,8 @@ def main() -> int:
             print("Paper watchdog already running; no duplicate action.")
             return 0
         result = run_watchdog(ROOT, recover=args.recover, reopen_docker=args.reopen_docker,
-                              local_notifications=args.notify_local, check_backups=args.check_backups)
+                              local_notifications=args.notify_local, check_backups=args.check_backups,
+                              check_policy=args.check_policy)
     print(json.dumps(result))
     return 0 if result["healthy"] or result["paused"] else 1
 
