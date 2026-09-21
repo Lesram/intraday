@@ -118,7 +118,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/organism_live_engine.log",
-      "output_tail": "..........................                                               [100%]\n=============================== warnings summary ===============================\ntests/test_organism_live_engine.py::TestOrganismLiveEngine::test_initialize_fresh\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n26 passed, 1 warning in 16.53s\n",
+      "output_tail": "..........................                                               [100%]\n=============================== warnings summary ===============================\ntests/test_organism_live_engine.py::TestOrganismLiveEngine::test_initialize_fresh\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n26 passed, 1 warning in 17.63s\n",
       "junit_file": "artifacts/organism_live_engine.junit.xml"
     },
     "organism_engine_scenarios": {
@@ -258,7 +258,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/organism_engine_scenarios.log",
-      "output_tail": "st_insufficient_data_still_processes_exits\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\ntests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net\n  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3023: RuntimeWarning: invalid value encountered in divide\n    c /= stddev[:, None]\n\ntests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net\n  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3024: RuntimeWarning: invalid value encountered in divide\n    c /= stddev[None, :]\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n31 passed, 3 warnings in 39.77s\n",
+      "output_tail": "st_insufficient_data_still_processes_exits\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\ntests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net\n  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3023: RuntimeWarning: invalid value encountered in divide\n    c /= stddev[:, None]\n\ntests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net\n  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3024: RuntimeWarning: invalid value encountered in divide\n    c /= stddev[None, :]\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n31 passed, 3 warnings in 42.16s\n",
       "junit_file": "artifacts/organism_engine_scenarios.junit.xml"
     },
     "multi_tick_state": {
@@ -310,7 +310,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/multi_tick_state.log",
-      "output_tail": ".........                                                                [100%]\n=============================== warnings summary ===============================\ntests/test_multi_tick_state.py::TestMultiTickState::test_position_closes_no_duplicate_exit\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n9 passed, 1 warning in 1.15s\n",
+      "output_tail": ".........                                                                [100%]\n=============================== warnings summary ===============================\ntests/test_multi_tick_state.py::TestMultiTickState::test_position_closes_no_duplicate_exit\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n9 passed, 1 warning in 1.31s\n",
       "junit_file": "artifacts/multi_tick_state.junit.xml"
     },
     "safety_invariants": {
@@ -442,7 +442,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/safety_invariants.log",
-      "output_tail": ".............................                                            [100%]\n=============================== warnings summary ===============================\ntests/test_safety_invariants.py::TestSafetyInvariants::test_insufficient_features_still_processes_exits\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n29 passed, 1 warning in 1.17s\n",
+      "output_tail": ".............................                                            [100%]\n=============================== warnings summary ===============================\ntests/test_safety_invariants.py::TestSafetyInvariants::test_insufficient_features_still_processes_exits\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n29 passed, 1 warning in 1.29s\n",
       "junit_file": "artifacts/safety_invariants.junit.xml"
     },
     "self_evolution": {
@@ -518,7 +518,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/self_evolution.log",
-      "output_tail": "...............                                                          [100%]\n15 passed in 0.87s\n",
+      "output_tail": "...............                                                          [100%]\n15 passed in 0.91s\n",
       "junit_file": "artifacts/self_evolution.junit.xml"
     },
     "algorithm_improvements": {
@@ -766,7 +766,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/algorithm_improvements.log",
-      "output_tail": "..........................................................               [100%]\n58 passed in 1.08s\n",
+      "output_tail": "..........................................................               [100%]\n58 passed in 1.20s\n",
       "junit_file": "artifacts/algorithm_improvements.junit.xml"
     }
   }

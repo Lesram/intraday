@@ -14,10 +14,16 @@
 ........................................................................ [ 72%]
 ........................................................................ [ 77%]
 .............................................................s.......... [ 82%]
-........................................................................ [ 87%]
+...........................................F............................ [ 87%]
 ........................................................................ [ 92%]
 ........................................................................ [ 97%]
 ................................                                         [100%]
+=================================== FAILURES ===================================
+___ test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence ___
+tests/test_monday_ci_workflows.py:275: in test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence
+    assert job["timeout-minutes"] >= sum(step.get("timeout-minutes", 0)
+E   assert 90 >= (91 + 5)
+E    +  where 91 = sum(<generator object test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence.<locals>.<genexpr> at 0x118fa7760>)
 =============================== warnings summary ===============================
 backend/models/order_integrity.py:62
   /Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
@@ -88,4 +94,6 @@ tests/test_risk_manager_service_comprehensive.py::TestIsEmergencyStopActive::tes
     self.triggered_at = datetime.utcnow()
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-1399 passed, 1 skipped, 42 warnings in 31.79s
+=========================== short test summary info ============================
+FAILED tests/test_monday_ci_workflows.py::test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence
+1 failed, 1398 passed, 1 skipped, 42 warnings in 31.54s

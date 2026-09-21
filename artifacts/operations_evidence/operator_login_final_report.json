@@ -1,0 +1,77 @@
+{
+  "task_id": "login-access-contract",
+  "created_at_utc": "2026-09-21T08:45:02.356980+00:00",
+  "status": "IMPLEMENTED_LOCAL_VALIDATION_PASSED_AWAITING_ROOT_REVIEW",
+  "plan": {
+    "scope": [
+      "accept username or email with trimmed nonempty username",
+      "development-only explicit auto-login opt-in",
+      "honest noninteractive recovery guidance"
+    ],
+    "ownership": [
+      "frontend/src/features/auth/LoginPage.tsx",
+      "frontend/src/features/auth/LoginPage.test.tsx"
+    ],
+    "waited_for_source_bound_nightly": true,
+    "other_agents_changes_preserved": true
+  },
+  "changes": [
+    "Username or email accepts plain usernames and email-shaped input, trims only username, rejects blank/whitespace input and preserves existing password validation.",
+    "Automatic development login now requires import.meta.env.DEV and the explicit existing flag; production cannot trigger it.",
+    "Dead forgot-password link replaced with recovery-unavailable/contact-administrator guidance.",
+    "Accessible input names and username autocomplete added."
+  ],
+  "files": {
+    "frontend/src/features/auth/LoginPage.tsx": "b3666244dcf2ccf2edae243d213db824e5baf74a393567a700760ffe4af09b12",
+    "frontend/src/features/auth/LoginPage.test.tsx": "ef95b4d3f1ade4245b3560ebfbe2444425162477468b6f37627ade640a8cd00d"
+  },
+  "validation": {
+    "login_cases_passed": 10,
+    "dashboard_cases_passed": 12,
+    "total_distinct_frontend_cases_passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "production_build": "pass; VITE_DEV_BYPASS_AUTH=false",
+    "focused_eslint": "pass; both edited TSX files",
+    "git_diff_check": "pass",
+    "network": "fetch/XHR denied in login tests; useLogin mocked; no live calls",
+    "logs": {
+      "/tmp/operator_login_final_tests.log": "50c5440c541c2005744283ac7027d54db8386638d92889bd69cc3ad733bd0f64",
+      "/tmp/operator_login_final_dashboard.log": "16795a26f549f7d6a011efdc3c53ee4dcb7dfea59e22ae893df13ed7f8347782",
+      "/tmp/operator_login_final_build.log": "a98988ade1b914c517389b867c5f792ee7d83efa53439ee96bfb3b8d218ea0d3",
+      "/tmp/operator_login_final_lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "combined_junit": {
+      "path": "/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/operator_login_final.xml",
+      "sha256": "a21564f03981144555c9fa2386557933b93d1ed79d78a2d1628a664bbbfca36e",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "duplicates": 0
+    },
+    "repository_logs": {
+      "/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/operator_login_final.log": "b21ece29bf82d78b66ed1671f3bf0943a41446c04c699417ddf81c7b51682cc0",
+      "/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/operator_login_final_build.log": "a98988ade1b914c517389b867c5f792ee7d83efa53439ee96bfb3b8d218ea0d3",
+      "/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/operator_login_final_lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "react_review": {
+    "skill": "/Users/marselkei/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/skills/react-best-practices/SKILL.md",
+    "result": "pass",
+    "checks": [
+      "User submission remains event-driven through existing mutation hook.",
+      "Development effect requires two explicit guards and retains ref-based one-attempt behavior under StrictMode.",
+      "No new state, subscriptions, request waterfalls, dependencies, conditional hooks or expensive render paths.",
+      "Inputs expose accessible names and expected autocomplete; unsupported recovery has truthful noninteractive copy.",
+      "Form value type matches server username field; password is passed unchanged."
+    ]
+  },
+  "limitations": [
+    "Backend recovery remains unimplemented; this change supplies truthful guidance only.",
+    "No actual user login, browser, local UI server, runtime/admin/broker call, credential/role/account change or deployment performed.",
+    "Existing dashboard canvas warnings and production chunk-size warnings remain non-failing.",
+    "Backend/frozen code unchanged by this task; root owns refreshed full pack, freeze verification, exact source/image identity and hosted acceptance."
+  ],
+  "committed": false,
+  "deployed": false
+}

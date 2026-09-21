@@ -1,8 +1,8 @@
 {
-  "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
-  "created_at_utc": "2026-09-21T08:24:39.977536+00:00",
-  "tag": "intra-api:operations-80987c00837e",
-  "image_digest": "sha256:fce9e9519cdd67eb2c4ca0d27d502964c1e9f3510f59c87ddc16c150ccdee3d1",
+  "source_sha": "c11cd17beb0117a3591fdf9af64c1aaaede51267",
+  "created_at_utc": "2026-09-21T08:50:23.541309+00:00",
+  "tag": "intra-api:operations-c11cd17beb01",
+  "image_digest": "sha256:1b6ba8b30f44b3d80bbe98b59c899e065a187bc3395eb3bb3c8fecb44f9e7183",
   "build_context": "git archive of exact committed source; .dockerignore applied",
   "source_files": {
     "backend/api/routes/risk.py": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
@@ -31,6 +31,7 @@
     "scripts/phase2_freeze.py": "3a3d679aedc0c47a73bd4f6997031fb38422dd59f1e1ec464334eeacb66103a2",
     "scripts/runtime/write_runtime_snapshot.py": "abf05c1c5da7f321931885e1d03a827d227e09ce3e52ad2b817a2a67053e2ee9",
     "tests/test_apr10_patch_f4_forensic_guard.py": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
+    "tests/test_apr7_p0_p1_fixes.py": "1ae05464ed36acca70d82f46f9a9878733f51e1b3daadcfffc9cb090b59c01c2",
     "tests/test_apr8_patch_a_force_save.py": "d2f4e1ea0117e65b534c4730ce72b009b02fc5cf55b834ec9d23e2ff9000b750",
     "tests/test_audit_0_2_bg_trainer_same_holdout.py": "e6693f2062a53c14b87cf4a0a36cf8d1782ef00e59bf3f19b5e95f01c197e1fb",
     "tests/test_audit_2_3_2_5_promotion_evolution.py": "6c0ec592fb94936938108aac3ee7ac06ee9b62f5037d9666e05ac1083fbfe2cf",
@@ -57,6 +58,7 @@
     "tests/test_pending_close_accounting.py": "ab8cec11e3fe70a37ac1768472a1776b6daf4a598921b2b2d137890bd6b49244",
     "tests/test_phase2_freeze.py": "4d7dafe5e742e1a25144b90eed08c8da63744028c32be71047d30b430fcf8143",
     "tests/test_phase2_guarded_promotion.py": "6e1ec898a848ea330f9e7b9a2a23f6043ac9c03dd0bd752f71a204c66cdc261f",
+    "tests/test_phase9_strategy_governance.py": "2881af34fcd26787e17485d91d151f8e1e2f42d791c7c478397cc27037ca4e0a",
     "tests/test_remediation_wave_b.py": "0e85234402c0ed3c06edb40fee4c3228e529acdd09b054903ab45b4fd9c14473",
     "tests/test_replay_close_accounting.py": "a039b256ca27b103b54683d5e3f6efe86f438de2fe3d1ff16db8bc0fe69f051c",
     "tests/test_research_baseline.py": "e30b69bb90014058c70fd72e7cce29ac7dcf1aca8ea528ed6f9f901df1cf3d29",
@@ -68,7 +70,7 @@
     "tests/test_walkforward_persistence.py": "f39f701c0d44734ba2abf3698476b35a7d67ab062f31a0fe7d938cf22ac7a049"
   },
   "source_hash_check": {
-    "files_verified": 61,
+    "files_verified": 63,
     "mismatches": []
   },
   "freeze_check_exit_code": 0,

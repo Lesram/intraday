@@ -1,0 +1,46 @@
+{
+  "task_id": "operator-nightly-known-loopback-rerun",
+  "source_sha": "80987c00837e4d4cb8c36228c78bc7b9fac2debe",
+  "image_digest": "sha256:fce9e9519cdd67eb2c4ca0d27d502964c1e9f3510f59c87ddc16c150ccdee3d1",
+  "selection": [
+    "tests/test_port_management_comprehensive.py::TestIsPortAvailable::test_unavailable_port",
+    "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_default",
+    "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_preferred",
+    "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_tracks_allocation",
+    "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_skips_allocated",
+    "tests/test_port_management_comprehensive.py::TestReleasePort::test_release_allocated_port",
+    "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_allocates_port",
+    "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exit",
+    "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exception",
+    "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_preferred_port",
+    "tests/test_port_management_comprehensive.py::TestEdgeCases::test_multiple_managers_isolated",
+    "tests/test_port_management_comprehensive.py::TestGetPortInfo::test_get_info_for_available_port",
+    "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port",
+    "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port_preferred",
+    "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_free_port_context_function",
+    "tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_success",
+    "tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_failure_releases_port"
+  ],
+  "scope": "Only17 prior-known port-binding cases; immutable image, networknone and no host mounts/published ports; temporary files only",
+  "runtime_mutations": false,
+  "production_credentials": false,
+  "status": "COMPLETE",
+  "started_at_utc": "2026-09-21T08:42:29.193956+00:00",
+  "isolation": {
+    "network": "none",
+    "read_only_root": true,
+    "host_mounts": [],
+    "published_ports": {},
+    "tmpfs": {
+      "/tmp": "rw,exec,nosuid,size=1g"
+    },
+    "working_dir": "/tmp"
+  },
+  "exit_code": 0,
+  "attach_exit_code": 0,
+  "junit_exported": true,
+  "junit_sha256": "ee2862e69359394c5c80dc43ea005824d263342256561a2ed8e1f78c0267a579",
+  "elapsed_seconds": 1.37,
+  "cleanup_succeeded": true,
+  "finished_at_utc": "2026-09-21T08:42:30.587708+00:00"
+}

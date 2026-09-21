@@ -1,0 +1,38 @@
+{
+  "task_id": "operator-admission-legacy-test-fixtures",
+  "status": "complete_uncommitted_root_release_owner",
+  "summary": "Three minimal __new__ engine fixtures now include a real explicitly nonhalted GovernanceController, preserving the real fail-closed admission and strategy governor checks. A denied-entry counter assertion proves no broker call or counter increment.",
+  "sha": "789cbcb956292b21314712035e4807139cf4e423",
+  "branch": "codex/operations-evidence-integrity",
+  "files_changed": [
+    "tests/test_apr7_p0_p1_fixes.py",
+    "tests/test_phase9_strategy_governance.py"
+  ],
+  "source_sha256": {
+    "tests/test_apr7_p0_p1_fixes.py": "1ae05464ed36acca70d82f46f9a9878733f51e1b3daadcfffc9cb090b59c01c2",
+    "tests/test_phase9_strategy_governance.py": "2881af34fcd26787e17485d91d151f8e1e2f42d791c7c478397cc27037ca4e0a"
+  },
+  "commands": [
+    "network-denied env-i mock/shadow pytest both complete affected files with pytest_asyncio/pytest_timeout and no cache",
+    "ruff check both affected files",
+    "phase2_freeze.py --verify with approved freeze_environment.json, network denied"
+  ],
+  "tests_passed": 23,
+  "tests_failed": 0,
+  "test_artifact": "artifacts/operations_evidence/operator_fixture_compatibility_tests.txt",
+  "ruff": "passed",
+  "freeze": "passed",
+  "freeze_cutoff": "2026-09-21T08:20:53.394292+00:00",
+  "runtime_behavior_changed": false,
+  "docs_updated": false,
+  "plan": "artifacts/operations_evidence/operator_fixture_compatibility_plan.json",
+  "nightly_source_attestation_preserved": true,
+  "risks": [
+    "These are synthetic primitive tests, not broker or natural-session acceptance.",
+    "Known network-denied loopback failures remain a separate environment classification."
+  ],
+  "follow_ups": [
+    "Root commits source and refreshes source-bound release evidence/CI and bridge pins as required."
+  ],
+  "commit_performed": false
+}
