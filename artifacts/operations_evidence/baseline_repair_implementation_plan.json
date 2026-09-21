@@ -1,0 +1,11 @@
+{
+  "task_id": "rf-canonical-startup-baseline-verification",
+  "problem": "Raw pickle identity changes for equivalent saved RandomForest models because joblib restoration introduces structured node padding and pickle memo aliases vary",
+  "scope": "Versioned full typed RF state fingerprint only; no model mutation/deserialization, strategy change, baseline artifact rewrite or gate bypass",
+  "owned_files": ["backend/organism/model_fingerprint.py", "backend/organism/research_baseline.py", "tests/test_research_model_fingerprint.py", "tests/test_research_baseline.py"],
+  "affected_tests": ["tests/test_research_model_fingerprint.py", "tests/test_research_baseline.py", "tests/test_research_policy_lock.py"],
+  "steps": ["Implement RF-only canonical streaming digest with explicit rf-state-v1 prefix", "Include complete forest/estimator state and params, exact types, full Tree dimensions/state, ndarray dtype/shape/all named field data", "Reject unknown types/dtypes/cycles; ignore only alias identity and anonymous structured padding", "Preserve nonRF raw-pickle identity method", "Test synthetic fit/save/load/reload/import-order equivalence, nonmutation, all true-state negative cases and startup fail-closed behavior", "Run isolated targeted baseline/lock suites and report results; root owns full pack/source pin and approved baseline regeneration"],
+  "constraints": ["No actual model or broker access", "No changes to existing approved baseline, phase2_freeze, frozen functions/env/params/cutoff", "No commit/push; preserve other agents changes"],
+  "diagnostic_reference": "/tmp/intra-rf-fingerprint-diagnostic/report.json",
+  "status": "planned_before_edits"
+}

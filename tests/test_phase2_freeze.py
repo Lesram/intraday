@@ -70,7 +70,7 @@ def test_freeze_covers_full_decision_surface(freeze):
     assert set(freeze["surface"]["research_policy_sources"]) == {
         "policy", "phase", "trainer", "startup", "sync_training", "phase_resolution",
         "ml_isolation", "fixed_risk", "settings_update",
-        "baseline_verification",
+        "baseline_verification", "model_fingerprint",
         "parameter_application", "settings_api", "scheduler",
         "operator_controls", "governance", "entry_admission", "operator_api",
         "emergency_stop_api", "emergency_stop_service", "entry_cancellation",
@@ -128,6 +128,34 @@ def test_verify_mode_reports_missing_artifact(tmp_path, monkeypatch):
     """--verify returns 2 (not 0) when there is no artifact to check against."""
     monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", tmp_path / "does_not_exist.json")
     assert verify() == 2
+
+
+def test_verify_detects_model_fingerprint_source_drift(tmp_path, monkeypatch):
+    """The complete fingerprint implementation is frozen, including helpers."""
+    from backend.organism import model_fingerprint
+
+    stored = {"FROZEN_AT": "2026-09-21T10:10:39.684894+00:00",
+              "surface": compute_surface()}
+    artifact = tmp_path / "param_freeze.json"
+    artifact.write_text(json.dumps(stored))
+    before = artifact.read_bytes()
+    monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", artifact)
+    assert verify() == 0
+
+    original_getsource = phase2_freeze.inspect.getsource
+
+    def changed_helper_source(obj):
+        source = original_getsource(obj)
+        if obj is model_fingerprint:
+            return source + "\n# Simulated fingerprint helper implementation drift\n"
+        return source
+
+    monkeypatch.setattr(phase2_freeze.inspect, "getsource", changed_helper_source)
+    assert verify() == 1
+    current = compute_surface()
+    assert current["source_hashes"] == stored["surface"]["source_hashes"]
+    assert current["research_policy_sources"]["model_fingerprint"] != stored["surface"]["research_policy_sources"]["model_fingerprint"]
+    assert artifact.read_bytes() == before, "source drift must not rewrite the cutoff"
 
 
 def test_verify_detects_policy_unlock_without_rewriting_boundary(monkeypatch):

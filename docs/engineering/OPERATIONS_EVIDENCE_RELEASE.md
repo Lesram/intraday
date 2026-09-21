@@ -139,3 +139,22 @@ fall back to an obsolete local-storage token. Query-token authentication and
 backend roles stay unchanged, and connection diagnostics omit token-bearing
 URLs and socket events. Mocked connection, refresh and logout regressions cover
 these boundaries; they do not certify an authenticated live dashboard session.
+
+## September 21 baseline verification correction
+
+The first installed restart was held by the baseline gate. Its offline rehearsal
+had used daily defaults instead of the installed `1Min` configuration, and raw
+Random Forest pickle fingerprints were sensitive to serialization details. The
+correction verifies the existing one-minute exit context without changing exit
+settings, strategy parameters or saved models. Random Forest identity uses the
+versioned `rf-state-v1:` digest of complete supported typed model/tree state,
+excluding anonymous padding contents and object-sharing representation; unknown
+state fails closed. Other retained model/cache checks remain in force. The
+expanded freeze hashes the complete fingerprint module and baseline verifier.
+
+The corrective activation must retain the failed activation and preserve the
+current forward boundary, `2026-09-21T10:10:39.684894+00:00`, with explicit evidence
+that no intervening candidate trading occurred. The original six decision-source
+groups, strategy/feed/exit configuration and historical ledger remain unchanged.
+This addendum records the repair contract; actual corrected runtime acceptance
+and natural-session evidence are still pending.

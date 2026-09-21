@@ -5028,3 +5028,26 @@ management: durable halt may succeed, but overall control completion is 503.
 DB access; unknown authority is 503. Historical audit resolution never resumes
 entries. The risk dashboard labels its stored record as an unresolved audit;
 current entry authority is shown by the organism dashboard.
+
+### September 21 baseline verification correction
+
+The initial installed restart failed closed because the rehearsal used daily
+defaults rather than the existing `1Min` exit context, and Random Forest pickle
+bytes were not a stable identity across restoration contexts. The corrective
+baseline describes the actual unchanged one-minute configuration. It does not
+retune exits, alter strategy parameters, retrain models or reset historical data.
+
+Random Forest verification uses the versioned `rf-state-v1:` digest over complete
+supported typed estimator/tree state, including parameters, named array fields,
+dtype layout and dimensions. Anonymous padding contents and object-sharing
+representation are excluded; unsupported state fails closed. The full
+`model_fingerprint` module is registered in `research_policy_sources` alongside
+the already hashed `baseline_verification` module. Original six decision-source
+hashes and strategy/feed/exit settings are preserved.
+
+The corrective activation retains the failed activation and its evidence. It
+must preserve `FROZEN_AT=2026-09-21T10:10:39.684894+00:00`, separately record its
+publication time and prove no intervening candidate trading. Ordinary freeze
+generation would restamp the clock on this source change and is not the host
+correction procedure. Corrected runtime acceptance and natural-session evidence
+remain pending.

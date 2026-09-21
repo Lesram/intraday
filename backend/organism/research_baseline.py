@@ -1,6 +1,6 @@
 """Fail closed when a configured paper restart restores another policy baseline.
 
-Only serializes already loaded model objects for identity; it never deserializes
+Only fingerprints already loaded model objects for identity; it never deserializes
 or rewrites a model. The deployment supplies the approved JSON from its immutable
 image. Absence of configuration is reported as unverified, never as acceptance.
 """
@@ -14,6 +14,7 @@ import pickle
 from typing import Any
 
 from backend.organism import research_policy
+from backend.organism.model_fingerprint import is_random_forest, random_forest_fingerprint
 
 BASELINE_ENV = "ORGANISM_APPROVED_POLICY_BASELINE"
 COMPONENT_FIELDS = {
@@ -28,6 +29,8 @@ COMPONENT_FIELDS = {
 def _fingerprint(value: Any) -> str:
     if value is None:
         raise RuntimeError("Approved research baseline requires all retained models/caches")
+    if is_random_forest(value):
+        return random_forest_fingerprint(value)
     return hashlib.sha256(pickle.dumps(value, protocol=5)).hexdigest()
 
 
