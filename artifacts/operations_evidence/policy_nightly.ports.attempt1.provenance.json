@@ -1,0 +1,22 @@
+{
+  "image_digest": "sha256:ad0fe4be2cb1739c9ce66408408759c2f1c4fdc6bfad231fa6052f97f5974a04",
+  "selected": 17,
+  "container": "intra-nightly-loopback-8c0759ba6138",
+  "source_sha": "20420916dfee1f3957a6278065b7e654c144a2e1",
+  "status": "COMPLETED",
+  "isolation": {
+    "network": "none",
+    "read_only_root": true,
+    "host_mounts": [],
+    "published_ports": {},
+    "tmpfs": {
+      "/tmp": "rw,exec,nosuid,size=1073741824"
+    },
+    "working_dir": "/tmp"
+  },
+  "exit_code": 0,
+  "attach_exit_code": 0,
+  "elapsed_seconds": 1.29,
+  "junit_copied": false,
+  "cleanup_succeeded": true
+}

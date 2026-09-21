@@ -1,0 +1,54 @@
+{
+  "task_id": "policy-lock-legacy-fixture-compatibility",
+  "status": "targeted_green_with_installed_data_unavailable",
+  "source_base": "20420916dfee1f3957a6278065b7e654c144a2e1",
+  "files_changed": [
+    "tests/test_apr10_patch_f4_forensic_guard.py",
+    "tests/test_apr8_patch_a_force_save.py",
+    "tests/test_audit_patch_queue_b1.py",
+    "tests/test_audit_patch_queue_j6.py",
+    "tests/test_remediation_wave_b.py",
+    "tests/test_audit_patch_queue_b2.py",
+    "tests/test_v12_baseline_invariants.py"
+  ],
+  "file_hashes": {
+    "tests/test_apr10_patch_f4_forensic_guard.py": "a8399fca2d69473461d97e95f528c4a1e4fb7e293552d6be871761731e4acb3e",
+    "tests/test_apr8_patch_a_force_save.py": "d2f4e1ea0117e65b534c4730ce72b009b02fc5cf55b834ec9d23e2ff9000b750",
+    "tests/test_audit_patch_queue_b1.py": "cc2b1f842c917928476c72ab8eb378566da243d8f6cd280cb8ed802f9663ff64",
+    "tests/test_audit_patch_queue_j6.py": "a513ac713a72637ec31265284af8ff2754a53ce1e6c4120a710103ba293b415e",
+    "tests/test_remediation_wave_b.py": "0e85234402c0ed3c06edb40fee4c3228e529acdd09b054903ab45b4fd9c14473",
+    "tests/test_audit_patch_queue_b2.py": "84355c438a072d2d72cee13fc1d2325cb8bd94e19748835570bbb2504070b152",
+    "tests/test_v12_baseline_invariants.py": "d00573c0c0065cfcbf7752ad4dddb49297fc3f2006c5f441432fe271fd7bfa0c"
+  },
+  "runtime_behavior_changed": false,
+  "tests_passed": 91,
+  "tests_failed": 0,
+  "tests_skipped": 1,
+  "skip_reason": "Optional installed-history audit requires explicit INTRA_INSTALLED_HISTORY_CSV; not supplied to isolated suite, no installed-data attestation.",
+  "reproduced_before_fix": {
+    "passed": 56,
+    "failed": 17
+  },
+  "temporary_candidate_check": {
+    "passed": 73,
+    "failed": 0
+  },
+  "ruff_new_findings": [],
+  "commands": [
+    "Network-denied sandbox-exec env-i mock/test/shadow pytest on exact7changedfiles with Node inPATH and explicitpytestplugins",
+    "Ruff delta compare exact changed tests to HEAD",
+    "phase2_freeze.py --verify with approved frozen environment"
+  ],
+  "acceptance": [
+    "Realconstructor populates full authority consumer state for savefixtures; allwritesintmp_path.",
+    "Narrow standalone sidecarfixtures get actualRLock; statusfixture supplies honest error/count fields.",
+    "Only one productionML primitive test explicitly unlocks policy locally.",
+    "Regressiontest requires refusal beforeauthoritativecheckpoint creation and byte-identical oldmanifest.",
+    "Deterministic May498/-634.9 snapshotprovenance retained; missingfile asserts unavailable; no private/rawhistorycopy orsynthetic historical metrics."
+  ],
+  "limits": [
+    "Installed nonshrinking audit was not run; root separately owns realstate preservation evidence.",
+    "Broadernightly disposition remainsroot/daily responsibility."
+  ],
+  "output": "artifacts/operations_evidence/policy_legacy_fixture_output.txt"
+}

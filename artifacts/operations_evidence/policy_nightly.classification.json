@@ -1,0 +1,403 @@
+{
+  "source_sha": "20420916dfee1f3957a6278065b7e654c144a2e1",
+  "totals": {
+    "passed": 8246,
+    "failed": 45,
+    "skipped": 721,
+    "xfailed": 2,
+    "deselected": 28
+  },
+  "categories": {
+    "incomplete_accounting_fixture_lock": 12,
+    "incomplete_accounting_fixture_status": 4,
+    "legacy_unlocked_policy_expectation": 1,
+    "local_harness_node_path": 10,
+    "host_network_denial_loopback": 17,
+    "legacy_live_history_fixture_dependency": 1
+  },
+  "failures": [
+    {
+      "nodeid": "tests/test_apr10_patch_f4_forensic_guard.py::test_forensic_guard_learner_replacement",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr10_patch_f4_forensic_guard.py:120: in test_forensic_guard_learner_replacement\n    engine._save_brain()\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_apr10_patch_f4_forensic_guard.py::test_forensic_guard_signal_gen_replacement",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr10_patch_f4_forensic_guard.py:157: in test_forensic_guard_signal_gen_replacement\n    engine._save_brain()\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_apr10_patch_f4_forensic_guard.py::test_forensic_guard_blocks_regression",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr10_patch_f4_forensic_guard.py:193: in test_forensic_guard_blocks_regression\n    engine._save_brain()\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_apr8_patch_a_force_save.py::test_force_save_brain_calls_brain_save_force_true",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr8_patch_a_force_save.py:168: in test_force_save_brain_calls_brain_save_force_true\n    result = OrganismLiveEngine.force_save_brain(stub)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_apr8_patch_a_force_save.py::test_force_save_brain_bypasses_walk_forward_gate",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr8_patch_a_force_save.py:189: in test_force_save_brain_bypasses_walk_forward_gate\n    result = OrganismLiveEngine.force_save_brain(stub)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_apr8_patch_a_force_save.py::test_force_save_brain_updates_watchdog_tick",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr8_patch_a_force_save.py:200: in test_force_save_brain_updates_watchdog_tick\n    OrganismLiveEngine.force_save_brain(stub)\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_apr8_patch_a_force_save.py::test_force_save_brain_persists_exit_levels",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr8_patch_a_force_save.py:206: in test_force_save_brain_persists_exit_levels\n    OrganismLiveEngine.force_save_brain(stub)\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_apr8_patch_a_force_save.py::test_force_save_brain_graceful_exception",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr8_patch_a_force_save.py:213: in test_force_save_brain_graceful_exception\n    result = OrganismLiveEngine.force_save_brain(stub)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_apr8_patch_a_force_save.py::test_force_save_brain_nonfinite_sharpe_returns_none",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_apr8_patch_a_force_save.py:223: in test_force_save_brain_nonfinite_sharpe_returns_none\n    result = OrganismLiveEngine.force_save_brain(stub)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/organism/close_accounting.py:71: in invoke\n    publish()\nbackend/organism/close_accounting.py:51: in publish\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'types.SimpleNamespace' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_current_equity_none_when_no_ticks",
+      "category": "incomplete_accounting_fixture_status",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_error'",
+      "trace": "tests/test_audit_patch_queue_b1.py:238: in test_status_current_equity_none_when_no_ticks\n    s = engine.status()\n        ^^^^^^^^^^^^^^^\nbackend/organism/live_engine.py:7937: in status\n    \"error\": self._accounting_error,\n             ^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_error'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_current_equity_from_broker_after_ticks",
+      "category": "incomplete_accounting_fixture_status",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_error'",
+      "trace": "tests/test_audit_patch_queue_b1.py:247: in test_status_current_equity_from_broker_after_ticks\n    s = engine.status()\n        ^^^^^^^^^^^^^^^\nbackend/organism/live_engine.py:7937: in status\n    \"error\": self._accounting_error,\n             ^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_error'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_cumulative_pnl_correct",
+      "category": "incomplete_accounting_fixture_status",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_error'",
+      "trace": "tests/test_audit_patch_queue_b1.py:262: in test_status_cumulative_pnl_correct\n    s = engine.status()\n        ^^^^^^^^^^^^^^^\nbackend/organism/live_engine.py:7937: in status\n    \"error\": self._accounting_error,\n             ^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_error'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_audit_patch_queue_b1.py::TestEquityStatusReporting::test_status_equity_not_cumulative_pnl",
+      "category": "incomplete_accounting_fixture_status",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_error'",
+      "trace": "tests/test_audit_patch_queue_b1.py:279: in test_status_equity_not_cumulative_pnl\n    s = engine.status()\n        ^^^^^^^^^^^^^^^\nbackend/organism/live_engine.py:7937: in status\n    \"error\": self._accounting_error,\n             ^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_error'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_audit_patch_queue_b2.py::TestMLConfidenceLeakage::test_production_mode_uses_ml_confidence",
+      "category": "legacy_unlocked_policy_expectation",
+      "message": "AssertionError: Production mode: higher ML confidence should increase target_exposure\nassert 0.15 > 0.15\n +  where 0.15 = TradingSignal(symbol='TEST', source='organism', ts=datetime.datetime(2026, 9, 21, 6, 57, 29, 585413, tzinfo=datetime.timezone.utc), target_exposure=0.15, confidence=0.6, metadata={'predicted_return': 0.01, 'composite_score': 0.6, 'regime': 'trending_up'}, stop_loss=None, take_profit=None).target_exposure\n +  and   0.15 = TradingSignal(symbol='TEST', source='organism', ts=datetime.datetime(2026, 9, 21, 6, 57, 29, 585354, tzinfo=datetime.timezone.utc), target_exposure=0.15, confidence=0.6, metadata={'predicted_return': 0.01, 'composite_score': 0.6, 'regime': 'trending_up'}, stop_loss=None, take_profit=None).target_exposure",
+      "trace": "tests/test_audit_patch_queue_b2.py:321: in test_production_mode_uses_ml_confidence\n    assert signals_high[0].target_exposure > signals_low[0].target_exposure, \\\nE   AssertionError: Production mode: higher ML confidence should increase target_exposure\nE   assert 0.15 > 0.15\nE    +  where 0.15 = TradingSignal(symbol='TEST', source='organism', ts=datetime.datetime(2026, 9, 21, 6, 57, 29, 585413, tzinfo=datetime.timezone.utc), target_exposure=0.15, confidence=0.6, metadata={'predicted_return': 0.01, 'composite_score': 0.6, 'regime': 'trending_up'}, stop_loss=None, take_profit=None).target_exposure\nE    +  and   0.15 = TradingSignal(symbol='TEST', source='organism', ts=datetime.datetime(2026, 9, 21, 6, 57, 29, 585354, tzinfo=datetime.timezone.utc), target_exposure=0.15, confidence=0.6, metadata={'predicted_return': 0.01, 'composite_score': 0.6, 'regime': 'trending_up'}, stop_loss=None, take_profit=None).target_exposure",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_audit_patch_queue_j6.py::TestExitLevelsPersistence::test_persist_exit_levels_standalone_writes_file",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_audit_patch_queue_j6.py:199: in test_persist_exit_levels_standalone_writes_file\n    engine._persist_exit_levels_standalone(exit_levels, entry_metadata)\nbackend/organism/close_accounting.py:30: in invoke\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_audit_patch_queue_j6.py::TestExitLevelsPersistence::test_persist_exit_levels_preserves_existing_data",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_audit_patch_queue_j6.py:226: in test_persist_exit_levels_preserves_existing_data\n    engine._persist_exit_levels_standalone(\nbackend/organism/close_accounting.py:30: in invoke\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[False-failure-False-False-paper-postclose-audit.yml-collect-and-audit]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[False-failure-False-False-nightly.yml-deep-tests]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-success-False-False-paper-postclose-audit.yml-collect-and-audit]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-success-False-False-nightly.yml-deep-tests]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-False-paper-postclose-audit.yml-collect-and-audit]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-False-nightly.yml-deep-tests]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-cancelled-True-False-paper-postclose-audit.yml-collect-and-audit]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-cancelled-True-False-nightly.yml-deep-tests]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-True-paper-postclose-audit.yml-collect-and-audit]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-True-nightly.yml-deep-tests]",
+      "category": "local_harness_node_path",
+      "message": "AssertionError: Node is required to verify workflow notification behavior\nassert None",
+      "trace": "tests/test_monday_ci_workflows.py:118: in test_notification_program_is_opt_in_and_retains_delivery_failures\n    assert node, \"Node is required to verify workflow notification behavior\"\nE   AssertionError: Node is required to verify workflow notification behavior\nE   assert None",
+      "followup": "PASS in focused Node PATH rerun; no network enabled"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestIsPortAvailable::test_unavailable_port",
+      "category": "host_network_denial_loopback",
+      "message": "PermissionError: [Errno 1] Operation not permitted",
+      "trace": "tests/test_port_management_comprehensive.py:69: in test_unavailable_port\n    sock.bind(('127.0.0.1', 0))  # Let OS pick a port\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   PermissionError: [Errno 1] Operation not permitted",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_default",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:87: in test_find_free_port_default\n    port = port_manager.find_free_port()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_preferred",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 15000",
+      "trace": "tests/test_port_management_comprehensive.py:95: in test_find_free_port_preferred\n    port = port_manager.find_free_port(preferred_port=preferred)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 15000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_tracks_allocation",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:102: in test_find_free_port_tracks_allocation\n    port1 = port_manager.find_free_port()\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_skips_allocated",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:112: in test_find_free_port_skips_allocated\n    port1 = port_manager.find_free_port()\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestReleasePort::test_release_allocated_port",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:129: in test_release_allocated_port\n    port = port_manager.find_free_port()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_allocates_port",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:151: in test_context_manager_allocates_port\n    with port_manager.get_port() as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exit",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:157: in test_context_manager_releases_on_exit\n    with port_manager.get_port() as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exception",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:166: in test_context_manager_releases_on_exception\n    with port_manager.get_port() as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_preferred_port",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 12000",
+      "trace": "tests/test_port_management_comprehensive.py:176: in test_context_manager_preferred_port\n    with port_manager.get_port(preferred_port=12000) as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 12000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestEdgeCases::test_multiple_managers_isolated",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 100 attempts starting from 20000",
+      "trace": "tests/test_port_management_comprehensive.py:201: in test_multiple_managers_isolated\n    port1 = pm1.find_free_port()\n            ^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 100 attempts starting from 20000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestGetPortInfo::test_get_info_for_available_port",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:217: in test_get_info_for_available_port\n    port = port_manager.find_free_port()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 100 attempts starting from 8001",
+      "trace": "tests/test_port_management_comprehensive.py:360: in test_get_free_port\n    port = get_free_port()\n           ^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:319: in get_free_port\n    return port_manager.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 100 attempts starting from 8001",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port_preferred",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 100 attempts starting from 30000",
+      "trace": "tests/test_port_management_comprehensive.py:368: in test_get_free_port_preferred\n    port = get_free_port(preferred_port=30000)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:319: in get_free_port\n    return port_manager.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 100 attempts starting from 30000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_free_port_context_function",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 100 attempts starting from 40000",
+      "trace": "tests/test_port_management_comprehensive.py:397: in test_free_port_context_function\n    with free_port_context(40000) as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:340: in free_port_context\n    with port_manager.get_port(preferred_port) as port:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nbackend/utils/port_management.py:83: in get_port\n    port = self.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 100 attempts starting from 40000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_success",
+      "category": "host_network_denial_loopback",
+      "message": "RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "trace": "tests/test_port_management_comprehensive.py:547: in test_start_server_success\n    host, port = await tsm.start_test_server(\"test_server\", mock_app)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:226: in start_test_server\n    port = self.port_manager.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_failure_releases_port",
+      "category": "host_network_denial_loopback",
+      "message": "AssertionError: Regex pattern did not match.\n  Expected regex: 'Failed to start server'\n  Actual message: 'Could not find a free port after 50 attempts starting from 10000'",
+      "trace": "tests/test_port_management_comprehensive.py:563: in test_start_server_failure_releases_port\n    await tsm.start_test_server(\"test_server\", mock_app)\nbackend/utils/port_management.py:226: in start_test_server\n    port = self.port_manager.find_free_port(preferred_port)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbackend/utils/port_management.py:46: in find_free_port\n    raise RuntimeError(f\"Could not find a free port after {self.max_attempts} attempts starting from {preferred_port}\")\nE   RuntimeError: Could not find a free port after 50 attempts starting from 10000\n\nDuring handling of the above exception, another exception occurred:\ntests/test_port_management_comprehensive.py:562: in test_start_server_failure_releases_port\n    with pytest.raises(RuntimeError, match=\"Failed to start server\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError: Regex pattern did not match.\nE     Expected regex: 'Failed to start server'\nE     Actual message: 'Could not find a free port after 50 attempts starting from 10000'",
+      "followup": "PASS in immutable candidate image with network none; no host mounts/published ports"
+    },
+    {
+      "nodeid": "tests/test_remediation_wave_b.py::TestPendingEntryOrphanPersistence::test_pending_ids_persisted_in_extra_counters",
+      "category": "incomplete_accounting_fixture_lock",
+      "message": "AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "trace": "tests/test_remediation_wave_b.py:110: in test_pending_ids_persisted_in_extra_counters\n    engine._persist_exit_levels_standalone(\nbackend/organism/close_accounting.py:30: in invoke\n    with engine._accounting_lock:\n         ^^^^^^^^^^^^^^^^^^^^^^^\nE   AttributeError: 'OrganismLiveEngine' object has no attribute '_accounting_lock'",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    },
+    {
+      "nodeid": "tests/test_v12_baseline_invariants.py::test_baseline_expectancy_reflects_committed_baseline",
+      "category": "legacy_live_history_fixture_dependency",
+      "message": "AssertionError: trade history shrank: was 498, now 0\nassert 0 >= 498",
+      "trace": "tests/test_v12_baseline_invariants.py:243: in test_baseline_expectancy_reflects_committed_baseline\n    assert current[\"n_trades\"] >= base_exp[\"n_trades\"], (\nE   AssertionError: trade history shrank: was 498, now 0\nE   assert 0 >= 498",
+      "followup": "Root/accounting agent owns test compatibility repair; original source run remains failed"
+    }
+  ],
+  "status": "COMPLETE_WITH_CLASSIFIED_FAILURES; 27environment failures reproduced as passing in suitable isolated environments",
+  "container_rerun": {
+    "image": "sha256:ad0fe4be2cb1739c9ce66408408759c2f1c4fdc6bfad231fa6052f97f5974a04",
+    "network": "none",
+    "root_filesystem": "read-only",
+    "writable": "temporary /tmp only",
+    "host_mounts": [],
+    "published_ports": [],
+    "selection": [
+      "tests/test_port_management_comprehensive.py::TestIsPortAvailable::test_unavailable_port",
+      "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_default",
+      "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_preferred",
+      "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_tracks_allocation",
+      "tests/test_port_management_comprehensive.py::TestFindFreePort::test_find_free_port_skips_allocated",
+      "tests/test_port_management_comprehensive.py::TestReleasePort::test_release_allocated_port",
+      "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_allocates_port",
+      "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exit",
+      "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_releases_on_exception",
+      "tests/test_port_management_comprehensive.py::TestGetPortContextManager::test_context_manager_preferred_port",
+      "tests/test_port_management_comprehensive.py::TestEdgeCases::test_multiple_managers_isolated",
+      "tests/test_port_management_comprehensive.py::TestGetPortInfo::test_get_info_for_available_port",
+      "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port",
+      "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_get_free_port_preferred",
+      "tests/test_port_management_comprehensive.py::TestConvenienceFunctions::test_free_port_context_function",
+      "tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_success",
+      "tests/test_port_management_comprehensive.py::TestTestServerManagerStartServer::test_start_server_failure_releases_port"
+    ]
+  },
+  "node_rerun": {
+    "network": "OS denied",
+    "selection": [
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[False-failure-False-False-paper-postclose-audit.yml-collect-and-audit]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[False-failure-False-False-nightly.yml-deep-tests]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-success-False-False-paper-postclose-audit.yml-collect-and-audit]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-success-False-False-nightly.yml-deep-tests]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-False-paper-postclose-audit.yml-collect-and-audit]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-False-nightly.yml-deep-tests]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-cancelled-True-False-paper-postclose-audit.yml-collect-and-audit]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-cancelled-True-False-nightly.yml-deep-tests]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-True-paper-postclose-audit.yml-collect-and-audit]",
+      "tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-True-nightly.yml-deep-tests]"
+    ]
+  },
+  "environment_rerun_results": {
+    "node": {
+      "tests": 10,
+      "failures": 0,
+      "skipped": 0,
+      "junit": "artifacts/operations_evidence/policy_nightly.node.xml",
+      "log": "artifacts/operations_evidence/policy_nightly.node.log"
+    },
+    "ports": {
+      "tests": 17,
+      "failures": 0,
+      "skipped": 0,
+      "junit": "artifacts/operations_evidence/policy_nightly.ports.xml",
+      "log": "artifacts/operations_evidence/policy_nightly.ports.log"
+    }
+  },
+  "remaining_original_source_failures": 18,
+  "remaining_categories": [
+    "12 incomplete accounting lock fixtures",
+    "4 incomplete accounting status fixtures",
+    "1 legacy unlocked production ML expectation",
+    "1 clean checkout lacks installed historical CSV (498 expected)"
+  ],
+  "followup_owner_report": "artifacts/operations_evidence/policy_legacy_fixture_implementation.json",
+  "conclusion": "No normally initialized runtime defect established by these failures. Original full run is not green. Accounting/lock compatibility repairs require root acceptance at their final source; no blanket unlock was performed by this task."
+}

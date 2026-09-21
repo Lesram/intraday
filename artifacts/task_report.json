@@ -1,16 +1,19 @@
 {
-  "task_id": "monday-preparation-20260920",
-  "summary": "PR19 integrity hardening: reject aliased/racing inputs and malformed receipts, expose unsupported replacement holds and block their evidence; verify Monday readiness and isolated restores",
-  "sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
+  "task_id": "monday-final-readiness-20260921",
+  "summary": "Exact accounting and receipt integrity, explicit locked paper research policy, retained model/component startup baseline, authenticated daily evidence and watchdog policy observation",
+  "sha": "045681d2e097000628bc97f3a31d57130d71a69a",
   "branch": "codex/operations-evidence-integrity",
   "change_scope": "base",
   "change_ref": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD",
   "files_changed": [
+    ".dockerignore",
     ".github/workflows/paper-readiness.yml",
     "artifacts/algorithm_improvements.junit.xml",
     "artifacts/algorithm_improvements.log",
     "artifacts/changed_files.json",
     "artifacts/live_process_runtime_snapshot.json",
+    "artifacts/monday_readiness/freeze_environment.json",
+    "artifacts/monday_readiness/frozen_surface_reference.json",
     "artifacts/multi_tick_state.junit.xml",
     "artifacts/multi_tick_state.log",
     "artifacts/operations_evidence/accounting_implementation.json",
@@ -19,7 +22,10 @@
     "artifacts/operations_evidence/cli_positive.json",
     "artifacts/operations_evidence/daily_final.xml",
     "artifacts/operations_evidence/daily_implementation.json",
+    "artifacts/operations_evidence/final_readiness_plan.json",
     "artifacts/operations_evidence/final_validation.json",
+    "artifacts/operations_evidence/freeze_history/prior-active-september19.json",
+    "artifacts/operations_evidence/freeze_history/prior-ci-reference.json",
     "artifacts/operations_evidence/freeze_reference_comparison.json",
     "artifacts/operations_evidence/freeze_verification.txt",
     "artifacts/operations_evidence/freeze_verification_tracked.txt",
@@ -104,11 +110,14 @@
     "artifacts/operations_evidence/task_plan.json",
     "artifacts/operations_evidence/validated_source.json",
     "artifacts/operations_evidence/validation_history.json",
+    "artifacts/operations_evidence/watchdog_policy_review.json",
     "artifacts/operations_evidence/workflow_contract.xml",
     "artifacts/organism_engine_scenarios.junit.xml",
     "artifacts/organism_engine_scenarios.log",
     "artifacts/organism_live_engine.junit.xml",
     "artifacts/organism_live_engine.log",
+    "artifacts/phase2/param_freeze.json",
+    "artifacts/phase2/research_policy_baseline.json",
     "artifacts/replay_simulator.junit.xml",
     "artifacts/replay_simulator.log",
     "artifacts/replay_summary.json",
@@ -127,6 +136,8 @@
     "artifacts/spec_drift_summary.json",
     "artifacts/task_report.json",
     "artifacts/test_summary.json",
+    "backend/api/routes/settings.py",
+    "backend/organism/background_trainer.py",
     "backend/organism/brain_persistence.py",
     "backend/organism/close_accounting.py",
     "backend/organism/continuous_learner.py",
@@ -134,23 +145,56 @@
     "backend/organism/live_engine.py",
     "backend/organism/live_engine_fills.py",
     "backend/organism/replay_simulator.py",
+    "backend/organism/research_baseline.py",
+    "backend/organism/research_policy.py",
+    "backend/organism/scheduler.py",
+    "backend/organism/trading_phase.py",
     "docs/architecture/mapss.md",
     "docs/engineering/LIVE_AUDIT_INDEX.md",
     "docs/engineering/MONDAY_PREPARATION_2026-09-21.md",
     "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
     "docs/runbooks/PAPER_DAILY_EVIDENCE.md",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "ops/launchd/com.intra.paper.daily-evidence.plist",
+    "ops/launchd/com.intra.paper.watchdog.plist",
     "scripts/ops/paper_daily_evidence.py",
+    "scripts/ops/paper_daily_host.py",
+    "scripts/ops/paper_watchdog.py",
     "scripts/ops/standdown_session_row.py",
+    "scripts/phase2_freeze.py",
     "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_apr10_patch_f4_forensic_guard.py",
+    "tests/test_apr8_patch_a_force_save.py",
+    "tests/test_audit_0_2_bg_trainer_same_holdout.py",
+    "tests/test_audit_2_3_2_5_promotion_evolution.py",
+    "tests/test_audit_patch_queue_a.py",
+    "tests/test_audit_patch_queue_b1.py",
+    "tests/test_audit_patch_queue_b2.py",
+    "tests/test_audit_patch_queue_f3.py",
+    "tests/test_audit_patch_queue_f4.py",
+    "tests/test_audit_patch_queue_h3.py",
+    "tests/test_audit_patch_queue_i1.py",
+    "tests/test_audit_patch_queue_j6.py",
     "tests/test_entry_evidence.py",
+    "tests/test_h5_h4_h3_fixes.py",
+    "tests/test_h5_settings_governance.py",
     "tests/test_live_engine_fill_accounting.py",
+    "tests/test_monday_ci_workflows.py",
     "tests/test_organism_engine_scenarios.py",
     "tests/test_organism_live_engine.py",
     "tests/test_paper_daily_evidence.py",
+    "tests/test_paper_daily_host.py",
+    "tests/test_paper_watchdog.py",
     "tests/test_pending_close_accounting.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_phase2_guarded_promotion.py",
+    "tests/test_remediation_wave_b.py",
     "tests/test_replay_close_accounting.py",
+    "tests/test_research_baseline.py",
+    "tests/test_research_policy_lock.py",
     "tests/test_runtime_snapshot_auth.py",
     "tests/test_standdown_session_row.py",
+    "tests/test_v12_baseline_invariants.py",
     "tests/test_walkforward_persistence.py"
   ],
   "commands": [
@@ -158,16 +202,14 @@
     "python scripts/ci/generate_artifacts.py full",
     "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
     "python scripts/ci/check_spec_drift.py --json",
-    "Network-denied final operational/workflow/persistence selection: 734 tests",
-    "Exact-source Docker build; network-disabled read-only source hashes, freeze and79 Linux daily tests",
-    "Isolated latest scheduled PostgreSQL restore:27tables/constraints/cleanup",
-    "Isolated brain archive verification/copy; live/baseline/restore ledger hashes equal",
-    "Authenticated observer and fixed-paper GET readiness/account/positions/orders/clock/calendar; read-only DB aggregate",
-    "Candidate and installed freeze verify; immutable synthetic daily-pack replay",
-    "Ruff delta and bounded Bandit high-severity scan"
+    "Final network-denied operational suite with workflow/persistence/legacy compatibility cases",
+    "python scripts/ci/generate_audit_index.py",
+    "Exact git-archive immutable Docker build; read-only network-none source/freeze verification",
+    "Isolated trusted signed-model load/save/reload and negative pinned-baseline controls",
+    "Bounded current secret scan; scoped Ruff/workflow/plist review"
   ],
   "tests_passed": [
-    "artifacts/operations_evidence/monday_operational.xml:734",
+    "artifacts/operations_evidence/monday_operational.xml:1150",
     "artifacts/organism_live_engine.junit.xml:26",
     "artifacts/organism_engine_scenarios.junit.xml:31",
     "artifacts/multi_tick_state.junit.xml:9",
@@ -180,114 +222,132 @@
   "tests_failed": [],
   "runtime_behavior_changed": true,
   "docs_updated": [
+    "docs/architecture/mapss.md",
     "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
     "docs/engineering/MONDAY_PREPARATION_2026-09-21.md",
     "docs/runbooks/PAPER_DAILY_EVIDENCE.md",
+    "docs/runbooks/PAPER_UPTIME.md",
     "docs/engineering/LIVE_AUDIT_INDEX.md"
   ],
   "risks": [
-    "Automatic replacement-chain accounting remains unsupported; unverified lineage stays pending and blocks qualification, potentially delaying later outcomes. Current DB inventory has no such rows.",
-    "Mac is currently on battery with battery sleep enabled; AC power, awake login and network are needed before Monday.",
-    "Source acceptance, prebuilt image and closed-market probes do not establish natural-session or unattended-operation acceptance.",
-    "Rollback after new activity requires broker/state reconciliation; do not discard authoritative close state.",
-    "Local alerts need visible-delivery verification; external alerts and off-host backups are not configured.",
-    "Profitability is unproved. Synchronous next-open replay remains a known simulation limitation.",
-    "Bounded static/secret checks are not whole-repository security certification."
+    "Replacement lineage unsupported: visible pending hold blocks daily qualification.",
+    "Old PR17 ignores/deletes new authority sidecars: stop and preserve candidate state; reconcile before separately validated recovery migration.",
+    "Retained models include ML reversal exits; lock isolates main-book ranking/confidence/sizing and blocks training, not every model-dependent exit.",
+    "Development fallback signing offers corruption detection, not independent secret-key authenticity.",
+    "Legacy frozen tick may emit training-submitted telemetry for a locked no-op; authoritative policy/trainer state governs.",
+    "Natural-session behavior, real fills and EOD remain unproven until observed; no profitability or inherited clean-data claim.",
+    "Awake logged-in Mac on AC, Docker/network and same-day collector execution required; full-host recovery and off-host alert/backup acceptance remain outstanding.",
+    "Bounded source/static/known-secret checks are not whole-repository certification.",
+    "GitHub push reports106 existing dependency alerts on default main (1critical/38high/59moderate/8low); this scoped release does not certify their resolution. Parked dependency/CI cleanup is not silently expanded."
   ],
   "follow_ups": [
-    "Required hosted operational-safety must pass before merge; review and activate the concrete candidate image before relying on new evidence contract.",
-    "Retain original approved cutoff/history and separate new release identity.",
-    "Supervise Monday natural data, ticks, fills, accounting and EOD; generate manual complete daily pack after actual close plus5minutes.",
-    "Implement authoritative replacement lineage/cashflow ingestion before claiming replacement support.",
-    "Unattended host recovery, visible/external alert and off-host recovery acceptance.",
-    "Preregister a shadow research hypothesis without changing the frozen baseline."
+    "Fresh hosted operational-safety and accepted PR merge before rollout.",
+    "Fresh flat paper broker check, stopped-state backup/restore, explicit archive and new cutoff, preserve user edits/history.",
+    "Installed exact source/image/config, policy/model pin, engine/scheduler/accounting and recovery checks.",
+    "Install private immutable daily binding and host schedule; validate preclose withholding and policy watchdog.",
+    "Observe Monday market data, natural fills, accounting, EOD and13:10Pacific daily evidence; no forced trades.",
+    "Future authoritative replacement-chain ingestion and independently reviewed research hypothesis."
   ],
   "artifact_pack_status": "pass",
   "artifact_pack_errors": [],
-  "unique_tests_passed": 950,
+  "unique_tests_passed": 1366,
   "validation": {
-    "source_sha": "05e67e176ec1830553a26d15e25f821aeff127c8",
-    "unique_tests_passed": 950,
+    "source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+    "created_at_utc": "2026-09-21T07:22:15.559442+00:00",
+    "unique_tests_passed": 1366,
     "tests_failed": 0,
-    "skipped": 0,
+    "skipped": 1,
+    "skip_details": [
+      {
+        "test": [
+          "tests.test_v12_baseline_invariants",
+          "test_installed_history_has_not_shrunk_from_committed_baseline"
+        ],
+        "reason": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim"
+      }
+    ],
     "suites": [
       {
         "junit": "artifacts/operations_evidence/monday_operational.xml",
-        "passed": 734,
+        "passed": 1150,
         "failed": 0,
-        "skipped": 0,
-        "sha256": "e47382c39a3bca47e5985dacbc7d4d7e372cfe6d0b6e14e0494b0f36837e79f9"
+        "skipped": 1,
+        "sha256": "1905abc603ee98dd1c177ab6d78aabfb2ae76d59dc765bec91598dd2e3212370"
       },
       {
         "junit": "artifacts/organism_live_engine.junit.xml",
         "passed": 26,
         "failed": 0,
         "skipped": 0,
-        "sha256": "19afdb20b7bf5c9c06d0e443f714102475f7302468acddb853013fa65038df13"
+        "sha256": "b7a43036ae8c9094a095bf1f188a0aeea6f47c5099e9b0ff3cecca4941595363"
       },
       {
         "junit": "artifacts/organism_engine_scenarios.junit.xml",
         "passed": 31,
         "failed": 0,
         "skipped": 0,
-        "sha256": "720e794f4a5f1958a41529eca6519a64688b40c88e1ab66b9be14cb60d3e8686"
+        "sha256": "5a2f16c77f0f2aa22a4994b9bfe63df26ae51c337976bf5acd8c9bd14458dd84"
       },
       {
         "junit": "artifacts/multi_tick_state.junit.xml",
         "passed": 9,
         "failed": 0,
         "skipped": 0,
-        "sha256": "aace7c71f73c5da2fbff5d3721a7ccbe49177b6aeee58bf0bef8daca4c765def"
+        "sha256": "37b4aedb8dce5d65dbdfd095afe16f50b2f49788d6e8d7643a1e0d42aacb51d2"
       },
       {
         "junit": "artifacts/safety_invariants.junit.xml",
         "passed": 29,
         "failed": 0,
         "skipped": 0,
-        "sha256": "acf7bd32c166a40761769539bb42fbb74bed36c2f8e5950675cc13df537d4d52"
+        "sha256": "2c8f9ea4b5ab660987bf1d19313e7983c097c4766fa4f0e18563bceb94f55e8b"
       },
       {
         "junit": "artifacts/self_evolution.junit.xml",
         "passed": 15,
         "failed": 0,
         "skipped": 0,
-        "sha256": "4c20c675b3e84b0ba4b0a0ad162bff4297e878d968c8c93d1cb57a54858aa821"
+        "sha256": "ab6e09a4ecafceec1b6092fa3df267e7beeb6e5aa28cc9e008dc25c8dca54ec2"
       },
       {
         "junit": "artifacts/algorithm_improvements.junit.xml",
         "passed": 58,
         "failed": 0,
         "skipped": 0,
-        "sha256": "7a6d99a5f638e85c09e854280f726edca159e83e54a6b7d5a4d71e6de31fc050"
+        "sha256": "e4bea0fd6bd4a8da7e23f1edaacad1c8db8817624ee1e0bae8fc36c17d00f6ba"
       },
       {
         "junit": "artifacts/replay_simulator.junit.xml",
         "passed": 28,
         "failed": 0,
         "skipped": 0,
-        "sha256": "14b678c82dfac1d57302155d79dc0a43702959d7ef5e28c0a8a3b46dba5aa839"
+        "sha256": "8e535207deedd53349ddbd017f810c14907fcf944ae9c23b097ceedb8928f0e3"
       },
       {
         "junit": "artifacts/semantic_invariants.junit.xml",
         "passed": 20,
         "failed": 0,
         "skipped": 0,
-        "sha256": "61f188b2feb81f6bd8730e5a845fbf047d07e97ad73da44011e4363214d2cc3e"
+        "sha256": "5b8167e2b9476950a554d64608453297d033397bf3dfcee5d926b6951f74bb71"
       }
     ],
-    "count_method": "Unique (JUnit classname, case name) across the source-bound final operational and full artifact runs; prior targeted, Linux and repeated runs not added",
+    "count_method": "Unique JUnit classname and case name across final operational and required full artifact runs; repeated/targeted/broad nightly/environment runs are not added",
     "full_artifact_pack": "pass",
     "freeze_verification": "pass",
-    "image_linux_daily_tests": {
-      "passed": 79,
-      "failed": 0,
-      "included_in_unique_count": false
-    },
-    "synthetic_cli_replay": "positive and withheld examples reproduce expected statuses; fixtures only",
+    "immutable_image": "sha256:155b6ffea0e1a4de782470cd387e7600e77aebbed1c332717046d6a9803ef66c",
+    "isolated_signed_backup_warm_start": "pass; initial load and saved reload preserve pinned models/components and ledger; negative corruption fails before engine effects",
     "deployed": false,
-    "hosted_check_status": "pending_after_push"
+    "hosted_check_status": "pending_after_push",
+    "broad_nightly": {
+      "source": "20420916dfee1f3957a6278065b7e654c144a2e1",
+      "passed": 8246,
+      "failed": 45,
+      "skipped": 721,
+      "xfail": 2,
+      "classification": "27 environment failures passed isolated reruns;17 stale accounting/policy fixtures repaired and covered by final required selection;1 installed-history dependency now explicit unavailable skip. Original failed receipt retained.",
+      "details": "artifacts/operations_evidence/policy_nightly.classification.json"
+    }
   },
   "deployed": false,
-  "runtime_behavior_note": "PR19 accounting and receipt observers affect prospective paper accounting; this amendment preserves replacement eligibility and strengthens evidence validation. Deployed PR17 unchanged.",
-  "local_acceptance": "monday_final_review.json: LOCAL_SOURCE_AND_ARTIFACTS_ACCEPTED_HOSTED_PENDING"
+  "runtime_behavior_note": "Blocks automatic promotion/training and settings changes; pins restored parameters/models without resetting history. Actual deployment and expanded evaluation boundary require separate recorded approved transition. Original six frozen decision functions and feed unchanged."
 }

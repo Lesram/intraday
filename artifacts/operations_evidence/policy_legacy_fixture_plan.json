@@ -1,0 +1,26 @@
+{
+  "task_id": "policy-lock-legacy-fixture-compatibility",
+  "status": "targeted_green_with_installed_data_unavailable",
+  "scope": "Tests only: repair incomplete constructor-bypassing accounting fixtures, retain primitive production-ML test with explicit local unlock, assert stronger prepublication regression refusal. Separate unavailable installed-history audit from deterministic committed snapshot integrity; no raw history created or read.",
+  "files": [
+    "tests/test_apr10_patch_f4_forensic_guard.py",
+    "tests/test_apr8_patch_a_force_save.py",
+    "tests/test_audit_patch_queue_b1.py",
+    "tests/test_audit_patch_queue_j6.py",
+    "tests/test_remediation_wave_b.py",
+    "tests/test_audit_patch_queue_b2.py",
+    "tests/test_v12_baseline_invariants.py"
+  ],
+  "reproduction": {
+    "passed": 56,
+    "failed": 17,
+    "network": "denied",
+    "node_path": "/opt/homebrew/bin"
+  },
+  "constraints": [
+    "No runtime changes.",
+    "No broad fixture/default unlock.",
+    "Apply only after root confirms whole-nightly completion.",
+    "All brain writes use disposable test temp dirs."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "task_id": "research-paper-runtime-policy-lock",
+  "status": "implemented_targeted_green",
+  "scope": "Lock reviewed saved parameter and model baseline against automatic promotion, transfer, training and manual settings mutation; preserve actual saved baseline, legacy history, fixed ATR risk and protective exits.",
+  "authorization": "Release owner confirms user authorization for proposed policy lock, explicit freeze transition and controlled paper rollout; this worker implements and tests only.",
+  "owned_files": [
+    "backend/organism/live_engine.py (minimal non-hashed seams where possible)",
+    "backend/organism/trading_phase.py",
+    "backend/organism/background_trainer.py",
+    "backend/organism/research_policy.py (new)",
+    "tests/test_research_policy_lock.py (new)",
+    "related targeted policy tests only if necessary",
+    "backend/api/routes/settings.py (_check_governance only)",
+    "backend/organism/scheduler.py (update_config entry guard)"
+  ],
+  "steps": [
+    "Trace all phase promotion, ML/Kelly activation and evolved-parameter application paths.",
+    "Implement a default-safe explicit policy lock with honest raw/qualified evidence status.",
+    "Test startup, background and synchronous application paths plus risk/exit preservation.",
+    "Report exact protected-source impacts and warm-reload acceptance assertions to release owner."
+  ],
+  "constraints": [
+    "Do not spoof learning mode or reset/truncate histories.",
+    "Qualified trade count remains null unless independently supported; inherited counts cannot unlock policy.",
+    "Root owns runtime snapshot, documented constants, freeze metadata, commits and rollout.",
+    "No live brain/database/broker access; tests isolated and network-denied.",
+    "Preserve concurrent edits and notify reviewer when stable."
+  ]
+}
