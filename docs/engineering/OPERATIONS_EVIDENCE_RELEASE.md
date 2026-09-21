@@ -123,3 +123,11 @@ the installed production build on `127.0.0.1:5173`, opened as
 Browser smoke checks establish rendering and authentication boundaries, not
 administrator access without an existing authorized login. The preview is a
 temporary process, not a newly installed startup service.
+
+Production browser verification also exposed initialization cycles caused by
+manual vendor partitioning: first React/scheduler, then Ant Design/icons. The
+build now lets Rollup choose dependency-aware chunks. Release CI checks the
+actual built login page in a fresh local browser with outbound connections and
+form submission blocked, requires visible login controls and no page errors,
+and removes only its own browser and preview processes. Component tests and a
+successful build alone do not satisfy this browser gate.

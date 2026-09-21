@@ -185,6 +185,12 @@ jobs:
             src/features/auth/LoginPage.test.tsx \
             --reporter=junit --outputFile=../artifacts/monday_readiness/github_frontend.xml
           npm run build 2>&1 | tee ../artifacts/monday_readiness/github_frontend_build.log
+          npx --yes agent-browser@0.38.1 --version
+          task_browser_path="$(command -v google-chrome)"
+          test -x "$task_browser_path"
+          AGENT_BROWSER_EXECUTABLE_PATH="$task_browser_path" \
+            python ../scripts/ci/check_frontend_preview.py \
+              --output-dir ../artifacts/monday_readiness/frontend_browser
       - uses: actions/upload-artifact@v4
         if: always()
         timeout-minutes: 2
