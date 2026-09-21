@@ -1,0 +1,8 @@
+........................................................................ [ 56%]
+.......................................................                  [100%]
+=============================== warnings summary ===============================
+tests/test_research_policy_lock.py::test_real_saved_baseline_and_history_survive_locked_startup
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+127 passed, 1 warning in 7.18s

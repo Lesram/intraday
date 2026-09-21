@@ -1,0 +1,20 @@
+{
+  "backup_manifest_sha256": "c902c9ada029acc38342b1d4a7ecbcaac6e235528533ca2180d508d2a2fdefe9",
+  "base_image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
+  "baseline_gate_stopped_before_reconstruction": true,
+  "corrected_baseline_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+  "cutoff_preserved": "2026-09-21T10:10:39.684894+00:00",
+  "input_mounted_readonly": true,
+  "installed_runtime_started": false,
+  "models_independently_loaded_and_matched": 9,
+  "network": "none",
+  "observed_at_utc": "2026-09-21T10:34:44.541813+00:00",
+  "original_files_unchanged": true,
+  "overlay_source_hashes": {
+    "backend/organism/model_fingerprint.py": "fb29529f60f6e5110404599489f761e154b64a2e8b7bb2d50a83d708c856ae55",
+    "backend/organism/research_baseline.py": "23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1"
+  },
+  "prior_baseline_sha256": "1c31a7eddd75444fd46cea81260fb27f92646634ccbd36fa0e53779bce849be4",
+  "retained_params_unchanged": true,
+  "timeframe": "1Min"
+}

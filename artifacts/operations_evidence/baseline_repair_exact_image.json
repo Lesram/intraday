@@ -1,0 +1,23 @@
+{
+  "exit_code": 0,
+  "stdout": "........................................................................ [ 86%]\n...........                                                              [100%]\n83 passed in 5.66s\n",
+  "stderr": "",
+  "source_hashes": {
+    "backend/organism/model_fingerprint.py": "fb29529f60f6e5110404599489f761e154b64a2e8b7bb2d50a83d708c856ae55",
+    "backend/organism/research_baseline.py": "23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1",
+    "tests/test_research_model_fingerprint.py": "c09edfed82a918dedda7852cefffb70c0461cb25cff958c64f377cc9d824c2e6",
+    "tests/test_research_baseline.py": "aa818ed467e666a10ba045b6eaa2aa890e24be7ec0ed283ef2050d874d7b65e2"
+  },
+  "image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
+  "network": "none",
+  "host_mounts": [],
+  "container_filesystem": "read-only root; ephemeral /tmp tmpfs",
+  "application_modules": "reviewed candidate module overlay; no repository/runtime mutation",
+  "source_hashes_expected": {
+    "backend/organism/model_fingerprint.py": "fb29529f60f6e5110404599489f761e154b64a2e8b7bb2d50a83d708c856ae55",
+    "backend/organism/research_baseline.py": "23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1",
+    "tests/test_research_model_fingerprint.py": "c09edfed82a918dedda7852cefffb70c0461cb25cff958c64f377cc9d824c2e6",
+    "tests/test_research_baseline.py": "aa818ed467e666a10ba045b6eaa2aa890e24be7ec0ed283ef2050d874d7b65e2"
+  },
+  "source_bytes_verified": true
+}

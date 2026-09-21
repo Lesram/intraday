@@ -88,3 +88,38 @@ def test_invalid_baseline_cannot_certify_startup(tmp_path, monkeypatch, failure)
     elif failure == "unlocked": monkeypatch.setattr(policy, "RESEARCH_POLICY_LOCKED", False)
     with pytest.raises(RuntimeError, match="startup held"):
         baseline.verify_configured_baseline(obj, brain_loaded=failure != "no_brain")
+
+
+def test_real_rf_restore_qualifies_only_with_versioned_full_state(tmp_path, monkeypatch):
+    import hashlib
+    import pickle
+    import joblib
+    import numpy as np
+    from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+    from backend.organism.model_fingerprint import RF_FINGERPRINT_PREFIX
+
+    features = np.arange(80, dtype=float).reshape(20, 4)
+    classifier = RandomForestClassifier(n_estimators=3, random_state=5).fit(features, np.arange(20) % 2)
+    regressor = RandomForestRegressor(n_estimators=3, random_state=6).fit(features, np.arange(20))
+    obj = engine()
+    obj.signal_gen._ensemble._models = [(classifier, regressor, "rf", 0.4)]
+    approved = approve(tmp_path, monkeypatch, obj)
+    data = json.loads(approved.read_text())
+    assert data["runtime_identity"]["models"]["ensemble_rf_clf.joblib"].startswith(RF_FINGERPRINT_PREFIX)
+    saved = tmp_path / "synthetic.joblib"
+    joblib.dump((classifier, regressor), saved)
+    loaded_classifier, loaded_regressor = joblib.load(saved)
+    obj.signal_gen._ensemble._models = [(loaded_classifier, loaded_regressor, "rf", 0.4)]
+    assert baseline.verify_configured_baseline(obj, brain_loaded=True)["verified"]
+
+    # Legacy raw hashes cannot silently certify the corrected fingerprint method.
+    data["runtime_identity"]["models"]["ensemble_rf_clf.joblib"] = hashlib.sha256(
+        pickle.dumps(loaded_classifier, protocol=5)).hexdigest()
+    approved.write_text(json.dumps(data))
+    with pytest.raises(RuntimeError, match="startup held"):
+        baseline.verify_configured_baseline(obj, brain_loaded=True)
+
+    approve(tmp_path, monkeypatch, obj)
+    loaded_classifier.estimators_[0].tree_.threshold[0] += 0.125
+    with pytest.raises(RuntimeError, match="startup held"):
+        baseline.verify_configured_baseline(obj, brain_loaded=True)

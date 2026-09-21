@@ -106,6 +106,7 @@ jobs:
             tests/test_risk_manager_service_comprehensive.py \
             tests/test_research_policy_lock.py \
             tests/test_research_baseline.py \
+            tests/test_research_model_fingerprint.py \
             tests/test_apr10_patch_f4_forensic_guard.py \
             tests/test_apr8_patch_a_force_save.py \
             tests/test_audit_patch_queue_b1.py \

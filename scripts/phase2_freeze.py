@@ -72,7 +72,7 @@ def compute_surface() -> dict:
     from backend.organism.live_engine import OrganismLiveEngine
     from backend.organism.regime import RegimeDetector
     from backend.organism import research_policy, research_baseline, trading_phase, background_trainer
-    from backend.organism import governance, operator_controls
+    from backend.organism import governance, model_fingerprint, operator_controls
     from backend.organism.self_evolution import apply_evolved_params
     from backend.organism.strategies.strategy_config import (
         REGIME_POLICY, STRATEGY_CONFIG,
@@ -118,6 +118,7 @@ def compute_surface() -> dict:
         "research_policy_sources": {
             "policy": _h(inspect.getsource(research_policy)),
             "baseline_verification": _h(inspect.getsource(research_baseline)),
+            "model_fingerprint": _h(inspect.getsource(model_fingerprint)),
             "phase": _h(inspect.getsource(trading_phase)),
             "trainer": _h(inspect.getsource(background_trainer)),
             "startup": _h(inspect.getsource(OrganismLiveEngine.initialize)),

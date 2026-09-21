@@ -122,11 +122,11 @@
     "xgb_n_estimators": 103,
     "xgb_subsample": 0.9997
   },
-  "extraction_receipt_sha256": "78cf8b87994394b1d5e04f443913efafdf6bbf40a533f25d718a4a5f8e77201f",
-  "extraction_source": "Verified signed backup loaded in isolated read-only network-disabled05e67e1image with introspection helpers only; allmodels/caches independently matched beforecapture.",
+  "extraction_receipt_sha256": "6d5dce543390ea032e41e9fab5d98f2e07583af305c7d273456c330ae041371c",
+  "extraction_source": "Verified held backup; actual one-minute configuration before engine import; network-disabled read-only base image with reviewed fingerprint-only source overlays. All nine signed model/cache files independently restored and matched.",
   "historical_evolution_generation": 143,
   "learner_or_model_reset": false,
-  "observed_at_utc": "2026-09-21T06:39:31.686543+00:00",
+  "observed_at_utc": "2026-09-21T10:34:44.541813+00:00",
   "policy_id": "paper_research_locked_v1",
   "purpose": "Reviewed retained parameter baseline; mutable bookkeeping excluded, model/parameter adaptation locked.",
   "runtime_identity": {
@@ -153,10 +153,10 @@
         "W_VOLUME": 0.2111
       },
       "exit_engine": {
-        "atr_multiplier": 1.4775,
+        "atr_multiplier": 0.985,
         "partial_tp_pct": 0.2,
         "partial_tp_r": 3.0,
-        "trailing_distance_atr": 1.25,
+        "trailing_distance_atr": 0.75,
         "trailing_start_atr": 2.0
       },
       "kelly_sizer": {
@@ -356,8 +356,8 @@
     ],
     "model_generation": 390,
     "models": {
-      "ensemble_rf_clf.joblib": "030902011b1ee6bb388d41e7870c2928e5f292e71aa931c43e6a3cbd6f41325a",
-      "ensemble_rf_reg.joblib": "c7602541eb5863b56b564cbee8e4b05bcae3a62741551e1eb7040a515e054816",
+      "ensemble_rf_clf.joblib": "rf-state-v1:49e9f9b959e69573333b2374232f19331ea32ff2e81910147465d352d0373711",
+      "ensemble_rf_reg.joblib": "rf-state-v1:819096de9cdcf20125b30633a4726709869d7aeb427bdd5122cfdaa46a796a25",
       "ensemble_xgb_clf.joblib": "c773e1c6376b0d3b00cf8001714412641fc3bddab473ee36538c5fbb7d3b2640",
       "ensemble_xgb_reg.joblib": "6a2b22c16dc2dfe5ae1d6fbc3ae28568bf734b4f875848fe8ef6f9524791dde6",
       "ml_classifier.joblib": "389157aba57c417645df57530a256b86c5f9433afd3a9a0928a75315d8d287f6",
@@ -382,5 +382,20 @@
   },
   "schema_version": 1,
   "source_evolved_params_sha256": "632c7c253fa2522ee184d05ccbba88c9ab25f446552468808f262471a93aeb3a",
-  "transfer_knowledge_present": false
+  "transfer_knowledge_present": false,
+  "verification_repair": {
+    "effective_policy_params_changed": false,
+    "forward_cutoff_changed": false,
+    "model_files_replaced": false,
+    "only_prediction_identity_differences": [
+      "applied_components.exit_engine.atr_multiplier",
+      "applied_components.exit_engine.trailing_distance_atr",
+      "models.ensemble_rf_clf.joblib",
+      "models.ensemble_rf_reg.joblib"
+    ],
+    "prior_baseline_sha256": "1c31a7eddd75444fd46cea81260fb27f92646634ccbd36fa0e53779bce849be4",
+    "random_forest_identity": "rf-state-v1",
+    "reason": "Daily-default baseline context and nondeterministic random-forest pickle bytes",
+    "timeframe": "1Min"
+  }
 }

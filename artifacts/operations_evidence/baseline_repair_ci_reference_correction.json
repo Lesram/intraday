@@ -1,0 +1,12 @@
+{
+  "source_sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+  "hosted_run": "https://github.com/Lesram/intraday/actions/runs/35590305489",
+  "failure": "CI copied stale frozen_surface_reference.json over the corrected candidate fixture",
+  "prior_reference_sha256": "47224d7a1567ddeb360f7b9945aae3503a7782d32449bdd55d931858b9a798b4",
+  "corrected_reference_sha256": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+  "old_exact_environment_verify_exit": 1,
+  "corrected_exact_environment_verify_exit": 0,
+  "corrected_reference_equals_accepted_candidate": true,
+  "runtime_source_or_image_changed": false,
+  "actual_runtime_or_cutoff_changed": false
+}

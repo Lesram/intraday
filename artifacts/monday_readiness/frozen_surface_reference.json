@@ -1,7 +1,7 @@
 {
-  "FROZEN_AT": "2026-09-21T08:20:53.394292+00:00",
-  "_note_status": "clock reset",
-  "authorization_plan": "artifacts/operations_evidence/final_readiness_plan.json",
+  "FROZEN_AT": "2026-09-21T10:10:39.684894+00:00",
+  "_note_status": "Verification-only corrective fixture; existing operational cutoff preserved.",
+  "authorization_plan": "artifacts/operations_evidence/baseline_repair_plan.json",
   "git_sha": "9bda9ff72501b44f74604d279e52074d2e40b233",
   "n_target": 60,
   "n_target_range": [
@@ -11,10 +11,10 @@
   "note": "Forward-only by construction. The verdict corpus is trades taken STRICTLY AFTER FROZEN_AT. Any decision-surface drift (source_hashes/strategy_config/exit_env) RESETS the clock \u2014 re-run this script.",
   "original_six_source_groups_unchanged": true,
   "provenance": "no reconstructable fit-date; all pre-cutoff data contaminated by construction",
-  "purpose": "Approved policy-lock source verification fixture only; actual operational cutoff published at controlled activation.",
+  "purpose": "Corrective source verification fixture only; actual superseding activation requires separate runtime acceptance.",
   "surface": {
     "effective_policy_baseline": {
-      "artifact_sha256": "1c31a7eddd75444fd46cea81260fb27f92646634ccbd36fa0e53779bce849be4",
+      "artifact_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
       "effective_policy_hash": "8ec17f39c88f9237effa22b342697dd503b30b31f58595ff377cc498b99359f5",
       "effective_policy_params": {
         "alpha_weight_breakout": 0.1475,
@@ -194,7 +194,7 @@
       "ORGANISM_OPERATOR_CONTROL_STATE": "/app/data/operator_control_state.json"
     },
     "research_policy_sources": {
-      "baseline_verification": "598af0f5aa6a2bb0b09964316cfc28e3840fdcfa3219c8cbf737a90e56f492bb",
+      "baseline_verification": "23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1",
       "emergency_stop_api": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
       "emergency_stop_service": "d3efb81f9e5ae6f6d3036133786dddff5f824028d95a80465cdb5385cb20b5ca",
       "entry_admission": "5e3ac62e8058d1ead9974fd9d5204736a83e890eaa4ac8293c136f69a126631b",
@@ -202,6 +202,7 @@
       "fixed_risk": "532fdc8c66146c410718456bcd6e7a13c5b7310cde443ad00b6a13652faab78b",
       "governance": "68a47b4a76f832e69ef1c9972b847598c92ed59c75f3531209f961aeedc8075d",
       "ml_isolation": "5c90eaa7ba8353747f0d960a43dfa4f52bb9203429048f29ecf3eb64da928b83",
+      "model_fingerprint": "fb29529f60f6e5110404599489f761e154b64a2e8b7bb2d50a83d708c856ae55",
       "operator_api": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
       "operator_controls": "1542fa02cfd5d755fc4f9a3360595d8b8f0227cc023d80432cc1633816083da3",
       "parameter_application": "00047876c5404ab98293de96c6b72375814a3fcda4a0c4c1d50d316db52b6b26",
@@ -311,5 +312,14 @@
       }
     },
     "strategy_config_hash": "d9f606d01c7179e7bd6159186380ad93b36ebc4ac9749fd5b82efc8410ff67fe"
+  },
+  "verification_correction": {
+    "allowed_surface_changes": [
+      "research_policy_sources.baseline_verification",
+      "research_policy_sources.model_fingerprint",
+      "effective_policy_baseline.artifact_sha256"
+    ],
+    "existing_cutoff_preserved": true,
+    "prior_active_freeze_sha256": "044cef8ea0d1741ed1828b46fb728781841e9810c3a8ba6dee7049acfc3412d0"
   }
 }

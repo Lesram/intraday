@@ -1,0 +1,128 @@
+{
+  "conditional_acceptance": {
+    "actual_installed_runtime": "PENDING; API health alone is insufficient. Exact installed image/source, actual initialized engine/scheduler, full policy baseline, operator authority, counters/history, installed freeze/source verification and closed/flat broker proof must pass.",
+    "final_audit_failure": "Root explicitly accepts supervision condition: any final-audit failure after recovery release triggers immediate hold (pause/watchdog recovery hold, startup disabled/quiesced, verified candidate API stopped), preserving state/cutoff without old-source rollback. Final-audit helper itself contains no failure-hold wrapper.",
+    "final_candidate_warm_report": "PENDING separate review when root supplies final report; earlier failed attempts are not acceptance.",
+    "host_completion": "PENDING accepted private binding, current runtime/preflight receipts and successful host-finish/final audit.",
+    "hosted": "PENDING exact final PR-head operational-safety and required review/merge gates; legacy failures must be separately classified.",
+    "natural_session": "PENDING fresh/advancing data and ticks, natural entries/fills, exact close accounting and EOD; no forced trades or profitability claim."
+  },
+  "findings": {
+    "baseline_gate": "Exact complete runtime identity, effective parameter hash, retained-brain/research-lock requirements and trained checks remain active; all nonRF fingerprints retain legacy method.",
+    "controlled_workflow": "New correction-1 output only; retains failed freeze/manifest/failure, proves zero orders after original cutoff, no reseed or old-image rollback. Runtime acceptance precedes private binding/host recovery release. Host finish checks exact authority and source/image pins, keeps daily collector unrun before close, verifies owned pause removal, and re-holds on failure.",
+    "extraction": "Network none; exact held base image, read-only payload and two reviewed overlays; signature checks and nine independent restores; scratch-only initialization stops at old mismatch. Exactly two one-minute-context constants and two versioned RF fingerprints may differ. Postprocess guards recheck held container ID, payload inventory, operator state, overlays and both old baselines.",
+    "fingerprint": "Exact supported classes, parameters, full estimator state, all Tree dimensions/state, dtype layout/metadata, shape, values, and ordering are hashed with rf-state-v1 prefix. Anonymous padding and reference aliasing alone are ignored. Unsupported types, cycles, ambiguous canonical keys and unknown subclasses fail closed. No loading, prediction, model mutation, fallback, partial identity or gate bypass.",
+    "transition_identity_guard": "Resolved: current stopped container image and GIT_SHA/IMAGE_SHA, prepared source/image, preserved env and installed source_files must match accepted release before publication.",
+    "unresolved_code_blockers": []
+  },
+  "follow_ups": [
+    "Root completes final exact-source artifact/CI/merge gates.",
+    "Review final warm-start report when notified.",
+    "Root executes and supervises controlled correction stages, then installed runtime and host acceptance; immediately hold on final-audit failure."
+  ],
+  "freeze_and_state": {
+    "allowed_surface_differences_only": [
+      "research_policy_sources.model_fingerprint (new full-module registration)",
+      "research_policy_sources.baseline_verification",
+      "effective_policy_baseline.artifact_sha256"
+    ],
+    "candidate_baseline_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+    "candidate_freeze_sha256": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+    "current_held_freeze_sha256": "044cef8ea0d1741ed1828b46fb728781841e9810c3a8ba6dee7049acfc3412d0",
+    "cutoff": "2026-09-21T10:10:39.684894+00:00",
+    "cutoff_preserved_in_candidate_and_current_held_artifact": true,
+    "exit_env_regime_routing_feed_strategy_research_policy_enforcement_equal": true,
+    "failed_activation_retained_by_design": true,
+    "model_files_strategy_parameters_history_operator_authority_changes_authorized": false,
+    "normalized_complete_surface_equal": true,
+    "original_six_equal": true,
+    "original_six_source_hashes": {
+      "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
+      "entry_gates_dispatch": "85ef0b9525f7cb4b2b8b343942f67a50833c36bdde4b644446f99de923f172a6",
+      "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
+      "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
+      "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",
+      "selector_routing": "bed6a91e7f95f3ad11e159767ecdb6d54b42c022997df3b801bcbe20ad8628d2"
+    }
+  },
+  "private_helpers_sha256": {
+    "/tmp/intra-baseline-repair-extract.py": "df636a4ff9b33fb78d7e235d79baaabcdf6957a2a4ca311d2d6baac9f40c1af2",
+    "/tmp/intra-baseline-repair-final-audit.py": "247aeba4b36c357e1377f86762e66158b3d6b10b2b34e2c402febcca4adea9d5",
+    "/tmp/intra-baseline-repair-finish-host.py": "b8273c80ed57ae63920c48dc6251cb3fe7e903fa5fa168067fbcdeddfb8e5737",
+    "/tmp/intra-baseline-repair-initial-reports.py": "7ad50021fca8972a1eaea65aec15afb6fa2f9fdb032131758e45192836c67846",
+    "/tmp/intra-baseline-repair-rollout.py": "b1347511a427c43fa631abe7725fe08f6f3bdf7bc07169fba63b863496ecb028",
+    "/tmp/intra-baseline-repair-runtime-acceptance.py": "b77811f0fa79e6c0eba50d0bf0b2282edb69fc49009e9297ad6c00ae914d1e84",
+    "/tmp/intra-policy-rollout.py": "d97e266178d10e8f1cb3dd13c3649d54f97f31fa50ade1f915a5c0222b5c36ee"
+  },
+  "review_actions": {
+    "commits_created": false,
+    "credentials_accessed": false,
+    "helpers_executed": false,
+    "model_deserialization_performed": false,
+    "new_tests_executed_this_review": false,
+    "runtime_or_broker_called": false
+  },
+  "review_role": "Independent reviewer of backend fingerprint/baseline delta and root-authored private workflow; reviewer authored scoped freeze registration/test/docs edits, disclosed separately.",
+  "reviewed_at_utc": "2026-09-21T10:41:23.175363+00:00",
+  "reviewer": "frontend_ws_contract",
+  "schema_version": 1,
+  "scope": [
+    "Complete RF prediction-state identity and unchanged fail-closed baseline verification",
+    "Offline extraction provenance and exact allowed identity changes",
+    "Superseding activation identity, cutoff/payload preservation, startup acceptance, host completion, and final audit failure handling"
+  ],
+  "source_files_sha256": {
+    "backend/organism/model_fingerprint.py": "fb29529f60f6e5110404599489f761e154b64a2e8b7bb2d50a83d708c856ae55",
+    "backend/organism/research_baseline.py": "23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1",
+    "docs/architecture/mapss.md": "44b85dc392ea716bb6b6e26032478adc6d688774e6fd5f7b79453ceeb2c5bffc",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "df1ff6bec92ab02abe3982221401bba4c29de5d89598d9b9c23265d8247d2a7d",
+    "scripts/phase2_freeze.py": "05cdc6692ab69564e324f898ec5ccf740859e055bb820bcd301c4cd5b9312bc8",
+    "tests/test_phase2_freeze.py": "ce550b0057534050c0e2e2ac7cae759a8401a7f093a0179e9a4dab9de8837d9e",
+    "tests/test_research_baseline.py": "aa818ed467e666a10ba045b6eaa2aa890e24be7ec0ed283ef2050d874d7b65e2",
+    "tests/test_research_model_fingerprint.py": "c09edfed82a918dedda7852cefffb70c0461cb25cff958c64f377cc9d824c2e6"
+  },
+  "source_sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+  "status": "APPROVED_CODE_AND_SUPERVISED_CONTROLLED_CORRECTIVE_WORKFLOW",
+  "task_id": "baseline-verification-correction-independent-review",
+  "test_accounting": {
+    "overlap_policy": "127 local and 83 image cases overlap. Repeated freeze and host-helper checks are reported per suite only; do not sum these numbers as unique required tests. Final release regression totals belong to root source-bound validation.",
+    "unique_total_claimed": null
+  },
+  "test_evidence_reviewed": [
+    {
+      "evidence_review": "Independent review of implementation-owner final JUnit; reviewer did not rerun.",
+      "failed": 0,
+      "junit_path": "artifacts/operations_evidence/baseline_repair_targeted.xml",
+      "junit_sha256": "c10c2c2e54fc1272aaa9c5736b81b591104b6b0df4e4d4861bab396bb4edf2ac",
+      "passed": 127,
+      "skipped": 0,
+      "suite": "local_fingerprint_baseline_policy_lock"
+    },
+    {
+      "evidence_review": "Independent review of final JUnit and exact-image receipt with matching source hashes; reviewer did not rerun.",
+      "failed": 0,
+      "junit_path": "artifacts/operations_evidence/baseline_repair_exact_image.xml",
+      "junit_sha256": "70589537469e3bf8105b7b4614986efd2ba2d7d160ddd8035a4c7c28c749530f",
+      "passed": 83,
+      "skipped": 0,
+      "suite": "exact_image_fingerprint_baseline"
+    },
+    {
+      "evidence_review": "Reviewer executed earlier with network denied and temporary current-source freeze fixture; not certification of persisted runtime artifacts.",
+      "failed": 0,
+      "junit_path": "/tmp/intra-baseline-repair-freeze-tests/tests.xml",
+      "junit_sha256": "cb66a9556f2bcfa5a30efce538c18a6eadfe91c68a41fc936b7262c8add436ad",
+      "passed": 14,
+      "skipped": 0,
+      "suite": "freeze_regression"
+    },
+    {
+      "evidence_review": "Root attested rerun of rebound isolated host-finish harness: 21 green; reviewer inspected helper and test path but did not repeat execution.",
+      "failed": 0,
+      "harness_path": "/tmp/intra-baseline-repair-finish-host-tests.py",
+      "harness_sha256": "9b099c5ec3a15b566cca7fb1a0c9e50f98c6aac2291e46b31435f44841638f93",
+      "passed": 21,
+      "suite": "corrective_host_finish"
+    }
+  ]
+}

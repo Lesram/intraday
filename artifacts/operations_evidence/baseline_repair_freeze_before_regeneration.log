@@ -1,0 +1,3 @@
+DRIFT-VERIFY FAIL: decision surface DRIFTED from freeze (FROZEN_AT=2026-09-21T08:20:53.394292+00:00) — the forward clock would reset. Offending keys:
+    research_policy_sources.baseline_verification: frozen='598af0f5aa6a2bb0b09964316cfc28e3840fdcfa3219c8cbf737a90e56f492bb' current='23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1'
+    research_policy_sources.model_fingerprint: frozen=None current='fb29529f60f6e5110404599489f761e154b64a2e8b7bb2d50a83d708c856ae55'
