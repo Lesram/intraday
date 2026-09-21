@@ -49,7 +49,7 @@ from backend.organism.candidate_shadow_telemetry import (
 )
 from backend.organism.continuous_learner import ContinuousLearner, TradeRecord
 from backend.organism import close_accounting
-from backend.organism import entry_evidence
+from backend.organism import entry_evidence, operator_controls
 from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
 from backend.organism import research_policy
@@ -1718,6 +1718,7 @@ class OrganismLiveEngine(
         Returns True if brain was loaded (continuing from previous run).
         """
         self._accounting_owner_loop = asyncio.get_running_loop()
+        operator_controls.restore_engine_controls(self)
         # Read authority before legacy recovery can restore an older backup.
         # Corrupt/unsupported accounting state aborts startup instead of replaying.
         accounting_state = close_accounting.read(self.brain.brain_dir)
@@ -6235,6 +6236,10 @@ class OrganismLiveEngine(
         shadow_only: bool,
     ) -> None:
         """Hard governor checkpoint before any live entry order is submitted."""
+        # Recheck at submission: a halt may arrive after the tick's cached gate.
+        # Both new entries and pyramid adds use this seam; exits do not.
+        if self.governance.is_trading_halted:
+            raise RuntimeError("Governance halted new entry submission")
         governor = getattr(self, "_strategy_governor", None)
         if governor is None:
             governor = StrategyGovernor()

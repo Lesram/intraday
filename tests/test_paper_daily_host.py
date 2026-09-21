@@ -45,6 +45,8 @@ def configured(host, tmp_path_factory, monkeypatch):  # noqa: F811 - Imported py
         "effective_policy_hash": policy["effective_policy_hash"],
         "effective_policy_params": policy["effective_policy_params"],
         "artifact_sha256": policy_ref["sha256"]}, research_policy=flags)
+    frozen["surface"]["research_policy_enforcement_env"] = {
+        "ORGANISM_OPERATOR_CONTROL_STATE": "/app/data/operator_control_state.json"}
     frozen_ref = write_json(freeze, frozen)
     updated = {**original, "activation_timestamp_utc": frozen["FROZEN_AT"], "active_freeze_sha256": frozen_ref["sha256"]}
     updated["historical_baseline"] = {"path": str(baseline), "manifest_sha256": baseline_hash}
@@ -56,6 +58,7 @@ def configured(host, tmp_path_factory, monkeypatch):  # noqa: F811 - Imported py
         "source_sha": "a" * 40, "image_sha": "a" * 40, "image_digest": "sha256:" + "b" * 64,
         "runtime_config_hash": "c" * 16, "timeframe": "1Min", "effective_policy_hash": policy["effective_policy_hash"],
         "policy_baseline": policy_ref,
+        "operator_control_path": "/app/data/operator_control_state.json",
         "root": str(root), "output": str(private / "packs"), "freeze": frozen_ref,
         "activation": activation_ref, "original_activation": original_ref,
         "baseline": {"path": str(baseline), "manifest_sha256": baseline_hash},
@@ -71,6 +74,15 @@ def configured(host, tmp_path_factory, monkeypatch):  # noqa: F811 - Imported py
     engine.update(policy_lock={**flags, **policy, "baseline": {
         "configured": True, "verified": True, "sha256": policy_ref["sha256"]}},
         ml_influence_enabled=False, fixed_risk_sizing=True)
+    record = {"schema": "intra_operator_controls_v1", "operator_halted": False,
+              "reason": "synthetic_bootstrap", "changed_at": "2026-09-21T06:44:00+00:00"}
+    record["checksum"] = host_runner.policy_hash(record)
+    (root / "data").mkdir(exist_ok=True)
+    write_json(root / "data/operator_control_state.json", record)
+    engine["governance"] = {"operator_halted": False, "operator_control_fault": False,
+                            "operator_control": {"configured": True, "persistence": "verified",
+                                                 "path": binding["operator_control_path"],
+                                                 **{key: record[key] for key in ("checksum", "reason", "changed_at")}}}
     transport.container_identity = lambda: daily.encoded({"name": "/intra-api-1", "project": "intra", "service": "api", "image_digest": binding["image_digest"]})
     monkeypatch.setattr(host_runner, "container_credentials", lambda _: ("SECRET_KEY", "SECRET_SECRET"))
     monkeypatch.setattr(host_runner, "observer_token", lambda _: "SECRET_TOKEN")
@@ -118,6 +130,35 @@ def test_policy_flags_fail_closed(configured, monkeypatch, field, value):
 def test_reported_hash_cannot_hide_changed_effective_params(configured):
     configured.engine["policy_lock"]["effective_policy_params"]["alpha_weight_ml"] = 0.9
     assert run(configured)["reason"] == "runtime_effective_policy_mismatch"
+
+
+@pytest.mark.parametrize("field,value", [("configured", False), ("persistence", "failed"),
+                                         ("path", "/app/organism_brain/controls.json")])
+def test_unverified_operator_authority_blocks_evidence(configured, field, value):
+    configured.engine["governance"]["operator_control"][field] = value
+    assert run(configured)["reason"] == "runtime_operator_control_unverified"
+
+
+def test_control_disk_drift_cannot_hide_behind_old_runtime_status(configured):
+    path = configured.root / "data/operator_control_state.json"
+    record = json.loads(path.read_bytes())
+    record["operator_halted"] = True
+    write_json(path, record)
+    assert run(configured)["reason"] == "operator_control_record_mismatch"
+
+
+def test_verified_manual_halt_is_preserved_and_does_not_require_resume(configured):
+    path = configured.root / "data/operator_control_state.json"
+    record = json.loads(path.read_bytes())
+    record.pop("checksum")
+    record["operator_halted"] = True
+    record["checksum"] = host_runner.policy_hash(record)
+    write_json(path, record)
+    before = path.read_bytes()
+    configured.engine["governance"]["operator_halted"] = True
+    configured.engine["governance"]["operator_control"]["checksum"] = record["checksum"]
+    assert run(configured)["status"] == "READY_FOR_REVIEW"
+    assert path.read_bytes() == before
 
 
 @pytest.mark.parametrize("field,value", [("configured", False), ("verified", False), ("sha256", "f" * 64), ("verified", 1)])

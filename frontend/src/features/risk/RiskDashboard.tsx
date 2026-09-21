@@ -143,15 +143,15 @@ const RiskDashboard: React.FC<RiskDashboardProps> = ({
         type="error"
         showIcon
         icon={<FireOutlined />}
-        message="EMERGENCY STOP ACTIVE"
+        message="UNRESOLVED EMERGENCY STOP AUDIT"
         description={
           <div>
             <p><strong>Reason:</strong> {dashboardData.emergency_status.reason}</p>
             <p><strong>Triggered:</strong> {new Date(dashboardData.emergency_status.triggered_at).toLocaleString()}</p>
             <p>
-              <strong>Actions taken:</strong> {dashboardData.emergency_status.strategies_stopped} strategies stopped, {' '}
-              {dashboardData.emergency_status.orders_cancelled} orders cancelled
+              <strong>Recorded at the time:</strong> {dashboardData.emergency_status.orders_cancelled} order cancellations.
             </p>
+            <p>This is a historical audit record. Check the Organism dashboard for current entry-halt status. Resolving this record does not resume entries.</p>
           </div>
         }
         style={{ marginBottom: 16 }}

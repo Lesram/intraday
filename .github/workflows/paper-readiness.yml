@@ -98,6 +98,10 @@ jobs:
             tests/test_walkforward_persistence.py \
             tests/test_paper_daily_evidence.py \
             tests/test_paper_daily_host.py \
+            tests/test_operator_controls.py \
+            tests/test_operator_emergency_stop.py \
+            tests/test_risk_manager_comprehensive.py \
+            tests/test_risk_manager_service_comprehensive.py \
             tests/test_research_policy_lock.py \
             tests/test_research_baseline.py \
             tests/test_apr10_patch_f4_forensic_guard.py \

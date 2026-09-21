@@ -1,8 +1,8 @@
 {
-  "FROZEN_AT": "2026-09-21T06:54:41.006178+00:00",
+  "FROZEN_AT": "2026-09-21T08:20:53.394292+00:00",
   "_note_status": "clock reset",
   "authorization_plan": "artifacts/operations_evidence/final_readiness_plan.json",
-  "git_sha": "bb74da3b2456e3bc016a4985424c35fef534b809",
+  "git_sha": "9bda9ff72501b44f74604d279e52074d2e40b233",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -190,12 +190,20 @@
       "reason": "reviewed_paper_baseline_requires_explicit_promotion"
     },
     "research_policy_enforcement_env": {
-      "ORGANISM_APPROVED_POLICY_BASELINE": "/app/artifacts/phase2/research_policy_baseline.json"
+      "ORGANISM_APPROVED_POLICY_BASELINE": "/app/artifacts/phase2/research_policy_baseline.json",
+      "ORGANISM_OPERATOR_CONTROL_STATE": "/app/data/operator_control_state.json"
     },
     "research_policy_sources": {
       "baseline_verification": "598af0f5aa6a2bb0b09964316cfc28e3840fdcfa3219c8cbf737a90e56f492bb",
+      "emergency_stop_api": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
+      "emergency_stop_service": "d3efb81f9e5ae6f6d3036133786dddff5f824028d95a80465cdb5385cb20b5ca",
+      "entry_admission": "5e3ac62e8058d1ead9974fd9d5204736a83e890eaa4ac8293c136f69a126631b",
+      "entry_cancellation": "682ca48c61f0ce2899048b642be4f552c4ec166ca29afeabef91e528b8935984",
       "fixed_risk": "532fdc8c66146c410718456bcd6e7a13c5b7310cde443ad00b6a13652faab78b",
+      "governance": "68a47b4a76f832e69ef1c9972b847598c92ed59c75f3531209f961aeedc8075d",
       "ml_isolation": "5c90eaa7ba8353747f0d960a43dfa4f52bb9203429048f29ecf3eb64da928b83",
+      "operator_api": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
+      "operator_controls": "1542fa02cfd5d755fc4f9a3360595d8b8f0227cc023d80432cc1633816083da3",
       "parameter_application": "00047876c5404ab98293de96c6b72375814a3fcda4a0c4c1d50d316db52b6b26",
       "phase": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
       "phase_resolution": "7b53df7368535020c692d2106b93e036bd12029622a4a93d24818357dd072d64",
@@ -203,7 +211,7 @@
       "scheduler": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c",
       "settings_api": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
       "settings_update": "34b9d92c3930487f06dab1abfd606ed5f4124a79f443adf8b6c019b5b184fc54",
-      "startup": "8d6a224e4bf3eaf2f5bc68dc518614f9eb4f4ad466758f2aa1743120678738b0",
+      "startup": "783c6a324b6eb7edfff6f5835f3b46dc559bc3fa978a25a7b248eec7b76037cf",
       "sync_training": "fff4b5dc4e8bf02973e4b4036beb1575160eb961f34cf1020ac6cd5595d6234f",
       "trainer": "38d283265f0242001249b6ace042e9da1e30b13311bf4fc19bc25a72fb4748b2"
     },

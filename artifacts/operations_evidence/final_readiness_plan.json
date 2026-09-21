@@ -57,5 +57,24 @@
   ],
   "startup_baseline_refinement": "Independent review found legacy fallback could select different model/params. Pin actual loaded model fingerprints and prediction context in approved read-only image baseline; configured restart must verify before position reconstruction.",
   "watchdog_refinement": "New startup refusal leaves API healthy but scheduler stopped; optional authenticated policy/scheduler probe now reports sanitized attention without restarting an otherwise healthy API.",
-  "regression_refinement": "Broader nightly identified17 outdated accounting/policy fixtures,27isolated-harness failures and1implicit installed-data dependency. Fixtures repaired without runtime relaxation; unavailable installed data is an explicit opt-in audit."
+  "regression_refinement": "Broader nightly identified17 outdated accounting/policy fixtures,27isolated-harness failures and1implicit installed-data dependency. Fixtures repaired without runtime relaxation; unavailable installed data is an explicit opt-in audit.",
+  "operator_control_refinement": "Authoritative durable operator halt and truthful entry cancellation repair required by newly discovered disconnected UI/DB-only stop. See operator_readiness_plan.json.",
+  "operator_control_root_scope": [
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "scripts/ops/paper_daily_host.py",
+    "tests/test_paper_daily_host.py",
+    "tests/test_paper_watchdog.py",
+    "tests/test_runtime_snapshot_auth.py",
+    "tests/test_phase2_freeze.py",
+    ".github/workflows/paper-readiness.yml",
+    "frontend/src/features/risk/KillSwitchButton.tsx",
+    "docs/architecture/mapss.md",
+    "docs/runbooks/PAPER_DAILY_EVIDENCE.md",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
+    "frontend/src/features/organism/OrganismDashboard.tsx",
+    "frontend/src/features/organism/organismApi.ts",
+    "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx",
+    "frontend/src/features/risk/RiskDashboard.tsx"
+  ]
 }

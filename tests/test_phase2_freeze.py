@@ -141,6 +141,7 @@ def test_verify_detects_policy_unlock_without_rewriting_boundary(monkeypatch):
     "ORGANISM_FRAMEWORK_ROUTING_V2",
     "ORGANISM_ROUTING_RANK_POLICY",
     "ORGANISM_APPROVED_POLICY_BASELINE",
+    "ORGANISM_OPERATOR_CONTROL_STATE",
 ])
 def test_verify_mode_detects_missing_deployment_env(key, monkeypatch):
     """Missing deployed inputs must still fail without changing the freeze."""

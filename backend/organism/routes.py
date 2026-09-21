@@ -29,6 +29,7 @@ from sqlalchemy import select, text
 
 from backend.infra.schemas import Order
 from backend.infra.security import require_admin
+from backend.organism import operator_controls, research_policy
 from backend.utils.clock_injection import default_now_fn
 from backend.utils.logger import get_logger
 
@@ -93,7 +94,7 @@ class UniverseStatusResponse(BaseModel):
 # ── Helpers ──────────────────────────────────────────────────────────
 
 def _get_governance(request: Request):
-    gov = getattr(request.app.state, "organism_governance", None)
+    gov = operator_controls.authoritative_governance(request.app)
     if gov is None:
         raise HTTPException(status_code=503, detail="Organism not enabled — set ORGANISM_ENABLED=1")
     return gov
@@ -135,7 +136,7 @@ def _json_safe(value: Any) -> Any:
 @router.get("/status", response_model=OrganismStatusResponse)
 async def get_organism_status(request: Request):
     """Get full organism status: governance, regime, promotion, weights, live engine."""
-    gov = getattr(request.app.state, "organism_governance", None)
+    gov = operator_controls.authoritative_governance(request.app)
     if gov is None:
         # Organism not enabled — return clean 200 with enabled=false
         return OrganismStatusResponse(enabled=False)
@@ -212,7 +213,7 @@ async def get_policy_snapshot(request: Request):
 @router.get("/runs", response_model=OrganismRunsResponse)
 async def get_organism_runs(request: Request, limit: int = Query(default=50, ge=1, le=500)):
     """Get recent organism run history from live scheduler state."""
-    gov = getattr(request.app.state, "organism_governance", None)
+    gov = operator_controls.authoritative_governance(request.app)
     if gov is None:
         return OrganismRunsResponse(enabled=False)
 
@@ -246,7 +247,8 @@ async def trigger_training(request: Request, payload: TrainRequest | None = None
 async def freeze_adaptation(request: Request, _admin=Depends(require_admin)):
     """Freeze all organism adaptation (weights/params stay fixed)."""
     gov = _get_governance(request)
-    gov.freeze()
+    for target in operator_controls.governance_targets(request.app):
+        target.freeze()
     return {"status": "frozen", "governance": gov.to_dict()}
 
 
@@ -254,24 +256,30 @@ async def freeze_adaptation(request: Request, _admin=Depends(require_admin)):
 async def unfreeze_adaptation(request: Request, _admin=Depends(require_admin)):
     """Unfreeze organism adaptation."""
     gov = _get_governance(request)
-    gov.unfreeze()
-    return {"status": "unfrozen", "governance": gov.to_dict()}
+    for target in operator_controls.governance_targets(request.app):
+        target.unfreeze()
+    return {"status": "unfrozen", "governance": gov.to_dict(),
+            "research_policy_locked": research_policy.RESEARCH_POLICY_LOCKED}
 
 
 @router.post("/halt")
 async def halt_trading(request: Request, _admin=Depends(require_admin)):
-    """Halt all trading immediately."""
-    gov = _get_governance(request)
-    gov.halt_trading()
-    return {"status": "halted", "governance": gov.to_dict()}
+    """Halt new entries durably and drain the current tick; exits stay active."""
+    _get_governance(request)
+    try:
+        return await operator_controls.halt_entries(request.app)
+    except operator_controls.OperatorControlError as exc:
+        raise HTTPException(status_code=503, detail=exc.result) from exc
 
 
 @router.post("/resume")
 async def resume_trading(request: Request, _admin=Depends(require_admin)):
-    """Resume trading after a halt."""
-    gov = _get_governance(request)
-    gov.resume_trading()
-    return {"status": "resumed", "governance": gov.to_dict()}
+    """Clear the operator latch, retaining automatic risk and research locks."""
+    _get_governance(request)
+    try:
+        return await operator_controls.resume_entries(request.app)
+    except operator_controls.OperatorControlError as exc:
+        raise HTTPException(status_code=503, detail=exc.result) from exc
 
 
 @router.post("/promote")

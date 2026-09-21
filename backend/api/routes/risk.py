@@ -4,9 +4,11 @@ Comprehensive endpoints for risk metrics, violations, limits, and emergency stop
 """
 
 import logging
+import asyncio
+from contextlib import asynccontextmanager
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -258,53 +260,84 @@ async def delete_risk_limit(
 # ===========================
 
 
-@router.post("/emergency-stop", response_model=EmergencyStop)
+class OperatorEmergencyStopResponse(EmergencyStop):
+    """Existing audit record plus explicit halt and entry-cancellation outcome."""
+
+    control: dict
+
+
+@router.post("/emergency-stop", response_model=OperatorEmergencyStopResponse)
 async def trigger_emergency_stop(
     request: TriggerEmergencyStopRequest,
-    # V7 AA-M-5 / Wave-24 (2026-05-03): admin-only kill-switch.
+    http_request: Request,
     user: AuthenticatedUser = Depends(require_admin),
-    db: AsyncSession = Depends(get_db_session),
 ):
-    """
-    CRITICAL: Trigger emergency stop (kill-switch).
+    """Halt new organism entries and cancel attributed pending entries only.
 
-    This will:
-    1. Stop all active strategies
-    2. Cancel all open orders
-    3. Create emergency stop record
-
-    Use only when immediate trading halt is required.
+    Protective exits continue. Unverified cancellation, in-flight fills or
+    persistence failures return 503 with the halt retained and an audit ID when
+    available. This operation neither flattens positions nor cancels all orders.
     """
-    # Only admin users can trigger emergency stop
+    from backend.organism.operator_controls import (
+        halt_entries, OperatorControlError, operation_lock, control_status, live_engine,
+    )
+    from backend.organism.operator_cancellation import cancel_entry_orders
+
+    # Authorization precedes all side effects. DB is deliberately opened below:
+    # dependency initialization/query failure must not precede the safety latch.
     if "admin" not in user.roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators can trigger emergency stop"
-        )
-    user_id = await get_user_id_from_username(db, user.username)
-    risk_mgr = RiskManager(db)
-
+        raise HTTPException(status_code=403, detail="Only administrators can trigger emergency stop")
+    halt_ok = False
     try:
-        emergency_stop = await risk_mgr.trigger_emergency_stop(
-            user_id=user_id, request=request, triggered_by=user_id
-        )
-
-        # V10 YY-1 / Wave-52 (2026-05-03): the service-layer
-        # trigger_emergency_stop() already dispatched the operator alert;
-        # this is the post-success route-level confirmation log.
-        logger.critical(
-            f"EMERGENCY STOP triggered: user={user_id}, "
-            f"strategies_stopped={emergency_stop.strategies_stopped}, "
-            f"orders_cancelled={emergency_stop.orders_cancelled}"
-        )
-
-        return emergency_stop
-    except Exception as e:
-        logger.error(f"Error triggering emergency stop: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to trigger emergency stop: {str(e)}",
-        )
+        control = await halt_entries(http_request.app)
+        halt_ok = True
+    except OperatorControlError as exc:
+        control = dict(exc.result)
+    except Exception:  # noqa: BLE001 - Preserve the latch and sanitize operational failures.
+        control = {"operator_halted": None, "entries_halted": None, "drained": False,
+                   "issue": "operator_halt_unverified"}
+    control["cancellation"] = {"scope": "attributed_organism_entries", "status": "incomplete",
+                               "confirmed_cancelled": 0, "issues": ["halt_not_confirmed"],
+                               "protective_exits_preserved": True, "db_order_statuses_modified": False}
+    audit = None
+    issues = []
+    def same_verified_halt(fresh):
+        return (fresh.get("operator_halted") is True and fresh.get("entries_halted") is True
+                and fresh.get("runtime_ready") is True and fresh.get("protective_exits_active") is True
+                and fresh.get("halt_epoch") == control.get("halt_epoch")
+                and fresh.get("governance", {}).get("operator_control_fault") is False
+                and fresh.get("persistence", {}).get("configured") is True
+                and fresh.get("persistence", {}).get("persistence") == "verified")
+    try:
+        # Serialize only operator actions while cancellation/audit runs. The
+        # engine tick lock is released, so protective exits remain responsive.
+        async with asyncio.timeout(20.0), operation_lock(http_request.app):
+            if halt_ok:
+                fresh = control_status(http_request.app)
+                if not same_verified_halt(fresh):
+                    raise ValueError("operator_halt_changed")
+            async with asynccontextmanager(get_db_session)() as db:
+                user_id = await get_user_id_from_username(db, user.username)
+                if halt_ok:
+                    control["cancellation"] = await cancel_entry_orders(live_engine(http_request.app), db, control)
+                audit = await RiskManager(db).trigger_emergency_stop(
+                    user_id=user_id, request=request, triggered_by=user_id, control_result=control)
+            if halt_ok:
+                fresh = control_status(http_request.app)
+                if not same_verified_halt(fresh):
+                    issues.append("operator_halt_changed_or_unverified")
+                control = {**control, **fresh}
+    except Exception:  # noqa: BLE001 - Preserve the latch and sanitize operational failures.
+        # Failure to write an audit does not release the independent operator
+        # latch, and private DB/broker exception bodies must not reach clients.
+        issues.append("emergency_audit_unavailable")
+    if not halt_ok or control["cancellation"]["status"] != "complete" or issues:
+        raise HTTPException(status_code=503, detail={
+            "status": "incomplete", "control": control,
+            "audit_id": str(audit.id) if audit is not None else None,
+            "issues": issues or ["operator_stop_requires_attention"],
+        })
+    return {**audit.model_dump(), "control": control}
 
 
 @router.post("/emergency-stop/{stop_id}/resolve", response_model=EmergencyStop)
@@ -314,11 +347,10 @@ async def resolve_emergency_stop(
     db: AsyncSession = Depends(get_db_session),
 ):
     """
-    Resolve an active emergency stop.
+    Resolve an emergency stop audit record only.
 
-    This marks the emergency stop as resolved but does NOT
-    automatically restart strategies. Strategies must be
-    manually restarted after review.
+    This does not resume the durable operator entry halt or restart strategies.
+    Operator entry resume is a separate reviewed control action.
 
     Admin-only endpoint.
     """
@@ -352,19 +384,31 @@ async def resolve_emergency_stop(
 
 @router.get("/emergency-stop/active", response_model=bool)
 async def check_emergency_stop_active(
-    user: AuthenticatedUser = Depends(get_authenticated_user), db: AsyncSession = Depends(get_db_session)
+    http_request: Request, user: AuthenticatedUser = Depends(get_authenticated_user)
 ):
-    """Check if an emergency stop is currently active for user."""
-    user_id = await get_user_id_from_username(db, user.username)
-    risk_mgr = RiskManager(db)
+    """Read the actual operator entry halt/fault, not historical audit records.
+
+    Automatic risk halts are separate. Unknown authority is unavailable, never
+    interpreted as a resumed engine; an observed control fault is an active halt.
+    """
+    from backend.organism.operator_controls import control_status, live_engine
 
     try:
-        is_active = await risk_mgr.is_emergency_stop_active(user_id)
-        return is_active
-    except Exception as e:
-        logger.error(f"Error checking emergency stop status: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to check emergency stop status: {str(e)}",
-        )
-
+        engine = live_engine(http_request.app)
+        if engine is None or getattr(engine, "governance", None) is None:
+            raise ValueError("Engine control unavailable")
+        control = control_status(http_request.app)
+        halted = control.get("operator_halted")
+        fault = control.get("governance", {}).get("operator_control_fault")
+        if control.get("available") is not True or type(halted) is not bool or type(fault) is not bool:
+            raise ValueError("Engine control unverified")
+        if halted or fault:
+            return True
+        persistence = control.get("persistence", {})
+        if persistence.get("configured") is not True or persistence.get("persistence") != "verified":
+            raise ValueError("Durable control unverified")
+        return False
+    except Exception as exc:  # noqa: BLE001 - Unknown authority must fail closed without private exception text.
+        raise HTTPException(status_code=503, detail={
+            "status": "unavailable", "error": "operator_control_unverified",
+        }) from exc

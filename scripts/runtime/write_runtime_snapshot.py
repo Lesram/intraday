@@ -261,6 +261,7 @@ def _build_resolved_config_snapshot() -> dict:
                 "ORGANISM_LIVE_TIMEFRAME": env_map.get("ORGANISM_LIVE_TIMEFRAME"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
                 "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
+                "ORGANISM_OPERATOR_CONTROL_STATE": env_map.get("ORGANISM_OPERATOR_CONTROL_STATE"),
             }
             resolved["container_env"] = container_env
 
@@ -592,6 +593,8 @@ def _build_live_process_snapshot() -> dict:
                 "IMAGE_SHA": env_map.get("IMAGE_SHA"),
                 "APP_ENVIRONMENT": env_map.get("APP_ENVIRONMENT"),
                 "ALPACA_PAPER": env_map.get("ALPACA_PAPER"),
+                "ORGANISM_APPROVED_POLICY_BASELINE": env_map.get("ORGANISM_APPROVED_POLICY_BASELINE"),
+                "ORGANISM_OPERATOR_CONTROL_STATE": env_map.get("ORGANISM_OPERATOR_CONTROL_STATE"),
                 "ORGANISM_DRAWDOWN_KILL_PCT": env_map.get("ORGANISM_DRAWDOWN_KILL_PCT"),
                 "ORGANISM_DRAWDOWN_COOLDOWN_S": env_map.get("ORGANISM_DRAWDOWN_COOLDOWN_S"),
                 "ORGANISM_MAX_CHANGES_PER_DAY": env_map.get("ORGANISM_MAX_CHANGES_PER_DAY"),
@@ -664,6 +667,10 @@ def _build_live_process_snapshot() -> dict:
         )
         live["research_policy"] = _pick_annotated(
             "research_policy", "policy_lock",
+        )
+        # Report actual in-memory authority; absent legacy fields stay unknown.
+        live["operator_governance"] = _pick_annotated(
+            "operator_governance", "governance",
         )
         live["brain_generation"] = _pick_annotated("brain_generation", "brain_generation")
         live["uptime_seconds"] = _pick_annotated("uptime_seconds", "uptime_seconds")

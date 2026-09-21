@@ -87,6 +87,7 @@ Create a reviewed binding at `~/Library/Application Support/Intra/daily-evidence
   "image_digest": "sha256:64_CHARACTER_DOCKER_DIGEST",
   "runtime_config_hash": "VERIFIED_RUNTIME_CONFIG_HASH",
   "timeframe": "1Min",
+  "operator_control_path": "/app/data/operator_control_state.json",
   "effective_policy_hash": "64_CHARACTER_REVIEWED_PARAMETER_HASH",
   "root": "/Users/marselkei/VS/intra",
   "output": "/Users/marselkei/Library/Application Support/Intra/daily-evidence",
@@ -112,3 +113,13 @@ The default session date is today's US Eastern date. `--session YYYY-MM-DD` is a
 `ops/launchd/com.intra.paper.daily-evidence.plist` is a separate, deployment-ready template; adding the file does **not** install it. It runs daily at **13:10 Mac local time**, intended for the verified America/Los_Angeles host: 20:10 UTC during PDT and 21:10 UTC during PST. This is ten minutes after a regular session close; early closes are also handled by the broker calendar. `RunAtLoad` is false, so installation does not accidentally run a pre-close report. No credentials are embedded in the template. Keep the existing five-minute recovery watchdog and backup schedules unchanged.
 
 Installation belongs to the reviewed deployment step: copy the accepted script/dependencies, pin and validate the final binding, ensure the output and Application Support directory are private, precreate `daily-evidence-job.log` with mode `0600`, then load the template in the logged-in user's LaunchAgents. Verify the loaded schedule, manual exit code, receipt and resulting immutable pack. A logged-in, awake Mac, working Docker and available observer/broker endpoints are required. A missed run after logout/power-off cannot be reconstructed from the next day's current broker state. The job has no automatic recovery, retry or notification mechanism; its launchd exit status, private job log and run receipts must be reviewed after close. Correct a reported cause and rerun while it is still the same Eastern session date; retain every failed receipt and earlier pack.
+
+
+The reviewed host binding also pins `operator_control_path` to
+`/app/data/operator_control_state.json`, matching the expanded freeze. The
+corresponding host file is `ROOT/data/operator_control_state.json`. Checks compare
+its checksum, manual latch, reason and timestamp with actual engine governance.
+The checksum is observed each run, not permanently pinned to the initial resumed
+state: an operator halt is legitimate and must survive monitoring, restarts and
+brain recovery. A missing/corrupt record, control fault, status mismatch or
+unconfigured persistence blocks acceptance. Monitors never modify this file.

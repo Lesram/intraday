@@ -4979,3 +4979,52 @@ The lock blocks automatic ML/Kelly promotion, worker/synchronous retraining, sta
 The actual activation archives the previous active freeze and records a new UTC cutoff, immutable image/source/config identity and current backup evidence. CI's freeze timestamp is a verification fixture only. Daily qualification additionally requires full broker/ledger/entry-receipt reconciliation, actual session coverage and the primary 6bps round-trip research cost. Missing replacement lineage remains an explicit hold, never an approximate qualified result.
 
 The configured `ORGANISM_APPROVED_POLICY_BASELINE` points to the approved JSON baked into the immutable image. Startup verifies model/cache fingerprints, feature order, ensemble weights, thresholds, calibration map and actual applied scanner/exit/sizer values before engine reconstruction, training or ticks. A mismatch leaves the scheduler stopped; generic API readiness alone is insufficient. Existing lifespan startup cancels outstanding orders before engine initialization, so controlled rollout additionally requires a freshly verified flat account with no open orders. Legacy retrain activity messages can still say submitted when the locked trainer declines the request; `policy_lock` and actual trainer state are authoritative.
+
+
+## Durable operator halt and verified emergency cancellation
+
+The September 21 safety repair connects both operator endpoints to the actual
+scheduler engine governance, while keeping the legacy controller coherent.
+`ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json` stores
+an independent, checksummed manual halt in the existing data bind, outside the
+brain save/recovery directory. Deployment initializes this record only while
+recovery is held and fresh broker evidence is closed/flat with no orders, after
+observing that the previous engine is not halted. Missing or corrupt configured
+state blocks entries and exposes a control fault; it never silently resumes.
+
+The manual halt is set and persisted before awaiting an in-flight tick. A success
+acknowledgment requires that tick to drain; a timeout or persistence error reports
+an incomplete result with the halt retained. Final entry admission rechecks
+governance, including pyramid additions. Stop, partial-exit and end-of-day
+management remain active. Automatic daily-loss/cooldown recovery cannot clear the
+manual latch. Explicit resume clears only that latch, preserving environment and
+automatic risk blocks and the research lock.
+
+`POST /risk/emergency-stop` halts the actual engine before opening the audit DB
+session. It requests cancellation only for verified engine entry orders and
+confirms their terminal status at the broker. Protective and unrelated orders
+are preserved. Unsupported replacement lineage, ambiguous attribution, remaining
+fill exposure, broker failure, persistence failure or unavailable audit storage
+produces a structured incomplete response; it must not claim all orders were
+cancelled or the portfolio is flat. Database order rows are not falsely stamped
+cancelled. The UI distinguishes a retained entry halt from incomplete
+cancellation/audit work. No administrator notification is promised by this path.
+
+The expanded freeze covers governance, operator controls, the entry admission
+seam and emergency cancellation/API/service sources, plus the configured state
+path. The original six source hashes, strategy parameters and data feed remain
+unchanged. Runtime snapshots report observed `operator_governance`; missing
+legacy fields remain unknown. The actual-host daily runner and watchdog check
+configured/verified fault-free authority, its approved path, and correspondence
+between the current durable record and engine status. They allow a legitimate
+manual halt and never clear it to make a readiness check pass.
+
+
+Emergency-stop completion additionally requires bounded broker open-order
+inventory before and after cancellation, independently of DB terminal flags.
+An absent/stopped/uninitialized scheduler cannot acknowledge active exit
+management: durable halt may succeed, but overall control completion is 503.
+`GET /risk/emergency-stop/active` reports the actual operator latch/fault without
+DB access; unknown authority is 503. Historical audit resolution never resumes
+entries. The risk dashboard labels its stored record as an unresolved audit;
+current entry authority is shown by the organism dashboard.

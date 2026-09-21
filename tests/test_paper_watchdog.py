@@ -418,7 +418,7 @@ def test_reviewed_watchdog_agent_enables_backup_check():
 
 
 @pytest.fixture
-def policy_probe(monkeypatch):
+def policy_probe(monkeypatch, tmp_path):
     """Actual shared verifier, with credentials/HTTP/Docker entirely replaced."""
     from scripts.ops import paper_daily_host as host
 
@@ -427,7 +427,8 @@ def policy_probe(monkeypatch):
     binding = {"source_sha": '1' * 40, "image_sha": '2' * 40,
                "image_digest": 'sha256:' + '3' * 64, "runtime_config_hash": '4' * 64,
                "effective_policy_hash": host.policy_hash(params),
-               "policy_baseline": {"sha256": baseline_sha}}
+               "policy_baseline": {"sha256": baseline_sha}, "root": str(tmp_path),
+               "operator_control_path": "/app/data/operator_control_state.json"}
     deployment = {key: binding[key] for key in ('source_sha', 'image_sha', 'runtime_config_hash')}
     container = {"name": "/intra-api-1", "project": "intra", "service": "api",
                  "image_digest": binding['image_digest']}
@@ -436,6 +437,15 @@ def policy_probe(monkeypatch):
                               "frozen_models": True, "effective_policy_params": params,
                               "effective_policy_hash": binding['effective_policy_hash'],
                               "baseline": {"configured": True, "verified": True, "sha256": baseline_sha}}}
+    record = {"schema": "intra_operator_controls_v1", "operator_halted": False,
+              "reason": "synthetic_bootstrap", "changed_at": "2026-09-21T06:44:00+00:00"}
+    record["checksum"] = host.policy_hash(record)
+    (tmp_path / 'data').mkdir()
+    (tmp_path / 'data/operator_control_state.json').write_text(json.dumps(record))
+    engine['governance'] = {"operator_halted": False, "operator_control_fault": False,
+                            "operator_control": {"configured": True, "persistence": "verified",
+                                                 "path": binding['operator_control_path'],
+                                                 **{key: record[key] for key in ('checksum', 'reason', 'changed_at')}}}
     status = {"live_engine": {"running": True, "engine": engine}}
     calls = []
     monkeypatch.setattr(host, 'load_binding', lambda path: (copy.deepcopy(binding), {'binding_sha256': '5' * 64}, []))
@@ -467,6 +477,7 @@ def test_policy_probe_checks_actual_shared_identity_and_startup_contract(watchdo
     'source', 'image_source', 'image_digest', 'config', 'unlocked', 'promotion', 'models_unfrozen',
     'unconfigured_baseline', 'unverified_baseline', 'wrong_baseline', 'changed_params', 'ml_enabled',
     'kelly_enabled', 'no_scheduler', 'scheduler_stopped', 'uninitialized', 'running_integer',
+    'control_fault', 'control_unconfigured', 'control_file_corrupt',
 ])
 def test_policy_probe_rejects_healthy_api_with_wrong_runtime(watchdog, policy_probe, fault):
     p = policy_probe
@@ -483,6 +494,10 @@ def test_policy_probe_rejects_healthy_api_with_wrong_runtime(watchdog, policy_pr
     elif fault == 'changed_params': policy['effective_policy_params']['stop_atr_scale'] = 9
     elif fault == 'ml_enabled': engine['ml_influence_enabled'] = True
     elif fault == 'kelly_enabled': engine['fixed_risk_sizing'] = False
+    elif fault == 'control_fault': engine['governance']['operator_control_fault'] = True
+    elif fault == 'control_unconfigured': engine['governance']['operator_control']['configured'] = False
+    elif fault == 'control_file_corrupt':
+        (Path(p['binding']['root']) / 'data/operator_control_state.json').write_text('{}')
     elif fault == 'no_scheduler': p['status']['live_engine'] = None
     elif fault == 'scheduler_stopped': p['status']['live_engine']['running'] = False
     elif fault == 'uninitialized': engine['initialized'] = False

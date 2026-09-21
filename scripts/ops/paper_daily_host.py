@@ -88,6 +88,10 @@ def load_binding(path: Path) -> tuple[dict, dict, list[Path]]:
             or frozen_baseline.get("artifact_sha256") != binding["policy_baseline"]["sha256"]):
         raise daily.EvidenceError("approved_policy_baseline_mismatch")
     verify_policy_flags(freeze["surface"]["research_policy"])
+    if (binding.get("operator_control_path") != "/app/data/operator_control_state.json"
+            or freeze["surface"]["research_policy_enforcement_env"].get(
+                "ORGANISM_OPERATOR_CONTROL_STATE") != binding["operator_control_path"]):
+        raise daily.EvidenceError("approved_operator_control_path_required")
     cutoff = binding["measurement_cutoff"]
     if (freeze["FROZEN_AT"] != cutoff or activation["activation_timestamp_utc"] != cutoff
             or activation["active_freeze_sha256"] != daily.digest(freeze_raw)
@@ -207,6 +211,27 @@ def verify_policy_status(status: dict, binding: dict) -> None:
         raise daily.EvidenceError("runtime_effective_policy_mismatch")
     if engine.get("ml_influence_enabled") is not False or engine.get("fixed_risk_sizing") is not True:
         raise daily.EvidenceError("runtime_risk_mode_mismatch")
+    governance = engine.get("governance") or {}
+    control = governance.get("operator_control") or {}
+    if (control.get("configured") is not True or control.get("persistence") != "verified"
+            or control.get("path") != binding["operator_control_path"]
+            or governance.get("operator_control_fault") is not False
+            or type(governance.get("operator_halted")) is not bool):
+        raise daily.EvidenceError("runtime_operator_control_unverified")
+    # A manual halt is valid. Verify its current durable record instead of
+    # pinning the initial (mutable) latch or requiring it to remain resumed.
+    raw = daily.stable_read(Path(binding["root"]) / "data/operator_control_state.json")
+    record = json.loads(raw)
+    payload = {key: value for key, value in record.items() if key != "checksum"}
+    if (set(payload) != {"schema", "operator_halted", "reason", "changed_at"}
+            or payload.get("schema") != "intra_operator_controls_v1"
+            or type(payload.get("operator_halted")) is not bool
+            or not isinstance(payload.get("reason"), str) or not payload["reason"]
+            or record.get("checksum") != policy_hash(payload)
+            or any(record.get(key) != control.get(key) for key in ("checksum", "changed_at", "reason"))
+            or payload["operator_halted"] != governance["operator_halted"]):
+        raise daily.EvidenceError("operator_control_record_mismatch")
+    daily.timestamp(payload["changed_at"])
 
 
 def verify_runtime(transport, binding: dict) -> None:

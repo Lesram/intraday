@@ -86,6 +86,14 @@ class GovernanceController:
         # Read from env (can be toggled live via supervisor)
         self._frozen = os.getenv("ORGANISM_FREEZE_ADAPTATION", "0") in ("1", "true")
         self._trading_halted = os.getenv("ORGANISM_HALT_TRADING", "0") in ("1", "true")
+        # Independent operator authority is restored before legacy brain state.
+        # Automatic daily-loss recovery may only clear _trading_halted.
+        self._environment_halted = self._trading_halted
+        self._operator_halted = False
+        self._operator_control_fault = False
+        self._operator_control_state: dict[str, Any] = {
+            "configured": False, "persistence": "unconfigured",
+        }
         self._disabled: set[str] = set()
         disabled_csv = os.getenv("ORGANISM_DISABLED_STRATEGIES", "")
         if disabled_csv:
@@ -151,6 +159,11 @@ class GovernanceController:
                 DEFAULT_DRAWDOWN_KILL_PCT,
             )
 
+        # The legacy runner and live engine own separate controllers. Both
+        # must honor an operator halt immediately after process restart.
+        from backend.organism.operator_controls import restore_governance_controls
+        restore_governance_controls(self)
+
     # ── queries ──────────────────────────────────────────────────────
 
     @property
@@ -159,7 +172,8 @@ class GovernanceController:
 
     @property
     def is_trading_halted(self) -> bool:
-        if self._trading_halted:
+        if (self._trading_halted or self._environment_halted
+                or self._operator_halted or self._operator_control_fault):
             return True
         if self._drawdown_triggered_at:
             # V5 S-CLK-1 / Wave-19 (2026-05-03): cooldown elapsed uses
@@ -339,6 +353,11 @@ class GovernanceController:
         )
         return {
             "frozen": s.frozen,
+            "operator_halted": self._operator_halted,
+            "operator_control_fault": self._operator_control_fault,
+            "operator_control": dict(self._operator_control_state),
+            "environment_halted": self._environment_halted,
+            "automatic_halted": self._trading_halted,
             "trading_halted": s.trading_halted,
             "halted": s.trading_halted,
             "drawdown_triggered": _drawdown_triggered,

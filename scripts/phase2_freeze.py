@@ -72,6 +72,7 @@ def compute_surface() -> dict:
     from backend.organism.live_engine import OrganismLiveEngine
     from backend.organism.regime import RegimeDetector
     from backend.organism import research_policy, research_baseline, trading_phase, background_trainer
+    from backend.organism import governance, operator_controls
     from backend.organism.self_evolution import apply_evolved_params
     from backend.organism.strategies.strategy_config import (
         REGIME_POLICY, STRATEGY_CONFIG,
@@ -112,6 +113,7 @@ def compute_surface() -> dict:
         },
         "research_policy_enforcement_env": {
             research_baseline.BASELINE_ENV: os.getenv(research_baseline.BASELINE_ENV),
+            operator_controls.STATE_ENV: os.getenv(operator_controls.STATE_ENV),
         },
         "research_policy_sources": {
             "policy": _h(inspect.getsource(research_policy)),
@@ -127,6 +129,13 @@ def compute_surface() -> dict:
             "parameter_application": _h(inspect.getsource(apply_evolved_params)),
             "settings_api": _h((Path(__file__).resolve().parents[1] / "backend/api/routes/settings.py").read_text()),
             "scheduler": _h((Path(__file__).resolve().parents[1] / "backend/organism/scheduler.py").read_text()),
+            "operator_controls": _h(inspect.getsource(operator_controls)),
+            "governance": _h(inspect.getsource(governance)),
+            "entry_admission": _h(inspect.getsource(OrganismLiveEngine._authorize_live_entry_order)),
+            "operator_api": _h((Path(__file__).resolve().parents[1] / "backend/organism/routes.py").read_text()),
+            "emergency_stop_api": _h((Path(__file__).resolve().parents[1] / "backend/api/routes/risk.py").read_text()),
+            "emergency_stop_service": _h((Path(__file__).resolve().parents[1] / "backend/services/risk_manager.py").read_text()),
+            "entry_cancellation": _h((Path(__file__).resolve().parents[1] / "backend/organism/operator_cancellation.py").read_text()),
         },
     }
     # Normalize to the JSON representation so on-disk vs in-memory compare cleanly.

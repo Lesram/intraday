@@ -4,6 +4,20 @@ import os
 from unittest.mock import MagicMock, patch
 
 
+def test_operator_authority_snapshot_requires_actual_process_observation():
+    import scripts.runtime.write_runtime_snapshot as snap_mod
+    observed = {"operator_halted": True, "operator_control_fault": False,
+                "operator_control": {"configured": True, "persistence": "verified"}}
+    for fields, expected in (({}, None), ({"governance": observed}, observed)):
+        with (
+            patch.object(snap_mod, "_find_api_container", return_value=""),
+            patch.object(snap_mod, "_curl_organism_status", return_value={"live_engine": {"engine": fields}}),
+        ):
+            result = snap_mod._build_live_process_snapshot()
+        assert result["live"]["operator_governance"] == expected
+        assert ("operator_governance" in result["source_annotations"]) == bool(fields)
+
+
 def test_research_policy_snapshot_requires_actual_process_observation():
     import scripts.runtime.write_runtime_snapshot as snap_mod
     observed = {"locked": True, "qualified_trade_count": None, "effective_params_sha256": "abc"}
@@ -188,6 +202,8 @@ def test_live_process_snapshot_includes_deploy_and_shadow_envs():
         "IMAGE_SHA=abc123",
         "APP_ENVIRONMENT=development",
         "ALPACA_PAPER=true",
+        "ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json",
+        "ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json",
         "ORGANISM_DRAWDOWN_KILL_PCT=0.20",
         "ORGANISM_DRAWDOWN_COOLDOWN_S=300",
         "ORGANISM_MAX_CHANGES_PER_DAY=500",
@@ -219,6 +235,8 @@ def test_live_process_snapshot_includes_deploy_and_shadow_envs():
     assert env["GIT_SHA"] == "abc123"
     assert env["BUILD_TIME"] == "2026-05-10T17:31:34Z"
     assert env["IMAGE_SHA"] == "abc123"
+    assert env["ORGANISM_APPROVED_POLICY_BASELINE"] == "/app/artifacts/phase2/research_policy_baseline.json"
+    assert env["ORGANISM_OPERATOR_CONTROL_STATE"] == "/app/data/operator_control_state.json"
     assert env["ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED"] == "true"
     assert env["ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED"] == "true"
     assert env["ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED"] == "true"

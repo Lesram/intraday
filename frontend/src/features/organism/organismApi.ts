@@ -31,6 +31,8 @@ export interface OrganismStatus {
   governance?: {
     frozen?: boolean;
     halted?: boolean;
+    operator_halted?: boolean;
+    operator_control_fault?: boolean;
     drawdown_triggered?: boolean;
     policy_version?: number;
     change_budget_remaining?: number;
@@ -66,6 +68,7 @@ export interface OrganismStatus {
 }
 
 export interface EngineStats {
+  policy_lock?: { locked?: boolean };
   initialized?: boolean;
   tick_count?: number;
   total_trades?: number;

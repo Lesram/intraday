@@ -661,11 +661,23 @@ const OrganismDashboard = () => {
   const handleAction = useCallback(async (action: 'freeze' | 'unfreeze' | 'halt' | 'resume' | 'train' | 'tick') => {
     setActionLoading(action);
     try {
-      await organismApi.action(action);
-      message.success(`Organism ${action} completed`);
+      const result = await organismApi.action(action);
+      if (action === 'resume' && result.entries_halted === true) {
+        message.warning('Operator halt cleared; another risk control still blocks entries.');
+      } else if (action === 'halt') {
+        message.success('New entries halted. Protective exits remain active; pending orders are unchanged.');
+      } else {
+        message.success(`Organism ${action} completed`);
+      }
       await fetchAll(false);
     } catch (err: any) {
-      message.error(err?.response?.data?.detail || `Failed to ${action}`);
+      const detail = err?.response?.data?.detail;
+      if (detail?.entries_halted === true) {
+        message.warning('Entries are halted, but the control request is incomplete. Check control status before resuming.');
+      } else {
+        message.error(typeof detail === 'string' ? detail : `Could not confirm ${action}; check engine status.`);
+      }
+      await fetchAll(false);
     } finally {
       setActionLoading(null);
     }
@@ -673,6 +685,7 @@ const OrganismDashboard = () => {
 
   const governance = status?.governance ?? {};
   const engineStats = status?.live_engine?.engine as EngineStats | undefined;
+  const engineAvailable = status?.live_engine?.running === true && engineStats?.initialized === true;
   const latestTick = useMemo(() => {
     if (status?.live_engine?.last_tick) return status.live_engine.last_tick;
     return runs[0] ?? null;
@@ -817,10 +830,10 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={6}>
           <Card size="small">
-            <Tooltip title="ACTIVE = trading normally. FROZEN = adaptation/evolution paused but still trading. HALTED = no trading.">
+            <Tooltip title="HALTED blocks new entries; protective exits require a running, initialized engine. RESEARCH LOCKED keeps the reviewed strategy and models fixed while paper trading remains eligible. FROZEN pauses adaptation. ACTIVE means no governance block, not a guarantee of trades.">
               <Statistic
                 title="State"
-                value={governance.halted ? 'HALTED' : governance.frozen ? 'FROZEN' : 'ACTIVE'}
+                value={!engineAvailable ? 'UNAVAILABLE' : governance.halted ? 'HALTED' : engineStats?.policy_lock?.locked ? 'RESEARCH LOCKED' : governance.frozen ? 'FROZEN' : 'ACTIVE'}
                 prefix={governance.halted ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
               />
             </Tooltip>
@@ -863,24 +876,30 @@ ENABLE_ORGANISM_SCHEDULER=1   # optional — starts the live tick loop`}
         </Col>
       </Row>
 
+      {!engineAvailable && (
+        <Alert type="error" showIcon message="Engine operation is not confirmed"
+          description="A halt flag alone does not manage open positions. Check engine status and broker positions; protective exits require a running, initialized engine."
+          style={{ marginBottom: 16 }} />
+      )}
       <Card title="Controls" style={{ marginBottom: 16 }}>
         <Space wrap>
           <Button
             type={governance.frozen ? 'primary' : 'default'}
             onClick={() => handleAction(governance.frozen ? 'unfreeze' : 'freeze')}
             loading={actionLoading === 'freeze' || actionLoading === 'unfreeze'}
+            disabled={engineStats?.policy_lock?.locked === true}
           >
-            {governance.frozen ? 'Unfreeze Adaptation' : 'Freeze Adaptation'}
+            {engineStats?.policy_lock?.locked ? 'Research Policy Locked' : governance.frozen ? 'Unfreeze Adaptation' : 'Freeze Adaptation'}
           </Button>
           <Button
-            danger={!governance.halted}
-            type={governance.halted ? 'primary' : 'default'}
-            onClick={() => handleAction(governance.halted ? 'resume' : 'halt')}
+            danger={!governance.operator_halted}
+            type={governance.operator_halted ? 'primary' : 'default'}
+            onClick={() => handleAction(governance.operator_halted ? 'resume' : 'halt')}
             loading={actionLoading === 'halt' || actionLoading === 'resume'}
           >
-            {governance.halted ? 'Resume Trading' : 'Halt Trading'}
+            {governance.operator_halted ? 'Resume Entries' : 'Halt Entries'}
           </Button>
-          <Button onClick={() => handleAction('train')} loading={actionLoading === 'train'}>
+          <Button onClick={() => handleAction('train')} loading={actionLoading === 'train'} disabled={engineStats?.policy_lock?.locked === true}>
             Trigger Training
           </Button>
           <Button onClick={() => handleAction('tick')} loading={actionLoading === 'tick'}>
