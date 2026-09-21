@@ -55,6 +55,50 @@
       "selector_routing": "bed6a91e7f95f3ad11e159767ecdb6d54b42c022997df3b801bcbe20ad8628d2"
     }
   },
+  "portability_repair_addendum": {
+    "assertion_weakened": false,
+    "changed_previous_bindings": [
+      "tests/test_apr10_patch_f4_forensic_guard.py"
+    ],
+    "documentation_delta": "Monday runbook now consistently names explicitly approved expanded freeze/new cutoff and reviewed 13:10 Pacific daily schedule; actual installation remains receipt-gated.",
+    "file_sha256": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
+    "full_pack_image_hosted_runtime_acceptance_for_new_source": "pending separate root evidence",
+    "identical_previous_bindings": 38,
+    "only_changed_python_file": "tests/test_apr10_patch_f4_forensic_guard.py",
+    "previous_bindings": 39,
+    "prior_source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+    "production_scripts_workflows_deployment_freeze_and_static_config_identical": true,
+    "remaining_concrete_source_findings": [],
+    "reviewed_change": "Derive subprocess cwd from Path(__file__).resolve().parents[1] rather than developer absolute path; require successful subprocess exit before parsing its output. Existing exact-two guarded manifest-write callsite assertion remains unchanged.",
+    "runtime_behavior_changed": false,
+    "source_sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
+    "static_equivalence": {
+      "application_imports": false,
+      "changed_test_same_config_ruff": {
+        "045681d2e097000628bc97f3a31d57130d71a69a": {
+          "exit_code": 1,
+          "file_sha256": "a8399fca2d69473461d97e95f528c4a1e4fb7e293552d6be871761731e4acb3e",
+          "findings": 1,
+          "stdout_sha256": "445b67929c21455e0915342497165fcfb794996b16669e8bd37584793ba1fec0"
+        },
+        "49d3e31479a7bea7e68108689f3584684e7bb6a8": {
+          "exit_code": 1,
+          "file_sha256": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
+          "findings": 1,
+          "stdout_sha256": "445b67929c21455e0915342497165fcfb794996b16669e8bd37584793ba1fec0"
+        }
+      },
+      "existing_95_ruff_findings_not_claimed_clean": true,
+      "network_denied": true,
+      "new_ruff_findings": 0,
+      "prior_full_report": "artifacts/operations_evidence/policy_final_static.json",
+      "prior_report_sha256": "1abc4fb59225daca4f729a575ba644fc5e3aa9f733c78185c1b09ea473d15685",
+      "production_high_severity_bandit_results_transfer_by_byte_identity": true,
+      "unchanged_python_ruff_results_transfer_by_byte_identity": true
+    },
+    "validation": "Reviewer performed source/hash equivalence and narrow Ruff delta only, no unit/integration tests rerun. Root owns fresh local full pack, exact image and hosted retry; prior failed hosted run remains failed historical evidence.",
+    "verdict": "ACCEPTED"
+  },
   "pr19_thread_dispositions": [
     {
       "discussion": "https://github.com/Lesram/intraday/pull/19#discussion_r4055307783",
@@ -96,8 +140,8 @@
     "Observed development-fallback model signing is corruption detection, not independent secret-key authenticity; no key bypass or guessed key is authorized.",
     "Host job requires awake logged-in Mac, Docker and endpoint availability; no automatic notification/recovery/retry, and next-day broker state cannot reconstruct a missed same-day attestation."
   ],
-  "review_scope": "Read-only bounded review of default research policy lock, configured retained-model/component baseline, error and startup propagation, admin mutation guards, host evidence adapter, freeze/snapshot/docs and PR19 thread dispositions. This is not a new full-codebase or deployment audit. Addendum independently reviews seven tests-only compatibility repairs and workflow coverage delta at91d02bf, and binds root independent watchdog review.",
-  "reviewed_at_utc": "2026-09-21T07:18:59.477404+00:00",
+  "review_scope": "Read-only bounded review of default research policy lock, configured retained-model/component baseline, error and startup propagation, admin mutation guards, host evidence adapter, freeze/snapshot/docs and PR19 thread dispositions. This is not a new full-codebase or deployment audit. Addendum independently reviews seven tests-only compatibility repairs and workflow coverage delta at91d02bf, and binds root independent watchdog review. Final addendum reviews only checkout-relative forensic-test subprocess cwd and explicit success assertion at49d3e314; all runtime source unchanged.",
+  "reviewed_at_utc": "2026-09-21T07:38:15.663854+00:00",
   "reviewer_actions": {
     "broker_calls": false,
     "github_approval_or_thread_resolution": false,
@@ -163,9 +207,14 @@
       "review_artifact_sha256": "81102aff090dff7bfb21ec11778dce0501d57e589b653f1ea5329c816c715219",
       "source_sha": "91d02bf158312a82bba9bf76262b5f6511ff3b31",
       "verdict": "SOURCE_REVIEW_ACCEPTED_RELEASE_GATES_PENDING"
+    },
+    {
+      "review_artifact_sha256": "8f35a72744f6aba5f1fa1e45f59a25d9c6ddaf1e1626b13449956106ee1ab8b4",
+      "source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+      "verdict": "SOURCE_REVIEW_ACCEPTED_RELEASE_GATES_PENDING"
     }
   ],
-  "source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+  "source_sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
   "source_sha256": {
     ".dockerignore": "4abe59e5c2105174af1e7fa210a79c570aa6bf86486c8e7c2c36e15e670baffc",
     ".github/workflows/paper-readiness.yml": "e6f039a622cbfe9a301b518be271e4978bf98a61560c3b8dfc5b46d571ebd586",
@@ -192,7 +241,7 @@
     "scripts/ops/paper_watchdog.py": "a1809fb9dfbe6098b4e0cc22e533c8c7c242a279ab3813f152787cb1ced11baf",
     "scripts/phase2_freeze.py": "c1ce6bb37dc36acefef9ef9b7da841f6b6869c497787c8ad29b01a3642492d48",
     "scripts/runtime/write_runtime_snapshot.py": "8de4d7d366f4e9e40dc468d37c2fa6354d8018d6f729582419bbead63ef574f3",
-    "tests/test_apr10_patch_f4_forensic_guard.py": "a8399fca2d69473461d97e95f528c4a1e4fb7e293552d6be871761731e4acb3e",
+    "tests/test_apr10_patch_f4_forensic_guard.py": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
     "tests/test_apr8_patch_a_force_save.py": "d2f4e1ea0117e65b534c4730ce72b009b02fc5cf55b834ec9d23e2ff9000b750",
     "tests/test_audit_patch_queue_b1.py": "cc2b1f842c917928476c72ab8eb378566da243d8f6cd280cb8ed802f9663ff64",
     "tests/test_audit_patch_queue_b2.py": "84355c438a072d2d72cee13fc1d2325cb8bd94e19748835570bbb2504070b152",

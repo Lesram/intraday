@@ -1,0 +1,14 @@
+........................................................................ [ 78%]
+..............s.....                                                     [100%]
+=============================== warnings summary ===============================
+../opt/venv/lib/python3.12/site-packages/passlib/utils/__init__.py:854
+  /opt/venv/lib/python3.12/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+tests/test_apr10_patch_f4_forensic_guard.py::test_forensic_guard_learner_replacement
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../source/tests/test_v12_baseline_invariants.py:268: Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim
+91 passed, 1 skipped, 2 warnings in 6.24s

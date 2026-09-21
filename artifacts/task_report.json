@@ -1,7 +1,7 @@
 {
   "task_id": "monday-final-readiness-20260921",
   "summary": "Exact accounting and receipt integrity, explicit locked paper research policy, retained model/component startup baseline, authenticated daily evidence and watchdog policy observation",
-  "sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+  "sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
   "branch": "codex/operations-evidence-integrity",
   "change_scope": "base",
   "change_ref": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD",
@@ -9,7 +9,6 @@
     ".dockerignore",
     ".github/workflows/paper-readiness.yml",
     "artifacts/algorithm_improvements.junit.xml",
-    "artifacts/algorithm_improvements.log",
     "artifacts/changed_files.json",
     "artifacts/live_process_runtime_snapshot.json",
     "artifacts/monday_readiness/freeze_environment.json",
@@ -37,6 +36,7 @@
     "artifacts/operations_evidence/monday_candidate_bandit.json",
     "artifacts/operations_evidence/monday_candidate_image.json",
     "artifacts/operations_evidence/monday_daily_freeze.txt",
+    "artifacts/operations_evidence/monday_daily_host.xml",
     "artifacts/operations_evidence/monday_daily_plan.json",
     "artifacts/operations_evidence/monday_daily_reproduction.xml",
     "artifacts/operations_evidence/monday_daily_review_fixes.json",
@@ -58,6 +58,49 @@
     "artifacts/operations_evidence/monday_static_validation.json",
     "artifacts/operations_evidence/operational_final.xml",
     "artifacts/operations_evidence/operational_validation.log",
+    "artifacts/operations_evidence/policy_baseline_final.xml",
+    "artifacts/operations_evidence/policy_baseline_targeted.xml",
+    "artifacts/operations_evidence/policy_final_freeze.log",
+    "artifacts/operations_evidence/policy_final_secret_scan.json",
+    "artifacts/operations_evidence/policy_final_static.attempt1.base.bandit.json",
+    "artifacts/operations_evidence/policy_final_static.attempt1.base.bandit.stderr.log",
+    "artifacts/operations_evidence/policy_final_static.attempt1.base.ruff.json",
+    "artifacts/operations_evidence/policy_final_static.attempt1.base.ruff.stderr.log",
+    "artifacts/operations_evidence/policy_final_static.attempt1.candidate.bandit.json",
+    "artifacts/operations_evidence/policy_final_static.attempt1.candidate.bandit.stderr.log",
+    "artifacts/operations_evidence/policy_final_static.attempt1.candidate.ruff.json",
+    "artifacts/operations_evidence/policy_final_static.attempt1.candidate.ruff.stderr.log",
+    "artifacts/operations_evidence/policy_final_static.base.bandit.json",
+    "artifacts/operations_evidence/policy_final_static.base.bandit.stderr.log",
+    "artifacts/operations_evidence/policy_final_static.base.ruff.json",
+    "artifacts/operations_evidence/policy_final_static.base.ruff.stderr.log",
+    "artifacts/operations_evidence/policy_final_static.candidate.bandit.json",
+    "artifacts/operations_evidence/policy_final_static.candidate.bandit.stderr.log",
+    "artifacts/operations_evidence/policy_final_static.candidate.ruff.json",
+    "artifacts/operations_evidence/policy_final_static.candidate.ruff.stderr.log",
+    "artifacts/operations_evidence/policy_final_static.json",
+    "artifacts/operations_evidence/policy_final_warm_start.json",
+    "artifacts/operations_evidence/policy_freeze_targeted.xml",
+    "artifacts/operations_evidence/policy_legacy_fixture_implementation.json",
+    "artifacts/operations_evidence/policy_legacy_fixture_output.txt",
+    "artifacts/operations_evidence/policy_legacy_fixture_plan.json",
+    "artifacts/operations_evidence/policy_lock_implementation.json",
+    "artifacts/operations_evidence/policy_lock_plan.json",
+    "artifacts/operations_evidence/policy_lock_review.json",
+    "artifacts/operations_evidence/policy_lock_targeted_output.txt",
+    "artifacts/operations_evidence/policy_nightly.classification.json",
+    "artifacts/operations_evidence/policy_nightly.log",
+    "artifacts/operations_evidence/policy_nightly.node.log",
+    "artifacts/operations_evidence/policy_nightly.node.xml",
+    "artifacts/operations_evidence/policy_nightly.ports.attempt1.log",
+    "artifacts/operations_evidence/policy_nightly.ports.attempt1.provenance.json",
+    "artifacts/operations_evidence/policy_nightly.ports.log",
+    "artifacts/operations_evidence/policy_nightly.ports.provenance.json",
+    "artifacts/operations_evidence/policy_nightly.ports.xml",
+    "artifacts/operations_evidence/policy_nightly.provenance.json",
+    "artifacts/operations_evidence/policy_nightly.xml",
+    "artifacts/operations_evidence/policy_workflow_contract_output.txt",
+    "artifacts/operations_evidence/policy_workflow_contract_plan.json",
     "artifacts/operations_evidence/replay_accounting_implementation.json",
     "artifacts/operations_evidence/sample_daily_pack/2026-09-21/99dc63a65a5f197a4ca0d1344b203ea8fca4bfe5b0e6e06195448f0aff61e237/inputs/broker/account.json",
     "artifacts/operations_evidence/sample_daily_pack/2026-09-21/99dc63a65a5f197a4ca0d1344b203ea8fca4bfe5b0e6e06195448f0aff61e237/inputs/broker/calendar.json",
@@ -129,6 +172,7 @@
     "artifacts/safety_invariants.junit.xml",
     "artifacts/safety_invariants.log",
     "artifacts/self_evolution.junit.xml",
+    "artifacts/self_evolution.log",
     "artifacts/semantic_invariants.junit.xml",
     "artifacts/semantic_invariants.log",
     "artifacts/semantic_invariants_summary.json",
@@ -238,10 +282,10 @@
     "Natural-session behavior, real fills and EOD remain unproven until observed; no profitability or inherited clean-data claim.",
     "Awake logged-in Mac on AC, Docker/network and same-day collector execution required; full-host recovery and off-host alert/backup acceptance remain outstanding.",
     "Bounded source/static/known-secret checks are not whole-repository certification.",
-    "GitHub push reports106 existing dependency alerts on default main (1critical/38high/59moderate/8low); this scoped release does not certify their resolution. Parked dependency/CI cleanup is not silently expanded."
+    "GitHub reports106 existing default-branch dependency alerts (1critical/38high/59moderate/8low); scoped release does not certify their resolution. Parked dependency/CI cleanup not expanded."
   ],
   "follow_ups": [
-    "Fresh hosted operational-safety and accepted PR merge before rollout.",
+    "Fresh hosted operational-safety for the corrected portable source and accepted PR merge before rollout.",
     "Fresh flat paper broker check, stopped-state backup/restore, explicit archive and new cutoff, preserve user edits/history.",
     "Installed exact source/image/config, policy/model pin, engine/scheduler/accounting and recovery checks.",
     "Install private immutable daily binding and host schedule; validate preclose withholding and policy watchdog.",
@@ -252,8 +296,8 @@
   "artifact_pack_errors": [],
   "unique_tests_passed": 1366,
   "validation": {
-    "source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
-    "created_at_utc": "2026-09-21T07:22:15.559442+00:00",
+    "source_sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
+    "created_at_utc": "2026-09-21T07:40:28.259355+00:00",
     "unique_tests_passed": 1366,
     "tests_failed": 0,
     "skipped": 1,
@@ -272,69 +316,69 @@
         "passed": 1150,
         "failed": 0,
         "skipped": 1,
-        "sha256": "1905abc603ee98dd1c177ab6d78aabfb2ae76d59dc765bec91598dd2e3212370"
+        "sha256": "387861cd43e43ade5c0bce19068a977e4c80575e30057cf86ef8616db65eb37c"
       },
       {
         "junit": "artifacts/organism_live_engine.junit.xml",
         "passed": 26,
         "failed": 0,
         "skipped": 0,
-        "sha256": "b7a43036ae8c9094a095bf1f188a0aeea6f47c5099e9b0ff3cecca4941595363"
+        "sha256": "1d97f31f35b13d9720f328bb3c41eacc5d7433c07348b4257f5955adfc5d8bd8"
       },
       {
         "junit": "artifacts/organism_engine_scenarios.junit.xml",
         "passed": 31,
         "failed": 0,
         "skipped": 0,
-        "sha256": "5a2f16c77f0f2aa22a4994b9bfe63df26ae51c337976bf5acd8c9bd14458dd84"
+        "sha256": "bce7bf5fe0379676ef70818ff42fbe287d0e73d271b71448adfe3aad5e0f2363"
       },
       {
         "junit": "artifacts/multi_tick_state.junit.xml",
         "passed": 9,
         "failed": 0,
         "skipped": 0,
-        "sha256": "37b4aedb8dce5d65dbdfd095afe16f50b2f49788d6e8d7643a1e0d42aacb51d2"
+        "sha256": "a4cbbf33b70ab0e6ac238eded2f9d2fde394696116cbe8eae688b45f55ae3c42"
       },
       {
         "junit": "artifacts/safety_invariants.junit.xml",
         "passed": 29,
         "failed": 0,
         "skipped": 0,
-        "sha256": "2c8f9ea4b5ab660987bf1d19313e7983c097c4766fa4f0e18563bceb94f55e8b"
+        "sha256": "3bb6f923d8a1dc2640cd415316c873ab81b8774635521b7e995af90bf76d84d8"
       },
       {
         "junit": "artifacts/self_evolution.junit.xml",
         "passed": 15,
         "failed": 0,
         "skipped": 0,
-        "sha256": "ab6e09a4ecafceec1b6092fa3df267e7beeb6e5aa28cc9e008dc25c8dca54ec2"
+        "sha256": "f8455eb59812c738a1fd4b9a4e30b1dd36811ff28b5d6fe1070b1395e7fe5c56"
       },
       {
         "junit": "artifacts/algorithm_improvements.junit.xml",
         "passed": 58,
         "failed": 0,
         "skipped": 0,
-        "sha256": "e4bea0fd6bd4a8da7e23f1edaacad1c8db8817624ee1e0bae8fc36c17d00f6ba"
+        "sha256": "db80a8a86769fdb7c6e04d1b59ee4d3cf2ced88b33db8aaacbe050f54c2ee014"
       },
       {
         "junit": "artifacts/replay_simulator.junit.xml",
         "passed": 28,
         "failed": 0,
         "skipped": 0,
-        "sha256": "8e535207deedd53349ddbd017f810c14907fcf944ae9c23b097ceedb8928f0e3"
+        "sha256": "1329b0553d8fdd8e4461486368782c99d7b9d4929e280d39ca8960460c652407"
       },
       {
         "junit": "artifacts/semantic_invariants.junit.xml",
         "passed": 20,
         "failed": 0,
         "skipped": 0,
-        "sha256": "5b8167e2b9476950a554d64608453297d033397bf3dfcee5d926b6951f74bb71"
+        "sha256": "dbafaea2acd5ec69892d8f0167d52cf274d18bc4b805d24ecfd10ade922ef9a4"
       }
     ],
     "count_method": "Unique JUnit classname and case name across final operational and required full artifact runs; repeated/targeted/broad nightly/environment runs are not added",
     "full_artifact_pack": "pass",
     "freeze_verification": "pass",
-    "immutable_image": "sha256:155b6ffea0e1a4de782470cd387e7600e77aebbed1c332717046d6a9803ef66c",
+    "immutable_image": "sha256:5f3d03a0761c8cb2e48116ab7c8997d43b7a923a4482d9d22bfdd476bb07e0e3",
     "isolated_signed_backup_warm_start": "pass; initial load and saved reload preserve pinned models/components and ledger; negative corruption fails before engine effects",
     "deployed": false,
     "hosted_check_status": "pending_after_push",
@@ -346,6 +390,14 @@
       "xfail": 2,
       "classification": "27 environment failures passed isolated reruns;17 stale accounting/policy fixtures repaired and covered by final required selection;1 installed-history dependency now explicit unavailable skip. Original failed receipt retained.",
       "details": "artifacts/operations_evidence/policy_nightly.classification.json"
+    },
+    "linux_operational": {
+      "passed": 910,
+      "skipped": 1,
+      "failed": 0,
+      "scope": "Exact42workflowfiles; source045 archive + only repaired test overlay equal source49 test/runtime tree",
+      "details": "artifacts/operations_evidence/policy_linux_fixture_implementation.json",
+      "not_added_to_unique_count": true
     }
   },
   "deployed": false,

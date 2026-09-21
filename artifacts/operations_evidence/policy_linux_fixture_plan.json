@@ -1,0 +1,18 @@
+{
+  "task_id": "portable-forensic-source-probe",
+  "scope": "Repair newly selected forensic source-probe test to inspect the checkout containing the test instead of a hardcoded macOS operating checkout.",
+  "owned_files": [
+    "tests/test_apr10_patch_f4_forensic_guard.py"
+  ],
+  "steps": [
+    "Reproduce hardcoded cwd failure on Linux or absent-path checkout.",
+    "Derive repository root from __file__ and require subprocess success before parsing.",
+    "Run affected file in isolated tests and recheck all7newly selected fixtures for platform paths."
+  ],
+  "constraints": [
+    "No runtime changes.",
+    "No private live state or credentials.",
+    "No commit; await root release coordination."
+  ],
+  "status": "complete_linux_operational_pass"
+}

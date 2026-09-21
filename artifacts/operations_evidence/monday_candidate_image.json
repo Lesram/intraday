@@ -1,8 +1,8 @@
 {
-  "source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
-  "created_at_utc": "2026-09-21T07:17:11.671371+00:00",
-  "tag": "intra-api:operations-045681d2e097",
-  "image_digest": "sha256:155b6ffea0e1a4de782470cd387e7600e77aebbed1c332717046d6a9803ef66c",
+  "source_sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
+  "created_at_utc": "2026-09-21T07:35:45.945194+00:00",
+  "tag": "intra-api:operations-49d3e31479a7",
+  "image_digest": "sha256:5f3d03a0761c8cb2e48116ab7c8997d43b7a923a4482d9d22bfdd476bb07e0e3",
   "build_context": "git archive of exact committed source; .dockerignore applied",
   "source_files": {
     "backend/api/routes/settings.py": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
@@ -24,7 +24,7 @@
     "scripts/ops/standdown_session_row.py": "9d49764a3b3a8abe8550b608dd56b797cfc8b987c86f677ad7c9aa93cb497a35",
     "scripts/phase2_freeze.py": "c1ce6bb37dc36acefef9ef9b7da841f6b6869c497787c8ad29b01a3642492d48",
     "scripts/runtime/write_runtime_snapshot.py": "8de4d7d366f4e9e40dc468d37c2fa6354d8018d6f729582419bbead63ef574f3",
-    "tests/test_apr10_patch_f4_forensic_guard.py": "a8399fca2d69473461d97e95f528c4a1e4fb7e293552d6be871761731e4acb3e",
+    "tests/test_apr10_patch_f4_forensic_guard.py": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
     "tests/test_apr8_patch_a_force_save.py": "d2f4e1ea0117e65b534c4730ce72b009b02fc5cf55b834ec9d23e2ff9000b750",
     "tests/test_audit_0_2_bg_trainer_same_holdout.py": "e6693f2062a53c14b87cf4a0a36cf8d1782ef00e59bf3f19b5e95f01c197e1fb",
     "tests/test_audit_2_3_2_5_promotion_evolution.py": "6c0ec592fb94936938108aac3ee7ac06ee9b62f5037d9666e05ac1083fbfe2cf",

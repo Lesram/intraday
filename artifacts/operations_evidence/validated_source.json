@@ -1,5 +1,5 @@
 {
-  "source_sha": "045681d2e097000628bc97f3a31d57130d71a69a",
+  "source_sha": "49d3e31479a7bea7e68108689f3584684e7bb6a8",
   "base_sha": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189",
   "files": {
     ".dockerignore": "4abe59e5c2105174af1e7fa210a79c570aa6bf86486c8e7c2c36e15e670baffc",
@@ -19,7 +19,7 @@
     "backend/organism/scheduler.py": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c",
     "backend/organism/trading_phase.py": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
     "docs/architecture/mapss.md": "3244e20cd083d159e2ee7018c8bb15f76a42b68ddc2a7dafde18641ac76805d4",
-    "docs/engineering/MONDAY_PREPARATION_2026-09-21.md": "811044b8d59febbdf525af4b381ebc18425fc4f73e8971c8043cab9175397cc7",
+    "docs/engineering/MONDAY_PREPARATION_2026-09-21.md": "f28a45b53c210c3290c52d75f9f93510489a065d32ca47425b797a0a4b82ac39",
     "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "c092d9210a63dae65ea24e2ac6abd8a105894394bcdc9d93f31a1207be48339d",
     "docs/runbooks/PAPER_DAILY_EVIDENCE.md": "326610550c3ce00b404131892c2a3ace88dcfec0a7d9ba2292a4a858bf509a07",
     "docs/runbooks/PAPER_UPTIME.md": "75a0657011ee5de286bc4fb6ddad8d1dccee9c9aaf8f277a950a471f09183678",
@@ -31,7 +31,7 @@
     "scripts/ops/standdown_session_row.py": "9d49764a3b3a8abe8550b608dd56b797cfc8b987c86f677ad7c9aa93cb497a35",
     "scripts/phase2_freeze.py": "c1ce6bb37dc36acefef9ef9b7da841f6b6869c497787c8ad29b01a3642492d48",
     "scripts/runtime/write_runtime_snapshot.py": "8de4d7d366f4e9e40dc468d37c2fa6354d8018d6f729582419bbead63ef574f3",
-    "tests/test_apr10_patch_f4_forensic_guard.py": "a8399fca2d69473461d97e95f528c4a1e4fb7e293552d6be871761731e4acb3e",
+    "tests/test_apr10_patch_f4_forensic_guard.py": "68f54383cf222d5097384eb090335de35d72522c55b81ef487137a50ad9dcd69",
     "tests/test_apr8_patch_a_force_save.py": "d2f4e1ea0117e65b534c4730ce72b009b02fc5cf55b834ec9d23e2ff9000b750",
     "tests/test_audit_0_2_bg_trainer_same_holdout.py": "e6693f2062a53c14b87cf4a0a36cf8d1782ef00e59bf3f19b5e95f01c197e1fb",
     "tests/test_audit_2_3_2_5_promotion_evolution.py": "6c0ec592fb94936938108aac3ee7ac06ee9b62f5037d9666e05ac1083fbfe2cf",
@@ -66,5 +66,5 @@
     "tests/test_walkforward_persistence.py": "f39f701c0d44734ba2abf3698476b35a7d67ab062f31a0fe7d938cf22ac7a049"
   },
   "runtime_installed": false,
-  "note": "Final required operational and safety/replay suites bind this committed source. Image hashes/freeze and isolated warm-start bind the immutable image. Later evidence-only commits do not change deployment source. File hashes are exact source commit bytes; subsequent evidence/documentation-only changes are separately reviewable."
+  "note": "Final required operational and safety/replay suites bind this committed source. Image hashes/freeze and isolated warm-start bind the immutable image. Later evidence-only commits do not change deployment source."
 }

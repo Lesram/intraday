@@ -51,4 +51,4 @@ tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit
     from backend.config.unified import UnifiedSettings, get_unified_settings
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-1150 passed, 1 skipped, 12 warnings in 27.74s
+1150 passed, 1 skipped, 12 warnings in 33.69s
