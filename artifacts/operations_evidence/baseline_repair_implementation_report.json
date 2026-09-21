@@ -1,0 +1,76 @@
+{
+  "task_id": "rf-canonical-startup-baseline-verification",
+  "status": "SOURCE_STABLE_TARGETED_ACCEPTED_PENDING_CONTROLLED_BASELINE_REGENERATION",
+  "timestamp_utc": "2026-09-21T10:34:55.251346+00:00",
+  "source_base": "bbfa0bc947dd89b9e3122052c730c2bf296d40b4",
+  "files": {
+    "backend/organism/model_fingerprint.py": "fb29529f60f6e5110404599489f761e154b64a2e8b7bb2d50a83d708c856ae55",
+    "backend/organism/research_baseline.py": "23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1",
+    "tests/test_research_model_fingerprint.py": "c09edfed82a918dedda7852cefffb70c0461cb25cff958c64f377cc9d824c2e6",
+    "tests/test_research_baseline.py": "aa818ed467e666a10ba045b6eaa2aa890e24be7ec0ed283ef2050d874d7b65e2"
+  },
+  "implementation": [
+    "RF-only full typed state hashing with explicit rf-state-v1: prefix",
+    "Exact supported forest/estimator class identity, complete parameters and serialized state, all Tree dimensions and state",
+    "Arrays retain dtype layout/metadata, shape and every named field/value; unnamed padding and alias identity excluded",
+    "Framed streaming SHA256 uses bounded data chunks; unsupported types/dtypes/cycles/ambiguous dictionary keys fail closed",
+    "No model deserialize/predict/mutation during fingerprint; legacy nonRF fingerprint method unchanged"
+  ],
+  "tests": {
+    "local_fingerprint_baseline_policy_lock": {
+      "tests": 127,
+      "failed": 0,
+      "skipped": 0
+    },
+    "exact_image_fingerprint_baseline": {
+      "tests": 83,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "checks": {
+    "scoped_ruff": 0,
+    "git_diff_check": 0,
+    "pre_regeneration_freeze_verify": 1
+  },
+  "freeze_result": {
+    "expected_pending_root_regeneration": true,
+    "only_drift_paths": [
+      "research_policy_sources.baseline_verification",
+      "research_policy_sources.model_fingerprint"
+    ],
+    "six_original_decision_source_groups_and_strategy_env_params": "No drift reported",
+    "frozen_at_untouched": "2026-09-21T08:20:53.394292+00:00",
+    "reference_not_rewritten_by_subtask": true
+  },
+  "evidence": {
+    "baseline_repair_exact_image.json": "6e1ad59dd4f4b7b1c70c54813b7cd2edffe2e660063b08cd15eea1bd00339c9f",
+    "baseline_repair_exact_image.log": "a167af529dbcd2803cea0459d1f7f96c1b2f39b8740773b80d6698aa9013da74",
+    "baseline_repair_exact_image.xml": "70589537469e3bf8105b7b4614986efd2ba2d7d160ddd8035a4c7c28c749530f",
+    "baseline_repair_extraction.json": "957b6ea9d63d35282612d9d4348bd08b929c20fa913c29076130bb17c68546b7",
+    "baseline_repair_freeze_before_regeneration.log": "f8ae064c347310b8bc600648bda1345b1ca1c9bd514b054492cc8d29509d677a",
+    "baseline_repair_implementation_plan.json": "278434e745bd26ffade5de8e3419eb384408ea525f720855cf6979ca900e58ed",
+    "baseline_repair_initial_exact_image.json": "0e79cb5bafc40e9c3e6b832e005ed60d93d34ed1c2df0aee2f5c36dbe7503e7c",
+    "baseline_repair_initial_exact_image.log": "81329378ee37d5e6a06bd7494d335180e5d68ee9e7346ca3279f01adc49bdbc2",
+    "baseline_repair_initial_exact_image.xml": "519b0dd181233c126680963ea1f24f2e8ef67d9b39f3217c11f277c1d8e0d775",
+    "baseline_repair_initial_targeted.log": "bec2709d05a4a1853df94656147e4922e3b6b304da7dea1e185d94c50f2d73c0",
+    "baseline_repair_initial_targeted.xml": "cac95ba43e79f7b449aaedd53ab340b88c785e9e9c2b7a449361046f52de7703",
+    "baseline_repair_lint.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "baseline_repair_plan.json": "c947aea464fbbda368386a4d8b1d6dcb0d91230bff4d8cbc163bffdb20a24932",
+    "baseline_repair_targeted.log": "de168af952456d3a109ee0f4e7d82e05f2cc699bdf00073a12468953032c1597",
+    "baseline_repair_targeted.xml": "c10c2c2e54fc1272aaa9c5736b81b591104b6b0df4e4d4861bab396bb4edf2ac"
+  },
+  "isolation": {
+    "local": "clean test environment, scratch SQLite/brain, production private data denied, network denied",
+    "image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d; read-only root, networknone, tmpfs/tmp, candidate code via stdin overlay, no host mounts; source bytes independently checked",
+    "actual_models_or_broker_access": false,
+    "runtime_mutation": false
+  },
+  "limitations": [
+    "Existing approved baseline is intentionally unchanged and incompatible with the new versioned RF identity until reviewed regeneration.",
+    "Separate actual-timeframe/component mismatch and baseline regeneration/startup rehearsal are root-owned gates.",
+    "No final source-bound full artifact pack/CI/deploy claim; root owns required organism/replay/config regression and final reference proof.",
+    "127 local and83 image cases overlap; do not add these as unique tests.",
+    "One existing policy-lock fixture emits an ephemeral SECRET_KEY warning in isolated testing; no production credentials accessed."
+  ]
+}

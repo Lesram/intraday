@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "scope": "Entire freeze regression module against temporary current-source fixture; does not certify root-owned persisted candidate/host artifacts.",
+  "original_six_and_exit_routing_strategy_regime_equal_to_candidate_reference": true,
+  "network": "denied",
+  "brain": "temporary",
+  "log": "/tmp/intra-baseline-repair-freeze-tests/tests.log",
+  "junit": "/tmp/intra-baseline-repair-freeze-tests/tests.xml"
+}

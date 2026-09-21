@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "task_id": "independent-baseline-repair-final-acceptance",
+  "reviewed_at_utc": "2026-09-21T10:43:23.735071+00:00",
+  "verdict": "LOCAL_CORRECTIVE_SOURCE_AND_EVIDENCE_ACCEPTED_HOSTED_AND_RUNTIME_PENDING",
+  "source_sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+  "image_digest": "sha256:a276b7d98e10aa9823acf6f2d8cea7ba0a85cee673de131ad84e0166bfe057b8",
+  "baseline_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+  "candidate_freeze_sha256": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+  "retained_active_cutoff": "2026-09-21T10:10:39.684894+00:00",
+  "blocking_local_findings": [],
+  "review_scope": "Read-only review of production RF fingerprint/baseline delta and final evidence. No rerun, installed runtime or broker actions. The reviewer authored the private warm harness; parent independently reviewed it, requested additional guards and executed it. This acceptance is not an independent second execution of that harness.",
+  "source_bindings": {
+    ".github/workflows/paper-readiness.yml": "27a9b39882fe6c7781ac9ef4508c57032a1b41761ab4dbe3d3991d2d903740ef",
+    "artifacts/phase2/param_freeze.json": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+    "artifacts/phase2/research_policy_baseline.json": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+    "backend/organism/model_fingerprint.py": "fb29529f60f6e5110404599489f761e154b64a2e8b7bb2d50a83d708c856ae55",
+    "backend/organism/research_baseline.py": "23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1",
+    "docs/architecture/mapss.md": "44b85dc392ea716bb6b6e26032478adc6d688774e6fd5f7b79453ceeb2c5bffc",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md": "df1ff6bec92ab02abe3982221401bba4c29de5d89598d9b9c23265d8247d2a7d",
+    "scripts/phase2_freeze.py": "05cdc6692ab69564e324f898ec5ccf740859e055bb820bcd301c4cd5b9312bc8",
+    "tests/test_phase2_freeze.py": "ce550b0057534050c0e2e2ac7cae759a8401a7f093a0179e9a4dab9de8837d9e",
+    "tests/test_research_baseline.py": "aa818ed467e666a10ba045b6eaa2aa890e24be7ec0ed283ef2050d874d7b65e2",
+    "tests/test_research_model_fingerprint.py": "c09edfed82a918dedda7852cefffb70c0461cb25cff958c64f377cc9d824c2e6"
+  },
+  "evidence_sha256": {
+    "artifacts/operations_evidence/final_validation.json": "859d451ddf3964545bd114fe5283d4da8439bea43b855ab1610f98d0dd4f3d95",
+    "artifacts/operations_evidence/monday_candidate_image.json": "d047332210462cd5e2203516328d0cad772375c4f9c98c6de188ab0984ff4dec",
+    "artifacts/operations_evidence/baseline_repair_warm_start.json": "8a348bcde8c836427bff114b4b97ae7a3f02eac2c053176c62963b695e52007b",
+    "artifacts/operations_evidence/baseline_repair_warm_start_attempt1.json": "ef4aaf09f9a282666013afd17e992ebeab19c7fda2ff4d4290be61cee8a3e0f4",
+    "artifacts/operations_evidence/baseline_repair_extraction.json": "957b6ea9d63d35282612d9d4348bd08b929c20fa913c29076130bb17c68546b7",
+    "artifacts/operations_evidence/baseline_repair_implementation_report.json": "b3d59f07e9b5f0645a469f47e5d51438e91857864c894c5e9d416ef323eb91b9",
+    "artifacts/operations_evidence/baseline_repair_exact_image.json": "6e1ad59dd4f4b7b1c70c54813b7cd2edffe2e660063b08cd15eea1bd00339c9f",
+    "artifacts/operations_evidence/baseline_repair_targeted.xml": "c10c2c2e54fc1272aaa9c5736b81b591104b6b0df4e4d4861bab396bb4edf2ac",
+    "artifacts/operations_evidence/baseline_repair_exact_image.xml": "70589537469e3bf8105b7b4614986efd2ba2d7d160ddd8035a4c7c28c749530f",
+    "artifacts/operations_evidence/validated_source.json": "860d8420498791f6367b16ca9cc9052f97745925f4c5dd92548a619c1497c038",
+    "artifacts/operations_evidence/frontend_release_final.xml": "6206a30492f06e19f29a9b7e8c42a7d5d664765cdfcf48a05b5ced0417b11789",
+    "artifacts/operations_evidence/frontend_browser_final/result.json": "0e83cf52d06259dd3a849505c1c1a7026670f0035708d2bac73413b6cea7ea31",
+    "artifacts/operations_evidence/frontend_streaming_bundle.json": "3997985ea1c6e1b18b9b760df12b41854179f85035f05733adb7450c12fb6ddc",
+    "artifacts/phase2/param_freeze.json": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+    "artifacts/phase2/research_policy_baseline.json": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+    "artifacts/task_report.json": "9268b2b569592f9bdbfade3019c86c3831b280db82c745099fe0e472e92696e9",
+    "artifacts/test_summary.json": "0c7375b2633f252de46a5356b32bd7ba9c5ec05889aae829fad14a40c611cec0",
+    "artifacts/grep_assertions.json": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "808331ea39f483e1ba618cdc91e8db2496edac6b4b0de9020a42078bd7fc5c7f"
+  },
+  "production_code_review": [
+    "Only model_fingerprint.py and research_baseline.py change under backend relative to source055; order admission, exits, learning/risk sizing and frozen dispatch remain byte-identical.",
+    "RF identity uses versioned full typed supported estimator/tree state, including parameters, array dtype/shape/named values, tree dimensions and sequence order. Anonymous padding contents and object-sharing representation are excluded.",
+    "Unknown state/types, cycles, unsupported RF subclasses and ambiguous canonical keys reject; no deserialize, predict or model mutation is performed by fingerprinting. Non-RF hashing remains unchanged.",
+    "Complete fingerprint module is included in the expanded frozen research-policy sources; a meaningful drift test proves verification rejects helper changes without rewriting cutoff."
+  ],
+  "baseline_review": {
+    "runtime_identity_difference_count": 4,
+    "runtime_identity_differences": [
+      {
+        "path": "runtime_identity.applied_components.exit_engine.atr_multiplier",
+        "before": 1.4775,
+        "after": 0.985
+      },
+      {
+        "path": "runtime_identity.applied_components.exit_engine.trailing_distance_atr",
+        "before": 1.25,
+        "after": 0.75
+      },
+      {
+        "path": "runtime_identity.models.ensemble_rf_clf.joblib",
+        "before": "030902011b1ee6bb388d41e7870c2928e5f292e71aa931c43e6a3cbd6f41325a",
+        "after": "rf-state-v1:49e9f9b959e69573333b2374232f19331ea32ff2e81910147465d352d0373711"
+      },
+      {
+        "path": "runtime_identity.models.ensemble_rf_reg.joblib",
+        "before": "c7602541eb5863b56b564cbee8e4b05bcae3a62741551e1eb7040a515e054816",
+        "after": "rf-state-v1:819096de9cdcf20125b30633a4726709869d7aeb427bdd5122cfdaa46a796a25"
+      }
+    ],
+    "other_changes": "Extraction receipt/source/timestamp and verification-repair provenance metadata; no other runtime identity difference.",
+    "effective_policy_params_unchanged": true,
+    "effective_policy_hash": "8ec17f39c88f9237effa22b342697dd503b30b31f58595ff377cc498b99359f5",
+    "arithmetic": {
+      "atr_multiplier": "Unchanged1Min preset1.0 \u00d7 retained stop_atr_scale0.985 =0.985",
+      "trailing_distance_atr": "Unchanged1Min preset1.5 \u00d7 retained trailing_distance_scale0.5 =0.75"
+    },
+    "all_original_six_source_hashes_equal_active_freeze": true,
+    "strategy_exit_regime_routing_feed_config_equal_active_freeze": true,
+    "expanded_surface_difference_paths": [
+      "effective_policy_baseline.artifact_sha256",
+      "research_policy_sources.baseline_verification",
+      "research_policy_sources.model_fingerprint"
+    ],
+    "cutoff_equal_candidate_and_current_host": true,
+    "no_auto_approval": "Warm oracle independently compares prior approved effective parameters and all prior components except documented intraday arithmetic; expected model identities derive from the nine signed held-backup files, not arbitrary current runtime approval."
+  },
+  "tests": {
+    "required_python": {
+      "passed_unique": 1674,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1,
+      "duplicate_cases": 0,
+      "suites": 9,
+      "all_junit_hashes_and_counts_verified": true,
+      "operational_passed": 1458,
+      "full_pack_passed": 216,
+      "skip": "Installed-history audit explicitly unavailable without INTRA_INSTALLED_HISTORY_CSV; no fabricated installed-history input."
+    },
+    "focused_rf_evidence": {
+      "local_passed": 127,
+      "exact_base_image_with_source_overlay_passed": 83,
+      "source_hashes_verified": true,
+      "not_added_to_required_unique_count": true
+    },
+    "full_pack": "passed; test summary and all invariant grep checks report pass; replay included",
+    "frontend": {
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "evidence_source": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
+      "reused": true,
+      "unchanged_frontend_tree_and_browser_checker_verified": true,
+      "browser": "Prior exact-source055 production login evidence retained unchanged:8DOM checks,0pageerrors/transport violations, owned cleanup; not a new browser run at sourcea3.",
+      "scope_limit": "No authenticated live streaming/session or credential-validity claim."
+    }
+  },
+  "image_review": {
+    "source_hashes_verified_against_committed_source_and_checkout": 66,
+    "mismatches": [],
+    "freeze_verify_exit_code": 0,
+    "receipt": "Read-only root, networknone, no live-state mounts and no application startup for image verification.",
+    "reviewer_did_not_start_image": true
+  },
+  "warm_review": {
+    "runner_sha256": "d2971ff150302cc86117cb6a89f680272a9cb95ef9572bacd869ced36779bdfa",
+    "generated_probe_sha256": "254f4329f7099e015f85df95e511e42ac00a80380637238765ab10c34b373d86",
+    "public_report_sha256": "8a348bcde8c836427bff114b4b97ae7a3f02eac2c053176c62963b695e52007b",
+    "cold_processes_passed": 2,
+    "same_runtime_identity_sha256": "0dc24c20ad70cb4f532ce05338bbcddd449a9a98524294d6d69534929827491e",
+    "environment": "Observed allowlisted actual1Min stopped-container configuration applied before any backend import; engine imported before independent model preload. Only disposable brain/operator paths relocated.",
+    "input": "Held backupc902c9ada029acc38342b1d4a7ecbcaac6e235528533ca2180d508d2a2fdefe9;26 payload files plus manifest; readonly mount; no production brain/DB mounts.",
+    "signature_verified_models_per_process": 9,
+    "model_features": 79,
+    "learner_generation": 389,
+    "learner_total_trades": 609,
+    "ledger_rows": 610,
+    "accounting_checkpoint_and_full_save_reload": "Both processes passed full projection, learner, independent CSV row cashflow/identity, calibration/Kelly/bookkeeping and models/component baseline preservation. Full save occurs only on second disposable copy.",
+    "operator": "Verified false initial isolated record; durable halt survives full save/reinitialize; unavailable offline scheduler correctly returns degraded protection acknowledgement.",
+    "negative_controls": [
+      "Missing baseline",
+      "Corrupt baseline",
+      "Wrong daily ATR expectation",
+      "Wrong feature columns",
+      "Wrong RF fingerprint",
+      "Suppressed ensemble load",
+      "Deliberate counter mismatch",
+      "13 mocked exact Docker absence classification cases"
+    ],
+    "transport_call_ledgers": [
+      [],
+      []
+    ],
+    "brain_validation_warnings": "Ten actual initialization validation reports per process, all empty; built-in zero-vector model probes ran.",
+    "post_preservation_checks": {
+      "image_metadata": true,
+      "candidate_baseline": true,
+      "candidate_sources": true,
+      "held_backup": true,
+      "held_live_brain_payload": true,
+      "operator_record": true,
+      "active_freeze_bytes": true,
+      "installed_api_still_stopped_same_identity": true
+    },
+    "first_attempt": "Cleanup parser rejected lowercase Docker no-such-object response before deserialization. Failed receipt retained separately; parser now requires exact case-sensitive owned identity with case-insensitive error prefix and rejects generic inspect failures.",
+    "null_summary_field": "Legacy convenience effective_policy_hash field is null in cold summaries; acceptance relies on explicit effective_policy_params_sha256 and verified complete runtime identity, both matching the baseline."
+  },
+  "remaining_gates": [
+    "Fresh exact-source hosted acceptance and reviewed corrective PR merge; evidence-only head must retain implementation identity.",
+    "Fresh secret scan and final source/image/helper bindings before corrective installation.",
+    "Archive superseded failed activation/baseline/freeze evidence; publish corrective metadata with the SAME cutoff and proof no intervening candidate trading.",
+    "Controlled held installation, actual observer identity, baseline/policy/operator/accounting checks and current-container preflight must pass before automatic recovery/startup release.",
+    "Natural session, fills, exact close accounting, EOD and post-close evidence qualification remain pending."
+  ],
+  "limitations": [
+    "Warm clock is fixed to saved timestamp; actual wall-clock/date rollover and live positions are not certified.",
+    "Reconstruction, trainer and diagnostics are stubbed; no scheduler, broker, database or natural trading effects are tested.",
+    "Observed publicly derivable development signing fallback proves corruption detection, not independent secret-key authentication; no key change or signature bypass.",
+    "Legacy backup lacks per-symbol daily PnL/loss-map baselines; absent maps are not attested.",
+    "Unsupported replacement lineage remains pending/BLOCKED. No profitability, clean historical cohort or whole-repository all-tests claim.",
+    "Old-image rollback cannot bypass new accounting/operator authority; preserve state and reconcile any migration.",
+    "No deployment or successful installed startup is claimed by this artifact."
+  ],
+  "reviewer_reran_tests": false,
+  "reviewer_runtime_or_broker_actions": false,
+  "deployed": false
+}

@@ -1,0 +1,308 @@
+{
+  "status": "passed",
+  "plan": {
+    "scope": "Private exact-image full restoration acceptance; no installed execution",
+    "owned_files": [
+      "/tmp/intra-baseline-repair-warm.py",
+      "/Users/marselkei/.codex/worktrees/intra-operations-evidence/intra/artifacts/operations_evidence/baseline_repair_warm_start.json"
+    ],
+    "cold_processes": 2,
+    "input": "Current verified 26-file held backup, mounted read-only",
+    "configuration": "Observed allowlisted stopped-container environment before imports; only brain/operator paths relocated",
+    "independent_oracle": "Prior approved effective parameters/components, explicit 1Min arithmetic, six original frozen groups/config, signed model inventory and raw ledger",
+    "acceptance": "Actual initialize, checkpoint reload, full save and halted reload on disposable copies; negative baseline and swallowed model-load controls",
+    "execution": "Requires root invocation with --execute; default has no runtime or filesystem mutations"
+  },
+  "installed_runtime_started": false,
+  "observed_at_utc": "2026-09-21T10:39:38.125812+00:00",
+  "runner_sha256": "d2971ff150302cc86117cb6a89f680272a9cb95ef9572bacd869ced36779bdfa",
+  "cold_process_results": [
+    {
+      "accounting_projection_roundtrip_equal": true,
+      "added_scratch_files": [
+        ".brain.lock",
+        "close_accounting.json"
+      ],
+      "all_model_and_cache_fingerprints_match_verified_artifacts": true,
+      "all_original_file_hashes_unchanged": true,
+      "approved_baseline_verified": {
+        "configured": true,
+        "path": "/app/artifacts/phase2/research_policy_baseline.json",
+        "runtime_identity_sha256": "0dc24c20ad70cb4f532ce05338bbcddd449a9a98524294d6d69534929827491e",
+        "sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+        "verified": true
+      },
+      "baseline_negative_controls": [
+        "missing",
+        "corrupt",
+        "atr",
+        "features",
+        "rf"
+      ],
+      "call_ledger": [],
+      "candidate_source": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+      "deliberate_counter_mismatch_rejected": true,
+      "effective_policy_hash": null,
+      "effective_policy_params_sha256": "8ec17f39c88f9237effa22b342697dd503b30b31f58595ff377cc498b99359f5",
+      "every_ledger_and_learner_row_core_values_match_original_csv": true,
+      "first_load_legacy_kelly_calibration_and_counters_match": true,
+      "intraday_expected_components": {
+        "atr_multiplier": 0.985,
+        "trailing_distance_atr": 0.75
+      },
+      "learner_cumulative_pnl_preserved": true,
+      "learner_generation": 389,
+      "learner_state_roundtrip_equal": true,
+      "learner_total_trades": 609,
+      "ledger_rows": 610,
+      "limits": [
+        "No trading, external position validation, database, scheduler, diagnostic checks or trainer tested.",
+        "The clock is fixed to the saved brain timestamp to isolate preservation from session transitions.",
+        "Initialization runs its built-in zero-vector model sanity probes; no predictive-performance claim is made.",
+        "Legacy source contains no saved per-symbol daily PnL/loss-map baseline, so preservation of those absent maps is not attested.",
+        "Full save exercised only on a second disposable copy; no model promotion or natural-session acceptance claimed."
+      ],
+      "models": {
+        "cache_shapes": {
+          "_last_val_X": [
+            95,
+            79
+          ],
+          "_last_val_y_dir": [
+            95
+          ],
+          "_last_val_y_ret": [
+            95
+          ]
+        },
+        "ensemble_names": [
+          "rf",
+          "xgb"
+        ],
+        "feature_count": 79,
+        "generation": 390,
+        "primary_classes": [
+          "XGBClassifier",
+          "XGBRegressor"
+        ]
+      },
+      "models_verified_before_deserialization": 9,
+      "operator_controls": {
+        "accounting_learner_models_preserved_after_full_save": true,
+        "configured_initially_unhalted_verified": true,
+        "durable_halt_survives_full_save_and_initialize": true,
+        "offline_scheduler_degraded_acknowledgement_verified": true,
+        "operator_record_checksum": "c17dd915130a5184061051fad3dcedcac2d72a7932a50a28686f09c6ccbf0c2f",
+        "second_disposable_copy_only": true
+      },
+      "original_frozen_groups_preserved": true,
+      "runtime_identity_sha256": "0dc24c20ad70cb4f532ce05338bbcddd449a9a98524294d6d69534929827491e",
+      "signing_limitation": "Observed deployed development fallback provides corruption detection, not independent secret-key authentication.",
+      "source_files": 27,
+      "status": "passed",
+      "stubbed_calls": {
+        "diagnostics": 4,
+        "position_reconstruction": 4,
+        "trainer_start": 4
+      },
+      "suppressed_ensemble_failure_rejected": true,
+      "validation_warnings": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "accounting_projection_roundtrip_equal": true,
+      "added_scratch_files": [
+        ".brain.lock",
+        "close_accounting.json"
+      ],
+      "all_model_and_cache_fingerprints_match_verified_artifacts": true,
+      "all_original_file_hashes_unchanged": true,
+      "approved_baseline_verified": {
+        "configured": true,
+        "path": "/app/artifacts/phase2/research_policy_baseline.json",
+        "runtime_identity_sha256": "0dc24c20ad70cb4f532ce05338bbcddd449a9a98524294d6d69534929827491e",
+        "sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+        "verified": true
+      },
+      "baseline_negative_controls": [
+        "missing",
+        "corrupt",
+        "atr",
+        "features",
+        "rf"
+      ],
+      "call_ledger": [],
+      "candidate_source": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+      "deliberate_counter_mismatch_rejected": true,
+      "effective_policy_hash": null,
+      "effective_policy_params_sha256": "8ec17f39c88f9237effa22b342697dd503b30b31f58595ff377cc498b99359f5",
+      "every_ledger_and_learner_row_core_values_match_original_csv": true,
+      "first_load_legacy_kelly_calibration_and_counters_match": true,
+      "intraday_expected_components": {
+        "atr_multiplier": 0.985,
+        "trailing_distance_atr": 0.75
+      },
+      "learner_cumulative_pnl_preserved": true,
+      "learner_generation": 389,
+      "learner_state_roundtrip_equal": true,
+      "learner_total_trades": 609,
+      "ledger_rows": 610,
+      "limits": [
+        "No trading, external position validation, database, scheduler, diagnostic checks or trainer tested.",
+        "The clock is fixed to the saved brain timestamp to isolate preservation from session transitions.",
+        "Initialization runs its built-in zero-vector model sanity probes; no predictive-performance claim is made.",
+        "Legacy source contains no saved per-symbol daily PnL/loss-map baseline, so preservation of those absent maps is not attested.",
+        "Full save exercised only on a second disposable copy; no model promotion or natural-session acceptance claimed."
+      ],
+      "models": {
+        "cache_shapes": {
+          "_last_val_X": [
+            95,
+            79
+          ],
+          "_last_val_y_dir": [
+            95
+          ],
+          "_last_val_y_ret": [
+            95
+          ]
+        },
+        "ensemble_names": [
+          "rf",
+          "xgb"
+        ],
+        "feature_count": 79,
+        "generation": 390,
+        "primary_classes": [
+          "XGBClassifier",
+          "XGBRegressor"
+        ]
+      },
+      "models_verified_before_deserialization": 9,
+      "operator_controls": {
+        "accounting_learner_models_preserved_after_full_save": true,
+        "configured_initially_unhalted_verified": true,
+        "durable_halt_survives_full_save_and_initialize": true,
+        "offline_scheduler_degraded_acknowledgement_verified": true,
+        "operator_record_checksum": "cb224cff23ac295b1c6a7b00c28dd6fabf62a768ed675d75266fe2b4e9ebb8d4",
+        "second_disposable_copy_only": true
+      },
+      "original_frozen_groups_preserved": true,
+      "runtime_identity_sha256": "0dc24c20ad70cb4f532ce05338bbcddd449a9a98524294d6d69534929827491e",
+      "signing_limitation": "Observed deployed development fallback provides corruption detection, not independent secret-key authentication.",
+      "source_files": 27,
+      "status": "passed",
+      "stubbed_calls": {
+        "diagnostics": 4,
+        "position_reconstruction": 4,
+        "trainer_start": 4
+      },
+      "suppressed_ensemble_failure_rejected": true,
+      "validation_warnings": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    }
+  ],
+  "mock_absence_cases_passed": 13,
+  "candidate_source": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+  "candidate_image": "sha256:a276b7d98e10aa9823acf6f2d8cea7ba0a85cee673de131ad84e0166bfe057b8",
+  "runtime_environment_sha256": "198a91b3efc4d0ad3be8a4a64e057ab6f9328653cd4dbb94986f09909dc0285d",
+  "runtime_environment_keys": [
+    "ALPACA_DATA_FEED",
+    "APP_ENVIRONMENT",
+    "ORGANISM_ALPHA_TOP_N",
+    "ORGANISM_APPROVED_POLICY_BASELINE",
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED",
+    "ORGANISM_CANDIDATE_FILTER_SHADOW_TELEMETRY_PATH",
+    "ORGANISM_COST_BPS",
+    "ORGANISM_DRAWDOWN_COOLDOWN_S",
+    "ORGANISM_DRAWDOWN_KILL_PCT",
+    "ORGANISM_DROP_ML_FROM_GATE",
+    "ORGANISM_ENABLED",
+    "ORGANISM_EXPLORATION_ENABLED",
+    "ORGANISM_FRAMEWORK_ROUTING_V2",
+    "ORGANISM_FREEZE_ADAPTATION",
+    "ORGANISM_LIVE_LOOKBACK",
+    "ORGANISM_LIVE_SYMBOLS",
+    "ORGANISM_LIVE_TIMEFRAME",
+    "ORGANISM_LONG_ONLY",
+    "ORGANISM_MAX_CHANGES_PER_DAY",
+    "ORGANISM_MAX_DAILY_LOSS",
+    "ORGANISM_MAX_NOTIONAL",
+    "ORGANISM_MAX_POSITIONS",
+    "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
+    "ORGANISM_MIN_BARS",
+    "ORGANISM_ML_RETRAIN_ENABLED",
+    "ORGANISM_OPERATOR_CONTROL_STATE",
+    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
+    "ORGANISM_PROTECTED_SYMBOLS",
+    "ORGANISM_PYRAMID_ENABLED",
+    "ORGANISM_RETRAIN_INTERVAL",
+    "ORGANISM_ROUTING_RANK_POLICY",
+    "ORGANISM_SHADOW_EXIT_MIN_FAVORABLE_R",
+    "ORGANISM_SHADOW_EXIT_POLICY",
+    "ORGANISM_SHADOW_EXIT_RETRACE_FRAC",
+    "ORGANISM_SHADOW_EXIT_TELEMETRY_PATH",
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_ENABLED",
+    "ORGANISM_STRATEGY_EVIDENCE_TELEMETRY_PATH",
+    "ORGANISM_TICK_INTERVAL_SECONDS",
+    "ORGANISM_TRAIN_WINDOW",
+    "ORGANISM_USE_STREAMING",
+    "TRADING_EXECUTION_MODE"
+  ],
+  "backup_manifest_sha256": "c902c9ada029acc38342b1d4a7ecbcaac6e235528533ca2180d508d2a2fdefe9",
+  "approved_baseline_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+  "probe_sha256": "254f4329f7099e015f85df95e511e42ac00a80380637238765ab10c34b373d86",
+  "original_cutoff_preserved": "2026-09-21T10:10:39.684894+00:00",
+  "actual_environment_before_imports": true,
+  "engine_import_before_independent_preload": true,
+  "trusted_backup_manifest_verified": true,
+  "signing_source_identical": true,
+  "input_mounted_readonly": true,
+  "network": "none",
+  "live_state_mounted": false,
+  "arithmetic": {
+    "ATR": "1Min default 1.0 \u00d7 retained stop_atr_scale 0.985 = 0.985",
+    "trailing": "1Min default 1.5 \u00d7 retained trailing_distance_scale 0.5 = 0.75"
+  },
+  "cold_processes_passed": 2,
+  "source_hashes_unchanged": true,
+  "signature_verification_before_each_deserialization": true,
+  "full_save_and_operator_halt_roundtrip": true,
+  "post_preservation_checks": {
+    "image_metadata": true,
+    "candidate_baseline": true,
+    "candidate_sources": true,
+    "held_backup": true,
+    "held_live_brain_payload": true,
+    "operator_record": true,
+    "active_freeze_bytes": true,
+    "installed_api_still_stopped_same_identity": true
+  },
+  "limitations": [
+    "No installed API, broker, database, scheduler, natural tick or performance acceptance.",
+    "Reconstruction/trainer/diagnostics stubbed; built-in zero-vector model sanity probes still run.",
+    "Saved timestamp fixes session state; actual wall-clock/date rollover remains separate acceptance.",
+    "Observed public development signing fallback is corruption detection, not independent secret-key authentication.",
+    "No baseline is generated from actual runtime identity by this runner; prior effective policy and explicit component arithmetic are independent oracles."
+  ]
+}
