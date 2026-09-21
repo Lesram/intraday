@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-09-21T10:53:28.637399+00:00",
+  "verdict": "CI_REFERENCE_CORRECTION_ACCEPTED_FRESH_HOSTED_RETRY_REQUIRED",
+  "source_sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+  "image_digest": "sha256:a276b7d98e10aa9823acf6f2d8cea7ba0a85cee673de131ad84e0166bfe057b8",
+  "hosted_failure_run": 35590305489,
+  "prior_ci_reference_sha256": "47224d7a1567ddeb360f7b9945aae3503a7782d32449bdd55d931858b9a798b4",
+  "corrected_reference_sha256": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+  "corrected_reference_equals_accepted_candidate_bytes": true,
+  "surface_difference_paths": [
+    ".effective_policy_baseline.artifact_sha256",
+    ".research_policy_sources.baseline_verification",
+    ".research_policy_sources.model_fingerprint"
+  ],
+  "original_six_and_all_strategy_exit_regime_routing_feed_config_equal": true,
+  "metadata": "Copies the already accepted purpose/authorization/verification-correction metadata and existing10:10:39 cutoff, replacing the earlier fixture cutoff08:20:53. No host cutoff or runtime mutation. Legacy fixture git_sha remains inherited metadata; actual reviewed implementation identity is independently bound above.",
+  "workflow_evidence": {
+    "path": ".github/workflows/paper-readiness.yml",
+    "sha256": "27a9b39882fe6c7781ac9ef4508c57032a1b41761ab4dbe3d3991d2d903740ef",
+    "behavior": "Lines154\u2013160 copy this CI reference over artifacts/phase2/param_freeze.json, apply unchanged freeze_environment.json and run --verify."
+  },
+  "diagnostic_bindings": {
+    "baseline_repair_ci_reference_correction.json": "1f07d11a8e18cdde4ea408a33ce6f94d49ea6afeed39ee07e6df99cecfd3c7e4",
+    "baseline_repair_ci_reference_failure.log": "862741e2b2377ce0bb348fada62891d1bf930c62573995b714b3b089aa9aa067",
+    "baseline_repair_ci_reference_pass.log": "bc36b72c82fc0f6d70040dc1f2fb5b3eff02be2ab7c801250fe38490d3dba035"
+  },
+  "reproduction": "Parent exact CI environment reports old-reference exit1 with only the three reviewed surface paths; corrected reference exit0. Reviewer inspected both logs and verified hashes; did not rerun.",
+  "image_rebuild_needed": false,
+  "image_reason": "No implementation/image-contract file differs from accepted sourcea3. .dockerignore excludes artifacts/monday_readiness and permits only research_policy_baseline.json within phase2. Corrected CI reference is outside image context.",
+  "remaining_gates": [
+    "Fresh exact-head hosted acceptance on artifact-only follow-up commit.",
+    "Existing corrective activation/runtime acceptance gates remain pending."
+  ],
+  "reviewer_source_edits": false,
+  "reviewer_runtime_or_broker_actions": false
+}
