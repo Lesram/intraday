@@ -1,0 +1,16 @@
+........................................................................ [ 55%]
+.........................................................                [100%]
+=============================== warnings summary ===============================
+tests/test_entry_freshness.py::test_inclusive_start_timestamp_boundary_submits_once[0]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-alpha]
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_organism_engine_scenarios.py:209: PytestUnknownMarkWarning: Unknown pytest.mark.timeout - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.timeout(120)
+
+tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-alpha]
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_organism_engine_scenarios.py:855: PytestUnknownMarkWarning: Unknown pytest.mark.timeout - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.timeout(120)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+129 passed, 3 warnings in 4.74s

@@ -2,6 +2,14 @@
   "source": "resolved_config",
   "resolved": {
     "close_accounting_policy": "exact_position_fills_or_pending_v1",
+    "entry_freshness": {
+      "max_bar_age_seconds": 120.0,
+      "minimum_bar_age_seconds": 0.0,
+      "timestamp_semantics": "provider_bar_start_utc",
+      "checked_at": "final_entry_submission",
+      "missing_or_invalid_timestamp": "reject_entry",
+      "protective_exits_exempt": true
+    },
     "drawdown_kill_pct": 0.05,
     "drawdown_cooldown_s": 3600,
     "max_changes_per_day": 100,
@@ -13,9 +21,9 @@
     "exploration_enabled": false,
     "alpha_breakout_bad_regime_filter_enabled": true,
     "candidate_filter_shadow_telemetry_enabled": false,
-    "candidate_filter_shadow_telemetry_path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-session-tests-l30pso30/filter.jsonl",
+    "candidate_filter_shadow_telemetry_path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-freshness-tests-1qtq15y7/filter.jsonl",
     "strategy_evidence_telemetry_enabled": false,
-    "strategy_evidence_telemetry_path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-session-tests-l30pso30/strategy.jsonl",
+    "strategy_evidence_telemetry_path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-freshness-tests-1qtq15y7/strategy.jsonl",
     "phase9_shadow_engines_enabled": false,
     "timeframe": "1Day",
     "timeframe_source": "code_default",

@@ -1,0 +1,166 @@
+{
+  "task_id": "final-entry-freshness-20260922",
+  "status": "implementation_complete_targeted_and_required_case_outcomes_passed_final_root_pack_pending",
+  "base_sha": "b5a39b12c5a92271843bae918ec2b476183beeba",
+  "branch": "codex/final-entry-freshness",
+  "authorization": "Explicit user approval for actual feature-bar final admission age 0..120 seconds inclusive and separate evaluation cutoff at controlled release.",
+  "summary": "Shared final entry guard validates matching same-tick 1Min causal-frame receipt and provider bar START timestamp immediately after quote lookup and before OrderService submission; stale or invalid inputs are normal skips. Final receipt time/age is per-coroutine and publication failure never retries accepted orders.",
+  "owned_file_sha256": {
+    "backend/organism/live_engine.py": "9048cc03cbc857cffa3c17c70f3d0175d7a1906478c59be74df5edd34c28a6c1",
+    "backend/organism/entry_evidence.py": "e5c303a49974d8a14a0d54ab8488dc67427ae194a21cd5b675ee8df769e229e9",
+    "backend/organism/entry_freshness.py": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
+    "tests/test_entry_freshness.py": "82c2b0d9024a6bf9a01cea705dd060f81d5c9766e23d8b9ea9cc3255ca8a3adb",
+    "tests/test_phase9_strategy_governance.py": "7e41f95195509dd774cd776fe70ac8609e67536aa2b514c30068211982a32619",
+    "tests/test_operator_controls.py": "18f54cef7d3496f387f6efab1cbf1406b5250a88d7a16cc48af3f93eda9c3ef0",
+    "tests/test_apr7_p0_p1_fixes.py": "bbc455a7bb2070df12d9703b5b49216952e119256ef36bb53be1d25fa11d04e5",
+    "tests/test_replay_simulator.py": "590380a8d30f08bb0946bfd9ab3d8fa9f3d46c9ddd3397c7972694ecdbd2bda3"
+  },
+  "runtime_behavior_changed": true,
+  "safety": {
+    "max_bar_age_seconds": 120.0,
+    "inclusive_minimum": 0.0,
+    "bar_timestamp_convention": "provider START; no completion grace",
+    "future_at_capture_stays_invalid": true,
+    "same_tick_symbol_direction_timeframe_required": true,
+    "all_frame_timestamps_complete_and_strictly_ordered": true,
+    "exits_EOD_risk_sizing_ML_Kelly_policy_unchanged": true,
+    "unchanged_engine_methods": {
+      "_submit_exit_order": {
+        "base": "26c57cebd98afc7ce2c908efe5e9e2bcccbdfd7fdf4a93da963d69a9d1221ec0",
+        "candidate": "26c57cebd98afc7ce2c908efe5e9e2bcccbdfd7fdf4a93da963d69a9d1221ec0",
+        "equal": true
+      },
+      "_authorize_live_entry_order": {
+        "base": "2888474cfbcf0e4278089d16dcf953c8e2e36b3ff36e58f02c176706eef36eaf",
+        "candidate": "2888474cfbcf0e4278089d16dcf953c8e2e36b3ff36e58f02c176706eef36eaf",
+        "equal": true
+      },
+      "_passes_entry_gates": {
+        "base": "20691430b3be87226120c9f4a2cce0bfab4c30fa354a7abc9541f23c4be501f3",
+        "candidate": "20691430b3be87226120c9f4a2cce0bfab4c30fa354a7abc9541f23c4be501f3",
+        "equal": true
+      }
+    }
+  },
+  "targeted": {
+    "junit": "artifacts/final_entry_freshness/targeted.xml",
+    "log": "artifacts/final_entry_freshness/targeted.log",
+    "passed": 129,
+    "failed": 0,
+    "new_cases": 49,
+    "network_denied": true,
+    "scratch_brain": true
+  },
+  "validation": {
+    "ruff_gate_evidence_newtests": "pass",
+    "git_diff_check": "pass",
+    "candidate_freeze_verify": "pass; root-owned candidate freeze only",
+    "organism_regression": {
+      "initial_junit": "artifacts/final_entry_freshness/organism_regression.xml",
+      "initial_passed": 145,
+      "initial_failed": 1,
+      "failure": "test_replay_no_throttle_blocking used unstamped default1Day data, so correctly withheld every entry",
+      "fixture_only_repair": "Add aware in-session provider timestamps and explicit1Min; original>=3 orders assertion retained. No production replay changes.",
+      "final_case_junit": "artifacts/final_entry_freshness/replay_fixture_final.xml",
+      "final_case_passed": 1,
+      "final_case_failed": 0,
+      "full_selection_rerun": "Root owns new committed-source full artifact pack; this is not a false claim initial suite was all green."
+    },
+    "replay_fixture_ruff": {
+      "baseline_findings": 2,
+      "current_findings": 2,
+      "new_findings": 0,
+      "codes": [
+        "F401",
+        "F841"
+      ]
+    }
+  },
+  "adversarial_evidence": [
+    "120 seconds accepted and 120 seconds + 1 nanosecond rejected",
+    "quote delay/rejected quote ages the actual frame before final decision",
+    "future at capture rejected even after current clock catches up",
+    "all timestamps required, aware, ordered, unique; exact receipt identity/tick/timeframe",
+    "12 real tick alpha/breakout/pyramid x REST/streaming x fresh/stale cases with normal skip and zero tick errors",
+    "concurrent accepted submissions retain their own final receipt timestamp/age",
+    "accepted-order telemetry append failure returns result without retry",
+    "actual admitted simulated entry and protective exit produce one learner/ledger -2 outcome",
+    "existing full stop-loss and EOD operator-control tests remain green"
+  ],
+  "development_failures": {
+    "initial_evidence": "targeted_initial.xml/log retained: 38 passed / 8 failures caused by wrong PositionSize fixture keyword fields",
+    "intermediate": "124 passed / 4 alpha fixture failures: alpha route needed actual breakout signal and explicit legacy routing fixture, corrected without production change",
+    "first_replay_fixture_attempt": "replay_fixture.xml/log retained failed: timestamp insertion initially matched the neighboring fixture; corrected exact-function insertion before final passing case, with no remaining neighboring-fixture diff."
+  },
+  "limitations": [
+    "This is an explicitly approved frozen decision-surface change; root owns archived freeze, snapshots, docs, hosted gates and actual cutoff/activation. No installed state changed by implementer.",
+    "Strict 1Min contract also withholds historical daily replay entries; old daily replay pass is not nonvacuous strategy evidence. Freshness tests exercise admitted 1Min simulated executions and accounting.",
+    "Pyramid call retains existing default-long submission semantics; any mismatch with captured direction fails closed, no new short-add behavior.",
+    "Unrelated missing source/image/feed telemetry remains collector qualification policy; final gate only enforces causal frame identity/time and freshness.",
+    "The final boundary is OrderService handoff, not broker acknowledgement/fill latency.",
+    "Provider start timestamp freshness does not independently certify completed bar availability."
+  ],
+  "follow_ups": [
+    "Root final full artifact pack/audit index and independent review",
+    "Required hosted CI and immutable image/source verification",
+    "Controlled paper rollout with fresh evaluation cutoff and preservation acceptance"
+  ],
+  "no_commit_push_deployment_or_broker_calls": true,
+  "commands": [
+    {
+      "command": "python /tmp/intra-freshness-safe-run.py -B -m pytest -q tests/test_entry_freshness.py tests/test_entry_evidence.py tests/test_operator_controls.py tests/test_phase9_strategy_governance.py tests/test_apr7_p0_p1_fixes.py --noconftest -p pytest_asyncio.plugin -o asyncio_mode=auto --junitxml=artifacts/final_entry_freshness/targeted.xml",
+      "exit_code": 0
+    },
+    {
+      "command": "python /tmp/intra-freshness-safe-run.py -B -m pytest -q tests/test_organism_live_engine.py tests/test_organism_engine_scenarios.py tests/test_multi_tick_state.py tests/test_safety_invariants.py tests/test_replay_simulator.py tests/test_self_evolution.py tests/test_replay_close_accounting.py --noconftest -p pytest_asyncio.plugin -p pytest_timeout -o asyncio_mode=auto --junitxml=artifacts/final_entry_freshness/organism_regression.xml",
+      "exit_code": 1
+    },
+    {
+      "command": "python /tmp/intra-freshness-safe-run.py -B -m pytest -q tests/test_replay_simulator.py::test_replay_no_throttle_blocking --noconftest -p pytest_asyncio.plugin -p pytest_timeout -o asyncio_mode=auto --junitxml=artifacts/final_entry_freshness/replay_fixture_final.xml",
+      "exit_code": 0
+    },
+    {
+      "command": "python -m ruff check backend/organism/entry_freshness.py backend/organism/entry_evidence.py tests/test_entry_freshness.py",
+      "exit_code": 0
+    },
+    {
+      "command": "python /tmp/intra-freshness-safe-run.py -B scripts/phase2_freeze.py --verify",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "junit_receipts": {
+    "targeted.xml": {
+      "sha256": "9317df65515298b43e2ce2df07c5656f2a75eb9ee3e756a5b9b83867fe86ca96",
+      "passed": 129,
+      "failed": 0,
+      "skipped": 0
+    },
+    "organism_regression.xml": {
+      "sha256": "90513575f7df9e2ea0a3fc5ccf09146c34c7b9ad951757eab01825569c3b3755",
+      "passed": 145,
+      "failed": 1,
+      "skipped": 0
+    },
+    "replay_fixture_final.xml": {
+      "sha256": "ecef46321f6ab66ae828308689fb8a527a14fe85cc811673708e5e0388e1c553",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "latest_distinct_case_outcomes": {
+    "total": 275,
+    "passed": 275,
+    "failed": 0,
+    "skipped": 0,
+    "method": "Union by(classname,name), final repaired replay case supersedes its own initialfailure only; no additive repeated-case count."
+  },
+  "tests_passed": 275,
+  "tests_failed": 0,
+  "docs_updated": "Root owns approved mapss/runtime/freeze updates; no implementer edits to those files.",
+  "independent_review": "artifacts/final_entry_freshness/independent_review.json; source accepted, fixture-only follow-up under review"
+}

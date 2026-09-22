@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="24.765" timestamp="2026-09-22T00:34:33.661759-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_replay_simulator" name="test_replay_no_throttle_blocking" time="24.539" /></testsuite></testsuites>

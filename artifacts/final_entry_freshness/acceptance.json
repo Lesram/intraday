@@ -1,0 +1,31 @@
+{
+  "task_id": "final-entry-freshness-20260922",
+  "tested_source_sha": "99ce9632d5959b10911dcf71b2f634d5455d6bdc",
+  "status": "LOCAL_RELEASE_GATES_PASS",
+  "focused": {
+    "passed": 129,
+    "new_cases": 49
+  },
+  "freeze_snapshot_config": {
+    "passed": 70
+  },
+  "full_pack_counts": {
+    "test_summary": 168,
+    "replay_summary": 28,
+    "semantic_invariants_summary": 20,
+    "grep_assertions": 0,
+    "spec_drift_summary": 0
+  },
+  "independent_review": "independent_review.json",
+  "secret_scan": "gitleaks8.30.1: no leaks",
+  "candidate_freeze": "verified; installed host not yet changed",
+  "hosted_checks": "pending",
+  "deployment": "pending",
+  "runtime_files": {
+    "backend/organism/entry_freshness.py": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
+    "backend/organism/entry_evidence.py": "e5c303a49974d8a14a0d54ab8488dc67427ae194a21cd5b675ee8df769e229e9",
+    "backend/organism/live_engine.py": "9048cc03cbc857cffa3c17c70f3d0175d7a1906478c59be74df5edd34c28a6c1",
+    "scripts/phase2_freeze.py": "782597e8ae29083ad73a5a240a1ebb106cabf18d60af32347ba236f38433bd1e",
+    "scripts/runtime/write_runtime_snapshot.py": "8c94ff3a0558572e3d194dd79b19a5ca35b0faa8d882861591b1080856cbcac8"
+  }
+}
