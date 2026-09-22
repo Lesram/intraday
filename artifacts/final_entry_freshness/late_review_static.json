@@ -1,0 +1,26 @@
+{
+  "scripts/runtime/write_runtime_snapshot.py": {
+    "prior_count": 0,
+    "current_count": 0,
+    "new_findings": [],
+    "sha256": "7cfe3a78b2a3701fecf6cd8a3bb381b04370d935d6fc210664f21d00b2569c8c"
+  },
+  "tests/test_entry_freshness_snapshot.py": {
+    "prior_count": 0,
+    "current_count": 0,
+    "new_findings": [],
+    "sha256": "e6d9cdc5e81fd962a46427cc8411a17c44b21015d8e685c574952bdbda531af8"
+  },
+  "tests/test_replay_simulator.py": {
+    "prior_count": 2,
+    "current_count": 2,
+    "new_findings": [],
+    "sha256": "98f5d389d5e7d85be4d369faaf8f93438e7f85106bef677a557a3f7b17ffeff6"
+  },
+  "tests/test_v12_baseline_invariants.py": {
+    "prior_count": 0,
+    "current_count": 0,
+    "new_findings": [],
+    "sha256": "6cd329a960825eb4c94b339ae312e7ebfe37886c9d2819705192556bc9162333"
+  }
+}

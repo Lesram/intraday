@@ -1,0 +1,64 @@
+{
+  "task_id": "final-entry-freshness-late-independent-review",
+  "reviewer": "daily_evidence_contract",
+  "recorded_at_utc": "2026-09-22T08:07:08.443139+00:00",
+  "comparison_base": "f5ec52c939dfe9a275a47c53004693036a1c10c1",
+  "verdict": "ACCEPTED_SCOPED_CORRECTIONS_FOR_FINAL_RELEASE_VALIDATION",
+  "findings": [],
+  "source_sha256": {
+    "scripts/runtime/write_runtime_snapshot.py": "7cfe3a78b2a3701fecf6cd8a3bb381b04370d935d6fc210664f21d00b2569c8c",
+    "tests/test_entry_freshness_snapshot.py": "e6d9cdc5e81fd962a46427cc8411a17c44b21015d8e685c574952bdbda531af8",
+    "tests/test_replay_simulator.py": "98f5d389d5e7d85be4d369faaf8f93438e7f85106bef677a557a3f7b17ffeff6",
+    "tests/test_v12_baseline_invariants.py": "6cd329a960825eb4c94b339ae312e7ebfe37886c9d2819705192556bc9162333",
+    "docs/engineering/FINAL_ENTRY_FRESHNESS_RELEASE.md": "4ef0eb4515a2c27da5354dd348a78af4d25051c5dab82dba90472107b82ccd54"
+  },
+  "reviewed_threads": {
+    "4069504939": "Accepted: snapshot required_timeframe imports the authoritative ENTRY_TIMEFRAME constant. Tests distinguish offline1Day defaults from required1Min and preserve engine_observed=false.",
+    "4069504988": "Accepted: low-limit replay requires1\u20133 buy orders and actual throttle activity; intraday replay requires buys plus broker closes and engine-accounted closes and observes the real1Min exit factory; daily unsupported/unstamped replay explicitly asserts no orders/trades/accounted closes, with daily exit defaults separately tested.",
+    "4069505049": "Accepted: prose distinguishes mandatory passed-gate causal frame/freshness from telemetry-only feed/source/image/config identity. Invalid identity blocks evidence qualification without inventing a new runtime veto.",
+    "4069504860": "Root-owned inventory/index regeneration still pending; no acceptance of the stale generated inventory is implied."
+  },
+  "hosted_failure_fixture": {
+    "historical_baseline_path": "artifacts/audit/v12/v12_baseline.json",
+    "historical_baseline_sha256": "2b49373eefb91d239028813d25b1d84ea2d3ade2adee73bd94362d85c15d089e",
+    "historical_baseline_byte_unchanged": true,
+    "historical_loc": 2802,
+    "pre_release_loc": 2805,
+    "current_loc": 2823,
+    "approved_growth_budget": 21,
+    "new_release_growth": 18,
+    "future_growth_tolerance": 0,
+    "assessment": "Exact authorized ceiling preserves the old baseline artifact and fails above2823 lines; no decomposition or production changes introduced."
+  },
+  "backend_diff_against_base_empty": true,
+  "test_evidence": {
+    "author_executed": true,
+    "independently_parsed_junit": true,
+    "independent_suite_rerun": false,
+    "junit_path": "artifacts/final_entry_freshness/late_review_targeted.xml",
+    "junit_sha256": "36ff73d0d96590deb303f651926b47eef6b72740d2617b58352e4acabec610fe",
+    "log_path": "artifacts/final_entry_freshness/late_review_targeted.log",
+    "log_sha256": "f63b38b09ab0e63b8b7b837c9d1d31e441473b31f7f3c4063e431a648260315e",
+    "passed": 24,
+    "failed": 0,
+    "skipped": [
+      "test_installed_history_has_not_shrunk_from_committed_baseline"
+    ],
+    "static_report": "artifacts/final_entry_freshness/late_review_static.json",
+    "static_report_sha256": "616dd791902145d2f0e6a0e25c24f2f3aa55b43f624f253886d45208647fb8ca",
+    "new_ruff_findings": 0,
+    "unchanged_preexisting_replay_ruff_findings": 2,
+    "author_freeze_verification": "exit0; independently reviewed decision backend unchanged"
+  },
+  "release_gates_remaining": [
+    "Regenerate complete PR changed-files/task-report/audit index against correct PR base, then independently verify inventory.",
+    "Commit final changes and rebuild/bind immutable image: snapshot generator content differs from old918ef11 image.",
+    "Parent complete required full pack and final-head hosted operational safety including repaired explicit growth ceiling.",
+    "Resolve reviewed PR threads after exact-source evidence; execute held runtime acceptance only through parent."
+  ],
+  "limits": [
+    "Intraday replay proves real entries/closes and exact real factory defaults; it does not assert every close is a stop-loss event or prove live profitability.",
+    "Installed-history audit is explicitly unavailable in isolated CI and remains skipped, not claimed as verified live history.",
+    "No runtime, broker, credentials, models or host jobs accessed; no application/test edits by reviewer."
+  ]
+}

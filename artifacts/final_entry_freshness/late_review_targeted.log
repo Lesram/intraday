@@ -1,7 +1,7 @@
-..........................                                               [100%]
+...............s.........                                                [100%]
 =============================== warnings summary ===============================
-tests/test_organism_live_engine.py::TestOrganismLiveEngine::test_initialize_fresh
+tests/test_replay_simulator.py::test_replay_no_throttle_blocking
   <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-26 passed, 1 warning in 15.29s
+24 passed, 1 skipped, 1 warning in 80.71s (0:01:20)

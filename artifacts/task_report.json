@@ -1,14 +1,44 @@
 {
   "task_id": "final-entry-freshness-20260922",
   "summary": "Enforce approved final-entry actual-bar freshness; candidate release pending activation",
-  "sha": "99ce9632d5959b10911dcf71b2f634d5455d6bdc",
+  "sha": "9d4aa5f51f3411f3fcc7a6ae334df54650b0a1b6",
   "branch": "codex/final-entry-freshness",
   "change_scope": "base",
-  "change_ref": "cbc10e79127d9d1c997db452d6e448236603281f...HEAD",
+  "change_ref": "60f05e2fb4913cd4989bb854436ac21ecdae546b...HEAD",
   "files_changed": [
     ".github/workflows/paper-readiness.yml",
     "artifacts/algorithm_improvements.junit.xml",
     "artifacts/changed_files.json",
+    "artifacts/final_entry_freshness/acceptance.json",
+    "artifacts/final_entry_freshness/audit_index.log",
+    "artifacts/final_entry_freshness/candidate_freeze.log",
+    "artifacts/final_entry_freshness/freeze_final.log",
+    "artifacts/final_entry_freshness/freeze_snapshot_config.log",
+    "artifacts/final_entry_freshness/freeze_snapshot_config.xml",
+    "artifacts/final_entry_freshness/frozen_surface_diff.json",
+    "artifacts/final_entry_freshness/full_pack.log",
+    "artifacts/final_entry_freshness/implementation.json",
+    "artifacts/final_entry_freshness/implementation_freeze.log",
+    "artifacts/final_entry_freshness/independent_review.json",
+    "artifacts/final_entry_freshness/organism_regression.log",
+    "artifacts/final_entry_freshness/organism_regression.xml",
+    "artifacts/final_entry_freshness/plan.json",
+    "artifacts/final_entry_freshness/prior_candidate_freeze.json",
+    "artifacts/final_entry_freshness/regression_collection.log",
+    "artifacts/final_entry_freshness/replay_fixture.log",
+    "artifacts/final_entry_freshness/replay_fixture.xml",
+    "artifacts/final_entry_freshness/replay_fixture_final.log",
+    "artifacts/final_entry_freshness/replay_fixture_final.xml",
+    "artifacts/final_entry_freshness/root_lint.json",
+    "artifacts/final_entry_freshness/ruff_initial.log",
+    "artifacts/final_entry_freshness/secret_scan.json",
+    "artifacts/final_entry_freshness/secret_scan.log",
+    "artifacts/final_entry_freshness/snapshot.log",
+    "artifacts/final_entry_freshness/snapshot.xml",
+    "artifacts/final_entry_freshness/targeted.log",
+    "artifacts/final_entry_freshness/targeted.xml",
+    "artifacts/final_entry_freshness/targeted_initial.log",
+    "artifacts/final_entry_freshness/targeted_initial.xml",
     "artifacts/live_process_runtime_snapshot.json",
     "artifacts/monday_readiness/frozen_surface_reference.json",
     "artifacts/multi_tick_state.junit.xml",
@@ -39,6 +69,7 @@
     "backend/organism/entry_freshness.py",
     "backend/organism/live_engine.py",
     "docs/architecture/mapss.md",
+    "docs/engineering/FINAL_ENTRY_FRESHNESS_RELEASE.md",
     "docs/engineering/LIVE_AUDIT_INDEX.md",
     "scripts/phase2_freeze.py",
     "scripts/runtime/write_runtime_snapshot.py",
@@ -48,7 +79,8 @@
     "tests/test_operator_controls.py",
     "tests/test_phase2_freeze.py",
     "tests/test_phase9_strategy_governance.py",
-    "tests/test_replay_simulator.py"
+    "tests/test_replay_simulator.py",
+    "tests/test_v12_baseline_invariants.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -67,12 +99,18 @@
     "replay_simulator"
   ],
   "tests_failed": [],
-  "runtime_behavior_changed": true,
-  "docs_updated": true,
+  "runtime_behavior_changed": [
+    "backend/organism/entry_evidence.py",
+    "backend/organism/entry_freshness.py",
+    "backend/organism/live_engine.py"
+  ],
+  "docs_updated": [
+    "docs/architecture/mapss.md",
+    "docs/engineering/FINAL_ENTRY_FRESHNESS_RELEASE.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md"
+  ],
   "risks": [
-    "Candidate evidence only; active release verification and new held-flat cutoff pending.",
-    "Strict actual-bar gate may reduce admitted entries; no profitability claim.",
-    "Historical blocked evidence preserved; new cohort begins only at actual activation."
+    "3 organism file(s) changed \u2014 replay verification required"
   ],
   "follow_ups": [],
   "artifact_pack_status": "pass",

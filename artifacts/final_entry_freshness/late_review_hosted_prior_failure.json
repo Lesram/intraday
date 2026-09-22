@@ -1,0 +1,23 @@
+{
+  "run_id": 35701301699,
+  "source_head": "f5ec52c939dfe9a275a47c53004693036a1c10c1",
+  "step": "Verify operational fixes and trading safety",
+  "junit_path": "/tmp/intra-pr27-hosted-35701301699/artifacts/monday_readiness/github_operational.xml",
+  "counts": {
+    "tests": 1358,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 1
+  },
+  "failures": [
+    {
+      "class": "tests.test_v12_baseline_invariants",
+      "name": "test_baseline_live_tick_inner_loc_present",
+      "message": "AssertionError: _live_tick_inner regressed from baseline 2802 to 2823; V12 W75 should be reducing this, not growing it.\nassert 2823 <= (2802 + 5)"
+    }
+  ],
+  "full_artifact_pack_step": "success",
+  "nightly_harness_step": "success",
+  "freeze_step": "skipped",
+  "frontend_step": "skipped"
+}
