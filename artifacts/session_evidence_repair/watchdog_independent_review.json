@@ -1,0 +1,44 @@
+{
+  "task_id": "session-evidence-watchdog-independent-review",
+  "reviewer": "daily_evidence_contract",
+  "source_commit": "f7894af675e0bb9666edbd30aa00bbf96c222c4b",
+  "verdict": "ACCEPTED",
+  "source_sha256": {
+    "scripts/ops/paper_watchdog.py": "0f427cc3f61568e19e4b75df2d6d87edac4cad225e363a5d7a0ffcc86f20b009",
+    "tests/test_paper_watchdog.py": "6941815437790a6f1e6e77cc38dcf7b5a8b4248e1da1ad9d5633fc0db3c3a57a"
+  },
+  "unchanged_control_function_asts": [
+    "choose_recovery",
+    "notify_local",
+    "run_watchdog",
+    "observe_policy",
+    "scan_critical_events"
+  ],
+  "reviewed_contract": [
+    "HTTP error responses remain reachable and cannot authorize restart",
+    "New duplicate/nonfinite/depth/size diagnostic refusals remain reachable and cannot authorize restart",
+    "Previously handled unreadable JSON/schema and OSError paths retain existing recovery behavior",
+    "New HTTP protocol failure with a response is reachable; without a response remains unverified; neither grants restart",
+    "Bounded8192-byte body, explicit depth16, exact component booleans and fixed reason codes only; no raw body, URLs, headers or exception text persisted",
+    "Healthy readiness and existing notification/recovery controls unchanged"
+  ],
+  "test_evidence": {
+    "executed_by": "combined_acceptance_review",
+    "independently_parsed_junit": true,
+    "passed": 119,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "junit_path": "/tmp/intra-session-watchdog-reviewed-final.xml",
+    "junit_sha256": "ce29f4f98d64833d6051bdae9927e9cc21ece8b8bc61daae58d73c583647df11",
+    "log_path": "/tmp/intra-session-watchdog-reviewed-final.log",
+    "log_sha256": "fec607e7456c8264528ad691f979b662da9c5ccec7847b269db699387d4f8ee9"
+  },
+  "independent_test_rerun": false,
+  "runtime_calls": false,
+  "source_edits": false,
+  "limits": [
+    "Read-only code/test/evidence review; no installed-host validation performed",
+    "Preserves historical unreadable JSON recovery classification; does not certify all endpoint failures as reachable"
+  ]
+}

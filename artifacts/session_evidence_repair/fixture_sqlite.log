@@ -1,0 +1,9 @@
+................                                                         [100%]
+=============================== warnings summary ===============================
+tests/test_api_fixture_isolation.py::test_portal_seed_and_login_use_the_app_pool
+tests/test_api_fixture_isolation.py::test_real_login_rejects_bad_password_and_records_attempt
+tests/test_api_fixture_isolation.py::test_seeding_existing_test_account_preserves_id_and_clears_lock
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+16 passed, 3 warnings in 3.05s

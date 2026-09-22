@@ -1,0 +1,103 @@
+{
+  "task_id": "session-evidence-repair-fixtures-independent-review",
+  "reviewed_at_utc": "2026-09-22T06:23:13.765182+00:00",
+  "reviewer": "combined_acceptance_review",
+  "verdict": "accepted_source_subject_to_full_pack_and_hosted_validation",
+  "source_base": "f7894af675e0bb9666edbd30aa00bbf96c222c4b",
+  "branch": "codex/session-evidence-repair",
+  "source_sha256": {
+    "tests/conftest.py": "57e63e4ce740b52261c450f43b519a681dc92e018a5441e55eb68e945e1119cc",
+    "tests/test_strategies_automated_suite.py": "032c1f52e28b97f5318f1f4e04827ffe1e83fba9ecb5a553c0c70d38eb33e0b7",
+    "tests/test_api_fixture_isolation.py": "e3a13ca10861e9b1e3928cb2e7ee1ff0b5d1e2eaa68239de6cc5ca71824707a1",
+    "scripts/ci/nightly_test_contract.py": "5d336c84b040b1ba2a4c8367299a43d36a14bdf7be849efb82051f2a77a1d526",
+    "tests/test_nightly_test_contract.py": "bbc878a71a03d818edc6fc8f9c2b3450a453d5af9924eb8d6816350012de1775"
+  },
+  "implementation_report": {
+    "path": "artifacts/session_evidence_repair/nightly_fixture_implementation.json",
+    "sha256": "4ac86b3d12ba191afe02dc0c4231bb13cfddfacc208241a850138825aefbf626"
+  },
+  "blocking_source_findings": [],
+  "assessment": {
+    "database_isolation": "Changed fixtures never inherit ambient DATABASE_URL as seed authorization. Explicit INTRA_TEST_DATABASE_URL must be asyncpg with local/service host and test-named role/database, no DSN query overrides; otherwise session/test-specific SQLite is used. Explicit test PostgreSQL must be separately provisioned; validator is not proof that an arbitrary caller-owned database is disposable.",
+    "auth": "Real password hashing and database-backed /auth/login; correct credentials produce signed token and /auth/me expected roles, wrong password401 records failure; no auth dependency bypass/synthetic token. Seed uses app-created sessionmaker on TestClient portal owner loop after startup.",
+    "state": "Strategy connections are per-test NullPool and an outer transaction; service commits release savepoints, independent observer verifies invisibility, rollback and dispose are finally-owned. One owned strategy per case eliminates ordering dependence.",
+    "schema": "13 original strategy test names preserved;2 negative/savepoint cases added. Expected columns/types/indexes/FKs match current unchanged Alembic migration20251007_214733. Former API stub now makes real authenticated in-process request.",
+    "nightly_partition": "Exact44 declared external diagnostics and10 wholly external modules inventoried before import; reviewed definitions contain concrete external API/account/DB access. Partial idempotency module retains database class classification. Transitive external fixtures limited to real_tests; identically named mocks remain core. Seven required replay nodes must survive final selection and cannot use active coverage. External checks explicitly UNAVAILABLE, not passes.",
+    "frozen_surface": "Only test/CI files in this subtask; no backend decision/constants/order submission/models/feed/cutoff changes."
+  },
+  "validation_evidence": {
+    "fixture_sqlite.xml": {
+      "sha256": "170831c050bb20d8c77ff661d09949b0ce72cd35b900c151cf6e63e2bcc8fe65",
+      "testcases": 16,
+      "unique": 16,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0
+    },
+    "fixture_postgres.xml": {
+      "sha256": "b71f2d7c4170865408feb956499ecc9d6db087fb8d7376e3ec6720292103ac40",
+      "testcases": 91,
+      "unique": 91,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0
+    },
+    "fixture_postgres_shuffled.xml": {
+      "sha256": "53cf07011b7b17cd1f436087bf234b3e0c5ff7474fb53353682d2702c7a37e98",
+      "testcases": 15,
+      "unique": 15,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0
+    },
+    "nightly_lane_review.xml": {
+      "sha256": "2e86ab2fa527d346766b0a9988887200d4eca9f914e127e99d59be57a5eb6964",
+      "testcases": 18,
+      "unique": 18,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0
+    }
+  },
+  "distinct_fixture_and_lane_passes": 109,
+  "additional_runs_are_repeats": "SQLite16 and shuffled15 are not additive unique passes. Collection-only manifests are not test execution.",
+  "limitations": [
+    "Local migrated PostgreSQL16 evidence is not yet hosted PostgreSQL15 verification.",
+    "Existing TestClient concurrent.futures.CancelledError exception remains narrowly suppressed; other cleanup exceptions fail. No complete application shutdown certification.",
+    "Existing -m not slow workflow filter still excludes slow-marked database idempotency tests despite retained core classification.",
+    "Existing unrelated weak API assertions were not changed and are not certified here.",
+    "Plugin inventory guards reviewed static definitions; it does not prove arbitrary future module code is side-effect free.",
+    "No installed service, broker, production database, runtime or deployment accessed by this review."
+  ],
+  "evidence_followup": {
+    "status": "resolved",
+    "original_preserved_at": "artifacts/session_evidence_repair/initial_core_collection_before_external_audit.json",
+    "current_manifest": {
+      "path": "artifacts/session_evidence_repair/full_core_collection.json",
+      "sha256": "ae7ecbef521241538319141ffd65badce4762f0aadaedc64d663a16776575a36",
+      "selected_before_marker_filter": 9164,
+      "selected_after_marker_filter": 9154,
+      "external_unavailable": 168,
+      "withheld_before_import_modules": 10,
+      "scope": "collection only, not test execution; existing slow exclusions preserved"
+    }
+  },
+  "remaining_gates": [
+    "Parent full safety/replay/artifact pack and audit index",
+    "Commit exact source and open PR",
+    "Fresh required hosted checks and explicit controlled release if later authorized"
+  ],
+  "review_operations": [
+    "Read-only source/migration/diff review",
+    "Independent JUnit identity/count parsing and exact file hash verification"
+  ],
+  "runtime_mutations": false,
+  "tests_rerun_by_reviewer": false,
+  "resolved_findings_history": [
+    {
+      "artifact": "artifacts/session_evidence_repair/core-collection.json",
+      "status": "Parent notified: initial collection artifact must be regenerated or labeled pre-repair; currently includes known external order tests in selected set and lacks final pre-import metadata."
+    }
+  ],
+  "accepted_source_commit": "f7894af675e0bb9666edbd30aa00bbf96c222c4b"
+}

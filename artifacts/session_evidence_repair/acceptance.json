@@ -1,0 +1,72 @@
+{
+  "task_id": "session-evidence-repair-20260922",
+  "source_commit": "f7894af675e0bb9666edbd30aa00bbf96c222c4b",
+  "generated_at_utc": "2026-09-22T06:27:10.556142+00:00",
+  "status": "LOCAL_ACCEPTANCE_PASSED_HOSTED_VALIDATION_RUNNING",
+  "full_artifact_pack": "PASS:216 passed,0 failed/errors",
+  "targeted_receipts": {
+    "logging_final.xml": {
+      "passed": 189,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1,
+      "sha256": "ed86293a40e656cf0117bab093721ef673fdab1987b191075149b93b848cadf6"
+    },
+    "watchdog_final.xml": {
+      "passed": 119,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "ce29f4f98d64833d6051bdae9927e9cc21ece8b8bc61daae58d73c583647df11"
+    },
+    "fixture_postgres.xml": {
+      "passed": 91,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "b71f2d7c4170865408feb956499ecc9d6db087fb8d7376e3ec6720292103ac40"
+    },
+    "nightly_lane_review.xml": {
+      "passed": 18,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "2e86ab2fa527d346766b0a9988887200d4eca9f914e127e99d59be57a5eb6964"
+    },
+    "nightly_contract.xml": {
+      "passed": 153,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "sha256": "656368fe4ed87e662063df49171cd06b87cdb7f621ebe34120c9ca87449a9fea"
+    }
+  },
+  "overlap_notice": "Suite counts overlap and are not a unique combined total.",
+  "independent_reviews": {
+    "logging_review.json": "e7a6ae9877dba20e385fe7e54f81bf87a27c4457c8e668404767c839710aba8c",
+    "watchdog_independent_review.json": "2cc43f5bf915e9c3a131570a749dfdefd8e3722e43936f7153cb0a4612314874",
+    "fixture_review.json": "5d32aca0db18d41007a9a6356d97dbdb171b5d8e3c6f65dc7d128d97b25a7ba9",
+    "nightly_lane_independent_review.json": "555c5581e097b65e29a74ee5b58c313aaf39035f4aa5cab143f51fa9ebfd8bde"
+  },
+  "freeze_sha256": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+  "freeze_bytes_unchanged": true,
+  "frozen_at": "2026-09-21T10:10:39.684894+00:00",
+  "installed_runtime_modified": false,
+  "runtime_readonly_observation": {
+    "running": true,
+    "health": "healthy",
+    "started_at": "2026-09-21T12:12:04.603781927Z",
+    "image": "sha256:a276b7d98e10aa9823acf6f2d8cea7ba0a85cee673de131ad84e0166bfe057b8",
+    "scope": "Docker state only; no fresh broker/account assertion"
+  },
+  "external_checks": "168 UNAVAILABLE; never included in pass counts",
+  "initial_collection_evidence": "Pre-audit collection retained locally under initial_core_collection_before_external_audit.*; not current acceptance and not attached as final evidence.",
+  "current_collection_manifest": "full_core_collection.json",
+  "hosted_runs_at_packaging": [
+    "https://github.com/Lesram/intraday/actions/runs/35694533688",
+    "https://github.com/Lesram/intraday/actions/runs/35694533698",
+    "https://github.com/Lesram/intraday/actions/runs/35694569545"
+  ],
+  "pull_request": "https://github.com/Lesram/intraday/pull/25",
+  "next_gate": "Hosted PR checks and controlled release; frozen actual-bar admission change needs explicit approval first."
+}

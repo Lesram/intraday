@@ -1,0 +1,173 @@
+{
+  "branch": "codex/session-evidence-repair",
+  "commands": [
+    "sandbox-exec (deny network) /Users/marselkei/VS/intra/venv/bin/python -B -m pytest --noconftest -q tests/test_paper_watchdog.py --junitxml=/tmp/intra-session-watchdog-reviewed-final.xml",
+    "rootvenv python -B -m ruff check scripts/ops/paper_watchdog.py tests/test_paper_watchdog.py",
+    "git diff --check -- scripts/ops/paper_watchdog.py tests/test_paper_watchdog.py",
+    "sandbox-exec (deny network) rootvenv python -B scripts/phase2_freeze.py --verify, PYTHONPATH=newcwd, committed artifacts/monday_readiness/freeze_environment.json"
+  ],
+  "completed_at_utc": "2026-09-22T06:18:25.190673+00:00",
+  "diagnostics_contract": {
+    "allowed_checks": [
+      "database",
+      "broker",
+      "brain_loaded",
+      "tick_recent"
+    ],
+    "allowed_problem_components": [
+      "database",
+      "broker",
+      "brain",
+      "tick_loop",
+      "readiness_diag"
+    ],
+    "body_codes": [
+      "parsed",
+      "invalid_fields",
+      "invalid_schema",
+      "invalid_json",
+      "body_too_large",
+      "read_failed"
+    ],
+    "body_limit_bytes": 8192,
+    "healthy_shape": "unchanged status=ready/reachable=true; no diagnostics added",
+    "on_nonready": "readiness.diagnostics with optional integer100..599 http_status, fixed body_status, allowlistedboolean checks and fixed reasons",
+    "privacy": "No raw body/prose, unknown status, headers, URLs, credentials, arbitrary field names or exception text persisted. HTTPError body is closed even on parse/read failure.",
+    "read_limit_bytes": 8193,
+    "reason_codes": [
+      "connection_failed",
+      "timeout",
+      "not_loaded",
+      "stale",
+      "diagnostic_error",
+      "unclassified"
+    ],
+    "recovery": "HTTP errors stay reachable/not-ready. Newly introduced size/depth/duplicate/nonfinite refusals and responding protocol read failures remain reachable/not-ready with no new restart. Protocol exception without a response is unverified (readiness null), also no new restart. Historical malformed JSON/schema and existing OSError paths preserve prior behavior. Healthy shape unchanged.",
+    "max_json_depth": 16
+  },
+  "docs_updated": false,
+  "evidence": {
+    "/tmp/intra-session-watchdog-attempt1.log": "288c38605be3c1a2d146b38de562c2bd7f5f0f00c523305a1a7b5c53fa8c3162",
+    "/tmp/intra-session-watchdog-attempt1.xml": "98359dcc8bc6d581848e4ccc6e1d33c6dd609dad9134b0cd3cb8ae3ee3e796da",
+    "/tmp/intra-session-watchdog-freeze-attempt1.log": "1fe392e44cd3a666833bb9d07572136afb4be6c8fc5f798d9829997b230b5e49",
+    "/tmp/intra-session-watchdog-freeze.log": "bc36b72c82fc0f6d70040dc1f2fb5b3eff02be2ab7c801250fe38490d3dba035",
+    "/tmp/intra-session-watchdog-targeted.log": "5bafc6fba32007bb5a3b7abb4a99661a3c66771273a83dc1af6c7c6e5ca6afac",
+    "/tmp/intra-session-watchdog-targeted.xml": "524cc1ff615404263545dbb0a57e97efbe427b6bec893bf952f6a38a4383b6e6",
+    "/tmp/intra-session-watchdog-reviewed.xml": "a2a019083de90c2cbde679c2270a71e92c804adde0971da909e7cc56f2cea961",
+    "/tmp/intra-session-watchdog-reviewed.log": "9e2247dc99fe22dcc6b695dddbc53d829e97abf2ad8fba22a2bdfc2f484b3a4f",
+    "/tmp/intra-session-watchdog-reviewed-final.xml": "ce29f4f98d64833d6051bdae9927e9cc21ece8b8bc61daae58d73c583647df11",
+    "/tmp/intra-session-watchdog-reviewed-final.log": "fec607e7456c8264528ad691f979b662da9c5ccec7847b269db699387d4f8ee9",
+    "/tmp/intra-session-watchdog-reviewed-freeze.log": "bc36b72c82fc0f6d70040dc1f2fb5b3eff02be2ab7c801250fe38490d3dba035"
+  },
+  "files_changed": [
+    "scripts/ops/paper_watchdog.py",
+    "tests/test_paper_watchdog.py"
+  ],
+  "files_sha256": {
+    "scripts/ops/paper_watchdog.py": "0f427cc3f61568e19e4b75df2d6d87edac4cad225e363a5d7a0ffcc86f20b009",
+    "tests/test_paper_watchdog.py": "6941815437790a6f1e6e77cc38dcf7b5a8b4248e1da1ad9d5633fc0db3c3a57a"
+  },
+  "follow_ups": [
+    "Parent owns docs, full required regression/artifact pack/index, independent review and PR.",
+    "Do not change historical blocked September21 pack, frozen decision surface or installed watchdog in this task."
+  ],
+  "frozen_surface_change": false,
+  "full_pack_owner": "root",
+  "initial_failures_preserved": [
+    {
+      "cause": "Original intermediate deep-schema test expected one platform-dependent parse outcome; superseded by final explicit depth16 guard and valid deeply nested object regression, without new restart authority.",
+      "failed": 2,
+      "passed": 109,
+      "suite": "targeted attempt1"
+    },
+    {
+      "cause": "Missing PYTHONPATH in command; rerun with newcwd path passed without source/freeze edits.",
+      "exit": 1,
+      "suite": "freeze attempt1"
+    }
+  ],
+  "ownership": [
+    "scripts/ops/paper_watchdog.py",
+    "tests/test_paper_watchdog.py"
+  ],
+  "risks": [
+    "Root must document additive diagnostics schema in release/runbook; readyz free-text changes map to unclassified until explicit supported pattern added.",
+    "Latest HTTP errors can be classified only after this candidate is reviewed/deployed; historical missing response bodies cannot be recovered.",
+    "This report is not full pack, neutral hosted acceptance, PR or deployment completion."
+  ],
+  "runtime_behavior_changed": "Observer diagnostics only. No decision/strategy/feed/cutoff/host configuration changes; no runtime invocation or installation.",
+  "runtime_calls_authorized": false,
+  "schema_reference": "backend/api/routes/health.py ReadinessResponse/create_health_endpoints",
+  "scope": "Retain bounded allowlisted readiness status/component/reason diagnostics without raw response text or changed recovery/notification decisions.",
+  "sha": "ef3e895bd720524f433944725895d83e67d67905",
+  "status": "implemented_targeted_validation_passed_pending_parent_acceptance",
+  "summary": "Retain sanitized bounded readiness diagnostics for nonready responses and HTTP errors. Healthy observations and all recovery/notification decisions retain their established shape and control flow.",
+  "task_id": "watchdog-bounded-readiness-diagnostics",
+  "tests": [
+    "Healthy shape unchanged",
+    "HTTP503 with database/broker/brain/tick reason classification and no restart",
+    "HTTP200 nonready JSON diagnostics",
+    "Unknown/malformed/oversized/invalid UTF8/duplicate/nonfinite inputs sanitized",
+    "Read failures and HTTPerror body resource closure",
+    "Persisted diagnostics contain no secrets/raw URLs/body/exception",
+    "Recovery and notification regression suite"
+  ],
+  "tests_failed": 0,
+  "tests_passed": 119,
+  "validation": {
+    "diff_check": "pass",
+    "freeze_bytes_unchanged": true,
+    "freeze_verify_exit": 0,
+    "network_denied": true,
+    "root_venv_new_worktree_cwd": true,
+    "ruff": "pass",
+    "targeted_no_conftest": true,
+    "unchanged_control_function_AST": [
+      "choose_recovery",
+      "notify_local",
+      "run_watchdog",
+      "observe_policy",
+      "scan_critical_events"
+    ]
+  },
+  "review_followup_plan": {
+    "finding": "New strict/bounded parser refusals must not grant automatic restart authority for a responding HTTP200 API.",
+    "affected_files": [
+      "scripts/ops/paper_watchdog.py",
+      "tests/test_paper_watchdog.py"
+    ],
+    "change": "Separate old unreadable JSON/schema outcomes from newly introduced duplicate/nonfinite/depth/size refusals; new refusals remain reachable not-ready.",
+    "validation": "Pure mocked HTTP200/503 choose_recovery assertions, targeted watchdog suite under deny network, Ruff, diff check, freeze verification; no runtime calls.",
+    "status": "implemented_and_targeted_passed",
+    "resolution": "New strict/bounded JSON and protocol-read refusals do not grant restart authority. Historical malformed JSON/invalid schema and existing network/OSError behavior preserved. Healthy response unchanged. Depth bound16 explicit and iterative."
+  },
+  "source_sha256": {
+    "scripts/ops/paper_watchdog.py": "0f427cc3f61568e19e4b75df2d6d87edac4cad225e363a5d7a0ffcc86f20b009",
+    "tests/test_paper_watchdog.py": "6941815437790a6f1e6e77cc38dcf7b5a8b4248e1da1ad9d5633fc0db3c3a57a"
+  },
+  "review_followup_validation": {
+    "passed": 119,
+    "failed": 0,
+    "junit": "/tmp/intra-session-watchdog-reviewed-final.xml",
+    "log": "/tmp/intra-session-watchdog-reviewed-final.log",
+    "freeze_exit_code": 0,
+    "freeze_log": "/tmp/intra-session-watchdog-reviewed-freeze.log",
+    "initial_review_followup_attempt": {
+      "passed": 115,
+      "failed": 2,
+      "junit": "/tmp/intra-session-watchdog-reviewed.xml",
+      "cause": "Python3.14 decoder accepts2000depth independently of Python recursionlimit; explicit depth16 bound added rather than environment-dependent test."
+    },
+    "control_asts_unchanged": {
+      "choose_recovery": true,
+      "notify_local": true,
+      "run_watchdog": true,
+      "observe_policy": true,
+      "scan_critical_events": true
+    }
+  },
+  "pre_review_files_sha256": {
+    "scripts/ops/paper_watchdog.py": "7f191cae6c8d6a761951bbc1955d147845c53194294ba80178874d3322bb7c7d",
+    "tests/test_paper_watchdog.py": "6ef8caf5bd31cf603c33e4bbec60fc9a7f421a286385f7bcd3189c168e2b25cf"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "task_id": "session-evidence-repair-logging-independent-review",
+  "reviewed_at_utc": "2026-09-22T06:24:58.733356+00:00",
+  "reviewer": "combined_acceptance_review",
+  "verdict": "accepted_source_subject_to_parent_full_pack_PR_and_hosted_gates",
+  "accepted_source_commit": "f7894af675e0bb9666edbd30aa00bbf96c222c4b",
+  "source_base": "ef3e895bd720524f433944725895d83e67d67905",
+  "source_sha256": {
+    "logging_config.yaml": "15961242a0a19f82ef1533590e9af24e682b35b5728a5d81c39675928ad5ca6f",
+    "backend/infra/logging.py": "3b1be2dbde474f3554ff5c0f62c45d355b91b5cca05b6ce4b857472f368748c3",
+    "scripts/ops/paper_daily_evidence.py": "da19f88fddff2ebd89127317f821296b69ab07c87bf7bbb73314173e10aab046",
+    "scripts/ops/standdown_session_row.py": "bdb8d6fa12c7f9094d6e7ed96450318c5e5e8b0411c5bc0e790522cb0227c469",
+    "tests/test_session_logging_contract.py": "0a8833f555069c2317ea61e33676fcc0e57acaae184e45cef703f7310f433199",
+    "tests/test_paper_daily_evidence.py": "d4ddb7b0e654302739dfed5d0f15e6fa0295c322402693e89f09ed549bb0aaa3"
+  },
+  "implementation_report": {
+    "path": "artifacts/session_evidence_repair/logging_implementation.json",
+    "sha256": "4d998c7d5de690ea1bf774cf72bb9965689b4a3058bfa9db5a9f9988564fdc7a"
+  },
+  "blocking_findings": [],
+  "resolved_findings": [
+    {
+      "issue": "Canonical JSON accepted duplicate fields and overflow floats; deep rejection depended on interpreter behavior.",
+      "resolution": "Canonical-only unique object pairs, finite float parsing, controlled decoder errors and explicit iterative depth32 limit; portable64-depth case rejected."
+    },
+    {
+      "issue": "Switching deployed YAML to generic JSONFormatter exposed arbitrary plain extras.",
+      "resolution": "YAML include_context=false and canonical formatter always omits plain extras/exception message+traceback; type retained. Existing message contents remain caller responsibility, not claimed universally scrubbed."
+    },
+    {
+      "issue": "str.splitlines split valid Unicode separators inside serialized JSON strings.",
+      "resolution": "Canonical stream splits physical LF only; actual YAML producer-to-collector regression covers U+0085/U+2028/U+2029."
+    }
+  ],
+  "assessment": {
+    "deployed_config_path": "Dockerfile CMD explicitly loads /app/logging_config.yaml; existing paper Compose mounts ./logs at /app/logs. Backend handler receives plain+structlog records; configure_api_logging changes root only. Real-YAML subprocess test exercises bootstrap plus actual collector/publish/replay. No installed runtime exercised.",
+    "record_contract": "Real JSON escaping, UTC record.created timestamps, schema intra_session_log_v1; append by record UTC date and restart append. New collection selects exactly logs/sessions/YYYY-MM-DD.jsonl and rejects rotated siblings, missing evidence, capture mutation, malformed/unversioned/wrong-day/non-UTC/truncated/invalidUTF8/duplicate/nonfinite/deep records and coverage gaps.",
+    "legacy": "Old packs without log_contract retain legacy parser. Historical rotations/packs are not rewritten and Monday remains blocked; prospective file selection cannot claim a clean prior session.",
+    "decision_surface": "No decision/order submission/model/ML/Kelly/entry/exit/feed changes. The120-second collector freshness and coverage thresholds unchanged. Freeze artifact byte-identical to base; cutoff preserved.",
+    "sensitive_handling": "Additional plain extras/exception text omitted from deployed ordinary+canonical output; existing structured/event strings retain existing caller scrubbing expectations. Evidence remains private operational material."
+  },
+  "independent_mock_reproductions_after_fix": {
+    "duplicate_field": "rejected",
+    "overflow_float": "rejected",
+    "portable_depth": "rejected",
+    "synthetic_sensitive_extras": "omitted",
+    "unicode_line_separators": "one_valid_physical_record"
+  },
+  "validation": {
+    "junit": {
+      "path": "artifacts/session_evidence_repair/logging_final.xml",
+      "sha256": "ed86293a40e656cf0117bab093721ef673fdab1987b191075149b93b848cadf6",
+      "testcases": 190,
+      "unique": 190,
+      "passed": 189,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "test_scope": "Owner targeted logging/daily/host/standdown/adjacent logging and config/system integration; no duplicate full suite rerun by reviewer.",
+    "skip": "Existing TestInfraLogging.test_structured_logger reports StructuredLogger not available; not counted as pass.",
+    "owner_lint_new_findings": 0,
+    "owner_freeze_exit_code": 0,
+    "freeze_sha256": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+    "cutoff": "2026-09-21T10:10:39.684894+00:00"
+  },
+  "limitations": [
+    "No actual-host log installation or natural-session coverage attested. A complete new session remains necessary.",
+    "Append mode and stable capture do not make source log files tamper-proof; observations do not certify uninterrupted availability or all trading paths.",
+    "Daily logs are retained without pruning; separate capacity/retention policy remains needed.",
+    "Existing raw message contents must continue to avoid secrets; this change is not a comprehensive historical-log redaction.",
+    "Malformed canonical records withhold coverage even when unrelated to a trading decision.",
+    "Full safety/replay/artifact pack, exact hosted acceptance and deployment remain parent-owned gates."
+  ],
+  "runtime_calls_performed": false,
+  "broker_calls_performed": false,
+  "source_edited_by_reviewer": false,
+  "historical_data_mutated": false
+}

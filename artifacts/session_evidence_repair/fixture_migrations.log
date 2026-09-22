@@ -1,0 +1,37 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 706e00fe1a28, Initial migration: users, orders, executions, outbox
+INFO  [alembic.runtime.migration] Running upgrade 706e00fe1a28 -> ec197100938a, add_idempotency_constraints_and_order_events
+INFO  [alembic.runtime.migration] ✅ Created order_events table
+INFO  [alembic.runtime.migration] ✅ Created daily_ledger table
+INFO  [alembic.runtime.migration] ✅ Added account_id column to orders table
+INFO  [alembic.runtime.migration] ✅ Created index idx_orders_created_at
+INFO  [alembic.runtime.migration] ✅ Created index idx_orders_status
+INFO  [alembic.runtime.migration] ✅ Created index idx_orders_broker_order_id
+INFO  [alembic.runtime.migration] ✅ Created index idx_orders_symbol_created
+INFO  [alembic.runtime.migration] ✅ Created index idx_events_broker_order
+INFO  [alembic.runtime.migration] ✅ Created index idx_events_order_time
+INFO  [alembic.runtime.migration] ✅ Created index idx_events_type_time
+INFO  [alembic.runtime.migration] ✅ Created daily_ledger index
+INFO  [alembic.runtime.migration] Migration ec197100938a completed successfully
+INFO  [alembic.runtime.migration] Running upgrade ec197100938a -> 83ec4ee73d7d, add_order_price_and_fill_fields
+INFO  [alembic.runtime.migration] Running upgrade 83ec4ee73d7d -> 20251007_214733, add strategies table
+INFO  [alembic.runtime.migration] Running upgrade 20251007_214733 -> 76f317122560, add_backtests_table
+INFO  [alembic.runtime.migration] Running upgrade 76f317122560 -> d9dc79977b6d, add_position_lots_and_realized_trades
+INFO  [alembic.runtime.migration] Running upgrade d9dc79977b6d -> 20251015_risk_management, add_risk_management_tables
+INFO  [alembic.runtime.migration] Running upgrade 20251015_risk_management -> phase7_watchlists_templates, Phase 7 - Add watchlists and chart templates tables
+INFO  [alembic.runtime.migration] Running upgrade phase7_watchlists_templates -> add_user_id_orders, Add user_id column to orders table for multi-user support
+INFO  [alembic.runtime.migration] ✅ Added user_id column to orders table
+INFO  [alembic.runtime.migration] ✅ Created index on user_id
+INFO  [alembic.runtime.migration] ✅ Created composite index on user_id, status
+INFO  [alembic.runtime.migration] Migration add_user_id_orders completed successfully
+INFO  [alembic.runtime.migration] Running upgrade add_user_id_orders -> 20260201_000001, Add model monitoring snapshots
+INFO  [alembic.runtime.migration] Running upgrade 20260201_000001 -> 20260201_000002, Add model lifecycle events
+INFO  [alembic.runtime.migration] Running upgrade 20260201_000002 -> 20260201_000003, Add partial and GIN indexes for performance optimization
+INFO  [alembic.runtime.migration] Running upgrade 20260201_000003 -> 20260303_000001, Add tick_telemetry table for persisted decision telemetry
+INFO  [alembic.runtime.migration] Running upgrade 20260303_000001 -> 20260502_000001, V4 N-C-1 (2026-05-02): add drawings table.
+INFO  [alembic.runtime.migration] Running upgrade 20260502_000001 -> 20260503_000001, V7 BB-1/2/3 / Wave-25 (2026-05-03): orders table CHECK constraints.
+INFO  [alembic.runtime.migration] Running upgrade 20260503_000001 -> 20260503_000002, V10 XX-2 / Wave-55 (2026-05-03): widen ck_orders_status to include
+new / pending_new / submitting / canceled.
+INFO  [alembic.runtime.migration] Running upgrade 20260503_000002 -> 20260503_000003, V11 prep / Wave-61 (XX-3 closure): create portfolio_history table.
+✅ Phase 7 tables created: watchlists, watchlist_symbols, chart_templates
