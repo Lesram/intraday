@@ -355,9 +355,14 @@ def test_baseline_live_tick_inner_loc_present():
     assert loc is not None, "_live_tick_inner not found"
     baseline = json.loads(V12_BASELINE.read_text())
     base_loc = baseline["live_engine_metrics"]["_live_tick_inner_loc"]
-    # During W75 LOC should DROP, not grow.  Assert no regression
-    # beyond +5 (small tolerance for unrelated edits in non-W75 waves).
-    assert loc <= base_loc + 5, (
+    # Preserve the historical 2802-line baseline. The explicitly approved
+    # final-entry freshness release adds two normal-skip handlers (+18 lines)
+    # to the pre-release 2805-line function (already within the old +5 bound).
+    # See docs/engineering/FINAL_ENTRY_FRESHNESS_RELEASE.md. Decomposition is
+    # parked; this exact 2823-line ceiling grants no further growth tolerance.
+    approved_final_entry_freshness_growth = 21
+    assert base_loc == 2802
+    assert loc <= base_loc + approved_final_entry_freshness_growth, (
         f"_live_tick_inner regressed from baseline {base_loc} to {loc}; "
-        f"V12 W75 should be reducing this, not growing it."
+        "growth beyond the approved final-entry freshness ceiling is not allowed."
     )

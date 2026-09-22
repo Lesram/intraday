@@ -30,7 +30,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.adaptive_exits import AdaptiveExitEngine
         from backend.organism.alpha_scanner import AlphaScanner
         from backend.organism.close_accounting import ACCOUNTING_POLICY
-        from backend.organism.entry_freshness import MAX_ENTRY_BAR_AGE_SECONDS
+        from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
         from backend.organism.research_policy import policy_status
         from backend.organism.governance import (
             DEFAULT_DRAWDOWN_COOLDOWN_S,
@@ -72,6 +72,7 @@ def _build_defaults_snapshot() -> dict:
             "source": "code_defaults",
             "close_accounting_policy": ACCOUNTING_POLICY,
             "entry_freshness": {
+                "required_timeframe": ENTRY_TIMEFRAME,
                 "max_bar_age_seconds": MAX_ENTRY_BAR_AGE_SECONDS,
                 "minimum_bar_age_seconds": 0.0,
                 "timestamp_semantics": "provider_bar_start_utc",

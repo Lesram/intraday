@@ -15,9 +15,12 @@ existing path. Actual admission time and age are stored in coroutine-local
 receipts, including delayed quote lookup and overlapping submissions.
 
 Strategy thresholds, models, feed, risk sizing, evolution/promotion locks and
-historical records are unchanged. Missing provenance blocks admission rather
-than silently authorizing a trade. Other timeframes require separately reviewed
-eligibility; this release certifies the existing 1Min paper configuration.
+historical records are unchanged. Missing or mismatched passed-gate feature
+context blocks admission. Missing feed/source/image/configuration identity, or
+a changed runtime identity, marks the receipt UNVERIFIED and blocks daily
+evidence qualification; these identity fields are not an additional admission
+veto. Other timeframes require separately reviewed eligibility; this release
+certifies the existing 1Min paper configuration.
 
 The committed freeze/reference is candidate-only evidence. Its timestamp is
 never the installed measurement boundary. Deployment archives the old host
@@ -34,6 +37,13 @@ and independent review under artifacts/final_entry_freshness/. The old replay
 fixture failure is retained with its repaired single-case result; its original
 minimum-orders assertion remains. The final pack reruns that repair successfully.
 The machine reports give exact counts, overlaps, commands and file hashes.
+
+Final review also requires nonzero entries and actual throttle activity in the
+low-limit replay, actual entries and accounted closes in the intraday replay,
+and explicit no-entry expectations for unsupported daily replay. Snapshots
+expose the required 1Min timeframe. The historical 2,802-line engine baseline is
+preserved; the approved normal-skip handlers bring the function to 2,823 lines,
+which is the explicit ceiling. Engine decomposition remains parked.
 
 Release gates remain the final-head hosted operational check, checksum-verified
 immutable image, fresh backup and isolated restore, actual startup/policy/model/
