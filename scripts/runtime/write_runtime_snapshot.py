@@ -30,6 +30,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.adaptive_exits import AdaptiveExitEngine
         from backend.organism.alpha_scanner import AlphaScanner
         from backend.organism.close_accounting import ACCOUNTING_POLICY
+        from backend.organism.entry_freshness import MAX_ENTRY_BAR_AGE_SECONDS
         from backend.organism.research_policy import policy_status
         from backend.organism.governance import (
             DEFAULT_DRAWDOWN_COOLDOWN_S,
@@ -70,6 +71,14 @@ def _build_defaults_snapshot() -> dict:
         return {
             "source": "code_defaults",
             "close_accounting_policy": ACCOUNTING_POLICY,
+            "entry_freshness": {
+                "max_bar_age_seconds": MAX_ENTRY_BAR_AGE_SECONDS,
+                "minimum_bar_age_seconds": 0.0,
+                "timestamp_semantics": "provider_bar_start_utc",
+                "checked_at": "final_entry_submission",
+                "missing_or_invalid_timestamp": "reject_entry",
+                "protective_exits_exempt": True,
+            },
             "research_policy": policy_status(),
             "timeframe": LIVE_TIMEFRAME,
             "lookback": LIVE_LOOKBACK,
@@ -377,6 +386,7 @@ def _build_resolved_config_snapshot() -> dict:
         # This describes the checked-out candidate. Only live status below
         # establishes which accounting policy the installed process runs.
         "close_accounting_policy": defaults.get("close_accounting_policy"),
+        "entry_freshness": defaults.get("entry_freshness"),
         "drawdown_kill_pct": _resolve_float(
             "ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct", "drawdown_kill_pct",
         ),

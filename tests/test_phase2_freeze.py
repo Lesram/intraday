@@ -73,6 +73,7 @@ def test_freeze_covers_full_decision_surface(freeze):
         "baseline_verification", "model_fingerprint",
         "parameter_application", "settings_api", "scheduler",
         "operator_controls", "governance", "entry_admission", "operator_api",
+        "entry_frame_capture", "entry_evidence", "entry_freshness", "entry_submission",
         "emergency_stop_api", "emergency_stop_service", "entry_cancellation",
     }
     rde = freeze["surface"]["routing_data_env"]
@@ -180,3 +181,25 @@ def test_verify_mode_detects_missing_deployment_env(key, monkeypatch):
     monkeypatch.delenv(key)
     assert verify() == 1
     assert Path(FREEZE_PATH).read_bytes() == before
+
+
+@pytest.mark.parametrize("module_name", ["entry_freshness", "entry_evidence"])
+def test_verify_detects_freshness_dependency_drift(tmp_path, monkeypatch, module_name):
+    """Changing capture or final validation must invalidate the frozen surface."""
+    import importlib
+    module = importlib.import_module("backend.organism." + module_name)
+    artifact = tmp_path / "param_freeze.json"
+    stored = {"FROZEN_AT": "2026-09-22T00:00:00+00:00", "surface": compute_surface()}
+    artifact.write_text(json.dumps(stored))
+    original_bytes = artifact.read_bytes()
+    monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", artifact)
+    assert verify() == 0
+    original_getsource = phase2_freeze.inspect.getsource
+
+    def changed_source(obj):
+        source = original_getsource(obj)
+        return source + "\n# changed dependency\n" if obj is module else source
+
+    monkeypatch.setattr(phase2_freeze.inspect, "getsource", changed_source)
+    assert verify() == 1
+    assert artifact.read_bytes() == original_bytes

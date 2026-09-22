@@ -193,6 +193,13 @@ async def test_halt_acknowledgement_drains_already_admitted_order(control_file, 
         return {"order_id": "already-admitted"}
     engine._order_service.submit_symbol_order.side_effect = submit
     async def tick_body():
+        # Capture the real frame at the current tick before direct admission.
+        import pandas as pd
+        from backend.organism.entry_evidence import _frame_receipt
+        engine._timeframe = "1Min"
+        engine._entry_evidence_tick = engine._tick_count
+        engine._entry_evidence_frames = {("AAPL", 1.): _frame_receipt(
+            engine, "AAPL", 1., pd.DataFrame({"timestamp": [engine._now_fn()], "close": [100.]}))}
         await engine._submit_entry_order("AAPL", 1, reason=reason)
         # Even a later same-symbol add inside the already-entered tick is denied.
         with pytest.raises(RuntimeError, match="Governance halted"):

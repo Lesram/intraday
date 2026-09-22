@@ -1,7 +1,8 @@
 {
-  "FROZEN_AT": "2026-09-21T10:10:39.684894+00:00",
-  "_note_status": "Verification-only corrective fixture; existing operational cutoff preserved.",
+  "FROZEN_AT": "2026-09-22T07:29:22.720890+00:00",
+  "_note_status": "Explicitly approved final-entry freshness candidate; actual forward reset remains pending held-flat deployment",
   "authorization_plan": "artifacts/operations_evidence/baseline_repair_plan.json",
+  "candidate_only": true,
   "git_sha": "9bda9ff72501b44f74604d279e52074d2e40b233",
   "n_target": 60,
   "n_target_range": [
@@ -10,8 +11,9 @@
   ],
   "note": "Forward-only by construction. The verdict corpus is trades taken STRICTLY AFTER FROZEN_AT. Any decision-surface drift (source_hashes/strategy_config/exit_env) RESETS the clock \u2014 re-run this script.",
   "original_six_source_groups_unchanged": true,
+  "prior_active_cutoff": "2026-09-21T10:10:39.684894+00:00",
   "provenance": "no reconstructable fit-date; all pre-cutoff data contaminated by construction",
-  "purpose": "Corrective source verification fixture only; actual superseding activation requires separate runtime acceptance.",
+  "purpose": "Candidate verification ONLY; never use this timestamp as the installed measurement cutoff",
   "surface": {
     "effective_policy_baseline": {
       "artifact_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
@@ -199,6 +201,10 @@
       "emergency_stop_service": "d3efb81f9e5ae6f6d3036133786dddff5f824028d95a80465cdb5385cb20b5ca",
       "entry_admission": "5e3ac62e8058d1ead9974fd9d5204736a83e890eaa4ac8293c136f69a126631b",
       "entry_cancellation": "682ca48c61f0ce2899048b642be4f552c4ec166ca29afeabef91e528b8935984",
+      "entry_evidence": "e5c303a49974d8a14a0d54ab8488dc67427ae194a21cd5b675ee8df769e229e9",
+      "entry_frame_capture": "ad434d546beef5bbad78036c3a955a50a19daa33b5e75f9f133586cdc22b634b",
+      "entry_freshness": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
+      "entry_submission": "434cb6e6ee14d8ad5008334cc60ba7c6931faa001e0bdebb65a7ae76b99a2714",
       "fixed_risk": "532fdc8c66146c410718456bcd6e7a13c5b7310cde443ad00b6a13652faab78b",
       "governance": "68a47b4a76f832e69ef1c9972b847598c92ed59c75f3531209f961aeedc8075d",
       "ml_isolation": "5c90eaa7ba8353747f0d960a43dfa4f52bb9203429048f29ecf3eb64da928b83",
@@ -225,7 +231,7 @@
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "85ef0b9525f7cb4b2b8b343942f67a50833c36bdde4b644446f99de923f172a6",
+      "entry_gates_dispatch": "f928b665155cc3bc92a82aeb6589213a682a75cf241dc70c1717f94cd0e5fcba",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
       "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",

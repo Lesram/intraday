@@ -409,12 +409,17 @@ async def test_replay_no_throttle_blocking():
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
+    # Entry admission now requires real 1Min provider timestamps. The replay
+    # cursor starts at 14:00 UTC (10:00 ET); all 100 test ticks are in-session.
+    for frame in bars.values():
+        frame["timestamp"] = pd.date_range("2026-09-22T10:40:00Z", periods=len(frame), freq="min")
     engine = ReplayEngine(
         bars_by_symbol=bars,
         initial_cash=1_000_000,  # V13 W93: lifts Kelly notionals above $2k floor
         slippage_bps=5,
         max_entries_per_hour=20,
         lookback=200,
+        timeframe="1Min",
     )
     result = await engine.run(max_ticks=100)
 
