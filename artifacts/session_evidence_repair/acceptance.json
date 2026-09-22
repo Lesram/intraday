@@ -68,5 +68,13 @@
     "https://github.com/Lesram/intraday/actions/runs/35694569545"
   ],
   "pull_request": "https://github.com/Lesram/intraday/pull/25",
-  "next_gate": "Hosted PR checks and controlled release; frozen actual-bar admission change needs explicit approval first."
+  "next_gate": "Hosted PR checks and controlled release; frozen actual-bar admission change needs explicit approval first.",
+  "additional_test_evidence": {
+    "report": "tworelease_review.json",
+    "report_sha256": "f4ab2b324b20a3150d3ead7f8206e2c39e8d11f8a4087cb7697af6aeba3f0c22",
+    "passed": 85,
+    "new_cases": 6,
+    "production_changes": 0,
+    "source_full_pack_not_repeated": "No production or workflow bytes changed; final test additions received targeted validation and freeze verification."
+  }
 }

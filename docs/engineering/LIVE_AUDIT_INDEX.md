@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-09-22T06:25:41Z
+Generated: 2026-09-22T06:39:14Z
 PR: n/a
-SHA: `f7894af675`
+SHA: `f90c546969`
 Branch: `codex/session-evidence-repair`
 Scope: **backend_logic**
 Change scope: `base` (`ef3e895bd720524f433944725895d83e67d67905...HEAD`)
@@ -16,7 +16,7 @@ Change scope: `base` (`ef3e895bd720524f433944725895d83e67d67905...HEAD`)
 | Scripts | 4 | `scripts/ci/nightly_test_contract.py`, `scripts/ops/paper_daily_evidence.py`, `scripts/ops/paper_watchdog.py`, `scripts/ops/standdown_session_row.py` |
 | CI | 3 | `.github/workflows/artifact-reporting.yml`, `.github/workflows/nightly.yml`, `.github/workflows/paper-readiness.yml` |
 | Tests | 9 | `tests/conftest.py`, `tests/test_api_fixture_isolation.py`, `tests/test_monday_ci_workflows.py`, `tests/test_nightly_test_contract.py`, `tests/test_paper_daily_evidence.py`, `tests/test_paper_watchdog.py`, `tests/test_session_logging_contract.py`, `tests/test_strategies_automated_suite.py`, `tests/test_v12_w84_governance_docs.py` |
-| Docs | 1 | `docs/engineering/SESSION_EVIDENCE_REPAIR.md` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/SESSION_EVIDENCE_REPAIR.md` |
 
 ## Live constants
 

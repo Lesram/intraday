@@ -1,0 +1,15 @@
+{
+  "task_id": "session-evidence-two-approved-releases",
+  "scope": "Synthetic collector-to-pack regression tests only; no production code or runtime changes",
+  "affected_files": ["tests/test_paper_daily_evidence.py"],
+  "cases": [
+    "Exact pinned legacy prefix plus two post-cutoff completed trades with distinct approved source/image/config receipt tuples produce a new immutable READY_FOR_REVIEW pack",
+    "Omitting the old receipt tuple blocks that same retained cohort instead of discarding or relabeling its trade",
+    "Historical receipt approval cannot excuse old current-deploy source/image/config or container digest"
+  ],
+  "preserve": ["freeze and cutoff bytes", "historical prefix and forward ledger", "all production source", "other agents' edits"],
+  "validation": "Clean environment, sandbox deny network, fake transport/temp files, affected daily test module; scoped Ruff and freeze verification",
+  "artifacts": ["tworelease_review.xml", "tworelease_review.log", "tworelease_review.json"],
+  "commit": false,
+  "runtime_calls": false
+}

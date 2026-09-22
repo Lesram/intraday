@@ -1,0 +1,55 @@
+{
+  "task_id": "session-evidence-two-approved-releases",
+  "status": "PASS",
+  "source_base": "f90c546969a79fe0badb674c65af8592c0140552",
+  "current_head": "f90c546969a79fe0badb674c65af8592c0140552",
+  "files_changed": [
+    "tests/test_paper_daily_evidence.py"
+  ],
+  "test_file_sha256": "f0b4e94aaa68e296706c6c44b1f4ee6f2ae7250da6aa1f0766d311c9f1308002",
+  "production_identity": {
+    "changed_files": [],
+    "tracked_backend_scripts_and_logging_files_compared": 562,
+    "before_and_after_inventory_sha256": "f260027a3a349b478ea3dd7eff21cf9a2bea8d191092a7fc26451f99d9583050"
+  },
+  "validation": {
+    "passed": 85,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "new_cases": [
+      "test_collected_pack_preserves_two_release_cohort_and_requires_both_approvals[True]",
+      "test_collected_pack_preserves_two_release_cohort_and_requires_both_approvals[False]",
+      "test_historical_entry_approval_cannot_attest_current_runtime_or_container[source_sha]",
+      "test_historical_entry_approval_cannot_attest_current_runtime_or_container[image_sha]",
+      "test_historical_entry_approval_cannot_attest_current_runtime_or_container[runtime_config_hash]",
+      "test_historical_entry_approval_cannot_attest_current_runtime_or_container[image_digest]"
+    ],
+    "existing_cases": 79,
+    "environment": "Clean env; explicit pytest asyncio/timeout only; cache/autoload disabled; OS sandbox deny network; temporary fixtures and mockGET transport only",
+    "ruff_exit": 0,
+    "freeze_exit": 0
+  },
+  "acceptance": [
+    "One unchanged pinned legacy prefix plus old/new exact forward closes share original freeze/cutoff bytes",
+    "Both distinct approved source/image/config tuples qualify full new collect/analyze/publish/verify/replay pack with two entries and preserved aggregate brokerPnL",
+    "Removing only old receipt approval retains both rows and grossPnL, but withholds strategy gate and marks old provenance unverified",
+    "Even with both receipt tuples approved and both entries verified, current deploy source/image/config or container digest from the old release independently blocks"
+  ],
+  "artifacts": {
+    "tworelease_plan.json": "33ea1cca79d68c139a7a0752a2ba9d322b601f5169b9268ba24b298992a77620",
+    "tworelease_review.xml": "76067430deb41028cceb8eed85d80788d1a86687c14e6d78b6d527a0a45f304e",
+    "tworelease_review.log": "da792c88e90b384dd5dd82b6fc3eb24f32af8afccabab788c7fc576a60335034",
+    "tworelease_lint.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "tworelease_freeze.log": "bc36b72c82fc0f6d70040dc1f2fb5b3eff02be2ab7c801250fe38490d3dba035"
+  },
+  "runtime_calls": false,
+  "production_code_changed": false,
+  "historical_evidence_changed": false,
+  "committed": false,
+  "limits": [
+    "Synthetic actual-shaped receipt and checkpoint fixtures, not actual host or broker certification",
+    "No duplicate rerun of unchanged216-case production safety pack; parent owns consolidated release evidence",
+    "Collector current-source/image/config/container digest check is covered; host wrapper exact containerID and policybinding checks remain existing separate coverage"
+  ]
+}

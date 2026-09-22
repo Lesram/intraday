@@ -350,6 +350,104 @@ def test_approved_baseline_exempts_only_exact_pinned_legacy_prefix(host):
     assert daily.analyze(inputs, collection)['status'] == 'BLOCKED'
 
 
+@pytest.fixture
+def two_release_cohort(host):
+    """Retain one pinned legacy row and exact forward closes across a release."""
+    root, freeze, activation, release = host
+    old_row, old_receipt, orders = exact_trade_inputs(host)
+    current = json.loads(release.read_bytes())
+    old_identity = {'source_sha': 'prior-source', 'image_sha': 'prior-source',
+                    'runtime_config_hash': 'prior-config', 'image_digest': 'sha256:prior-image'}
+    old_receipt.update(git_sha=old_identity['source_sha'], image_sha=old_identity['image_sha'],
+                       runtime_config_hash=old_identity['runtime_config_hash'])
+    new_row = {**old_row, 'symbol': 'ABC', 'closed_at': '2026-09-21T18:00:20Z',
+               'shares': 4, 'entry_price': 50, 'exit_price': 51, 'pnl': 4,
+               'had_partial_exits': False, 'entry_order_id': 'new-database-entry-id'}
+    new_receipt = {**old_receipt, 'entry_order_id': new_row['entry_order_id'],
+                   'client_order_id': 'organism_new-broker-buy', 'symbol': 'ABC', 'shares': 4,
+                   'git_sha': current['source_sha'], 'image_sha': current['image_sha'],
+                   'runtime_config_hash': current['runtime_config_hash'], 'tick': 200,
+                   'captured_at': '2026-09-21T17:00:00Z', 'submitted_at': '2026-09-21T17:00:00Z',
+                   'recorded_at': '2026-09-21T17:00:02Z', 'last_bar_at': '2026-09-21T16:59:00Z',
+                   'frame_hash': 'b' * 64}
+    orders += [{**order('new-broker-buy', 'buy', 4, 50, '2026-09-21T17:00:01Z'), 'symbol': 'ABC'},
+               {**order('new-final', 'sell', 4, 51, '2026-09-21T18:00:00Z'), 'symbol': 'ABC'}]
+    legacy = {**dict.fromkeys(FIELDS, ''), 'symbol': 'LEGACY', 'entry_source': 'alpha'}
+    baseline = root / 'baseline'
+    baseline.mkdir()
+    raw = csv_bytes([legacy])
+    (baseline / 'trade_history.csv').write_bytes(raw)
+    manifest = daily.encoded({'files': {'trade_history.csv': {'sha256': daily.digest(raw), 'bytes': len(raw)}}})
+    (baseline / 'backup_manifest.json').write_bytes(manifest)
+    approved = json.loads(activation.read_bytes())
+    approved['historical_baseline'] = {'path': str(baseline), 'manifest_sha256': daily.digest(manifest)}
+    activation.write_bytes(daily.encoded(approved))
+    release.write_bytes(daily.encoded({**current, 'approved_entry_identities': [old_identity, current]}))
+    brain = root / 'organism_brain'
+    rows = [legacy, old_row, new_row]
+    (brain / 'trade_history.csv').write_bytes(csv_bytes(rows))
+    (brain / 'close_accounting.json').write_bytes(daily.encoded(checkpoint(
+        rows, {row['entry_order_id']: row['closed_at'] for row in (old_row, new_row)})))
+    (brain / 'entry_evidence.jsonl').write_text(''.join(json.dumps(item) + '\n' for item in (old_receipt, new_receipt)))
+    protected = {path: path.read_bytes() for path in [freeze, activation, *brain.iterdir(), *baseline.iterdir()]}
+    return baseline, orders, old_identity, current, protected
+
+
+@pytest.mark.parametrize('retain_old_approval', [True, False])
+def test_collected_pack_preserves_two_release_cohort_and_requires_both_approvals(
+    host, two_release_cohort, retain_old_approval,
+):
+    root, freeze, activation, release = host
+    baseline, orders, _old, current, protected = two_release_cohort
+    if not retain_old_approval:
+        release.write_bytes(daily.encoded({**current, 'approved_entry_identities': [current]}))
+    inputs, collection, paths = daily.collect(
+        root, freeze, activation, release, baseline, DAY, FakeTransport(orders), now=NOW)
+    report = daily.analyze(inputs, collection)
+    assert report['approved_historical_rows'] == 1
+    assert report['decision_provenance']['forward_trades'] == 2
+    assert report['reconciliation']['gross']['broker_pnl'] == 2
+    assert json.loads(inputs['local/freeze.json'])['FROZEN_AT'] == CUTOFF
+    if retain_old_approval:
+        assert report['status'] == 'READY_FOR_REVIEW', report['issues']
+        assert report['decision_provenance']['verified_entries'] == 2
+        assert report['strategy_gate']['momentum']['n'] == 2
+    else:
+        assert report['status'] == 'BLOCKED'
+        assert report['decision_provenance']['verified_entries'] == 1
+        assert 'entry_decision_provenance_unverified:0' in report['issues']
+        assert report['strategy_gate']['state'] == 'WITHHELD'
+    pack = daily.publish(root / 'packs', inputs, collection, report, paths)
+    restored, restored_collection = daily.verify_pack(pack)
+    assert restored == inputs and restored_collection == collection
+    assert daily.analyze(restored, restored_collection) == report
+    assert {path: path.read_bytes() for path in protected} == protected
+
+
+@pytest.mark.parametrize('field', ['source_sha', 'image_sha', 'runtime_config_hash', 'image_digest'])
+def test_historical_entry_approval_cannot_attest_current_runtime_or_container(
+    host, two_release_cohort, field,
+):
+    root, freeze, activation, release = host
+    baseline, orders, old, _current, protected = two_release_cohort
+    transport = FakeTransport(orders)
+    if field == 'image_digest':
+        observed = json.loads(transport.container_identity())
+        transport.container_identity = lambda: daily.encoded({**observed, field: old[field]})
+    else:
+        transport.responses['/api/v1/paper-monitor/deploy'][field] = old[field]
+    inputs, collection, _ = daily.collect(
+        root, freeze, activation, release, baseline, DAY, transport, now=NOW)
+    report = daily.analyze(inputs, collection, gate_fn=lambda *_: pytest.fail('mismatched runtime cannot expose gate'))
+    assert report['status'] == 'BLOCKED'
+    assert report['strategy_gate']['state'] == 'WITHHELD'
+    expected = 'runtime_config_identity_mismatch' if field == 'runtime_config_hash' else 'runtime_release_identity_mismatch'
+    assert expected in report['issues']
+    assert report['decision_provenance']['verified_entries'] == 2
+    assert report['approved_historical_rows'] == 1
+    assert {path: path.read_bytes() for path in protected} == protected
+
+
 def test_native_reporting_uses_six_bps_without_mutating_runtime_default(tmp_path):
     import os
     from backend.organism.costing import DEFAULT_COST_BPS

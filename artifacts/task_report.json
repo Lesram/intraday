@@ -37,7 +37,8 @@
     "Alembic migration and91 authentication/strategy/API tests on disposable PostgreSQL16, with all other network targets denied; container removed",
     "Nightly lane contracts plus full repository collection with network denied;168 external cases explicitly UNAVAILABLE",
     "Read-only frozen verification using committed six-key freeze_environment.json",
-    "GitHub immutable source nightly dispatch with notify_issues=false; source f7894af675e0bb9666edbd30aa00bbf96c222c4b"
+    "GitHub immutable source nightly dispatch with notify_issues=false; source f7894af675e0bb9666edbd30aa00bbf96c222c4b",
+    "Network-denied full daily evidence module after6 synthetic two-release handover tests;85passed; production sources unchanged"
   ],
   "tests_passed": [
     "organism_live_engine",
@@ -52,7 +53,8 @@
     "watchdog:119 passed",
     "postgres_auth_strategy_api:91 passed",
     "nightly_lane_contract:18 passed",
-    "artifact_workflow_contracts:153 passed (includes nightly lane contracts)"
+    "artifact_workflow_contracts:153 passed (includes nightly lane contracts)",
+    "daily_evidence_release_handover:85 passed (includes6 new cases; overlaps earlier collector suite)"
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
@@ -90,5 +92,6 @@
     },
     "note": "Targeted suites overlap; listed counts must not be added into a purported unique total."
   },
-  "source_commit_note": "This report binds the tested source commit; the following evidence commit adds reports and documentation only."
+  "source_commit_note": "The216-case full pack binds production source f7894af. Later commits add evidence, documentation and six release-handover tests only; targeted85-case evidence binds the final test file by hash.",
+  "additional_test_evidence": "artifacts/session_evidence_repair/tworelease_review.json"
 }
