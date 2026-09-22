@@ -1,0 +1,80 @@
+{
+  "task_id": "pr25-snapshot-provenance-comments",
+  "status": "IMPLEMENTED_TARGETED_PASS_PENDING_INDEPENDENT_REVIEW",
+  "base_head": "cbc10e79127d9d1c997db452d6e448236603281f",
+  "comments": [
+    4069163837,
+    4069163865
+  ],
+  "files_sha256": {
+    "scripts/runtime/write_runtime_snapshot.py": "26c2497fb5cf76e5a7fdfd9bddb5e14bf5a87acde44fe8b5044eb4221427d2ef",
+    "scripts/ci/generate_audit_index.py": "a0d64a29b16be9bfce50e7a8de93b741d22777ada30f21e93c6ec11473da0af0",
+    "tests/test_runtime_snapshot_auth.py": "05a4e61ef74c676dfa7b26330cbfef197bf0a44bef2e42ffbf3e5613a3b3a96b",
+    "tests/test_artifact_change_scope.py": "8bffc3aa0f3352c8a4dbed0539296862e8cbbcd55e06bb6c730fef15d2f2fd9f",
+    "artifacts/resolved_config_snapshot.json": "dbd011cbecf2d3c3379f991ab835ad7160c9799c54a1185b86f8d42ab618a503",
+    "artifacts/runtime_config_snapshot.json": "346b2c14d95b76678c5cb92bfedbf8ce2bcd38f220c00393ff33cb2c07c45fde",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "7b4d486c682c69256bb76e0807d8b73c5a463f5d4b5490b132f0ee2573350901",
+    "docs/engineering/SESSION_EVIDENCE_REPAIR.md": "749ea1f807ce67cc486a7265df872327743275a55e5bf472017514d5338bf5c0"
+  },
+  "report_scope": "Evidence metadata/index labeling only; resolution values and trading source unchanged",
+  "validation": {
+    "passed": 46,
+    "failed": 0,
+    "errors": 0,
+    "skips": 0,
+    "new_provenance_cases": 5,
+    "ruff_exit": 0,
+    "freeze_exit": 0,
+    "diff_check_exit": 0,
+    "environment": "Clean environment, OS sandbox deny network, mocked snapshot transports and temp fixtures"
+  },
+  "evidence": {
+    "artifacts/session_evidence_repair/snapshot_provenance_plan.json": "7e3200c2679411347e91ec7bd55df3ca293dc7f8f1a44e2080e551ba119f4825",
+    "artifacts/session_evidence_repair/snapshot_provenance_tests.xml": "44e817181d30c02c2837249c0a869defac0d316d50012f71b7191d9fcda2e9eb",
+    "artifacts/session_evidence_repair/snapshot_provenance_tests.log": "8b52597b681724aff71ccd9e01644b324805c70e2c38266be05a4fa04dfcb1ca",
+    "artifacts/session_evidence_repair/snapshot_provenance_lint.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "artifacts/session_evidence_repair/snapshot_provenance_freeze.log": "bc36b72c82fc0f6d70040dc1f2fb5b3eff02be2ab7c801250fe38490d3dba035",
+    "artifacts/session_evidence_repair/snapshot_provenance_receipt.json": "12b6366c9cb34cbefa4de8106a61fa568ae4a8f074ed0dc435b273156dcc0485"
+  },
+  "historical_archives": {
+    "artifacts/session_evidence_repair/snapshot_provenance_historical_20260921_resolved_config_snapshot.json": {
+      "sha256": "ed039154afff310de91fa40fdf5db26f9dbb4b11f486d31c91bdf61b724d6ea9",
+      "source_commit": "ef3e895bd720524f433944725895d83e67d67905",
+      "scope": "Historical2026-09-21 stopped-container expected configuration; not current runtime observation"
+    },
+    "artifacts/session_evidence_repair/snapshot_provenance_historical_20260921_runtime_config_snapshot.json": {
+      "sha256": "679d092d4c70fedf636ab066894d92485948ee89992109f3b0c49fd49b0b089e",
+      "source_commit": "ef3e895bd720524f433944725895d83e67d67905",
+      "scope": "Historical2026-09-21 stopped-container expected configuration; not current runtime observation"
+    }
+  },
+  "unchanged_during_correction_stage": {
+    "artifacts/runtime_defaults_snapshot.json": "36d26570ac4f3d94b122b04e483f1511940396a91614c8335b94e64c69e77b2b",
+    "artifacts/live_process_runtime_snapshot.json": "7d663b881103831ae98c1ea016cdf5ef08a6413c54aa428e1c4976e40e1c3d7a",
+    "artifacts/phase2/param_freeze.json": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+    "artifacts/phase2/research_policy_baseline.json": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93"
+  },
+  "subsequent_root_fullpack_regeneration": {
+    "artifacts/runtime_defaults_snapshot.json": {
+      "correction_stage_sha256": "36d26570ac4f3d94b122b04e483f1511940396a91614c8335b94e64c69e77b2b",
+      "later_generated_sha256": "560f691ba6e4aa2d012ccfe1c82d439c886df0498680cc929d1d2c83e0c4729c"
+    },
+    "artifacts/live_process_runtime_snapshot.json": {
+      "correction_stage_sha256": "7d663b881103831ae98c1ea016cdf5ef08a6413c54aa428e1c4976e40e1c3d7a",
+      "later_generated_sha256": "a075a15b6ea7a909ad3924686bfb29668e0c6dc462fa2ace11cc0eb6ba267902"
+    }
+  },
+  "artifact_hash_scope": "Snapshot receipt binds correction-stage artifacts before root full-pack regeneration; current generator output is separately root-owned release evidence",
+  "runtime_calls": false,
+  "credentials_access": false,
+  "committed": false,
+  "suggested_comment_replies": {
+    "4069163837": "Valid provenance ambiguity fixed. Current test-generated snapshot values remain the current offline evidence and now explicitly say offline_source_and_process_defaults_not_runtime_observation / engine_observed=false. The generator emits those labels on each run; the audit index now says configuration resolution rather than Live constants and directs readers to separate live-process evidence. Prior2026-09-21 container-configuration resolution is separately archived byte-for-byte with its original date/source/image and unverified engine status. No installed configuration was changed or newly observed.46 targeted tests pass, including actual mocked generation in offline/dotenv/container contexts and legacy/unlabeled audit inputs.",
+    "4069163865": "Fixed passes85 to passes 85 in SESSION_EVIDENCE_REPAIR.md."
+  },
+  "limitations": [
+    "Prior capture was stopped-container expected configuration, not verified engine memory; it is historical evidence only",
+    "Current unreachable live-process artifact remains unchanged and no live runtime agreement is asserted",
+    "Root owns full artifact regeneration, final source/CI/rollout acceptance, and posting/resolving review conversations"
+  ]
+}

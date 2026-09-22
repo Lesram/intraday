@@ -1,0 +1,21 @@
+{
+  "task_id": "pr25-watchdog-body-read-recovery",
+  "base_head": "cbc10e79127d9d1c997db452d6e448236603281f",
+  "review_comment": "https://github.com/Lesram/intraday/pull/25#discussion_r4069163812",
+  "finding": "A response-body OSError incorrectly marks an established HTTP200 response unreachable, granting healthy-API restart authority.",
+  "owned_files": [
+    "scripts/ops/paper_watchdog.py",
+    "tests/test_paper_watchdog.py"
+  ],
+  "implementation": "Distinguish generic read failures after obtaining a response from errors before obtaining one; established response stays reachable/not_ready with fixed read_failed diagnostics. Preserve existing connection-failure recovery, healthy shape, notification/action code, and legacy malformed-JSON classification.",
+  "acceptance": [
+    "OS/timeout/reset/remote-disconnect body-read errors yield no restart and close response",
+    "Same transport errors before response preserve existing bounded recovery",
+    "No raw exception/body/URL data retained",
+    "Isolated targeted test, Ruff, diff-check and freeze verification using /tmp/intra-session-safe-run.py"
+  ],
+  "runtime_calls": false,
+  "commits_authorized": false,
+  "frozen_changes": false,
+  "full_pack_owner": "root"
+}

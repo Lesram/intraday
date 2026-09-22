@@ -1,0 +1,70 @@
+{
+  "task_id": "pr25-watchdog-body-read-recovery",
+  "reviewed_at_utc": "2026-09-22T07:15:49.843704+00:00",
+  "status": "implemented_targeted_validation_passed_pending_independent_review_and_parent_release_gates",
+  "comment": "https://github.com/Lesram/intraday/pull/25#discussion_r4069163812",
+  "comment_disposition": "valid_fixed",
+  "base_head": "cbc10e79127d9d1c997db452d6e448236603281f",
+  "branch": "codex/session-evidence-repair",
+  "files_sha256": {
+    "scripts/ops/paper_watchdog.py": "176f7293248c0c364ac5922783073c7d5b320339fec122420a4569696359b9d0",
+    "tests/test_paper_watchdog.py": "e7dbede6418bcaf6c17fe5ed01f0a65e2c2e50bf741ec5d7b7bc390090b79214"
+  },
+  "cause": "Established HTTP200 response body raising OSError, timeout, reset or RemoteDisconnected entered generic unreachable recovery path.",
+  "change": "Generic response/read failure now checks that headers established a response, reports reachable/not_ready with fixed read_failed diagnostics and grants no healthy-API restart. Pre-response errors preserve existing bounded recovery.",
+  "machine_plan": {
+    "path": "artifacts/session_evidence_repair/watchdog_pr25_body_read_plan.json",
+    "sha256": "8bfc415964b6de467561b4465e463e307eb351da8a1f8ce3bce5a415db9c718c"
+  },
+  "validation": {
+    "initial_failing_regression": {
+      "failed": 4,
+      "passed": 5,
+      "deselected": 118
+    },
+    "final": {
+      "passed": 127,
+      "failed": 0,
+      "errors": 0,
+      "skips": 0,
+      "unique_tests": 127
+    },
+    "ruff": "pass",
+    "diff_check": "pass",
+    "freeze_exit_code": 0,
+    "freeze_bytes_unchanged": true,
+    "unchanged_control_function_AST": {
+      "choose_recovery": true,
+      "notify_local": true,
+      "run_watchdog": true,
+      "observe_policy": true,
+      "scan_critical_events": true
+    },
+    "test_environment": "/tmp/intra-session-safe-run.py isolated clean env, scratch brain, network denied; --noconftest pure mocks",
+    "warning": "Existing asyncio_mode configuration unrecognized because no async plugin is loaded; synchronous watchdog cases all execute."
+  },
+  "evidence": {
+    "artifacts/session_evidence_repair/watchdog_pr25_before.xml": "854c81a2cec2f86b9bb3ad2a972bde3e8e7d58f7549addb0b637df1ff16c7094",
+    "artifacts/session_evidence_repair/watchdog_pr25_before.log": "59e6a8e6cfdeaa4da29f7da6205056e4ed70c0691da703ce606069a7f2f53e4b",
+    "artifacts/session_evidence_repair/watchdog_pr25_final.xml": "579ceb264e85428d28b083c4fd2ea1c33d1b1afb13125ff588f2140a0cf0f115",
+    "artifacts/session_evidence_repair/watchdog_pr25_final.log": "c30ab341978d8d2ef5d4605dec9b2d6e519fac267c74ca1160d17c254d9fddd1",
+    "artifacts/session_evidence_repair/watchdog_pr25_freeze.log": "bc36b72c82fc0f6d70040dc1f2fb5b3eff02be2ab7c801250fe38490d3dba035"
+  },
+  "commands": [
+    "python /tmp/intra-session-safe-run.py -B -m pytest --noconftest -q tests/test_paper_watchdog.py -k 'responding_body_read_failure or connection_failure_before_response' --junitxml=artifacts/session_evidence_repair/watchdog_pr25_before.xml",
+    "python /tmp/intra-session-safe-run.py -B -m pytest --noconftest -q tests/test_paper_watchdog.py --junitxml=artifacts/session_evidence_repair/watchdog_pr25_final.xml",
+    "python /tmp/intra-session-safe-run.py -B -m ruff check scripts/ops/paper_watchdog.py tests/test_paper_watchdog.py",
+    "git diff --check -- scripts/ops/paper_watchdog.py tests/test_paper_watchdog.py",
+    "python /tmp/intra-session-safe-run.py -B scripts/phase2_freeze.py --verify"
+  ],
+  "runtime_calls": false,
+  "broker_calls": false,
+  "runtime_binding_mutations": false,
+  "commits_made": false,
+  "frozen_decision_change": false,
+  "limitations": [
+    "Existing genuinely malformed JSON/schema path remains as before; this correction specifically handles read failures after an HTTP response exists.",
+    "Full pack and new exact-source hosted checks are root-owned.",
+    "This is implementation evidence, not self-authored independent acceptance."
+  ]
+}

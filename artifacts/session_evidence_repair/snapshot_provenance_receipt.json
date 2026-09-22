@@ -1,0 +1,42 @@
+{
+  "task_id": "pr25-snapshot-provenance-comments",
+  "comments": [
+    4069163837,
+    4069163865
+  ],
+  "base_head": "cbc10e79127d9d1c997db452d6e448236603281f",
+  "current_artifacts": {
+    "artifacts/resolved_config_snapshot.json": {
+      "before_sha256": "04b7e14a3840cf0e6f7851ff81dba44029274fa6177df536bfa3076eb124ac43",
+      "after_sha256": "18c13d2f97b545eece0a0f5533df3b375f21d88abea87177523d8f800c45f597",
+      "configuration_values_unchanged": true
+    },
+    "artifacts/runtime_config_snapshot.json": {
+      "before_sha256": "159d39aaafc69cd2a7fe5558b1b5d2cd5c3296223134ef34950ec09235e257ff",
+      "after_sha256": "20a3862cb0ee8c91571946a2426ad10e7eb9b3ec028538121d0e646b4253f81a",
+      "configuration_values_unchanged": true
+    }
+  },
+  "historical_archives": {
+    "artifacts/session_evidence_repair/snapshot_provenance_historical_20260921_resolved_config_snapshot.json": {
+      "sha256": "ed039154afff310de91fa40fdf5db26f9dbb4b11f486d31c91bdf61b724d6ea9",
+      "source_commit": "ef3e895bd720524f433944725895d83e67d67905",
+      "scope": "Historical2026-09-21 stopped-container expected configuration; not current runtime observation"
+    },
+    "artifacts/session_evidence_repair/snapshot_provenance_historical_20260921_runtime_config_snapshot.json": {
+      "sha256": "679d092d4c70fedf636ab066894d92485948ee89992109f3b0c49fd49b0b089e",
+      "source_commit": "ef3e895bd720524f433944725895d83e67d67905",
+      "scope": "Historical2026-09-21 stopped-container expected configuration; not current runtime observation"
+    }
+  },
+  "unchanged_artifacts": {
+    "artifacts/runtime_defaults_snapshot.json": "36d26570ac4f3d94b122b04e483f1511940396a91614c8335b94e64c69e77b2b",
+    "artifacts/live_process_runtime_snapshot.json": "7d663b881103831ae98c1ea016cdf5ef08a6413c54aa428e1c4976e40e1c3d7a",
+    "artifacts/phase2/param_freeze.json": "846c0fe76efab9e2a4f083be1ad4cacf8fb9957a1acde55d62498919c8c923e0",
+    "artifacts/phase2/research_policy_baseline.json": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93"
+  },
+  "runtime_calls": false,
+  "new_container_or_engine_observation": false,
+  "credentials_access": false,
+  "note": "Current artifacts retain offline test/default values. Historical container-configuration resolution is separately archived with original dates, identities and unverified engine status. Generator labels prevent future offline output from being called live constants."
+}

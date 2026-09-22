@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="9" time="0.139" timestamp="2026-09-22T00:14:45.697387-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_paper_watchdog" name="test_responding_body_read_failure_never_adds_restart[exception0]" time="0.004" /><testcase classname="tests.test_paper_watchdog" name="test_responding_body_read_failure_never_adds_restart[exception1]" time="0.003"><failure message="AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}&#10;  &#10;  Differing items:&#10;  {'status': 'unreachable'} != {'status': 'not_ready'}&#10;  {'reachable': False} != {'reachable': True}&#10;  Right contains 1 more item:&#10;  {'diagnostics': {'body_status': 'read_failed',&#10;                   'checks': {},...&#10;  &#10;  ...Full output truncated (3 lines hidden), use '-vv' to show">watchdog = &lt;module 'paper_watchdog_test' from '/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/scripts/ops/paper_watchdog.py'&gt;
+readiness_transport = &lt;function readiness_transport.&lt;locals&gt;.install at 0x10b18f100&gt;
+exception = OSError('private-secret https://secret.invalid')
+
+    @pytest.mark.parametrize("exception", [
+        http.client.IncompleteRead(b"private-secret"),
+        OSError("private-secret https://secret.invalid"),
+        TimeoutError("private-secret"),
+        ConnectionResetError("private-secret"),
+        http.client.RemoteDisconnected("private-secret"),
+    ])
+    def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+        body = readiness_transport(b"{}", 200)
+    
+        def interrupted(size):
+            raise exception
+    
+        body.read = interrupted
+        result = watchdog.observe(1_800_000_000)
+        assert body.closed
+&gt;       assert result["readiness"] == {
+            "status": "not_ready", "reachable": True,
+            "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+        }
+E       AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}
+E         
+E         Differing items:
+E         {'status': 'unreachable'} != {'status': 'not_ready'}
+E         {'reachable': False} != {'reachable': True}
+E         Right contains 1 more item:
+E         {'diagnostics': {'body_status': 'read_failed',
+E                          'checks': {},...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_paper_watchdog.py:355: AssertionError</failure></testcase><testcase classname="tests.test_paper_watchdog" name="test_responding_body_read_failure_never_adds_restart[exception2]" time="0.003"><failure message="AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}&#10;  &#10;  Differing items:&#10;  {'status': 'unreachable'} != {'status': 'not_ready'}&#10;  {'reachable': False} != {'reachable': True}&#10;  Right contains 1 more item:&#10;  {'diagnostics': {'body_status': 'read_failed',&#10;                   'checks': {},...&#10;  &#10;  ...Full output truncated (3 lines hidden), use '-vv' to show">watchdog = &lt;module 'paper_watchdog_test' from '/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/scripts/ops/paper_watchdog.py'&gt;
+readiness_transport = &lt;function readiness_transport.&lt;locals&gt;.install at 0x10b16e980&gt;
+exception = TimeoutError('private-secret')
+
+    @pytest.mark.parametrize("exception", [
+        http.client.IncompleteRead(b"private-secret"),
+        OSError("private-secret https://secret.invalid"),
+        TimeoutError("private-secret"),
+        ConnectionResetError("private-secret"),
+        http.client.RemoteDisconnected("private-secret"),
+    ])
+    def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+        body = readiness_transport(b"{}", 200)
+    
+        def interrupted(size):
+            raise exception
+    
+        body.read = interrupted
+        result = watchdog.observe(1_800_000_000)
+        assert body.closed
+&gt;       assert result["readiness"] == {
+            "status": "not_ready", "reachable": True,
+            "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+        }
+E       AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}
+E         
+E         Differing items:
+E         {'status': 'unreachable'} != {'status': 'not_ready'}
+E         {'reachable': False} != {'reachable': True}
+E         Right contains 1 more item:
+E         {'diagnostics': {'body_status': 'read_failed',
+E                          'checks': {},...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_paper_watchdog.py:355: AssertionError</failure></testcase><testcase classname="tests.test_paper_watchdog" name="test_responding_body_read_failure_never_adds_restart[exception3]" time="0.003"><failure message="AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}&#10;  &#10;  Differing items:&#10;  {'status': 'unreachable'} != {'status': 'not_ready'}&#10;  {'reachable': False} != {'reachable': True}&#10;  Right contains 1 more item:&#10;  {'diagnostics': {'body_status': 'read_failed',&#10;                   'checks': {},...&#10;  &#10;  ...Full output truncated (3 lines hidden), use '-vv' to show">watchdog = &lt;module 'paper_watchdog_test' from '/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/scripts/ops/paper_watchdog.py'&gt;
+readiness_transport = &lt;function readiness_transport.&lt;locals&gt;.install at 0x10b16f920&gt;
+exception = ConnectionResetError('private-secret')
+
+    @pytest.mark.parametrize("exception", [
+        http.client.IncompleteRead(b"private-secret"),
+        OSError("private-secret https://secret.invalid"),
+        TimeoutError("private-secret"),
+        ConnectionResetError("private-secret"),
+        http.client.RemoteDisconnected("private-secret"),
+    ])
+    def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+        body = readiness_transport(b"{}", 200)
+    
+        def interrupted(size):
+            raise exception
+    
+        body.read = interrupted
+        result = watchdog.observe(1_800_000_000)
+        assert body.closed
+&gt;       assert result["readiness"] == {
+            "status": "not_ready", "reachable": True,
+            "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+        }
+E       AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}
+E         
+E         Differing items:
+E         {'status': 'unreachable'} != {'status': 'not_ready'}
+E         {'reachable': False} != {'reachable': True}
+E         Right contains 1 more item:
+E         {'diagnostics': {'body_status': 'read_failed',
+E                          'checks': {},...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_paper_watchdog.py:355: AssertionError</failure></testcase><testcase classname="tests.test_paper_watchdog" name="test_responding_body_read_failure_never_adds_restart[exception4]" time="0.003"><failure message="AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}&#10;  &#10;  Differing items:&#10;  {'status': 'unreachable'} != {'status': 'not_ready'}&#10;  {'reachable': False} != {'reachable': True}&#10;  Right contains 1 more item:&#10;  {'diagnostics': {'body_status': 'read_failed',&#10;                   'checks': {},...&#10;  &#10;  ...Full output truncated (3 lines hidden), use '-vv' to show">watchdog = &lt;module 'paper_watchdog_test' from '/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/scripts/ops/paper_watchdog.py'&gt;
+readiness_transport = &lt;function readiness_transport.&lt;locals&gt;.install at 0x10ad5c860&gt;
+exception = RemoteDisconnected('private-secret')
+
+    @pytest.mark.parametrize("exception", [
+        http.client.IncompleteRead(b"private-secret"),
+        OSError("private-secret https://secret.invalid"),
+        TimeoutError("private-secret"),
+        ConnectionResetError("private-secret"),
+        http.client.RemoteDisconnected("private-secret"),
+    ])
+    def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+        body = readiness_transport(b"{}", 200)
+    
+        def interrupted(size):
+            raise exception
+    
+        body.read = interrupted
+        result = watchdog.observe(1_800_000_000)
+        assert body.closed
+&gt;       assert result["readiness"] == {
+            "status": "not_ready", "reachable": True,
+            "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+        }
+E       AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}
+E         
+E         Differing items:
+E         {'status': 'unreachable'} != {'status': 'not_ready'}
+E         {'reachable': False} != {'reachable': True}
+E         Right contains 1 more item:
+E         {'diagnostics': {'body_status': 'read_failed',
+E                          'checks': {},...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_paper_watchdog.py:355: AssertionError</failure></testcase><testcase classname="tests.test_paper_watchdog" name="test_connection_failure_before_response_keeps_existing_recovery[exception0]" time="0.003" /><testcase classname="tests.test_paper_watchdog" name="test_connection_failure_before_response_keeps_existing_recovery[exception1]" time="0.003" /><testcase classname="tests.test_paper_watchdog" name="test_connection_failure_before_response_keeps_existing_recovery[exception2]" time="0.002" /><testcase classname="tests.test_paper_watchdog" name="test_connection_failure_before_response_keeps_existing_recovery[exception3]" time="0.002" /></testsuite></testsuites>

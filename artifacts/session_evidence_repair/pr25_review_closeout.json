@@ -1,0 +1,23 @@
+{
+  "task_id": "pr25-review-closeout",
+  "source_sha": "c9ad0dfc8631aed1fe75fbfac8aae0c045dabf5a",
+  "reviewer": "root independent review of snapshot/index; daily_evidence_contract independent watchdog review",
+  "status": "ACCEPT",
+  "fixed_review_comments": [
+    4069163812,
+    4069163837,
+    4069163865
+  ],
+  "targeted_tests": {
+    "watchdog": 127,
+    "snapshot_index_config": 46
+  },
+  "full_pack": "pass",
+  "secret_scan": "pass: gitleaks8.30.1, fourcommits, noleaks",
+  "freeze": "unchanged",
+  "deployment": "notyet",
+  "risks": [
+    "Actual broker/session acceptance remains separate from isolated tests",
+    "Old snapshot archive is historical expected configuration, not actualengine observation"
+  ]
+}
