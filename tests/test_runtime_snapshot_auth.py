@@ -3,6 +3,45 @@ import json
 import os
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+
+@pytest.mark.parametrize('inputs,expected_scope,timeframe', [
+    ('offline', 'offline_source_and_process_defaults_not_runtime_observation', '1Day'),
+    ('dotenv', 'local_dotenv_configuration_resolution_not_runtime_observation', '1Day'),
+    ('container', 'container_configuration_resolution_not_engine_observation', '1Min'),
+])
+def test_generated_configuration_snapshots_never_claim_observed_engine_state(
+    tmp_path, monkeypatch, inputs, expected_scope, timeframe,
+):
+    import scripts.runtime.write_runtime_snapshot as snap_mod
+
+    defaults = {'source': 'code_defaults', 'timeframe': '1Day',
+                'max_daily_loss': 0.0, 'max_notional_per_trade': 0.0,
+                'strategy_evidence_telemetry_path': '/synthetic-test/strategy.jsonl'}
+    live = {'source': 'live_process', 'reachable': False, 'process_env': None, 'live': {}}
+    monkeypatch.setattr(snap_mod, 'ROOT', tmp_path)
+    monkeypatch.setattr(snap_mod, 'ART', tmp_path)
+    monkeypatch.setattr(snap_mod, '_build_defaults_snapshot', lambda: defaults.copy())
+    monkeypatch.setattr(snap_mod, '_build_live_process_snapshot', lambda: live.copy())
+    monkeypatch.setattr(snap_mod, '_find_api_container', lambda: 'fixture-api' if inputs == 'container' else '')
+    def fake_exec(container, command):
+        assert inputs == 'container' and container == 'fixture-api' and command == 'env'
+        return 'ORGANISM_LIVE_TIMEFRAME=1Min\nORGANISM_MAX_DAILY_LOSS=1100\n'
+    monkeypatch.setattr(snap_mod, '_docker_exec', fake_exec)
+    if inputs == 'dotenv':
+        (tmp_path / '.env').write_text('ORGANISM_MAX_DAILY_LOSS=1100\n')
+    snap_mod.main()
+    resolved = json.loads((tmp_path / 'resolved_config_snapshot.json').read_text())
+    legacy = json.loads((tmp_path / 'runtime_config_snapshot.json').read_text())
+    assert resolved['evidence_scope'] == legacy['evidence_scope'] == expected_scope
+    assert resolved['engine_observed'] is legacy['engine_observed'] is False
+    assert resolved['resolved']['timeframe'] == legacy['timeframe'] == timeframe
+    assert legacy['live_process_reachable'] is False
+    assert legacy['config_truth_status']['status'] == 'unverified'
+    assert json.loads((tmp_path / 'live_process_runtime_snapshot.json').read_text()) == live
+    assert json.loads((tmp_path / 'runtime_defaults_snapshot.json').read_text()) == defaults
+
 
 def test_operator_authority_snapshot_requires_actual_process_observation():
     import scripts.runtime.write_runtime_snapshot as snap_mod

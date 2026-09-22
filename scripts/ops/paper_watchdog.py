@@ -206,8 +206,15 @@ def observe(now: float) -> dict:
                                "diagnostics": _readiness_diagnostics(response, body_status=invalid.code)}
         result["problems"].append("api_readiness_unreachable" if invalid.legacy_unreadable else "api_not_ready")
     except (OSError, ValueError, TypeError, AttributeError):
-        result["readiness"] = {"status": "unreachable", "reachable": False}
-        result["problems"].append("api_readiness_unreachable")
+        if response is not None:
+            # Headers arrived: a timeout/reset while reading the body does not
+            # make the API unreachable or authorize restarting a healthy API.
+            result["readiness"] = {"status": "not_ready", "reachable": True,
+                                   "diagnostics": _readiness_diagnostics(response, body_status="read_failed")}
+            result["problems"].append("api_not_ready")
+        else:
+            result["readiness"] = {"status": "unreachable", "reachable": False}
+            result["problems"].append("api_readiness_unreachable")
     except http.client.HTTPException:
         # A newly handled protocol/body failure is not new restart authority.
         # Without a response object, leave reachability unverified.

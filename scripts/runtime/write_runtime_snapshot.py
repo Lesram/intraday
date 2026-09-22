@@ -212,6 +212,15 @@ def _build_defaults_snapshot() -> dict:
         }
 
 
+def _configuration_evidence_scope(resolved: dict) -> str:
+    """Describe configuration inputs without claiming observed engine values."""
+    if resolved.get("container_env"):
+        return "container_configuration_resolution_not_engine_observation"
+    if resolved.get("dotenv"):
+        return "local_dotenv_configuration_resolution_not_runtime_observation"
+    return "offline_source_and_process_defaults_not_runtime_observation"
+
+
 def _build_resolved_config_snapshot() -> dict:
     """Build resolved config snapshot: container env > .env > code defaults.
 
@@ -437,6 +446,8 @@ def _build_resolved_config_snapshot() -> dict:
         "stop_atr_table": defaults.get("stop_atr_table"),
     }
     resolved["resolution_sources"] = resolution_sources
+    resolved["evidence_scope"] = _configuration_evidence_scope(resolved)
+    resolved["engine_observed"] = False
 
     return resolved
 
@@ -458,6 +469,8 @@ def _build_legacy_runtime_snapshot(
     flat.update({
         "source": "resolved_config",
         "snapshot_source": "resolved_config_snapshot",
+        "evidence_scope": _configuration_evidence_scope(resolved),
+        "engine_observed": False,
         "container": resolved.get("container"),
         "app_environment": container_env.get("APP_ENVIRONMENT"),
         "alpaca_paper": container_env.get("ALPACA_PAPER"),

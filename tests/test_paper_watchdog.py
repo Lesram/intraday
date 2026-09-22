@@ -336,11 +336,18 @@ def test_http_error_read_failure_is_sanitized_and_closed(
     assert watchdog.choose_recovery(result, True) is None
 
 
-def test_responding_protocol_read_failure_never_adds_restart(watchdog, readiness_transport):
+@pytest.mark.parametrize("exception", [
+    http.client.IncompleteRead(b"private-secret"),
+    OSError("private-secret https://secret.invalid"),
+    TimeoutError("private-secret"),
+    ConnectionResetError("private-secret"),
+    http.client.RemoteDisconnected("private-secret"),
+])
+def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
     body = readiness_transport(b"{}", 200)
 
     def interrupted(size):
-        raise http.client.IncompleteRead(b"private-secret")
+        raise exception
 
     body.read = interrupted
     result = watchdog.observe(1_800_000_000)
@@ -351,6 +358,28 @@ def test_responding_protocol_read_failure_never_adds_restart(watchdog, readiness
     }
     assert result["problems"] == ["api_not_ready"]
     assert watchdog.choose_recovery(result, True) is None
+    assert "private-secret" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("exception", [
+    urllib.error.URLError("private-secret"),
+    TimeoutError("private-secret"),
+    ConnectionResetError("private-secret"),
+    http.client.RemoteDisconnected("private-secret"),
+])
+def test_connection_failure_before_response_keeps_existing_recovery(
+    watchdog, readiness_transport, monkeypatch, exception,
+):
+    readiness_transport(b"{}", 200)
+
+    def connection_failure(*args, **kwargs):
+        raise exception
+
+    monkeypatch.setattr(watchdog.urllib.request, "urlopen", connection_failure)
+    result = watchdog.observe(1_800_000_000)
+    assert result["readiness"] == {"status": "unreachable", "reachable": False}
+    assert result["problems"] == ["api_readiness_unreachable"]
+    assert watchdog.choose_recovery(result, True) == ["docker", "restart", "--time", "60", "intra-api-1"]
     assert "private-secret" not in json.dumps(result)
 
 

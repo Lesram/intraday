@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +34,30 @@ def _load_audit_index():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.mark.parametrize('scope', [None, 'offline_source_and_process_defaults_not_runtime_observation'])
+def test_generated_audit_index_does_not_call_expected_config_live_constants(tmp_path, monkeypatch, scope):
+    audit_index = _load_audit_index()
+    monkeypatch.setattr(audit_index, 'ROOT', tmp_path)
+    monkeypatch.setattr(audit_index, 'sh', lambda _args: '')
+    monkeypatch.setattr(audit_index, 'get_change_set', lambda **_kwargs: SimpleNamespace(
+        paths=[], scope='task', ref='fixture'))
+    art = tmp_path / 'artifacts'
+    art.mkdir()
+    snapshot = {'source': 'resolved_config', 'resolved': {'timeframe': '1Day', 'max_daily_loss': 0}}
+    if scope:
+        snapshot['evidence_scope'] = scope
+    (art / 'resolved_config_snapshot.json').write_text(json.dumps(snapshot))
+    audit_index.main()
+    report = (tmp_path / 'docs/engineering/LIVE_AUDIT_INDEX.md').read_text()
+    assert '## Live constants' not in report
+    assert '## Configuration resolution (not engine observation)' in report
+    assert (scope or 'unclassified_expected_configuration') in report
+    assert 'do not establish the installed paper configuration' in report
+    assert 'check reachability and field provenance' in report
+    assert '"timeframe": "1Day"' in report
+    assert json.loads((art / 'resolved_config_snapshot.json').read_text()) == snapshot
 
 
 def _git(repo: Path, *args: str) -> str:
