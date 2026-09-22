@@ -1,0 +1,59 @@
+{
+  "task_id": "session-evidence-nightly-lane-independent-review",
+  "reviewer": "daily_evidence_contract",
+  "verdict": "ACCEPTED",
+  "source_commit": "f7894af675e0bb9666edbd30aa00bbf96c222c4b",
+  "source_sha256": {
+    "scripts/ci/nightly_test_contract.py": "5d336c84b040b1ba2a4c8367299a43d36a14bdf7be849efb82051f2a77a1d526",
+    "tests/test_nightly_test_contract.py": "bbc878a71a03d818edc6fc8f9c2b3450a453d5af9924eb8d6816350012de1775",
+    ".github/workflows/nightly.yml": "62fb6e9dc591f8d13f0c40a4a2533bb1f251e3201ce9533d2934e95c7671054a"
+  },
+  "findings": [],
+  "reviewed_contract": [
+    "Ten exact all-external modules are inspected with AST before import; any declared case inventory drift, parse failure, inherited/imported/assigned test definitions is fatal rather than silently omitted",
+    "Forty-four specific legacy external diagnostics remain UNAVAILABLE; mixed idempotency module keeps its ordinary DB cases under normal marker policy",
+    "Within real_tests, transitive external fixture dependencies classify unavailable; same mock fixture names outside that directory remain required",
+    "Seven exact replay nodes are removed from core and mandatory in replay; missing preselection nodes or active coverage refuse execution",
+    "Replay final collection must equal all seven after other plugin/marker/-k filtering; invalid actual selection is persisted before failure",
+    "Core failure propagates; both shell pipelines use pipefail; replay remains attempted after a core failure and does not erase it",
+    "Manifest and workflow report explicitly mark external integration UNAVAILABLE and deny runtime certification; excluded nodes are never represented as passed",
+    "Workflow uses scratch brain/telemetry and disposable PostgreSQL/Redis test services, explicit test secrets, immutable source verification and distinct core/replay JUnit/log artifacts"
+  ],
+  "test_evidence": {
+    "executed_by": "accounting_contract",
+    "independent_execution": false,
+    "junit_path": "artifacts/session_evidence_repair/nightly_lane_review.xml",
+    "junit_sha256": "2e86ab2fa527d346766b0a9988887200d4eca9f914e127e99d59be57a5eb6964",
+    "passed": 18,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "covers": [
+      "real pytest subprocess lane partition",
+      "fatal ordinary core failure",
+      "pre-import failure sentinel and inventory drift",
+      "mixed DB/external class retention",
+      "same-name mock fixture retention",
+      "active coverage denial",
+      "zero/one-node postfilter replay denial with durable manifest"
+    ]
+  },
+  "collection_evidence": {
+    "path": "artifacts/session_evidence_repair/full_core_collection.json",
+    "sha256": "ae7ecbef521241538319141ffd65badce4762f0aadaedc64d663a16776575a36",
+    "selected_core": 9154,
+    "external_unavailable": 168,
+    "preimport_external_modules": 10,
+    "core_replay_overlap": 0,
+    "core_external_overlap": 0,
+    "collection_only": true
+  },
+  "runtime_calls": false,
+  "source_edits": false,
+  "limits": [
+    "This is a bounded explicit dependency inventory, not a general network firewall or proof about arbitrary future dynamic Python test generation",
+    "The collection-only result is not9154 executed or passing tests; final hosted full-lane execution remains required",
+    "External API/broker/account validation remains unavailable; no installed paper runtime certification",
+    "Core intentionally preserves not-slow marker selection; replay is independently exact and mandatory"
+  ]
+}

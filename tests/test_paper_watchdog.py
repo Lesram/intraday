@@ -2,6 +2,7 @@
 import copy
 from datetime import datetime, timezone
 import hashlib
+import http.client
 import importlib.util
 import io
 import json
@@ -52,6 +53,7 @@ def test_observe_checks_all_services_and_api_without_recovery(watchdog, monkeypa
     monkeypatch.setattr(watchdog.urllib.request, "urlopen", lambda *a, **k: io.BytesIO(b'{"status":"ready"}'))
     result = watchdog.observe(1_800_000_000)
     assert result["problems"] == []
+    assert result["readiness"] == {"status": "ready", "reachable": True}
     assert set(result["containers"]) == {"api", "redis", "postgres"}
     assert [call[1] for call in calls] == ["info", "inspect", "inspect", "inspect"]
 
@@ -168,8 +170,257 @@ def test_http_readiness_failure_remains_visible(watchdog, monkeypatch):
 
     monkeypatch.setattr(watchdog.urllib.request, "urlopen", unavailable)
     result = watchdog.observe(10000)
-    assert result["readiness"] == {"status": "not_ready", "reachable": True}
+    assert result["readiness"] == {
+        "status": "not_ready", "reachable": True,
+        "diagnostics": {"http_status": 503, "body_status": "invalid_json", "checks": {}, "reasons": {}},
+    }
     assert "api_not_ready" in result["problems"]
+
+
+@pytest.fixture
+def readiness_transport(watchdog, monkeypatch):
+    """Only mocked Docker metadata and in-memory HTTP bodies, never host probes."""
+    def command(args, timeout=10):
+        if args[1] == "info":
+            return subprocess.CompletedProcess(args, 0, "27")
+        assert args[1] == "inspect"
+        service = next(k for k, v in watchdog.SERVICES.items() if v == args[-1])
+        item = {"Name": "/" + args[-1], "Config": {"Labels": {
+            "com.docker.compose.project": "intra", "com.docker.compose.service": service,
+        }}, "State": {"Running": True, "StartedAt": "2026-09-01T00:00:00Z",
+                     "Health": {"Status": "healthy"}}}
+        return subprocess.CompletedProcess(args, 0, json.dumps([item]))
+
+    monkeypatch.setattr(watchdog, "command", command)
+
+    def install(raw, status=503):
+        body = io.BytesIO(raw)
+        body.status = status
+
+        def respond(url, timeout):
+            assert url == "http://127.0.0.1:8000/readyz" and timeout == 5
+            if status >= 400:
+                raise urllib.error.HTTPError(url + "?token=private-secret", status,
+                                             "private-secret", {"secret": "private-secret"}, body)
+            return body
+
+        monkeypatch.setattr(watchdog.urllib.request, "urlopen", respond)
+        return body
+
+    return install
+
+
+@pytest.mark.parametrize("http_status", [200, 503])
+def test_nonready_component_diagnostics_are_allowlisted_without_recovery(
+    watchdog, readiness_transport, http_status,
+):
+    body = readiness_transport(json.dumps({
+        "status": "not ready", "cached": True,
+        "checks": {"database": False, "broker": False, "brain_loaded": False, "tick_recent": False},
+        "problems": {"database": "Database timeout (100.8ms > 100ms)",
+                     "broker": "Broker connection failed", "brain": "Brain not loaded",
+                     "tick_loop": "Last tick 65s ago (>60s)",
+                     "readiness_diag": "check error: https://secret.invalid/?token=private-secret"},
+    }).encode(), http_status)
+    result = watchdog.observe(1_800_000_000)
+    assert result["readiness"]["diagnostics"] == {
+        "http_status": http_status, "body_status": "parsed",
+        "checks": {"database": False, "broker": False, "brain_loaded": False, "tick_recent": False},
+        "reasons": {"database": "timeout", "broker": "connection_failed", "brain": "not_loaded",
+                    "tick_loop": "stale", "readiness_diag": "diagnostic_error"},
+    }
+    assert result["problems"] == ["api_not_ready"]
+    assert watchdog.choose_recovery(result, True) is None
+    assert "private-secret" not in json.dumps(result)
+    assert "https://" not in json.dumps(result)
+    assert body.closed
+
+
+def test_unknown_response_details_and_wrong_field_types_never_escape(watchdog, readiness_transport):
+    readiness_transport(json.dumps({
+        "status": "not ready", "token": "private-secret",
+        "checks": {"private-secret": False, "broker": "private-secret", "database": True},
+        "problems": {"private-secret": "private-secret", "broker": "private-secret",
+                     "database": {"password": "private-secret"},
+                     "brain": "Brain not loaded https://secret.invalid/"},
+    }).encode())
+    result = watchdog.observe(1_800_000_000)
+    assert result["readiness"]["diagnostics"] == {
+        "http_status": 503, "body_status": "invalid_fields", "checks": {"database": True},
+        "reasons": {"database": "unclassified", "broker": "unclassified", "brain": "unclassified"},
+    }
+    assert "private-secret" not in json.dumps(result)
+    assert "secret.invalid" not in json.dumps(result)
+    assert watchdog.choose_recovery(result, True) is None
+
+
+@pytest.mark.parametrize("raw,code,legacy_unreadable", [
+    (b"", "invalid_json", True),
+    (b"<html>private-secret</html>", "invalid_json", True),
+    (b"\xff", "invalid_json", True),
+    (b"[]", "invalid_schema", True),
+    (b'{"status":"not ready","status":"ready"}', "invalid_json", False),
+    (b'{"status":"not ready","checks":{"broker":NaN}}', "invalid_json", False),
+    (b'{"status":"ready","nested":' + b"[" * 2000 + b"0" + b"]" * 2000 + b"}", "invalid_json", False),
+    (b'{"status":"not ready","private":"' + b"x" * 8200 + b'"}', "body_too_large", False),
+], ids=["empty", "html", "invalid_utf8", "list", "duplicate", "nonfinite", "deep", "oversized"])
+@pytest.mark.parametrize("http_status", [200, 503])
+def test_bad_readiness_body_is_bounded_and_preserves_http_recovery_classification(
+    watchdog, readiness_transport, raw, code, legacy_unreadable, http_status,
+):
+    body = readiness_transport(raw, http_status)
+    result = watchdog.observe(1_800_000_000)
+    diagnostics = result["readiness"]["diagnostics"]
+    assert diagnostics["body_status"] in ((code,) if isinstance(code, str) else code)
+    assert diagnostics == {
+        "http_status": http_status, "body_status": diagnostics["body_status"], "checks": {}, "reasons": {},
+    }
+    assert body.closed
+    assert "private-secret" not in json.dumps(result)
+    if http_status == 503 or not legacy_unreadable:
+        assert result["readiness"]["reachable"] is True
+        assert result["problems"] == ["api_not_ready"]
+        assert watchdog.choose_recovery(result, True) is None
+    else:
+        assert result["readiness"]["reachable"] is False
+        assert result["problems"] == ["api_readiness_unreachable"]
+        assert watchdog.choose_recovery(result, False) == ["docker", "restart", "--time", "60", "intra-api-1"]
+
+
+@pytest.mark.parametrize("status", [None, 42, False, [], {"secret": "private-secret"}, "private-secret"])
+def test_unknown_status_is_redacted_without_adding_recovery(watchdog, readiness_transport, status):
+    readiness_transport(json.dumps({"status": status}).encode(), 200)
+    result = watchdog.observe(1_800_000_000)
+    assert result["readiness"]["reachable"] is True
+    assert result["readiness"]["status"] == "not_ready"
+    assert result["readiness"]["diagnostics"]["body_status"] == "invalid_schema"
+    assert result["problems"] == ["api_not_ready"]
+    assert watchdog.choose_recovery(result, True) is None
+    assert "private-secret" not in json.dumps(result)
+
+
+def test_readiness_body_limit_never_requests_unbounded_read(watchdog):
+    class BoundedBody(io.BytesIO):
+        def read(self, size=-1):
+            assert size == watchdog.READINESS_MAX_BYTES + 1
+            return super().read(size)
+
+    with pytest.raises(watchdog.ReadinessPayloadError, match="body_too_large"):
+        watchdog._read_readiness(BoundedBody(b" " * (watchdog.READINESS_MAX_BYTES + 2)))
+    raw = b'{"status":"ready"}'
+    assert watchdog._read_readiness(BoundedBody(raw + b" " * (watchdog.READINESS_MAX_BYTES - len(raw)))) == {"status": "ready"}
+
+
+@pytest.mark.parametrize("exception", [OSError("private-secret https://secret.invalid"),
+                                       http.client.IncompleteRead(b"private-secret")])
+def test_http_error_read_failure_is_sanitized_and_closed(
+    watchdog, readiness_transport, monkeypatch, exception,
+):
+    readiness_transport(b"{}")
+
+    class FailedBody(io.BytesIO):
+        def read(self, size=-1):
+            assert size == watchdog.READINESS_MAX_BYTES + 1
+            raise exception
+
+    body = FailedBody()
+
+    def fail(*args, **kwargs):
+        raise urllib.error.HTTPError("http://127.0.0.1:8000/readyz", 503, "private-secret", {}, body)
+
+    monkeypatch.setattr(watchdog.urllib.request, "urlopen", fail)
+    result = watchdog.observe(1_800_000_000)
+    assert result["readiness"]["diagnostics"]["body_status"] == "read_failed"
+    assert body.closed
+    assert "private-secret" not in json.dumps(result)
+    assert watchdog.choose_recovery(result, True) is None
+
+
+@pytest.mark.parametrize("exception", [
+    http.client.IncompleteRead(b"private-secret"),
+    OSError("private-secret https://secret.invalid"),
+    TimeoutError("private-secret"),
+    ConnectionResetError("private-secret"),
+    http.client.RemoteDisconnected("private-secret"),
+])
+def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+    body = readiness_transport(b"{}", 200)
+
+    def interrupted(size):
+        raise exception
+
+    body.read = interrupted
+    result = watchdog.observe(1_800_000_000)
+    assert body.closed
+    assert result["readiness"] == {
+        "status": "not_ready", "reachable": True,
+        "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+    }
+    assert result["problems"] == ["api_not_ready"]
+    assert watchdog.choose_recovery(result, True) is None
+    assert "private-secret" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("exception", [
+    urllib.error.URLError("private-secret"),
+    TimeoutError("private-secret"),
+    ConnectionResetError("private-secret"),
+    http.client.RemoteDisconnected("private-secret"),
+])
+def test_connection_failure_before_response_keeps_existing_recovery(
+    watchdog, readiness_transport, monkeypatch, exception,
+):
+    readiness_transport(b"{}", 200)
+
+    def connection_failure(*args, **kwargs):
+        raise exception
+
+    monkeypatch.setattr(watchdog.urllib.request, "urlopen", connection_failure)
+    result = watchdog.observe(1_800_000_000)
+    assert result["readiness"] == {"status": "unreachable", "reachable": False}
+    assert result["problems"] == ["api_readiness_unreachable"]
+    assert watchdog.choose_recovery(result, True) == ["docker", "restart", "--time", "60", "intra-api-1"]
+    assert "private-secret" not in json.dumps(result)
+
+
+def test_unverified_protocol_failure_never_adds_restart(watchdog, readiness_transport, monkeypatch):
+    readiness_transport(b"{}")
+
+    def invalid_response(*args, **kwargs):
+        raise http.client.BadStatusLine("private-secret")
+
+    monkeypatch.setattr(watchdog.urllib.request, "urlopen", invalid_response)
+    result = watchdog.observe(1_800_000_000)
+    assert result["readiness"] is None
+    assert result["problems"] == ["api_readiness_unverified"]
+    assert watchdog.choose_recovery(result, True) is None
+    assert "private-secret" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("status", [None, True, "503", 99, 600])
+def test_http_status_diagnostics_accept_only_valid_integers(watchdog, status):
+    response = io.BytesIO()
+    response.status = status
+    assert "http_status" not in watchdog._readiness_diagnostics(response)
+
+
+def test_diagnostics_persist_without_changing_problem_notification_semantics(
+    watchdog, readiness_transport, monkeypatch, tmp_path,
+):
+    calls = []
+    monkeypatch.setattr(watchdog, "notify_local", lambda message: calls.append(message) or True)
+    for reason in ["Broker timeout (200.5ms > 200ms)", "private-secret"]:
+        readiness_transport(json.dumps({"status": "not ready", "checks": {"broker": False},
+                                        "problems": {"broker": reason}}).encode())
+        result = watchdog.run_watchdog(tmp_path, recover=True, local_notifications=True)
+        assert result["actions"] == []
+    assert len(calls) == 1
+    assert result["notification"]["attempted"] is False
+    for name in ["paper_watchdog_status.json", "paper_watchdog_events.jsonl"]:
+        text = (tmp_path / "logs" / name).read_text()
+        assert "private-secret" not in text
+        assert '"http_status": 503' in text
+    assert result["readiness"]["diagnostics"]["reasons"] == {"broker": "unclassified"}
 
 
 def test_critical_log_bridge_deduplicates_and_never_persists_payloads(watchdog, monkeypatch):

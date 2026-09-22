@@ -1,230 +1,129 @@
 {
-  "task_id": "paper-baseline-verification-repair-20260921",
-  "summary": "Correct actual one-minute startup baseline context and deterministic full-state Random Forest verification; preserve the existing forward cutoff and failed activation evidence.",
-  "sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
-  "branch": "codex/paper-baseline-verification-repair",
+  "task_id": "session-evidence-repair-20260922",
+  "summary": "Repair session logging, readiness diagnostics and isolated nightly validation; frozen trading decisions unchanged",
+  "sha": "c9ad0dfc8631aed1fe75fbfac8aae0c045dabf5a",
+  "branch": "codex/session-evidence-repair",
   "change_scope": "base",
-  "change_ref": "ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189...HEAD",
+  "change_ref": "ef3e895bd720524f433944725895d83e67d67905...HEAD",
   "files_changed": [
+    ".github/workflows/artifact-reporting.yml",
+    ".github/workflows/nightly.yml",
     ".github/workflows/paper-readiness.yml",
-    "artifacts/operations_evidence/baseline_repair_extraction.json",
-    "artifacts/operations_evidence/baseline_repair_implementation_plan.json",
-    "artifacts/operations_evidence/baseline_repair_plan.json",
-    "artifacts/phase2/param_freeze.json",
-    "artifacts/phase2/research_policy_baseline.json",
-    "backend/organism/model_fingerprint.py",
-    "backend/organism/research_baseline.py",
-    "docs/architecture/mapss.md",
-    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
-    "scripts/phase2_freeze.py",
-    "tests/test_phase2_freeze.py",
-    "tests/test_research_baseline.py",
-    "tests/test_research_model_fingerprint.py"
+    "artifacts/algorithm_improvements.junit.xml",
+    "artifacts/algorithm_improvements.log",
+    "artifacts/changed_files.json",
+    "artifacts/live_process_runtime_snapshot.json",
+    "artifacts/multi_tick_state.junit.xml",
+    "artifacts/multi_tick_state.log",
+    "artifacts/organism_engine_scenarios.junit.xml",
+    "artifacts/organism_engine_scenarios.log",
+    "artifacts/organism_live_engine.junit.xml",
+    "artifacts/organism_live_engine.log",
+    "artifacts/replay_simulator.junit.xml",
+    "artifacts/replay_simulator.log",
+    "artifacts/replay_summary.json",
+    "artifacts/resolved_config_snapshot.json",
+    "artifacts/runtime_config_snapshot.json",
+    "artifacts/runtime_defaults_snapshot.json",
+    "artifacts/runtime_snapshot.log",
+    "artifacts/runtime_snapshot_summary.json",
+    "artifacts/safety_invariants.junit.xml",
+    "artifacts/safety_invariants.log",
+    "artifacts/self_evolution.junit.xml",
+    "artifacts/self_evolution.log",
+    "artifacts/semantic_invariants.junit.xml",
+    "artifacts/semantic_invariants.log",
+    "artifacts/semantic_invariants_summary.json",
+    "artifacts/session_evidence_repair/acceptance.json",
+    "artifacts/session_evidence_repair/audit_index.log",
+    "artifacts/session_evidence_repair/fixture_freeze.log",
+    "artifacts/session_evidence_repair/fixture_migrations.log",
+    "artifacts/session_evidence_repair/fixture_postgres.log",
+    "artifacts/session_evidence_repair/fixture_postgres.xml",
+    "artifacts/session_evidence_repair/fixture_postgres_shuffled.log",
+    "artifacts/session_evidence_repair/fixture_postgres_shuffled.xml",
+    "artifacts/session_evidence_repair/fixture_review.json",
+    "artifacts/session_evidence_repair/fixture_sqlite.log",
+    "artifacts/session_evidence_repair/fixture_sqlite.xml",
+    "artifacts/session_evidence_repair/full_core_collection.json",
+    "artifacts/session_evidence_repair/full_pack.log",
+    "artifacts/session_evidence_repair/logging_final.log",
+    "artifacts/session_evidence_repair/logging_final.xml",
+    "artifacts/session_evidence_repair/logging_freeze.log",
+    "artifacts/session_evidence_repair/logging_implementation.json",
+    "artifacts/session_evidence_repair/logging_lint.json",
+    "artifacts/session_evidence_repair/logging_review.json",
+    "artifacts/session_evidence_repair/nightly_contract.log",
+    "artifacts/session_evidence_repair/nightly_contract.xml",
+    "artifacts/session_evidence_repair/nightly_fixture_implementation.json",
+    "artifacts/session_evidence_repair/nightly_lane_independent_review.json",
+    "artifacts/session_evidence_repair/nightly_lane_review.log",
+    "artifacts/session_evidence_repair/nightly_lane_review.xml",
+    "artifacts/session_evidence_repair/plan.json",
+    "artifacts/session_evidence_repair/root_freeze.log",
+    "artifacts/session_evidence_repair/tworelease_freeze.log",
+    "artifacts/session_evidence_repair/tworelease_lint.log",
+    "artifacts/session_evidence_repair/tworelease_plan.json",
+    "artifacts/session_evidence_repair/tworelease_review.json",
+    "artifacts/session_evidence_repair/tworelease_review.log",
+    "artifacts/session_evidence_repair/tworelease_review.xml",
+    "artifacts/session_evidence_repair/watchdog_final.log",
+    "artifacts/session_evidence_repair/watchdog_final.xml",
+    "artifacts/session_evidence_repair/watchdog_implementation.json",
+    "artifacts/session_evidence_repair/watchdog_independent_review.json",
+    "artifacts/session_evidence_repair/workflow_lint.log",
+    "artifacts/task_report.json",
+    "artifacts/test_summary.json",
+    "backend/infra/logging.py",
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
+    "docs/engineering/SESSION_EVIDENCE_REPAIR.md",
+    "logging_config.yaml",
+    "scripts/ci/generate_audit_index.py",
+    "scripts/ci/nightly_test_contract.py",
+    "scripts/ops/paper_daily_evidence.py",
+    "scripts/ops/paper_watchdog.py",
+    "scripts/ops/standdown_session_row.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/conftest.py",
+    "tests/test_api_fixture_isolation.py",
+    "tests/test_artifact_change_scope.py",
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_nightly_test_contract.py",
+    "tests/test_paper_daily_evidence.py",
+    "tests/test_paper_watchdog.py",
+    "tests/test_runtime_snapshot_auth.py",
+    "tests/test_session_logging_contract.py",
+    "tests/test_strategies_automated_suite.py",
+    "tests/test_v12_w84_governance_docs.py"
   ],
   "commands": [
-    "Network-denied operational regression suite",
+    "python scripts/runtime/write_runtime_snapshot.py",
     "python scripts/ci/generate_artifacts.py full",
-    "python scripts/ci/generate_audit_index.py",
-    "Exact git-archive image build and source/freeze verification",
-    "Two network-none cold processes using read-only held backup and disposable saves",
-    "Independent review and scoped known-secret scan"
+    "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
+    "python scripts/ci/check_spec_drift.py --json"
   ],
   "tests_passed": [
-    "artifacts/operations_evidence/monday_operational.xml:1458",
-    "artifacts/organism_live_engine.junit.xml:26",
-    "artifacts/organism_engine_scenarios.junit.xml:31",
-    "artifacts/multi_tick_state.junit.xml:9",
-    "artifacts/safety_invariants.junit.xml:29",
-    "artifacts/self_evolution.junit.xml:15",
-    "artifacts/algorithm_improvements.junit.xml:58",
-    "artifacts/replay_simulator.junit.xml:28",
-    "artifacts/semantic_invariants.junit.xml:20"
+    "organism_live_engine",
+    "organism_engine_scenarios",
+    "multi_tick_state",
+    "safety_invariants",
+    "self_evolution",
+    "algorithm_improvements",
+    "semantic_invariants",
+    "replay_simulator"
   ],
   "tests_failed": [],
-  "runtime_behavior_changed": true,
+  "runtime_behavior_changed": [
+    "backend/infra/logging.py"
+  ],
   "docs_updated": [
-    "docs/architecture/mapss.md",
-    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
-    "docs/engineering/LIVE_AUDIT_INDEX.md"
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
+    "docs/engineering/SESSION_EVIDENCE_REPAIR.md"
   ],
   "risks": [
-    "Installed cold startup and host automation acceptance remain pending.",
-    "Natural-session fresh data, fills, exact close accounting and EOD require observation; profitability is not established.",
-    "Replacement-order lineage remains unsupported and blocks evidence qualification.",
-    "Existing development signing fallback, legacy dependency alerts and off-host/full-host recovery limitations remain."
+    "1 backend runtime file(s) changed \u2014 targeted verification required"
   ],
-  "follow_ups": [
-    "Pass final hosted checks, independent review and controlled corrective paper release.",
-    "Publish superseding activation preserving 2026-09-21T10:10:39.684894+00:00, then actual engine/preflight/source/config/accounting acceptance.",
-    "Install accepted daily binding/watchdog and verify existing startup/backup jobs.",
-    "Observe natural paper session and after-close evidence without forcing trades."
-  ],
+  "follow_ups": [],
   "artifact_pack_status": "pass",
-  "artifact_pack_errors": [],
-  "unique_tests_passed": 1674,
-  "validation": {
-    "source_sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
-    "created_at_utc": "2026-09-21T10:39:54.972510+00:00",
-    "unique_tests_passed": 1674,
-    "tests_failed": 0,
-    "skipped": 1,
-    "skip_details": [
-      {
-        "test": [
-          "tests.test_v12_baseline_invariants",
-          "test_installed_history_has_not_shrunk_from_committed_baseline"
-        ],
-        "reason": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim"
-      }
-    ],
-    "suites": [
-      {
-        "junit": "artifacts/operations_evidence/monday_operational.xml",
-        "passed": 1458,
-        "failed": 0,
-        "skipped": 1,
-        "sha256": "d1dd8d57f01ee868ffb0c5e68a0f9ef9e5c860eb55294f3198a1b42cc3b1f7ba"
-      },
-      {
-        "junit": "artifacts/organism_live_engine.junit.xml",
-        "passed": 26,
-        "failed": 0,
-        "skipped": 0,
-        "sha256": "79b9c120110214a3a1c7239cbde7f12e62d81581c569bedfec398a1c9a0adf70"
-      },
-      {
-        "junit": "artifacts/organism_engine_scenarios.junit.xml",
-        "passed": 31,
-        "failed": 0,
-        "skipped": 0,
-        "sha256": "de7709e30b4b8caca8b864e5ac844bed22738a3fdfbdc25b1aa9481429b7e0ea"
-      },
-      {
-        "junit": "artifacts/multi_tick_state.junit.xml",
-        "passed": 9,
-        "failed": 0,
-        "skipped": 0,
-        "sha256": "66d1a9fae0c2f7dc499b7e4ced643b044fd579ac06f512494a2084e4a2e26340"
-      },
-      {
-        "junit": "artifacts/safety_invariants.junit.xml",
-        "passed": 29,
-        "failed": 0,
-        "skipped": 0,
-        "sha256": "45618e206cabcd15324001989a8e7b6559d89355d3711d03539eb80dc5adbce8"
-      },
-      {
-        "junit": "artifacts/self_evolution.junit.xml",
-        "passed": 15,
-        "failed": 0,
-        "skipped": 0,
-        "sha256": "89d9727551d665f9d196dd211de2e7be262efbef0e0e7d52fcca41450f6b2768"
-      },
-      {
-        "junit": "artifacts/algorithm_improvements.junit.xml",
-        "passed": 58,
-        "failed": 0,
-        "skipped": 0,
-        "sha256": "4700528d7b7b84fe862251e4cd28954517fd9d8ead03f1a3b45173f335f1c976"
-      },
-      {
-        "junit": "artifacts/replay_simulator.junit.xml",
-        "passed": 28,
-        "failed": 0,
-        "skipped": 0,
-        "sha256": "56e834b11d234fa17499116f5fdfa0b243baad7d13301cd6a5d65671e5802fa4"
-      },
-      {
-        "junit": "artifacts/semantic_invariants.junit.xml",
-        "passed": 20,
-        "failed": 0,
-        "skipped": 0,
-        "sha256": "aaf084d435de80075c871016f15a7aa0c205cb5d3bd133beb5619f0c75d22115"
-      }
-    ],
-    "count_method": "Unique JUnit classname/name across corrective operational and mandatory full artifact runs; targeted and image-overlay repetitions are not added.",
-    "full_artifact_pack": "pass",
-    "freeze_verification": "pass",
-    "immutable_image": "sha256:a276b7d98e10aa9823acf6f2d8cea7ba0a85cee673de131ad84e0166bfe057b8",
-    "isolated_signed_backup_warm_start": "Two independent cold processes with actual one-minute environment before imports; checkpoint/full-save/durable-halt reloads and invalid-baseline rejection controls passed.",
-    "warm_start_report": "artifacts/operations_evidence/baseline_repair_warm_start.json",
-    "warm_start_sha256": "8a348bcde8c836427bff114b4b97ae7a3f02eac2c053176c62963b695e52007b",
-    "frontend": {
-      "build": "pass",
-      "focused_cases_passed": 37,
-      "junit": "artifacts/operations_evidence/frontend_release_final.xml",
-      "junit_sha256": "6206a30492f06e19f29a9b7e8c42a7d5d664765cdfcf48a05b5ced0417b11789",
-      "log": "artifacts/operations_evidence/frontend_release_final.log",
-      "react_review": "Actual manual halt and incomplete outcomes; username-or-email login, production bypass disabled, honest recovery guidance; browser-compatible scanner connection and current-token market-data reconnect. Existing chart mocks emit non-failing canvas warnings",
-      "build_log": "artifacts/operations_evidence/frontend_release_final_build.log",
-      "production_browser": {
-        "status": "passed",
-        "url": "http://127.0.0.1:5197/login",
-        "browser_version": "0.38.1",
-        "index_sha256": "6ea8be6993dcb651867ddc9b28e6128ece2d9730ae4dbd210ec7f224b1c0deea",
-        "dist_sha256": "76c6b86d9b0cedc978c6237d065ee813e89dac526634caf9d1bcf2aed1eec488",
-        "checkout_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
-        "checkout_source_dirty": false,
-        "build_provenance": "dist bytes hashed; checkout identity alone does not attest build origin",
-        "checker_sha256": "4ab4b3a13ee335494bf5d0dd61756bc2af8446e9ae437495be9130d44ce6ec96",
-        "checks": {
-          "fields_empty": true,
-          "login_url": true,
-          "no_error_overlay": true,
-          "nonblank": true,
-          "password_visible": true,
-          "recovery_visible": true,
-          "signin_visible": true,
-          "transport_violations": [],
-          "username_visible": true
-        },
-        "page_error_count": 0,
-        "page_error_types": [],
-        "browser_closed": true,
-        "preview_stopped": true,
-        "elapsed_seconds": 5.74
-      },
-      "production_browser_result_sha256": "0e83cf52d06259dd3a849505c1c1a7026670f0035708d2bac73413b6cea7ea31",
-      "browser_review": "artifacts/operations_evidence/frontend_browser_review.json",
-      "streaming_bundle": {
-        "source_sha": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
-        "js_files_inspected": 115,
-        "browser_incompatible_auth_require_matches": [],
-        "lazy_chunks": {
-          "ScannerPage": [
-            {
-              "path": "assets/ScannerPage-Bx1huhx1.js",
-              "sha256": "1babd5232170901b522aaa6ce85070191d81c502f6e375455a137dbf0582a98b"
-            }
-          ],
-          "TradingPage": [
-            {
-              "path": "assets/TradingPage-CrIh3uye.js",
-              "sha256": "2e33daa8671dbc0325ff6eed42a243449646e27ea485d30a5556775fdfc3e77b"
-            }
-          ]
-        },
-        "focused_frontend_passed": 37,
-        "backend_authentication_changed": false,
-        "actual_authenticated_streaming_verified": false,
-        "scope": "Compiled scanner/trading dependency bytes and mocked current-token connection contracts; production unauthenticated login browser gate recorded separately"
-      },
-      "streaming_review": "artifacts/operations_evidence/frontend_streaming_review.json",
-      "streaming_review_sha256": "9c64b70edab914e3922cf446f813f8c80185d34e6d42e8bec5fcd9c160fd7d1a",
-      "retained_browser_failures": [
-        "artifacts/operations_evidence/operator_browser_initial.json",
-        "artifacts/operations_evidence/operator_browser_second.json"
-      ],
-      "evidence_reused_from_source": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b",
-      "unchanged_frontend_and_browser_checker_verified": true
-    },
-    "deployed": false,
-    "hosted_check_status": "pending_after_evidence_push",
-    "prior_activation_failed": true,
-    "prior_failure": "One-day extraction defaults and unstable RF raw pickle identity; actual engine startup held, no forward orders/state reset.",
-    "cutoff_preserved": "2026-09-21T10:10:39.684894+00:00",
-    "original_strategy_models_history_unchanged": true
-  },
-  "deployed": false,
-  "runtime_behavior_note": "Verification-only correction; stale/mismatched/unsupported state still blocks startup. No strategy, saved-model, ledger, operator-authority or measurement-cutoff reset."
+  "artifact_pack_errors": []
 }

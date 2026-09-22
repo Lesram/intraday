@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 import json
 import logging
 import logging.config
+import math
+from pathlib import Path
 import sys
 from typing import Any
 
@@ -76,11 +78,13 @@ class JSONFormatter(logging.Formatter):
         service_version: str = "2.0.0",
         include_trace: bool = True,
         extra_fields: dict[str, Any] | None = None,
+        include_context: bool = True,
     ):
         super().__init__()
         self.service_name = service_name
         self.service_version = service_version
         self.include_trace = include_trace
+        self.include_context = include_context
         self.extra_fields = extra_fields or {}
 
     def format(self, record: logging.LogRecord) -> str:
@@ -95,7 +99,7 @@ class JSONFormatter(logging.Formatter):
         """
         # Base log structure
         log_entry = {
-            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "timestamp": datetime.fromtimestamp(record.created, UTC).isoformat().replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -123,16 +127,15 @@ class JSONFormatter(logging.Formatter):
 
         # Add exception information if present
         if record.exc_info:
-            log_entry["exception"] = {
-                "type": record.exc_info[0].__name__,
-                "message": str(record.exc_info[1]),
-                "traceback": self.formatException(record.exc_info),
-            }
+            log_entry["exception"] = {"type": record.exc_info[0].__name__}
+            if self.include_context:
+                log_entry["exception"].update(
+                    message=str(record.exc_info[1]), traceback=self.formatException(record.exc_info))
 
         # Add extra fields from record
         extra = {}
         for key, value in record.__dict__.items():
-            if key not in {
+            if self.include_context and key not in {
                 "name",
                 "msg",
                 "args",
@@ -159,7 +162,7 @@ class JSONFormatter(logging.Formatter):
             }:
                 # Only include JSON-serializable values
                 try:
-                    json.dumps(value)
+                    json.dumps(value, allow_nan=False)
                     extra[key] = value
                 except (TypeError, ValueError):
                     extra[key] = str(value)
@@ -171,7 +174,60 @@ class JSONFormatter(logging.Formatter):
         if self.extra_fields:
             log_entry.update(self.extra_fields)
 
-        return json.dumps(log_entry, ensure_ascii=False)
+        return json.dumps(log_entry, ensure_ascii=False, allow_nan=False)
+
+
+class SessionJSONFormatter(JSONFormatter):
+    """Versioned UTC stream; preserve rendered structlog fields without double encoding."""
+
+    def __init__(self):
+        # YAML previously omitted arbitrary plain-log extras. Avoid newly
+        # exposing credentials or exception values through the evidence stream.
+        # Existing message text still relies on its caller's scrubbing policy.
+        super().__init__(include_context=False)
+
+    def format(self, record: logging.LogRecord) -> str:
+        entry = json.loads(super().format(record))
+        # structlog's JSONRenderer has already escaped its event and context.
+        # Decode that value, never interpolate it into another JSON template.
+        try:
+            structured = json.loads(record.getMessage(), parse_constant=str,
+                                    parse_float=lambda value: float(value) if math.isfinite(float(value)) else value)
+        except (ValueError, TypeError, RecursionError):
+            structured = None
+        if isinstance(structured, dict) and isinstance(structured.get("event"), str):
+            entry["message"] = structured["event"]
+            entry["structured"] = structured
+        entry["schema"] = "intra_session_log_v1"
+        entry["timestamp"] = datetime.fromtimestamp(record.created, UTC).isoformat().replace("+00:00", "Z")
+        return json.dumps(entry, ensure_ascii=False, allow_nan=False)
+
+
+class UTCSessionFileHandler(logging.FileHandler):
+    """Append each record to its UTC date, retaining prior days without rotation.
+
+    A restart appends to the same daily file. Legacy application.log rotations
+    remain untouched and cannot silently become this versioned evidence stream.
+    The collector refuses renamed/rotated siblings and incomplete daily coverage.
+    """
+
+    def __init__(self, directory: str):
+        self.directory = Path(directory).absolute()
+        self.directory.mkdir(parents=True, exist_ok=True)
+        super().__init__(self._path(datetime.now(UTC).timestamp()), mode="a", encoding="utf-8", delay=True)
+
+    def _path(self, created: float) -> str:
+        day = datetime.fromtimestamp(created, UTC).date().isoformat()
+        return str(self.directory / (day + ".jsonl"))
+
+    def emit(self, record: logging.LogRecord) -> None:
+        filename = self._path(record.created)
+        if filename != self.baseFilename:
+            if self.stream is not None:
+                self.stream.close()
+                self.stream = None
+            self.baseFilename = filename
+        super().emit(record)
 
 
 class StructuredLogger:

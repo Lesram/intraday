@@ -1,0 +1,213 @@
+{
+  "task_id": "session-evidence-repair-20260922-nightly-fixtures",
+  "generated_at": "2026-09-22T06:13:31.582730+00:00",
+  "summary": "Use explicit isolated databases; seed real authenticated API tests on the app portal after startup; make migrated PostgreSQL strategy tests independent, rollback-safe and current-contract aware. Explicitly inventory44 external diagnostics outside real_tests;10 entire external modules are AST-checked and withheld before their installed-API import probes can execute; retain ordinary idempotency DB cases and seven required replay nodes. Replay selection must still equal all seven required cases after marker/-k filtering; failures are persisted before fatal refusal.",
+  "sha": "ef3e895bd720524f433944725895d83e67d67905",
+  "branch": "codex/session-evidence-repair",
+  "files_changed": [
+    "tests/conftest.py",
+    "tests/test_strategies_automated_suite.py",
+    "tests/test_api_fixture_isolation.py",
+    "scripts/ci/nightly_test_contract.py",
+    "tests/test_nightly_test_contract.py"
+  ],
+  "source_sha256": {
+    "tests/conftest.py": "57e63e4ce740b52261c450f43b519a681dc92e018a5441e55eb68e945e1119cc",
+    "tests/test_strategies_automated_suite.py": "032c1f52e28b97f5318f1f4e04827ffe1e83fba9ecb5a553c0c70d38eb33e0b7",
+    "tests/test_api_fixture_isolation.py": "e3a13ca10861e9b1e3928cb2e7ee1ff0b5d1e2eaa68239de6cc5ca71824707a1",
+    "scripts/ci/nightly_test_contract.py": "5d336c84b040b1ba2a4c8367299a43d36a14bdf7be849efb82051f2a77a1d526",
+    "tests/test_nightly_test_contract.py": "bbc878a71a03d818edc6fc8f9c2b3450a453d5af9924eb8d6816350012de1775"
+  },
+  "commands": [
+    {
+      "argv": [
+        "/Users/marselkei/VS/intra/venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_api_fixture_isolation.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=artifacts/session_evidence_repair/fixture_sqlite.xml"
+      ],
+      "environment": {
+        "PYTHONPATH": "/tmp/intra-fixture-network-denied:."
+      },
+      "result": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "argv": [
+        "/Users/marselkei/VS/intra/venv/bin/python",
+        "-m",
+        "alembic",
+        "upgrade",
+        "head"
+      ],
+      "environment": "clean env; explicit disposable PostgreSQL DSN in DATABASE_URL and INTRA_TEST_DATABASE_URL; sockets permit only loopback55439",
+      "result": {
+        "exit_code": 0,
+        "head": "20260503_000003"
+      }
+    },
+    {
+      "argv": [
+        "/Users/marselkei/VS/intra/venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_strategies_automated_suite.py",
+        "tests/test_api_fixture_isolation.py",
+        "tests/test_models_api_simple.py",
+        "tests/test_backtest_api_integration.py",
+        "tests/test_ml_lifecycle_api.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=artifacts/session_evidence_repair/fixture_postgres.xml"
+      ],
+      "environment": "clean env; explicit disposable PostgreSQL DSN; Python sockets permit only loopback55439",
+      "result": {
+        "passed": 91,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "argv": [
+        "/Users/marselkei/VS/intra/venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_strategies_automated_suite.py",
+        "-q",
+        "-p",
+        "intra_shuffle",
+        "--tb=short",
+        "--junitxml=artifacts/session_evidence_repair/fixture_postgres_shuffled.xml"
+      ],
+      "environment": "same isolated PostgreSQL; collection shuffled with random.Random(821)",
+      "result": {
+        "passed": 15,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "argv": [
+        "/Users/marselkei/VS/intra/venv/bin/python",
+        "scripts/phase2_freeze.py",
+        "--verify"
+      ],
+      "environment": {
+        "PYTHONPATH": ".",
+        "ORGANISM_APPROVED_POLICY_BASELINE": "/app/artifacts/phase2/research_policy_baseline.json",
+        "ORGANISM_OPERATOR_CONTROL_STATE": "/app/data/operator_control_state.json",
+        "ALPACA_DATA_FEED": "iex",
+        "ORGANISM_FRAMEWORK_ROUTING_V2": "true",
+        "ORGANISM_MIN_AVG_DOLLAR_VOLUME": "50000",
+        "ORGANISM_ROUTING_RANK_POLICY": "flat_policy"
+      },
+      "result": {
+        "exit_code": 0,
+        "status": "DRIFT-VERIFY OK"
+      }
+    },
+    {
+      "argv": [
+        "/Users/marselkei/VS/intra/venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_nightly_test_contract.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=artifacts/session_evidence_repair/nightly_lane_review.xml"
+      ],
+      "environment": {
+        "PYTHONPATH": "/tmp/intra-fixture-network-denied:."
+      },
+      "result": {
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "argv": [
+        "/Users/marselkei/VS/intra/venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/",
+        "--collect-only",
+        "-q",
+        "-p",
+        "scripts.ci.nightly_test_contract",
+        "--intra-nightly-lane=core",
+        "--intra-nightly-manifest=artifacts/session_evidence_repair/full_core_collection.json",
+        "-m",
+        "not slow"
+      ],
+      "environment": "clean synthetic test environment; PYTHONPATH=/tmp/intra-fixture-network-denied:.",
+      "result": {
+        "exit_code": 0,
+        "collected_before_filter": 9298,
+        "selected_core_nodes": 9154,
+        "deselected_at_collection": 144,
+        "preimport_withheld_modules": 10,
+        "external_unavailable_nodes": 168,
+        "execution": false
+      }
+    }
+  ],
+  "tests_passed": 109,
+  "tests_failed": 0,
+  "counting": "91 unique fixture/API/strategy nodes plus18 nightly lane contracts; SQLite16 and shuffled15 repeat subsets. Collection-only is not test execution.",
+  "runtime_behavior_changed": false,
+  "docs_updated": false,
+  "database": {
+    "kind": "disposable PostgreSQL16 alpine",
+    "host": "127.0.0.1",
+    "port": 55439,
+    "database": "test_session_evidence",
+    "role": "testuser",
+    "storage": "tmpfs, no platform volume",
+    "post_test_strategies": 0,
+    "post_test_users": 1,
+    "alembic_head": "20260503_000003"
+  },
+  "earlier_attempts": [
+    {
+      "description": "Initial SQLite assertion run with all teardown exceptions unsuppressed",
+      "passed": 15,
+      "teardown_errors": 3,
+      "resolution": "Retained only existing TestClient concurrent.futures.CancelledError adapter exception; all other exceptions now propagate and regression tests prove that."
+    },
+    {
+      "description": "Bare freeze command initially missing PYTHONPATH then required six frozen public environment values",
+      "resolution": "Verified with repository import path and explicit frozen values; no snapshot rewrite or runtime mutation."
+    }
+  ],
+  "risks": [
+    "Validation used local PostgreSQL16, whereas hosted nightly uses PostgreSQL15; hosted exact-source confirmation remains required.",
+    "The shared API fixture still handles the preexisting application background-task sweep canceling TestClient wait_shutdown; it is not a full lifecycle shutdown certification.",
+    "SQLite provides lightweight auth/model tables only; PostgreSQL migration correctness comes from the separate real Alembic run.",
+    "Shared non-strategy API cases retain their preexisting assertions; this task did not rewrite weak historical API expectations.",
+    "The Python socket guard prevents Python network clients outside the isolated test port; it is not an OS network firewall. Alembic psycopg2 used the explicit disposable DSN.",
+    "Nightly lane classification is a bounded explicit dependency inventory, not a generic OS network firewall. Old external diagnostics remain UNAVAILABLE and are not counted as passed; their assertions are not repaired in this task."
+  ],
+  "unverified": [
+    "Hosted CI on the final committed SHA",
+    "Installed trading service/broker/session behavior",
+    "Full repository nightly suite and parent-required artifact pack pending orchestration"
+  ],
+  "follow_ups": [
+    "Parent final targeted/safety/artifact verification, independent code review, commit and PR",
+    "Independent review of44-node external inventory and pre-import AST gate; broader repository diagnostic-to-assertion conversion remains out of scope."
+  ],
+  "secret_handling": "Only synthetic test credentials used; no production dotenv loaded by changed fixtures; no installed API or broker requests.",
+  "no_commits_made": true,
+  "review_finding_resolved": "Original lane classification considered only real_tests fixtures; now44 additional concrete legacy diagnostic nodes are declared unavailable, with10 all-external modules refused before import after an AST inventory check."
+}

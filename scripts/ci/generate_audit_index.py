@@ -119,9 +119,11 @@ def main() -> None:
             ),
         }
         snapshot_label = snapshot_path.name
+        evidence_scope = snapshot.get("evidence_scope", "unclassified_expected_configuration")
     else:
         live_constants = {"note": "No runtime snapshot found — run write_runtime_snapshot.py"}
         snapshot_label = "missing"
+        evidence_scope = "unavailable"
 
     # Load grep assertions
     grep_path = ROOT / "artifacts" / "grep_assertions.json"
@@ -154,6 +156,8 @@ def main() -> None:
         risks.append(f"Grep assertions failing: {', '.join(failing_checks)}")
     if snapshot_label == "missing":
         risks.append("No runtime config snapshot — organism constants not verified")
+    else:
+        risks.append("Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.")
     if organism_changed:
         risks.append(f"{len(organism_changed)} organism file(s) changed — require replay verification")
     elif backend_runtime_changed:
@@ -198,9 +202,11 @@ def main() -> None:
         f"| Tests | {len(tests_changed)} | {', '.join(f'`{p}`' for p in tests_changed[:10]) or 'none'} |",
         f"| Docs | {len(docs_changed)} | {', '.join(f'`{p}`' for p in docs_changed[:10]) or 'none'} |",
         "",
-        "## Live constants",
+        "## Configuration resolution (not engine observation)",
         "",
         f"Source: `{snapshot_label}`",
+        f"Evidence scope: `{evidence_scope}`",
+        "These values describe this generator's configuration inputs. Offline runs can contain source defaults and test-process paths; they do not establish the installed paper configuration.",
         "",
         "```json",
         json.dumps(live_constants, indent=2),
@@ -208,9 +214,9 @@ def main() -> None:
         "",
         "## Snapshot files",
         "",
-        "- Defaults: `artifacts/runtime_defaults_snapshot.json`",
-        "- Resolved config: `artifacts/resolved_config_snapshot.json`",
-        "- Live process: `artifacts/live_process_runtime_snapshot.json`",
+        "- Source/process defaults: `artifacts/runtime_defaults_snapshot.json`",
+        "- Expected configuration resolution: `artifacts/resolved_config_snapshot.json`",
+        "- Separate live-process evidence (check reachability and field provenance): `artifacts/live_process_runtime_snapshot.json`",
         "",
         "## Reference paths",
         "",

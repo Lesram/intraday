@@ -1,0 +1,167 @@
+.FFFF....                                                                [100%]
+=================================== FAILURES ===================================
+_______ test_responding_body_read_failure_never_adds_restart[exception1] _______
+
+watchdog = <module 'paper_watchdog_test' from '/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/scripts/ops/paper_watchdog.py'>
+readiness_transport = <function readiness_transport.<locals>.install at 0x10b18f100>
+exception = OSError('private-secret https://secret.invalid')
+
+    @pytest.mark.parametrize("exception", [
+        http.client.IncompleteRead(b"private-secret"),
+        OSError("private-secret https://secret.invalid"),
+        TimeoutError("private-secret"),
+        ConnectionResetError("private-secret"),
+        http.client.RemoteDisconnected("private-secret"),
+    ])
+    def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+        body = readiness_transport(b"{}", 200)
+    
+        def interrupted(size):
+            raise exception
+    
+        body.read = interrupted
+        result = watchdog.observe(1_800_000_000)
+        assert body.closed
+>       assert result["readiness"] == {
+            "status": "not_ready", "reachable": True,
+            "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+        }
+E       AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}
+E         
+E         Differing items:
+E         {'status': 'unreachable'} != {'status': 'not_ready'}
+E         {'reachable': False} != {'reachable': True}
+E         Right contains 1 more item:
+E         {'diagnostics': {'body_status': 'read_failed',
+E                          'checks': {},...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_paper_watchdog.py:355: AssertionError
+_______ test_responding_body_read_failure_never_adds_restart[exception2] _______
+
+watchdog = <module 'paper_watchdog_test' from '/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/scripts/ops/paper_watchdog.py'>
+readiness_transport = <function readiness_transport.<locals>.install at 0x10b16e980>
+exception = TimeoutError('private-secret')
+
+    @pytest.mark.parametrize("exception", [
+        http.client.IncompleteRead(b"private-secret"),
+        OSError("private-secret https://secret.invalid"),
+        TimeoutError("private-secret"),
+        ConnectionResetError("private-secret"),
+        http.client.RemoteDisconnected("private-secret"),
+    ])
+    def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+        body = readiness_transport(b"{}", 200)
+    
+        def interrupted(size):
+            raise exception
+    
+        body.read = interrupted
+        result = watchdog.observe(1_800_000_000)
+        assert body.closed
+>       assert result["readiness"] == {
+            "status": "not_ready", "reachable": True,
+            "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+        }
+E       AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}
+E         
+E         Differing items:
+E         {'status': 'unreachable'} != {'status': 'not_ready'}
+E         {'reachable': False} != {'reachable': True}
+E         Right contains 1 more item:
+E         {'diagnostics': {'body_status': 'read_failed',
+E                          'checks': {},...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_paper_watchdog.py:355: AssertionError
+_______ test_responding_body_read_failure_never_adds_restart[exception3] _______
+
+watchdog = <module 'paper_watchdog_test' from '/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/scripts/ops/paper_watchdog.py'>
+readiness_transport = <function readiness_transport.<locals>.install at 0x10b16f920>
+exception = ConnectionResetError('private-secret')
+
+    @pytest.mark.parametrize("exception", [
+        http.client.IncompleteRead(b"private-secret"),
+        OSError("private-secret https://secret.invalid"),
+        TimeoutError("private-secret"),
+        ConnectionResetError("private-secret"),
+        http.client.RemoteDisconnected("private-secret"),
+    ])
+    def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+        body = readiness_transport(b"{}", 200)
+    
+        def interrupted(size):
+            raise exception
+    
+        body.read = interrupted
+        result = watchdog.observe(1_800_000_000)
+        assert body.closed
+>       assert result["readiness"] == {
+            "status": "not_ready", "reachable": True,
+            "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+        }
+E       AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}
+E         
+E         Differing items:
+E         {'status': 'unreachable'} != {'status': 'not_ready'}
+E         {'reachable': False} != {'reachable': True}
+E         Right contains 1 more item:
+E         {'diagnostics': {'body_status': 'read_failed',
+E                          'checks': {},...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_paper_watchdog.py:355: AssertionError
+_______ test_responding_body_read_failure_never_adds_restart[exception4] _______
+
+watchdog = <module 'paper_watchdog_test' from '/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/scripts/ops/paper_watchdog.py'>
+readiness_transport = <function readiness_transport.<locals>.install at 0x10ad5c860>
+exception = RemoteDisconnected('private-secret')
+
+    @pytest.mark.parametrize("exception", [
+        http.client.IncompleteRead(b"private-secret"),
+        OSError("private-secret https://secret.invalid"),
+        TimeoutError("private-secret"),
+        ConnectionResetError("private-secret"),
+        http.client.RemoteDisconnected("private-secret"),
+    ])
+    def test_responding_body_read_failure_never_adds_restart(watchdog, readiness_transport, exception):
+        body = readiness_transport(b"{}", 200)
+    
+        def interrupted(size):
+            raise exception
+    
+        body.read = interrupted
+        result = watchdog.observe(1_800_000_000)
+        assert body.closed
+>       assert result["readiness"] == {
+            "status": "not_ready", "reachable": True,
+            "diagnostics": {"http_status": 200, "body_status": "read_failed", "checks": {}, "reasons": {}},
+        }
+E       AssertionError: assert {'reachable':...'unreachable'} == {'diagnostics...: 'not_ready'}
+E         
+E         Differing items:
+E         {'status': 'unreachable'} != {'status': 'not_ready'}
+E         {'reachable': False} != {'reachable': True}
+E         Right contains 1 more item:
+E         {'diagnostics': {'body_status': 'read_failed',
+E                          'checks': {},...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_paper_watchdog.py:355: AssertionError
+=============================== warnings summary ===============================
+../../../../VS/intra/venv/lib/python3.12/site-packages/_pytest/config/__init__.py:1428
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/_pytest/config/__init__.py:1428: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_paper_watchdog.py::test_responding_body_read_failure_never_adds_restart[exception1]
+FAILED tests/test_paper_watchdog.py::test_responding_body_read_failure_never_adds_restart[exception2]
+FAILED tests/test_paper_watchdog.py::test_responding_body_read_failure_never_adds_restart[exception3]
+FAILED tests/test_paper_watchdog.py::test_responding_body_read_failure_never_adds_restart[exception4]
+4 failed, 5 passed, 118 deselected, 1 warning in 0.14s

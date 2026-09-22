@@ -1,0 +1,40 @@
+{
+  "task_id": "pr25-watchdog-body-read-independent-review",
+  "reviewer": "daily_evidence_contract",
+  "verdict": "ACCEPTED",
+  "base_head": "cbc10e79127d9d1c997db452d6e448236603281f",
+  "comment": 4069163812,
+  "source_sha256": {
+    "scripts/ops/paper_watchdog.py": "176f7293248c0c364ac5922783073c7d5b320339fec122420a4569696359b9d0",
+    "tests/test_paper_watchdog.py": "e7dbede6418bcaf6c17fe5ed01f0a65e2c2e50bf741ec5d7b7bc390090b79214"
+  },
+  "unchanged_control_function_AST": [
+    "choose_recovery",
+    "notify_local",
+    "run_watchdog",
+    "observe_policy",
+    "scan_critical_events"
+  ],
+  "findings": [],
+  "acceptance": [
+    "HTTP200 response is established before body-read OSError/Timeout/Reset/RemoteDisconnected; these failures remain reachable/not_ready/read_failed and cannot authorize restart",
+    "Pre-response network failures retain historical recovery eligibility",
+    "Exceptions are sanitized, response bodies close, and fixed tests cover both timing branches",
+    "Existing HTTPError/strict JSON/HTTPException handling preserved; no policy/notification/recovery-action function change"
+  ],
+  "validation": {
+    "independently_parsed_author_JUnit": true,
+    "passed": 127,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "junit_sha256": "579ceb264e85428d28b083c4fd2ea1c33d1b1afb13125ff588f2140a0cf0f115",
+    "red_regression_sha256": "854c81a2cec2f86b9bb3ad2a972bde3e8e7d58f7549addb0b637df1ff16c7094"
+  },
+  "independent_tests_rerun": false,
+  "source_edits": false,
+  "runtime_calls": false,
+  "limitations": [
+    "Code/test/evidence review only; installed host not exercised"
+  ]
+}

@@ -1,0 +1,10 @@
+..............................................                           [100%]
+=============================== warnings summary ===============================
+tests/test_paper_runtime_config.py::test_app_settings_respects_explicit_use_mock_data_false_in_development
+tests/test_paper_runtime_config.py::test_app_settings_keeps_development_mock_default_when_unspecified
+tests/test_paper_runtime_config.py::test_app_settings_respects_explicit_alpaca_paper_false_in_development
+tests/test_paper_runtime_config.py::test_signals_market_data_client_uses_real_client_when_mock_false
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+46 passed, 4 warnings in 1.33s

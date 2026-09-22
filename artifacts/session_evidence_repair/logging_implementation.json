@@ -1,0 +1,91 @@
+{
+  "task_id": "session-evidence-repair-20260922-logging",
+  "status": "implemented_and_targeted_validated; pending_root_full_pack_review_PR_deployment",
+  "scope": "Non-decision logging and read-only daily session evidence; no runtime or host changes",
+  "source_base": "ef3e895bd720524f433944725895d83e67d67905",
+  "branch": "codex/session-evidence-repair",
+  "machine_plan": "artifacts/session_evidence_repair/plan.json",
+  "files_changed": [
+    "logging_config.yaml",
+    "backend/infra/logging.py",
+    "scripts/ops/paper_daily_evidence.py",
+    "scripts/ops/standdown_session_row.py",
+    "tests/test_session_logging_contract.py",
+    "tests/test_paper_daily_evidence.py"
+  ],
+  "source_sha256": {
+    "logging_config.yaml": "15961242a0a19f82ef1533590e9af24e682b35b5728a5d81c39675928ad5ca6f",
+    "backend/infra/logging.py": "3b1be2dbde474f3554ff5c0f62c45d355b91b5cca05b6ce4b857472f368748c3",
+    "scripts/ops/paper_daily_evidence.py": "da19f88fddff2ebd89127317f821296b69ab07c87bf7bbb73314173e10aab046",
+    "scripts/ops/standdown_session_row.py": "bdb8d6fa12c7f9094d6e7ed96450318c5e5e8b0411c5bc0e790522cb0227c469",
+    "tests/test_session_logging_contract.py": "0a8833f555069c2317ea61e33676fcc0e57acaae184e45cef703f7310f433199",
+    "tests/test_paper_daily_evidence.py": "d4ddb7b0e654302739dfed5d0f15e6fa0295c322402693e89f09ed549bb0aaa3"
+  },
+  "design": {
+    "formatter": "Real YAML uses JSONFormatter with record.created UTC and JSON escaping. Diagnostic nonfinite extras are strings.",
+    "stream": "logs/sessions/YYYY-MM-DD.jsonl; intra_session_log_v1; append by record UTC date; restart appends; no rotation or pruning.",
+    "collection": "New collections pin log_contract and exactly one daily filename. No fallback to legacy rotations. No-follow stable reads and whole-capture signatures retained.",
+    "quality": "Missing, rotated, malformed, unversioned, wrong-day, naive-time, invalid UTF-8, nonstandard numeric JSON, truncated or gapped streams cannot qualify.",
+    "legacy": "Older immutable packs without log_contract retain original parsing and verdicts; historical bytes untouched.",
+    "boundary": "New handler creates canonical stream; missing beginning of session still blocks coverage. Original120second freshness and tick-gap thresholds unchanged.",
+    "context_policy": "Deployed YAML omits plain LogRecord extras and exception text/traceback; retains exception type. Canonical formatter defaults to same omission. Existing other JSONFormatter callers retain prior default behavior. Existing message/structlog text still relies on caller scrubbing.",
+    "strict_json": "Canonical parser rejects duplicate fields, nonfinite constants/overflow and nesting deeper than32 with an explicit iterative portable bound; splits only physical LF. Producer preserves nonfinite/overflow diagnostic values as strings; Unicode separators remain inside single records."
+  },
+  "validation": {
+    "passed": 189,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "unique_cases": 190,
+    "skip_details": [
+      {
+        "test": "tests.unit.test_infra_modules.TestInfraLogging::test_structured_logger",
+        "reason": "StructuredLogger not available"
+      }
+    ],
+    "environment": "Clean env, no pytest autoload, explicit asyncio+timeout, no cache, sandbox deny network*, timeout30.",
+    "suites": "new logging contract; daily; host; standdown; adjacent logging; settings; config coordinator; system integration",
+    "lint_new_findings": 0,
+    "lint_existing": "G004 in unchanged configure_structured_logging f-string",
+    "freeze": "PASS with pinned nonsecret env; active cutoff unchanged",
+    "initial_empty_env_freeze": "Rejected six missing approved env values only; supplied values for correct verification without changing source/freeze.",
+    "evidence": {
+      "logging_final.xml": "ed86293a40e656cf0117bab093721ef673fdab1987b191075149b93b848cadf6",
+      "logging_final.log": "3c3c788fed5de9edf13701228d5602653c23edc0915db7418bd461f3a182a709",
+      "logging_lint.json": "e8a1ce781a18b4acf98a8a605b1dafd57b007b261a2b2f28af2e346644c9da2d",
+      "logging_freeze.log": "bc36b72c82fc0f6d70040dc1f2fb5b3eff02be2ab7c801250fe38490d3dba035"
+    },
+    "test_paths": [
+      "tests/test_session_logging_contract.py",
+      "tests/test_paper_daily_evidence.py",
+      "tests/test_standdown_session_row.py",
+      "tests/test_paper_daily_host.py",
+      "tests/test_v13_high_cleanup.py",
+      "tests/unit/test_infra_modules.py::TestInfraLogging",
+      "tests/unit/test_backend_modules_batch2.py::TestInfraLogging",
+      "tests/test_settings_comprehensive.py",
+      "tests/test_config_coordinator_comprehensive.py",
+      "tests/test_system_integration.py"
+    ]
+  },
+  "runtime_behavior_changed": "Prospective logging only; no decisions, models, params, feed, cutoff, accounting or API changes",
+  "runtime_calls_performed": false,
+  "broker_calls_performed": false,
+  "historical_artifact_mutations": false,
+  "committed": false,
+  "risks_and_limits": [
+    "No actual-host installation or logging acceptance claimed.",
+    "Monday remains blocked; no historical day is requalified.",
+    "Daily logs retained indefinitely; pruning requires a separately reviewed operational policy.",
+    "Malformed canonical records withhold coverage even if unrelated to a decision.",
+    "Full safety/replay/artifact pack, review and PR remain parent-owned release gates."
+  ],
+  "review_repairs": [
+    "duplicate-key/overflow/deep-JSON fail-closed tests",
+    "real-YAML plain synthetic-secret extra/exception omission test",
+    "actual Unicode U+0085/U+2028/U+2029 through YAML and collector",
+    "structured overflow producer remains serializable",
+    "Explicit depth32 guard with otherwise-valid portable64-level record regression; independent of decoder recursion limits"
+  ],
+  "source_commit": "f7894af675e0bb9666edbd30aa00bbf96c222c4b"
+}

@@ -1,0 +1,155 @@
+{
+  "close_accounting_policy": "exact_position_fills_or_pending_v1",
+  "drawdown_kill_pct": 0.1,
+  "drawdown_cooldown_s": 300,
+  "max_changes_per_day": 500,
+  "max_positions": 8,
+  "max_daily_loss": 1100.0,
+  "max_notional_per_trade": 2000.0,
+  "alpha_top_n": 5,
+  "tick_interval_seconds": 10,
+  "exploration_enabled": false,
+  "alpha_breakout_bad_regime_filter_enabled": true,
+  "candidate_filter_shadow_telemetry_enabled": false,
+  "candidate_filter_shadow_telemetry_path": "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+  "strategy_evidence_telemetry_enabled": true,
+  "strategy_evidence_telemetry_path": "organism_brain/strategy_evidence_events.jsonl",
+  "phase9_shadow_engines_enabled": false,
+  "timeframe": "1Min",
+  "timeframe_source": "container_env",
+  "learning_mode_threshold_trades": 200,
+  "evolution_freeze_until_trades": 300,
+  "production_promotion_gate": {
+    "min_total_pnl": 0.0,
+    "min_last_50_mean_pnl": 0.0,
+    "min_last_50_win_rate": 0.35,
+    "min_sharpe_per_trade": 0.0
+  },
+  "research_policy": {
+    "id": "paper_research_locked_v1",
+    "locked": true,
+    "reason": "reviewed_paper_baseline_requires_explicit_promotion",
+    "raw_strategy_trade_count": null,
+    "qualified_trade_count": null,
+    "qualification_status": "unverified",
+    "automatic_promotion_enabled": false,
+    "frozen_models": true,
+    "ml_reversal_exit_policy": "retained_saved_model_baseline",
+    "effective_policy_params": null,
+    "effective_policy_hash": null
+  },
+  "horizon_timeout_bars": 18,
+  "bar_boundary_entry_only": true,
+  "confidence_gate_baseline": 0.4,
+  "confidence_gate_defensive": 0.45,
+  "fitness_gate_production": 0.45,
+  "risk_budget_learning": 0.001,
+  "risk_budget_guarded": 0.001,
+  "risk_budget_production": 0.0025,
+  "inverse_etfs": [
+    "DOG",
+    "PSQ",
+    "RWM",
+    "SH"
+  ],
+  "universe_size": 22,
+  "confidence_weights_learning": {
+    "breakout": 0.65,
+    "tension": 0.35,
+    "ml": 0.0
+  },
+  "confidence_weights_guarded": {
+    "breakout": 0.65,
+    "tension": 0.35,
+    "ml": 0.0
+  },
+  "confidence_weights_production": {
+    "ml": 0.5,
+    "breakout": 0.3,
+    "tension": 0.2
+  },
+  "stop_atr_table": {
+    "trending_up": 3.5,
+    "trending_down": 2.5,
+    "chop": 2.5,
+    "high_vol": 4.0,
+    "low_vol": 3.0,
+    "stress": 2.5,
+    "unknown": 3.0
+  },
+  "source": "resolved_config",
+  "snapshot_source": "resolved_config_snapshot",
+  "container": "intra-api-1",
+  "app_environment": "development",
+  "alpaca_paper": "true",
+  "resolution_sources": {
+    "timeframe": "container_env",
+    "candidate_filter_shadow_telemetry_path": "container_env",
+    "strategy_evidence_telemetry_path": "container_env",
+    "drawdown_kill_pct": "container_env",
+    "drawdown_cooldown_s": "container_env",
+    "max_changes_per_day": "container_env",
+    "max_positions": "container_env",
+    "max_daily_loss": "container_env",
+    "max_notional_per_trade": "container_env",
+    "alpha_top_n": "container_env",
+    "tick_interval_seconds": "container_env",
+    "exploration_enabled": "container_env",
+    "alpha_breakout_bad_regime_filter_enabled": "code_default",
+    "candidate_filter_shadow_telemetry_enabled": "container_env",
+    "strategy_evidence_telemetry_enabled": "container_env",
+    "phase9_shadow_engines_enabled": "container_env"
+  },
+  "code_defaults": {
+    "drawdown_kill_pct": 0.05,
+    "drawdown_cooldown_s": 3600,
+    "max_changes_per_day": 100,
+    "max_positions": 8,
+    "max_daily_loss": 0.0,
+    "max_notional_per_trade": 0.0,
+    "production_promotion_gate": {
+      "min_total_pnl": 0.0,
+      "min_last_50_mean_pnl": 0.0,
+      "min_last_50_win_rate": 0.35,
+      "min_sharpe_per_trade": 0.0
+    },
+    "risk_budget_guarded": 0.001,
+    "confidence_weights_guarded": {
+      "breakout": 0.65,
+      "tension": 0.35,
+      "ml": 0.0
+    }
+  },
+  "live_process_reachable": false,
+  "config_truth_status": {
+    "status": "unverified",
+    "configuration_scope": "stopped_container_expected_configuration_not_runtime_observation",
+    "engine_observed": false,
+    "mismatches": [],
+    "note": "Expected configuration resolved from stopped old-container Config.Env and candidate source defaults. Candidate installation and actual-process acceptance are pending; empty mismatch list is not runtime agreement."
+  },
+  "evidence_scope": "stopped_container_expected_configuration_not_runtime_observation",
+  "provenance": {
+    "method": "existing_snapshot_writer_resolution_with_docker_inspect_Config.Env_allowlist",
+    "observed_at_utc": "2026-09-21T11:19:29.457063+00:00",
+    "container_config_source": {
+      "id": "73dc7871d68559a229831f8013ffefb8240143a999a0df2e7e457c80e3b51d7d",
+      "image": "sha256:e6ae46bdeaa65c4650b737b483141e16816fafce4ec35ea675a31c160393047d",
+      "name": "intra-api-1",
+      "status": "exited",
+      "running": false,
+      "started_at": "2026-09-21T10:11:11.379812916Z",
+      "finished_at": "2026-09-21T10:11:20.295855296Z",
+      "exit_code": 0,
+      "source_revision_label": "055f2b98864519ce0cea6af3ca17d4a8d8ea191b"
+    },
+    "candidate_source_sha": "a3b0c9359211d5b99f03fde09be9dce973d9297d",
+    "candidate_image_digest": "sha256:a276b7d98e10aa9823acf6f2d8cea7ba0a85cee673de131ad84e0166bfe057b8",
+    "candidate_baseline_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
+    "installed_container_is_candidate": false,
+    "generator_sha256": "abf05c1c5da7f321931885e1d03a827d227e09ce3e52ad2b817a2a67053e2ee9",
+    "dotenv_read": false,
+    "engine_observed": false,
+    "receipt": "artifacts/operations_evidence/baseline_repair_snapshot_resolution_receipt.json"
+  }
+}

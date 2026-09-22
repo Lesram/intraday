@@ -11,6 +11,8 @@ on:
       - 'scripts/ci/check_kpi_thresholds.py'
       - 'tests/test_postclose_kpi_reporting.py'
       - 'tests/test_monday_ci_workflows.py'
+      - 'scripts/ci/nightly_test_contract.py'
+      - 'tests/test_nightly_test_contract.py'
       - 'scripts/ci/generate_artifacts.py'
       - 'scripts/ci/change_scope.py'
       - 'scripts/ci/generate_audit_index.py'
@@ -77,6 +79,7 @@ jobs:
             tests/test_artifact_change_scope.py \
             tests/test_postclose_kpi_reporting.py \
             tests/test_monday_ci_workflows.py \
+            tests/test_nightly_test_contract.py \
             --junitxml=artifacts/artifact-reporting/junit.xml \
             2>&1 | tee artifacts/artifact-reporting/pytest.log
       - uses: actions/upload-artifact@v4

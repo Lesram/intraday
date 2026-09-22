@@ -1,0 +1,76 @@
+{
+  "task_id": "session-evidence-repair-20260922",
+  "objective": "Repair proven non-decision observability and test-harness defects from the Sept21 paper session; prepare explicit approval scope for actual-frame freshness enforcement.",
+  "source_base": "ef3e895bd720524f433944725895d83e67d67905",
+  "branch": "codex/session-evidence-repair",
+  "runtime_mutations_authorized_in_this_stage": false,
+  "frozen_surface_changes_authorized": false,
+  "preserve": [
+    "installed paper service and private binding",
+    "historical blocked evidence and cutoff",
+    "models and strategy parameters",
+    "user working tree edits"
+  ],
+  "workstreams": [
+    {
+      "name": "logging and session evidence",
+      "affected_files": [
+        "logging_config.yaml",
+        "backend/infra/logging.py",
+        "scripts/ops/paper_daily_evidence.py",
+        "scripts/ops/standdown_session_row.py",
+        "tests/test_paper_daily_evidence.py",
+        "tests/test_standdown_session_row.py",
+        "tests/test_session_logging_contract.py"
+      ],
+      "acceptance": "Real deployed formatter emits escaped JSON with explicitUTC; collector selects new canonical session log safely without old invalid rotations permanently blocking future days, and missing/malformed current evidence still fails closed."
+    },
+    {
+      "name": "readiness diagnostics",
+      "affected_files": [
+        "scripts/ops/paper_watchdog.py",
+        "tests/test_paper_watchdog.py"
+      ],
+      "acceptance": "Bounded allowlisted HTTPstatus/component/reason diagnostics retained on nonready without secrets, raw errors or changed recovery decisions."
+    },
+    {
+      "name": "nightly validation harness",
+      "affected_files": [
+        ".github/workflows/nightly.yml",
+        ".github/workflows/paper-readiness.yml",
+        ".github/workflows/artifact-reporting.yml",
+        "scripts/ci/nightly_test_contract.py",
+        "tests/conftest.py",
+        "tests/test_api_fixture_isolation.py",
+        "tests/test_strategies_automated_suite.py",
+        "tests/test_nightly_test_contract.py",
+        "tests/test_monday_ci_workflows.py",
+        "tests/test_v12_w84_governance_docs.py"
+      ],
+      "acceptance": "Identify explicit required services/fixtures and credentials; fix deterministic fixtures and separate external integration evidence honestly. No weakened assertions, silent skippedcoverage or production credentials/services."
+    },
+    {
+      "name": "frozen freshness specification",
+      "affected_files": [
+        "docs/engineering/SESSION_EVIDENCE_REPAIR.md"
+      ],
+      "acceptance": "Specify actual-frame age at final submission acrossstreaming/REST, replay impact and cutoff implications for explicit approval. No decisionpath changes."
+    }
+  ],
+  "required_validation": [
+    "targeted new and affected tests",
+    "settings/config coordinator/system integration for config changes",
+    "organism state/exits/sizing/replay regression suites",
+    "python scripts/ci/generate_artifacts.py full",
+    "python scripts/ci/generate_audit_index.py",
+    "python scripts/phase2_freeze.py --verify",
+    "independent review and openPR with artifacts"
+  ],
+  "done_condition": "Tested nonfrozen fixes committed on featurebranch with PR open and evidence attached; frozen decision change remains a concrete reviewed approval item.",
+  "discovered_validation_requirements": [
+    "External import-time diagnostic probes must be intercepted before importing their modules; exact test registry drift must fail collection",
+    "Parser rejection of a responding readiness endpoint must not introduce restart authority",
+    "Canonical JSON logs must reject duplicate/nonfinite values and support literal Unicode separators",
+    "Runtime snapshot is offline defaults in isolated validation, not proof of installed configuration"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "task_id": "pr25-snapshot-provenance-comments",
+  "comments": [4069163837, 4069163865],
+  "scope": "Label current offline test-generated values as expected configuration, preserve prior stopped-container resolution separately as historical, and prevent misleading regenerated audit labels",
+  "affected_source_files": ["scripts/runtime/write_runtime_snapshot.py", "scripts/ci/generate_audit_index.py", "tests/test_runtime_snapshot_auth.py", "tests/test_artifact_change_scope.py"],
+  "affected_artifacts_docs": ["artifacts/runtime_config_snapshot.json", "artifacts/resolved_config_snapshot.json", "docs/engineering/LIVE_AUDIT_INDEX.md", "docs/engineering/SESSION_EVIDENCE_REPAIR.md", "artifacts/session_evidence_repair/snapshot_provenance_*"],
+  "preserve": ["current generated configuration values", "defaults and unreachable live-process artifact bytes", "historical snapshot bytes in separately labeled archives", "trading source/config/freeze/cutoff", "other agents' edits"],
+  "validation": "Mocked snapshot and index generation; clean environment and OS network denial; targeted existing suites; scoped lint and read-only freeze verification",
+  "runtime_reads_or_writes": false,
+  "credentials_access": false,
+  "commit_or_github_write": false
+}

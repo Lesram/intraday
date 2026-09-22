@@ -1,0 +1,7 @@
+...............                                                          [100%]
+=============================== warnings summary ===============================
+tests/test_strategies_automated_suite.py::TestPhase3API::test_01_api_list_strategies
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+15 passed, 1 warning in 1.97s

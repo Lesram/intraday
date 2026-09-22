@@ -1,0 +1,43 @@
+{
+  "new_findings": [],
+  "all_findings": [
+    {
+      "cell": null,
+      "code": "G004",
+      "end_location": {
+        "column": 76,
+        "row": 571
+      },
+      "filename": "/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/backend/infra/logging.py",
+      "fix": null,
+      "location": {
+        "column": 9,
+        "row": 570
+      },
+      "message": "Logging statement uses f-string",
+      "noqa_row": 570,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+    }
+  ],
+  "baseline_findings": [
+    {
+      "cell": null,
+      "code": "G004",
+      "end_location": {
+        "column": 76,
+        "row": 515
+      },
+      "filename": "/Users/marselkei/.codex/worktrees/intra-session-evidence-repair/intra/backend/infra/logging.py",
+      "fix": null,
+      "location": {
+        "column": 9,
+        "row": 514
+      },
+      "message": "Logging statement uses f-string",
+      "noqa_row": 514,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+    }
+  ]
+}

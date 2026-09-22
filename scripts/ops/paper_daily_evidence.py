@@ -29,7 +29,9 @@ from typing import Callable
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from scripts.ops.standdown_session_row import ET, calendar_session, session_diagnostics, timestamp
+from scripts.ops.standdown_session_row import (
+    ET, SESSION_LOG_SCHEMA, calendar_session, session_diagnostics, session_log_paths, timestamp,
+)
 from scripts.research.paper_fill_reconciliation import reconcile
 
 PAPER_BASE = "https://paper-api.alpaca.markets"
@@ -206,7 +208,7 @@ def file_signature(item) -> tuple:
 
 
 def capture_local(root: Path, freeze: Path, activation: Path, release: Path, baseline: Path | None,
-                  inputs: dict[str, bytes]) -> list[Path]:
+                  inputs: dict[str, bytes], *, day: str) -> list[Path]:
     mapping = {"local/freeze.json": freeze, "local/activation.json": activation,
                "local/release.json": release,
                "local/trades.csv": root / "organism_brain/trade_history.csv",
@@ -217,8 +219,11 @@ def capture_local(root: Path, freeze: Path, activation: Path, release: Path, bas
     entry_evidence = root / "organism_brain/entry_evidence.jsonl"
     if entry_evidence.exists():
         mapping["local/entry_evidence.jsonl"] = entry_evidence
-    logs = sorted((root / "logs").glob("application.log*"))
-    mapping.update({"logs/" + path.name: path for path in logs if path.is_file()})
+    try:
+        logs = session_log_paths(root, day)
+    except ValueError as exc:
+        raise EvidenceError(str(exc)) from None
+    mapping.update({str(path.relative_to(root)): path for path in logs})
     if baseline:
         mapping["baseline/backup_manifest.json"] = baseline / "backup_manifest.json"
         mapping["baseline/trades.csv"] = baseline / "trade_history.csv"
@@ -229,7 +234,11 @@ def capture_local(root: Path, freeze: Path, activation: Path, release: Path, bas
         before, after = states[name], path.stat()
         if file_signature(before) != file_signature(after):
             raise EvidenceError("input_set_changed_during_capture")
-    if logs != sorted((root / "logs").glob("application.log*")):
+    try:
+        final_logs = session_log_paths(root, day)
+    except ValueError:
+        raise EvidenceError("log_rotation_during_capture") from None
+    if logs != final_logs:
         raise EvidenceError("log_rotation_during_capture")
     return list(mapping.values())
 
@@ -404,7 +413,8 @@ def analyze(inputs: dict[str, bytes], collection: dict, *, gate_fn: Callable = n
         logs = {name: raw for name, raw in inputs.items() if name.startswith("logs/")}
         diagnostic = session_diagnostics(collection["session_date"], session, inputs["local/events.jsonl"],
                                          inputs["local/trades.csv"], logs,
-                                         naive_timezone=collection.get("log_timezone"))
+                                         naive_timezone=collection.get("log_timezone"),
+                                         log_contract=collection.get("log_contract"))
         report["standdown"] = diagnostic
         if diagnostic["coverage"] != "OBSERVED_TICK_COVERAGE":
             issues.append("session_tick_coverage_unverified")
@@ -762,7 +772,8 @@ def collect(root: Path, freeze: Path, activation: Path, release: Path, baseline:
             day: str, transport, *, now: datetime | None = None, log_timezone=None) -> tuple[dict, dict, list]:
     now = now or datetime.now(timezone.utc)
     collection = {"session_date": day, "captured_at": now.isoformat(), "issues": [],
-                  "collector": "actual_host_get_only", "log_timezone": log_timezone}
+                  "collector": "actual_host_get_only", "log_timezone": log_timezone,
+                  "log_contract": SESSION_LOG_SCHEMA}
     inputs: dict[str, bytes] = {}
     paths = []
     recorder = Recorder(transport, inputs)
@@ -771,7 +782,7 @@ def collect(root: Path, freeze: Path, activation: Path, release: Path, baseline:
         session = calendar_session(day, calendar, now)
         if session["state"] == "NO_SESSION":
             return inputs, collection, paths
-        paths = capture_local(root, freeze, activation, release, baseline, inputs)
+        paths = capture_local(root, freeze, activation, release, baseline, inputs, day=day)
         inputs["runtime/container.json"] = transport.container_identity()
         cutoff = json.loads(inputs["local/freeze.json"])["FROZEN_AT"]
         for name, origin, endpoint in (
