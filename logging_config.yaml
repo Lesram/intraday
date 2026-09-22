@@ -3,8 +3,11 @@ disable_existing_loggers: False
 
 formatters:
   json:
-    format: '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s", "module": "%(module)s", "function": "%(funcName)s", "line": %(lineno)d}'
-    datefmt: '%Y-%m-%dT%H:%M:%S'
+    (): backend.infra.logging.JSONFormatter
+    include_context: false
+
+  session_json:
+    (): backend.infra.logging.SessionJSONFormatter
 
   standard:
     format: '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
@@ -26,6 +29,12 @@ handlers:
     backupCount: 5
     encoding: utf8
 
+  session:
+    class: backend.infra.logging.UTCSessionFileHandler
+    level: INFO
+    formatter: session_json
+    directory: /app/logs/sessions
+
 root:
   level: INFO
   handlers: [console]
@@ -43,7 +52,7 @@ loggers:
 
   backend:
     level: INFO
-    handlers: [console, file]
+    handlers: [console, file, session]
     propagate: no
 
   audit:

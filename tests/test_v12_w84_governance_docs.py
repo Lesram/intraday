@@ -25,6 +25,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 V13_FRAMEWORK = REPO_ROOT / "artifacts" / "audit" / "V13_FRAMEWORK.md"
 BRANCH_HYGIENE = REPO_ROOT / "artifacts" / "audit" / "BRANCH_HYGIENE.md"
+# The historical archive is immutable. Detached CI checkouts have this object
+# with fetch-depth: 0 but need not materialize a local branch alias.
+V12_ARCHIVE_SHA = "859202f3db5c02a24a40fd18836984029301f16f"
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -88,18 +91,17 @@ def test_w84_branch_hygiene_doc_describes_v13_cutover():
     assert "findings_ledger.json" in src
 
 
-def test_w84_audit_evidence_branch_exists():
-    """Behavioral: the snapshot branch must actually exist in this
-    repo's git refs.  Locks the non-destructive hygiene approach."""
+def test_w84_audit_evidence_archive_exists():
+    """Require the actual historical object, never a fabricated branch at HEAD."""
     proc = subprocess.run(
-        ["git", "rev-parse", "--verify", "audit-evidence/v12"],
+        ["git", "rev-parse", "--verify", V12_ARCHIVE_SHA + "^{commit}"],
         capture_output=True, text=True, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, (
-        "V12 W84 regression: audit-evidence/v12 branch missing.  "
-        "Recreate via:\n"
-        "  git branch audit-evidence/v12 HEAD"
+        "V12 W84 regression: immutable V12 archive is missing. "
+        "Fetch the repository's full history; do not recreate evidence at HEAD."
     )
+    assert proc.stdout.strip() == V12_ARCHIVE_SHA
 
 
 def test_w84_audit_evidence_branch_contains_v12_synthesis():
@@ -107,7 +109,7 @@ def test_w84_audit_evidence_branch_contains_v12_synthesis():
     the immutable record V13+ refers back to."""
     proc = subprocess.run(
         ["git", "show",
-         "audit-evidence/v12:artifacts/audit/MASTER_AUDIT_SYNTHESIS_v12.md"],
+         V12_ARCHIVE_SHA + ":artifacts/audit/MASTER_AUDIT_SYNTHESIS_v12.md"],
         capture_output=True, text=True, cwd=REPO_ROOT,
     )
     assert proc.returncode == 0, (

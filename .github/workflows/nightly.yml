@@ -29,7 +29,7 @@ jobs:
   deep-tests:
     name: Deep testing suite
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 100
     outputs:
       source_sha: ${{ steps.provenance.outputs.source_sha }}
     env:
@@ -44,6 +44,7 @@ jobs:
       PICKLE_HMAC_SECRET: 'test-pickle-secret-not-for-production'
       PYTHONDONTWRITEBYTECODE: '1'
       DATABASE_URL: postgresql+asyncpg://testuser:testpass@localhost:5432/testdb
+      INTRA_TEST_DATABASE_URL: postgresql+asyncpg://testuser:testpass@localhost:5432/testdb
       REDIS_URL: redis://localhost:6379/0
       TEST_SEED: '42'
       PYTHONPATH: .
@@ -132,16 +133,29 @@ jobs:
         # alembic.ini points to backend/migrations/env.py, which converts the
         # async test URL to psycopg2 for the migration connection.
         run: python -m alembic upgrade head
-      - name: Run deep test suite once and retain output
+      - name: Run isolated core suite and declare unavailable integrations
         timeout-minutes: 45
         shell: bash
         run: |
           set -o pipefail
           mkdir -p test_reports
           python -m pytest tests/ --tb=short --durations=20 \
+            -p scripts.ci.nightly_test_contract --intra-nightly-lane=core \
+            --intra-nightly-manifest=test_reports/core-selection.json --randomly-seed=42 \
             --cov=backend --cov-report=term-missing --cov-report=xml:deep-coverage.xml \
             --cov-report=html:deep-htmlcov --timeout=30 -v -m 'not slow' \
             --junitxml=test_reports/nightly.xml 2>&1 | tee test_reports/nightly.log
+      - name: Run required replay cases without coverage instrumentation
+        if: always() && steps.provenance.outcome == 'success'
+        timeout-minutes: 25
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test_reports
+          python -m pytest tests/ -p no:cov -p scripts.ci.nightly_test_contract \
+            --intra-nightly-lane=replay --intra-nightly-manifest=test_reports/replay-selection.json \
+            --randomly-seed=42 --timeout=120 --tb=short --durations=20 -v \
+            --junitxml=test_reports/replay.xml 2>&1 | tee test_reports/replay.log
       - name: Performance regression check
         if: always()
         timeout-minutes: 1
@@ -194,9 +208,11 @@ jobs:
               expected_sha: process.env.EXPECTED_SHA, source_sha: process.env.AUDITED_SHA || null,
               caller_sha: context.sha, run_url: url, run_id: context.runId,
               run_attempt: process.env.GITHUB_RUN_ATTEMPT,
+              validation_scope: 'Isolated core and replay suites; not runtime certification',
+              external_verification: 'UNAVAILABLE; dedicated API and disposable account not provisioned',
               notification: 'disabled; explicit notify_issues authorization required'};
             const title = '[Nightly Audit] CI evidence failure';
-            const body = `Result: **${result.result}**\n\nAudited source: ${result.source_sha || 'not verified'}\nExpected source: ${result.expected_sha}\n\nRun: ${url}\n\nInspect uploaded artifacts and logs. This is CI evidence, not a live trading-health certificate.`;
+            const body = `Result: **${result.result}**\n\nAudited source: ${result.source_sha || 'not verified'}\nExpected source: ${result.expected_sha}\n\nRun: ${url}\n\nExternal integration verification: **${result.external_verification}**. Inspect uploaded selection manifests, artifacts and logs. This is CI evidence, not a live trading-health certificate.`;
             try {
               if (result.result !== 'success' && process.env.NOTIFY_ISSUES === 'true') {
                 const issues = await github.paginate(github.rest.issues.listForRepo,

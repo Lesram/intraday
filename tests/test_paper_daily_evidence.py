@@ -73,6 +73,7 @@ def host(tmp_path):
     brain.mkdir()
     logs = tmp_path / 'logs'
     logs.mkdir()
+    (logs / 'sessions').mkdir()
     freeze = tmp_path / 'freeze.json'
     freeze.write_bytes(daily.encoded({'FROZEN_AT': CUTOFF, 'surface': {'routing_data_env': {'ALPACA_DATA_FEED': 'iex'}}}))
     activation = tmp_path / 'activation.json'
@@ -86,12 +87,14 @@ def host(tmp_path):
     (brain / 'strategy_evidence_events.jsonl').write_bytes(b'')
     (brain / 'close_accounting.json').write_bytes(daily.encoded(checkpoint([])))
     opened = NOW.replace(hour=13, minute=30)
-    lines = [daily.encoded({'timestamp': (opened + timedelta(seconds=n)).isoformat(),
+    lines = [daily.encoded({'schema': daily.SESSION_LOG_SCHEMA, 'logger': 'backend.organism.live_engine',
+                           'timestamp': (opened + timedelta(seconds=n)).isoformat().replace('+00:00', 'Z'),
                            'message': 'Organism tick: regime=trending_up signals=0 orders=0 exits=0 0.1s'}).decode().replace('\n', '') + '\n'
              for n in range(0, 23401, 120)]
-    # All rotations, including .9, are necessary to achieve coverage.
-    (logs / 'application.log.9').write_text(''.join(lines[:100]))
-    (logs / 'application.log').write_text(''.join(lines[100:]))
+    (logs / 'sessions' / (DAY + '.jsonl')).write_text(''.join(lines))
+    # Old malformed rotations stay intact, outside the versioned daily stream.
+    (logs / 'application.log.9').write_text('{"message": "{"event": "legacy"}"}\n')
+    (logs / 'application.log').write_text('legacy unzoned record\n')
     return tmp_path, freeze, activation, release
 
 
@@ -107,7 +110,8 @@ def test_complete_actual_collector_no_trade_is_not_missing_evidence(host):
     assert report['trade_observation'] == 'NO_FORWARD_TRADES'
     assert report['strategy_gate']['momentum']['state'] == 'INSUFFICIENT'
     assert report['standdown']['counts']['successful_ticks'] == 196
-    assert 'logs/application.log.9' in inputs
+    assert 'logs/sessions/' + DAY + '.jsonl' in inputs
+    assert 'logs/application.log.9' not in inputs
     assert report['promotion_authorized'] is False
 
 
@@ -137,7 +141,7 @@ def test_independent_partial_cashflows_costs_and_positive_gate_withheld(host):
 def test_quality_failures_never_expose_pass(host, kind):
     inputs, collection, _ = run_host(host)
     if kind == 'missing_logs':
-        del inputs['logs/application.log.9']
+        del inputs['logs/sessions/' + DAY + '.jsonl']
     elif kind == 'pending':
         inputs['local/close_accounting.json'] = daily.encoded(checkpoint([], pending={'XYZ': {'pending_close': {'observed_at': NOW.isoformat()}}}))
     elif kind == 'bad_checksum':

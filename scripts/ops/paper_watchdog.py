@@ -5,6 +5,7 @@ import argparse
 from datetime import datetime, timezone
 import fcntl
 import hashlib
+import http.client
 import json
 import math
 import os
@@ -29,6 +30,101 @@ STARTUP_GRACE_SECONDS = 60
 BACKUP_MAX_AGE_SECONDS = 26 * 3600
 BACKUP_MAX_BYTES = 512 * 1024 * 1024
 POSTGRES_BACKUP_DIR = Path.home() / "Library/Application Support/Intra/backups/postgres"
+READINESS_MAX_BYTES = 8192
+READINESS_MAX_DEPTH = 16
+
+
+class ReadinessPayloadError(ValueError):
+    """Only fixed local codes may describe an unreadable response."""
+
+    def __init__(self, code, *, legacy_unreadable=False):
+        self.code = code if code in ("invalid_json", "body_too_large", "invalid_schema") else "invalid_json"
+        self.legacy_unreadable = legacy_unreadable
+        super().__init__(self.code)
+
+
+def _read_readiness(response) -> dict:
+    raw = response.read(READINESS_MAX_BYTES + 1)
+    if not isinstance(raw, bytes):
+        raise ReadinessPayloadError("invalid_json", legacy_unreadable=True)
+    if len(raw) > READINESS_MAX_BYTES:
+        raise ReadinessPayloadError("body_too_large")
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ReadinessPayloadError("invalid_json")
+            result[key] = value
+        return result
+
+    def invalid_constant(value):
+        raise ReadinessPayloadError("invalid_json")
+
+    try:
+        value = json.loads(raw, object_pairs_hook=unique_object, parse_constant=invalid_constant)
+    except ReadinessPayloadError:
+        raise
+    except RecursionError:
+        raise ReadinessPayloadError("invalid_json") from None
+    except (ValueError, UnicodeError):
+        raise ReadinessPayloadError("invalid_json", legacy_unreadable=True) from None
+    if not isinstance(value, dict):
+        raise ReadinessPayloadError("invalid_schema", legacy_unreadable=True)
+    pending = [(value, 0)]
+    while pending:
+        item, depth = pending.pop()
+        if depth > READINESS_MAX_DEPTH:
+            raise ReadinessPayloadError("invalid_json")
+        if isinstance(item, dict):
+            pending.extend((child, depth + 1) for child in item.values())
+        elif isinstance(item, list):
+            pending.extend((child, depth + 1) for child in item)
+    return value
+
+
+def _readiness_diagnostics(response, payload=None, *, body_status="parsed") -> dict:
+    """Map the readyz contract to fixed codes; never copy response prose."""
+    result = {"body_status": body_status, "checks": {}, "reasons": {}}
+    status = getattr(response, "status", None)
+    if type(status) is int and 100 <= status <= 599:
+        result["http_status"] = status
+    if payload is None:
+        return result
+    if payload.get("status") not in ("ready", "not ready", "not_ready"):
+        result["body_status"] = "invalid_schema"
+    checks = payload.get("checks", {})
+    problems = payload.get("problems", {})
+    if not isinstance(checks, dict) or not isinstance(problems, dict):
+        result["body_status"] = "invalid_fields"
+        return result
+    for component in ("database", "broker", "brain_loaded", "tick_recent"):
+        if component in checks:
+            if type(checks[component]) is bool:
+                result["checks"][component] = checks[component]
+            else:
+                result["body_status"] = "invalid_fields"
+    for component in ("database", "broker", "brain", "tick_loop", "readiness_diag"):
+        if component not in problems:
+            continue
+        message = problems[component]
+        reason = "unclassified"
+        if not isinstance(message, str):
+            result["body_status"] = "invalid_fields"
+        elif component in ("database", "broker"):
+            label = "Database" if component == "database" else "Broker"
+            if message == label + " connection failed":
+                reason = "connection_failed"
+            elif re.fullmatch(label + r" timeout \(\d{1,9}(?:\.\d{1,3})?ms > \d{1,9}ms\)", message):
+                reason = "timeout"
+        elif component == "brain" and message == "Brain not loaded":
+            reason = "not_loaded"
+        elif component == "tick_loop" and re.fullmatch(r"Last tick \d{1,9}s ago \(>60s\)", message):
+            reason = "stale"
+        elif component == "readiness_diag":
+            reason = "diagnostic_error"
+        result["reasons"][component] = reason
+    return result
 
 
 def command(args: list[str], timeout: int = 10) -> subprocess.CompletedProcess:
@@ -79,20 +175,48 @@ def observe(now: float) -> dict:
             result["problems"].append(f"{service}_stopped")
         elif item["health"] != "healthy":
             result["problems"].append(f"{service}_{item['health']}")
+    response = None
     try:
         with urllib.request.urlopen("http://127.0.0.1:8000/readyz", timeout=5) as response:
-            readiness = json.load(response)
-        result["readiness"] = {"status": readiness.get("status"), "reachable": True}
+            readiness = _read_readiness(response)
+        status = readiness.get("status")
+        result["readiness"] = {"status": status if status in ("ready", "not ready", "not_ready")
+                               else "not_ready", "reachable": True}
         if readiness.get("status") != "ready":
+            result["readiness"]["diagnostics"] = _readiness_diagnostics(response, readiness)
             result["problems"].append("api_not_ready")
-    except urllib.error.HTTPError:
+    except urllib.error.HTTPError as error:
         # A responding readiness endpoint can report an upstream broker failure.
         # Restarting the API would not fix that and could disturb paper state.
-        result["readiness"] = {"status": "not_ready", "reachable": True}
+        try:
+            with error:
+                diagnostics = _readiness_diagnostics(error, _read_readiness(error))
+        except ReadinessPayloadError as invalid:
+            diagnostics = _readiness_diagnostics(error, body_status=invalid.code)
+        except (OSError, ValueError, TypeError, AttributeError, http.client.HTTPException):
+            diagnostics = _readiness_diagnostics(error, body_status="read_failed")
+        result["readiness"] = {"status": "not_ready", "reachable": True,
+                               "diagnostics": diagnostics}
         result["problems"].append("api_not_ready")
+    except ReadinessPayloadError as invalid:
+        # New diagnostic bounds/strictness cannot grant restart authority for
+        # an API that responded. Preserve only the old JSON/schema failure path.
+        result["readiness"] = {"status": "unreachable" if invalid.legacy_unreadable else "not_ready",
+                               "reachable": not invalid.legacy_unreadable,
+                               "diagnostics": _readiness_diagnostics(response, body_status=invalid.code)}
+        result["problems"].append("api_readiness_unreachable" if invalid.legacy_unreadable else "api_not_ready")
     except (OSError, ValueError, TypeError, AttributeError):
         result["readiness"] = {"status": "unreachable", "reachable": False}
         result["problems"].append("api_readiness_unreachable")
+    except http.client.HTTPException:
+        # A newly handled protocol/body failure is not new restart authority.
+        # Without a response object, leave reachability unverified.
+        if response is not None:
+            result["readiness"] = {"status": "not_ready", "reachable": True,
+                                   "diagnostics": _readiness_diagnostics(response, body_status="read_failed")}
+            result["problems"].append("api_not_ready")
+        else:
+            result["problems"].append("api_readiness_unverified")
     return result
 
 

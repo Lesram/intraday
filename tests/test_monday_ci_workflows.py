@@ -82,14 +82,27 @@ def test_provenance_program_validates_full_sha_and_clears_stale_evidence(name, j
     assert result.returncode != 0
 
 
-def test_nightly_runs_suite_once_and_retains_raw_failure_output():
+def test_nightly_partitions_required_lanes_and_retains_failure_output():
     job = _load("nightly.yml")["jobs"]["deep-tests"]
     steps = [step for step in job["steps"] if "pytest tests/" in step.get("run", "")]
-    assert len(steps) == 1
+    assert len(steps) == 2
     run = steps[0]["run"]
     assert "set -o pipefail" in run and "tee test_reports/nightly.log" in run
     assert "--junitxml=test_reports/nightly.xml" in run
     assert steps[0]["timeout-minutes"] < job["timeout-minutes"]
+    assert "--intra-nightly-lane=core" in run
+    assert "--intra-nightly-manifest=test_reports/core-selection.json" in run
+    assert "--randomly-seed=42" in run
+    replay = steps[1]
+    assert "always()" in replay["if"]
+    assert "-p no:cov" in replay["run"] and "--cov=" not in replay["run"]
+    assert "--intra-nightly-lane=replay" in replay["run"]
+    assert "--randomly-seed=42" in replay["run"] and "--timeout=120" in replay["run"]
+    assert "--junitxml=test_reports/replay.xml" in replay["run"]
+    assert "set -o pipefail" in replay["run"] and "tee test_reports/replay.log" in replay["run"]
+    assert all(not step.get("continue-on-error", False) for step in steps)
+    assert job["timeout-minutes"] >= sum(step.get("timeout-minutes", 0) for step in job["steps"]) + 5
+    assert job["env"]["INTRA_TEST_DATABASE_URL"] == job["env"]["DATABASE_URL"]
     assert "actions-gh-pages" not in json.dumps(job)
 
 
@@ -257,6 +270,7 @@ def test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence():
         "tests/test_v12_w77_findings_ledger.py", "tests/test_v12_w81_ci_cleanup.py",
         "tests/unit/test_auth_security_phase4.py", "tests/test_strategy_engine_comprehensive.py",
         "tests/test_organism_integration_smoke.py", "tests/test_phase2_freeze.py",
+        "tests/test_v12_w84_governance_docs.py",
     }
     import shlex
     assert {word for word in shlex.split(run) if word.startswith("tests/")} == expected

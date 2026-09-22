@@ -6,11 +6,11 @@ with proper database initialization and mocking.
 """
 
 import pytest
-import os
 import concurrent.futures
-import asyncio
+import os
 import pathlib
-import glob
+import json
+import re
 import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
@@ -44,10 +44,30 @@ if "ORGANISM_SHADOW_EXIT_TELEMETRY_PATH" not in os.environ:
         os.environ["ORGANISM_BRAIN_DIR"], "shadow_exit_telemetry.jsonl"
     )
 
-# Global flag to track if database has been initialized
-_db_initialized = False
-_db_engine = None
-_db_sessionmaker = None
+def _isolated_postgres_url(value: str) -> str:
+    """Only an explicit, test-named local/service PostgreSQL DB may be seeded.
+
+    DATABASE_URL alone is deliberately not authorization: a developer shell or
+    dotenv file may contain the installed platform's database connection.
+    """
+    from sqlalchemy.engine import make_url
+
+    try:
+        url = make_url(value)
+    except Exception:
+        raise ValueError("Invalid INTRA_TEST_DATABASE_URL") from None
+    if (
+        url.drivername != "postgresql+asyncpg"
+        or url.host not in {"localhost", "127.0.0.1", "::1", "postgres"}
+        or not re.fullmatch(r"test(?:db|_[a-z0-9_]+)", url.database or "")
+        or not re.fullmatch(r"test(?:user|_[a-z0-9_]+)", url.username or "")
+        or url.query
+    ):
+        raise ValueError(
+            "INTRA_TEST_DATABASE_URL must identify an isolated local PostgreSQL "
+            "test database and test user; arbitrary application databases are refused"
+        )
+    return value
 
 
 @pytest.fixture(autouse=True)
@@ -75,26 +95,12 @@ def reset_module_caches():
 
 def pytest_configure(config):
     """
-    Set test environment variables before any tests run.
-    Also clean up any leftover test database files.
+    Set isolated test defaults before any test modules are imported.
     """
-    # Clean up any leftover test database files from previous runs
-    test_results_dir = pathlib.Path("./test_results")
-    if test_results_dir.exists():
-        for db_file in test_results_dir.glob("test_db_*.sqlite3*"):
-            try:
-                db_file.unlink()
-            except Exception:
-                pass  # Ignore cleanup errors
-    
-    # Test admin credentials
-    os.environ.setdefault("TEST_ADMIN_USERNAME", "testadmin")
-    os.environ.setdefault("TEST_ADMIN_PASSWORD", "TestP@ssw0rd123")
-    
-    # Database configuration for tests - USE POSTGRESQL FROM .env
-    # Tests should use the actual PostgreSQL database like production
-    # The .env file already has: DATABASE_URL=postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading
-    
+    # Never delete another test process's files or inherit a platform DSN.
+    os.environ.setdefault("TEST_ADMIN_USERNAME", "admin@example.com")
+    os.environ.setdefault("TEST_ADMIN_PASSWORD", "Admin123!@#")
+
     # Mock configuration
     os.environ.setdefault("USE_MOCK_BROKER", "true")
     os.environ.setdefault("USE_MOCK_DATA", "true")
@@ -105,15 +111,13 @@ def pytest_configure(config):
     os.environ.setdefault("SECURITY_JWT_SECRET", "test-jwt-secret-not-for-production")
     os.environ.setdefault("PICKLE_HMAC_SECRET", "test-pickle-hmac-secret-not-for-production")
 
-    # Default test DB to SQLite unless explicitly provided.
-    # Use a session-unique database to avoid conflicts between test runs
-    import uuid as _uuid
-    unique_session_id = _uuid.uuid4().hex[:8]
-    os.environ.setdefault(
-        "DATABASE_URL",
-        f"sqlite+aiosqlite:///./test_results/test_db_{unique_session_id}.sqlite3",
-    )
-    
+    explicit_test_url = os.environ.get("INTRA_TEST_DATABASE_URL")
+    if explicit_test_url:
+        os.environ["DATABASE_URL"] = _isolated_postgres_url(explicit_test_url)
+    else:
+        scratch = pathlib.Path(tempfile.mkdtemp(prefix="intra_pytest_db_"))
+        os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{scratch / 'session.sqlite3'}"
+
     # Other settings
     os.environ.setdefault("DEBUG", "false")
     os.environ.setdefault("LOG_LEVEL", "WARNING")
@@ -145,152 +149,111 @@ async def mock_db_session():
 
 
 @pytest.fixture
-def client():
+def isolated_database_url(tmp_path):
+    """A caller-owned migrated PostgreSQL DB, or this test's private SQLite file."""
+    explicit_test_url = os.environ.get("INTRA_TEST_DATABASE_URL")
+    if explicit_test_url:
+        return _isolated_postgres_url(explicit_test_url)
+    return f"sqlite+aiosqlite:///{tmp_path / 'api.sqlite3'}"
+
+
+async def _seed_api_test_user(app, credentials):
+    """Run on TestClient's portal, using the pool created by app startup.
+
+    PostgreSQL must already have the real Alembic schema. SQLite supplies only
+    the auth/model tables needed by the lightweight API tests; it is not used
+    as evidence for PostgreSQL migrations or strategy schema correctness.
     """
-    Create a test client for the FastAPI app with proper initialization.
-    
-    Uses the actual PostgreSQL database from .env file.
-    Assumes the database is already running via Docker and has the users table created.
+    from sqlalchemy import bindparam, text
+    from sqlalchemy.dialects.postgresql import ARRAY
+    from sqlalchemy import String
+    from backend.infra.security import hash_password
+
+    factory = app.state.sessionmaker
+    assert factory is app.state.db_sessionmaker, "App database factories diverged"
+    async with factory() as session:
+        is_sqlite = session.bind.dialect.name == "sqlite"
+        if is_sqlite:
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL,
+                    hashed_password TEXT NOT NULL, roles TEXT NOT NULL,
+                    is_active BOOLEAN NOT NULL DEFAULT 1,
+                    failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+                    locked_until TEXT NULL, last_login TEXT NULL
+                )
+            """))
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS model_registry (
+                    id TEXT PRIMARY KEY, name TEXT NOT NULL, version TEXT NOT NULL,
+                    path TEXT, metrics TEXT, active BOOLEAN NOT NULL DEFAULT 0,
+                    trained_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+                )
+            """))
+        username, password = credentials
+        statement = text("""
+            INSERT INTO users (
+                username, email, hashed_password, roles, is_active,
+                failed_login_attempts, locked_until, last_login
+            ) VALUES (:username, :email, :hashed_password, :roles, :active, 0, NULL, NULL)
+            ON CONFLICT (username) DO UPDATE SET
+                email = excluded.email, hashed_password = excluded.hashed_password,
+                roles = excluded.roles, is_active = excluded.is_active,
+                failed_login_attempts = 0, locked_until = NULL, last_login = NULL
+        """)
+        roles = ["admin", "trader"]
+        if not is_sqlite:
+            statement = statement.bindparams(bindparam("roles", type_=ARRAY(String)))
+        await session.execute(statement, {
+            "username": username,
+            "email": username if "@" in username else f"{username}@example.test",
+            "hashed_password": hash_password(password),
+            "roles": json.dumps(roles) if is_sqlite else roles,
+            "active": True,
+        })
+        await session.commit()
+
+
+@pytest.fixture
+def client(monkeypatch, isolated_database_url, test_credentials):
+    """Real in-process API/authentication against an explicitly isolated DB.
+
+    Startup creates the pool on TestClient's event loop. Seed through that same
+    portal *after* startup; a separate asyncio.run() creates asyncpg connections
+    attached to a closed/wrong event loop and is intentionally not used here.
     """
-    import uuid as _uuid
-    
-    # Set test environment before any imports
-    os.environ["APP_ENVIRONMENT"] = "testing"
-    os.environ["USE_MOCK_BROKER"] = "true"
-    os.environ["USE_MOCK_DATA"] = "true"
-    
-    # Load DATABASE_URL from .env file (PostgreSQL connection)
-    from dotenv import load_dotenv
-    load_dotenv()
-    
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        # Fall back to a unique file-based SQLite DB for test isolation
-        # Each test function gets its own database file to avoid lock contention
-        import tempfile as _tempfile
-        _test_dir = os.path.join(os.path.dirname(__file__), "..", "test_results")
-        os.makedirs(_test_dir, exist_ok=True)
-        unique_id = _uuid.uuid4().hex[:8]
-        database_url = f"sqlite+aiosqlite:///{_test_dir}/test_db_{unique_id}.sqlite3"
-        os.environ["DATABASE_URL"] = database_url
-    
-    # Initialize database before creating app
-    from backend.infra.db import init_db
-    engine, sessionmaker = init_db(database_url)
-
-    async def _ensure_sqlite_schema_and_seed() -> None:
-        """Ensure minimal schema exists for auth tests when using SQLite."""
-        if not str(database_url).startswith("sqlite"):
-            return
-
-        from sqlalchemy import text as sql_text
-
-        async with sessionmaker() as session:
-            # Minimal users table required by backend.infra.users
-            await session.execute(
-                sql_text(
-                    """
-                    CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username TEXT UNIQUE NOT NULL,
-                        email TEXT NULL,
-                        hashed_password TEXT NOT NULL,
-                        roles TEXT NOT NULL,
-                        is_active BOOLEAN NOT NULL DEFAULT 1,
-                        failed_login_attempts INTEGER NOT NULL DEFAULT 0,
-                        locked_until TEXT NULL,
-                        last_login TEXT NULL
-                    );
-                    """
-                )
-            )
-            
-            # model_registry table for ML model tests
-            await session.execute(
-                sql_text(
-                    """
-                    CREATE TABLE IF NOT EXISTS model_registry (
-                        id TEXT PRIMARY KEY,
-                        name TEXT NOT NULL,
-                        version TEXT NOT NULL,
-                        path TEXT,
-                        metrics TEXT,
-                        active BOOLEAN NOT NULL DEFAULT 0,
-                        trained_at TEXT,
-                        created_at TEXT NOT NULL,
-                        updated_at TEXT NOT NULL
-                    );
-                    """
-                )
-            )
-
-            # Seed expected admin user for tests using bcrypt password hash
-            import bcrypt
-            username = "admin@example.com"
-            password = "Admin123!@#"
-            # Use bcrypt for proper password hashing (matches production auth system)
-            hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-            # Use INSERT OR REPLACE to reset any locked accounts from previous test runs
-            await session.execute(
-                sql_text(
-                    """
-                    INSERT OR REPLACE INTO users (
-                        username, email, hashed_password, roles, is_active,
-                        failed_login_attempts, locked_until, last_login
-                    ) VALUES (
-                        :username, :email, :hashed_password, :roles, :is_active,
-                        0, NULL, NULL
-                    );
-                    """
-                ),
-                {
-                    "username": username,
-                    "email": username,
-                    "hashed_password": hashed_password,
-                    "roles": '["admin","trader"]',
-                    "is_active": 1,
-                },
-            )
-            await session.commit()
-
-    # Ensure local schema is available before app starts
-    asyncio.run(_ensure_sqlite_schema_and_seed())
-    
-    # Import here to avoid circular imports
+    for name, value in {
+        "DATABASE_URL": isolated_database_url,
+        "APP_ENVIRONMENT": "testing", "ENVIRONMENT": "testing",
+        "USE_MOCK_BROKER": "true", "USE_MOCK_DATA": "true",
+    }.items():
+        monkeypatch.setenv(name, value)
+    from backend.config.settings import AppSettings
     from backend.api.factory import create_app
-    
-    # Create app (will use DATABASE_URL from environment)
-    app = create_app()
-    
-    # Store sessionmaker in app state for dependency injection
-    app.state.sessionmaker = sessionmaker
-    app.state.db_sessionmaker = sessionmaker
-    
-    # Create TestClient - manually manage lifecycle to handle teardown errors
+
+    settings = AppSettings()
+    assert settings.database.url == isolated_database_url
+    app = create_app(settings=settings)
     test_client = TestClient(app, raise_server_exceptions=True)
     test_client.__enter__()
-    
-    yield test_client
-    
-    # Manual teardown with error suppression
+    try:
+        assert test_client.portal is not None
+        test_client.portal.call(_seed_api_test_user, app, test_credentials)
+        yield test_client
+    finally:
+        _close_test_client(test_client)
+
+
+def _close_test_client(test_client):
     try:
         test_client.__exit__(None, None, None)
-    except (concurrent.futures.CancelledError, Exception):
-        # Suppress teardown errors - background tasks may be cancelled during shutdown
-        # This is expected behavior and doesn't affect test validity
+    except concurrent.futures.CancelledError:
+        # Existing application task sweeping cancels TestClient's wait_shutdown
+        # portal task after DB disposal. Preserve only this known adapter case;
+        # arbitrary shutdown exceptions must fail the test (the old fixture
+        # suppressed every Exception).
         pass
-    
-    # Clean up unique SQLite database file if it was created
-    if database_url.startswith("sqlite") and "test_db_" in database_url:
-        import pathlib
-        db_path = database_url.replace("sqlite+aiosqlite:///", "")
-        db_file = pathlib.Path(db_path)
-        try:
-            if db_file.exists():
-                db_file.unlink()
-        except Exception:
-            pass  # Ignore cleanup errors
 
 
 @pytest.fixture
@@ -315,8 +278,8 @@ def test_credentials():
     Returns:
         tuple: (username, password)
     """
-    username = os.getenv("TEST_ADMIN_USERNAME", "testadmin")
-    password = os.getenv("TEST_ADMIN_PASSWORD", "TestP@ssw0rd123")
+    username = os.getenv("TEST_ADMIN_USERNAME", "admin@example.com")
+    password = os.getenv("TEST_ADMIN_PASSWORD", "Admin123!@#")
     return username, password
 
 
@@ -333,66 +296,18 @@ def test_login_data(test_credentials):
 
 
 @pytest.fixture
-def token(client):
-    """
-    Fixture that provides a JWT access token for API tests.
-    
-    Returns:
-        str: JWT access token
-    """
-    try:
-        response = client.post("/auth/login", json={
-            "username": "admin@example.com",
-            "password": "Admin123!@#"
-        })
-        
-        if response.status_code == 200:
-            data = response.json()
-            token = data.get("access_token")
-            if token:
-                return token
-        else:
-            print(f"Warning: Login failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        print(f"Warning: Could not get auth token: {e}")
-    
-    raise RuntimeError(
-        "Failed to authenticate for tests. "
-        "Ensure PostgreSQL is running and admin@example.com user exists with password Admin123!@#"
+def token(client, test_login_data):
+    """Obtain a real signed token via database-backed password authentication."""
+    response = client.post("/auth/login", json=test_login_data)
+    assert response.status_code == 200, (
+        f"Isolated test-user login failed with HTTP {response.status_code}"
     )
+    token = response.json().get("access_token")
+    assert isinstance(token, str) and token, "Login response omitted the access token"
+    return token
 
 
 @pytest.fixture
-def auth_headers(client):
-    """
-    Fixture that provides authentication headers for API tests.
-    
-    Uses the actual PostgreSQL admin user credentials.
-    
-    Returns:
-        dict: Headers with Authorization token
-    """
-    try:
-        # Use actual PostgreSQL admin credentials
-        response = client.post("/auth/login", json={
-            "username": "admin@example.com",
-            "password": "Admin123!@#"
-        })
-        
-        if response.status_code == 200:
-            data = response.json()
-            token = data.get("access_token")
-            if token:
-                return {"Authorization": f"Bearer {token}"}
-        else:
-            print(f"Warning: Login failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        print(f"Warning: Could not get auth token: {e}")
-        import traceback
-        traceback.print_exc()
-    
-    # Raise error if authentication fails - tests should not run with mock tokens
-    raise RuntimeError(
-        "Failed to authenticate for tests. "
-        "Ensure PostgreSQL is running and admin@example.com user exists with password Admin123!@#"
-    )
+def auth_headers(token):
+    """Share the real login fixture without a second login or synthetic JWT."""
+    return {"Authorization": f"Bearer {token}"}
