@@ -8,7 +8,7 @@ permissions:
   issues: write
 jobs:
   reviewed-audit:
-    uses: Lesram/intraday/.github/workflows/nightly.yml@a3b0c9359211d5b99f03fde09be9dce973d9297d
+    uses: Lesram/intraday/.github/workflows/nightly.yml@918ef110c184f291735fdd37c5e16e964f55be34
     with:
-      source_sha: a3b0c9359211d5b99f03fde09be9dce973d9297d
+      source_sha: 918ef110c184f291735fdd37c5e16e964f55be34
       notify_issues: true
