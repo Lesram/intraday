@@ -1,0 +1,97 @@
+{
+  "task_id": "final-entry-freshness-independent-review",
+  "reviewer": "daily_evidence_contract",
+  "source_base": "b5a39b12c5a92271843bae918ec2b476183beeba",
+  "verdict": "ACCEPTED_FOR_RELEASE_VALIDATION",
+  "findings": [],
+  "source_sha256": {
+    "backend/organism/entry_freshness.py": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
+    "backend/organism/entry_evidence.py": "e5c303a49974d8a14a0d54ab8488dc67427ae194a21cd5b675ee8df769e229e9",
+    "backend/organism/live_engine.py": "9048cc03cbc857cffa3c17c70f3d0175d7a1906478c59be74df5edd34c28a6c1",
+    "tests/test_entry_freshness.py": "82c2b0d9024a6bf9a01cea705dd060f81d5c9766e23d8b9ea9cc3255ca8a3adb",
+    "tests/test_operator_controls.py": "18f54cef7d3496f387f6efab1cbf1406b5250a88d7a16cc48af3f93eda9c3ef0",
+    "tests/test_apr7_p0_p1_fixes.py": "bbc455a7bb2070df12d9703b5b49216952e119256ef36bb53be1d25fa11d04e5",
+    "tests/test_phase9_strategy_governance.py": "7e41f95195509dd774cd776fe70ac8609e67536aa2b514c30068211982a32619",
+    "scripts/phase2_freeze.py": "782597e8ae29083ad73a5a240a1ebb106cabf18d60af32347ba236f38433bd1e",
+    "scripts/runtime/write_runtime_snapshot.py": "8c94ff3a0558572e3d194dd79b19a5ca35b0faa8d882861591b1080856cbcac8",
+    "docs/architecture/mapss.md": "048ee130d415a9d77fa9e7cf85090714c0c8e6521d5a7adf69f50a22afaba7a2"
+  },
+  "authorization": "Reviewed parent-approved plan: final actual-feature-bar age in[0,120]seconds and new forward cutoff at held paper release; no parameter/feed/model tuning",
+  "scope": [
+    "Final shared entry admission integration",
+    "Frame timestamp/context fail-closed validation",
+    "Receipt age at same final admission instant",
+    "Protective exit separation and accounting",
+    "Targeted fixtures/test assertions",
+    "Source-based freeze/snapshot integration and stated release boundary"
+  ],
+  "verified_contract": [
+    "All organism entry and pyramid submissions reach the shared final guard after quote lookup; no await or fresh quote lookup occurs between admission and OrderService handoff",
+    "Guard requires exact current-tick symbol/direction passed-gate receipt, supported1Min timeframe, complete strictly ordered timezone-aware frame timestamps and valid capture/admission clocks",
+    "UTC nanosecond arithmetic admits exact120s and rejects any greater age; future-at-capture data remains rejected even if clock later catches up",
+    "Streaming callback receipt age0 cannot bypass old actual feature timestamp; real tick tests exercise alpha/breakout/pyramid for both streaming and REST fixtures",
+    "Freshness rejection is an ordinary bounded skip; no pending-entry or submitted-order counter change; protective exit function AST is unchanged and remains reduce_only",
+    "Final EntryAdmission result updates only that submission coroutine receipt through ContextVar; accepted quote delay and overlapping submission regressions preserve exact own ages; context always resets",
+    "Legacy direct-submit fixtures now supply real frame-receipt output without weakening governance/counter/identity assertions",
+    "No new order-side selection, strategy/governance authorization, sizing, models or feed changes; existing long-only paths preserved",
+    "Observer, freshness module and final submission seam are added to freeze source pins; documented active cutoff must be generated at actual held flat deployment"
+  ],
+  "unchanged_function_asts": [
+    "_passes_entry_gates",
+    "_authorize_live_entry_order",
+    "_submit_exit_order"
+  ],
+  "resolved_review_findings": [
+    {
+      "issue": "Receipt previously recorded pre-quote submission time rather than final admission",
+      "resolution": "Immutable admission timestamp/age synchronously copied through coroutine-local receipt context at final guard; both delayed and overlapping-submission tests present"
+    }
+  ],
+  "test_evidence": {
+    "author_executed": true,
+    "independently_parsed_junit": true,
+    "junit_path": "artifacts/final_entry_freshness/targeted.xml",
+    "junit_sha256": "9317df65515298b43e2ce2df07c5656f2a75eb9ee3e756a5b9b83867fe86ca96",
+    "log_sha256": "fda353373924cb900c4de4b675f00a105f85f8b2bd30cef2af440c218af2d2ee",
+    "passed": 129,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "new_freshness_cases": 49,
+    "receipt_regressions": [
+      "test_receipt_records_final_admission_after_quote_delay",
+      "test_overlapping_submissions_keep_their_own_admission_receipt"
+    ]
+  },
+  "independent_test_rerun": false,
+  "source_edits": false,
+  "runtime_calls": false,
+  "release_gates_remaining": [
+    "Parent required organism/state/exits/sizing/replay/evolution suites and full artifact pack",
+    "Exact final source/image/hosted CI/reviewer binding",
+    "Approved held broker-flat deployment with newly generated active cutoff and actual runtime acceptance"
+  ],
+  "limits": [
+    "Admission is the organism-to-OrderService boundary, not subsequent broker execution/fill time",
+    "No independent proof of provider bar aggregation completion; contract explicitly uses provider bar start timestamp",
+    "Missing receipt publication still prevents daily qualification and is not retroactively repaired",
+    "No actual paper orders, live environment or installed models were accessed by this review"
+  ],
+  "replay_fixture_followup": {
+    "verdict": "ACCEPTED",
+    "source_commit": "99ce9632d5959b10911dcf71b2f634d5455d6bdc",
+    "path": "tests/test_replay_simulator.py",
+    "sha256": "590380a8d30f08bb0946bfd9ab3d8fa9f3d46c9ddd3397c7972694ecdbd2bda3",
+    "change": "Only no-throttle fixture adds timezone-aware1Min bar timestamps and explicit1Min timeframe; unchanged >=3-orders assertion",
+    "clock_check": "10:40UTC start+200-bar lookback puts first replay cursor14:00UTC and100 test ticks within market session",
+    "production_core_hashes_unchanged": [
+      "backend/organism/entry_freshness.py",
+      "backend/organism/entry_evidence.py",
+      "backend/organism/live_engine.py"
+    ],
+    "junit_sha256": "ecef46321f6ab66ae828308689fb8a527a14fe85cc811673708e5e0388e1c553",
+    "passed": 1,
+    "failed": 0,
+    "independent_test_rerun": false
+  }
+}

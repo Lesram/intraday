@@ -279,6 +279,13 @@ def test_submit_entry_order_counters_increment(monkeypatch):
         return {"order_id": "abc", "filled_qty": 10}
     eng._order_service = SimpleNamespace(submit_symbol_order=fake_submit)
 
+    # This counter-only direct-call fixture must provide current feature evidence.
+    import pandas as pd
+    from backend.organism.entry_evidence import _frame_receipt
+    eng._timeframe = "1Min"
+    eng._entry_evidence_tick = eng._tick_count
+    eng._entry_evidence_frames = {("AAPL", 1.): _frame_receipt(
+        eng, "AAPL", 1., pd.DataFrame({"timestamp": [eng._now_fn()], "close": [100.]}))}
     asyncio.run(eng._submit_entry_order("AAPL", 10))
     assert eng._total_orders_submitted == 1
 

@@ -1,0 +1,81 @@
+{
+  "task_id": "pr27-late-review-corrections",
+  "status": "source_stable_targeted_passed_release_validation_pending",
+  "base_evidence_head": "f5ec52c939dfe9a275a47c53004693036a1c10c1",
+  "summary": "Expose the existing required1Min admission contract; repair vacuous replay fixtures and document the exact authorized tick-function growth without altering historical baseline or backend behavior.",
+  "source_sha256": {
+    "scripts/runtime/write_runtime_snapshot.py": "7cfe3a78b2a3701fecf6cd8a3bb381b04370d935d6fc210664f21d00b2569c8c",
+    "tests/test_entry_freshness_snapshot.py": "e6d9cdc5e81fd962a46427cc8411a17c44b21015d8e685c574952bdbda531af8",
+    "tests/test_replay_simulator.py": "98f5d389d5e7d85be4d369faaf8f93438e7f85106bef677a557a3f7b17ffeff6",
+    "tests/test_v12_baseline_invariants.py": "6cd329a960825eb4c94b339ae312e7ebfe37886c9d2819705192556bc9162333"
+  },
+  "review_dispositions": {
+    "4069504939": {
+      "status": "repaired",
+      "change": "snapshot entry_freshness.required_timeframe reads existing ENTRY_TIMEFRAME; tests prove offline1Day remains explicitly incompatible with required1Min and is not runtime-observed"
+    },
+    "4069504988": {
+      "status": "repaired",
+      "change": "low-limit timestamped1Min replay requires1..3 buys plus actual throttle activity; intraday requires actual buys, broker closed trades and engine-accounted trades, and checks the real constructed exit engine; daily replay explicitly no admission and independently checks daily exit defaults"
+    },
+    "4069504860": {
+      "status": "root_owned",
+      "change": "root regenerates actualPR diff inventory/index"
+    },
+    "4069505049": {
+      "status": "root_owned",
+      "change": "root qualifies non-temporal provenance as collector telemetry/qualification; no expanded admission rule"
+    }
+  },
+  "ci_failure": {
+    "run_id": 35701301699,
+    "job_id": 106659732860,
+    "head": "f5ec52c939dfe9a275a47c53004693036a1c10c1",
+    "failed_step": "Verify operational fixes and trading safety",
+    "local_reproduction": "artifacts/final_entry_freshness/root_operational_recheck.log",
+    "local_reproduction_passed": 1356,
+    "local_reproduction_failed": 1,
+    "local_reproduction_skipped": 1,
+    "failed_case": "tests/test_v12_baseline_invariants.py::test_baseline_live_tick_inner_loc_present",
+    "cause": "Historical2802LOC +5 ceiling rejected2823LOC after18 authorized normal-skip-handler lines added to existing2805LOC method.",
+    "repair": "Preserve original historical artifact; named21line total allowance establishes exact2823LOC ceiling with no additional growth tolerance.",
+    "hosted_terminal_log_corroboration": "Root/explorer own retrieval; livejoblogs unavailable during this diagnosis."
+  },
+  "loc": {
+    "historical": 2802,
+    "prior_release_actual": 2805,
+    "freshness_added": 18,
+    "approved_ceiling": 2823,
+    "actual": 2823,
+    "historical_file_sha256": "2b49373eefb91d239028813d25b1d84ea2d3ade2adee73bd94362d85c15d089e",
+    "historical_bytes_unchanged": true
+  },
+  "validation": {
+    "junit": "artifacts/final_entry_freshness/late_review_targeted.xml",
+    "junit_sha256": "36ff73d0d96590deb303f651926b47eef6b72740d2617b58352e4acabec610fe",
+    "log": "artifacts/final_entry_freshness/late_review_targeted.log",
+    "log_sha256": "f63b38b09ab0e63b8b7b837c9d1d31e441473b31f7f3c4063e431a648260315e",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 1,
+    "skip_case": "test_installed_history_has_not_shrunk_from_committed_baseline",
+    "skip_reason": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim",
+    "network_denied": true,
+    "scratch_brain": true,
+    "ruff": "late_review_static.json:0new,2existing replay fixture findings",
+    "freeze": "late_review_freeze.log:exit0",
+    "backend_diff_from_base_empty": true
+  },
+  "commands": [
+    "python /tmp/intra-freshness-safe-run.py -B -m pytest -q tests/test_entry_freshness_snapshot.py tests/test_v12_baseline_invariants.py tests/test_replay_simulator.py::test_replay_no_throttle_blocking tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops --noconftest -p pytest_asyncio.plugin -p pytest_timeout -o asyncio_mode=auto --junitxml=artifacts/final_entry_freshness/late_review_targeted.xml",
+    "python /tmp/intra-freshness-safe-run.py -B scripts/phase2_freeze.py --verify",
+    "Ruff JSON delta for four owned files versus base with line-number-only shifts ignored"
+  ],
+  "runtime_behavior_changed": false,
+  "no_commit_push_deploy_broker_or_installed_runtime_actions": true,
+  "limitations": [
+    "Synthetic same-bar replay demonstrates admission/throttle/exit/config/accounting mechanisms, not realistic broker latency, slippage performance or profitability.",
+    "Daily replay explicitly cannot admit under the current1Min contract; daily exit-default assertion is configuration evidence, not a daily realized-loss guarantee.",
+    "Root must commit/rebuild exact immutable source image and obtain fresh hosted/fullpack acceptance. Prior hosted/source/image pins do not certify this revised source."
+  ]
+}

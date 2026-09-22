@@ -1,0 +1,30 @@
+{
+  "task_id": "pr27-late-review-corrections",
+  "scope": [
+    "Expose existing required1Min entry timeframe in snapshots without runtime behavior change",
+    "Make low-limit and intraday replay fixtures nonvacuous using aware1Min bars; explicitly classify daily replay entry prohibition",
+    "Investigate hosted operational failure before any separate repair",
+    "Preserve historical2802LOC artifact; explicit exact2823 authorized freshness ceiling in existing regression test. No extra future growth allowance."
+  ],
+  "owned_files": [
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_entry_freshness_snapshot.py",
+    "tests/test_replay_simulator.py",
+    "tests/test_v12_baseline_invariants.py"
+  ],
+  "other_owners": {
+    "root": "release prose/inventory/source-image pins/commits",
+    "daily_evidence_contract": "independent review",
+    "explorer": "hosted failure logs"
+  },
+  "tests": [
+    "snapshot contract and runtime snapshot compatibility",
+    "replay high/low throttle and daily/intraday tests",
+    "freeze verify and Ruff delta"
+  ],
+  "constraints": [
+    "No decision/frozen backend, strategy parameters, feed or model changes",
+    "No runtime/broker/admin actions",
+    "No commit/push; parent coordinates rebuilt release identity"
+  ]
+}

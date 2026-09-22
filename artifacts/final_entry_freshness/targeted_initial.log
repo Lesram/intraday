@@ -1,0 +1,673 @@
+..................................FF.FF.FF.FF.                           [100%]
+=================================== FAILURES ===================================
+__ test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-alpha] ___
+
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11321e360>
+path = 'alpha', age = 60, source = 'rest'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+        assert result.errors == []
+        assert engine._ml_isolation_mode and engine._fixed_risk_sizing_mode
+        entries = [order for order in broker.filled_orders if order["side"] == "buy"]
+        if age == 60:
+>           assert len(entries) == 1 and result.orders_submitted == 1
+E           assert (0 == 1)
+E            +  where 0 = len([])
+
+tests/test_entry_freshness.py:215: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-breakout] _
+
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x114eed430>
+path = 'breakout', age = 60, source = 'rest'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+>       assert result.errors == []
+E       assert ["Live tick e...llar_amount'"] == []
+E         
+E         Left contains one more item: "Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+ERROR    backend.organism.live_engine:live_engine.py:5647 {"event": "Organism live tick failed", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-09-22T07:25:41.121666Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py\", line 5182, in _live_tick_inner\n    sizes = self.kelly_sizer.size_positions(\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1139, in __call__\n    return self._mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1143, in _mock_call\n    return self._execute_mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1204, in _execute_mock_call\n    result = effect(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_entry_freshness.py\", line 198, in <lambda>\n    PositionSize(symbol=c[\"symbol\"], direction=1., shares=10, dollar_amount=1000.,\nTypeError: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"}
+Traceback (most recent call last):
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py", line 5182, in _live_tick_inner
+    sizes = self.kelly_sizer.size_positions(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1204, in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_entry_freshness.py", line 198, in <lambda>
+    PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+TypeError: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'
+__ test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-121-alpha] __
+
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1131bf7d0>
+path = 'alpha', age = 121, source = 'rest'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+        assert result.errors == []
+        assert engine._ml_isolation_mode and engine._fixed_risk_sizing_mode
+        entries = [order for order in broker.filled_orders if order["side"] == "buy"]
+        if age == 60:
+            assert len(entries) == 1 and result.orders_submitted == 1
+        else:
+            assert not entries and result.orders_submitted == 0
+            skipped = [event for event in result.activity if event.details.get("reason") == "stale_bar"]
+>           assert len(skipped) == 1 and skipped[0].details["bar_age_seconds"] == 121
+E           assert (0 == 1)
+E            +  where 0 = len([])
+
+tests/test_entry_freshness.py:219: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-121-breakout] _
+
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x114f0aab0>
+path = 'breakout', age = 121, source = 'rest'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+>       assert result.errors == []
+E       assert ["Live tick e...llar_amount'"] == []
+E         
+E         Left contains one more item: "Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+ERROR    backend.organism.live_engine:live_engine.py:5647 {"event": "Organism live tick failed", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-09-22T07:25:41.260531Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py\", line 5182, in _live_tick_inner\n    sizes = self.kelly_sizer.size_positions(\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1139, in __call__\n    return self._mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1143, in _mock_call\n    return self._execute_mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1204, in _execute_mock_call\n    result = effect(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_entry_freshness.py\", line 198, in <lambda>\n    PositionSize(symbol=c[\"symbol\"], direction=1., shares=10, dollar_amount=1000.,\nTypeError: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"}
+Traceback (most recent call last):
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py", line 5182, in _live_tick_inner
+    sizes = self.kelly_sizer.size_positions(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1204, in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_entry_freshness.py", line 198, in <lambda>
+    PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+TypeError: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-alpha] _
+
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g6')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1150f1670>
+path = 'alpha', age = 60, source = 'streaming'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+>       assert result.errors == []
+E       assert ["Live tick e... and 'float'"] == []
+E         
+E         Left contains one more item: "Live tick error: '<' not supported between instances of 'MagicMock' and 'float'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+ERROR    backend.organism.live_engine:live_engine.py:5647 {"event": "Organism live tick failed", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-09-22T07:25:41.330526Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py\", line 4348, in _live_tick_inner\n    if _bar_age < 20.0:\n       ^^^^^^^^^^^^^^^\nTypeError: '<' not supported between instances of 'MagicMock' and 'float'"}
+Traceback (most recent call last):
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py", line 4348, in _live_tick_inner
+    if _bar_age < 20.0:
+       ^^^^^^^^^^^^^^^
+TypeError: '<' not supported between instances of 'MagicMock' and 'float'
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-breakout] _
+
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1150e3e60>
+path = 'breakout', age = 60, source = 'streaming'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+>       assert result.errors == []
+E       assert ["Live tick e...llar_amount'"] == []
+E         
+E         Left contains one more item: "Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+ERROR    backend.organism.live_engine:live_engine.py:5647 {"event": "Organism live tick failed", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-09-22T07:25:41.362030Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py\", line 5182, in _live_tick_inner\n    sizes = self.kelly_sizer.size_positions(\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1139, in __call__\n    return self._mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1143, in _mock_call\n    return self._execute_mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1204, in _execute_mock_call\n    result = effect(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_entry_freshness.py\", line 198, in <lambda>\n    PositionSize(symbol=c[\"symbol\"], direction=1., shares=10, dollar_amount=1000.,\nTypeError: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"}
+Traceback (most recent call last):
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py", line 5182, in _live_tick_inner
+    sizes = self.kelly_sizer.size_positions(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1204, in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_entry_freshness.py", line 198, in <lambda>
+    PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+TypeError: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-alpha] _
+
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g9')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11515fc20>
+path = 'alpha', age = 121, source = 'streaming'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+>       assert result.errors == []
+E       assert ["Live tick e... and 'float'"] == []
+E         
+E         Left contains one more item: "Live tick error: '<' not supported between instances of 'MagicMock' and 'float'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+ERROR    backend.organism.live_engine:live_engine.py:5647 {"event": "Organism live tick failed", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-09-22T07:25:41.432723Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py\", line 4348, in _live_tick_inner\n    if _bar_age < 20.0:\n       ^^^^^^^^^^^^^^^\nTypeError: '<' not supported between instances of 'MagicMock' and 'float'"}
+Traceback (most recent call last):
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py", line 4348, in _live_tick_inner
+    if _bar_age < 20.0:
+       ^^^^^^^^^^^^^^^
+TypeError: '<' not supported between instances of 'MagicMock' and 'float'
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-breakout] _
+
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g10')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11515f2c0>
+path = 'breakout', age = 121, source = 'streaming'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+>       assert result.errors == []
+E       assert ["Live tick e...llar_amount'"] == []
+E         
+E         Left contains one more item: "Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+ERROR    backend.organism.live_engine:live_engine.py:5647 {"event": "Organism live tick failed", "logger": "backend.organism.live_engine", "level": "error", "timestamp": "2026-09-22T07:25:41.465682Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py\", line 5182, in _live_tick_inner\n    sizes = self.kelly_sizer.size_positions(\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1139, in __call__\n    return self._mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1143, in _mock_call\n    return self._execute_mock_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 1204, in _execute_mock_call\n    result = effect(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_entry_freshness.py\", line 198, in <lambda>\n    PositionSize(symbol=c[\"symbol\"], direction=1., shares=10, dollar_amount=1000.,\nTypeError: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"}
+Traceback (most recent call last):
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/organism/live_engine.py", line 5182, in _live_tick_inner
+    sizes = self.kelly_sizer.size_positions(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py", line 1204, in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_entry_freshness.py", line 198, in <lambda>
+    PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+TypeError: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'
+=============================== warnings summary ===============================
+tests/test_entry_freshness.py::test_inclusive_start_timestamp_boundary_submits_once[0]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-alpha]
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_organism_engine_scenarios.py:209: PytestUnknownMarkWarning: Unknown pytest.mark.timeout - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.timeout(120)
+
+tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-alpha]
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_organism_engine_scenarios.py:855: PytestUnknownMarkWarning: Unknown pytest.mark.timeout - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.timeout(120)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-alpha]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-breakout]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-121-alpha]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-121-breakout]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-alpha]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-breakout]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-alpha]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-breakout]
+8 failed, 38 passed, 3 warnings in 2.96s

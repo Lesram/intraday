@@ -319,6 +319,13 @@ def test_live_entry_order_persists_strategy_identity_on_allowed_submit() -> None
     )
     engine._order_service = order_service
 
+    # Direct submission fixture supplies the actual causal gate-frame receipt.
+    import pandas as pd
+    from backend.organism.entry_evidence import _frame_receipt
+    engine._timeframe = "1Min"
+    engine._entry_evidence_tick = engine._tick_count
+    engine._entry_evidence_frames = {("SPY", 1.): _frame_receipt(
+        engine, "SPY", 1., pd.DataFrame({"timestamp": [engine._now_fn()], "close": [100.]}))}
     result = asyncio.run(
         engine._submit_entry_order(
             "SPY",

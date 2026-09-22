@@ -12,6 +12,7 @@ import inspect
 import json
 import logging
 import os
+from contextvars import ContextVar
 from datetime import UTC
 from functools import wraps
 from pathlib import Path
@@ -23,10 +24,24 @@ from backend.infra.runtime_identity import runtime_identity_snapshot
 EVIDENCE_FILE = "entry_evidence.jsonl"
 SCHEMA = "intra_entry_evidence_v1"
 logger = logging.getLogger(__name__)
+_submission_receipt = ContextVar("entry_submission_receipt", default=None)
+
+
+def record_final_admission(engine, symbol, direction, admission):
+    """Update this coroutine's receipt at final admission, without awaiting."""
+    receipt = _submission_receipt.get()
+    if (receipt is not None and receipt.get("symbol") == symbol
+            and receipt.get("direction") == direction
+            and receipt.get("tick") == engine._tick_count):
+        receipt.update(submitted_at=admission.submitted_at,
+                       bar_age_seconds=admission.age_seconds)
 
 
 def _frame_receipt(engine, symbol, direction, frame):
-    observed = engine._now_fn().astimezone(UTC)
+    observed = pd.Timestamp(engine._now_fn())
+    if pd.isna(observed) or observed.tzinfo is None:
+        raise ValueError("invalid_capture_timestamp")
+    observed = observed.tz_convert("UTC")
     reasons = []
     times = (frame["timestamp"] if "timestamp" in frame.columns
              else pd.Series(frame.index) if isinstance(frame.index, pd.DatetimeIndex)
@@ -149,7 +164,11 @@ def observe_submission(method):
             logger.warning("Entry submission evidence unavailable (%s)", type(exc).__name__)
             receipt = None
 
-        result = await method(engine, *args, **kwargs)
+        token = _submission_receipt.set(receipt)
+        try:
+            result = await method(engine, *args, **kwargs)
+        finally:
+            _submission_receipt.reset(token)
         try:
             if receipt is not None and isinstance(result, dict) and result.get("order_id"):
                 receipt.update(entry_order_id=str(result["order_id"]),

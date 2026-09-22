@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="8" skipped="0" tests="46" time="2.960" timestamp="2026-09-22T00:25:38.550905-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_entry_freshness" name="test_inclusive_start_timestamp_boundary_submits_once[0]" time="0.061" /><testcase classname="tests.test_entry_freshness" name="test_inclusive_start_timestamp_boundary_submits_once[1e-09]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_inclusive_start_timestamp_boundary_submits_once[60]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_inclusive_start_timestamp_boundary_submits_once[119.999999999]" time="0.027" /><testcase classname="tests.test_entry_freshness" name="test_inclusive_start_timestamp_boundary_submits_once[120]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_old_start_time_has_no_bar_completion_grace[120.000000001]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_old_start_time_has_no_bar_completion_grace[121]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_old_start_time_has_no_bar_completion_grace[180]" time="0.029" /><testcase classname="tests.test_entry_freshness" name="test_old_start_time_has_no_bar_completion_grace[3600]" time="0.029" /><testcase classname="tests.test_entry_freshness" name="test_every_frame_timestamp_must_be_valid[missing]" time="0.030" /><testcase classname="tests.test_entry_freshness" name="test_every_frame_timestamp_must_be_valid[naive]" time="0.029" /><testcase classname="tests.test_entry_freshness" name="test_every_frame_timestamp_must_be_valid[invalid]" time="0.030" /><testcase classname="tests.test_entry_freshness" name="test_every_frame_timestamp_must_be_valid[nat]" time="0.030" /><testcase classname="tests.test_entry_freshness" name="test_every_frame_timestamp_must_be_valid[duplicate]" time="0.030" /><testcase classname="tests.test_entry_freshness" name="test_every_frame_timestamp_must_be_valid[unordered]" time="0.027" /><testcase classname="tests.test_entry_freshness" name="test_timezone_aware_datetime_index_is_valid" time="0.018" /><testcase classname="tests.test_entry_freshness" name="test_exact_admission_context_required[no_gate]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_exact_admission_context_required[tick]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_exact_admission_context_required[symbol]" time="0.027" /><testcase classname="tests.test_entry_freshness" name="test_exact_admission_context_required[direction]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_exact_admission_context_required[rejected_gate]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_exact_admission_context_required[receipt_tick]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_exact_admission_context_required[timeframe]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_exact_admission_context_required[engine_timeframe]" time="0.027" /><testcase classname="tests.test_entry_freshness" name="test_clock_and_future_capture_fail_closed[naive_capture]" time="0.017" /><testcase classname="tests.test_entry_freshness" name="test_clock_and_future_capture_fail_closed[naive_submission]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_clock_and_future_capture_fail_closed[clock_reversed]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_clock_and_future_capture_fail_closed[future_capture]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_quote_processing_delay_rechecked_before_submission[False]" time="0.028" /><testcase classname="tests.test_entry_freshness" name="test_quote_processing_delay_rechecked_before_submission[True]" time="0.029" /><testcase classname="tests.test_entry_freshness" name="test_publication_failure_after_admission_never_retries" time="0.029" /><testcase classname="tests.test_entry_freshness" name="test_protective_exits_ignore_missing_frame[stop_loss]" time="0.006" /><testcase classname="tests.test_entry_freshness" name="test_protective_exits_ignore_missing_frame[eod_flatten]" time="0.004" /><testcase classname="tests.test_entry_freshness" name="test_protective_exits_ignore_missing_frame[pyramid_cut]" time="0.004" /><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-alpha]" time="0.404"><failure message="assert (0 == 1)&#10; +  where 0 = len([])">tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x11321e360&gt;
+path = 'alpha', age = 60, source = 'rest'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+        assert result.errors == []
+        assert engine._ml_isolation_mode and engine._fixed_risk_sizing_mode
+        entries = [order for order in broker.filled_orders if order["side"] == "buy"]
+        if age == 60:
+&gt;           assert len(entries) == 1 and result.orders_submitted == 1
+E           assert (0 == 1)
+E            +  where 0 = len([])
+
+tests/test_entry_freshness.py:215: AssertionError</failure></testcase><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-breakout]" time="0.030"><failure message="assert [&quot;Live tick e...llar_amount'&quot;] == []&#10;  &#10;  Left contains one more item: &quot;Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'&quot;&#10;  Use -v to get more diff">tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g1')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x114eed430&gt;
+path = 'breakout', age = 60, source = 'rest'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+&gt;       assert result.errors == []
+E       assert ["Live tick e...llar_amount'"] == []
+E         
+E         Left contains one more item: "Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError</failure></testcase><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-pyramid]" time="0.075" /><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-121-alpha]" time="0.026"><failure message="assert (0 == 1)&#10; +  where 0 = len([])">tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g3')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x1131bf7d0&gt;
+path = 'alpha', age = 121, source = 'rest'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+        assert result.errors == []
+        assert engine._ml_isolation_mode and engine._fixed_risk_sizing_mode
+        entries = [order for order in broker.filled_orders if order["side"] == "buy"]
+        if age == 60:
+            assert len(entries) == 1 and result.orders_submitted == 1
+        else:
+            assert not entries and result.orders_submitted == 0
+            skipped = [event for event in result.activity if event.details.get("reason") == "stale_bar"]
+&gt;           assert len(skipped) == 1 and skipped[0].details["bar_age_seconds"] == 121
+E           assert (0 == 1)
+E            +  where 0 = len([])
+
+tests/test_entry_freshness.py:219: AssertionError</failure></testcase><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-121-breakout]" time="0.027"><failure message="assert [&quot;Live tick e...llar_amount'&quot;] == []&#10;  &#10;  Left contains one more item: &quot;Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'&quot;&#10;  Use -v to get more diff">tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g4')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x114f0aab0&gt;
+path = 'breakout', age = 121, source = 'rest'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+&gt;       assert result.errors == []
+E       assert ["Live tick e...llar_amount'"] == []
+E         
+E         Left contains one more item: "Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError</failure></testcase><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-121-pyramid]" time="0.037" /><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-alpha]" time="0.028"><failure message="assert [&quot;Live tick e... and 'float'&quot;] == []&#10;  &#10;  Left contains one more item: &quot;Live tick error: '&lt;' not supported between instances of 'MagicMock' and 'float'&quot;&#10;  Use -v to get more diff">tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g6')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x1150f1670&gt;
+path = 'alpha', age = 60, source = 'streaming'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+&gt;       assert result.errors == []
+E       assert ["Live tick e... and 'float'"] == []
+E         
+E         Left contains one more item: "Live tick error: '&lt;' not supported between instances of 'MagicMock' and 'float'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError</failure></testcase><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-breakout]" time="0.028"><failure message="assert [&quot;Live tick e...llar_amount'&quot;] == []&#10;  &#10;  Left contains one more item: &quot;Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'&quot;&#10;  Use -v to get more diff">tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g7')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x1150e3e60&gt;
+path = 'breakout', age = 60, source = 'streaming'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+&gt;       assert result.errors == []
+E       assert ["Live tick e...llar_amount'"] == []
+E         
+E         Left contains one more item: "Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError</failure></testcase><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-pyramid]" time="0.039" /><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-alpha]" time="0.027"><failure message="assert [&quot;Live tick e... and 'float'&quot;] == []&#10;  &#10;  Left contains one more item: &quot;Live tick error: '&lt;' not supported between instances of 'MagicMock' and 'float'&quot;&#10;  Use -v to get more diff">tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g9')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x11515fc20&gt;
+path = 'alpha', age = 121, source = 'streaming'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+&gt;       assert result.errors == []
+E       assert ["Live tick e... and 'float'"] == []
+E         
+E         Left contains one more item: "Live tick error: '&lt;' not supported between instances of 'MagicMock' and 'float'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError</failure></testcase><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-breakout]" time="0.030"><failure message="assert [&quot;Live tick e...llar_amount'&quot;] == []&#10;  &#10;  Left contains one more item: &quot;Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'&quot;&#10;  Use -v to get more diff">tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-98/test_real_tick_callers_share_g10')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x11515f2c0&gt;
+path = 'breakout', age = 121, source = 'streaming'
+
+    @pytest.mark.parametrize("path", ["alpha", "breakout", "pyramid"])
+    @pytest.mark.parametrize("age", [60, 121])
+    @pytest.mark.parametrize("source", ["rest", "streaming"])
+    async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, monkeypatch, path, age, source):
+        from backend.organism.alpha_scanner import AlphaCandidate
+        from backend.organism.breakout_scanner import BreakoutSignal
+        from backend.organism.kelly_sizer import PositionSize
+        from backend.organism.ml_signal import MLSignal
+        from backend.organism.pyramider import PyramidLevel, PyramidPosition
+        from backend.organism.replay_simulator import SimulatedBroker
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+    
+        monkeypatch.setattr("backend.organism.live_engine.FRAMEWORK_ROUTING_V2_ENABLED", False)
+        features = {s: frame_at(NOW - timedelta(seconds=age), 120) for s in ("AAPL", "MSFT", "SPY")}
+        for frame in features.values():
+            frame["_nan_missingness"] = 0.
+        broker = SimulatedBroker()
+        engine = _make_engine(broker, MockDataClient(features), str(tmp_path / "tick-brain"))
+        engine._timeframe = "1Min"
+        engine._now_fn = lambda: NOW
+        engine._time_fn = NOW.timestamp
+        await engine.initialize()
+        engine._tick_count = 10
+        engine._fetch_and_compute_features = AsyncMock(return_value=features)
+        engine._reconcile_fills = AsyncMock()  # Outcome accounting is independently covered.
+        engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
+        engine._streaming_provider = None if source == "rest" else MagicMock()
+        if source == "streaming":
+            engine._streaming_provider.get_bar_age_seconds.return_value = 0.
+            engine._streaming_provider.is_ready.return_value = True
+            engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}
+        signal = MLSignal(symbol="AAPL", direction=1, confidence=.9, predicted_return=.02,
+                          raw_confidence=.9, effective_confidence=.9)
+        engine.signal_gen.predict_batch = MagicMock(return_value={"AAPL": signal})
+        engine.alpha_scanner.scan = MagicMock(return_value=[AlphaCandidate(
+            symbol="AAPL", composite_score=.9, breakout_score=.9, ml_signal=signal,
+            direction=1, expected_return_source="ml")] if path == "alpha" else [])
+        engine.breakout_scanner.scan = MagicMock(return_value=[BreakoutSignal(
+            symbol="AAPL", composite_score=.9, squeeze_score=.9, volume_score=.9,
+            contraction_score=.9, rs_score=.9, pivot_score=.9, flow_score=.9,
+            direction=1, squeeze_fired=True, volume_ratio=2)] if path == "breakout" else [])
+        engine.kelly_sizer.size_positions = MagicMock(side_effect=lambda candidates, *a, **kw: [
+            PositionSize(symbol=c["symbol"], direction=1., shares=10, dollar_amount=1000.,
+                         portfolio_weight=.01, kelly_fraction=.01, confidence=.9,
+                         predicted_return=.02, breakout_score=.9) for c in candidates])
+        broker.set_price("AAPL", 100.)
+        if path == "pyramid":
+            broker.add_position("AAPL", qty=10, avg_entry_price=100.)
+            engine._entry_metadata["AAPL"] = {"entry_source": "alpha", "entry_price": 100.,
+                                              "entry_tick": 1, "direction": 1., "filled_shares": 10}
+            engine._pyramid_positions["AAPL"] = PyramidPosition(
+                symbol="AAPL", direction=1., layers=[PyramidLevel(10, 100., 1, 0)],
+                target_total_shares=20, atr_at_entry=2., initial_stop=90., current_stop=90.)
+            engine.pyramider.check_pyramid = MagicMock(return_value=SimpleNamespace(action="add", shares_to_add=2))
+        result = await engine.live_tick()
+&gt;       assert result.errors == []
+E       assert ["Live tick e...llar_amount'"] == []
+E         
+E         Left contains one more item: "Live tick error: PositionSize.__init__() got an unexpected keyword argument 'dollar_amount'"
+E         Use -v to get more diff
+
+tests/test_entry_freshness.py:211: AssertionError</failure></testcase><testcase classname="tests.test_entry_freshness" name="test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-pyramid]" time="0.037" /></testsuite></testsuites>

@@ -409,12 +409,17 @@ async def test_replay_no_throttle_blocking():
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
+    # Entry admission now requires real 1Min provider timestamps. The replay
+    # cursor starts at 14:00 UTC (10:00 ET); all 100 test ticks are in-session.
+    for frame in bars.values():
+        frame["timestamp"] = pd.date_range("2026-09-22T10:40:00Z", periods=len(frame), freq="min")
     engine = ReplayEngine(
         bars_by_symbol=bars,
         initial_cash=1_000_000,  # V13 W93: lifts Kelly notionals above $2k floor
         slippage_bps=5,
         max_entries_per_hour=20,
         lookback=200,
+        timeframe="1Min",
     )
     result = await engine.run(max_ticks=100)
 
@@ -446,6 +451,8 @@ async def test_replay_throttle_actually_blocks_at_low_limit():
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
+    for frame in bars.values():
+        frame["timestamp"] = pd.date_range("2026-09-22T10:40:00Z", periods=len(frame), freq="min")
     engine = ReplayEngine(
         bars_by_symbol=bars,
         initial_cash=1_000_000,
@@ -463,15 +470,24 @@ async def test_replay_throttle_actually_blocks_at_low_limit():
     # We allow up to 3 to absorb edge effects in the throttle window math.
     # The companion high-throttle test proves replay is not always-blocked;
     # this low-throttle test proves the cap is honored when entries appear.
-    assert len(entry_orders) <= 3, (
+    assert 1 <= len(entry_orders) <= 3, (
         "Entry throttle ineffective: got "
         f"{len(entry_orders)} entry orders with 1/hr cap"
     )
+    assert any("Entry throttle:" in event.get("message", "")
+               for tick in result.tick_results for event in tick.get("activity", []))
 
 
 @pytest.mark.asyncio
-async def test_replay_daily_timeframe_uses_wider_stops():
-    """Daily replay should use daily exit config (wider stops, 8% max loss)."""
+async def test_replay_daily_timeframe_uses_wider_stops(monkeypatch):
+    """Daily exit defaults persist, but daily/unstamped replay cannot admit entries."""
+    from backend.organism.adaptive_exits import AdaptiveExitEngine
+    for key in ("ORGANISM_EXIT_ATR_MULT", "ORGANISM_EXIT_TRAIL_DIST_ATR"):
+        monkeypatch.delenv(key, raising=False)
+    exits = AdaptiveExitEngine.for_timeframe("1Day")
+    assert exits._base_atr_multiplier == 1.5
+    assert exits._base_trailing_distance_atr == 2.5
+    assert exits.max_loss_pct == .08
     bars = make_features_dict(
         ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
@@ -485,33 +501,48 @@ async def test_replay_daily_timeframe_uses_wider_stops():
 
     assert result.ticks == 50
     assert len(result.equity_curve) == 50
-    # No trade should lose more than 8% (daily max_loss_pct)
-    for trade in result.trades:
-        if trade.get("entry_price", 0) > 0:
-            pnl_pct = trade["pnl"] / (trade["entry_price"] * trade["qty"])
-            assert pnl_pct > -0.10, (
-                f"Trade lost {pnl_pct:.1%} — should be capped near 8%: {trade}"
-            )
+    assert not result.orders
+    assert not result.trades
+    assert not result.accounted_trades
 
 
 @pytest.mark.timeout(180)
 @pytest.mark.asyncio
-async def test_replay_intraday_timeframe_uses_tight_stops():
-    """Intraday replay should use intraday exit config (tighter stops, 8% max loss)."""
+async def test_replay_intraday_timeframe_uses_tight_stops(monkeypatch):
+    """Real intraday entries/closes use the actual intraday exit-engine factory."""
+    from backend.organism.adaptive_exits import AdaptiveExitEngine
+    for key in ("ORGANISM_EXIT_ATR_MULT", "ORGANISM_EXIT_TRAIL_DIST_ATR"):
+        monkeypatch.delenv(key, raising=False)
+    constructed = []
+    factory = AdaptiveExitEngine.for_timeframe
+    def capture_factory(cls, timeframe):
+        exits = factory(timeframe)
+        constructed.append((timeframe, exits))
+        return exits
+    monkeypatch.setattr(AdaptiveExitEngine, "for_timeframe", classmethod(capture_factory))
     bars = make_features_dict(
-        ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="down",
+        ["AAPL", "MSFT", "SPY"], n=700, seed=42, trend="up",
     )
+    for frame in bars.values():
+        frame["timestamp"] = pd.date_range("2026-09-22T10:40:00Z", periods=len(frame), freq="min")
     engine = ReplayEngine(
         bars_by_symbol=bars,
-        initial_cash=100_000,
+        initial_cash=1_000_000,
         slippage_bps=5,
         timeframe="1Min",
         lookback=200,
     )
-    result = await engine.run(max_ticks=50)
+    result = await engine.run(max_ticks=100)
 
-    assert result.ticks == 50
-    assert len(result.equity_curve) == 50
+    assert result.ticks == 100
+    assert len(result.equity_curve) == 100
+    assert any(order.get("side") == "buy" for order in result.orders)
+    assert result.trades and result.accounted_trades
+    timeframe, exits = constructed[0]
+    assert timeframe == "1Min"
+    assert exits._base_atr_multiplier == 1.
+    assert exits._base_trailing_distance_atr == 1.5
+    assert exits.max_loss_pct == .08
 
 
 # ═════════════════════════════════════════════════════════════════════════

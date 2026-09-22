@@ -4,7 +4,32 @@
 
 ---
 
-## Current authority and accounting repair (2026-09-19)
+## Approved final-entry freshness repair (2026-09-22)
+
+The candidate release enforces actual feature-bar age at the final shared entry
+submission, including alpha, pure breakout and pyramid adds from either streaming
+or REST data. It uses the same-tick passed-gate feature-frame receipt. All frame
+timestamps must be complete, timezone-aware and strictly ordered; missing, invalid,
+ambiguous or future timestamps reject the entry. The final age must be finite and
+within **0 through 120 seconds, inclusive**. Aging during selection or quote
+lookup cannot bypass the final check. A rejected entry is a recorded skip, not a
+failed tick. Protective exits remain available.
+
+Alpaca minute-bar timestamps identify the **start** of the minute; the 120-second
+limit is measured from that timestamp with no extra one-minute allowance. A
+recent callback or REST response does not establish freshness. This check does
+not independently certify a provider's aggregation completion. See the provider's
+[minute-bar contract](https://alpaca.markets/learn/stock-minute-bars).
+
+Marsel explicitly approved this decision change and a new forward evaluation
+boundary. The committed freeze is candidate verification evidence, not an active
+deployment receipt. During held, broker-flat release, archive the installed freeze
+and activation, establish a new current timestamp, and bind that exact host freeze
+to the new activation and release identity. Never reuse the candidate timestamp
+as the live cutoff. Historical trades, model state, strategy parameters, feed,
+sizing, original historical baseline and prior blocked reports remain preserved.
+
+## Historical authority and accounting repair (2026-09-19)
 
 The accepted paper deployment is application source `274d0c47ea6c4a092667cc65f813a96a2264e676`,
 merged by PR #17 as `ffc0e5c0595bb21e1c71f0ba7e5d6f55af7fc189`. Its image is
@@ -4454,7 +4479,7 @@ StalenessReasons (enum):
 | Loser time-stop fallback | **120 bars** (2 hours) | adaptive_exits | Used when max_bars=0 (trending_up, low_vol). Was 200 ticks (~33 min). |
 | Time decay rate | **0.3%/bar** | adaptive_exits | Tightens stop after decay_start. Was 1%/tick (6× too fast). |
 | Entry slippage cap | 0.1% | live_engine | Marketable limit orders cap slippage at 0.1% above ask / below bid |
-| Stale data threshold | 120s | live_engine | Block entries when streaming_provider.last_update_time > 2 min stale (exits still run) |
+| Stale data threshold | 120s | entry_freshness + live_engine | Final entry admission requires actual passed-gate feature-bar start age in [0,120] seconds; missing/invalid/future timestamps reject; streaming receipt checks remain preliminary; exits still run |
 | Predicted return ML floor | 0.3% | live_engine | Min predicted_return when ML signal present |
 | Predicted return no-ML range | 0.5%–2.0% | live_engine | 0.005 + 0.015×breakout_score when no ML |
 | Circuit breaker failures | 5 | resilience | Open circuit breaker |

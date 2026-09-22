@@ -1,0 +1,97 @@
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 21%]
+........................................................................ [ 26%]
+........................................................................ [ 31%]
+........................................................................ [ 37%]
+........................................................................ [ 42%]
+........................................................................ [ 47%]
+........................................................................ [ 53%]
+........................................................................ [ 58%]
+........................................................................ [ 63%]
+........................................................................ [ 68%]
+........................................................................ [ 74%]
+........................................................................ [ 79%]
+........................................................................ [ 84%]
+........................................................................ [ 90%]
+........................................................................ [ 95%]
+............................................s....F............           [100%]
+=================================== FAILURES ===================================
+__________________ test_baseline_live_tick_inner_loc_present ___________________
+tests/test_v12_baseline_invariants.py:360: in test_baseline_live_tick_inner_loc_present
+    assert loc <= base_loc + 5, (
+E   AssertionError: _live_tick_inner regressed from baseline 2802 to 2823; V12 W75 should be reducing this, not growing it.
+E   assert 2823 <= (2802 + 5)
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/test_paper_monitor_access.py: 1 warning
+tests/test_paper_runtime_config.py: 4 warnings
+tests/test_admin_trading_execution_mode.py: 2 warnings
+tests/test_api_fixture_isolation.py: 3 warnings
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_websocket_and_signal_service.py:70: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("MSFT", data)
+
+tests/test_websocket_and_signal_service.py::TestSignalService::test_generate_signal_with_empty_data
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_websocket_and_signal_service.py:81: DeprecationWarning: SignalService.generate_signal() returns cached/stale data. Use MultiStrategyLiveRunner for real-time signal generation.
+    signal = await service.generate_signal("TSLA", {})
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_config_coordinator_comprehensive.py:17: DeprecationWarning: backend.config.coordinator is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.coordinator import ConfigurationCoordinator
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/backend/config/coordinator.py:22: DeprecationWarning: backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.unified import UnifiedSettings, get_unified_settings
+
+tests/test_risk_manager_service_comprehensive.py: 10 warnings
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_risk_manager_service_comprehensive.py:27: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py: 10 warnings
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_risk_manager_service_comprehensive.py:28: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.updated_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_risk_manager_service_comprehensive.py:42: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.last_updated = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+tests/test_risk_manager_service_comprehensive.py::TestGetCurrentMetrics::test_get_multiple_metrics
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_risk_manager_service_comprehensive.py:43: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestGetRecentViolations::test_get_violations_with_custom_hours
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_risk_manager_service_comprehensive.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_trigger_emergency_stop
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_trigger_emergency_stop
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_risk_manager_service_comprehensive.py:95: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.created_at = datetime.utcnow()
+
+tests/test_risk_manager_service_comprehensive.py::TestEmergencyStop::test_resolve_emergency_stop
+tests/test_risk_manager_service_comprehensive.py::TestGetActiveEmergencyStop::test_get_active_stop_when_exists
+tests/test_risk_manager_service_comprehensive.py::TestIsEmergencyStopActive::test_returns_true_when_active
+  /Users/marselkei/.codex/worktrees/intra-final-entry-freshness/intra/tests/test_risk_manager_service_comprehensive.py:73: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.triggered_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_v12_baseline_invariants.py::test_baseline_live_tick_inner_loc_present
+1 failed, 1356 passed, 1 skipped, 47 warnings in 32.70s

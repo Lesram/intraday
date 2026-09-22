@@ -50,6 +50,7 @@ from backend.organism.candidate_shadow_telemetry import (
 from backend.organism.continuous_learner import ContinuousLearner, TradeRecord
 from backend.organism import close_accounting
 from backend.organism import entry_evidence, operator_controls
+from backend.organism.entry_freshness import EntryFreshnessRejected, require_fresh_entry
 from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
 from backend.organism import research_policy
@@ -4124,6 +4125,15 @@ class OrganismLiveEngine(
                             # prevents phantom layers on rejected/canceled orders.
                             # The pending_entry tracking above prevents the
                             # pyramider from re-triggering on the next tick.
+                        except EntryFreshnessRejected as e:
+                            logger.info("Entry freshness skip: %s reason=%s age_seconds=%s",
+                                        sym, e.reason, e.age_seconds)
+                            result.activity.append(ActivityEvent(
+                                event_type="skip", symbol=sym,
+                                message="Entry withheld by final bar freshness gate",
+                                details={"reason": e.reason, "bar_age_seconds": e.age_seconds},
+                                timestamp=now_iso,
+                            ))
                         except Exception as e:
                             result.errors.append(
                                 f"Pyramid order failed for {sym}: {e}"
@@ -5429,6 +5439,15 @@ class OrganismLiveEngine(
                                 "regime_at_entry": regime,
                             }
 
+                    except EntryFreshnessRejected as e:
+                        logger.info("Entry freshness skip: %s reason=%s age_seconds=%s",
+                                    sz.symbol, e.reason, e.age_seconds)
+                        result.activity.append(ActivityEvent(
+                            event_type="skip", symbol=sz.symbol,
+                            message="Entry withheld by final bar freshness gate",
+                            details={"reason": e.reason, "bar_age_seconds": e.age_seconds},
+                            timestamp=now_iso,
+                        ))
                     except Exception as e:
                         result.errors.append(
                             f"Entry order failed for {sz.symbol}: {e}"
@@ -6356,6 +6375,10 @@ class OrganismLiveEngine(
             except Exception:
                 pass  # Fallback to market order
 
+        # No await or quote lookup may intervene between this final age check
+        # and handing the order to OrderService. Exits have a separate path.
+        admission = require_fresh_entry(self, symbol, direction)
+        entry_evidence.record_final_admission(self, symbol, direction, admission)
         _entry_result = await self._order_service.submit_symbol_order(
             symbol=symbol,
             side=side,

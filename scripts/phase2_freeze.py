@@ -73,6 +73,7 @@ def compute_surface() -> dict:
     from backend.organism.regime import RegimeDetector
     from backend.organism import research_policy, research_baseline, trading_phase, background_trainer
     from backend.organism import governance, model_fingerprint, operator_controls
+    from backend.organism import entry_evidence, entry_freshness
     from backend.organism.self_evolution import apply_evolved_params
     from backend.organism.strategies.strategy_config import (
         REGIME_POLICY, STRATEGY_CONFIG,
@@ -133,6 +134,12 @@ def compute_surface() -> dict:
             "operator_controls": _h(inspect.getsource(operator_controls)),
             "governance": _h(inspect.getsource(governance)),
             "entry_admission": _h(inspect.getsource(OrganismLiveEngine._authorize_live_entry_order)),
+            # Approved September 22 freshness gate depends on the actual frame
+            # observer and the final submission seam, not callback receipt age.
+            "entry_frame_capture": _h(inspect.getsource(OrganismLiveEngine._passes_entry_gates)),
+            "entry_evidence": _h(inspect.getsource(entry_evidence)),
+            "entry_freshness": _h(inspect.getsource(entry_freshness)),
+            "entry_submission": _h(inspect.getsource(OrganismLiveEngine._submit_entry_order)),
             "operator_api": _h((Path(__file__).resolve().parents[1] / "backend/organism/routes.py").read_text()),
             "emergency_stop_api": _h((Path(__file__).resolve().parents[1] / "backend/api/routes/risk.py").read_text()),
             "emergency_stop_service": _h((Path(__file__).resolve().parents[1] / "backend/services/risk_manager.py").read_text()),

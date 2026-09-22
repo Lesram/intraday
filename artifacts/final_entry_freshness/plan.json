@@ -1,0 +1,36 @@
+{
+  "task_id": "final-entry-freshness-20260922",
+  "authorization": "Marsel explicitly approved full deployment and final admission max120s actual-feature-bar freshness with a new forward cutoff at release.",
+  "scope": [
+    "Fail closed at final shared entry submission using actual feature-frame bar event time, across alpha/breakout, streaming/REST and pyramid adds.",
+    "Preserve protective exits, risk sizing, model/feed/config and all historical records.",
+    "Merge reviewed session evidence repairs, create reviewed freshness PR, controlled paper-only deployment and authenticated preopen verification."
+  ],
+  "files_before_edit": [
+    "backend/organism/live_engine.py",
+    "backend/organism/entry_evidence.py (review/source fingerprint; minimal change if required)",
+    "backend/organism/entry_freshness.py (new)",
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "docs/architecture/mapss.md",
+    "tests/test_entry_freshness.py (new)",
+    "tests/test_phase2_freeze.py",
+    "tests/test_phase9_strategy_governance.py",
+    "tests/test_operator_controls.py"
+  ],
+  "checks": [
+    "targeted boundary/invalid/future/capture-to-submit aging/cross-path/exit tests",
+    "required organism/state/safety/replay/evolution tests",
+    "full artifact pack and audit index",
+    "independent review",
+    "frozen surface candidate and deployed verification",
+    "hosted operational safety CI",
+    "fresh paper clock/account/positions/open orders; immutable image/binding/policy/scheduler/backups"
+  ],
+  "freeze_transition": {
+    "prior_cutoff": "2026-09-21T10:10:39.684894+00:00",
+    "candidate_surface": "reviewable candidate; installed freeze untouched until held flat release",
+    "active_cutoff": "new timestamp established during deployment; old freeze and activation archived byte-for-byte"
+  },
+  "status": "implementation"
+}

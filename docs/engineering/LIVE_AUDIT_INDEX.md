@@ -1,22 +1,22 @@
 # Live Audit Index
 
-Generated: 2026-09-22T07:28:00Z
+Generated: 2026-09-22T08:10:55Z
 PR: n/a
-SHA: `c9ad0dfc86`
-Branch: `codex/session-evidence-repair`
+SHA: `385ed84390`
+Branch: `codex/final-entry-freshness`
 Scope: **backend_logic**
-Change scope: `base` (`ef3e895bd720524f433944725895d83e67d67905...HEAD`)
+Change scope: `base` (`60f05e2fb4913cd4989bb854436ac21ecdae546b...HEAD`)
 
 ## Changed files
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 1 | `backend/infra/logging.py` |
-| Organism | 0 | none |
-| Scripts | 6 | `scripts/ci/generate_audit_index.py`, `scripts/ci/nightly_test_contract.py`, `scripts/ops/paper_daily_evidence.py`, `scripts/ops/paper_watchdog.py`, `scripts/ops/standdown_session_row.py`, `scripts/runtime/write_runtime_snapshot.py` |
-| CI | 3 | `.github/workflows/artifact-reporting.yml`, `.github/workflows/nightly.yml`, `.github/workflows/paper-readiness.yml` |
-| Tests | 11 | `tests/conftest.py`, `tests/test_api_fixture_isolation.py`, `tests/test_artifact_change_scope.py`, `tests/test_monday_ci_workflows.py`, `tests/test_nightly_test_contract.py`, `tests/test_paper_daily_evidence.py`, `tests/test_paper_watchdog.py`, `tests/test_runtime_snapshot_auth.py`, `tests/test_session_logging_contract.py`, `tests/test_strategies_automated_suite.py` |
-| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/SESSION_EVIDENCE_REPAIR.md` |
+| Backend | 3 | `backend/organism/entry_evidence.py`, `backend/organism/entry_freshness.py`, `backend/organism/live_engine.py` |
+| Organism | 3 | `backend/organism/entry_evidence.py`, `backend/organism/entry_freshness.py`, `backend/organism/live_engine.py` |
+| Scripts | 2 | `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
+| CI | 1 | `.github/workflows/paper-readiness.yml` |
+| Tests | 8 | `tests/test_apr7_p0_p1_fixes.py`, `tests/test_entry_freshness.py`, `tests/test_entry_freshness_snapshot.py`, `tests/test_operator_controls.py`, `tests/test_phase2_freeze.py`, `tests/test_phase9_strategy_governance.py`, `tests/test_replay_simulator.py`, `tests/test_v12_baseline_invariants.py` |
+| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/FINAL_ENTRY_FRESHNESS_RELEASE.md`, `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Configuration resolution (not engine observation)
 
@@ -57,4 +57,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 1 backend runtime file(s) changed — require targeted verification
+- 3 organism file(s) changed — require replay verification
