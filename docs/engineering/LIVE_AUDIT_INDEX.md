@@ -1,11 +1,11 @@
 # Live Audit Index
 
-Generated: 2026-09-22T07:40:43Z
+Generated: 2026-09-22T08:10:55Z
 PR: n/a
-SHA: `99ce9632d5`
+SHA: `385ed84390`
 Branch: `codex/final-entry-freshness`
 Scope: **backend_logic**
-Change scope: `base` (`b5a39b12c5a92271843bae918ec2b476183beeba...HEAD`)
+Change scope: `base` (`60f05e2fb4913cd4989bb854436ac21ecdae546b...HEAD`)
 
 ## Changed files
 
@@ -15,8 +15,8 @@ Change scope: `base` (`b5a39b12c5a92271843bae918ec2b476183beeba...HEAD`)
 | Organism | 3 | `backend/organism/entry_evidence.py`, `backend/organism/entry_freshness.py`, `backend/organism/live_engine.py` |
 | Scripts | 2 | `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 7 | `tests/test_apr7_p0_p1_fixes.py`, `tests/test_entry_freshness.py`, `tests/test_entry_freshness_snapshot.py`, `tests/test_operator_controls.py`, `tests/test_phase2_freeze.py`, `tests/test_phase9_strategy_governance.py`, `tests/test_replay_simulator.py` |
-| Docs | 1 | `docs/architecture/mapss.md` |
+| Tests | 8 | `tests/test_apr7_p0_p1_fixes.py`, `tests/test_entry_freshness.py`, `tests/test_entry_freshness_snapshot.py`, `tests/test_operator_controls.py`, `tests/test_phase2_freeze.py`, `tests/test_phase9_strategy_governance.py`, `tests/test_replay_simulator.py`, `tests/test_v12_baseline_invariants.py` |
+| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/FINAL_ENTRY_FRESHNESS_RELEASE.md`, `docs/engineering/LIVE_AUDIT_INDEX.md` |
 
 ## Configuration resolution (not engine observation)
 

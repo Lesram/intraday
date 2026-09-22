@@ -1,7 +1,7 @@
 {
   "task_id": "final-entry-freshness-20260922",
   "summary": "Enforce approved final-entry actual-bar freshness; candidate release pending activation",
-  "sha": "9d4aa5f51f3411f3fcc7a6ae334df54650b0a1b6",
+  "sha": "385ed843908ee40caf704b10bf6bd2b04e4f9925",
   "branch": "codex/final-entry-freshness",
   "change_scope": "base",
   "change_ref": "60f05e2fb4913cd4989bb854436ac21ecdae546b...HEAD",
@@ -20,6 +20,21 @@
     "artifacts/final_entry_freshness/implementation.json",
     "artifacts/final_entry_freshness/implementation_freeze.log",
     "artifacts/final_entry_freshness/independent_review.json",
+    "artifacts/final_entry_freshness/late_review.json",
+    "artifacts/final_entry_freshness/late_review_final_freeze.log",
+    "artifacts/final_entry_freshness/late_review_freeze.log",
+    "artifacts/final_entry_freshness/late_review_full_pack.log",
+    "artifacts/final_entry_freshness/late_review_hosted_prior_failure.json",
+    "artifacts/final_entry_freshness/late_review_operational.log",
+    "artifacts/final_entry_freshness/late_review_operational.xml",
+    "artifacts/final_entry_freshness/late_review_plan.json",
+    "artifacts/final_entry_freshness/late_review_report.json",
+    "artifacts/final_entry_freshness/late_review_secret_scan.json",
+    "artifacts/final_entry_freshness/late_review_secret_scan.log",
+    "artifacts/final_entry_freshness/late_review_secret_triage.json",
+    "artifacts/final_entry_freshness/late_review_static.json",
+    "artifacts/final_entry_freshness/late_review_targeted.log",
+    "artifacts/final_entry_freshness/late_review_targeted.xml",
     "artifacts/final_entry_freshness/organism_regression.log",
     "artifacts/final_entry_freshness/organism_regression.xml",
     "artifacts/final_entry_freshness/plan.json",
@@ -30,6 +45,8 @@
     "artifacts/final_entry_freshness/replay_fixture_final.log",
     "artifacts/final_entry_freshness/replay_fixture_final.xml",
     "artifacts/final_entry_freshness/root_lint.json",
+    "artifacts/final_entry_freshness/root_operational_recheck.log",
+    "artifacts/final_entry_freshness/root_operational_recheck.xml",
     "artifacts/final_entry_freshness/ruff_initial.log",
     "artifacts/final_entry_freshness/secret_scan.json",
     "artifacts/final_entry_freshness/secret_scan.log",
@@ -61,6 +78,8 @@
     "artifacts/self_evolution.junit.xml",
     "artifacts/self_evolution.log",
     "artifacts/semantic_invariants.junit.xml",
+    "artifacts/semantic_invariants.log",
+    "artifacts/semantic_invariants_summary.json",
     "artifacts/spec_drift.log",
     "artifacts/spec_drift_summary.json",
     "artifacts/task_report.json",
@@ -112,7 +131,5 @@
   "risks": [
     "3 organism file(s) changed \u2014 replay verification required"
   ],
-  "follow_ups": [],
-  "artifact_pack_status": "pass",
-  "artifact_pack_errors": []
+  "follow_ups": []
 }
