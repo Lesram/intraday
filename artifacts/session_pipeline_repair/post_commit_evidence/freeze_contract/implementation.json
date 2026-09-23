@@ -1,0 +1,63 @@
+{
+  "task_id": "active_freeze_contract",
+  "status": "SOURCE_READY_FOR_INDEPENDENT_REVIEW_AND_RELEASE_VALIDATION",
+  "base_source_sha": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "source_binding": "Current exact working-tree file hashes; no source commit made by author. Concurrent root/provider edits are outside this owned delta.",
+  "files_sha256": {
+    "backend/organism/freeze_contract.py": "5b8183d364f8a2143ea45f0f2345c96336d8c5b287c6a0e926a9936b611b8f5c",
+    "scripts/phase2_gate.py": "159c85ee3be288a483d883df4c07b422d0c59972e747bcb9976fdcb003b1a446",
+    "scripts/phase3_attribution_report.py": "cee467dcc0f9de4c78894721441fe67819efffcb8c395ba222857a7450c1430b",
+    "scripts/research/paper_fill_reconciliation.py": "913654d0e7a37ae501e11760fff6b72c47ca5353e32551022c0ce743a524b796",
+    "scripts/ops/paper_daily_evidence.py": "f0123ce3ece2127f31969006ad075ef63f5971042a3ad818510026765b532549",
+    "scripts/ops/paper_daily_host.py": "2c1b48d5689032812dad5e8da46472fd9ee21dbd2c6989143675bc00e7d9be0e",
+    "tests/test_active_freeze_contract.py": "b460e54d8aba3ce3429a74fc05a465ef20c6cc02e360e83a59658e7b5b72c2a0"
+  },
+  "behavior": [
+    "Stdlib-only active freeze validator requires dict, aware FROZEN_AT and strictly boolean status flags when present. Candidate true or explicit approval false rejects; legacy absent flags remain compatible. No fallback or timestamp normalization.",
+    "Phase2/phase3 native CLIs fail sanitized/nonzero before corpus/history access; fill reconciliation validates exact freeze bytes before other input reads and hashes the same analyzed bytes.",
+    "Daily collection validates before any broker/container/history access and revalidates the captured freeze; daily analysis/replay refuses candidate before ledger/gate evaluation even if activation hash/cutoff agrees.",
+    "Host private binding validation calls same contract before reading dependent authority/authentication; watchdog inherits binding refusal.",
+    "Legacy NO_SESSION packs without a freeze remain replayable without consuming a cutoff or producing a strategy verdict. Any present freeze is validated; new collection includes the validated freeze.",
+    "Research CLI remains directly runnable via minimal repository-path bootstrap; no settings/model/state imports from the new module."
+  ],
+  "tests": {
+    "targeted_passed": 353,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "per_module": {
+      "tests.test_active_freeze_contract": 75,
+      "tests.test_phase3_attribution_report": 4,
+      "tests.test_paper_fill_reconciliation": 23,
+      "tests.test_paper_daily_evidence": 85,
+      "tests.test_paper_daily_host": 31,
+      "tests.test_paper_watchdog": 127,
+      "tests.test_phase2_gate": 8
+    },
+    "junit_sha256": "e6f59bd81524e091eb469d51a83711ace3c1fbde270f3f750fd4094ab8fde84c",
+    "log_sha256": "e6f4123bbfdcbf341cfc97e0c2fb06ffdd3001639469253bdeb4a8992be7ea51",
+    "ruff_findings": 0,
+    "ruff_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "command": "/Users/marselkei/VS/intra/venv/bin/python -B /tmp/intra-scanner-safe-test.py tests/test_active_freeze_contract.py tests/test_phase3_attribution_report.py tests/test_paper_fill_reconciliation.py tests/test_paper_daily_evidence.py tests/test_paper_daily_host.py tests/test_paper_watchdog.py tests/test_phase2_gate.py --junitxml=artifacts/session_pipeline_repair/post_commit_evidence/freeze_contract/targeted.xml",
+    "isolation": "network-denied sandbox, clean synthetic environment, scratch brain; no installed credentials/API/broker calls"
+  },
+  "source_review": {
+    "cutoff_audit": "/tmp/intra-candidate-cutoff-reader-review.json",
+    "sha256": "a19851782d61689c171aaebf61f51dd3ef1580d5af2b54fb2e053852872d3723"
+  },
+  "frozen_or_trading_behavior_changed": false,
+  "scope_note": "This is report/control-plane authority validation; root separately owns generator/path/workflow/docs and the candidate surface update. Existing statistical costing/filters and runtime decisions are unchanged by these owned files.",
+  "remaining_gates": [
+    "Independent review",
+    "Root generator cannot launder candidate flags and verifies explicit candidate path without canonical overwrite",
+    "Root exact new source/fullpack/freeze/snapshot/docs/hosted checks",
+    "New image bound to combined source;1eb/e1bd retained as historical pre-repair image",
+    "No deployment or new active boundary without explicit approval"
+  ],
+  "limitations": [
+    "Absent legacy flags permit historical active documents; this helper does not invent deployment approval or replace the host binding/activation/hash/flat-state chain.",
+    "Explicit raw-cutoff statistical helpers remain pure functions; public artifact input boundaries now enforce authority.",
+    "No broad file-system or arbitrary JSON parser redesign; existing daily stable-read/pinned-hash checks remain in place.",
+    "No source commits, root source edits, live state or evaluation-clock changes made by this task."
+  ]
+}

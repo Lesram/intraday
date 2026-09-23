@@ -1,0 +1,99 @@
+{
+  "aggregate_push_notice": {
+    "critical": 1,
+    "high": 38,
+    "low": 8,
+    "moderate": 59,
+    "provenance": "GitHub push notice reported by root; only the one open critical alert was independently queried. Other alert metadata and counts were not re-audited.",
+    "total": 106
+  },
+  "alert": {
+    "advisory_updated_at": "2026-08-13T18:19:30Z",
+    "advisory_url": "https://github.com/vitest-dev/vitest/security/advisories/GHSA-5xrq-8626-4rwp",
+    "created_at": "2026-09-19T18:53:17Z",
+    "cve_id": "CVE-2026-47429",
+    "ecosystem": "npm",
+    "first_patched_version": "3.2.6",
+    "ghsa_id": "GHSA-5xrq-8626-4rwp",
+    "manifest_path": "frontend/package-lock.json",
+    "number": 68,
+    "package": "vitest",
+    "relationship": "direct",
+    "scope": "development",
+    "severity": "critical",
+    "state": "open",
+    "summary": "When Vitest UI server is listening, arbitrary file can be read and executed",
+    "updated_at": "2026-09-19T18:53:17Z",
+    "url": "https://github.com/Lesram/intraday/security/dependabot/68",
+    "vulnerable_version_range": "< 3.2.6"
+  },
+  "candidate_applicability": {
+    "default_branch_alert_state_changed": false,
+    "falls_in_reported_affected_range": false,
+    "locked_ui_dev": true,
+    "locked_ui_version": "3.2.6",
+    "locked_vitest_instances": [
+      {
+        "dev": true,
+        "lock_key": "node_modules/vitest",
+        "version": "3.2.6"
+      }
+    ],
+    "manifest_dev_spec": "^3.2.6",
+    "reason": "The exact candidate lock resolves3.2.6, which equals the advisory first patched version and is outside <3.2.6. This version was already present before this bounded review; no package changes performed."
+  },
+  "candidate_source_sha": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "critical_query": {
+    "api_path": "repos/Lesram/intraday/dependabot/alerts?state=open&severity=critical&per_page=100",
+    "open_critical_count": 1,
+    "read_only": true
+  },
+  "default_branch": "main",
+  "default_branch_applicability": {
+    "development_dependency": true,
+    "falls_in_reported_affected_range": true,
+    "lock_sha256": "96f2fc2314efe9bd66a5a00888956ef00eea57bbadd2caaf5edf2663957536e8",
+    "locked_vitest_version": "3.2.4",
+    "source": "Exact current-main commit manifest fetched read-only from GitHub; no dependency execution."
+  },
+  "default_branch_commit_time": "2026-09-22T08:52:02Z",
+  "default_branch_sha_observed": "5b19b9be446cce9dac8637e25684bdf189c4fa38",
+  "limitations": [
+    "This does not dismiss the open default-branch alert, certify the entire dependency tree, or dispose of the other105 push-reported alerts.",
+    "No parked frontend/npm-audit/Bandit cleanup, installs, package execution, exploit verification, runtime probes, alert mutation, permission requests, source edits or commits.",
+    "The critical alert is development-scoped; development/server exposure can still matter on affected versions. Nonapplicability here relies on exact patched candidate version, not merely the dev label."
+  ],
+  "repository": "Lesram/intraday",
+  "repository_role": {
+    "advisory_conditions_summary": "Advisory describes exposed Vitest UI/API or Windows UI/browser mode risk; no exploit or listener test performed.",
+    "config": "frontend/vite.config.ts defines jsdom test environment; the reviewed test configuration/workflow does not enable --ui or configure api.host. This is a bounded source check, not live process/exposure verification.",
+    "role": "Frontend development/test dependency installed during CI; not a declared frontend production dependency or Python trading-engine dependency.",
+    "runtime_limit": "No claim about any currently installed local node_modules, running UI server, or deployed frontend dependency inventory; only committed candidate manifests/role reviewed.",
+    "workflow": "paper-readiness installs frontend dependencies with npm ci, invokes vitest run for focused UI tests, then separately invokes the Vite production build."
+  },
+  "reviewed_at_utc": "2026-09-23T07:25:31.968089+00:00",
+  "source_evidence": [
+    {
+      "path": "frontend/package.json",
+      "sha256": "1f93fa278e031acefa5fbb275768f33ac13d58406515f8a9de9a2d012f14cc9f"
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "sha256": "3450c9614e1a31be12e4866ef3c41de9cc738eaf3b138f0f3382d7bbd376540a"
+    },
+    {
+      "path": "frontend/vite.config.ts",
+      "sha256": "26f8975661d9362947ad7c762b211bc7d63625fcdc59d9e180b89284b5835aca"
+    },
+    {
+      "path": ".github/workflows/paper-readiness.yml",
+      "sha256": "11e0f241cf3be83da165b6e6d42b4ebef5557d65230f6957fc9ad9a7dbec39bb"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "8816b42d06a58d95495401016db93a978bf8eba05af03c42deadefc102e08694"
+    }
+  ],
+  "status": "CRITICAL_DEFAULT_BRANCH_ALERT_NOT_APPLICABLE_TO_CANDIDATE_LOCKED_VERSION",
+  "task_id": "final_candidate_single_critical_dependency_scope"
+}

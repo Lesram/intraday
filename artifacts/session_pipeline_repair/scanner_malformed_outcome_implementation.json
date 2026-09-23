@@ -1,0 +1,51 @@
+{
+  "task_id": "scanner_malformed_outcome_review_followup",
+  "status": "implemented_targeted_checks_passed_pending_independent_review",
+  "base_sha": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+  "source_files_sha256": {
+    "backend/organism/market_scanner.py": "34deb134aabbadffe27f0c6128cacc69db71587fa3e24b6ba74d4848ca47271c",
+    "tests/test_scanner_pipeline_integration.py": "beef3f0b5a95a515700adae5e37b248996326873c241c062c1e6badbc0278d94"
+  },
+  "engine_sha256_unchanged": "fad1469f4f37f524a0bbe67d1d8c4358cc93f4d81c5dc2dbbf98cbf7516cb083",
+  "predecessor_report": {
+    "path": "artifacts/session_pipeline_repair/scanner_outcome_implementation.json",
+    "sha256": "a79317ec3f25f98deea36fd7ca30cab22daf76ac11c94c89d6753d89ef94e406"
+  },
+  "behavior": [
+    "Malformed supplied discovery row/symbol/numeric field marks scan degraded while valid separately qualified rows remain available.",
+    "Each requested symbol missing from snapshot response or having malformed snapshot data marks scan degraded, including HTTP200 error-object responses and dailyBar{}.",
+    "Valid empty discovery, valid price/volume/tension exclusions and explicitly excluded symbols remain successful policy filtering.",
+    "Existing explicit engine bookkeeping remains unchanged: qualified partial candidates stay available but do not advance last-success; actual successful empty resets failure streak."
+  ],
+  "preservation": {
+    "score_tension_AST_unchanged": true,
+    "request_retry_AST_unchanged": true,
+    "snapshot_validator_AST_unchanged": true,
+    "engine_unchanged_this_followup": true,
+    "strategy_parameters_changed": false,
+    "feed_changed": false,
+    "active_cutoff_changed": false
+  },
+  "tests": {
+    "passed": 140,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "network_denied": true,
+    "production_writes_denied": true,
+    "installed_credentials_and_brain_reads_denied": true,
+    "scope": "scanner real-tick/integration, malformed provider outcomes, provider schema contracts, W100 actual behavior, exact baseline LOC"
+  },
+  "proof_sha256": {
+    "scanner_malformed_outcome_final.json": "1a9abb56c0bc3a81d96861169670e230e6b0df7857c21c916c37da30df2f51d8",
+    "scanner_malformed_outcome_final.xml": "77554bdcaaa4224a427a6a06a8a4168964e8ebb1b159be2df1f8bbe5400d1327",
+    "scanner_malformed_outcome_final.log": "bd2b0325eb9340c8631efc89c42fa86135892ba883e1c8bbf849b54081c301af"
+  },
+  "ruff": "Both touched Python files pass; diff check clean.",
+  "operational_mutations": false,
+  "frozen_source_hash_changed": true,
+  "limitations": [
+    "Mocked provider I/O/replay only; no actual broker/data calls.",
+    "Root must regenerate candidate surface and final combined artifacts; no active runtime or cutoff is changed."
+  ]
+}

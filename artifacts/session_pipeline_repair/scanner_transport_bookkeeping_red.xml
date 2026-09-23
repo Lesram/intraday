@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="3" time="3.881" timestamp="2026-09-23T00:34:45.494648-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_scanner_pipeline_integration" name="test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_http]" time="1.894"><failure message="assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]&#10;  &#10;  At index 0 diff: (6, 0, None) != (6, 1, None)&#10;  Use -v to get more diff">tests/test_scanner_pipeline_integration.py:159: in test_successful_empty_scan_resets_failure_streak_in_real_ticks
+    assert [(row["tick"], row["failures"], row["last_success"]) for row in observations] == [
+E   assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]
+E     
+E     At index 0 diff: (6, 0, None) != (6, 1, None)
+E     Use -v to get more diff</failure></testcase><testcase classname="tests.test_scanner_pipeline_integration" name="test_successful_empty_scan_resets_failure_streak_in_real_ticks[snapshot_http]" time="0.863"><failure message="assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]&#10;  &#10;  At index 0 diff: (6, 0, None) != (6, 1, None)&#10;  Use -v to get more diff">tests/test_scanner_pipeline_integration.py:159: in test_successful_empty_scan_resets_failure_streak_in_real_ticks
+    assert [(row["tick"], row["failures"], row["last_success"]) for row in observations] == [
+E   assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]
+E     
+E     At index 0 diff: (6, 0, None) != (6, 1, None)
+E     Use -v to get more diff</failure></testcase><testcase classname="tests.test_scanner_pipeline_integration" name="test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_timeout]" time="0.856"><failure message="assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]&#10;  &#10;  At index 0 diff: (6, 0, None) != (6, 1, None)&#10;  Use -v to get more diff">tests/test_scanner_pipeline_integration.py:159: in test_successful_empty_scan_resets_failure_streak_in_real_ticks
+    assert [(row["tick"], row["failures"], row["last_success"]) for row in observations] == [
+E   assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]
+E     
+E     At index 0 diff: (6, 0, None) != (6, 1, None)
+E     Use -v to get more diff</failure></testcase></testsuite></testsuites>

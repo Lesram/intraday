@@ -1,0 +1,252 @@
+{
+  "analysis_method": "git show at each reported commit; parse exact reported JSON line; require one full 64-hex value; find its unique JSON key path; independently hash the named source file at that same commit and require equality. Check freeze source-key mapping in committed generator. For lint, verify whole import span hash, unused AST Name, original artifact byte identity, and absence of active source/workflow references.",
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "blocking_findings": [],
+  "counts": {
+    "bandit_high_baseline": 0,
+    "bandit_high_candidate": 0,
+    "bandit_high_new": 0,
+    "changed_python_files": 40,
+    "confirmed_new_credentials": 0,
+    "individually_verified_sha256_false_positives": 7,
+    "new_active_source_lint_findings": 0,
+    "raw_gitleaks_exit_code": 1,
+    "raw_gitleaks_findings": 7,
+    "retained_evidence_unused_imports": 2,
+    "ruff_baseline": 76,
+    "ruff_candidate": 59,
+    "ruff_raw_new": 2,
+    "ruff_removed": 19,
+    "ruff_retained_baseline": 57,
+    "unclassified_secret_findings": 0
+  },
+  "head_sha": "3f20cea30b66165fc8ba70a0773372330d7bb490",
+  "limitations": [
+    "Ruff still reports two new retained-evidence F401 warnings plus 57 baseline findings; this is not repository-wide lint cleanliness.",
+    "The archived candidate_freeze_builder is a historical reproducer, not the current candidate authority mechanism, and was not executed. Current root-owned candidate generation must be used.",
+    "Gitleaks raw exit 1 and all seven raw findings are retained. They are individually proven source-hash false positives; the scanner itself did not report zero.",
+    "Bandit high-severity and changed-file lint are bounded checks, not complete security assurance.",
+    "Final artifact-only commit still requires an exact final-head secret scan; this report only binds source head 3f20cea30b66165fc8ba70a0773372330d7bb490."
+  ],
+  "lint_dispositions": [
+    {
+      "classification": "RETAINED_HISTORICAL_EVIDENCE_UNUSED_IMPORT",
+      "code": "F401",
+      "disposition": "Nonblocking retained evidence warning. Original evidence bytes are preserved; this is not a zero-warning lint result.",
+      "executed_by_this_review": false,
+      "file_sha256": "e22a753cb16ca13637bf460bed3705520575cfb5ebcf368613e97539989a2f6a",
+      "line": 1,
+      "message": "`subprocess` imported but unused",
+      "path": "artifacts/session_pipeline_repair/candidate_freeze_builder.py",
+      "source_context_sha256": "aac5227aa47e30288d49b97f0fcfe1305cdfc5862f43d3d2708e496185323207",
+      "source_span": "import hashlib,json,os,subprocess,sys",
+      "unchanged_since_commit": "3a9e35582cbb6083f650dc081175124d8a32e64e"
+    },
+    {
+      "classification": "RETAINED_HISTORICAL_EVIDENCE_UNUSED_IMPORT",
+      "code": "F401",
+      "disposition": "Nonblocking retained evidence warning. Original evidence bytes are preserved; this is not a zero-warning lint result.",
+      "executed_by_this_review": false,
+      "file_sha256": "249fd7bc6ec368f5e823573a06c9690ef2692b5f99d5fd7054238611c94aaa63",
+      "line": 1,
+      "message": "`os` imported but unused",
+      "path": "artifacts/session_pipeline_repair/intra-scanner-safe-test.py",
+      "source_context_sha256": "d75a791cf6052978ee35b24aa31eb80be1ae41abeac44b460dd51a86a1e86763",
+      "source_span": "import os,pathlib,subprocess,sys,tempfile",
+      "unchanged_since_commit": "3a9e35582cbb6083f650dc081175124d8a32e64e"
+    }
+  ],
+  "raw_bandit_delta": {
+    "bytes": 1477,
+    "path": "artifacts/session_pipeline_repair/followup_static/security_bandit_delta.json",
+    "sha256": "4d4153baf99a6bda7559aa8790122f4fb889f9652f65bcceccda8e9fd525f1b5"
+  },
+  "raw_redacted_secret_findings": {
+    "bytes": 3469,
+    "path": "artifacts/session_pipeline_repair/followup_static/security_gitleaks_redacted.json",
+    "sha256": "5bd0f201877832cd533ba3547216df47e7d1f1818187534393ff5282c9b33099"
+  },
+  "raw_ruff_delta": {
+    "bytes": 45588,
+    "path": "artifacts/session_pipeline_repair/followup_static/security_ruff_delta.json",
+    "sha256": "806c0678424eb74443485693c8d306de25b0617f1353103f77489ce423382bfe"
+  },
+  "raw_secret_scan_receipt": {
+    "bytes": 1107,
+    "path": "artifacts/session_pipeline_repair/followup_static/security_scan_receipt.json",
+    "sha256": "280dad7bc38fbef7ae3c21010b4d231833519651c3119457350432e3167aa7be"
+  },
+  "raw_static_review": {
+    "bytes": 8790,
+    "path": "artifacts/session_pipeline_repair/followup_static/static_review.json",
+    "sha256": "c945119316767a78853675c11dc833ed0d18fb18cb9a3180b04b8e3f32d08a49"
+  },
+  "reviewed_at_utc": "2026-09-23T07:56:42.053677+00:00",
+  "scope": "Read-only independent verification of committed changed-Python scan, retained historical artifact imports, and every exact-range redacted secret-scan finding. No source, scanner rule, allowlist, or raw receipt was changed.",
+  "secret_dispositions": [
+    {
+      "Commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+      "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+      "EndLine": 12,
+      "File": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/independent_review.json",
+      "Fingerprint": "1eb34339f621547b0334ceed67615fa539a09dea:artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/independent_review.json:generic-api-key:12",
+      "RuleID": "generic-api-key",
+      "StartLine": 12,
+      "artifact_sha256": "08da86dd6964ef3ca82249e5f53a4455d1c09fb45ae11349e78cd60cd266e9ea",
+      "classification": "VERIFIED_SOURCE_SHA256_FALSE_POSITIVE",
+      "exact_source_bytes_hash_equal_to_flagged_value": true,
+      "json_path": [
+        "files_sha256",
+        "tests/test_developer_tool_credentials.py"
+      ],
+      "reason": "The flagged value exactly equals independently computed SHA256 of the named source file at the same commit. It is source-integrity metadata, not an authentication credential.",
+      "referenced_source_commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+      "referenced_source_path": "tests/test_developer_tool_credentials.py",
+      "source_span_sha256": "059c194fca3af3aa411be63eb837fee21742eb3b46aae1db9119e5716cfcdf40",
+      "verified_source_sha256": "830064967c382ad765f441104fab36287545151ad7d621d7ba084a94eb428067"
+    },
+    {
+      "Commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+      "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+      "EndLine": 152,
+      "File": "artifacts/session_pipeline_repair/expanded_pack_acceptance_review.json",
+      "Fingerprint": "1eb34339f621547b0334ceed67615fa539a09dea:artifacts/session_pipeline_repair/expanded_pack_acceptance_review.json:generic-api-key:152",
+      "RuleID": "generic-api-key",
+      "StartLine": 152,
+      "artifact_sha256": "e468b74ca59ab9f28882a9c61c689a30bfba47286b7026aea4e8f591821af894",
+      "classification": "VERIFIED_SOURCE_SHA256_FALSE_POSITIVE",
+      "exact_source_bytes_hash_equal_to_flagged_value": true,
+      "json_path": [
+        "candidate_code_sha256",
+        "tests/test_developer_tool_credentials.py"
+      ],
+      "reason": "The flagged value exactly equals independently computed SHA256 of the named source file at the same commit. It is source-integrity metadata, not an authentication credential.",
+      "referenced_source_commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+      "referenced_source_path": "tests/test_developer_tool_credentials.py",
+      "source_span_sha256": "059c194fca3af3aa411be63eb837fee21742eb3b46aae1db9119e5716cfcdf40",
+      "verified_source_sha256": "830064967c382ad765f441104fab36287545151ad7d621d7ba084a94eb428067"
+    },
+    {
+      "Commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+      "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+      "EndLine": 204,
+      "File": "artifacts/phase2/candidate_param_freeze.json",
+      "Fingerprint": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf:artifacts/phase2/candidate_param_freeze.json:generic-api-key:204",
+      "RuleID": "generic-api-key",
+      "StartLine": 204,
+      "artifact_sha256": "f0b79117451d90a5d291861493a4c46b63346a4f6a5c87c63c4becca3c1316a5",
+      "classification": "VERIFIED_SOURCE_SHA256_FALSE_POSITIVE",
+      "exact_source_bytes_hash_equal_to_flagged_value": true,
+      "json_path": [
+        "surface",
+        "research_policy_sources",
+        "emergency_stop_api"
+      ],
+      "reason": "The flagged value exactly equals independently computed SHA256 of the named source file at the same commit. It is source-integrity metadata, not an authentication credential.",
+      "referenced_source_commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+      "referenced_source_path": "backend/api/routes/risk.py",
+      "source_span_sha256": "dbf5e8e1b58e61c648e9cd7690c4439d6c58718fe63b7af9b941987dab623d77",
+      "verified_source_sha256": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab"
+    },
+    {
+      "Commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+      "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+      "EndLine": 216,
+      "File": "artifacts/phase2/candidate_param_freeze.json",
+      "Fingerprint": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf:artifacts/phase2/candidate_param_freeze.json:generic-api-key:216",
+      "RuleID": "generic-api-key",
+      "StartLine": 216,
+      "artifact_sha256": "f0b79117451d90a5d291861493a4c46b63346a4f6a5c87c63c4becca3c1316a5",
+      "classification": "VERIFIED_SOURCE_SHA256_FALSE_POSITIVE",
+      "exact_source_bytes_hash_equal_to_flagged_value": true,
+      "json_path": [
+        "surface",
+        "research_policy_sources",
+        "operator_api"
+      ],
+      "reason": "The flagged value exactly equals independently computed SHA256 of the named source file at the same commit. It is source-integrity metadata, not an authentication credential.",
+      "referenced_source_commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+      "referenced_source_path": "backend/organism/routes.py",
+      "source_span_sha256": "8638b1d113df4b16e12898f32d184f3c5edb25ae83ac43bb0fc59315e0d92eec",
+      "verified_source_sha256": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710"
+    },
+    {
+      "Commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+      "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+      "EndLine": 223,
+      "File": "artifacts/phase2/candidate_param_freeze.json",
+      "Fingerprint": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf:artifacts/phase2/candidate_param_freeze.json:generic-api-key:223",
+      "RuleID": "generic-api-key",
+      "StartLine": 223,
+      "artifact_sha256": "f0b79117451d90a5d291861493a4c46b63346a4f6a5c87c63c4becca3c1316a5",
+      "classification": "VERIFIED_SOURCE_SHA256_FALSE_POSITIVE",
+      "exact_source_bytes_hash_equal_to_flagged_value": true,
+      "json_path": [
+        "surface",
+        "research_policy_sources",
+        "settings_api"
+      ],
+      "reason": "The flagged value exactly equals independently computed SHA256 of the named source file at the same commit. It is source-integrity metadata, not an authentication credential.",
+      "referenced_source_commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+      "referenced_source_path": "backend/api/routes/settings.py",
+      "source_span_sha256": "90939b218ffcc3d14707b4be8e013fc521adc28c08ed82b9fd99d5ce15319595",
+      "verified_source_sha256": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020"
+    },
+    {
+      "Commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+      "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+      "EndLine": 60,
+      "File": "artifacts/session_pipeline_repair/expanded_static/static_review.json",
+      "Fingerprint": "1eb34339f621547b0334ceed67615fa539a09dea:artifacts/session_pipeline_repair/expanded_static/static_review.json:generic-api-key:60",
+      "RuleID": "generic-api-key",
+      "StartLine": 60,
+      "artifact_sha256": "e03c49f31513dc9ec6aba612fa5c74233aba9a8a678398af8fd350e92d192d9c",
+      "classification": "VERIFIED_SOURCE_SHA256_FALSE_POSITIVE",
+      "exact_source_bytes_hash_equal_to_flagged_value": true,
+      "json_path": [
+        "head_python_sha256",
+        "tests/test_developer_tool_credentials.py"
+      ],
+      "reason": "The flagged value exactly equals independently computed SHA256 of the named source file at the same commit. It is source-integrity metadata, not an authentication credential.",
+      "referenced_source_commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+      "referenced_source_path": "tests/test_developer_tool_credentials.py",
+      "source_span_sha256": "059c194fca3af3aa411be63eb837fee21742eb3b46aae1db9119e5716cfcdf40",
+      "verified_source_sha256": "830064967c382ad765f441104fab36287545151ad7d621d7ba084a94eb428067"
+    },
+    {
+      "Commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+      "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+      "EndLine": 48,
+      "File": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/implementation.json",
+      "Fingerprint": "1eb34339f621547b0334ceed67615fa539a09dea:artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/implementation.json:generic-api-key:48",
+      "RuleID": "generic-api-key",
+      "StartLine": 48,
+      "artifact_sha256": "3e8e6cd9055f3765801254c126032620bf03dfe57c82f23170140c9bc6e4ebd8",
+      "classification": "VERIFIED_SOURCE_SHA256_FALSE_POSITIVE",
+      "exact_source_bytes_hash_equal_to_flagged_value": true,
+      "json_path": [
+        "files_changed",
+        "tests/test_developer_tool_credentials.py"
+      ],
+      "reason": "The flagged value exactly equals independently computed SHA256 of the named source file at the same commit. It is source-integrity metadata, not an authentication credential.",
+      "referenced_source_commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+      "referenced_source_path": "tests/test_developer_tool_credentials.py",
+      "source_span_sha256": "e86d8700e4c2897de2a9199f9d72c17b4fcc5ad98e2bc669a27e3d7706c4ffae",
+      "verified_source_sha256": "830064967c382ad765f441104fab36287545151ad7d621d7ba084a94eb428067"
+    }
+  ],
+  "status": "ACCEPTED_WITH_RETAINED_EVIDENCE_WARNINGS_AND_VERIFIED_HASH_FALSE_POSITIVES",
+  "task_id": "pipeline_followup_static_independent_disposition",
+  "validation": {
+    "all_changed_python_hashes_match_committed_head_and_current_bytes": true,
+    "application_imports": false,
+    "archived_reproducers_byte_identical_to_original_commit": true,
+    "each_secret_finding_bound_to_exact_committed_artifact_line_and_named_source_hash": true,
+    "lint_configuration_unchanged_from_base": true,
+    "network_or_runtime_calls": false,
+    "no_references_to_archived_reproducers_in_scanned_active_source_and_workflows": true,
+    "raw_report_hashes_verified": true,
+    "source_edits": false,
+    "suppressions_or_allowlist_edits": false
+  }
+}

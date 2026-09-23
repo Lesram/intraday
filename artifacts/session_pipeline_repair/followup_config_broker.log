@@ -1,0 +1,53 @@
+........................................................................ [ 35%]
+........................................................................ [ 71%]
+..........................................................               [100%]
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/test_settings_comprehensive.py::TestSettingsProxy::test_settings_proxy_getattr
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/tests/test_config_coordinator_comprehensive.py:17: DeprecationWarning: backend.config.coordinator is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.coordinator import ConfigurationCoordinator
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/config/coordinator.py:22: DeprecationWarning: backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.unified import UnifiedSettings, get_unified_settings
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log1p
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_single_row_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: divide by zero encountered in log10
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+2.92s call     tests/test_system_integration.py::TestMLTrainingWithDecay::test_retrained_model_improves_or_maintains
+2.30s call     tests/test_system_integration.py::TestMLKellyPipeline::test_train_predict_size_flow
+1.20s call     tests/test_system_integration.py::TestMLTrainingWithDecay::test_training_with_decay_succeeds
+0.11s call     tests/test_adversarial_inputs_v7.py::test_ws_handler_handles_null_filled_qty
+0.10s call     tests/test_adversarial_inputs_v7.py::test_bar_frozen_100_bars
+0.07s call     tests/test_adversarial_inputs_v7.py::test_bar_ts_uses_utc_for_dst_safety
+0.06s call     tests/test_adversarial_inputs_v7.py::test_ml_predict_extreme_outlier_safe
+0.06s call     tests/test_adversarial_inputs_v7.py::test_bar_duplicate_timestamps_does_not_crash
+0.06s call     tests/test_adversarial_inputs_v7.py::test_bar_missing_timestamp_none_is_caught_by_fetch_layer
+0.06s call     tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+202 passed, 10 warnings in 8.43s

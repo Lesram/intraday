@@ -3,8 +3,8 @@
   "resolved": {
     "close_accounting_policy": "exact_position_fills_or_pending_v1",
     "candidate_data_pipeline_sources": {
-      "market_scanner": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
-      "streaming_data_provider": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b",
+      "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
+      "streaming_data_provider": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838",
       "live_engine_data": "89e892f19009b7956a072a31f8be35d8dadec0c0056b80b30e29aa08fe70e719",
       "staleness_admission": "0399e7a2e534aaa52fd88d6734dad6320427fd106227343fe6884dbe1e9c7879"
     },
@@ -28,9 +28,9 @@
     "exploration_enabled": false,
     "alpha_breakout_bad_regime_filter_enabled": true,
     "candidate_filter_shadow_telemetry_enabled": false,
-    "candidate_filter_shadow_telemetry_path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-pipeline-tests-hdzgxanh/filter.jsonl",
+    "candidate_filter_shadow_telemetry_path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-pipeline-tests-a1jzniu_/filter.jsonl",
     "strategy_evidence_telemetry_enabled": false,
-    "strategy_evidence_telemetry_path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-pipeline-tests-hdzgxanh/strategy.jsonl",
+    "strategy_evidence_telemetry_path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-pipeline-tests-a1jzniu_/strategy.jsonl",
     "phase9_shadow_engines_enabled": false,
     "timeframe": "1Day",
     "timeframe_source": "code_default",

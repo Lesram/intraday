@@ -1,10 +1,10 @@
 {
-  "VALIDATED_AT": "2026-09-23T07:43:21.237298+00:00",
+  "VALIDATED_AT": "2026-09-23T07:50:50.906823+00:00",
   "_note_status": "new candidate validation boundary; no active clock change",
   "active_forward_cutoff": "2026-09-22T08:49:11.247316+00:00",
   "candidate_only": true,
   "deployment_approved": false,
-  "git_sha": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "git_sha": "3f20cea30b66165fc8ba70a0773372330d7bb490",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -15,7 +15,7 @@
   "surface": {
     "data_pipeline_sources": {
       "live_engine_data": "89e892f19009b7956a072a31f8be35d8dadec0c0056b80b30e29aa08fe70e719",
-      "market_scanner": "e1f911329cdd8ff737219d502809679805de1b99e6ddaf6dd366af6b32482fbf",
+      "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
       "staleness_admission": "0399e7a2e534aaa52fd88d6734dad6320427fd106227343fe6884dbe1e9c7879",
       "streaming_data_provider": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838"
     },

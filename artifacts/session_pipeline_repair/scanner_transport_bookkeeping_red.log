@@ -1,0 +1,75 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_ test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_http] _
+tests/test_scanner_pipeline_integration.py:159: in test_successful_empty_scan_resets_failure_streak_in_real_ticks
+    assert [(row["tick"], row["failures"], row["last_success"]) for row in observations] == [
+E   assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]
+E     
+E     At index 0 diff: (6, 0, None) != (6, 1, None)
+E     Use -v to get more diff
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 1 trades, equity $999,506
+  💾 Brain saved: generation 0, 2 trades, equity $999,026
+  💾 Brain saved: generation 0, 2 trades, equity $999,026
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T07:34:46.727571Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.market_scanner:market_scanner.py:192 {"event": "Scanner API 503 on attempt 1: https://data.alpaca.markets/v1beta1/screener/stocks/most-actives", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:47.128017Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:47.128209Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:47.313780Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:192 {"event": "Scanner API 503 on attempt 1: https://data.alpaca.markets/v1beta1/screener/stocks/most-actives", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:47.510011Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:47.510219Z"}
+_ test_successful_empty_scan_resets_failure_streak_in_real_ticks[snapshot_http] _
+tests/test_scanner_pipeline_integration.py:159: in test_successful_empty_scan_resets_failure_streak_in_real_ticks
+    assert [(row["tick"], row["failures"], row["last_success"]) for row in observations] == [
+E   assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]
+E     
+E     At index 0 diff: (6, 0, None) != (6, 1, None)
+E     Use -v to get more diff
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 1 trades, equity $999,506
+  💾 Brain saved: generation 0, 2 trades, equity $999,026
+  💾 Brain saved: generation 0, 2 trades, equity $999,026
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T07:34:47.940141Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.market_scanner:market_scanner.py:192 {"event": "Scanner API 503 on attempt 1: https://data.alpaca.markets/v2/stocks/snapshots", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:48.065429Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:48.247174Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:192 {"event": "Scanner API 503 on attempt 1: https://data.alpaca.markets/v2/stocks/snapshots", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:48.446850Z"}
+_ test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_timeout] _
+tests/test_scanner_pipeline_integration.py:159: in test_successful_empty_scan_resets_failure_streak_in_real_ticks
+    assert [(row["tick"], row["failures"], row["last_success"]) for row in observations] == [
+E   assert [(6, 0, None)...(18, 0, None)] == [(6, 1, None)..., (18, 1, 12)]
+E     
+E     At index 0 diff: (6, 0, None) != (6, 1, None)
+E     Use -v to get more diff
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 1 trades, equity $999,506
+  💾 Brain saved: generation 0, 2 trades, equity $999,026
+  💾 Brain saved: generation 0, 2 trades, equity $999,026
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T07:34:48.804070Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.market_scanner:market_scanner.py:207 {"event": "Scanner transient error: synthetic provider timeout", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:48.928456Z"}
+ERROR    backend.organism.market_scanner:market_scanner.py:212 {"event": "Scanner request failed after retries: synthetic provider timeout", "logger": "backend.organism.market_scanner", "level": "error", "timestamp": "2026-09-23T07:34:48.928523Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:48.928660Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:49.108714Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:207 {"event": "Scanner transient error: synthetic provider timeout", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:49.305821Z"}
+ERROR    backend.organism.market_scanner:market_scanner.py:212 {"event": "Scanner request failed after retries: synthetic provider timeout", "logger": "backend.organism.market_scanner", "level": "error", "timestamp": "2026-09-23T07:34:49.305931Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T07:34:49.306090Z"}
+=============================== warnings summary ===============================
+tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_http]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+1.89s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_http]
+0.86s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[snapshot_http]
+0.85s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_timeout]
+
+(6 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_http]
+FAILED tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[snapshot_http]
+FAILED tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_timeout]
+3 failed, 1 warning in 3.88s

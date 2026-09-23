@@ -1,0 +1,42 @@
+{
+  "task_id": "active_freeze_contract",
+  "status": "PLAN_BEFORE_EDITS",
+  "owned_files": [
+    "backend/organism/freeze_contract.py",
+    "scripts/phase2_gate.py",
+    "scripts/phase3_attribution_report.py",
+    "scripts/research/paper_fill_reconciliation.py",
+    "scripts/ops/paper_daily_evidence.py",
+    "scripts/ops/paper_daily_host.py",
+    "tests/test_active_freeze_contract.py"
+  ],
+  "scope": "Validate active-cutoff input authority at all report/collector/host boundaries; no candidate fallback, runtime or statistical-gate changes. Root separately owns candidate generator/reference path/workflow/docs.",
+  "interface": {
+    "validate_active_freeze": "dict payload, aware ISO timestamp FROZEN_AT, bool flags only when present; reject candidate_only true or deployment_approved false; allow absent legacy flags; ValueError controlled codes",
+    "load_active_freeze": "read one path once, parse and delegate; bad/unreadable input gives sanitized ValueError; no writes"
+  },
+  "checks": [
+    "Candidate or unapproved inputs rejected before corpus/ledger/other input reads and network collection",
+    "Coherent candidate activation/hash metadata does not reach READY_FOR_REVIEW or broker order inventory",
+    "Legacy approved active shape and aware offsets retain exact cutoff/cohort/cost semantics",
+    "CLI errors sanitized/nonzero and inputs untouched",
+    "Existing report/daily/host/watchdog/reconciliation/gate regression suites"
+  ],
+  "tests_planned": [
+    "tests/test_active_freeze_contract.py",
+    "tests/test_phase3_attribution_report.py",
+    "tests/test_paper_fill_reconciliation.py",
+    "tests/test_paper_daily_evidence.py",
+    "tests/test_paper_daily_host.py",
+    "tests/test_paper_watchdog.py",
+    "tests/test_phase2_gate.py"
+  ],
+  "test_execution": "/tmp/intra-scanner-safe-test.py; clean synthetic env, scratch brain, network denied; no installed credentials",
+  "forbidden": [
+    "Root-owned phase2_freeze/generator/tests/workflow edits",
+    "live API/broker calls",
+    "production source/env/brain/freeze changes",
+    "commit/push",
+    "baseline/cost/threshold tuning"
+  ]
+}

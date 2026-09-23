@@ -1,0 +1,35 @@
+{
+  "task_id": "review_followup_lifecycle_and_cutoff_authority",
+  "superseded_candidate": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "scope": [
+    "Separate candidate verification/generation from active cutoff authority; reject candidate artifacts at all measurement inputs.",
+    "Reset provider lifecycle/session state and reject obsolete callbacks without weakening120s health gates.",
+    "Treat successful empty scans as successful transport for scanner failure bookkeeping.",
+    "Render complete artifact/evidence/config/report changed-file inventory."
+  ],
+  "root_owned": [
+    "scripts/phase2_freeze.py",
+    "tests/test_phase2_freeze.py",
+    ".github/workflows/paper-readiness.yml",
+    "docs/engineering/SESSION_PIPELINE_REPAIR.md",
+    "docs/architecture/mapss.md",
+    "artifacts/phase2/param_freeze.json",
+    "artifacts/monday_readiness/frozen_surface_reference.json",
+    "artifacts/phase2/candidate_param_freeze.json"
+  ],
+  "rules": [
+    "Never change installed activefreeze/cutoff/runtime/history/binding.",
+    "Restore worktree canonical/reference from actualapprovedinstalledartifact, not basecommitwhichwasalsoacandidate.",
+    "Default generation emits candidate-only separateartifact; explicitread-only candidateverification neverpromotesittoactive.",
+    "All previousresultsremainhistorical; new finalsource requires fullpack/replay/reviews/CI/imageverification."
+  ],
+  "tests": [
+    "test_phase2_freeze",
+    "test_active_freeze_contract",
+    "providerlifecycle/freshness",
+    "scannerintegration",
+    "auditindexinventory",
+    "requiredfullsafety/replay/config/reconciliation"
+  ],
+  "deployment": false
+}

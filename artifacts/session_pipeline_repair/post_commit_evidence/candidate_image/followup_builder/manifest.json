@@ -1,0 +1,65 @@
+{
+  "created_at": "2026-09-23T07:52:54.399715+00:00",
+  "deployment_authorized": false,
+  "execution_performed": false,
+  "files": {
+    "builder.py": {
+      "bytes": 33525,
+      "sha256": "5d259c7740760deb706260ad97a533f119733c3bc20b2fce2d8222b5278db800"
+    },
+    "builder_tests.py": {
+      "bytes": 15385,
+      "sha256": "1678a26620d56aeef1fc583441dfd8ecef12790dc1aa06db84c7107d6fc04a39"
+    },
+    "implementation.json": {
+      "bytes": 3940,
+      "sha256": "4c8336f8369f9ab96ada33e9c0f0d0fccf6b912cde008cfc01f56563f02e5cb9"
+    },
+    "independent_review.json": {
+      "bytes": 3415,
+      "sha256": "6d654a751f7e320205dba2d8576b036897e812ca49cfae5f6a15e8fa8ef4e4b8"
+    },
+    "initial_builder.py": {
+      "bytes": 33203,
+      "sha256": "82d5ff7696471419dc21e3d9ccb67fc04f0ca8da9d625e99df9e59f47b918215"
+    },
+    "initial_builder_tests.py": {
+      "bytes": 14702,
+      "sha256": "f022709513e20ab44a94338db1c2c7f0908d616e986105926122ef588a870c93"
+    },
+    "initial_implementation.json": {
+      "bytes": 3514,
+      "sha256": "1cef3dd0e1e99413a51a27a9b6ded8022b97d08f45c2bc88d5ba30de98fc1b11"
+    },
+    "initial_tests.log": {
+      "bytes": 121,
+      "sha256": "679f707182acd8da25004e91ffb5ffab1d42c1d6ea87e8bf33edbcb932f9d74c"
+    },
+    "plan.json": {
+      "bytes": 2083,
+      "sha256": "6fb85eb0645fe2c5c0c67e16709ae94d6fea61509b13ff30579e23debe05a846"
+    },
+    "prior_builder.py": {
+      "bytes": 28988,
+      "sha256": "6d5814ee9a053e72a86c10794e61ef74579b6862059ecc3ad3859aa16405549c"
+    },
+    "prior_builder_tests.py": {
+      "bytes": 5831,
+      "sha256": "d25dc9409055100a340d9c2a8b05c6c536f2d1382a3b8699552f2f1f9c73bc5f"
+    },
+    "tests.log": {
+      "bytes": 122,
+      "sha256": "f955af7b770e7c2e5fe57d133c2c6f762d0641d9bb222baec60d9761b0e8682d"
+    }
+  },
+  "hash_order": "Author implementation binds source/tests/plan; independent review binds immutable implementation and source; this final manifest binds both. Neither input binds this manifest.",
+  "next_gate": "Root provides exact final SHA; prepare privately, review exact context scan, then separately authorize build. Preserve all prior image evidence.",
+  "source_commit_pending": true,
+  "status": "OFFLINE_REVIEW_ACCEPTED_NOT_PREPARED_OR_BUILT",
+  "task_id": "followup_candidate_builder_manifest",
+  "tests": {
+    "failed": 0,
+    "network_denied": true,
+    "passed": 23
+  }
+}

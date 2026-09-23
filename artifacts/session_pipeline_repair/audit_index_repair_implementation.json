@@ -1,0 +1,35 @@
+{
+  "task_id": "complete_audit_index_change_inventory",
+  "status": "complete_pending_independent_review",
+  "source_files_sha256": {
+    "scripts/ci/generate_audit_index.py": "90c636dabb60572e498c42d5aa767cf1d4bf4fe388e9897b0385eb2ab04ae272",
+    "tests/test_artifact_change_scope.py": "723c58c4e477659ad775db75d6cf5a26874389c2cb6156357b9a529fee044b28"
+  },
+  "behavior": [
+    "Category counts partition every changed path, with Artifacts/evidence, Reports, Configuration and catch-all Other now visible.",
+    "Organism count explicitly identifies a Backend subset; total distinct files is not inflated.",
+    "At-most-ten table previews are labeled and followed by an untruncated complete path list.",
+    "Reports/evidence-only scope classification is tooling/evidence_only; existing get_change_set resolution is unchanged."
+  ],
+  "tests": {
+    "passed": 33,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "network_denied": true,
+    "production_writes_denied": true,
+    "command_receipt": "artifacts/session_pipeline_repair/audit_index_complete_inventory.json",
+    "junit": "artifacts/session_pipeline_repair/audit_index_complete_inventory.xml",
+    "ruff": "Both owned Python files passed Ruff without findings."
+  },
+  "runtime_behavior_changed": false,
+  "operational_mutations": false,
+  "proof_sha256": {
+    "audit_index_complete_inventory.json": "c611e4eb4904c8d6ad1a7851821b8f4635f8c05e6e5c350e9c25a5ea67b64daf",
+    "audit_index_complete_inventory.xml": "bcdded29b75394d0943fa339af09674a98cf25294bd80b93b829abf40531cb90",
+    "audit_index_complete_inventory.log": "3effa3829dbb028f4d14b4402a386f782a0941f16ded0bb984f4617959dd2d4f"
+  },
+  "follow_ups": [
+    "Root regenerates final index after final source/artifact commit; no runtime/source status inferred from this documentation generator."
+  ]
+}

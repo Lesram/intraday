@@ -1,0 +1,45 @@
+{
+  "task_id": "independent_scanner_outcome_review",
+  "status": "ACCEPTED_SOURCE_PENDING_COMBINED_RELEASE_GATES",
+  "reviewed_at_utc": "2026-09-23T07:51:29.929393+00:00",
+  "scope": "Read-only source and recorded evidence review; no duplicate test run, operational action, or source change.",
+  "source_sha256": {
+    "backend/organism/market_scanner.py": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
+    "tests/test_scanner_pipeline_integration.py": "01d8f84b693c010c3981422291d61d94f567c162bb254cc55d9a899410d9505c",
+    "backend/organism/live_engine.py": "fad1469f4f37f524a0bbe67d1d8c4358cc93f4d81c5dc2dbbf98cbf7516cb083"
+  },
+  "implementation_report": {
+    "path": "artifacts/session_pipeline_repair/scanner_complete_outcome_implementation.json",
+    "sha256": "04a912d5117ff53232d27eb062db1c01ca6f5eaa4d00665fc6af37972f9b0008"
+  },
+  "accepted_junit": {
+    "path": "artifacts/session_pipeline_repair/scanner_complete_outcome_final.xml",
+    "sha256": "4c0806ff74cdac4f144899eaedeb1806f46c9a1c21afdc0500fbfaca983297e2",
+    "unique_passed": 145,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "findings": [],
+  "resolved_findings": [
+    {
+      "issue": "Malformed supplied rows and dict-shaped invalid/missing requested snapshots could be falsely reported as successful empty scan.",
+      "resolution": "Explicit degraded outcome now covers malformed records, missing requested snapshots, nonpositive discovery price and negative volume; invalid rows still cannot qualify. Real-shaped HTTP tests cover these cases."
+    }
+  ],
+  "verified": [
+    "Qualified partial candidates remain available while failure streak increments and last-success does not advance.",
+    "Real-tick tests prove degraded/degraded/successful-empty/degraded bookkeeping and retention of base plus held/admitted universe.",
+    "Valid empty endpoints, policy-filtered price/volume/tension and excluded symbols are successful; zero volume is legitimate filtering.",
+    "Deferred persistent-failure alert captures a stable string, not an exception variable deleted on handler exit. Alert copy correctly describes qualified partial candidates.",
+    "Score function, retry/request function and snapshot validator AST are unchanged versus source1eb; no scoring threshold, feed, learning ML/Kelly, protective-exit or final120s gate change."
+  ],
+  "live_tick_inner_LOC": 2824,
+  "limitations": [
+    "Mocked provider I/O and behavioral replay are not a natural-market deployment acceptance.",
+    "Partial scan health does not itself remove previously admitted symbols from the retained universe; admission gates continue to govern orders.",
+    "The current outcome property is read after serialized engine scan calls; no new concurrent public scan API contract is claimed.",
+    "Final combined pack, candidate surface regeneration, hosted gates and exact image remain required.",
+    "Intermediate92/140-pass evidence is retained but not counted again; use testcase identity deduplication across final suites."
+  ]
+}

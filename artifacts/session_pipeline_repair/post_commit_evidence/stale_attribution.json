@@ -1,0 +1,1090 @@
+{
+  "analysis_script": {
+    "path": "/private/tmp/intra-stale-session-attribution.py",
+    "sha256": "4276a961178f008cb083c86f6fdac872614ef9c6c66b22af161a1d773797c6bc"
+  },
+  "answer": "No saved evidence proves that any blocked cycle was caused by a retired/unsubscribed symbol. The saved evidence also does not permit classifying all or any specific cycle as genuinely active sparse-market delivery. Keep all 427 causally unclassified for this distinction.",
+  "available_snapshot_limits": {
+    "captured_at_utc": "2026-09-22T20:10:03.801840+00:00",
+    "status_engine_universe_is_single_closing_snapshot": true,
+    "strategy_events_scope": "Candidate/strategy evidence, not subscription state; source mapping verified without recomputing large historical event metrics.",
+    "tick_history_count": 200,
+    "tick_history_first": "2026-09-22T19:09:51.992547+00:00",
+    "tick_history_has_subscription_membership_field": false,
+    "tick_history_keys": [
+      "activity",
+      "brain_saved",
+      "duration_s",
+      "errors",
+      "exits_checked",
+      "orders_submitted",
+      "regime",
+      "scanner_candidates_count",
+      "scanner_ran",
+      "signals_generated",
+      "timestamp",
+      "trades_closed",
+      "training_metadata",
+      "training_status",
+      "universe_size",
+      "watchdog"
+    ],
+    "tick_history_last": "2026-09-22T20:00:48.421825+00:00",
+    "watchdog_universe_drift_scope": "Counts and differences relative to base universe; not stream subscription acknowledgement or per-symbol delivery history."
+  },
+  "conclusion_for_candidate": "Retired-state cleanup is a tested defensive repair for a real code mechanism. These session records do not quantify how many Sept22 blocks it would remove; no counterfactual fills, future activity increase, strategy edge or profitability claim is supported.",
+  "generated_at_utc": "2026-09-23T06:20:19.979609+00:00",
+  "inputs": {
+    "canonical_log": {
+      "bytes": 10487256,
+      "input_manifest_hash_verified": true,
+      "path": "/Users/marselkei/Library/Application Support/Intra/paper-evidence/2026-09-22/f997bb667e607716edb0dc2a544c46134720681803ac8defe97503f0817f5db6/inputs/logs/sessions/2026-09-22.jsonl",
+      "sha256": "6f6d7a224766ecb419db5080682d3ef6a85c434328dea173b4d2a5fec4f0f25f"
+    },
+    "closing_status": {
+      "input_manifest_hash_verified": true,
+      "path": "/Users/marselkei/Library/Application Support/Intra/paper-evidence/2026-09-22/f997bb667e607716edb0dc2a544c46134720681803ac8defe97503f0817f5db6/inputs/runtime/status.json",
+      "sha256": "741749aa484c000ebba88b11b15aa0e763555511c4cd2a41c4fb1e7b86cd40f4"
+    },
+    "daily_manifest": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/paper-evidence/2026-09-22/f997bb667e607716edb0dc2a544c46134720681803ac8defe97503f0817f5db6/manifest.json",
+      "sha256": "f997bb667e607716edb0dc2a544c46134720681803ac8defe97503f0817f5db6"
+    },
+    "runtime_log_review": {
+      "path": "/Users/marselkei/VS/intra/reports/session_review_2026-09-22/runtime-log-review.json",
+      "sha256": "4a12cc8963e754662c8470361b7e28cb8f2c3f4ed883ff7f9ca118bdf7474bf0"
+    }
+  },
+  "missing_proof": [
+    "No saved timestamped server-acknowledged full bar-subscription state per blocked cycle. Initial/resubscribe send records are positive observations at their own times only.",
+    "No recorded retire/unsubscribe event is linked to a later PP-6 warning; absence of such markers is not assumed to prove uninterrupted membership.",
+    "Warning suppression leaves 367 of427 blocked groups without same-group PP-6 symbol identities; warnings name at most5 symbols and do not state retired status.",
+    "No per-symbol actual-bar-time and delivery-time sequence establishes sparse exchange activity versus delayed/missing delivery; logged ages mix historical seeds and callback receipt semantics.",
+    "Closing/current universe cannot be back-projected onto all earlier cycles or equated with stream subscription membership."
+  ],
+  "question": "Can the 427 regular-session blocked cycles be attributed to retired/unsubscribed symbols rather than genuinely active sparse bars?",
+  "reused_denominators": {
+    "blocked_regular_tick_groups": 427,
+    "regular_completed_ticks": 1526,
+    "regular_streaming_rejection_records": 552,
+    "warning_symbol_counts": {
+      "CAT": 21,
+      "COST": 14,
+      "CRM": 1,
+      "LLY": 10,
+      "XLK": 20,
+      "XOM": 1
+    }
+  },
+  "scope": {
+    "application_imports": 0,
+    "broad_metric_recomputation": false,
+    "network_or_runtime_calls": 0,
+    "regular_session_end_exclusive": "2026-09-22T20:00:00+00:00",
+    "regular_session_start_inclusive": "2026-09-22T13:30:00+00:00",
+    "saved_evidence_only": true,
+    "source_or_runtime_changes": 0
+  },
+  "source_evidence": {
+    "backend/integrations/alpaca_market_data_stream.py": {
+      "lines": [
+        374,
+        376,
+        408,
+        415,
+        534,
+        536
+      ],
+      "meaning": "INFO subscription/unsubscription messages follow send/local-set mutation; server subscription payload is DEBUG-only. Saved INFO/WARNING/ERROR log is not an authoritative per-tick server membership sequence.",
+      "sha256": "95a3331ca9cb5df5df5116abd07fc0c7113a943f5c780fc7461b8a9bf9be59ad"
+    },
+    "backend/organism/live_engine.py": {
+      "lines": [
+        2631,
+        2653,
+        2660,
+        2665
+      ],
+      "meaning": "PP-6 warnings only on prior-not-stale transition and name at most five symbols. The 427 global-block summaries are not a per-tick subscription/cause journal.",
+      "sha256": "9048cc03cbc857cffa3c17c70f3d0175d7a1906478c59be74df5edd34c28a6c1"
+    },
+    "backend/organism/scheduler.py": {
+      "lines": [
+        242,
+        248,
+        262
+      ],
+      "meaning": "Runtime configuration route rejects updates under the research lock before subscription changes. This supports expected stability but cannot substitute for historical per-tick membership proof.",
+      "sha256": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c"
+    },
+    "backend/organism/streaming_data_provider.py": {
+      "lines": [
+        134,
+        149,
+        222,
+        245,
+        320,
+        342
+      ],
+      "meaning": "Original stale_symbols iterates all retained _last_bar_ts entries; unsubscribe does not prune those timestamps. Callback updates receipt time; historical prefill seeds event time. This shows a possible mechanism, not its occurrence on this session.",
+      "sha256": "4d88047c0ef6d310e0ec887f519f6ac5c210c745e642b6d3d8e32f97c6212d6f"
+    },
+    "scripts/ops/paper_daily_evidence.py": {
+      "lines": [
+        215
+      ],
+      "meaning": "The saved local/events.jsonl is strategy_evidence_events.jsonl, not a subscription membership journal.",
+      "sha256": "da19f88fddff2ebd89127317f821296b69ab07c87bf7bbb73314173e10aab046"
+    }
+  },
+  "status": "UNATTRIBUTABLE_FROM_SAVED_EVIDENCE",
+  "targeted_attribution_evidence": {
+    "all_warning_symbols_in_each_recorded_subscription_set": true,
+    "blocked_groups_with_pp6_warning": 60,
+    "blocked_groups_without_pp6_warning": 367,
+    "classification": {
+      "proven_active_sparse_cause_tick_count": 0,
+      "proven_retired_cause_tick_count": 0,
+      "unclassified_tick_count": 427,
+      "zero_means_no_proven_instances_not_absence_in_reality": true
+    },
+    "observed_initial_and_preopen_resubscription_bar_records": 4,
+    "positive_retirement_or_unsubscribe_records": 0,
+    "pp6_warnings": [
+      {
+        "at_utc": "2026-09-22T13:33:02.763615Z",
+        "line": 622,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 122.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T13:45:07.131714Z",
+        "line": 931,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 126.9
+        }
+      },
+      {
+        "at_utc": "2026-09-22T13:56:11.756963Z",
+        "line": 1293,
+        "named_symbols": [
+          "COST",
+          "LLY"
+        ],
+        "reported_stale_count": 2,
+        "rounded_receipt_ages_seconds": {
+          "COST": 131.3,
+          "LLY": 131.3
+        }
+      },
+      {
+        "at_utc": "2026-09-22T14:10:16.110160Z",
+        "line": 1864,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 134.9
+        }
+      },
+      {
+        "at_utc": "2026-09-22T14:12:02.963954Z",
+        "line": 1941,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 122.7
+        }
+      },
+      {
+        "at_utc": "2026-09-22T14:20:16.520670Z",
+        "line": 2242,
+        "named_symbols": [
+          "LLY"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 135.3
+        }
+      },
+      {
+        "at_utc": "2026-09-22T14:25:08.537951Z",
+        "line": 2424,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 128.3
+        }
+      },
+      {
+        "at_utc": "2026-09-22T14:53:07.624360Z",
+        "line": 3556,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 127.6
+        }
+      },
+      {
+        "at_utc": "2026-09-22T15:02:04.594525Z",
+        "line": 3988,
+        "named_symbols": [
+          "LLY"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 124.3
+        }
+      },
+      {
+        "at_utc": "2026-09-22T15:07:12.560912Z",
+        "line": 4231,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 132.3
+        }
+      },
+      {
+        "at_utc": "2026-09-22T15:24:06.366848Z",
+        "line": 4945,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 126.1
+        }
+      },
+      {
+        "at_utc": "2026-09-22T15:29:13.845277Z",
+        "line": 5174,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 133.6
+        }
+      },
+      {
+        "at_utc": "2026-09-22T15:34:03.963639Z",
+        "line": 5388,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 123.8
+        }
+      },
+      {
+        "at_utc": "2026-09-22T15:40:12.421227Z",
+        "line": 5668,
+        "named_symbols": [
+          "COST",
+          "CAT"
+        ],
+        "reported_stale_count": 2,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 132.2,
+          "COST": 132.2
+        }
+      },
+      {
+        "at_utc": "2026-09-22T15:49:07.984229Z",
+        "line": 6063,
+        "named_symbols": [
+          "LLY"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 127.8
+        }
+      },
+      {
+        "at_utc": "2026-09-22T15:52:11.660148Z",
+        "line": 6219,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 131.6
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:08:16.261389Z",
+        "line": 6943,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 135.5
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:13:08.018316Z",
+        "line": 7146,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 127.8
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:18:13.750882Z",
+        "line": 7387,
+        "named_symbols": [
+          "LLY"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 133.7
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:22:02.556307Z",
+        "line": 7554,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 120.9
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:24:04.219252Z",
+        "line": 7644,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 124.0
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:32:09.583334Z",
+        "line": 8066,
+        "named_symbols": [
+          "LLY"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 129.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:38:03.706987Z",
+        "line": 8342,
+        "named_symbols": [
+          "CAT",
+          "XLK"
+        ],
+        "reported_stale_count": 2,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 123.4,
+          "XLK": 123.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:41:07.265748Z",
+        "line": 8481,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 127.0
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:47:16.799587Z",
+        "line": 8759,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 135.9
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:52:07.653953Z",
+        "line": 8982,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 127.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T16:55:12.436514Z",
+        "line": 9109,
+        "named_symbols": [
+          "CRM",
+          "CAT"
+        ],
+        "reported_stale_count": 2,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 132.2,
+          "CRM": 132.2
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:02:06.666526Z",
+        "line": 9377,
+        "named_symbols": [
+          "CAT",
+          "XLK"
+        ],
+        "reported_stale_count": 2,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 126.4,
+          "XLK": 126.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:06:13.373187Z",
+        "line": 9565,
+        "named_symbols": [
+          "XOM"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XOM": 133.1
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:09:01.406313Z",
+        "line": 9685,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 120.1
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:12:04.663358Z",
+        "line": 9830,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 124.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:14:06.839184Z",
+        "line": 9929,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 126.6
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:18:11.443531Z",
+        "line": 10125,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 131.2
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:23:02.459266Z",
+        "line": 10341,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 121.1
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:35:05.695251Z",
+        "line": 10856,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 125.7
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:39:12.758077Z",
+        "line": 11039,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 132.8
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:46:02.618411Z",
+        "line": 11342,
+        "named_symbols": [
+          "CAT",
+          "XLK"
+        ],
+        "reported_stale_count": 2,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 122.4,
+          "XLK": 122.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:49:06.476029Z",
+        "line": 11469,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 126.3
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:52:09.591516Z",
+        "line": 11608,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 129.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T17:58:03.291316Z",
+        "line": 11846,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 123.0
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:00:05.418255Z",
+        "line": 11936,
+        "named_symbols": [
+          "LLY"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 125.2
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:04:12.921680Z",
+        "line": 12116,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 132.7
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:13:12.590212Z",
+        "line": 12472,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 132.4
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:19:05.394573Z",
+        "line": 12710,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 125.1
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:23:10.034538Z",
+        "line": 12904,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 129.8
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:26:14.255626Z",
+        "line": 13027,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 134.0
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:29:01.992893Z",
+        "line": 13140,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 121.7
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:33:07.471844Z",
+        "line": 13307,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 127.2
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:38:14.820218Z",
+        "line": 13534,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 134.5
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:46:10.015783Z",
+        "line": 13873,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 129.8
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:50:13.576982Z",
+        "line": 14070,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 133.5
+        }
+      },
+      {
+        "at_utc": "2026-09-22T18:56:04.938928Z",
+        "line": 14320,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 124.9
+        }
+      },
+      {
+        "at_utc": "2026-09-22T19:03:14.982890Z",
+        "line": 14596,
+        "named_symbols": [
+          "LLY"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 134.8
+        }
+      },
+      {
+        "at_utc": "2026-09-22T19:05:02.056878Z",
+        "line": 14666,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 121.0
+        }
+      },
+      {
+        "at_utc": "2026-09-22T19:09:06.349285Z",
+        "line": 14857,
+        "named_symbols": [
+          "LLY",
+          "XLK"
+        ],
+        "reported_stale_count": 2,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 126.2,
+          "XLK": 126.2
+        }
+      },
+      {
+        "at_utc": "2026-09-22T19:13:11.675760Z",
+        "line": 15036,
+        "named_symbols": [
+          "COST"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "COST": 131.5
+        }
+      },
+      {
+        "at_utc": "2026-09-22T19:17:15.821984Z",
+        "line": 15203,
+        "named_symbols": [
+          "LLY"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "LLY": 134.3
+        }
+      },
+      {
+        "at_utc": "2026-09-22T19:24:07.943617Z",
+        "line": 15491,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 127.7
+        }
+      },
+      {
+        "at_utc": "2026-09-22T19:30:01.895712Z",
+        "line": 15707,
+        "named_symbols": [
+          "CAT"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "CAT": 120.9
+        }
+      },
+      {
+        "at_utc": "2026-09-22T19:34:07.080210Z",
+        "line": 15845,
+        "named_symbols": [
+          "XLK"
+        ],
+        "reported_stale_count": 1,
+        "rounded_receipt_ages_seconds": {
+          "XLK": 126.9
+        }
+      }
+    ],
+    "recorded_bar_subscription_set": [
+      "AAPL",
+      "AMD",
+      "AMZN",
+      "AVGO",
+      "CAT",
+      "COST",
+      "CRM",
+      "GOOGL",
+      "IWM",
+      "LLY",
+      "META",
+      "MSFT",
+      "NVDA",
+      "QQQ",
+      "SPY",
+      "TSLA",
+      "WMT",
+      "XLE",
+      "XLK",
+      "XOM"
+    ],
+    "recorded_bar_subscription_sets_equal": true,
+    "regular_membership_event_records": 0,
+    "regular_pp6_warning_records": 60,
+    "subscription_send_records": [
+      {
+        "at_utc": "2026-09-22T08:50:13.446834Z",
+        "data_type": "1Min bars",
+        "event": "subscription_send_record",
+        "line": 44,
+        "regular_session": false,
+        "symbols": [
+          "AAPL",
+          "MSFT",
+          "GOOGL",
+          "AMZN",
+          "NVDA",
+          "META",
+          "TSLA",
+          "AMD",
+          "AVGO",
+          "CRM",
+          "COST",
+          "WMT",
+          "LLY",
+          "XOM",
+          "CAT",
+          "SPY",
+          "QQQ",
+          "IWM",
+          "XLK",
+          "XLE"
+        ]
+      },
+      {
+        "at_utc": "2026-09-22T08:50:13.447059Z",
+        "data_type": "quotes",
+        "event": "subscription_send_record",
+        "line": 45,
+        "regular_session": false,
+        "symbols": [
+          "AAPL",
+          "MSFT",
+          "GOOGL",
+          "AMZN",
+          "NVDA",
+          "META",
+          "TSLA",
+          "AMD",
+          "AVGO",
+          "CRM",
+          "COST",
+          "WMT",
+          "LLY",
+          "XOM",
+          "CAT",
+          "SPY",
+          "QQQ",
+          "IWM",
+          "XLK",
+          "XLE"
+        ]
+      },
+      {
+        "at_utc": "2026-09-22T09:30:14.919455Z",
+        "data_type": "quotes",
+        "event": "subscription_send_record",
+        "line": 141,
+        "regular_session": false,
+        "symbols": [
+          "XLK",
+          "IWM",
+          "TSLA",
+          "AAPL",
+          "XLE",
+          "MSFT",
+          "QQQ",
+          "AMD",
+          "SPY",
+          "XOM",
+          "CRM",
+          "META",
+          "LLY",
+          "AVGO",
+          "COST",
+          "CAT",
+          "WMT",
+          "GOOGL",
+          "AMZN",
+          "NVDA"
+        ]
+      },
+      {
+        "at_utc": "2026-09-22T09:30:14.920581Z",
+        "data_type": "1Min bars",
+        "event": "subscription_send_record",
+        "line": 142,
+        "regular_session": false,
+        "symbols": [
+          "XLK",
+          "IWM",
+          "TSLA",
+          "AAPL",
+          "XLE",
+          "MSFT",
+          "QQQ",
+          "AMD",
+          "SPY",
+          "XOM",
+          "CRM",
+          "META",
+          "LLY",
+          "AVGO",
+          "COST",
+          "CAT",
+          "WMT",
+          "GOOGL",
+          "AMZN",
+          "NVDA"
+        ]
+      },
+      {
+        "at_utc": "2026-09-22T09:30:25.002386Z",
+        "data_type": "quotes",
+        "event": "subscription_send_record",
+        "line": 150,
+        "regular_session": false,
+        "symbols": [
+          "XLK",
+          "IWM",
+          "TSLA",
+          "AAPL",
+          "XLE",
+          "MSFT",
+          "QQQ",
+          "AMD",
+          "XOM",
+          "SPY",
+          "CRM",
+          "META",
+          "LLY",
+          "AVGO",
+          "COST",
+          "CAT",
+          "WMT",
+          "GOOGL",
+          "AMZN",
+          "NVDA"
+        ]
+      },
+      {
+        "at_utc": "2026-09-22T09:30:25.003399Z",
+        "data_type": "1Min bars",
+        "event": "subscription_send_record",
+        "line": 151,
+        "regular_session": false,
+        "symbols": [
+          "XLK",
+          "IWM",
+          "TSLA",
+          "AAPL",
+          "XLE",
+          "MSFT",
+          "QQQ",
+          "AMD",
+          "XOM",
+          "SPY",
+          "CRM",
+          "META",
+          "LLY",
+          "AVGO",
+          "COST",
+          "CAT",
+          "WMT",
+          "GOOGL",
+          "AMZN",
+          "NVDA"
+        ]
+      },
+      {
+        "at_utc": "2026-09-22T09:30:31.721529Z",
+        "data_type": "quotes",
+        "event": "subscription_send_record",
+        "line": 159,
+        "regular_session": false,
+        "symbols": [
+          "XLK",
+          "IWM",
+          "TSLA",
+          "AAPL",
+          "XLE",
+          "MSFT",
+          "QQQ",
+          "AMD",
+          "SPY",
+          "XOM",
+          "CRM",
+          "META",
+          "LLY",
+          "AVGO",
+          "COST",
+          "CAT",
+          "WMT",
+          "GOOGL",
+          "AMZN",
+          "NVDA"
+        ]
+      },
+      {
+        "at_utc": "2026-09-22T09:30:31.722112Z",
+        "data_type": "1Min bars",
+        "event": "subscription_send_record",
+        "line": 160,
+        "regular_session": false,
+        "symbols": [
+          "XLK",
+          "IWM",
+          "TSLA",
+          "AAPL",
+          "XLE",
+          "MSFT",
+          "QQQ",
+          "AMD",
+          "SPY",
+          "XOM",
+          "CRM",
+          "META",
+          "LLY",
+          "AVGO",
+          "COST",
+          "CAT",
+          "WMT",
+          "GOOGL",
+          "AMZN",
+          "NVDA"
+        ]
+      }
+    ]
+  },
+  "task_id": "sept22-stale-block-subscription-attribution"
+}

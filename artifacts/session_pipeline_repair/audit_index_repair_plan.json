@@ -1,0 +1,26 @@
+{
+  "task_id": "complete_audit_index_change_inventory",
+  "scope": "Represent the complete changed-path set in disjoint categories and an untruncated full list, including artifacts/evidence and uncategorized paths. Existing get_change_set scope and runtime evidence labels remain authoritative.",
+  "owned_files": [
+    "scripts/ci/generate_audit_index.py",
+    "tests/test_artifact_change_scope.py",
+    "backend/organism/live_engine.py (scanner success bookkeeping only)",
+    "tests/test_scanner_pipeline_integration.py",
+    "backend/organism/market_scanner.py (explicit scan outcome only)"
+  ],
+  "tests": [
+    "Mixed source/evidence/config/other paths: category counts cover each path exactly once; Organism explicitly a Backend subset.",
+    "Evidence-only greater-than-ten file inventory: every full path rendered despite compact previews.",
+    "Empty changes: zero total and no omitted entries.",
+    "Report-only scope remains tooling/evidence-only.",
+    "Existing artifact scope and workflow tests.",
+    "Actual mocked HTTP503 and ReadTimeout through scanner transport\u2192empty list are negative controls; real HTTP200 empty discovery breaks streak.",
+    "Partial endpoint failure remains explicitly failed even if other endpoints produce a qualified returned list.",
+    "Real replay partial qualified data\u2192complete transport failure\u2192successful empty\u2192failure yields counters1\u21922\u21920\u21921 and exact success timestamp; three HTTP503/read-timeout variants."
+  ],
+  "runtime_behavior_changed": true,
+  "operational_mutations": false,
+  "no_commits_by_agent": true,
+  "scope_extension": "Root approved explicit scan outcome so swallowed transport/snapshot failure cannot be counted as successful empty discovery. Partial individually qualified candidates remain admitted as before, but degraded/failed scans increment failure bookkeeping without updating last successful scan. Genuine successful empty resets. Preserve list-return compatibility, scoring/thresholds, base universe and strategy. Candidate frozen hashes are root-owned; no active clock reset.",
+  "scope_followup": "Independent review identified HTTP200 error dictionaries, missing/malformed requested snapshots and malformed supplied discovery rows wrongly counted as successful empty. Root authorized scanner health classification repair with no changes to qualifying partial candidates, filtering thresholds or score."
+}
