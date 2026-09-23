@@ -25,6 +25,29 @@ T = TypeVar('T')
 # L-23: Use tuple constant for status codes to avoid dynamic list overhead
 RETRYABLE_STATUS_CODES: tuple[int, ...] = (429, 500, 502, 503, 504)
 
+# Persisted in the existing outbox last_error field. This denotes an unknown
+# acknowledgement, not broker rejection and not permission to submit again.
+BROKER_ACK_STATE_PREFIX = "INTRA_BROKER_ACK:"
+
+
+class BrokerAcknowledgementUnresolved(HTTPException):
+    def __init__(self, client_order_id: str | None, reason: str):
+        self.client_order_id = client_order_id
+        self.reason = reason
+        super().__init__(status_code=503, detail="Broker acknowledgement unresolved: " + reason)
+
+
+def _valid_order_acknowledgement(data: Any, client_order_id: str, *, lookup: bool) -> bool:
+    if not isinstance(data, dict):
+        return False
+    if not isinstance(data.get("id"), str) or not data["id"].strip():
+        return False
+    if not isinstance(data.get("status"), str) or not data["status"].strip():
+        return False
+    if lookup or "client_order_id" in data:
+        return data.get("client_order_id") == client_order_id
+    return True
+
 
 def retry_on_transient_error(
     max_retries: int = 3,
@@ -401,7 +424,9 @@ class AlpacaBrokerClient:
             # This prevents "422: client_order_id must be unique" errors on retries
             try:
                 existing_order = await self.get_order(client_order_id)
-                if existing_order:
+                if existing_order is not None:
+                    if not _valid_order_acknowledgement(existing_order, client_order_id, lookup=True):
+                        return await self.reconcile_order_acknowledgement(client_order_id)
                     logger.info("Order already exists (idempotent response)",
                                client_order_id=client_order_id,
                                alpaca_order_id=existing_order.get("id"),
@@ -459,32 +484,20 @@ class AlpacaBrokerClient:
                         "Duplicate client_order_id — recovering existing order",
                         client_order_id=client_order_id,
                     )
-                    try:
-                        # Use Alpaca's dedicated client_order_id lookup endpoint
-                        url = f"{self.base_url}/v2/orders:by_client_order_id"
-                        resp = await self._make_request_with_retry(
-                            "GET", url, params={"client_order_id": client_order_id}
-                        )
-                        if resp.status_code == 200:
-                            existing_order = resp.json()
-                            logger.info(
-                                "Recovered existing order after duplicate",
-                                client_order_id=client_order_id,
-                                order_id=existing_order.get("id"),
-                                status=existing_order.get("status"),
-                            )
-                            return existing_order
-                    except Exception as recovery_err:
-                        logger.warning(
-                            "Failed to recover duplicate order",
-                            client_order_id=client_order_id,
-                            error=str(recovery_err),
-                        )
+                    return await self.reconcile_order_acknowledgement(client_order_id)
                 raise
 
             # Handle API response
             if response.status_code in (200, 201):
-                order_result = response.json()
+                try:
+                    order_result = response.json()
+                except (TypeError, ValueError, RecursionError):
+                    order_result = None
+                if not _valid_order_acknowledgement(order_result, client_order_id, lookup=False):
+                    # A successful HTTP response may follow an accepted order
+                    # even when its body was lost. Recover by identity using
+                    # GET only; never repeat POST to repair an acknowledgement.
+                    return await self.reconcile_order_acknowledgement(client_order_id)
                 logger.info("Order placed successfully",
                            order_id=order_result.get("id"),
                            status_code=response.status_code,
@@ -523,6 +536,27 @@ class AlpacaBrokerClient:
                 status_code=502,
                 detail=f"Failed to place order: {str(e)}"
             )
+
+    async def reconcile_order_acknowledgement(self, client_order_id: str) -> dict:
+        """Resolve an uncertain submission by its exact original client key."""
+        if not isinstance(client_order_id, str) or not client_order_id.strip():
+            raise BrokerAcknowledgementUnresolved(None, "missing_client_order_id")
+        logger.info("Reconciling broker acknowledgement by client identity",
+                    client_order_id=client_order_id, operation="lookup_only")
+        try:
+            response = await self._make_request_with_retry(
+                "GET", f"{self.base_url}/v2/orders:by_client_order_id",
+                params={"client_order_id": client_order_id},
+            )
+            data = response.json() if response.status_code == 200 else None
+        except Exception as exc:
+            # Once a successful/duplicate response established uncertainty,
+            # every lookup failure must retain that state (including unexpected
+            # adapter errors), rather than becoming permission for another POST.
+            raise BrokerAcknowledgementUnresolved(client_order_id, "lookup_unavailable") from exc
+        if not _valid_order_acknowledgement(data, client_order_id, lookup=True):
+            raise BrokerAcknowledgementUnresolved(client_order_id, "lookup_not_confirmed")
+        return data
 
     async def get_order(self, order_id: str) -> dict:
         """

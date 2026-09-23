@@ -514,6 +514,7 @@ class TestAlpacaOutboxDispatcherAlpacaBroker:
         
         stop_order = {
             "order_id": "order-stop",
+            "client_key": "persisted-order-stop",
             "symbol": "TSLA",
             "side": "sell",
             "qty": 25,
@@ -654,6 +655,7 @@ class TestAlpacaOutboxDispatcherEdgeCases:
         
         float_qty_order = {
             "order_id": "order-float",
+            "client_key": "persisted-order-float",
             "symbol": "AAPL",
             "side": "buy",
             "qty": "100.5",  # String float
@@ -685,6 +687,7 @@ class TestAlpacaOutboxDispatcherEdgeCases:
         
         minimal_order = {
             "order_id": "order-minimal",
+            "client_key": "persisted-order-minimal",
             "symbol": "AAPL",
             "side": "buy",
             "qty": 100

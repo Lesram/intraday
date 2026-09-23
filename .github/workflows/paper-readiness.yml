@@ -73,8 +73,11 @@ jobs:
             tests/test_v12_w78_deploy_health.py \
             tests/test_v13_w95_data_integrity.py \
             tests/test_security_boundaries.py \
+            tests/test_developer_tool_credentials.py \
             tests/test_v13_security_cleanup.py \
             tests/test_order_integrity_comprehensive.py \
+            tests/test_broker_ack_reconciliation.py \
+            tests/test_adversarial_inputs_v7.py \
             tests/test_position_reconciliation.py \
             tests/test_position_reconciliation_comprehensive.py \
             tests/test_settings_comprehensive.py \

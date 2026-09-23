@@ -1,4 +1,4 @@
-# September 22 session: scanner, streaming and replay repair
+# September 22 session: pipeline, order recovery and validation repair
 
 ## Problem and resulting behavior
 
@@ -79,6 +79,57 @@ focused subset alone is not acceptance. External tests needing a separately
 provisioned disposable API/broker environment remain explicitly unavailable,
 never represented as passing. Test counts from overlapping suites are not added.
 
+## Build-context credential hygiene
+
+The full candidate-image context check also found historical broker-secret
+values embedded in an old audit report and an opaque bearer token embedded in
+two development tools. These predate this repair and were outside the clean
+change-only scan. The historical broker values differ from the current paper
+container's configured secret; their past validity and revocation are not
+established by that comparison.
+
+The current audit report redacts those values while retaining its findings.
+The development tools require a supplied token and fail before making requests
+when it is absent. They no longer attempt a demo login or fall back to an
+embedded credential. Focused tests verify credential precedence, request
+headers, missing-input behavior and non-disclosure in error output. The PR
+readiness job includes these tests.
+
+This cleanup does not rotate active credentials or rewrite Git history. Prior
+commits can still contain the historical values; their revocation requires
+separate confirmation by the credential owner. Image preparation remains
+blocked until the new context scan has no unresolved credential findings.
+Known public examples, synthetic security fixtures, detector patterns and
+non-authentication hashes are classified individually, with raw scan outcomes
+retained rather than represented as an unconditional clean scan.
+
+## Ambiguous broker acknowledgement
+
+Review of the full nightly suite's two expected failures identified an active
+order-path gap. An empty successful broker response became a generic error;
+the outbox could retry submission without knowing whether the first request had
+already created an order. This is a source-confirmed boundary defect, not an
+observed September 22 incident: that session submitted no orders.
+
+An invalid successful acknowledgement must trigger an exact lookup using the
+original client order ID. If that cannot establish the order, the outbox must
+persist an explicit unresolved state and retry lookup only. Once that state is
+committed, a worker restart must retain lookup-only behavior. It must not invent
+another identity, submit again, or report the
+unknown order as accepted, filled or rejected. Retry exhaustion must identify
+the need for reconciliation while preserving the local order state.
+
+The repair uses existing outbox storage without a schema migration. Behavioral
+tests cover successful recovery, failed or mismatched lookups, durable retry
+state, malformed markers and exhaustion. The former source-text probes for
+empty responses and null websocket quantities are replaced by executable
+behavior checks. Ordinary valid acknowledgements retain their existing path.
+The same review found and repaired a redundant local import that broke the
+simulated broker path; direct simulation tests now exercise that path.
+This does not claim an atomic transaction across the broker and local database:
+a process failure before recording the acknowledgement remains a separate
+delivery boundary, protected by the original persisted broker client order ID.
+
 ## Frozen surface and deployment boundary
 
 This is an isolated candidate PR. No running paper source, environment, broker
@@ -110,6 +161,18 @@ Passing simulations does not certify profitability or every natural execution
 path; zero-trade sessions continue to be reported explicitly.
 
 ## Evidence
+
+| Finding | Required evidence for this candidate |
+| --- | --- |
+| Real screener rows rejected before enrichment | Provider capture, scanner contract tests and scanner-to-engine entry test |
+| Old candidates retained after empty/failing scans | Scanner and engine cache-transition tests |
+| Duplicate/delayed/retired bars misrepresent health | Provider subscription/timestamp tests and active-symbol admission tests |
+| Recovery logged before the final stale decision | Same-cycle recovery logging tests |
+| Replay passes without meaningful execution or times out | Actual entries, protective/accounted closes and EOD flatten in W100 and safety replay |
+| Helper changes escape freeze verification | Candidate helper hashes and deliberate drift tests; active cutoff untouched |
+| Embedded historical credentials enter the image context | Current-file redaction, explicit-token tests and classified full-context scan |
+| Ambiguous broker acknowledgement can reach ordinary submission retry | Exact-ID recovery, durable lookup-only retry, persistence-failure and exhaustion tests |
+| Natural paper execution and strategy expectancy remain unproven | Subsequent approved paper-session evidence; simulation and after-hours discovery are insufficient |
 
 `artifacts/session_pipeline_repair/plan.json` declares the scope and safety
 constraints. Targeted red/green evidence, combined acceptance, candidate surface
