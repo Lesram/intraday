@@ -1,0 +1,57 @@
+{
+  "task_id": "independent-scanner-pipeline-review",
+  "status": "ACCEPTED_BOUNDED_REVIEW",
+  "reviewed_at_utc": "2026-09-23T05:48:06.475742+00:00",
+  "base_commit": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "blocking_findings": [],
+  "reviewed_files_sha256": {
+    "backend/organism/market_scanner.py": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
+    "backend/organism/live_engine.py": "f2f301862f3a8476374ea01170ee5aa1d1e79cb6c9ac4f746430c503fc6f603c",
+    "tests/test_market_scanner.py": "b7e8310e0c3e721c8c2d0451c0bdbeb99ec7f291f7f74db4ad4ca88a0dea37af",
+    "tests/test_market_scanner_provider_contract.py": "d01a6097dccdb27851c0d1c0a02de6ec15c317c7523402a3cf5da9fb91044360",
+    "tests/test_scanner_pipeline_integration.py": "b506f0da6b1717cfcf0d676be4ae47473e0618a8eabbf392d6b8be311d519cd8"
+  },
+  "method": "Independent source/diff and test/assertion review; AST comparison of scoring body and all SCAN_* defaults; parsed existing author JUnit. No application imports, services, network or runtime calls.",
+  "code_evidence": {
+    "provider_discovery": "market_scanner.py::_fetch_most_actives/_fetch_movers",
+    "qualification": "market_scanner.py::_valid_snapshot and scan snapshot loop",
+    "cache_invalidation": "market_scanner.py::scan clears both caches before first await",
+    "caller_invalidation": "live_engine.py::_live_tick_inner MARKET SCAN assigns empty result and clears on exception",
+    "scoring_body_AST_equal_excluding_unused_m_volume": true,
+    "all_SCAN_constant_AST_equal": true
+  },
+  "accepted_checks": [
+    "Provider-shaped most-actives without price and movers without volume reach a shared snapshot batch; missing values are deferred, malformed supplied values remain rejected.",
+    "Every returned candidate requires a complete numeric finite positive valid daily OHLC and nonnegative integral volume snapshot, then unchanged inclusive price/volume thresholds. Missing or invalid snapshots cannot be repaired with old candidates or supplied screener data.",
+    "Current failures and empty scans clear candidate/detail caches before I/O. Caller assignment clears scanner pool on empty result and exception while retaining current base/held universe.",
+    "One failed discovery endpoint may still yield independently qualified candidates from successful endpoints; snapshot timeout produces empty current result.",
+    "Tension calculation body is unchanged apart from unused minute-volume assignment removal; seven weights, all SCAN_* settings, exclusions, sorting and cap remain unchanged.",
+    "Feed selection remains from existing ALPACA_DATA_FEED; test confirms configured iex is propagated without switching production feed.",
+    "Tests exercise actual recorded provider field shapes, inclusive filter edges, absent snapshots, malformed scalars and structures, NaN/infinity/bool/string/huge/fractional volumes, batching/deduplication, cache invalidation and diagnostics.",
+    "Actual scanner-to-replay tests exercise qualified discovery causing a real gated fill and subsequent empty/error pool clearing while held symbols remain in universe."
+  ],
+  "author_evidence": [
+    {
+      "path": "/tmp/intra-scanner-targeted.xml",
+      "sha256": "7c403ce39f538c358488a9c583541a26106c02724b55fd365ddc88ca00d712a6",
+      "tests": 100,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0
+    },
+    {
+      "path": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/artifacts/session_pipeline_repair/w100_final.xml",
+      "sha256": "09ae4475b88b7ca17b9214d7f4df706bf5a18418d0427a02a2aac9aa953da7be",
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0
+    }
+  ],
+  "limitations": [
+    "Snapshot event/session timestamp validation is unchanged; this review establishes schema/value qualification and absence of stale internal candidate reuse, not real-time provider recency. Actual feature-bar final entry age remains independently required.",
+    "Optional minute/prior-day missing-field scoring defaults remain intentionally unchanged; no new scoring or strategy tuning was approved.",
+    "Empty or failed scanner pools do not remove previously injected symbols from the current universe. This is explicit preserved base/held-universe behavior, not a promise that stale symbols vanish from all rankings.",
+    "Offline contracts and replay do not establish live endpoint/stream reliability, trade expectancy or profitability. Root owns complete required suites, freeze/runtime snapshot, hosted validation and future controlled deployment."
+  ]
+}

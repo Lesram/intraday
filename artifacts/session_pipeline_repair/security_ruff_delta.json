@@ -1,0 +1,183 @@
+{
+  "base": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "head": "332cb6babc1778094c1559d9b83f176f707a7406",
+  "new_findings": [],
+  "normalization": "path + diagnostic code + message + stripped diagnostic source span; counters preserve duplicate multiplicity, line numbers ignored",
+  "removed_findings": [
+    {
+      "code": "F401",
+      "message": "`dataclasses.field` imported but unused",
+      "path": "backend/organism/market_scanner.py",
+      "source_context": "from dataclasses import dataclass, field"
+    },
+    {
+      "code": "F841",
+      "message": "Local variable `m_volume` is assigned to but never used",
+      "path": "backend/organism/market_scanner.py",
+      "source_context": "m_volume = int(minute.get(\"v\", 0))"
+    },
+    {
+      "code": "BLE001",
+      "message": "Do not catch blind exception: `Exception`",
+      "path": "backend/organism/market_scanner.py",
+      "source_context": "except Exception as e:"
+    },
+    {
+      "code": "F401",
+      "message": "`asyncio` imported but unused",
+      "path": "tests/test_market_scanner.py",
+      "source_context": "import asyncio"
+    },
+    {
+      "code": "F401",
+      "message": "`time` imported but unused",
+      "path": "tests/test_market_scanner.py",
+      "source_context": "import time"
+    },
+    {
+      "code": "F401",
+      "message": "`unittest.mock.patch` imported but unused",
+      "path": "tests/test_market_scanner.py",
+      "source_context": "from unittest.mock import AsyncMock, MagicMock, patch"
+    }
+  ],
+  "runs": {
+    "base": {
+      "file_exit_codes": {
+        "backend/organism/live_engine.py": 0,
+        "backend/organism/market_scanner.py": 1,
+        "backend/organism/streaming_data_provider.py": 1,
+        "scripts/phase2_freeze.py": 0,
+        "scripts/runtime/write_runtime_snapshot.py": 0,
+        "tests/test_entry_freshness.py": 0,
+        "tests/test_market_scanner.py": 1,
+        "tests/test_phase2_freeze.py": 0,
+        "tests/test_v12_baseline_invariants.py": 0,
+        "tests/test_v13_w100_live_tick_coverage.py": 0,
+        "tests/unit/test_streaming_data_provider.py": 1
+      },
+      "findings": [
+        {
+          "code": "F401",
+          "message": "`dataclasses.field` imported but unused",
+          "path": "backend/organism/market_scanner.py",
+          "source_context": "from dataclasses import dataclass, field"
+        },
+        {
+          "code": "F841",
+          "message": "Local variable `m_volume` is assigned to but never used",
+          "path": "backend/organism/market_scanner.py",
+          "source_context": "m_volume = int(minute.get(\"v\", 0))"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/market_scanner.py",
+          "source_context": "except Exception as e:"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/streaming_data_provider.py",
+          "source_context": "except Exception as e:"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/streaming_data_provider.py",
+          "source_context": "except Exception as e:"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "tests/test_market_scanner.py",
+          "source_context": "import asyncio"
+        },
+        {
+          "code": "F401",
+          "message": "`time` imported but unused",
+          "path": "tests/test_market_scanner.py",
+          "source_context": "import time"
+        },
+        {
+          "code": "F401",
+          "message": "`unittest.mock.patch` imported but unused",
+          "path": "tests/test_market_scanner.py",
+          "source_context": "from unittest.mock import AsyncMock, MagicMock, patch"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context": "import asyncio"
+        },
+        {
+          "code": "F401",
+          "message": "`time` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context": "import time"
+        },
+        {
+          "code": "F401",
+          "message": "`collections.deque` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context": "from collections import deque"
+        }
+      ],
+      "findings_count": 11
+    },
+    "head": {
+      "file_exit_codes": {
+        "backend/organism/live_engine.py": 0,
+        "backend/organism/market_scanner.py": 0,
+        "backend/organism/streaming_data_provider.py": 1,
+        "scripts/phase2_freeze.py": 0,
+        "scripts/runtime/write_runtime_snapshot.py": 0,
+        "tests/test_entry_freshness.py": 0,
+        "tests/test_market_scanner.py": 0,
+        "tests/test_market_scanner_provider_contract.py": 0,
+        "tests/test_phase2_freeze.py": 0,
+        "tests/test_pipeline_freshness_recovery.py": 0,
+        "tests/test_pipeline_snapshot.py": 0,
+        "tests/test_scanner_pipeline_integration.py": 0,
+        "tests/test_v12_baseline_invariants.py": 0,
+        "tests/test_v13_w100_live_tick_coverage.py": 0,
+        "tests/unit/test_streaming_data_provider.py": 1
+      },
+      "findings": [
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/streaming_data_provider.py",
+          "source_context": "except Exception as e:"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/streaming_data_provider.py",
+          "source_context": "except Exception as e:"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context": "import asyncio"
+        },
+        {
+          "code": "F401",
+          "message": "`time` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context": "import time"
+        },
+        {
+          "code": "F401",
+          "message": "`collections.deque` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context": "from collections import deque"
+        }
+      ],
+      "findings_count": 5
+    }
+  },
+  "version": "ruff 0.15.12"
+}

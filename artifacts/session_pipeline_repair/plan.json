@@ -1,0 +1,45 @@
+{
+  "task_id": "sept22-pipeline-repair",
+  "user_request": "ok start the fix now, and make sure you qare covering everything.",
+  "scope": [
+    "Repair scanner provider-response contract with enrichment before filters",
+    "Diagnose and repair demonstrated stale-data/fallback failures while retaining hard safety limits",
+    "Correct premature freshness recovery messages",
+    "Repair W100 fixtures, approved function-size assertion and meaningful bounded replay",
+    "Run complete applicable nightly, required safety/replay, artifact and runtime-config checks",
+    "Independent review and pull request"
+  ],
+  "affected_files_expected": [
+    "backend/organism/market_scanner.py",
+    "tests/test_market_scanner.py",
+    "backend/organism/live_engine.py",
+    "backend/organism/live_engine_data.py",
+    "backend/organism/streaming_data_provider.py",
+    "tests/test_data_freshness.py",
+    "tests/test_v13_w100_live_tick_coverage.py",
+    "tests/test_v12_baseline_invariants.py",
+    "scripts/ci/nightly_test_contract.py",
+    "docs/architecture/mapss.md",
+    "scripts/runtime/write_runtime_snapshot.py"
+  ],
+  "constraints": [
+    "Use isolated worktree; leave running paper deployment, state, history and private bindings untouched",
+    "No real-money activation or forced broker orders",
+    "Preserve entry age <=120 seconds, sizing, model/policy lock, EOD and protective exits",
+    "No strategy tuning, frozen-function decomposition or parked general CI cleanup",
+    "Any frozen-surface candidate change must be explicit and reviewed; no active freeze or verdict-clock reset in this implementation task",
+    "Do not weaken assertions or hide existing failures",
+    "Tests have no installed broker credentials or network access"
+  ],
+  "validation": [
+    "Reproduce each confirmed defect using real-schema fixtures",
+    "Targeted changed-module tests",
+    "Required organism safety/state/sizing/exit/replay/evolution suites",
+    "Integration/reconciliation/config suites if affected",
+    "Full applicable isolated nightly core and required replay selection",
+    "Generate full artifact pack and audit index",
+    "Verify deployed freeze unchanged; candidate surface differences recorded if present",
+    "Independent review and GitHub CI"
+  ],
+  "deployment": "Candidate implementation and PR first; no active runtime deployment or new cutoff as an implicit side effect"
+}

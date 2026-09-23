@@ -1,0 +1,18 @@
+{
+  "image_digest": "sha256:d3c8f81e1604d8007931e9c4f6a5eb59e0f362ea481a63f82bb0ef22cc7bbf9f",
+  "observed_at_utc": "2026-09-23T05:56:57.134244+00:00",
+  "source": "Running approved container Config.Env; exact allowlisted values, missing keys use unchanged module defaults",
+  "source_sha": "2bd27836381e38e0ae683eadfc193576a185440c",
+  "values": {
+    "ALPACA_DATA_FEED": "iex",
+    "ALPACA_DATA_URL": "https://data.alpaca.markets/v2",
+    "SCANNER_INTERVAL_TICKS": "6",
+    "SCANNER_MAX_CANDIDATES": "80",
+    "SCANNER_MAX_PRICE": "1500.0",
+    "SCANNER_MIN_PRICE": "10.0",
+    "SCANNER_MIN_VOLUME": "500000",
+    "SCANNER_TENSION_THRESHOLD": "0.3",
+    "SCANNER_TOP_ACTIVES": "100",
+    "SCANNER_TOP_MOVERS": "50"
+  }
+}

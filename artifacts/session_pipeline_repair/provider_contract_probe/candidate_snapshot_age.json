@@ -1,0 +1,18 @@
+{
+  "candidate_denominator": 52,
+  "daily_bar_prior_to_Sept22_count": 0,
+  "limitation": "Existing scanner scoring does not certify snapshot recency. Daily-bar numeric qualification alone is not executable-entry authority; all candidates still require actual causal-feature admission age <=120 seconds. The after-hours capture itself cannot satisfy current entry freshness.",
+  "prior_daily_bar_candidates": [],
+  "report_sha256": "d3eb81e94b015bcaeefb82507bd35c719cecddcc4f310cd4c45be23560f8ecbf",
+  "snapshot_dates_by_field": {
+    "dailyBar": {
+      "2026-09-22": 52
+    },
+    "latestTrade": {
+      "2026-09-22": 52
+    },
+    "minuteBar": {
+      "2026-09-22": 52
+    }
+  }
+}

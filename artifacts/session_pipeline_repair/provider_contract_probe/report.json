@@ -1,0 +1,359 @@
+{
+  "artifacts": {
+    "active_scanner_config.json": {
+      "bytes": 723,
+      "sha256": "ab5ad03476177388f0127bfb13e814bf3cced4f23fc9e5a60fe5d05f9e73a0c9"
+    },
+    "base_offline.log": {
+      "bytes": 509,
+      "sha256": "02f019985e96a8a1b5441d8b02f656d9dba8af0eaca5bc5dc516cab9edc3bf60"
+    },
+    "base_result.json": {
+      "bytes": 1779,
+      "sha256": "fc8be5502b4d2948db5b717c42a2f7e8cf91795fccd741854c2c8510af1b8743"
+    },
+    "candidate_offline.log": {
+      "bytes": 368,
+      "sha256": "2dc320ebf195c0545693b6343cbaf17e0175f5938cb4cd3bf14cf8dc4fb0c5b7"
+    },
+    "candidate_result.json": {
+      "bytes": 12034,
+      "sha256": "9511b3599178dcfc689720d864524ce687486b8405a4a6ec35f615cc328bdb84"
+    },
+    "capture.json": {
+      "bytes": 24925,
+      "sha256": "86fcd5123435b4714ef6bf7a03580eea7414828f9c17066832b8bc0aed9e8385"
+    },
+    "most_actives.json": {
+      "bytes": 5705,
+      "sha256": "b3700eaf9f3ba0bdd8961e00fd6fcf670495748efa52be20d8e8780cef285dee"
+    },
+    "movers.json": {
+      "bytes": 7199,
+      "sha256": "60a57ef6564d9eaf503ed5d3c5a15303ef423a726120a9e1b8448f41ec516d31"
+    },
+    "plan.json": {
+      "bytes": 552,
+      "sha256": "cd542612665496809c8c3e7852b959477dca992a1a1ac82f581cf9cfbc237ae9"
+    },
+    "snapshots.json": {
+      "bytes": 108138,
+      "sha256": "1b76ce011dd34eb6fc7c78e3d3d2c2fcd0ca5281b5966cae1a920c1cf8cb85f3"
+    }
+  },
+  "compared_at_utc": "2026-09-23T05:58:58.098661+00:00",
+  "comparison": {
+    "base": {
+      "candidate_count": 0,
+      "candidates": [],
+      "discovery_counts": {
+        "most_actives": 0,
+        "movers_down": 0,
+        "movers_up": 0
+      },
+      "qualification_counts": {
+        "discovered_unique": 0,
+        "invalid_snapshots": 0,
+        "missing_snapshots": 0,
+        "price_volume_qualified": 0,
+        "price_volume_rejected": 0,
+        "tension_qualified_before_cap": 0,
+        "tension_rejected": 0
+      },
+      "snapshot_batch_count": 0
+    },
+    "candidate": {
+      "candidate_count": 52,
+      "candidates": [
+        "IEMG",
+        "NOK",
+        "BAI",
+        "VKTX",
+        "CCL",
+        "WBD",
+        "INTC",
+        "CMCSA",
+        "AAL",
+        "CORO",
+        "RKT",
+        "XLF",
+        "ACWX",
+        "IUSB",
+        "BITO",
+        "SOFI",
+        "ONON",
+        "PCG",
+        "NKE",
+        "ORCL",
+        "IDEF",
+        "SPCX",
+        "MBB",
+        "BMNR",
+        "NVDA",
+        "UNG",
+        "SPY",
+        "PATH",
+        "IBIT",
+        "BAC",
+        "NU",
+        "TTD",
+        "PSKY",
+        "T",
+        "VZ",
+        "DRAM",
+        "HBAN",
+        "NFLX",
+        "RWM",
+        "F",
+        "ETHA",
+        "AMZN",
+        "MU",
+        "CSCO",
+        "GOOGL",
+        "SNXX",
+        "XLE",
+        "TSLL",
+        "SMCI",
+        "AAPL",
+        "CDE",
+        "HL"
+      ],
+      "discovery_counts": {
+        "most_actives": 95,
+        "movers_down": 1,
+        "movers_up": 5
+      },
+      "qualification_counts": {
+        "discovered_unique": 99,
+        "invalid_snapshots": 0,
+        "missing_snapshots": 0,
+        "price_volume_qualified": 55,
+        "price_volume_rejected": 44,
+        "tension_qualified_before_cap": 52,
+        "tension_rejected": 3
+      },
+      "snapshot_batch_count": 1
+    }
+  },
+  "limitations": [
+    "Capture is after close. Provider screener last_updated and snapshot timestamps remain explicit; no freshness/admission guard was invoked and no candidate is described as executable.",
+    "Daily IEX volume, missing snapshot, exclusions and unchanged hard filters still apply. Candidate counts are not fills, signals, opportunities, profitability or retrospective intraday proof.",
+    "The raw snapshot request covers the union of returned discovery symbols; offline scanner requests only its surviving subset. There was one real batch GET and one candidate offline batch request.",
+    "No account, order, observer, trade or mutation calls; no installed .env, model loads, credentials or full container environment persisted."
+  ],
+  "method": "Two real MarketScanner implementations, exact same captured screener bytes and per-symbol snapshots. Candidate snapshot query is a subset of the single captured batch; objects are selected without modifying fields. Only HTTP transport replaced in network-denied cleanenv subprocesses; scan, filtering, exclusions and tension scoring unchanged.",
+  "observed_at_utc": "2026-09-23T05:56:58.214256+00:00",
+  "operations": {
+    "broker_or_account_calls": 0,
+    "credential_or_container_env_persisted": false,
+    "market_data_GET_count": 3,
+    "observer_calls": 0,
+    "runtime_mutations": 0,
+    "source_edits": 0
+  },
+  "private_harnesses": {
+    "/tmp/intra-provider-contract-capture.py": "d4ed2a8dad47f90253056fd602c7d21d6fd803f59c00391a688f9bae49e2eb10",
+    "/tmp/intra-provider-contract-compare.py": "2df4f043157579a2f61a65e43e86dbfb4184f6a569069559ccf084552dc09330",
+    "/tmp/intra-provider-contract-offline.py": "f7e33e6498ba9eea9027fe4b55050baa90355ae6fc10317c2c1991d7804003a0"
+  },
+  "requests": [
+    {
+      "completed_at_utc": "2026-09-23T05:56:57.417279+00:00",
+      "http_date": "Wed, 23 Sep 2026 05:56:57 GMT",
+      "method": "GET",
+      "params": {
+        "by": "volume",
+        "top": 100
+      },
+      "response": {
+        "bytes": 5705,
+        "path": "most_actives.json",
+        "sha256": "b3700eaf9f3ba0bdd8961e00fd6fcf670495748efa52be20d8e8780cef285dee"
+      },
+      "started_at_utc": "2026-09-23T05:56:57.139610+00:00",
+      "status": 200,
+      "url": "https://data.alpaca.markets/v1beta1/screener/stocks/most-actives"
+    },
+    {
+      "completed_at_utc": "2026-09-23T05:56:57.694610+00:00",
+      "http_date": "Wed, 23 Sep 2026 05:56:57 GMT",
+      "method": "GET",
+      "params": {
+        "top": 50
+      },
+      "response": {
+        "bytes": 7199,
+        "path": "movers.json",
+        "sha256": "60a57ef6564d9eaf503ed5d3c5a15303ef423a726120a9e1b8448f41ec516d31"
+      },
+      "started_at_utc": "2026-09-23T05:56:57.417309+00:00",
+      "status": 200,
+      "url": "https://data.alpaca.markets/v1beta1/screener/stocks/movers"
+    },
+    {
+      "completed_at_utc": "2026-09-23T05:56:58.214156+00:00",
+      "http_date": "Wed, 23 Sep 2026 05:56:57 GMT",
+      "method": "GET",
+      "params": {
+        "feed": "iex",
+        "symbols": "ZEO,LHSW,FAMI,GRAB,QNME,CORO,IUSB,WBD,INTC,NOK,DCOY,TOPS,CWD,GRML,SOFI,NVDA,FLNA,SOXS,SNXX,ACWX,BITO,GLND,NVD,AAL,ONDS,FBGL,XLF,NU,BFRG,SOXL,RAIN,RIG,MBB,PCG,TSLL,SPCX,IEMG,CAPS,TSLG,EDVA,DVLT,SNDQ,RKT,HL,MSTZ,PSKY,UNG,TQQQ,QID,F,BAC,CMCSA,IBIT,MARA,ONON,PATH,SQQQ,AMZN,VKTX,AAPL,BMNR,CCL,BAI,RXRX,QQQ,BLCR,IALT,XLE,NIO,CDE,T,XNDU,SPY,ETHA,RWM,NFLX,KEEL,IDEF,IREN,GELS,RETO,SMR,CSCO,VZ,SLXN,NKE,ORCL,AMC,HYG,DRAM,SMCI,BB,DBRG,GOOGL,MUU,TTD,BBD,MU,HBAN,SDST,JAGX,SLND.WS,GRMLW,KFIIR,ENRG,NBRGR,ASBPW,SDSTW,ITHAW,NAMMW,OPENZ,ZKIN,ABLVW,IMCC,ASPCR,HPAIW,ZCMD,TPST,INDP,EPSM,AENTW,SVRE,AIXC,SDEV,MAZE,AACPR,PBMWW,NMCO.RT,STFS,SATLW,BFLY,GOAI,JTAI,XBPEW,BEATW,AVAT,AUC,FMSTW,TMSWW,RIV.RT,GPATW,NTRBW,SOS,KLXER,PDYNW,BKKT.WS,CAPNR,XNDX,GENVR,SCAGW,ADSEW,VWAVW,CMPX,JSPRW,SCLXW,ARBEW,TGL,HUBC,BTTC,XIIIW,ALVOW,NEOVW,NFE,VRME,DAVA,CHECW,LTRYW,SPWRW,ETS,ILLR,SBCWW,DAICW,AIFU,CDTTW,ARCLR,BNCWZ,AIIOW,IPW,MRNOW,DUKRW,FSHPR,EDRY,MKDW,AUROW,FWACW,HDRNW,AXINR"
+      },
+      "response": {
+        "bytes": 108138,
+        "path": "snapshots.json",
+        "sha256": "1b76ce011dd34eb6fc7c78e3d3d2c2fcd0ca5281b5966cae1a920c1cf8cb85f3"
+      },
+      "started_at_utc": "2026-09-23T05:56:57.694918+00:00",
+      "status": 200,
+      "url": "https://data.alpaca.markets/v2/stocks/snapshots"
+    }
+  ],
+  "schema": {
+    "gainers": {
+      "count": 50,
+      "item_keys_union": [
+        "change",
+        "percent_change",
+        "price",
+        "symbol"
+      ],
+      "missing_price": 0,
+      "missing_volume": 50,
+      "provider_last_updated": "2026-09-22T23:59:00.167161667Z"
+    },
+    "losers": {
+      "count": 50,
+      "item_keys_union": [
+        "change",
+        "percent_change",
+        "price",
+        "symbol"
+      ],
+      "missing_price": 0,
+      "missing_volume": 50,
+      "provider_last_updated": "2026-09-22T23:59:00.167161667Z"
+    },
+    "most_actives": {
+      "count": 100,
+      "item_keys_union": [
+        "symbol",
+        "trade_count",
+        "volume"
+      ],
+      "missing_price": 100,
+      "missing_volume": 0,
+      "provider_last_updated": "2026-09-22T23:59:00.161610778Z"
+    }
+  },
+  "scope": "AFTER-HOURS contract evidence only; not executable fresh entry or proof of Sept22 opportunities/strategy profitability",
+  "snapshots": {
+    "field_keys": {
+      "dailyBar": [
+        "c",
+        "h",
+        "l",
+        "n",
+        "o",
+        "t",
+        "v",
+        "vw"
+      ],
+      "latestQuote": [
+        "ap",
+        "as",
+        "ax",
+        "bp",
+        "bs",
+        "bx",
+        "c",
+        "t",
+        "z"
+      ],
+      "latestTrade": [
+        "c",
+        "i",
+        "p",
+        "s",
+        "t",
+        "x",
+        "z"
+      ],
+      "minuteBar": [
+        "c",
+        "h",
+        "l",
+        "n",
+        "o",
+        "t",
+        "v",
+        "vw"
+      ],
+      "prevDailyBar": [
+        "c",
+        "h",
+        "l",
+        "n",
+        "o",
+        "t",
+        "v",
+        "vw"
+      ]
+    },
+    "missing": [
+      "XIIIW"
+    ],
+    "returned": 186,
+    "symbols_requested": 187,
+    "timestamp_ranges": {
+      "dailyBar": {
+        "distinct": 31,
+        "earliest": "2024-02-06T05:00:00Z",
+        "latest": "2026-09-22T04:00:00Z"
+      },
+      "latestQuote": {
+        "distinct": 186,
+        "earliest": "2025-03-06T20:58:30.804374573Z",
+        "latest": "2026-09-22T20:59:59.894305019Z"
+      },
+      "latestTrade": {
+        "distinct": 186,
+        "earliest": "2024-02-06T20:58:55.958401792Z",
+        "latest": "2026-09-22T20:59:05.361780505Z"
+      },
+      "minuteBar": {
+        "distinct": 90,
+        "earliest": "2024-02-06T20:58:00Z",
+        "latest": "2026-09-22T20:59:00Z"
+      },
+      "prevDailyBar": {
+        "distinct": 41,
+        "earliest": "2023-12-15T05:00:00Z",
+        "latest": "2026-09-21T04:00:00Z"
+      }
+    }
+  },
+  "source_identity": {
+    "base_release": "2bd27836381e38e0ae683eadfc193576a185440c",
+    "base_scanner_sha256": "cb0bf8c17863909b16d9b2df66d44e39307aed3cdf25bb31995dc71ae50dc7be",
+    "both_source_files_unchanged": true,
+    "candidate_head": "332cb6babc1778094c1559d9b83f176f707a7406",
+    "candidate_scanner_sha256": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561"
+  },
+  "status": "COMPARED_IDENTICAL_CAPTURED_MARKET_DATA",
+  "task_id": "after-hours-provider-scanner-contract-comparison",
+  "unchanged_config": {
+    "data_base": "https://data.alpaca.markets/v2",
+    "effective_constants": {
+      "SCAN_INTERVAL_TICKS": 6,
+      "SCAN_MAX_CANDIDATES": 80,
+      "SCAN_MAX_PRICE": 1500.0,
+      "SCAN_MIN_MARKET_CAP": 1000000000.0,
+      "SCAN_MIN_PRICE": 10.0,
+      "SCAN_MIN_VOLUME": 500000,
+      "SCAN_TENSION_THRESHOLD": 0.3,
+      "SCAN_TOP_ACTIVES": 100,
+      "SCAN_TOP_MOVERS": 50
+    },
+    "feed": "iex"
+  }
+}

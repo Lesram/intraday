@@ -1,0 +1,86 @@
+{
+  "task_id": "independent-pipeline-freshness-review",
+  "reviewed_at_utc": "2026-09-23T05:45:44.164475+00:00",
+  "status": "ACCEPTED_BOUNDED_REVIEW",
+  "blocking_findings": [],
+  "worktree": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra",
+  "base_commit": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "reviewed_files": {
+    "backend/organism/streaming_data_provider.py": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b",
+    "backend/organism/live_engine.py": "f2f301862f3a8476374ea01170ee5aa1d1e79cb6c9ac4f746430c503fc6f603c",
+    "tests/test_pipeline_freshness_recovery.py": "8fda9f0db2f20779f863c226ac23f5a7c59a7a568ee2f98b40aa6db511546fd7",
+    "tests/unit/test_streaming_data_provider.py": "5bc206e4ff251394a5bd91739e39a138371f20105ce18bbdc5074b2cdb4ba535",
+    "tests/test_entry_freshness.py": "557d8326939bd5e7eff6f79648ccf67b05b494baa43caa3b97b0575c5ae01550",
+    "tests/test_v13_w100_live_tick_coverage.py": "cd9844039fcc632dcc5361a6f6ac5e19973488740c09104b98710fc59c1aa5de",
+    "tests/test_scanner_pipeline_integration.py": "b506f0da6b1717cfcf0d676be4ae47473e0618a8eabbf392d6b8be311d519cd8",
+    "backend/organism/scheduler.py": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c"
+  },
+  "reviewed_stage": {
+    "name": "_stage_update_data_staleness",
+    "line": 2631,
+    "sha256": "a4fd28da3bed79187d53bde68b86585f67aaa956271eb233874c01e18ba572da"
+  },
+  "engine_functions_changed_vs_base": [
+    "_live_tick_inner",
+    "_stage_update_data_staleness"
+  ],
+  "resolved_findings": [
+    {
+      "issue": "Advancing callback during backward wall-clock movement could overwrite the prior later receipt and erase a clock-failure guard.",
+      "resolution": "_on_bar rejects nonfinite or future prior receipt before any buffer or freshness mutation.",
+      "regression": "test_advancing_callback_cannot_launder_rolled_back_receipt_clock"
+    },
+    {
+      "issue": "Failed subscription could leave a connected stream attached while running=false and lose its reference on retry.",
+      "resolution": "False subscription results call stop; a retry cleans an existing reference before constructing another stream; failed disconnect retains the reference.",
+      "regressions": [
+        "test_failed_start_subscription_disconnects_before_retry",
+        "test_failed_start_disconnect_keeps_reference_until_cleanup_succeeds"
+      ]
+    }
+  ],
+  "acceptance_checks": [
+    "Bar callbacks require finite aware nonfuture event timestamps; older rows do not replace latest history or refresh receipt health.",
+    "Equal-timestamp corrections replace values without row growth or health renewal; delayed advancing history does not renew live freshness.",
+    "Subscribed-but-unseen symbols fail closed. All active stale symbols block entries despite fresh aggregate or quote-only traffic.",
+    "Confirmed local unsubscribe success removes bar/quote/receipt state and recomputes aggregate; failed unsubscribe retains guard; retired late callbacks are ignored until explicit re-add.",
+    "Callback mutation is synchronous after timestamp validation; no await permits interleaving within retirement checks and mutation. Under the locked policy, scheduler config updates are refused; no new concurrent configuration update path was introduced.",
+    "Missing quote subscription retries independently from successful bars. Recovery connection success never itself certifies bar freshness.",
+    "Clock/nonfinite freshness check exceptions set entry stale state; recovery log is emitted only after aggregate and per-symbol checks are both clear.",
+    "Current tick entry-blocker stage only flags entries. Protective exit and EOD processing remain before the entry-blocked return; exit helpers and final admission guard are unchanged by this delta.",
+    "REST fallback provides feature data without clearing the stream entry block.",
+    "W100/replay supplementary read confirms actual buy, losing protective close, EOD close, accounting and idempotence assertions; scanner integration clears pool on empty/error while preserving base and held universe."
+  ],
+  "targeted_author_evidence": {
+    "cases": 103,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 103,
+    "sha256": "f3be8d71d2b4f1a773c8cc5820f4e0b189e500a7578ec3102994cfb9f9f1696d",
+    "path": "/tmp/intra-pipeline-freshness-targeted.xml"
+  },
+  "supplementary_author_evidence": {
+    "cases": 25,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 25,
+    "sha256": "09ae4475b88b7ca17b9214d7f4df706bf5a18418d0427a02a2aac9aa953da7be",
+    "path": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/artifacts/session_pipeline_repair/w100_final.xml"
+  },
+  "independent_execution": {
+    "tests_run": false,
+    "runtime_or_network_calls": false,
+    "source_edits": false,
+    "method": "Read final source/diffs, tests, JUnit and AST-only baseline comparison; no model loads."
+  },
+  "limitations": [
+    "This is bounded source acceptance, not deployed runtime or live subscription acknowledgement proof. Alpaca stream True means successful send/local tracking under its existing API contract, not a new server-ack protocol.",
+    "Receipt health for advancing bars retains the existing 120-second receipt semantics after checking event age at arrival; the separate final actual-feature admission guard remains required and unchanged.",
+    "A genuinely sparse active symbol may still hold the conservative global PP-6 entry block; no rule/threshold relaxation was approved.",
+    "All-unseen startup retains existing no-first-bar forced-reconnect grace while entry state remains blocked.",
+    "Synthetic replay and mocks establish mechanisms, not strategy expectancy, broker connectivity, or authenticated streaming performance.",
+    "Root owns final combined regression, frozen-surface verification/snapshot, PR/CI, and explicit new-cutoff deployment approval. Our scanner implementation is excluded from this independent source review."
+  ]
+}

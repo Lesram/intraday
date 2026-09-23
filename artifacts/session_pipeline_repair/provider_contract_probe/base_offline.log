@@ -1,0 +1,2 @@
+{"scanner": "base", "candidate_count": 0, "discovery_counts": {"most_actives": 0, "movers_up": 0, "movers_down": 0}, "qualification_counts": {"discovered_unique": 0, "missing_snapshots": 0, "invalid_snapshots": 0, "price_volume_rejected": 0, "price_volume_qualified": 0, "tension_rejected": 0, "tension_qualified_before_cap": 0}, "snapshot_batch_count": 0}
+{"event": "Scanner: no stocks passed initial filters", "logger": "provider_probe_base", "level": "warning", "timestamp": "2026-09-23T05:58:57.933638Z"}

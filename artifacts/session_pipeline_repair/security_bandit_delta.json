@@ -1,0 +1,49 @@
+{
+  "base": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "head": "332cb6babc1778094c1559d9b83f176f707a7406",
+  "new_findings": [],
+  "normalization": "path + rule + message + severity/confidence + stripped finding source line; line numbers ignored",
+  "removed_findings": [],
+  "runs": {
+    "base": {
+      "exit_code": 0,
+      "findings": [],
+      "findings_count": 0,
+      "metrics_totals": {
+        "CONFIDENCE.HIGH": 233,
+        "CONFIDENCE.LOW": 0,
+        "CONFIDENCE.MEDIUM": 10,
+        "CONFIDENCE.UNDEFINED": 0,
+        "SEVERITY.HIGH": 0,
+        "SEVERITY.LOW": 241,
+        "SEVERITY.MEDIUM": 2,
+        "SEVERITY.UNDEFINED": 0,
+        "loc": 9519,
+        "nosec": 0,
+        "skipped_tests": 0
+      },
+      "parse_errors": []
+    },
+    "head": {
+      "exit_code": 0,
+      "findings": [],
+      "findings_count": 0,
+      "metrics_totals": {
+        "CONFIDENCE.HIGH": 394,
+        "CONFIDENCE.LOW": 0,
+        "CONFIDENCE.MEDIUM": 10,
+        "CONFIDENCE.UNDEFINED": 0,
+        "SEVERITY.HIGH": 0,
+        "SEVERITY.LOW": 402,
+        "SEVERITY.MEDIUM": 2,
+        "SEVERITY.UNDEFINED": 0,
+        "loc": 10412,
+        "nosec": 0,
+        "skipped_tests": 0
+      },
+      "parse_errors": []
+    }
+  },
+  "scope": "changed Python files, high severity, default rules matching hosted CI, no application import",
+  "version": "__main__.py 1.9.4\n  python version = 3.12.12 (main, Oct  9 2025, 11:07:00) [Clang 17.0.0 (clang-1700.6.3.2)]"
+}

@@ -1,0 +1,47 @@
+{
+  "task_id": "sept22-pipeline-repair",
+  "summary": "Undeployed scanner/data admission and meaningful replay repairs; no strategy tuning or active forward-clock reset",
+  "sha": "98b9617bc43ba9ecbaaab0195cec78961e03a32b",
+  "branch": "codex/sept22-pipeline-repair",
+  "change_scope": "base",
+  "change_ref": "f8bc52de1687f664278e8a8c032cb3aca4b39876...HEAD",
+  "files_changed": [
+    "backend/organism/live_engine.py",
+    "backend/organism/market_scanner.py",
+    "backend/organism/streaming_data_provider.py",
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py"
+  ],
+  "commands": [
+    "python scripts/runtime/write_runtime_snapshot.py",
+    "python scripts/ci/generate_artifacts.py full",
+    "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
+    "python scripts/ci/check_spec_drift.py --json"
+  ],
+  "tests_passed": [
+    "organism_live_engine",
+    "organism_engine_scenarios",
+    "multi_tick_state",
+    "safety_invariants",
+    "self_evolution",
+    "algorithm_improvements",
+    "semantic_invariants",
+    "replay_simulator"
+  ],
+  "tests_failed": [],
+  "runtime_behavior_changed": [
+    "backend/organism/live_engine.py",
+    "backend/organism/market_scanner.py",
+    "backend/organism/streaming_data_provider.py"
+  ],
+  "docs_updated": [],
+  "risks": [
+    "3 organism file(s) changed \u2014 replay verification required",
+    "Organism changed without test changes \u2014 verify coverage"
+  ],
+  "follow_ups": [],
+  "artifact_pack_status": "fail",
+  "artifact_pack_errors": [
+    "task_report.json: SHA mismatch \u2014 report=98b9617bc4 vs HEAD=332cb6babc"
+  ]
+}

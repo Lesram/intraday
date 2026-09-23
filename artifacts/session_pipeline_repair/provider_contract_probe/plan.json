@@ -1,0 +1,13 @@
+{
+  "account_or_order_endpoints": false,
+  "allowed_endpoints": [
+    "https://data.alpaca.markets/v1beta1/screener/stocks/most-actives",
+    "https://data.alpaca.markets/v1beta1/screener/stocks/movers",
+    "https://data.alpaca.markets/v2/stocks/snapshots"
+  ],
+  "credential_persistence": false,
+  "model_loads": false,
+  "mutations": false,
+  "scope": "GET market-data screener and IEX snapshots; replay installed/base and candidate scanner against same exact captured payloads offline",
+  "task_id": "after-hours-scanner-provider-contract-probe"
+}

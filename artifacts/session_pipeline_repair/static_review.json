@@ -1,0 +1,88 @@
+{
+  "application_imports": false,
+  "bandit_high": {
+    "baseline_findings": 0,
+    "candidate_findings": 0,
+    "new_findings": 0,
+    "receipt": {
+      "path": "artifacts/session_pipeline_repair/security_bandit_delta.json",
+      "sha256": "b99f19aa2bcef219e57672fcaeeef4cb59003f0bbd895d015be13076a8efa740"
+    },
+    "removed_findings": 0,
+    "version": "__main__.py 1.9.4\n  python version = 3.12.12 (main, Oct  9 2025, 11:07:00) [Clang 17.0.0 (clang-1700.6.3.2)]"
+  },
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "changed_python_files": [
+    "backend/organism/live_engine.py",
+    "backend/organism/market_scanner.py",
+    "backend/organism/streaming_data_provider.py",
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_entry_freshness.py",
+    "tests/test_market_scanner.py",
+    "tests/test_market_scanner_provider_contract.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_pipeline_freshness_recovery.py",
+    "tests/test_pipeline_snapshot.py",
+    "tests/test_scanner_pipeline_integration.py",
+    "tests/test_v12_baseline_invariants.py",
+    "tests/test_v13_w100_live_tick_coverage.py",
+    "tests/unit/test_streaming_data_provider.py"
+  ],
+  "head_python_sha256": {
+    "backend/organism/live_engine.py": "f2f301862f3a8476374ea01170ee5aa1d1e79cb6c9ac4f746430c503fc6f603c",
+    "backend/organism/market_scanner.py": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
+    "backend/organism/streaming_data_provider.py": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b",
+    "scripts/phase2_freeze.py": "568e2dcae6e6e2a8d397f2292c6d560e24bb31c8cdf3438c74847336b759f9db",
+    "scripts/runtime/write_runtime_snapshot.py": "11792d071c72a3ad797c8e06d8e32898cf4435701a0df202c77ea46d8f059c33",
+    "tests/test_entry_freshness.py": "557d8326939bd5e7eff6f79648ccf67b05b494baa43caa3b97b0575c5ae01550",
+    "tests/test_market_scanner.py": "b7e8310e0c3e721c8c2d0451c0bdbeb99ec7f291f7f74db4ad4ca88a0dea37af",
+    "tests/test_market_scanner_provider_contract.py": "d01a6097dccdb27851c0d1c0a02de6ec15c317c7523402a3cf5da9fb91044360",
+    "tests/test_phase2_freeze.py": "c9f750609087ab87d8e685a1ffdf39cd8e479350a1b1cffc6fd89724d98531e2",
+    "tests/test_pipeline_freshness_recovery.py": "8fda9f0db2f20779f863c226ac23f5a7c59a7a568ee2f98b40aa6db511546fd7",
+    "tests/test_pipeline_snapshot.py": "d638e5d9478785d6090a40e7867eff027a14677fb8c116a56e9ac40875bcbd93",
+    "tests/test_scanner_pipeline_integration.py": "b506f0da6b1717cfcf0d676be4ae47473e0618a8eabbf392d6b8be311d519cd8",
+    "tests/test_v12_baseline_invariants.py": "57302f2c0b0e2b30df4157055e5592b066734935af922d0e9d2921e151ab4ee3",
+    "tests/test_v13_w100_live_tick_coverage.py": "cd9844039fcc632dcc5361a6f6ac5e19973488740c09104b98710fc59c1aa5de",
+    "tests/unit/test_streaming_data_provider.py": "5bc206e4ff251394a5bd91739e39a138371f20105ce18bbdc5074b2cdb4ba535"
+  },
+  "head_sha": "332cb6babc1778094c1559d9b83f176f707a7406",
+  "limitations": [
+    "This is a changed-Python/static delta review, not repository-wide lint cleanup or complete security assurance.",
+    "Gitleaks scans the exact committed revision range; root must rescan after final artifact-only commit.",
+    "Existing parked baseline findings remain unchanged unless naturally removed by this scoped work."
+  ],
+  "network_denied": true,
+  "recorded_at_utc": "2026-09-23T05:51:37.235277+00:00",
+  "reproducer": {
+    "path": "/tmp/intra-pipeline-static-review.py",
+    "sha256": "3f96c6405300d9dc6d1525dac5510a139876181c583654712e5b82fc78212b56"
+  },
+  "ruff": {
+    "baseline_findings": 11,
+    "candidate_findings": 5,
+    "new_findings": 0,
+    "receipt": {
+      "path": "artifacts/session_pipeline_repair/security_ruff_delta.json",
+      "sha256": "53bdff144c5a8aa23c6c548487ccf635d1d0380f61bb42f3d341335460241afc"
+    },
+    "removed_findings": 6,
+    "version": "ruff 0.15.12"
+  },
+  "runtime_calls": false,
+  "secrets": {
+    "findings": 0,
+    "receipt": {
+      "path": "artifacts/session_pipeline_repair/security_scan_receipt.json",
+      "sha256": "7b56049c440851af428374ac21182afe96a580d5fbedd0c27e779e1f551df77d"
+    }
+  },
+  "source_edits": false,
+  "status": "PASS_NO_NEW_FINDINGS",
+  "task_id": "sept22_pipeline_final_static_security_delta",
+  "unchanged_lint_configuration": {
+    ".bandit": "672d29ce1d156a932ba5b3b8c9eb237271e26567efb33f4b6986c623d70c7c15",
+    "pyproject.toml": "cf0c86fa39147a2cc93ba4a184bf40f74221aa448d8d0f0a0a520977e7410ab0"
+  },
+  "working_head_unchanged_at_completion": true
+}

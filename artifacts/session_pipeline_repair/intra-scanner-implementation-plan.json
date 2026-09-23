@@ -1,0 +1,8 @@
+{
+  "task_id": "sept22-scanner-provider-contract",
+  "worktree": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra",
+  "ownership": ["backend/organism/market_scanner.py", "tests/test_market_scanner.py", "tests/test_market_scanner_provider_contract.py"],
+  "scope": ["Separate absent discovery fields from malformed supplied values", "Batch deduplicated snapshot enrichment before qualifying missing price/volume", "Reapply unchanged price/volume limits to authoritative snapshot data", "Reject incomplete/nonfinite scoring inputs while retaining scoring formula", "Clear candidates on failed/empty scans; never return old candidates as fresh"],
+  "validation": ["Real provider-shaped positive scan fails before repair and passes after", "One snapshot batch, configured feed, exclusions, deduplication, ranking, thresholds", "Partial/malformed/nonfinite snapshots and discovery fields fail closed", "Successful scan followed by failure clears both caches", "Existing scanner and multi-tick volume-safety regression", "Parent owns complete organism/replay/CI/artifact pack and explicit frozen-surface candidate review"],
+  "constraints": ["No actual network/broker/model calls", "Clean environment and scratch test paths", "No installed environment, brain, history, freeze or deployment changes", "No thresholds/feed/scoring weights or strategy gate changes", "No commits"]
+}

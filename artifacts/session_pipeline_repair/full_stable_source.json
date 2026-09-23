@@ -1,0 +1,13 @@
+{
+  "label": "full_stable_source",
+  "exit_code": 0,
+  "seconds": 214.09,
+  "command": [
+    "scripts/ci/generate_artifacts.py",
+    "full"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

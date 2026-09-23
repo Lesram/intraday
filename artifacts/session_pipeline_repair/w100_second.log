@@ -1,0 +1,62 @@
+.....FF......                                                            [100%]
+=================================== FAILURES ===================================
+_________________ test_w100_eod_flattens_real_entered_position _________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a172b40>
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-113/test_w100_eod_flattens_real_en0')
+record_property = <function record_property.<locals>.append_property at 0x10b279ee0>
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    async def test_w100_eod_flattens_real_entered_position(monkeypatch, tmp_path, record_property):
+        """Late-session replay must flatten a position and forbid later entries."""
+        replay, engines, _ = _replay(
+            monkeypatch, tmp_path, _minute_bars(start="2026-09-22T16:15:00Z"))
+        result = await replay.run(max_ticks=35)
+        _assert_real_ticks(result, 35)
+        assert any(order["side"] == "buy" for order in result.orders)
+        eod_closes = [trade for trade in result.accounted_trades
+                      if trade["exit_reason"] == "eod_flatten"]
+>       assert eod_closes
+E       assert []
+
+tests/test_v13_w100_live_tick_coverage.py:258: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $999,762
+  💾 Brain saved: generation 0, 1 trades, equity $1,000,026
+  💾 Brain saved: generation 0, 1 trades, equity $1,000,359
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T05:32:58.256798Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_______________ test_w100_position_management_no_orders_no_exits _______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112e83ec0>
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-113/test_w100_position_management_1')
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    async def test_w100_position_management_no_orders_no_exits(monkeypatch, tmp_path):
+        """A real zero-entry throttle produces no phantom positions or exits."""
+        replay, _, _ = _replay(monkeypatch, tmp_path, _minute_bars(), max_entries_per_hour=0)
+        result = await replay.run(max_ticks=20)
+        _assert_real_ticks(result, 20)
+>       assert sum(tick["signals_generated"] for tick in result.tick_results) > 0
+E       assert 0 > 0
+E        +  where 0 = sum(<generator object test_w100_position_management_no_orders_no_exits.<locals>.<genexpr> at 0x11304cee0>)
+
+tests/test_v13_w100_live_tick_coverage.py:275: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T05:32:59.522871Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+=============================== warnings summary ===============================
+tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_v13_w100_live_tick_coverage.py::test_w100_eod_flattens_real_entered_position
+FAILED tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_no_orders_no_exits
+2 failed, 11 passed, 1 warning in 10.89s
