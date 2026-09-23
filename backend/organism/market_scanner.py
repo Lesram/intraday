@@ -237,15 +237,26 @@ class MarketScanner:
             return []
         for item in actives:
             if not isinstance(item, dict):
+                self._scan_had_error = True
+                invalid_fields += 1
                 continue
             sym = item.get("symbol", "")
-            if not isinstance(sym, str) or not sym or sym != sym.strip() or sym in self._exclude:
+            if not isinstance(sym, str) or not sym or sym != sym.strip():
+                self._scan_had_error = True
+                invalid_fields += 1
+                continue
+            if sym in self._exclude:
                 continue
             try:
                 price = _number(item["price"]) if "price" in item else None
                 volume = _number(item["volume"], integer=True) if "volume" in item else None
                 change_pct = _number(item.get("change", 0))
             except ValueError:
+                self._scan_had_error = True
+                invalid_fields += 1
+                continue
+            if ((price is not None and price <= 0) or (volume is not None and volume < 0)):
+                self._scan_had_error = True
                 invalid_fields += 1
                 continue
             if price is not None and not SCAN_MIN_PRICE <= price <= SCAN_MAX_PRICE:
@@ -288,15 +299,26 @@ class MarketScanner:
             return []
         for item in movers:
             if not isinstance(item, dict):
+                self._scan_had_error = True
+                invalid_fields += 1
                 continue
             sym = item.get("symbol", "")
-            if not isinstance(sym, str) or not sym or sym != sym.strip() or sym in self._exclude:
+            if not isinstance(sym, str) or not sym or sym != sym.strip():
+                self._scan_had_error = True
+                invalid_fields += 1
+                continue
+            if sym in self._exclude:
                 continue
             try:
                 price = _number(item["price"]) if "price" in item else None
                 volume = _number(item["volume"], integer=True) if "volume" in item else None
                 change_pct = _number(item.get("change_percent", item.get("percent_change", 0)))
             except ValueError:
+                self._scan_had_error = True
+                invalid_fields += 1
+                continue
+            if ((price is not None and price <= 0) or (volume is not None and volume < 0)):
+                self._scan_had_error = True
                 invalid_fields += 1
                 continue
             if price is not None and not SCAN_MIN_PRICE <= price <= SCAN_MAX_PRICE:
@@ -508,10 +530,12 @@ class MarketScanner:
         missing_snapshot = invalid_snapshot = price_volume_rejected = 0
         for sym, stock in all_scanned.items():
             if sym not in snapshots:
+                self._scan_had_error = True
                 missing_snapshot += 1
                 continue
             snap = snapshots[sym]
             if not _valid_snapshot(snap):
+                self._scan_had_error = True
                 invalid_snapshot += 1
                 continue
             daily = snap["dailyBar"]

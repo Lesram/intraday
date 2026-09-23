@@ -181,7 +181,12 @@ async def test_successful_empty_scan_resets_failure_streak_in_real_ticks(monkeyp
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("failure", ["discovery_http", "discovery_schema", "snapshot_http", "snapshot_schema", "partial_discovery"])
+@pytest.mark.parametrize("failure", [
+    "discovery_http", "discovery_schema", "snapshot_http", "snapshot_schema", "partial_discovery",
+    "discovery_row", "discovery_symbol", "discovery_number", "mover_row", "mover_number",
+    "snapshot_error_object", "snapshot_missing", "snapshot_fields", "partial_snapshot",
+    "discovery_negative_volume", "discovery_zero_price", "mover_negative_volume", "mover_negative_price",
+])
 async def test_scanner_outcome_distinguishes_request_failures_from_empty_success(monkeypatch, failure):
     """The list API stays compatible while outcome exposes swallowed errors."""
     import httpx
@@ -200,28 +205,97 @@ async def test_scanner_outcome_distinguishes_request_failures_from_empty_success
                 return httpx.Response(503)
             if not recovering and failure == "discovery_schema":
                 return httpx.Response(200, json={"wrong_key": []})
-            return httpx.Response(200, json={"most_actives": ([] if recovering else [
-                {"symbol": "MSFT", "volume": 8_000_000, "trade_count": 100_000}])})
+            rows = [] if recovering else [{"symbol": "MSFT", "volume": 8_000_000, "trade_count": 100_000}]
+            if not recovering:
+                if failure == "discovery_row":
+                    rows = [None]
+                elif failure == "discovery_symbol":
+                    rows = [{"symbol": " ", "volume": 8_000_000}]
+                elif failure == "discovery_number":
+                    rows = [{"symbol": "MSFT", "volume": "malformed"}]
+                elif failure == "discovery_negative_volume":
+                    rows = [{"symbol": "MSFT", "volume": -1}]
+                elif failure == "discovery_zero_price":
+                    rows = [{"symbol": "MSFT", "price": 0., "volume": 8_000_000}]
+                elif failure == "partial_snapshot":
+                    rows.append({"symbol": "AMD", "volume": 8_000_000})
+            return httpx.Response(200, json={"most_actives": rows})
         if url.endswith("movers"):
             if not recovering and failure == "partial_discovery":
                 return httpx.Response(503)
-            return httpx.Response(200, json={"gainers": [], "losers": []})
+            movers = {"gainers": [], "losers": []}
+            if not recovering and failure == "mover_row":
+                movers["gainers"] = [None]
+            elif not recovering and failure == "mover_number":
+                movers["losers"] = [{"symbol": "AMD", "price": "malformed"}]
+            elif not recovering and failure == "mover_negative_volume":
+                movers["losers"] = [{"symbol": "AMD", "price": 100., "volume": -1}]
+            elif not recovering and failure == "mover_negative_price":
+                movers["gainers"] = [{"symbol": "AMD", "price": -1.}]
+            return httpx.Response(200, json=movers)
         assert url.endswith("snapshots")
         if failure == "snapshot_http":
             return httpx.Response(503)
         if failure == "snapshot_schema":
             return httpx.Response(200, json=[])
+        if failure == "snapshot_error_object":
+            return httpx.Response(200, json={"message": "error"})
+        if failure == "snapshot_missing":
+            return httpx.Response(200, json={"OTHER": snapshot["MSFT"]})
+        if failure == "snapshot_fields":
+            return httpx.Response(200, json={"MSFT": {"dailyBar": {}}})
+        if failure == "partial_snapshot":
+            return httpx.Response(200, json={**snapshot, "AMD": {"dailyBar": {}}})
         return httpx.Response(200, json=snapshot)
 
     monkeypatch.setattr(scanner._client, "get", provider_response)
     try:
         assert scanner.last_scan_succeeded is False  # Never scanned.
         candidates = await scanner.scan()
-        assert candidates == (["MSFT"] if failure == "partial_discovery" else [])
+        partial = failure in {"partial_discovery", "mover_row", "mover_number", "partial_snapshot",
+                              "mover_negative_volume", "mover_negative_price"}
+        assert candidates == (["MSFT"] if partial else [])
         assert scanner.last_scan_succeeded is False
         recovering = True
         assert await scanner.scan() == []
         assert scanner.last_scan_succeeded is True
         assert scanner.candidates == [] and scanner.scanned_stocks == []
+    finally:
+        await scanner.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("filtered", ["price", "volume", "zero_volume", "snapshot_volume", "tension", "excluded_symbol"])
+async def test_valid_policy_filtered_empty_scan_is_success(monkeypatch, filtered):
+    """Policy exclusions are not provider failures and must permit recovery."""
+    import httpx
+    from backend.organism.market_scanner import MarketScanner
+
+    scanner = MarketScanner()
+    row = {"symbol": "MSFT", "volume": 8_000_000}
+    if filtered == "price":
+        row["price"] = 1.0
+    elif filtered == "volume":
+        row["volume"] = 1
+    elif filtered == "zero_volume":
+        row["volume"] = 0
+    elif filtered == "excluded_symbol":
+        row["symbol"] = "TQQQ"
+
+    async def provider_response(url, params=None, headers=None):
+        if url.endswith("most-actives"):
+            return httpx.Response(200, json={"most_actives": [row]})
+        if url.endswith("movers"):
+            return httpx.Response(200, json={"gainers": [], "losers": []})
+        assert filtered in {"snapshot_volume", "tension"} and url.endswith("snapshots")
+        volume = 1 if filtered == "snapshot_volume" else 8_000_000
+        return httpx.Response(200, json={"MSFT": {
+            "dailyBar": {"o": 100., "h": 150., "l": 50., "c": 100., "v": volume},
+            "prevDailyBar": {"c": 100., "h": 150., "l": 50., "v": 8_000_000}}})
+
+    monkeypatch.setattr(scanner._client, "get", provider_response)
+    try:
+        assert await scanner.scan() == []
+        assert scanner.last_scan_succeeded is True
     finally:
         await scanner.close()
