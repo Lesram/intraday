@@ -16,9 +16,10 @@ Rate-budget: ~3-5 requests per scan cycle (runs every 60s).
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -46,6 +47,47 @@ _SCREENER_BASE = "https://data.alpaca.markets/v1beta1/screener/stocks"
 _MAX_RETRIES = 2
 _RETRY_BACKOFF = 0.2
 _RETRIABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+def _number(value: Any, *, integer: bool = False) -> float | int:
+    """Accept finite provider numbers, never bools or malformed supplied fields."""
+    if type(value) not in (int, float):
+        raise ValueError("invalid scanner number")
+    try:
+        if not math.isfinite(value) or (integer and int(value) != value):
+            raise ValueError("invalid scanner number")
+    except OverflowError as exc:
+        raise ValueError("invalid scanner number") from exc
+    return int(value) if integer else float(value)
+
+
+def _valid_snapshot(snapshot: Any) -> bool:
+    """Require daily OHLCV; retain optional minute/prior-bar scoring defaults.
+
+    Every supplied scoring field must be finite and valid. Missing daily data
+    cannot be substituted with screener values or an old cached candidate.
+    """
+    if not isinstance(snapshot, dict) or not isinstance(snapshot.get("dailyBar"), dict):
+        return False
+    try:
+        daily = snapshot["dailyBar"]
+        prices = {key: _number(daily[key]) for key in ("o", "h", "l", "c")}
+        if (min(prices.values()) <= 0 or _number(daily["v"], integer=True) < 0
+                or not prices["l"] <= prices["o"] <= prices["h"]
+                or not prices["l"] <= prices["c"] <= prices["h"]):
+            return False
+        for name in ("minuteBar", "prevDailyBar"):
+            bar = snapshot.get(name, {})
+            if not isinstance(bar, dict):
+                return False
+            for key in ("o", "h", "l", "c", "v"):
+                if key in bar:
+                    value = _number(bar[key], integer=key == "v")
+                    if value < 0 or (key != "v" and value == 0):
+                        return False
+        return True
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 @dataclass
@@ -175,7 +217,8 @@ class MarketScanner:
     async def _fetch_most_actives(self) -> list[ScannedStock]:
         """GET /v1beta1/screener/stocks/most-actives
 
-        Returns top stocks by trading volume today.
+        Discover stocks by volume. Price is absent in the provider contract;
+        scan() qualifies that field from snapshots before returning candidates.
         """
         url = f"{_SCREENER_BASE}/most-actives"
         params = {"by": "volume", "top": SCAN_TOP_ACTIVES}
@@ -184,33 +227,45 @@ class MarketScanner:
             return []
 
         results = []
+        invalid_fields = 0
         actives = data.get("most_actives", []) if isinstance(data, dict) else []
+        if not isinstance(actives, list):
+            return []
         for item in actives:
+            if not isinstance(item, dict):
+                continue
             sym = item.get("symbol", "")
-            if not sym or sym in self._exclude:
+            if not isinstance(sym, str) or not sym or sym != sym.strip() or sym in self._exclude:
                 continue
-            price = float(item.get("price", 0))
-            volume = int(item.get("volume", 0))
-            if price < SCAN_MIN_PRICE or price > SCAN_MAX_PRICE:
+            try:
+                price = _number(item["price"]) if "price" in item else None
+                volume = _number(item["volume"], integer=True) if "volume" in item else None
+                change_pct = _number(item.get("change", 0))
+            except ValueError:
+                invalid_fields += 1
                 continue
-            if volume < SCAN_MIN_VOLUME:
+            if price is not None and not SCAN_MIN_PRICE <= price <= SCAN_MAX_PRICE:
+                continue
+            if volume is not None and volume < SCAN_MIN_VOLUME:
                 continue
             results.append(ScannedStock(
                 symbol=sym,
                 source="most_actives",
-                price=price,
-                volume=volume,
-                change_pct=float(item.get("change", 0)),
+                price=price if price is not None else 0.0,
+                volume=volume if volume is not None else 0,
+                change_pct=change_pct,
                 timestamp=time.time(),
             ))
 
-        logger.info("Scanner: %d most-actives passed filters", len(results))
+        logger.info("Scanner: %d most-actives awaiting snapshot qualification (%d invalid supplied rows)",
+                    len(results), invalid_fields)
         return results
 
     async def _fetch_movers(self, direction: str = "up") -> list[ScannedStock]:
         """GET /v1beta1/screener/stocks/movers
 
-        Returns biggest % gainers or losers.
+        Discover gainers or losers. The provider omits volume; scan() must
+        obtain it from a snapshot before this stock becomes a candidate.
         direction: 'up' or 'down'
         """
         url = f"{_SCREENER_BASE}/movers"
@@ -220,29 +275,39 @@ class MarketScanner:
             return []
 
         results = []
+        invalid_fields = 0
         key = "gainers" if direction == "up" else "losers"
         movers = data.get(key, []) if isinstance(data, dict) else []
+        if not isinstance(movers, list):
+            return []
         for item in movers:
+            if not isinstance(item, dict):
+                continue
             sym = item.get("symbol", "")
-            if not sym or sym in self._exclude:
+            if not isinstance(sym, str) or not sym or sym != sym.strip() or sym in self._exclude:
                 continue
-            price = float(item.get("price", 0))
-            volume = int(item.get("volume", 0))
-            change_pct = float(item.get("change_percent", item.get("percent_change", 0)))
-            if price < SCAN_MIN_PRICE or price > SCAN_MAX_PRICE:
+            try:
+                price = _number(item["price"]) if "price" in item else None
+                volume = _number(item["volume"], integer=True) if "volume" in item else None
+                change_pct = _number(item.get("change_percent", item.get("percent_change", 0)))
+            except ValueError:
+                invalid_fields += 1
                 continue
-            if volume < SCAN_MIN_VOLUME:
+            if price is not None and not SCAN_MIN_PRICE <= price <= SCAN_MAX_PRICE:
+                continue
+            if volume is not None and volume < SCAN_MIN_VOLUME:
                 continue
             results.append(ScannedStock(
                 symbol=sym,
                 source=f"movers_{direction}",
-                price=price,
-                volume=volume,
+                price=price if price is not None else 0.0,
+                volume=volume if volume is not None else 0,
                 change_pct=change_pct,
                 timestamp=time.time(),
             ))
 
-        logger.info("Scanner: %d movers_%s passed filters", len(results), direction)
+        logger.info("Scanner: %d movers_%s awaiting snapshot qualification (%d invalid supplied rows)",
+                    len(results), direction, invalid_fields)
         return results
 
     async def _fetch_snapshots(
@@ -290,6 +355,8 @@ class MarketScanner:
 
         Higher score = more tension = more likely to break out.
         """
+        if not _valid_snapshot(snapshot):
+            return 0.0
         try:
             daily = snapshot.get("dailyBar", {})
             minute = snapshot.get("minuteBar", {})
@@ -334,7 +401,6 @@ class MarketScanner:
             # 5. Minute-bar acceleration
             m_close = float(minute.get("c", 0))
             m_open = float(minute.get("o", 0))
-            m_volume = int(minute.get("v", 0))
             accel_score = 0.0
             if m_close > 0 and m_open > 0:
                 accel = abs(m_close - m_open) / m_open
@@ -363,7 +429,7 @@ class MarketScanner:
             )
             return round(min(tension, 1.0), 4)
 
-        except Exception as e:
+        except (ArithmeticError, KeyError, TypeError, ValueError) as e:
             logger.debug("Tension score error: %s", e)
             return 0.0
 
@@ -377,7 +443,7 @@ class MarketScanner:
         2. Fetch movers (top gainers + losers)
         3. Deduplicate
         4. Fetch snapshots for all candidates
-        5. Score tension
+        5. Qualify snapshot price/volume, then score tension
         6. Filter by tension threshold
         7. Return top SCAN_MAX_CANDIDATES symbols sorted by tension
 
@@ -385,6 +451,11 @@ class MarketScanner:
         """
         self._scan_count += 1
         t0 = time.time()
+        # A new attempt invalidates previous discoveries, including when an
+        # endpoint fails. Callers must not interpret old symbols as a fresh scan.
+        self._cached_candidates = []
+        self._cached_scanned = []
+        self._last_scan_time = t0
 
         # 1-2. Fetch from screener endpoints (3 API calls, run concurrently)
         actives_task = self._fetch_most_actives()
@@ -409,27 +480,45 @@ class MarketScanner:
         if not all_scanned:
             logger.warning("Scanner: no stocks passed initial filters")
             self._last_scan_time = time.time()
-            return self._cached_candidates
+            return []
 
         # 3. Get snapshot data for tension scoring (1-2 API calls)
         symbols = list(all_scanned.keys())
-        snapshots = await self._fetch_snapshots(symbols)
+        try:
+            snapshots = await self._fetch_snapshots(symbols)
+        except (httpx.RequestError, OSError, TypeError, ValueError) as exc:
+            logger.warning("Scanner snapshot batch failed: %s", type(exc).__name__)
+            return []
 
         # 4. Score tension from snapshots
         scored: list[ScannedStock] = []
+        missing_snapshot = invalid_snapshot = price_volume_rejected = 0
         for sym, stock in all_scanned.items():
-            snap = snapshots.get(sym, {})
-            if snap:
-                stock.tension_score = self._score_tension(snap)
-                # Update price from snapshot if available
-                daily = snap.get("dailyBar", {})
-                if daily.get("c"):
-                    stock.price = float(daily["c"])
-                    stock.volume = int(daily.get("v", stock.volume))
+            if sym not in snapshots:
+                missing_snapshot += 1
+                continue
+            snap = snapshots[sym]
+            if not _valid_snapshot(snap):
+                invalid_snapshot += 1
+                continue
+            daily = snap["dailyBar"]
+            stock.price = float(daily["c"])
+            stock.volume = int(daily["v"])
+            if not SCAN_MIN_PRICE <= stock.price <= SCAN_MAX_PRICE or stock.volume < SCAN_MIN_VOLUME:
+                price_volume_rejected += 1
+                continue
+            stock.tension_score = self._score_tension(snap)
             scored.append(stock)
 
         # 5. Filter by tension threshold and sort
+        qualified = len(scored)
         scored = [s for s in scored if s.tension_score >= SCAN_TENSION_THRESHOLD]
+        logger.info(
+            "Scanner qualification: discovered=%d missing_snapshots=%d invalid_snapshots=%d "
+            "price_volume_rejected=%d qualified=%d tension_rejected=%d",
+            len(all_scanned), missing_snapshot, invalid_snapshot, price_volume_rejected,
+            qualified, qualified - len(scored),
+        )
         scored.sort(key=lambda s: s.tension_score, reverse=True)
         scored = scored[:SCAN_MAX_CANDIDATES]
 

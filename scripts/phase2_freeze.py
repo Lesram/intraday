@@ -64,6 +64,19 @@ def _h(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
 
 
+def compute_data_pipeline_sources() -> dict[str, str]:
+    """Pin discovery and data-admission helpers outside the original six hashes."""
+    from backend.organism import market_scanner, streaming_data_provider, live_engine_data
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    return {
+        "market_scanner": _h(inspect.getsource(market_scanner)),
+        "streaming_data_provider": _h(inspect.getsource(streaming_data_provider)),
+        "live_engine_data": _h(inspect.getsource(live_engine_data)),
+        "staleness_admission": _h(inspect.getsource(OrganismLiveEngine._stage_update_data_staleness)),
+    }
+
+
 def compute_surface() -> dict:
     """The full decision surface, normalized (deterministic; no metadata)."""
     from backend.organism.adaptive_exits import AdaptiveExitEngine
@@ -103,6 +116,10 @@ def compute_surface() -> dict:
         "regime_policy": REGIME_POLICY,
         "exit_env": {k: os.getenv(k) for k in EXIT_ENV_VARS},
         "routing_data_env": {k: os.getenv(k) for k in ROUTING_DATA_ENV_VARS},
+        # Candidate discovery and preliminary data admission can change which
+        # trades reach the final entry gate. Keep their helpers inside the
+        # frozen surface, even when the six original entry/exit hashes match.
+        "data_pipeline_sources": compute_data_pipeline_sources(),
         # The September paper lock closes promotion/training seams that were
         # outside the original six hashes. Changing these also requires an
         # explicitly approved new forward boundary.
