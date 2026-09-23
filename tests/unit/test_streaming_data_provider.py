@@ -42,8 +42,8 @@ def _mock_stream():
     """Create a mock AlpacaMarketDataStream."""
     stream = MagicMock()
     stream.connect = AsyncMock(return_value=True)
-    stream.subscribe_bars = AsyncMock()
-    stream.subscribe_quotes = AsyncMock()
+    stream.subscribe_bars = AsyncMock(return_value=True)
+    stream.subscribe_quotes = AsyncMock(return_value=True)
     stream.disconnect = AsyncMock()
     stream.is_authenticated = True
     return stream

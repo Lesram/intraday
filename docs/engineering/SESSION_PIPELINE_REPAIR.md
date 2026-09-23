@@ -1,0 +1,118 @@
+# September 22 session: scanner, streaming and replay repair
+
+## Problem and resulting behavior
+
+The September 22 session produced no orders. All 254 regular-session scanner
+passes returned no candidates, and existing streaming-health gates blocked 427
+of 1,526 cycles. These counts overlap with strategy filters and are not a count
+of lost trades. The reviewed session remains an auditable no-trade session with
+no new profitability or strategy-promotion evidence.
+
+A subsequent read-only provider check established a scanner contract mismatch:
+most-active rows carry volume but no price, while movers carry price but no
+volume. Previously, absent fields became zero and were filtered before the
+snapshot step could supply them. Tests fabricated the missing fields and did
+not exercise the provider contract.
+
+This candidate qualifies discovery rows only after obtaining valid required
+snapshot values. It retains the existing thresholds, IEX/SIP selection, tension
+formula, exclusions, ordering, request batching and candidate limit. Malformed,
+nonfinite or incomplete values cannot pass by accident. Empty or failed scans
+clear stale candidate results, including the caller's retained scanner pool;
+they do not remove held positions or the current/base universe.
+
+The streaming repair addresses reproducible bookkeeping/integrity defects:
+
+- Duplicate/same-bar corrections and out-of-order callbacks do not extend bar
+  health. Invalid, naive or future timestamps cannot fabricate a fresh stream.
+- An advancing but already stale historical bar may support the historical
+  buffer, but its recent arrival cannot claim fresh market data.
+- Successfully unsubscribed symbols lose obsolete buffers/health and retired
+  callbacks cannot resurrect them. Failed unsubscribe requests retain state
+  and remain retryable. A new active subscription starts without inherited
+  stale or falsely fresh state.
+- Aggregate and per-symbol checks determine the final block state before a
+  recovery message is emitted. The misleading same-cycle “fresh again” followed
+  by a stale block is removed.
+
+The global active-symbol streaming-health rule remains fail-closed at 120
+seconds. REST fallback does not override it, and quotes are not substitutes for
+bars. The session evidence does not establish why every sparse active symbol
+lacked a recent callback; no feed entitlement, routing or strategy threshold is
+changed on that assumption.
+
+## Meaningful validation
+
+Scanner tests use actual provider-shaped data and require real qualified
+candidates. They cover unavailable/partial snapshots, malformed supplied fields,
+thresholds, exclusions, ranking, request batching and success-to-empty/failure
+transitions. Diagnostic scan summaries distinguish discovery, enrichment and
+qualification losses.
+
+Streaming tests exercise active stale symbols despite fresh aggregate/quotes,
+ordered history, delayed delivery, timestamp failures, unsubscribe failures and
+retries, retirement/re-subscription, truthful recovery and unchanged REST/global
+entry-block behavior.
+
+W100 replay now supplies timezone-aware one-minute frames aligned to its replay
+clock. Causal prefixes of real computed features avoid repeatedly recomputing
+the same unrelated ML features without exposing future rows. The tests require
+actual admitted buys and accounted closes, including a protective loss and an
+EOD flatten. Learning-mode partial exits are not fabricated by enabling an
+unapproved production mode; existing partial-fill/accounting suites remain
+separate required regression evidence.
+
+The scanner-to-engine integration uses the real scanner and realistic provider
+responses to demonstrate discovery, injection into the universe and a real
+entry through the existing gates. It also checks empty/failing rescans clear
+candidate state without deleting the held/base universe.
+
+Both structural guards retain the historical baseline. The reviewed candidate
+ceiling is exactly 2,824 lines: the former W100 2,805 plus the prior approved
+18-line freshness handling plus one explicit scanner-exception cache clear.
+The v12 2,802 baseline uses the equivalent 21+1 documented allowance. There is
+no extra growth tolerance and engine decomposition remains parked.
+
+New pipeline tests are included in the focused PR readiness job. Full applicable
+nightly core and the seven required replay cases are also required; a green
+focused subset alone is not acceptance. External tests needing a separately
+provisioned disposable API/broker environment remain explicitly unavailable,
+never represented as passing. Test counts from overlapping suites are not added.
+
+## Frozen surface and deployment boundary
+
+This is an isolated candidate PR. No running paper source, environment, broker
+orders, model artifacts, history, active freeze or private daily binding is
+changed by implementation or tests.
+
+Discovery and preliminary data admission affect which trades reach the final
+gate, even when most original frozen functions are unchanged. The freeze now
+also covers the scanner module, streaming provider module, live-engine data
+module and staleness-admission method. Drift tests demonstrate that helper
+changes fail verification without silently rewriting the clock. Snapshot files
+expose those hashes as **candidate** source identities, not observed runtime
+behavior.
+
+The worktree freeze/reference is marked `candidate_only`. Its timestamp is a
+build/validation boundary only. Deployment requires explicit approval of the
+documented changed surface and new forward measurement boundary, passing
+required checks, independent review, secret-scan disposition, a retained runtime
+configuration snapshot and fresh closed/flat broker evidence. The actual cutoff
+must be established at held-flat deployment, with the prior freeze/binding and
+historical evidence retained. Candidate timestamps must not be reused as active
+cutoffs, and current daily schedulers must not be repinned before activation.
+
+The 120-second final feature-bar guard, fixed ATR sizing, frozen models/policy,
+strategy thresholds, no-live-exploration rule, protective exits and EOD controls
+remain unchanged. After deployment, natural paper entries, fills, reconciliation,
+protective exits and active EOD flattening still require session evidence.
+Passing simulations does not certify profitability or every natural execution
+path; zero-trade sessions continue to be reported explicitly.
+
+## Evidence
+
+`artifacts/session_pipeline_repair/plan.json` declares the scope and safety
+constraints. Targeted red/green evidence, combined acceptance, candidate surface
+diff and independent reviews are stored alongside it. The standard full artifact
+pack and `docs/engineering/LIVE_AUDIT_INDEX.md` are regenerated for this PR;
+hosted workflow artifacts establish results on the submitted immutable source.

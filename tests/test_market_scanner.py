@@ -12,8 +12,6 @@ Tests:
 - Retry and error handling
 """
 
-import asyncio
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -33,9 +31,8 @@ from backend.organism.market_scanner import (
 @pytest.fixture
 def scanner():
     """Create a MarketScanner with mocked HTTP client."""
-    s = MarketScanner()
-    # Replace httpx client with a mock
-    s._client = AsyncMock()
+    with patch("backend.organism.market_scanner.httpx.AsyncClient", return_value=AsyncMock()):
+        s = MarketScanner()
     s._api_key = "test-key"
     s._api_secret = "test-secret"
     return s
@@ -54,28 +51,28 @@ def _mock_response(status_code: int = 200, json_data: dict | list | None = None)
 
 MOST_ACTIVES_RESPONSE = {
     "most_actives": [
-        {"symbol": "AAPL", "volume": 80_000_000, "trade_count": 500_000, "price": 185.50, "change": 0.012},
-        {"symbol": "TSLA", "volume": 60_000_000, "trade_count": 400_000, "price": 245.00, "change": -0.025},
-        {"symbol": "NVDA", "volume": 45_000_000, "trade_count": 350_000, "price": 890.00, "change": 0.031},
+        {"symbol": "AAPL", "volume": 80_000_000, "trade_count": 500_000},
+        {"symbol": "TSLA", "volume": 60_000_000, "trade_count": 400_000},
+        {"symbol": "NVDA", "volume": 45_000_000, "trade_count": 350_000},
         # Should be excluded (leveraged ETF)
-        {"symbol": "TQQQ", "volume": 30_000_000, "trade_count": 200_000, "price": 65.00, "change": 0.05},
-        # Should be filtered (price too low)
-        {"symbol": "PENNY", "volume": 10_000_000, "trade_count": 100_000, "price": 1.50, "change": 0.10},
+        {"symbol": "TQQQ", "volume": 30_000_000, "trade_count": 200_000},
+        # Price qualification must wait for snapshot data.
+        {"symbol": "PENNY", "volume": 10_000_000, "trade_count": 100_000},
         # Should be filtered (volume too low)
-        {"symbol": "LOWVOL", "volume": 100_000, "trade_count": 1_000, "price": 50.00, "change": 0.01},
+        {"symbol": "LOWVOL", "volume": 100_000, "trade_count": 1_000},
     ]
 }
 
 MOVERS_RESPONSE = {
     "gainers": [
-        {"symbol": "META", "volume": 25_000_000, "price": 520.00, "change_percent": 5.2},
-        {"symbol": "AMD", "volume": 30_000_000, "price": 175.00, "change_percent": 3.8},
+        {"symbol": "META", "price": 520.00, "change": 25.70, "percent_change": 5.2},
+        {"symbol": "AMD", "price": 175.00, "change": 6.41, "percent_change": 3.8},
         # Should be excluded (leveraged)
-        {"symbol": "SOXL", "volume": 15_000_000, "price": 40.00, "change_percent": 8.0},
+        {"symbol": "SOXL", "price": 40.00, "change": 2.96, "percent_change": 8.0},
     ],
     "losers": [
-        {"symbol": "INTC", "volume": 20_000_000, "price": 25.00, "change_percent": -4.5},
-        {"symbol": "BA", "volume": 12_000_000, "price": 180.00, "change_percent": -3.2},
+        {"symbol": "INTC", "price": 25.00, "change": -1.18, "percent_change": -4.5},
+        {"symbol": "BA", "price": 180.00, "change": -5.95, "percent_change": -3.2},
     ],
 }
 
@@ -157,13 +154,13 @@ class TestFetchMostActives:
         )
         results = await scanner._fetch_most_actives()
 
-        # TQQQ excluded, PENNY filtered (price), LOWVOL filtered (volume)
+        # Discovery cannot qualify absent prices; volume and exclusions still apply.
         symbols = [r.symbol for r in results]
         assert "AAPL" in symbols
         assert "TSLA" in symbols
         assert "NVDA" in symbols
         assert "TQQQ" not in symbols  # excluded (leveraged)
-        assert "PENNY" not in symbols  # price < SCAN_MIN_PRICE
+        assert "PENNY" in symbols  # Still requires a valid, in-range snapshot.
         assert "LOWVOL" not in symbols  # volume < SCAN_MIN_VOLUME
 
     @pytest.mark.asyncio
@@ -174,9 +171,9 @@ class TestFetchMostActives:
         results = await scanner._fetch_most_actives()
         aapl = next(r for r in results if r.symbol == "AAPL")
         assert aapl.source == "most_actives"
-        assert aapl.price == 185.50
+        assert aapl.price == 0.0  # Provider omits price; this is not a candidate yet.
         assert aapl.volume == 80_000_000
-        assert aapl.change_pct == 0.012
+        assert aapl.change_pct == 0.0
 
     @pytest.mark.asyncio
     async def test_empty_response(self, scanner):
@@ -409,7 +406,7 @@ class TestScanEndToEnd:
         for sym in candidates:
             assert sym not in scanner._exclude
         # Should have made API calls (3 screener + 1 snapshot)
-        assert call_count >= 4
+        assert call_count == 4
         # Scan count incremented
         assert scanner.scan_count == 1
         assert scanner.last_scan_time > 0
@@ -478,11 +475,11 @@ class TestScanEndToEnd:
         candidates = await scanner.scan()
 
         # AAPL should appear only once
-        assert candidates.count("AAPL") <= 1
+        assert candidates.count("AAPL") == 1
 
     @pytest.mark.asyncio
-    async def test_scan_returns_cached_on_all_failures(self, scanner):
-        """If all API calls fail, return cached candidates."""
+    async def test_scan_invalidates_cached_candidates_on_all_failures(self, scanner):
+        """Failed requests must not requalify discoveries from an earlier scan."""
         scanner._cached_candidates = ["PREV1", "PREV2"]
 
         async def mock_get(url, params=None, headers=None):
@@ -491,8 +488,9 @@ class TestScanEndToEnd:
         scanner._client.get = mock_get
         candidates = await scanner.scan()
 
-        # Should return previous cached candidates
-        assert candidates == ["PREV1", "PREV2"]
+        assert candidates == []
+        assert scanner.candidates == []
+        assert scanner.scanned_stocks == []
 
     @pytest.mark.asyncio
     async def test_scan_handles_exception_in_batch(self, scanner):
@@ -516,7 +514,7 @@ class TestScanEndToEnd:
         candidates = await scanner.scan()
 
         # Should still have candidates from movers
-        assert len(candidates) >= 0  # May have candidates from movers that pass threshold
+        assert set(candidates) == {"META", "AMD", "INTC", "BA"}
 
 
 # ── Snapshot Fetch Tests ─────────────────────────────────────────

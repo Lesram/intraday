@@ -65,6 +65,10 @@ def test_freeze_covers_full_decision_surface(freeze):
     assert "strategy_config" in freeze["surface"]
     assert "exit_env" in freeze["surface"]
     assert "regime_policy" in freeze["surface"]
+    assert set(freeze["surface"]["data_pipeline_sources"]) == {
+        "market_scanner", "streaming_data_provider", "live_engine_data",
+        "staleness_admission",
+    }
     assert freeze["surface"]["research_policy"]["locked"] is True
     assert freeze["surface"]["research_policy"]["qualified_trade_count"] is None
     assert set(freeze["surface"]["research_policy_sources"]) == {
@@ -203,3 +207,35 @@ def test_verify_detects_freshness_dependency_drift(tmp_path, monkeypatch, module
     monkeypatch.setattr(phase2_freeze.inspect, "getsource", changed_source)
     assert verify() == 1
     assert artifact.read_bytes() == original_bytes
+
+
+@pytest.mark.parametrize("module_name", [
+    "market_scanner", "streaming_data_provider", "live_engine_data", "staleness_admission",
+])
+def test_pipeline_source_drift_invalidates_freeze_without_reset(tmp_path, monkeypatch, module_name):
+    """Discovery/data changes must not evade the original six-function guard."""
+    import importlib
+
+    if module_name == "staleness_admission":
+        from backend.organism.live_engine import OrganismLiveEngine
+        module = OrganismLiveEngine._stage_update_data_staleness
+    else:
+        module = importlib.import_module("backend.organism." + module_name)
+    artifact = tmp_path / "param_freeze.json"
+    surface = compute_surface()
+    artifact.write_text(json.dumps({"FROZEN_AT": "2026-09-22T08:49:11Z", "surface": surface}))
+    before = artifact.read_bytes()
+    monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", artifact)
+    assert verify() == 0
+    original_getsource = phase2_freeze.inspect.getsource
+
+    def changed_source(obj):
+        source = original_getsource(obj)
+        return source + "\n# changed upstream decision dependency\n" if obj is module else source
+
+    monkeypatch.setattr(phase2_freeze.inspect, "getsource", changed_source)
+    assert verify() == 1
+    changed = compute_surface()
+    assert changed["source_hashes"] == surface["source_hashes"]
+    assert changed["data_pipeline_sources"][module_name] != surface["data_pipeline_sources"][module_name]
+    assert artifact.read_bytes() == before

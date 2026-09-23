@@ -92,6 +92,12 @@ jobs:
             tests/unit/test_alpaca_data_comprehensive.py \
             tests/unit/test_streaming_data_provider.py \
             tests/unit/test_paper_data_freshness.py \
+            tests/test_market_scanner.py \
+            tests/test_market_scanner_provider_contract.py \
+            tests/test_pipeline_freshness_recovery.py \
+            tests/test_pipeline_snapshot.py \
+            tests/test_v13_w100_live_tick_coverage.py \
+            tests/test_scanner_pipeline_integration.py \
             tests/test_live_engine_fill_accounting.py \
             tests/test_pending_close_accounting.py \
             tests/test_replay_close_accounting.py \

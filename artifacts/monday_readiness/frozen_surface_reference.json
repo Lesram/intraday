@@ -1,20 +1,25 @@
 {
-  "FROZEN_AT": "2026-09-22T07:29:22.720890+00:00",
-  "_note_status": "Explicitly approved final-entry freshness candidate; actual forward reset remains pending held-flat deployment",
-  "authorization_plan": "artifacts/operations_evidence/baseline_repair_plan.json",
+  "FROZEN_AT": "2026-09-23T05:46:45.011846+00:00",
+  "_note_status": "Undeployed scanner/data pipeline candidate; timestamp is a validation boundary only. Explicit deployment/new forward-cutoff approval remains pending.",
+  "activation_requirements": "Retain prior evidence; independently reviewed green PR; explicit approval of changed surface and new forward boundary; fresh closed/flat broker evidence; establish actual cutoff at held-flat activation. Do not copy candidate timestamp into active binding.",
+  "active_forward_cutoff": "2026-09-22T08:49:11.247316+00:00",
   "candidate_only": true,
-  "git_sha": "9bda9ff72501b44f74604d279e52074d2e40b233",
+  "deployment_approved": false,
+  "git_sha": "98b9617bc43ba9ecbaaab0195cec78961e03a32b",
   "n_target": 60,
   "n_target_range": [
     50,
     70
   ],
   "note": "Forward-only by construction. The verdict corpus is trades taken STRICTLY AFTER FROZEN_AT. Any decision-surface drift (source_hashes/strategy_config/exit_env) RESETS the clock \u2014 re-run this script.",
-  "original_six_source_groups_unchanged": true,
-  "prior_active_cutoff": "2026-09-21T10:10:39.684894+00:00",
   "provenance": "no reconstructable fit-date; all pre-cutoff data contaminated by construction",
-  "purpose": "Candidate verification ONLY; never use this timestamp as the installed measurement cutoff",
   "surface": {
+    "data_pipeline_sources": {
+      "live_engine_data": "89e892f19009b7956a072a31f8be35d8dadec0c0056b80b30e29aa08fe70e719",
+      "market_scanner": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
+      "staleness_admission": "0399e7a2e534aaa52fd88d6734dad6320427fd106227343fe6884dbe1e9c7879",
+      "streaming_data_provider": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b"
+    },
     "effective_policy_baseline": {
       "artifact_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
       "effective_policy_hash": "8ec17f39c88f9237effa22b342697dd503b30b31f58595ff377cc498b99359f5",
@@ -231,7 +236,7 @@
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "f928b665155cc3bc92a82aeb6589213a682a75cf241dc70c1717f94cd0e5fcba",
+      "entry_gates_dispatch": "39df0bd590043a5d1b418f4e458a4ec6f5e780704f3c5b9967b3a2dfb703ff4d",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
       "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",
@@ -318,14 +323,5 @@
       }
     },
     "strategy_config_hash": "d9f606d01c7179e7bd6159186380ad93b36ebc4ac9749fd5b82efc8410ff67fe"
-  },
-  "verification_correction": {
-    "allowed_surface_changes": [
-      "research_policy_sources.baseline_verification",
-      "research_policy_sources.model_fingerprint",
-      "effective_policy_baseline.artifact_sha256"
-    ],
-    "existing_cutoff_preserved": true,
-    "prior_active_freeze_sha256": "044cef8ea0d1741ed1828b46fb728781841e9810c3a8ba6dee7049acfc3412d0"
   }
 }
