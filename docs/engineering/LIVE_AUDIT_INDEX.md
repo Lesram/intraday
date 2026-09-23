@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-09-23T05:55:24Z
+Generated: 2026-09-23T07:07:46Z
 PR: n/a
-SHA: `332cb6babc`
+SHA: `bfc7c50ca3`
 Branch: `codex/sept22-pipeline-repair`
 Scope: **backend_logic**
 Change scope: `base` (`f8bc52de1687f664278e8a8c032cb3aca4b39876...HEAD`)
@@ -11,12 +11,12 @@ Change scope: `base` (`f8bc52de1687f664278e8a8c032cb3aca4b39876...HEAD`)
 
 | Category | Count | Files |
 |----------|-------|-------|
-| Backend | 3 | `backend/organism/live_engine.py`, `backend/organism/market_scanner.py`, `backend/organism/streaming_data_provider.py` |
+| Backend | 6 | `backend/infra/outbox_worker.py`, `backend/integrations/alpaca_broker.py`, `backend/integrations/alpaca_outbox.py`, `backend/organism/live_engine.py`, `backend/organism/market_scanner.py`, `backend/organism/streaming_data_provider.py` |
 | Organism | 3 | `backend/organism/live_engine.py`, `backend/organism/market_scanner.py`, `backend/organism/streaming_data_provider.py` |
-| Scripts | 2 | `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
+| Scripts | 4 | `scripts/ci/validate_checklist.py`, `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py`, `scripts/testing/performance_test.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 10 | `tests/test_entry_freshness.py`, `tests/test_market_scanner.py`, `tests/test_market_scanner_provider_contract.py`, `tests/test_phase2_freeze.py`, `tests/test_pipeline_freshness_recovery.py`, `tests/test_pipeline_snapshot.py`, `tests/test_scanner_pipeline_integration.py`, `tests/test_v12_baseline_invariants.py`, `tests/test_v13_w100_live_tick_coverage.py`, `tests/unit/test_streaming_data_provider.py` |
-| Docs | 2 | `docs/architecture/mapss.md`, `docs/engineering/SESSION_PIPELINE_REPAIR.md` |
+| Tests | 14 | `tests/test_adversarial_inputs_v7.py`, `tests/test_broker_ack_reconciliation.py`, `tests/test_developer_tool_credentials.py`, `tests/test_entry_freshness.py`, `tests/test_market_scanner.py`, `tests/test_market_scanner_provider_contract.py`, `tests/test_phase2_freeze.py`, `tests/test_pipeline_freshness_recovery.py`, `tests/test_pipeline_snapshot.py`, `tests/test_scanner_pipeline_integration.py` |
+| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/SESSION_PIPELINE_REPAIR.md` |
 
 ## Configuration resolution (not engine observation)
 

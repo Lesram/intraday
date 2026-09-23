@@ -1,0 +1,34 @@
+{
+  "task_id": "session-pipeline-credential-hygiene-addendum",
+  "reason": "Full build context inspection found historical broker secret values and embedded developer bearer token outside originaldiff; user requested covering all issues.",
+  "root_owned_files": [
+    ".github/workflows/paper-readiness.yml",
+    "docs/engineering/SESSION_PIPELINE_REPAIR.md"
+  ],
+  "worker_owned_files": [
+    "scripts/testing/performance_test.py",
+    "scripts/ci/validate_checklist.py",
+    "reports/comprehensive_audit_findings.jsonl",
+    "tests/test_developer_tool_credentials.py"
+  ],
+  "constraints": [
+    "No installed credentials/runtime writes or auth attempts",
+    "No history rewrite or credential rotation",
+    "No backend/trading/policy/sizing/feed changes",
+    "Keep raw secret values out of tools/reports",
+    "Preserve prior test/security evidence and label superseded source honestly"
+  ],
+  "validation": [
+    "Meaningful mocked credential-input/no-request-on-missing tests",
+    "Independent source review",
+    "Candidate freeze --verify remains unchanged",
+    "Full required artifact pack and applicable targeted/config checks",
+    "Fresh final-source CI",
+    "New exact filtered image context scan and classified remaining false positives beforebuild"
+  ],
+  "supplemental_review": {
+    "known_expected_failures": "Inspect both legacy FF-10/FF-11 probes for current behavior; no assumption that expected failure is harmless or a proven incident.",
+    "broker_scope_status": "Awaiting bounded adapter/outbox/reconciliation diagnosis before editing.",
+    "production_controls": "Do not change installed runtime, submit orders, reset active cutoff, rotate credentials or rewrite history."
+  }
+}

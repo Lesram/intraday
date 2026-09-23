@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="9" skipped="0" tests="9" time="0.140" timestamp="2026-09-22T23:35:20.468124-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_developer_tool_credentials" name="test_missing_or_invalid_token_fails_before_client_or_login[None-performance]" time="0.001"><failure message="TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'">tests/test_developer_tool_credentials.py:39: in test_missing_or_invalid_token_fails_before_client_or_login
+    make_tool(tool, api_token=token)
+tests/test_developer_tool_credentials.py:32: in make_tool
+    return cls(**kwargs)
+           ^^^^^^^^^^^^^
+E   TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'</failure></testcase><testcase classname="tests.test_developer_tool_credentials" name="test_missing_or_invalid_token_fails_before_client_or_login[None-checklist]" time="0.001"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_developer_tool_credentials.py:38: in test_missing_or_invalid_token_fails_before_client_or_login
+    with pytest.raises(ValueError, match="INTRA_API_TOKEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="tests.test_developer_tool_credentials" name="test_missing_or_invalid_token_fails_before_client_or_login[-performance]" time="0.000"><failure message="TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'">tests/test_developer_tool_credentials.py:39: in test_missing_or_invalid_token_fails_before_client_or_login
+    make_tool(tool, api_token=token)
+tests/test_developer_tool_credentials.py:32: in make_tool
+    return cls(**kwargs)
+           ^^^^^^^^^^^^^
+E   TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'</failure></testcase><testcase classname="tests.test_developer_tool_credentials" name="test_missing_or_invalid_token_fails_before_client_or_login[-checklist]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_developer_tool_credentials.py:38: in test_missing_or_invalid_token_fails_before_client_or_login
+    with pytest.raises(ValueError, match="INTRA_API_TOKEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="tests.test_developer_tool_credentials" name="test_missing_or_invalid_token_fails_before_client_or_login[   -performance]" time="0.000"><failure message="TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'">tests/test_developer_tool_credentials.py:39: in test_missing_or_invalid_token_fails_before_client_or_login
+    make_tool(tool, api_token=token)
+tests/test_developer_tool_credentials.py:32: in make_tool
+    return cls(**kwargs)
+           ^^^^^^^^^^^^^
+E   TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'</failure></testcase><testcase classname="tests.test_developer_tool_credentials" name="test_missing_or_invalid_token_fails_before_client_or_login[   -checklist]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_developer_tool_credentials.py:38: in test_missing_or_invalid_token_fails_before_client_or_login
+    with pytest.raises(ValueError, match="INTRA_API_TOKEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="tests.test_developer_tool_credentials" name="test_missing_or_invalid_token_fails_before_client_or_login[unsafe\nheader-performance]" time="0.000"><failure message="TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'">tests/test_developer_tool_credentials.py:39: in test_missing_or_invalid_token_fails_before_client_or_login
+    make_tool(tool, api_token=token)
+tests/test_developer_tool_credentials.py:32: in make_tool
+    return cls(**kwargs)
+           ^^^^^^^^^^^^^
+E   TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'</failure></testcase><testcase classname="tests.test_developer_tool_credentials" name="test_missing_or_invalid_token_fails_before_client_or_login[unsafe\nheader-checklist]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_developer_tool_credentials.py:38: in test_missing_or_invalid_token_fails_before_client_or_login
+    with pytest.raises(ValueError, match="INTRA_API_TOKEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="tests.test_developer_tool_credentials" name="test_checklist_request_errors_redact_results" time="0.001"><failure message="assert '[REDACTED]' in '{&quot;authentication&quot;: {&quot;protected_401_without_token&quot;: {&quot;/api/v1/signals&quot;: {&quot;error&quot;: &quot;reflected credential: checklist-err...cessible&quot;: {&quot;error&quot;: &quot;reflected credential: checklist-error-fixture-token&quot;, &quot;pass&quot;: false}, &quot;overall_status&quot;: &quot;FAIL&quot;}}'">tests/test_developer_tool_credentials.py:161: in test_checklist_request_errors_redact_results
+    assert "[REDACTED]" in output
+E   assert '[REDACTED]' in '{"authentication": {"protected_401_without_token": {"/api/v1/signals": {"error": "reflected credential: checklist-err...cessible": {"error": "reflected credential: checklist-error-fixture-token", "pass": false}, "overall_status": "FAIL"}}'</failure></testcase></testsuite></testsuites>

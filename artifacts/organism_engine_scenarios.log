@@ -12,4 +12,4 @@ tests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safet
     c /= stddev[None, :]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-31 passed, 3 warnings in 39.17s
+31 passed, 3 warnings in 37.75s

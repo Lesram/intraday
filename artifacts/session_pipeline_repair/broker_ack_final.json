@@ -1,0 +1,27 @@
+{
+  "label": "broker_ack_final",
+  "exit_code": 0,
+  "seconds": 4.02,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/artifacts/session_pipeline_repair/broker_ack_final.xml",
+    "tests/test_broker_ack_reconciliation.py",
+    "tests/test_adversarial_inputs_v7.py",
+    "tests/test_alpaca_broker_comprehensive.py",
+    "tests/unit/test_alpaca_outbox_comprehensive.py",
+    "tests/test_outbox_shadow_mode.py",
+    "tests/test_order_pipeline_e2e.py",
+    "tests/test_order_integrity_comprehensive.py",
+    "tests/test_position_reconciliation.py",
+    "tests/test_position_reconciliation_comprehensive.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

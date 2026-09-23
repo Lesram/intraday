@@ -1,0 +1,669 @@
+{
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "source_files": {
+    "backend/integrations/alpaca_broker.py": "6cc57a1ae2369cb3d6b9219293edc27078c54b951f4478a6f31ce09c6c3b19ee",
+    "backend/integrations/alpaca_outbox.py": "7ba67961260f144d684bf73162d2f58ba68d3552119b838140b694bbef507cb7",
+    "backend/infra/outbox_worker.py": "0c072ed0894f4256870e930be089a17e16f6bc0cc33a5bbabeb3686c8aaed34a",
+    "tests/test_broker_ack_reconciliation.py": "1490b59065679d56b982f520b7a7373e8443ab69ba2ff9affa29cf2c0451aa9e",
+    "tests/test_adversarial_inputs_v7.py": "37061da5d6aaada108c0809237b76d0c5d3ccf087fa35cef9f435b202cd499bd",
+    "tests/unit/test_alpaca_outbox_comprehensive.py": "2582fecadb83fc3db97a3dd746803f08befc42fbcd4c21352d53d1caeb950c72"
+  },
+  "normalization": "path, diagnostic code/message, stripped source span; line numbers ignored; duplicate multiplicity retained",
+  "findings": {
+    "base": [
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "f\"Retrying {func.__name__} after {delay:.1f}s\","
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "f\"Retrying {func.__name__} after transport error\","
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "F401",
+        "message": "`backend.infra.resilience.CircuitBreakerOpenException` imported but unused",
+        "source_context": "CircuitBreakerOpenException,"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as recovery_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.info(f\"Fetching position for {symbol} from Alpaca\", is_paper=self.is_paper)"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.info(f\"No position found for {symbol}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.info(f\"Position retrieved for {symbol}\","
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.info(f\"No position found for {symbol}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.error(f\"Failed to retrieve position for {symbol}\","
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.error(f\"Unexpected error retrieving position for {symbol}\","
+      },
+      {
+        "path": "backend/integrations/alpaca_outbox.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_outbox.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_outbox.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Processing {len(events)} outbox events\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "source_context": "except Exception:\npass"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.warning(f\"Unknown topic: {topic}\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "F823",
+        "message": "Local variable `os` referenced before assignment",
+        "source_context": "env = os.environ.get(\"ENVIRONMENT\", \"\").lower()"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.error(f\"Invalid order ID format: {order_id}\", error=str(e))"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.warning(f\"Invalid filled_qty value: {details['filled_qty']}\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.warning(f\"Invalid avg_fill_price value: {details['avg_fill_price']}\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as ws_err:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"WebSocket notification failed (non-critical): {ws_err}\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "tests/test_adversarial_inputs_v7.py",
+        "code": "F401",
+        "message": "`os` imported but unused",
+        "source_context": "import os"
+      },
+      {
+        "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+        "code": "F401",
+        "message": "`asyncio` imported but unused",
+        "source_context": "import asyncio"
+      },
+      {
+        "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+        "code": "F401",
+        "message": "`datetime.time` imported but unused",
+        "source_context": "from datetime import datetime, time"
+      },
+      {
+        "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+        "code": "F841",
+        "message": "Local variable `result` is assigned to but never used",
+        "source_context": "result = await dispatcher._dispatch_to_alpaca_broker(sample_order_event)"
+      }
+    ],
+    "candidate": [
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "f\"Retrying {func.__name__} after {delay:.1f}s\","
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "f\"Retrying {func.__name__} after transport error\","
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "F401",
+        "message": "`backend.infra.resilience.CircuitBreakerOpenException` imported but unused",
+        "source_context": "CircuitBreakerOpenException,"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.info(f\"Fetching position for {symbol} from Alpaca\", is_paper=self.is_paper)"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.info(f\"No position found for {symbol}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.info(f\"Position retrieved for {symbol}\","
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.info(f\"No position found for {symbol}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as parse_err:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Failed to parse Alpaca error response as JSON: {parse_err}\")"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.error(f\"Failed to retrieve position for {symbol}\","
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_broker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.error(f\"Unexpected error retrieving position for {symbol}\","
+      },
+      {
+        "path": "backend/integrations/alpaca_outbox.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_outbox.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/integrations/alpaca_outbox.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"Processing {len(events)} outbox events\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "source_context": "except Exception:\npass"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.warning(f\"Unknown topic: {topic}\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.error(f\"Invalid order ID format: {order_id}\", error=str(e))"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.warning(f\"Invalid filled_qty value: {details['filled_qty']}\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.warning(f\"Invalid avg_fill_price value: {details['avg_fill_price']}\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as ws_err:"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "G004",
+        "message": "Logging statement uses f-string",
+        "source_context": "logger.debug(f\"WebSocket notification failed (non-critical): {ws_err}\")"
+      },
+      {
+        "path": "backend/infra/outbox_worker.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "source_context": "except Exception as e:"
+      },
+      {
+        "path": "tests/test_adversarial_inputs_v7.py",
+        "code": "F401",
+        "message": "`os` imported but unused",
+        "source_context": "import os"
+      },
+      {
+        "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+        "code": "F401",
+        "message": "`asyncio` imported but unused",
+        "source_context": "import asyncio"
+      },
+      {
+        "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+        "code": "F401",
+        "message": "`datetime.time` imported but unused",
+        "source_context": "from datetime import datetime, time"
+      },
+      {
+        "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+        "code": "F841",
+        "message": "Local variable `result` is assigned to but never used",
+        "source_context": "result = await dispatcher._dispatch_to_alpaca_broker(sample_order_event)"
+      }
+    ]
+  },
+  "new_findings": [],
+  "removed_findings": [
+    {
+      "code": "BLE001",
+      "message": "Do not catch blind exception: `Exception`",
+      "path": "backend/integrations/alpaca_broker.py",
+      "source_context": "except Exception as recovery_err:"
+    },
+    {
+      "code": "F823",
+      "message": "Local variable `os` referenced before assignment",
+      "path": "backend/infra/outbox_worker.py",
+      "source_context": "env = os.environ.get(\"ENVIRONMENT\", \"\").lower()"
+    }
+  ]
+}

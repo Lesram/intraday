@@ -1,0 +1,13 @@
+{
+  "label": "full_expanded_candidate",
+  "exit_code": 0,
+  "seconds": 210.5,
+  "command": [
+    "scripts/ci/generate_artifacts.py",
+    "full"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

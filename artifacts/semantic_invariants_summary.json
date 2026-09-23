@@ -91,7 +91,7 @@
   "timed_out": false,
   "error": "",
   "output_file": "artifacts/semantic_invariants.log",
-  "output_tail": "....................                                                     [100%]\n20 passed in 1.43s\n",
+  "output_tail": "....................                                                     [100%]\n20 passed in 1.42s\n",
   "junit_file": "artifacts/semantic_invariants.junit.xml",
   "overall": "pass"
 }
