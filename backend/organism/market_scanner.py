@@ -155,6 +155,8 @@ class MarketScanner:
         self._cached_candidates: list[str] = []
         self._cached_scanned: list[ScannedStock] = []
         self._scan_count: int = 0
+        self._scan_had_error: bool = False
+        self._last_scan_succeeded: bool = False
 
         # Permanent exclusion list (ETNs, leveraged, etc.)
         self._exclude = {
@@ -224,12 +226,14 @@ class MarketScanner:
         params = {"by": "volume", "top": SCAN_TOP_ACTIVES}
         data = await self._request(url, params)
         if not data:
+            self._scan_had_error = True
             return []
 
         results = []
         invalid_fields = 0
-        actives = data.get("most_actives", []) if isinstance(data, dict) else []
+        actives = data.get("most_actives") if isinstance(data, dict) else None
         if not isinstance(actives, list):
+            self._scan_had_error = True
             return []
         for item in actives:
             if not isinstance(item, dict):
@@ -272,13 +276,15 @@ class MarketScanner:
         params = {"top": SCAN_TOP_MOVERS}
         data = await self._request(url, params)
         if not data:
+            self._scan_had_error = True
             return []
 
         results = []
         invalid_fields = 0
         key = "gainers" if direction == "up" else "losers"
-        movers = data.get(key, []) if isinstance(data, dict) else []
+        movers = data.get(key) if isinstance(data, dict) else None
         if not isinstance(movers, list):
+            self._scan_had_error = True
             return []
         for item in movers:
             if not isinstance(item, dict):
@@ -334,6 +340,8 @@ class MarketScanner:
             data = await self._request(url, params)
             if data and isinstance(data, dict):
                 all_snapshots.update(data)
+            else:
+                self._scan_had_error = True
 
         return all_snapshots
 
@@ -450,6 +458,8 @@ class MarketScanner:
         Returns list of symbol strings (suitable for candidate_pool).
         """
         self._scan_count += 1
+        self._scan_had_error = False
+        self._last_scan_succeeded = False
         t0 = time.time()
         # A new attempt invalidates previous discoveries, including when an
         # endpoint fails. Callers must not interpret old symbols as a fresh scan.
@@ -471,6 +481,7 @@ class MarketScanner:
         all_scanned: dict[str, ScannedStock] = {}
         for batch in [actives, movers_up, movers_down]:
             if isinstance(batch, Exception):
+                self._scan_had_error = True
                 logger.warning("Scanner batch failed: %s", batch)
                 continue
             for stock in batch:
@@ -480,6 +491,7 @@ class MarketScanner:
         if not all_scanned:
             logger.warning("Scanner: no stocks passed initial filters")
             self._last_scan_time = time.time()
+            self._last_scan_succeeded = not self._scan_had_error
             return []
 
         # 3. Get snapshot data for tension scoring (1-2 API calls)
@@ -487,6 +499,7 @@ class MarketScanner:
         try:
             snapshots = await self._fetch_snapshots(symbols)
         except (httpx.RequestError, OSError, TypeError, ValueError) as exc:
+            self._scan_had_error = True
             logger.warning("Scanner snapshot batch failed: %s", type(exc).__name__)
             return []
 
@@ -526,6 +539,7 @@ class MarketScanner:
         self._cached_scanned = scored
         self._cached_candidates = [s.symbol for s in scored]
         self._last_scan_time = time.time()
+        self._last_scan_succeeded = not self._scan_had_error
 
         elapsed = time.time() - t0
         logger.info(
@@ -551,6 +565,15 @@ class MarketScanner:
     def scanned_stocks(self) -> list[ScannedStock]:
         """Latest cached scanned stock details."""
         return list(self._cached_scanned)
+
+    @property
+    def last_scan_succeeded(self) -> bool:
+        """Whether the last attempt completed without endpoint/snapshot errors.
+
+        A valid empty discovery succeeds; an empty or partial result after a
+        swallowed request failure does not certify scanner health.
+        """
+        return self._last_scan_succeeded
 
     @property
     def last_scan_time(self) -> float:

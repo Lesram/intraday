@@ -2991,14 +2991,11 @@ class OrganismLiveEngine(
                 self.market_scanner is not None
                 and self._tick_count % SCAN_INTERVAL_TICKS == 0
             ):
+                _scanner_error = None
                 try:
                     new_candidates = await self.market_scanner.scan()
                     self._scanner_candidates = new_candidates
                     if new_candidates:
-                        # V9 PP-5 / Wave-45 (2026-05-03): record success time
-                        # so a long missing-API run can be detected.
-                        self._scanner_last_success_tick = self._tick_count
-                        self._scanner_consecutive_failures = 0
                         # Temporarily add top scanner picks to universe for this tick
                         scanner_additions = [
                             s for s in new_candidates[:20]
@@ -3023,7 +3020,14 @@ class OrganismLiveEngine(
                         ))
                 except Exception as e:
                     self._scanner_candidates = []
-                    logger.warning("Market scan failed: %s", e)
+                    _scanner_error = str(e)
+                if _scanner_error is None and getattr(self.market_scanner, "last_scan_succeeded", False) is not True:
+                    _scanner_error = "Scanner completed with endpoint or snapshot errors"
+                if _scanner_error is None:
+                    self._scanner_last_success_tick = self._tick_count
+                    self._scanner_consecutive_failures = 0
+                else:
+                    logger.warning("Market scan failed or degraded: %s", _scanner_error)
                     # V9 PP-5: track consecutive failures + alert at threshold.
                     self._scanner_consecutive_failures = (
                         getattr(self, "_scanner_consecutive_failures", 0) + 1
@@ -3037,21 +3041,17 @@ class OrganismLiveEngine(
                                 AlertCategory, AlertSeverity, send_alert,
                                 dispatch_alert_from_thread,
                             )
-                            # V12 W75 (UU3-2 / F821): capture exception text
-                            # as a string before the lambda — Python deletes
-                            # the ``except`` exception variable at block exit,
-                            # and ``dispatch_alert_from_thread`` may run the
-                            # lambda on another thread after that point,
-                            # which would raise NameError on ``e``.
-                            _last_err_text = str(e)
+                            # Capture the error string before thread dispatch;
+                            # no exception-local variable escapes its handler.
+                            _last_err_text = _scanner_error
                             dispatch_alert_from_thread(
                                 lambda: send_alert(
                                     AlertCategory.SYSTEM_ERROR,
                                     AlertSeverity.WARNING,
                                     "Market Scanner Persistent Failure",
                                     f"Scanner failed {_PP5_FAIL_ALERT} consecutive "
-                                    f"runs.  New scanner candidates are cleared; "
-                                    f"the current universe is retained. Last error: {_last_err_text}",
+                                    f"runs. Only individually qualified returned candidates "
+                                    f"and the current universe are retained. Last error: {_last_err_text}",
                                 )
                             )
                         except Exception as _alert_err:

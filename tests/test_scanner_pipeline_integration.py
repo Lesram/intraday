@@ -98,3 +98,130 @@ async def test_scanner_discovery_admits_entry_and_invalidates_pool(
     record_property("next_scan", next_scan)
     record_property("actual_entry_orders", len(entries))
     record_property("valid_admission_receipts", len(accepted))
+
+
+@pytest.mark.timeout(60)
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["discovery_http", "snapshot_http", "discovery_timeout"])
+async def test_successful_empty_scan_resets_failure_streak_in_real_ticks(monkeypatch, tmp_path, failure):
+    """Partial data stays usable; only genuine empty success resets health."""
+    from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+    from backend.organism.market_scanner import MarketScanner
+
+    bars = _minute_bars(symbols=("AAPL", "MSFT", "SPY", "QQQ"))
+    base_universe = {"AAPL", "SPY", "QQQ"}
+    replay, engines, _ = _replay(monkeypatch, tmp_path, bars, universe=sorted(base_universe))
+    scanner = MarketScanner()
+    requests = []
+    observations = []
+    snapshot = {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8, "c": 102., "v": 8_000_000},
+                         "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                         "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+
+    import httpx
+    from backend.organism import market_scanner
+    monkeypatch.setattr(market_scanner, "_MAX_RETRIES", 1)
+
+    async def provider_response(url, params=None, headers=None):
+        attempt = scanner.scan_count
+        requests.append((attempt, url.rsplit("/", 1)[-1]))
+        if url.endswith("most-actives"):
+            if attempt in (2, 4) and failure == "discovery_http":
+                return httpx.Response(503)
+            if attempt in (2, 4) and failure == "discovery_timeout":
+                raise httpx.ReadTimeout("synthetic provider timeout")
+            return httpx.Response(200, json={"most_actives": ([] if attempt == 3 else [
+                {"symbol": "MSFT", "volume": 8_000_000, "trade_count": 100_000}])})
+        if url.endswith("movers"):
+            if attempt == 1:
+                return httpx.Response(503)  # Partial discovery; MSFT still qualifies.
+            return httpx.Response(200, json={"gainers": [], "losers": []})
+        assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+        return httpx.Response(200, json=snapshot) if attempt == 1 else httpx.Response(503)
+
+    monkeypatch.setattr(scanner._client, "get", provider_response)
+    real_tick = OrganismLiveEngine.live_tick
+
+    async def observe_tick(engine):
+        engine.market_scanner = scanner
+        result = await real_tick(engine)
+        if engine._tick_count % SCAN_INTERVAL_TICKS == 0:
+            observations.append({"tick": engine._tick_count,
+                                 "failures": getattr(engine, "_scanner_consecutive_failures", 0),
+                                 "last_success": getattr(engine, "_scanner_last_success_tick", None),
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe)})
+        return result
+
+    monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+    ticks = 4 * SCAN_INTERVAL_TICKS + 1
+    try:
+        result = await replay.run(max_ticks=ticks)
+    finally:
+        await scanner.close()
+    _assert_real_ticks(result, ticks)
+    assert scanner.scan_count == 4
+    assert [(row["tick"], row["failures"], row["last_success"]) for row in observations] == [
+        (SCAN_INTERVAL_TICKS, 1, None),
+        (2 * SCAN_INTERVAL_TICKS, 2, None),
+        (3 * SCAN_INTERVAL_TICKS, 0, 3 * SCAN_INTERVAL_TICKS),
+        (4 * SCAN_INTERVAL_TICKS, 1, 3 * SCAN_INTERVAL_TICKS),
+    ]
+    assert observations[0]["candidates"] == ["MSFT"]
+    assert all(row["candidates"] == [] for row in observations[1:])
+    assert all(row["universe"] >= base_universe | {"MSFT"} for row in observations)
+    assert (1, "snapshots") in requests
+    if failure == "snapshot_http":
+        assert (2, "snapshots") in requests and (4, "snapshots") in requests
+    else:
+        assert not any(attempt != 1 and endpoint == "snapshots" for attempt, endpoint in requests)
+    assert (3, "snapshots") not in requests  # Actual successful, empty discovery.
+    assert scanner.candidates == [] and scanner.scanned_stocks == []
+    assert engines[0]._ml_isolation_mode and engines[0]._fixed_risk_sizing_mode
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["discovery_http", "discovery_schema", "snapshot_http", "snapshot_schema", "partial_discovery"])
+async def test_scanner_outcome_distinguishes_request_failures_from_empty_success(monkeypatch, failure):
+    """The list API stays compatible while outcome exposes swallowed errors."""
+    import httpx
+    from backend.organism import market_scanner
+
+    monkeypatch.setattr(market_scanner, "_MAX_RETRIES", 1)
+    scanner = market_scanner.MarketScanner()
+    recovering = False
+    snapshot = {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8, "c": 102., "v": 8_000_000},
+                         "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                         "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+
+    async def provider_response(url, params=None, headers=None):
+        if url.endswith("most-actives"):
+            if not recovering and failure == "discovery_http":
+                return httpx.Response(503)
+            if not recovering and failure == "discovery_schema":
+                return httpx.Response(200, json={"wrong_key": []})
+            return httpx.Response(200, json={"most_actives": ([] if recovering else [
+                {"symbol": "MSFT", "volume": 8_000_000, "trade_count": 100_000}])})
+        if url.endswith("movers"):
+            if not recovering and failure == "partial_discovery":
+                return httpx.Response(503)
+            return httpx.Response(200, json={"gainers": [], "losers": []})
+        assert url.endswith("snapshots")
+        if failure == "snapshot_http":
+            return httpx.Response(503)
+        if failure == "snapshot_schema":
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json=snapshot)
+
+    monkeypatch.setattr(scanner._client, "get", provider_response)
+    try:
+        assert scanner.last_scan_succeeded is False  # Never scanned.
+        candidates = await scanner.scan()
+        assert candidates == (["MSFT"] if failure == "partial_discovery" else [])
+        assert scanner.last_scan_succeeded is False
+        recovering = True
+        assert await scanner.scan() == []
+        assert scanner.last_scan_succeeded is True
+        assert scanner.candidates == [] and scanner.scanned_stocks == []
+    finally:
+        await scanner.close()

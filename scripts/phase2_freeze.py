@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 2 PRECONDITION — Task 0: freeze the decision surface, start the forward clock.
+"""Build a candidate decision-surface reference or verify an explicit reference.
 
 Snapshots the FULL decision surface that determines which trades happen and how
 they resolve — not just the four momentum thresholds (Gap 2). The forward corpus
@@ -10,26 +10,27 @@ ANY of them must reset the clock. We capture:
   * the strategy config (explicit + hashed);
   * the ORGANISM_EXIT_* env overrides.
 
-Plus the metadata that makes the freeze a permanent, non-re-litigable fact:
-FROZEN_AT, git sha, n_target (Task 3, pinned to the prior), and the no-provenance
-finding verbatim.
+An approved active reference retains FROZEN_AT. Candidate references contain a
+validation timestamp, git sha, n_target (pinned to the prior), and the provenance
+finding, with no authority to start an evaluation epoch.
 
-Re-running is safe: if the surface is unchanged, FROZEN_AT is PRESERVED (no clock
-reset). If the surface drifted, FROZEN_AT is re-stamped — the clock resets, by
-construction, because the forward corpus is now contaminated.
+Generation writes only a separate, unapproved candidate with VALIDATED_AT.
+It never writes the active artifact or starts/resets a forward clock. Publishing
+an active FROZEN_AT is a separate approved activation operation.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import inspect
 import json
 import os
 import subprocess
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 FREEZE_PATH = Path("artifacts/phase2/param_freeze.json")
+CANDIDATE_FREEZE_PATH = Path("artifacts/phase2/candidate_param_freeze.json")
 POLICY_BASELINE_PATH = Path(__file__).resolve().parents[1] / "artifacts/phase2/research_policy_baseline.json"
 N_TARGET = 60                  # pinned to the prior (t≈1.0 @ n≈18 ⇒ ~50–70 to clear)
 N_TARGET_RANGE = [50, 70]
@@ -176,26 +177,47 @@ def _git_sha() -> str:
 
 
 def build_freeze() -> dict:
+    """Build non-active candidate metadata, never an activation document."""
+    from backend.organism.freeze_contract import load_active_freeze
+
     surface = compute_surface()
-    frozen_at = datetime.now(timezone.utc).isoformat()
-    note = "clock reset"
-    if FREEZE_PATH.exists():
-        prev = json.loads(FREEZE_PATH.read_text())
+    validated_at = datetime.now(timezone.utc).isoformat()
+    note = "new candidate validation boundary; no active clock change"
+    if CANDIDATE_FREEZE_PATH.exists():
+        prev = _validate_candidate(json.loads(CANDIDATE_FREEZE_PATH.read_text()))
         if prev.get("surface") == surface:
-            frozen_at = prev.get("FROZEN_AT", frozen_at)  # unchanged ⇒ preserve clock
-            note = "surface unchanged — clock preserved"
+            validated_at = prev["VALIDATED_AT"]
+            note = "candidate surface unchanged; validation boundary preserved"
+    active_cutoff = (load_active_freeze(FREEZE_PATH)["FROZEN_AT"]
+                     if FREEZE_PATH.exists() else None)
     return {
-        "FROZEN_AT": frozen_at,
+        "VALIDATED_AT": validated_at,
+        "candidate_only": True,
+        "deployment_approved": False,
+        "active_forward_cutoff": active_cutoff,
         "git_sha": _git_sha(),
         "n_target": N_TARGET,
         "n_target_range": N_TARGET_RANGE,
         "provenance": PROVENANCE,
-        "note": ("Forward-only by construction. The verdict corpus is trades taken "
-                 "STRICTLY AFTER FROZEN_AT. Any decision-surface drift (source_hashes/"
-                 "strategy_config/exit_env) RESETS the clock — re-run this script."),
+        "note": ("Unapproved candidate source reference only. VALIDATED_AT is not "
+                 "a trading cutoff. Active measurement requires a separately "
+                 "approved activation artifact; never promote this file."),
         "_note_status": note,
         "surface": surface,
     }
+
+
+def _validate_candidate(payload: object) -> dict:
+    if (not isinstance(payload, dict) or payload.get("candidate_only") is not True
+            or payload.get("deployment_approved") is not False
+            or "FROZEN_AT" in payload
+            or not isinstance(payload.get("VALIDATED_AT"), str)
+            or not isinstance(payload.get("surface"), dict)):
+        raise ValueError("invalid candidate reference")
+    validation_time = datetime.fromisoformat(payload["VALIDATED_AT"])
+    if validation_time.tzinfo is None or validation_time.utcoffset() is None:
+        raise ValueError("candidate timestamp must be timezone-aware")
+    return payload
 
 
 def _diff_surface(stored: dict, current: dict) -> list[str]:
@@ -217,41 +239,65 @@ def _diff_surface(stored: dict, current: dict) -> list[str]:
     return diffs
 
 
-def verify() -> int:
+def verify(*, candidate: bool = False) -> int:
     """READ-ONLY drift check (never writes). Recompute the live decision
     surface and compare it to the frozen artifact. Exit 0 if identical, 1 if
     drifted, 2 if there is no artifact to verify against.
 
-    This is the check that ``main()`` is deliberately NOT: ``main()`` RE-STAMPS
-    ``FROZEN_AT`` on drift, which resets the forward clock. Running this after
-    every task proves a change did not silently contaminate the forward corpus.
+    Candidate verification is explicit and cannot authorize an active cutoff.
+    Neither verification mode writes any artifact or changes the clock.
     """
-    if not FREEZE_PATH.exists():
-        print(f"DRIFT-VERIFY FAIL: no freeze artifact at {FREEZE_PATH}")
+    from backend.organism.freeze_contract import load_active_freeze
+
+    reference = CANDIDATE_FREEZE_PATH if candidate else FREEZE_PATH
+    scope = "CANDIDATE" if candidate else "ACTIVE"
+    if not reference.exists():
+        print(f"{scope} DRIFT-VERIFY FAIL: no freeze artifact at {reference}")
         return 2
-    stored = json.loads(FREEZE_PATH.read_text())
+    try:
+        if candidate:
+            stored = _validate_candidate(json.loads(reference.read_text()))
+        else:
+            stored = load_active_freeze(reference)
+    except (OSError, ValueError, TypeError):
+        print(f"{scope} DRIFT-VERIFY FAIL: invalid or wrong-authority artifact")
+        return 2
     stored_surface = stored.get("surface")
+    if not isinstance(stored_surface, dict):
+        print(f"{scope} DRIFT-VERIFY FAIL: missing or invalid decision surface")
+        return 2
     current = compute_surface()
-    frozen_at = stored.get("FROZEN_AT")
+    boundary = stored.get("VALIDATED_AT" if candidate else "FROZEN_AT")
     if stored_surface == current:
-        print(f"DRIFT-VERIFY OK: decision surface matches freeze "
-              f"(FROZEN_AT={frozen_at})")
+        print(f"{scope} DRIFT-VERIFY OK: decision surface matches reference "
+              f"(boundary={boundary}; read-only)")
         return 0
-    print(f"DRIFT-VERIFY FAIL: decision surface DRIFTED from freeze "
-          f"(FROZEN_AT={frozen_at}) — the forward clock would reset. Offending keys:")
+    print(f"{scope} DRIFT-VERIFY FAIL: decision surface DRIFTED from reference "
+          f"(boundary={boundary}); no clock change performed. Offending keys:")
     for line in _diff_surface(stored_surface or {}, current):
         print(line)
     return 1
 
 
-def main() -> int:
-    if "--verify" in sys.argv[1:]:
-        return verify()
-    FREEZE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    freeze = build_freeze()
-    FREEZE_PATH.write_text(json.dumps(freeze, indent=2, sort_keys=True) + "\n")
-    print(f"froze decision surface -> {FREEZE_PATH}")
-    print(f"  FROZEN_AT={freeze['FROZEN_AT']}  ({freeze['_note_status']})")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--verify", action="store_true", help="read-only reference verification")
+    parser.add_argument("--candidate", action="store_true", help="verify the separate candidate reference")
+    args = parser.parse_args(argv)
+    if args.verify:
+        return verify(candidate=args.candidate)
+    if CANDIDATE_FREEZE_PATH.resolve() == FREEZE_PATH.resolve():
+        print("Refusing to write a candidate over the active artifact")
+        return 2
+    try:
+        freeze = build_freeze()
+    except (OSError, ValueError, TypeError):
+        print("Cannot build candidate: invalid existing reference")
+        return 2
+    CANDIDATE_FREEZE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CANDIDATE_FREEZE_PATH.write_text(json.dumps(freeze, indent=2, sort_keys=True) + "\n")
+    print(f"candidate decision surface -> {CANDIDATE_FREEZE_PATH}")
+    print(f"  VALIDATED_AT={freeze['VALIDATED_AT']}  ({freeze['_note_status']})")
     print(f"  git_sha={freeze['git_sha']}  n_target={freeze['n_target']}")
     print(f"  source_hashes={list(freeze['surface']['source_hashes'])}")
     return 0

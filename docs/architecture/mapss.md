@@ -36,9 +36,24 @@ The freeze now explicitly hashes the market scanner, streaming provider,
 live-engine data helper and staleness-admission method. Source/config snapshots
 label these `candidate_data_pipeline_sources`; checked-out code hashes are not
 an observation of a running process. The original entry-dispatch hash also
-changes for the one-line exception-path candidate clear. These changes require
+changes for scanner candidate clearing and explicit scan-outcome bookkeeping. These changes require
 an explicitly approved new forward boundary at deployment; a candidate freeze
 must never be installed as if its build timestamp were the activation time.
+
+Candidate references are separate from active cutoff authority. The canonical
+`artifacts/phase2/param_freeze.json` and readiness reference retain the approved
+installed September 22 artifact. Generation writes only
+`artifacts/phase2/candidate_param_freeze.json`, using `VALIDATED_AT` and explicit
+unapproved candidate flags, with no `FROZEN_AT`. `--verify --candidate` checks
+that surface without promotion. Active gate, attribution, reconciliation, daily
+evidence and host-binding readers reject candidate/unapproved/invalid cutoffs.
+They never substitute the candidate's contextual `active_forward_cutoff`.
+
+Provider lifecycle transitions clear old session state and invalidate obsolete
+callbacks; same-session recovery retains stale health. Scanner success counters
+reset only on a complete successful scan, including a genuine empty result.
+Provider errors remain failures even if valid partial candidates are available;
+those candidates retain the existing qualification and admission gates.
 
 ## Approved final-entry freshness repair (2026-09-22)
 

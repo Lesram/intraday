@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from backend.organism.freeze_contract import validate_active_freeze
 from scripts.ops import paper_daily_evidence as daily
 
 PRIVATE = Path.home() / "Library/Application Support/Intra"
@@ -74,6 +75,7 @@ def load_binding(path: Path) -> tuple[dict, dict, list[Path]]:
         raise daily.EvidenceError("invalid_effective_policy_identity")
     root, output = absolute_path(binding["root"]), absolute_path(binding["output"])
     freeze, freeze_raw, freeze_path = pinned_json(binding["freeze"])
+    validate_active_freeze(freeze)
     activation, _, activation_path = pinned_json(binding["activation"])
     original, _, original_path = pinned_json(binding["original_activation"])
     policy, _, policy_path = pinned_json(binding["policy_baseline"])

@@ -22,6 +22,7 @@ from pathlib import Path
 import pandas as pd
 
 from backend.organism.confidence_lab import _cluster_tstat, _tstat  # CR + iid t
+from backend.organism.freeze_contract import load_active_freeze
 from backend.organism.phase2_gate import (
     LOOKS, MOMENTUM_TREND_REGIMES, gate_for_strategy, load_forward_corpus,
 )
@@ -32,11 +33,11 @@ EVIDENCE = Path("organism_brain/strategy_evidence_events.jsonl")  # engine defau
 
 
 def main() -> int:
-    if not FREEZE.exists():
-        print("no param_freeze.json — run scripts/phase2_freeze.py first")
+    try:
+        frozen_at = load_active_freeze(FREEZE)["FROZEN_AT"]
+    except ValueError:
+        print("active freeze unavailable or invalid — an approved active cutoff is required")
         return 2
-    freeze = json.loads(FREEZE.read_text())
-    frozen_at = freeze["FROZEN_AT"]
     print("=" * 72)
     print("PHASE-3 ATTRIBUTION — per strategy, per regime")
     print("=" * 72)

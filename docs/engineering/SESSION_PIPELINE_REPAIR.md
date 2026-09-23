@@ -144,8 +144,16 @@ changes fail verification without silently rewriting the clock. Snapshot files
 expose those hashes as **candidate** source identities, not observed runtime
 behavior.
 
-The worktree freeze/reference is marked `candidate_only`. Its timestamp is a
-build/validation boundary only. Deployment requires explicit approval of the
+The canonical freeze and readiness reference retain the installed approved
+September 22 active artifact byte-for-byte. Candidate generation writes only
+`artifacts/phase2/candidate_param_freeze.json`, with `candidate_only=true`,
+`deployment_approved=false`, and `VALIDATED_AT`; it contains no `FROZEN_AT`.
+Read-only candidate verification requires `--verify --candidate`. Ordinary
+generation cannot overwrite the active artifact or strip candidate markers.
+Gate, attribution, reconciliation, daily collection/analysis and host binding
+readers reject candidate, unapproved or malformed cutoff documents before using
+a forward corpus. Legacy active artifacts may omit flags; the separate
+activation/binding evidence remains required. Deployment requires explicit approval of the
 documented changed surface and new forward measurement boundary, passing
 required checks, independent review, secret-scan disposition, a retained runtime
 configuration snapshot and fresh closed/flat broker evidence. The actual cutoff
@@ -179,3 +187,21 @@ constraints. Targeted red/green evidence, combined acceptance, candidate surface
 diff and independent reviews are stored alongside it. The standard full artifact
 pack and `docs/engineering/LIVE_AUDIT_INDEX.md` are regenerated for this PR;
 hosted workflow artifacts establish results on the submitted immutable source.
+
+## Review follow-up acceptance
+
+Provider stop/start resets session buffers, symbols, quotes and freshness.
+Callbacks are bound to their transport generation, so retired callbacks cannot
+repopulate the new session. Serialized transport changes handle queued starts,
+stops and cancellations; same-session recovery preserves stale health until
+new valid bars arrive. Failed disconnect state remains available for retry.
+
+Scanner outcomes distinguish a genuine successful empty result from transport
+or response failures. Only a complete successful scan updates the success time
+and clears the failure streak. Individually qualified partial candidates retain
+their existing admission rules; degraded scans still count as failures.
+
+The audit index includes every changed path, including evidence, reports and
+configuration, and displays the complete inventory beyond category previews.
+Earlier candidate commits, image and checks remain historical evidence and are
+superseded by the source-bound follow-up acceptance pack.

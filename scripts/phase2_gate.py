@@ -9,9 +9,9 @@ currently says "not yet", not an answer.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
+from backend.organism.freeze_contract import load_active_freeze
 from backend.organism.phase2_gate import (
     LOOKS, MOMENTUM_TREND_REGIMES, gate_for_strategy, load_forward_corpus,
 )
@@ -21,10 +21,11 @@ TRADES = Path("organism_brain/trade_history.csv")
 
 
 def main() -> int:
-    if not FREEZE.exists():
-        print("no param_freeze.json — run scripts/phase2_freeze.py first")
+    try:
+        frozen_at = load_active_freeze(FREEZE)["FROZEN_AT"]
+    except ValueError:
+        print("active freeze unavailable or invalid — an approved active cutoff is required")
         return 2
-    frozen_at = json.loads(FREEZE.read_text())["FROZEN_AT"]
     if not TRADES.exists():
         print(f"no {TRADES}")
         return 2

@@ -16,6 +16,7 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 import math
 import os
 import time
@@ -73,6 +74,8 @@ class StreamingDataProvider:
         self._retired_symbols: set[str] = set()
 
         self._running = False
+        self._session_generation = 0
+        self._lifecycle_lock = asyncio.Lock()
 
     # ── Lifecycle ─────────────────────────────────────────────────
 
@@ -90,61 +93,103 @@ class StreamingDataProvider:
         historical bars via REST so the engine can trade on the very first tick
         instead of waiting for ``MIN_BARS`` streaming bars to arrive.
         """
-        if self._running:
-            logger.warning("StreamingDataProvider already running")
-            return
+        async with self._lifecycle_lock:
+            if self._running:
+                logger.warning("StreamingDataProvider already running")
+                return
 
-        # A failed disconnect must be retried before replacing its stream
-        # reference; otherwise the old connection could keep delivering bars.
-        if self._stream is not None:
-            await self.stop()
+            # Keep a failed disconnect's reference until cleanup succeeds.
+            await self._disconnect_stream(self._stream)
+            self._invalidate_session()
+            generation = self._session_generation
+            stream = AlpacaMarketDataStream(
+                api_key=api_key, api_secret=api_secret, feed=feed,
+            )
+            self._stream = stream
+            self._wire_callbacks(stream, generation)
+            started = False
+            try:
+                connected = await stream.connect()
+                if not self._is_current_session(stream, generation):
+                    return
+                if connected is not True:
+                    logger.error("StreamingDataProvider failed to connect")
+                    return
 
-        self._stream = AlpacaMarketDataStream(
-            api_key=api_key,
-            api_secret=api_secret,
-            feed=feed,
-        )
+                symbols_upper = [s.upper() for s in symbols]
+                bars_ok = await stream.subscribe_bars(symbols_upper)
+                if not self._is_current_session(stream, generation):
+                    return
+                if bars_ok is not True:
+                    logger.error("StreamingDataProvider bar subscription failed")
+                    return
+                self._subscribed_symbols.update(symbols_upper)
+                quotes_ok = await stream.subscribe_quotes(symbols_upper)
+                if not self._is_current_session(stream, generation):
+                    return
+                if quotes_ok is not True:
+                    logger.error("StreamingDataProvider quote subscription failed")
+                    return
 
-        # Wire callbacks
-        self._stream.on_bar = self._on_bar
-        self._stream.on_quote = self._on_quote
-
-        connected = await self._stream.connect()
-        if not connected:
-            logger.error("StreamingDataProvider failed to connect")
-            return
-
-        # Subscribe to bars and quotes
-        symbols_upper = [s.upper() for s in symbols]
-        if await self._stream.subscribe_bars(symbols_upper) is not True:
-            logger.error("StreamingDataProvider bar subscription failed")
-            await self.stop()
-            return
-        self._subscribed_symbols.update(symbols_upper)
-        self._retired_symbols.difference_update(symbols_upper)
-        if await self._stream.subscribe_quotes(symbols_upper) is not True:
-            logger.error("StreamingDataProvider quote subscription failed")
-            await self.stop()
-            return
-
-        # Pre-fill ring buffers with historical bars from REST
-        if data_client is not None:
-            await self._prefill(symbols_upper, data_client)
-
-        self._running = True
-        logger.info(
-            "StreamingDataProvider started: %d symbols, feed=%s",
-            len(symbols_upper),
-            feed,
-        )
+                if data_client is not None:
+                    await self._prefill(symbols_upper, data_client)
+                if not self._is_current_session(stream, generation):
+                    return
+                self._running = started = True
+                logger.info(
+                    "StreamingDataProvider started: %d symbols, feed=%s",
+                    len(symbols_upper), feed,
+                )
+            finally:
+                if not started:
+                    if self._is_current_session(stream, generation):
+                        self._invalidate_session()
+                    await self._disconnect_stream(stream)
 
     async def stop(self) -> None:
         """Disconnect from Alpaca WebSocket cleanly."""
-        self._running = False
-        if self._stream:
-            await self._stream.disconnect()
-            self._stream = None
+        # Invalidate before waiting for an in-flight connect/prefill/rotation.
+        # Their continuations and callbacks must not restore stopped state.
+        self._invalidate_session()
+        async with self._lifecycle_lock:
+            # A start already queued ahead of this stop may have completed
+            # while the lock was pending. Stop owns the final empty state.
+            self._invalidate_session()
+            await self._disconnect_stream(self._stream)
         logger.info("StreamingDataProvider stopped")
+
+    def _invalidate_session(self) -> None:
+        self._session_generation += 1
+        self._running = False
+        self._subscribed_symbols.clear()
+        self._retired_symbols.clear()
+        self._bars.clear()
+        self._quotes.clear()
+        self._last_bar_ts.clear()
+        self.last_update_time = None
+
+    async def _disconnect_stream(self, stream) -> None:
+        if stream is not None:
+            await stream.disconnect()
+            if self._stream is stream:
+                self._stream = None
+
+    def _is_current_session(self, stream, generation: int) -> bool:
+        return self._stream is stream and self._session_generation == generation
+
+    def _wire_callbacks(self, stream, generation: int) -> None:
+        async def on_bar(symbol, data):
+            if (self._is_current_session(stream, generation)
+                    and symbol.upper() in self._subscribed_symbols):
+                await self._on_bar(symbol, data)
+
+        async def on_quote(symbol, data):
+            if (self._is_current_session(stream, generation)
+                    and symbol.upper() in self._subscribed_symbols):
+                await self._on_quote(symbol, data)
+
+        stream.on_bar = on_bar
+        stream.on_quote = on_quote
 
     @property
     def is_running(self) -> bool:
@@ -249,9 +294,14 @@ class StreamingDataProvider:
 
     async def update_subscriptions(self, symbols: list[str]) -> None:
         """Add/remove symbol subscriptions dynamically for universe rotation."""
+        async with self._lifecycle_lock:
+            await self._update_subscriptions(symbols)
+
+    async def _update_subscriptions(self, symbols: list[str]) -> None:
         if not self._stream or not self._stream.is_authenticated:
             logger.warning("Cannot update subscriptions — not connected")
             return
+        stream, generation = self._stream, self._session_generation
 
         new_set = {s.upper() for s in symbols}
         current_quotes = set(self._stream.quote_subscriptions)
@@ -267,20 +317,29 @@ class StreamingDataProvider:
         to_remove = list(current_set - new_set)
 
         if bars_to_add:
-            if await self._stream.subscribe_bars(bars_to_add) is not True:
+            added = await stream.subscribe_bars(bars_to_add)
+            if not self._is_current_session(stream, generation):
+                return
+            if added is not True:
                 logger.warning("Streaming bar subscription failed: %d symbols", len(bars_to_add))
                 return
             self._subscribed_symbols.update(bars_to_add)
             self._retired_symbols.difference_update(bars_to_add)
         if quotes_to_add:
-            if await self._stream.subscribe_quotes(quotes_to_add) is not True:
+            added = await stream.subscribe_quotes(quotes_to_add)
+            if not self._is_current_session(stream, generation):
+                return
+            if added is not True:
                 logger.warning("Streaming quote subscription failed: %d symbols", len(quotes_to_add))
                 return
         if bars_to_add or quotes_to_add:
             logger.info("Streaming subscribed: +%d symbols", len(set(bars_to_add) | set(quotes_to_add)))
 
         if to_remove:
-            if await self._stream.unsubscribe(to_remove) is not True:
+            removed = await stream.unsubscribe(to_remove)
+            if not self._is_current_session(stream, generation):
+                return
+            if removed is not True:
                 logger.warning("Streaming unsubscribe failed: %d symbols retained", len(to_remove))
                 return
             self._subscribed_symbols.difference_update(to_remove)
@@ -305,12 +364,15 @@ class StreamingDataProvider:
         lookback = int(os.getenv("ORGANISM_LIVE_LOOKBACK", "100"))
         timeframe = os.getenv("ORGANISM_LIVE_TIMEFRAME", "1Day")
         filled = 0
+        generation = self._session_generation
 
         for symbol in symbols:
             try:
                 df = await data_client.get_historical_bars_df(
                     symbol, lookback=lookback, timeframe=timeframe,
                 )
+                if generation != self._session_generation:
+                    return
                 if df is None or df.empty:
                     continue
 
@@ -452,6 +514,10 @@ class StreamingDataProvider:
         Only triggers when *every* tracked symbol is stale (avoids false
         positives from a single missing symbol).
         """
+        async with self._lifecycle_lock:
+            return await self._recover_stale_stream(stale_threshold)
+
+    async def _recover_stale_stream(self, stale_threshold: float) -> bool:
         if not self._running or not self._stream:
             return False
 
@@ -479,10 +545,19 @@ class StreamingDataProvider:
 
         try:
             stream = self._stream
+            # Retain the stale buffers/receipts, but revoke callbacks held by
+            # the connection being replaced. Reconnect itself is not health.
+            self._session_generation += 1
+            generation = self._session_generation
             # Disconnect + reconnect — connect() calls _resubscribe_all()
             await stream._cleanup_connection()
+            if not self._is_current_session(stream, generation):
+                return True
             success = await stream.connect()
-            if success:
+            if not self._is_current_session(stream, generation):
+                return True
+            if success is True:
+                self._wire_callbacks(stream, generation)
                 logger.info("Stale stream recovery: reconnected successfully")
             else:
                 logger.error("Stale stream recovery: reconnect failed")

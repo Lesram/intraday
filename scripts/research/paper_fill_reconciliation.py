@@ -12,10 +12,16 @@ import csv
 import hashlib
 import io
 import json
+import sys
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from backend.organism.freeze_contract import validate_active_freeze
 
 # The persisted ledger rounds entry_price to four decimal places. Compare the
 # unrounded Decimal VWAP at half that quantum, not a relative price tolerance.
@@ -266,15 +272,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         inputs = [args.orders, args.ledger, args.freeze]
+        # A candidate validation boundary must not select or hide forward rows.
+        # Validate before reading broker/ledger inputs, and hash these same bytes.
+        freeze_raw = args.freeze.read_bytes()
+        freeze = validate_active_freeze(json.loads(freeze_raw))
         # Hash the bytes actually analyzed, even if a live atomic save replaces
         # the source path while this report is being computed.
-        data = [path.read_bytes() for path in inputs]
+        data = [args.orders.read_bytes(), args.ledger.read_bytes(), freeze_raw]
         payload = json.loads(data[0])
         orders = payload["orders"] if isinstance(payload, dict) else payload
         if not isinstance(orders, list) or not all(isinstance(o, dict) for o in orders):
             raise ValueError("orders must be a list of objects")
         ledger = list(csv.DictReader(io.StringIO(data[1].decode("utf-8-sig"))))
-        freeze = json.loads(data[2])
         report = reconcile(orders, ledger, freeze["FROZEN_AT"])
         report["input_sha256"] = {name: hashlib.sha256(content).hexdigest()
                                   for name, content in zip(("orders", "ledger", "freeze"), data)}
