@@ -1,0 +1,46 @@
+........................................................................ [ 31%]
+........................................................................ [ 63%]
+........................................................................ [ 95%]
+..........                                                               [100%]
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/test_broker_ack_reconciliation.py::test_restart_preserves_full_marker_and_original_key[False]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log1p
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_single_row_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: divide by zero encountered in log10
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+0.69s call     tests/test_adversarial_inputs_v7.py::test_ml_predict_before_training_returns_neutral
+0.20s call     tests/unit/test_alpaca_outbox_comprehensive.py::TestHandleOrderSubmittedEvent::test_handle_order_submitted_uses_dispatcher
+0.10s call     tests/unit/test_alpaca_outbox_comprehensive.py::TestAlpacaOutboxDispatcherEdgeCases::test_dispatch_empty_event
+0.10s call     tests/unit/test_alpaca_outbox_comprehensive.py::TestAlpacaOutboxDispatcherMockBroker::test_mock_broker_simulates_delay
+0.10s call     tests/unit/test_alpaca_outbox_comprehensive.py::TestHandleOrderSubmittedEvent::test_handle_order_submitted_event
+0.10s call     tests/unit/test_alpaca_outbox_comprehensive.py::TestAlpacaOutboxDispatcherMockBroker::test_mock_broker_returns_accepted_status
+0.10s call     tests/unit/test_alpaca_outbox_comprehensive.py::TestAlpacaOutboxDispatcherDispatch::test_dispatch_to_mock_broker
+0.10s call     tests/unit/test_alpaca_outbox_comprehensive.py::TestAlpacaOutboxDispatcherMockBroker::test_mock_broker_generates_id
+0.10s call     tests/test_adversarial_inputs_v7.py::test_ws_handler_handles_null_filled_qty
+0.10s call     tests/test_adversarial_inputs_v7.py::test_bar_frozen_100_bars
+226 passed, 8 warnings in 3.48s

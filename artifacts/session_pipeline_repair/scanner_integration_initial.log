@@ -1,0 +1,441 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1086132f0>
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-115/test_scanner_discovery_admits_0')
+record_property = <function record_property.<locals>.append_property at 0x10af4ef20>
+discovery = 'most_actives', next_scan = 'empty'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("discovery", ["most_actives", "mover"])
+    @pytest.mark.parametrize("next_scan", ["empty", "exception"])
+    async def test_scanner_discovery_admits_entry_and_invalidates_pool(
+        monkeypatch, tmp_path, record_property, discovery, next_scan,
+    ):
+        from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+        from backend.organism.market_scanner import MarketScanner
+    
+        bars = _minute_bars()
+        replay, engines, feature_calls = _replay(
+            monkeypatch, tmp_path, bars, universe=["SPY"])
+        scanner = MarketScanner()
+        requests = []
+        observations = []
+        real_scan = scanner.scan
+        scan_attempts = 0
+    
+        async def provider_response(url, params=None):
+            # Mock only external I/O. The real discovery parsers, snapshot
+            # qualification, tension scores, engine injection and gates all run.
+            requests.append((scan_attempts, url.rsplit("/", 1)[-1]))
+            if url.endswith("most-actives"):
+                return {"most_actives": ([{"symbol": "MSFT", "volume": 8_000_000,
+                                           "trade_count": 100_000}]
+                                          if scan_attempts == 1 and discovery == "most_actives" else [])}
+            if url.endswith("movers"):
+                return {"gainers": ([{"symbol": "MSFT", "price": 102.0,
+                                       "change": 3.0, "percent_change": 3.03}]
+                                      if scan_attempts == 1 and discovery == "mover" else []),
+                        "losers": []}
+            assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+            return {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8,
+                                          "c": 102., "v": 8_000_000},
+                             "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                             "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+    
+        async def scan_then_invalidate():
+            nonlocal scan_attempts
+            scan_attempts += 1
+            if scan_attempts > 1 and next_scan == "exception":
+                raise RuntimeError("synthetic scanner boundary failure")
+            return await real_scan()
+    
+        monkeypatch.setattr(scanner, "_request", provider_response)
+        monkeypatch.setattr(scanner, "scan", scan_then_invalidate)
+        real_tick = OrganismLiveEngine.live_tick
+    
+        async def observe_tick(engine):
+            # Replay deliberately disables external discovery; attach this offline
+            # scanner after its setup, without changing decisions or tick order.
+            engine.market_scanner = scanner
+            result = await real_tick(engine)
+            observations.append({"tick": engine._tick_count,
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe),
+                                 "held": set(await engine._positions_service.get_all_positions())})
+            return result
+    
+        monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+        try:
+            result = await replay.run(max_ticks=2 * SCAN_INTERVAL_TICKS + 1)
+        finally:
+            await scanner.close()
+>       _assert_real_ticks(result, 2 * SCAN_INTERVAL_TICKS + 1)
+
+tests/test_scanner_pipeline_integration.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = ReplayResult(ticks=13, orders=[], trades=[], accounted_trades=[], accounting_pending={}, equity_curve=[1000000, 100000...count': 0, 'current_streak': 0}, 'universe_drift': {}, 'brain_save': {'ticks_since_last_save': 13, 'healthy': True}}}])
+expected = 13
+
+    def _assert_real_ticks(result, expected):
+        assert result.ticks == len(result.tick_results) == expected
+>       assert all(not tick.get("errors") and "error" not in tick
+                   for tick in result.tick_results)
+E       assert False
+E        +  where False = all(<generator object _assert_real_ticks.<locals>.<genexpr> at 0x112e14040>)
+
+tests/test_v13_w100_live_tick_coverage.py:164: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T05:37:07.842165Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.105975Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.113540Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.120705Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.128045Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.135150Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.149499Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.163719Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.177795Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.216657Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.230897Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.244831Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T05:37:08.245156Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.258774Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.272753Z"}
+____ test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover] _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x110e12db0>
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-115/test_scanner_discovery_admits_1')
+record_property = <function record_property.<locals>.append_property at 0x10af4f740>
+discovery = 'mover', next_scan = 'empty'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("discovery", ["most_actives", "mover"])
+    @pytest.mark.parametrize("next_scan", ["empty", "exception"])
+    async def test_scanner_discovery_admits_entry_and_invalidates_pool(
+        monkeypatch, tmp_path, record_property, discovery, next_scan,
+    ):
+        from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+        from backend.organism.market_scanner import MarketScanner
+    
+        bars = _minute_bars()
+        replay, engines, feature_calls = _replay(
+            monkeypatch, tmp_path, bars, universe=["SPY"])
+        scanner = MarketScanner()
+        requests = []
+        observations = []
+        real_scan = scanner.scan
+        scan_attempts = 0
+    
+        async def provider_response(url, params=None):
+            # Mock only external I/O. The real discovery parsers, snapshot
+            # qualification, tension scores, engine injection and gates all run.
+            requests.append((scan_attempts, url.rsplit("/", 1)[-1]))
+            if url.endswith("most-actives"):
+                return {"most_actives": ([{"symbol": "MSFT", "volume": 8_000_000,
+                                           "trade_count": 100_000}]
+                                          if scan_attempts == 1 and discovery == "most_actives" else [])}
+            if url.endswith("movers"):
+                return {"gainers": ([{"symbol": "MSFT", "price": 102.0,
+                                       "change": 3.0, "percent_change": 3.03}]
+                                      if scan_attempts == 1 and discovery == "mover" else []),
+                        "losers": []}
+            assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+            return {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8,
+                                          "c": 102., "v": 8_000_000},
+                             "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                             "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+    
+        async def scan_then_invalidate():
+            nonlocal scan_attempts
+            scan_attempts += 1
+            if scan_attempts > 1 and next_scan == "exception":
+                raise RuntimeError("synthetic scanner boundary failure")
+            return await real_scan()
+    
+        monkeypatch.setattr(scanner, "_request", provider_response)
+        monkeypatch.setattr(scanner, "scan", scan_then_invalidate)
+        real_tick = OrganismLiveEngine.live_tick
+    
+        async def observe_tick(engine):
+            # Replay deliberately disables external discovery; attach this offline
+            # scanner after its setup, without changing decisions or tick order.
+            engine.market_scanner = scanner
+            result = await real_tick(engine)
+            observations.append({"tick": engine._tick_count,
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe),
+                                 "held": set(await engine._positions_service.get_all_positions())})
+            return result
+    
+        monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+        try:
+            result = await replay.run(max_ticks=2 * SCAN_INTERVAL_TICKS + 1)
+        finally:
+            await scanner.close()
+>       _assert_real_ticks(result, 2 * SCAN_INTERVAL_TICKS + 1)
+
+tests/test_scanner_pipeline_integration.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = ReplayResult(ticks=13, orders=[], trades=[], accounted_trades=[], accounting_pending={}, equity_curve=[1000000, 100000...count': 0, 'current_streak': 0}, 'universe_drift': {}, 'brain_save': {'ticks_since_last_save': 13, 'healthy': True}}}])
+expected = 13
+
+    def _assert_real_ticks(result, expected):
+        assert result.ticks == len(result.tick_results) == expected
+>       assert all(not tick.get("errors") and "error" not in tick
+                   for tick in result.tick_results)
+E       assert False
+E        +  where False = all(<generator object _assert_real_ticks.<locals>.<genexpr> at 0x112e169b0>)
+
+tests/test_v13_w100_live_tick_coverage.py:164: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T05:37:08.557516Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.568332Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.575697Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.582819Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.589923Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.596987Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.611081Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.625152Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.639094Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.653408Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.667784Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.682124Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:481 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-09-23T05:37:08.682452Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.697098Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.711690Z"}
+_ test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a080440>
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-115/test_scanner_discovery_admits_2')
+record_property = <function record_property.<locals>.append_property at 0x112e94b80>
+discovery = 'most_actives', next_scan = 'exception'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("discovery", ["most_actives", "mover"])
+    @pytest.mark.parametrize("next_scan", ["empty", "exception"])
+    async def test_scanner_discovery_admits_entry_and_invalidates_pool(
+        monkeypatch, tmp_path, record_property, discovery, next_scan,
+    ):
+        from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+        from backend.organism.market_scanner import MarketScanner
+    
+        bars = _minute_bars()
+        replay, engines, feature_calls = _replay(
+            monkeypatch, tmp_path, bars, universe=["SPY"])
+        scanner = MarketScanner()
+        requests = []
+        observations = []
+        real_scan = scanner.scan
+        scan_attempts = 0
+    
+        async def provider_response(url, params=None):
+            # Mock only external I/O. The real discovery parsers, snapshot
+            # qualification, tension scores, engine injection and gates all run.
+            requests.append((scan_attempts, url.rsplit("/", 1)[-1]))
+            if url.endswith("most-actives"):
+                return {"most_actives": ([{"symbol": "MSFT", "volume": 8_000_000,
+                                           "trade_count": 100_000}]
+                                          if scan_attempts == 1 and discovery == "most_actives" else [])}
+            if url.endswith("movers"):
+                return {"gainers": ([{"symbol": "MSFT", "price": 102.0,
+                                       "change": 3.0, "percent_change": 3.03}]
+                                      if scan_attempts == 1 and discovery == "mover" else []),
+                        "losers": []}
+            assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+            return {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8,
+                                          "c": 102., "v": 8_000_000},
+                             "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                             "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+    
+        async def scan_then_invalidate():
+            nonlocal scan_attempts
+            scan_attempts += 1
+            if scan_attempts > 1 and next_scan == "exception":
+                raise RuntimeError("synthetic scanner boundary failure")
+            return await real_scan()
+    
+        monkeypatch.setattr(scanner, "_request", provider_response)
+        monkeypatch.setattr(scanner, "scan", scan_then_invalidate)
+        real_tick = OrganismLiveEngine.live_tick
+    
+        async def observe_tick(engine):
+            # Replay deliberately disables external discovery; attach this offline
+            # scanner after its setup, without changing decisions or tick order.
+            engine.market_scanner = scanner
+            result = await real_tick(engine)
+            observations.append({"tick": engine._tick_count,
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe),
+                                 "held": set(await engine._positions_service.get_all_positions())})
+            return result
+    
+        monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+        try:
+            result = await replay.run(max_ticks=2 * SCAN_INTERVAL_TICKS + 1)
+        finally:
+            await scanner.close()
+>       _assert_real_ticks(result, 2 * SCAN_INTERVAL_TICKS + 1)
+
+tests/test_scanner_pipeline_integration.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = ReplayResult(ticks=13, orders=[], trades=[], accounted_trades=[], accounting_pending={}, equity_curve=[1000000, 100000...count': 0, 'current_streak': 0}, 'universe_drift': {}, 'brain_save': {'ticks_since_last_save': 13, 'healthy': True}}}])
+expected = 13
+
+    def _assert_real_ticks(result, expected):
+        assert result.ticks == len(result.tick_results) == expected
+>       assert all(not tick.get("errors") and "error" not in tick
+                   for tick in result.tick_results)
+E       assert False
+E        +  where False = all(<generator object _assert_real_ticks.<locals>.<genexpr> at 0x112eb53c0>)
+
+tests/test_v13_w100_live_tick_coverage.py:164: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T05:37:08.943417Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.954177Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.961502Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.968885Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.976115Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.983144Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:08.997328Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.011334Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.025486Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.039854Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.053877Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.068098Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3026 {"event": "Market scan failed: synthetic scanner boundary failure", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.068383Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.082059Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.096002Z"}
+__ test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover] ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112f05580>
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-115/test_scanner_discovery_admits_3')
+record_property = <function record_property.<locals>.append_property at 0x112e974c0>
+discovery = 'mover', next_scan = 'exception'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("discovery", ["most_actives", "mover"])
+    @pytest.mark.parametrize("next_scan", ["empty", "exception"])
+    async def test_scanner_discovery_admits_entry_and_invalidates_pool(
+        monkeypatch, tmp_path, record_property, discovery, next_scan,
+    ):
+        from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+        from backend.organism.market_scanner import MarketScanner
+    
+        bars = _minute_bars()
+        replay, engines, feature_calls = _replay(
+            monkeypatch, tmp_path, bars, universe=["SPY"])
+        scanner = MarketScanner()
+        requests = []
+        observations = []
+        real_scan = scanner.scan
+        scan_attempts = 0
+    
+        async def provider_response(url, params=None):
+            # Mock only external I/O. The real discovery parsers, snapshot
+            # qualification, tension scores, engine injection and gates all run.
+            requests.append((scan_attempts, url.rsplit("/", 1)[-1]))
+            if url.endswith("most-actives"):
+                return {"most_actives": ([{"symbol": "MSFT", "volume": 8_000_000,
+                                           "trade_count": 100_000}]
+                                          if scan_attempts == 1 and discovery == "most_actives" else [])}
+            if url.endswith("movers"):
+                return {"gainers": ([{"symbol": "MSFT", "price": 102.0,
+                                       "change": 3.0, "percent_change": 3.03}]
+                                      if scan_attempts == 1 and discovery == "mover" else []),
+                        "losers": []}
+            assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+            return {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8,
+                                          "c": 102., "v": 8_000_000},
+                             "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                             "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+    
+        async def scan_then_invalidate():
+            nonlocal scan_attempts
+            scan_attempts += 1
+            if scan_attempts > 1 and next_scan == "exception":
+                raise RuntimeError("synthetic scanner boundary failure")
+            return await real_scan()
+    
+        monkeypatch.setattr(scanner, "_request", provider_response)
+        monkeypatch.setattr(scanner, "scan", scan_then_invalidate)
+        real_tick = OrganismLiveEngine.live_tick
+    
+        async def observe_tick(engine):
+            # Replay deliberately disables external discovery; attach this offline
+            # scanner after its setup, without changing decisions or tick order.
+            engine.market_scanner = scanner
+            result = await real_tick(engine)
+            observations.append({"tick": engine._tick_count,
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe),
+                                 "held": set(await engine._positions_service.get_all_positions())})
+            return result
+    
+        monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+        try:
+            result = await replay.run(max_ticks=2 * SCAN_INTERVAL_TICKS + 1)
+        finally:
+            await scanner.close()
+>       _assert_real_ticks(result, 2 * SCAN_INTERVAL_TICKS + 1)
+
+tests/test_scanner_pipeline_integration.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = ReplayResult(ticks=13, orders=[], trades=[], accounted_trades=[], accounting_pending={}, equity_curve=[1000000, 100000...count': 0, 'current_streak': 0}, 'universe_drift': {}, 'brain_save': {'ticks_since_last_save': 13, 'healthy': True}}}])
+expected = 13
+
+    def _assert_real_ticks(result, expected):
+        assert result.ticks == len(result.tick_results) == expected
+>       assert all(not tick.get("errors") and "error" not in tick
+                   for tick in result.tick_results)
+E       assert False
+E        +  where False = all(<generator object _assert_real_ticks.<locals>.<genexpr> at 0x112f5dff0>)
+
+tests/test_v13_w100_live_tick_coverage.py:164: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-23T05:37:09.323315Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.333891Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.341194Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.348227Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.355252Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (1 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.362266Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.376440Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.390439Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.404413Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.418501Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.432599Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.446576Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3026 {"event": "Market scan failed: synthetic scanner boundary failure", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.446823Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.460986Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3079 {"event": "Insufficient features (2 symbols) \u2014 blocking entries, exits still active via broker price fallback", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-23T05:37:09.474877Z"}
+=============================== warnings summary ===============================
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]
+FAILED tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover]
+FAILED tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives]
+FAILED tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover]
+4 failed, 1 warning in 2.85s

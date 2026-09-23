@@ -1,0 +1,155 @@
+{
+  "behavior": [
+    "Explicit stop/new session clears subscribed/retired sets, bar buffers, quotes, receipt timestamps and aggregate last-update state. Restarted symbols are unseen/stale until valid data arrives; old symbols cannot remain in the freshness universe.",
+    "Transport callbacks capture stream identity and generation and admit only current subscribed symbols. Old bar/quote callbacks cannot mutate stopped/restarted sessions, including a reused symbol.",
+    "Lifecycle and subscription operations serialize through an asyncio lock. Stop invalidates immediately, before waiting, and again when it acquires the lock; obsolete awaited connect, subscribe, prefill or reconnect continuations cannot reanimate state.",
+    "Failed/cancelled start cleans transport and data in finally. A failed disconnect retains its original stream reference until a later cleanup succeeds, while its callbacks and health remain invalid.",
+    "Forced same-session recovery preserves stale buffers/receipt ages and revokes the old callback generation. Fresh callbacks are installed only after successful reconnect; reconnect itself never establishes freshness."
+  ],
+  "behavior_changed": true,
+  "branch": "codex/sept22-pipeline-repair",
+  "files_changed": [
+    {
+      "bytes": 25530,
+      "path": "backend/organism/streaming_data_provider.py",
+      "sha256": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838"
+    },
+    {
+      "bytes": 12330,
+      "path": "tests/test_streaming_provider_lifecycle.py",
+      "sha256": "912f7802f5e3cc3b18aca946a95fa58ccd8d3a20f166be5756ba749db5272227"
+    }
+  ],
+  "head_before_uncommitted_delta": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "installed_mutations": 0,
+  "limitations": [
+    "No natural stream/broker or transport-server session was contacted. Tests replace transport only and exercise real provider methods, timestamps and cache state.",
+    "Subscription membership remains based on the existing transport boolean/sets contract; this patch does not add server acknowledgement telemetry.",
+    "Stop revokes callbacks immediately, then waits for serialized in-flight transport/REST calls to finish so it can disconnect safely. It does not introduce hard cancellation/deadlines beyond existing client behavior.",
+    "Retaining same-session stale history on reconnect is intentional; it cannot be mistaken for freshness. Explicit stop/start instead drops all prior-session state.",
+    "Earlier1eb source/image is superseded as a candidate by this uncommitted fix. Root owns new candidate module freeze binding, unchanged active-cutoff verification, full required safety/replay pack, runtime snapshot, workflow selection, independent review and exact-head CI/image.",
+    "No merge/commit/deployment or active clock reset performed by this agent."
+  ],
+  "lint": {
+    "diff_check_exit_code": 0,
+    "new_findings": 0,
+    "new_test_findings": 0,
+    "preexisting_BLE001_retained": 2
+  },
+  "operational_calls": 0,
+  "proof_files": [
+    {
+      "bytes": 2547,
+      "path": "artifacts/session_pipeline_repair/provider_restart_plan.json",
+      "sha256": "3b50b94050daa7c35d5bb76aa219c10be009bae41e6b7cc32dadbda12fd32f16"
+    },
+    {
+      "bytes": 13174,
+      "path": "artifacts/session_pipeline_repair/provider_restart_red.xml",
+      "sha256": "5f5e35f49f1216826413dc93bab46c1b0921b32b8073e14d7b32d78ff654deae"
+    },
+    {
+      "bytes": 12005,
+      "path": "artifacts/session_pipeline_repair/provider_restart_red.log",
+      "sha256": "95e726448dccf7b0eb0f0b2e48ca6dde93d1d8d7db1721bbd361c3bc5e95a943"
+    },
+    {
+      "bytes": 2494,
+      "path": "artifacts/session_pipeline_repair/provider_restart_targeted.xml",
+      "sha256": "587a7c095b6eb74fc5b5cf1e539759d3b0c1f199ef7e98b8958bcc4a3c896c4e"
+    },
+    {
+      "bytes": 99,
+      "path": "artifacts/session_pipeline_repair/provider_restart_targeted.log",
+      "sha256": "99f8f8234f268758fab0b86c8b1f53d094f44e367653c6c8a5c2ec56d48e7b80"
+    },
+    {
+      "bytes": 32001,
+      "path": "artifacts/session_pipeline_repair/provider_restart_regression.xml",
+      "sha256": "f8891059984eb453ffca7c4d04aa2f448b40da811ab830fabccdc146a42fbf21"
+    },
+    {
+      "bytes": 3908,
+      "path": "artifacts/session_pipeline_repair/provider_restart_regression.log",
+      "sha256": "76046acb5c1f55bf0398511b280dd8b73458646dabbde7b4e5051156b3feb363"
+    },
+    {
+      "bytes": 15149,
+      "path": "artifacts/session_pipeline_repair/provider_restart_stable.xml",
+      "sha256": "436a93b7d1c101adc9081553ec0dd76a8d5a7bdf6bc512caab8fd30906b491b1"
+    },
+    {
+      "bytes": 876,
+      "path": "artifacts/session_pipeline_repair/provider_restart_stable.log",
+      "sha256": "81dafac369c2d3d13fd634e98f8f9be5e0fcfc981e966775710f3fabe7ebb218"
+    },
+    {
+      "bytes": 655,
+      "path": "artifacts/session_pipeline_repair/provider_restart_lint_delta.json",
+      "sha256": "6e546ce9a10bdd344049cdd64ce3828f9eb7beb901ce3c599da9e295e5ae2708"
+    }
+  ],
+  "reported_at_utc": "2026-09-23T07:39:08.628127+00:00",
+  "review_comment": "https://github.com/Lesram/intraday/pull/28#discussion_r4079564984",
+  "scope": "Provider session lifecycle only. No scanner/engine/source decisions, parameters, feed, active freeze, history or runtime changes by this agent.",
+  "source_before": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "source_edits_outside_ownership": 0,
+  "status": "IMPLEMENTED_TARGETED_GREEN_PENDING_INDEPENDENT_REVIEW_AND_ROOT_GATES",
+  "task_id": "pr28_streaming_provider_session_restart",
+  "tests": {
+    "accepted_provider_freshness_entry": {
+      "errors": 0,
+      "failed": 0,
+      "passed": 104,
+      "skipped": 0,
+      "tests": 104
+    },
+    "clean_environment": true,
+    "early_broader_attempt": {
+      "interpretation": "Retained concurrent scanner-development red test: test_successful_empty_scan_resets_failure_streak_in_real_ticks was introduced by the separate scanner author during selection.205 passed/1 failed; sole failure belongs to the separately authorized scanner bookkeeping fix, not accepted evidence for its final code. Root/author informed.",
+      "not_claimed_final_green": true,
+      "result": {
+        "errors": 0,
+        "failed": 1,
+        "passed": 205,
+        "skipped": 0,
+        "tests": 206
+      }
+    },
+    "existing_real_stale_eod_replay_included": true,
+    "initial_green": {
+      "errors": 0,
+      "failed": 0,
+      "passed": 14,
+      "skipped": 0,
+      "tests": 14
+    },
+    "initial_red": {
+      "errors": 0,
+      "failed": 14,
+      "passed": 0,
+      "skipped": 0,
+      "tests": 14
+    },
+    "mock_transport_with_actual_provider_lifecycle": true,
+    "network_denied": true,
+    "new_lifecycle_cases_in_accepted_subset": 19,
+    "no_live_credentials_or_models": true,
+    "runner": {
+      "bytes": 1309,
+      "path": "/tmp/intra-scanner-safe-test.py",
+      "sha256": "249fd7bc6ec368f5e823573a06c9690ef2692b5f99d5fd7054238611c94aaa63"
+    },
+    "selection": [
+      "tests/test_streaming_provider_lifecycle.py",
+      "tests/test_pipeline_freshness_recovery.py",
+      "tests/unit/test_streaming_data_provider.py",
+      "tests/test_entry_freshness.py"
+    ]
+  },
+  "unchanged_guards": [
+    "_on_bar timestamp/admission/duplicate correction body unchanged by AST comparison.",
+    "_on_quote, _bar_receipt_age, get_bars and stale_symbols bodies unchanged by AST comparison.",
+    "Actual120-second stale threshold, final-entry freshness gate, feed, frozen strategy thresholds, sizing and protective/EOD decisions unchanged."
+  ]
+}

@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """
 Simple Python Performance Test Script
-Equivalent to K6 smoke test for Phase G validation
+Equivalent to K6 smoke test for Phase G validation.
+
+Supply api_token/--api-token explicitly, or set INTRA_API_TOKEN. Explicit
+credentials take priority; missing credentials stop before any HTTP activity.
 """
 
+import argparse
 import asyncio
+import os
 import aiohttp
 import statistics
 import time
@@ -12,14 +17,21 @@ from datetime import datetime
 from typing import Dict, List, Tuple
 
 BASE_URL = "http://localhost:8000"
-API_TOKEN = "6Av--QEcw6s7O0U7i4nxbNqwSUtL3PfNzC07BIOIzFI"  # From seeding
 
 class PerformanceTest:
-    def __init__(self, base_url: str = BASE_URL):
+    def __init__(self, base_url: str = BASE_URL, api_token: str | None = None):
+        token = api_token if api_token is not None else os.getenv("INTRA_API_TOKEN")
+        if not isinstance(token, str) or not token or any(c.isspace() for c in token):
+            raise ValueError("Provide --api-token/api_token or a nonempty INTRA_API_TOKEN without whitespace")
+        self.api_token = token
         self.base_url = base_url
         self.results: Dict[str, List[float]] = {}
         self.errors: List[str] = []
         
+    def _safe_error(self, value: object) -> str:
+        """Do not retain a reflected credential in error details or reports."""
+        return str(value).replace(self.api_token, "[REDACTED]")
+
     async def make_request(self, session: aiohttp.ClientSession, method: str, path: str, 
                           headers: Dict = None, json_data: Dict = None) -> Tuple[float, int, str]:
         """Make HTTP request and return (latency_ms, status_code, response_text)"""
@@ -30,9 +42,9 @@ class PerformanceTest:
                 response_text = await response.text()
                 latency_ms = (time.time() - start_time) * 1000
                 return latency_ms, response.status, response_text
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - Benchmark failures must use the redacted error path.
             latency_ms = (time.time() - start_time) * 1000
-            return latency_ms, 0, str(e)
+            return latency_ms, 0, self._safe_error(e)
     
     async def test_endpoint(self, session: aiohttp.ClientSession, name: str, method: str, 
                            path: str, headers: Dict = None, expected_status: int = 200) -> Dict:
@@ -45,7 +57,7 @@ class PerformanceTest:
         
         success = status == expected_status
         if not success:
-            error_msg = f"{name}: Expected {expected_status}, got {status} - {response[:100]}"
+            error_msg = f"{name}: Expected {expected_status}, got {status} - {self._safe_error(response)[:100]}"
             self.errors.append(error_msg)
         
         return {
@@ -62,7 +74,7 @@ class PerformanceTest:
         print(f"📡 Target: {self.base_url}")
         print("=" * 60)
         
-        headers_with_auth = {"Authorization": f"Bearer {API_TOKEN}"}
+        headers_with_auth = {"Authorization": f"Bearer {self.api_token}"}
         
         async with aiohttp.ClientSession() as session:
             
@@ -188,7 +200,7 @@ class PerformanceTest:
                 print(f"   ... and {len(self.errors) - 10} more errors")
         
         # Summary recommendations
-        print(f"\n💡 RECOMMENDATIONS:")
+        print("\n💡 RECOMMENDATIONS:")
         print("-" * 80)
         
         # Check specific performance targets
@@ -223,7 +235,13 @@ class PerformanceTest:
 
 async def main():
     """Run the performance test"""
-    test = PerformanceTest()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--api-token", help="API token; takes priority over INTRA_API_TOKEN")
+    args = parser.parse_args()
+    try:
+        test = PerformanceTest(api_token=args.api_token)
+    except ValueError as exc:
+        parser.error(str(exc))
     await test.run_smoke_test(num_requests=10)
 
 if __name__ == "__main__":

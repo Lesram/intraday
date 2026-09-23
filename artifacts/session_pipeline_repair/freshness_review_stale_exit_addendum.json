@@ -1,0 +1,29 @@
+{
+  "task_id": "independent-freshness-stale-exit-addendum",
+  "status": "ACCEPTED_ADDITIONAL_TEST_REVIEW",
+  "reviewed_at_utc": "2026-09-23T05:51:01.220546+00:00",
+  "prior_review_sha256": "771f5c00fccc17774ad27087d8d4e6588ba9eb8cd6d686605fe6023dd762891e",
+  "test_file_sha256": "8fda9f0db2f20779f863c226ac23f5a7c59a7a568ee2f98b40aa6db511546fd7",
+  "test_file_matches_prior_report_hash": true,
+  "production_source_hashes": {
+    "backend/organism/streaming_data_provider.py": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b",
+    "backend/organism/live_engine.py": "f2f301862f3a8476374ea01170ee5aa1d1e79cb6c9ac4f746430c503fc6f603c"
+  },
+  "production_unchanged_from_accepted_review": true,
+  "new_test": "test_stale_stream_blocks_new_entries_but_real_eod_exit_still_flattens",
+  "author_junit": {
+    "path": "/tmp/intra-pipeline-stale-exit.xml",
+    "sha256": "af5c527f12e79a8e17e2c552ba515824175d2d6b3120419892c6f7a1ee10c9e6",
+    "passed": 1,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "review": "Real replay first establishes a filled position before the real streaming provider is made stale. Every later tick must remain stale and entry-blocked; actual buys must predate block; actual EOD close, flat final broker positions, and no pending accounting are required. No exit/gate/sizing/reconciliation stub was added.",
+  "independent_tests_run": false,
+  "runtime_calls": false,
+  "limitations": [
+    "This additional test had already been written by the time the prior report hashed its source, but its explicit review and separate one-test passing evidence are recorded here. It is separate from the previously cited 103-case run.",
+    "Synthetic replay establishes mechanism, not a live EOD outcome or profitability."
+  ]
+}

@@ -29,6 +29,7 @@ from typing import Callable
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from backend.organism.freeze_contract import validate_active_freeze
 from scripts.ops.standdown_session_row import (
     ET, SESSION_LOG_SCHEMA, calendar_session, session_diagnostics, session_log_paths, timestamp,
 )
@@ -293,6 +294,9 @@ def analyze(inputs: dict[str, bytes], collection: dict, *, gate_fn: Callable = n
                          "Paper fills do not establish live-market execution or profitability.",
                          "Runtime snapshot is capture-time evidence, not per-decision freshness proof."]}
     try:
+        # Even a checksum-consistent candidate pack is not active authority.
+        freeze = (validate_active_freeze(json.loads(inputs["local/freeze.json"]))
+                  if "local/freeze.json" in inputs else None)
         for request in collection["requests"]:
             allowed = PAPER_PATHS if request.get("origin") == "paper" else LOCAL_PATHS if request.get("origin") == "local" else set()
             if request.get("method") != "GET" or request.get("path") not in allowed or digest(inputs[request["input"]]) != request["sha256"]:
@@ -309,6 +313,8 @@ def analyze(inputs: dict[str, bytes], collection: dict, *, gate_fn: Callable = n
             if not issues:
                 report["status"] = "NO_SESSION"
             return report
+        if freeze is None:
+            raise EvidenceError("active_freeze_required")
         expected_reads = {
             "broker/account.json": ("paper", "/v2/account", {}),
             "broker/clock.json": ("paper", "/v2/clock", {}),
@@ -327,7 +333,6 @@ def analyze(inputs: dict[str, bytes], collection: dict, *, gate_fn: Callable = n
             issues.append("before_authoritative_close")
         if now.astimezone(ET).date().isoformat() != collection["session_date"]:
             issues.append("current_broker_state_cannot_attest_past_session")
-        freeze = json.loads(inputs["local/freeze.json"])
         activation = json.loads(inputs["local/activation.json"])
         cutoff = freeze["FROZEN_AT"]
         if digest(inputs["local/freeze.json"]) != activation["active_freeze_sha256"] or cutoff != activation["activation_timestamp_utc"]:
@@ -778,13 +783,17 @@ def collect(root: Path, freeze: Path, activation: Path, release: Path, baseline:
     paths = []
     recorder = Recorder(transport, inputs)
     try:
+        # Refuse invalid/candidate input before network or history collection.
+        inputs["local/freeze.json"] = stable_read(freeze)
+        paths = [freeze]
+        validate_active_freeze(json.loads(inputs["local/freeze.json"]))
         calendar = recorder.get("broker/calendar.json", "paper", "/v2/calendar", {"start": day, "end": day})
         session = calendar_session(day, calendar, now)
         if session["state"] == "NO_SESSION":
             return inputs, collection, paths
         paths = capture_local(root, freeze, activation, release, baseline, inputs, day=day)
+        cutoff = validate_active_freeze(json.loads(inputs["local/freeze.json"]))["FROZEN_AT"]
         inputs["runtime/container.json"] = transport.container_identity()
-        cutoff = json.loads(inputs["local/freeze.json"])["FROZEN_AT"]
         for name, origin, endpoint in (
             ("broker/account.json", "paper", "/v2/account"),
             ("broker/clock.json", "paper", "/v2/clock"),

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="3" time="0.096" timestamp="2026-09-22T22:31:10.680837-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_market_scanner_provider_contract" name="test_real_provider_shapes_reach_one_snapshot_batch_and_return_candidates" time="0.001"><failure message="AssertionError: assert [] == ['AAPL', 'META', 'AMD']&#10;  &#10;  Right contains 3 more items, first extra item: 'AAPL'&#10;  Use -v to get more diff">tests/test_market_scanner_provider_contract.py:56: in test_real_provider_shapes_reach_one_snapshot_batch_and_return_candidates
+    assert await scanner.scan() == ["AAPL", "META", "AMD"]
+E   AssertionError: assert [] == ['AAPL', 'META', 'AMD']
+E     
+E     Right contains 3 more items, first extra item: 'AAPL'
+E     Use -v to get more diff</failure></testcase><testcase classname="tests.test_market_scanner_provider_contract" name="test_failed_discovery_clears_old_candidates_and_details" time="0.001"><failure message="AssertionError: assert ['PREVIOUS'] == []&#10;  &#10;  Left contains one more item: 'PREVIOUS'&#10;  Use -v to get more diff">tests/test_market_scanner_provider_contract.py:70: in test_failed_discovery_clears_old_candidates_and_details
+    assert await scanner.scan() == []
+E   AssertionError: assert ['PREVIOUS'] == []
+E     
+E     Left contains one more item: 'PREVIOUS'
+E     Use -v to get more diff</failure></testcase><testcase classname="tests.test_market_scanner_provider_contract" name="test_partial_snapshot_response_keeps_only_complete_qualified_candidates" time="0.001"><failure message="AssertionError: assert [] == ['VALID']&#10;  &#10;  Right contains one more item: 'VALID'&#10;  Use -v to get more diff">tests/test_market_scanner_provider_contract.py:85: in test_partial_snapshot_response_keeps_only_complete_qualified_candidates
+    assert await scanner.scan() == ["VALID"]
+E   AssertionError: assert [] == ['VALID']
+E     
+E     Right contains one more item: 'VALID'
+E     Use -v to get more diff</failure></testcase></testsuite></testsuites>

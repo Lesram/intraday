@@ -9,6 +9,7 @@ Now uses unified database manager and repository pattern for all database access
 """
 
 import asyncio
+import json
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 import os
@@ -19,6 +20,7 @@ from typing import Any
 # §2.1 FIX: Use canonical config instead of separate UnifiedSettings
 from backend.config.settings import get_settings
 from backend.infra.observability import trace_span
+from backend.integrations.alpaca_broker import BROKER_ACK_STATE_PREFIX
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
@@ -353,7 +355,8 @@ class OutboxWorker:
                         "retry_count": event.attempts,
                         "status": event.status,
                         "created_at": event.created_at,
-                        "next_attempt_at": event.next_attempt_at
+                        "next_attempt_at": event.next_attempt_at,
+                        "last_error": getattr(event, "last_error", None),
                     }
                     event_dicts.append(event_dict)
 
@@ -379,8 +382,34 @@ class OutboxWorker:
         """
         event_id = event.get("id")
         topic = event.get("topic")
-        payload = event.get("payload", {})
+        payload = dict(event.get("payload", {}))
         retry_count = event.get("retry_count", 0)
+        prior_error = event.get("last_error")
+        lookup_only = isinstance(prior_error, str) and prior_error.startswith("INTRA_BROKER_ACK")
+        nested = payload.get("payload")
+        client_key = (nested if isinstance(nested, dict) else payload).get("client_key")
+
+        if lookup_only:
+            try:
+                state = json.loads(prior_error.removeprefix(BROKER_ACK_STATE_PREFIX))
+                valid_state = (
+                    isinstance(state, dict) and state.get("version") == 1
+                    and isinstance(client_key, str) and bool(client_key.strip())
+                    and state.get("client_order_id") == client_key
+                )
+            except (TypeError, ValueError):
+                valid_state = False
+            if not valid_state:
+                # Never turn corrupt/unsupported durable state into a fresh
+                # order. Stop delivery while retaining its original identity.
+                await self._move_to_dlq(event, {
+                    "success": False, "submission_ambiguous": True,
+                    "status": "reconciliation_required", "error": prior_error,
+                })
+                return
+            payload["_broker_ack_lookup_only"] = True
+            if isinstance(nested, dict):
+                payload["payload"] = {**nested, "_broker_ack_lookup_only": True}
 
         logger.info("Processing outbox event",
                    event_id=event_id,
@@ -402,6 +431,27 @@ class OutboxWorker:
                            event_id=event_id,
                            topic=topic)
             else:
+                if lookup_only or result.get("submission_ambiguous"):
+                    # Preserve the marker even when an unexpected downstream
+                    # lookup failure returns an ordinary error dictionary.
+                    marker = prior_error if lookup_only else BROKER_ACK_STATE_PREFIX + json.dumps({
+                        "version": 1, "client_order_id": client_key,
+                    }, separators=(",", ":"))
+                    identity_invalid = (
+                        not isinstance(client_key, str) or not client_key.strip()
+                        or (not lookup_only and result.get("client_order_id") != client_key)
+                    )
+                    # Latch uncertainty before any persistence await. If the
+                    # first retry commit fails, the outer failure path must
+                    # persist this same marker, never an ordinary retry error.
+                    lookup_only, prior_error = True, marker
+                    result = {**result, "submission_ambiguous": True,
+                              "status": "reconciliation_required", "error": marker}
+                    if identity_invalid:
+                        await self._move_to_dlq(event, result)
+                    else:
+                        await self._handle_event_failure(event, result)
+                    return
                 # Check if this is a validation error that should not be retried
                 error_msg = result.get("error", "")
                 is_validation_error = (
@@ -428,6 +478,13 @@ class OutboxWorker:
                         topic=topic,
                         error=str(e),
                         error_type=type(e).__name__)
+
+            if lookup_only:
+                await self._handle_event_failure(event, {
+                    "success": False, "submission_ambiguous": True,
+                    "status": "reconciliation_required", "error": prior_error,
+                })
+                return
 
             # Check if this is a validation exception
             error_type = type(e).__name__
@@ -508,7 +565,11 @@ class OutboxWorker:
             )
 
             with trace_span("order.broker_dispatch", {"order_id": order_id or "", "mode": mode, "symbol": symbol or ""}):
-                if mode == "shadow":
+                if payload.get("_broker_ack_lookup_only"):
+                    # A mode flip cannot turn an unresolved real submission
+                    # into a successful mock/shadow acknowledgement.
+                    result = await self._submit_real_broker_order(payload)
+                elif mode == "shadow":
                     # Shadow mode: record intent but do not submit to broker.
                     result = {
                         "success": True,
@@ -610,7 +671,6 @@ class OutboxWorker:
         broker_order_id = f"MOCK_{symbol}_{int(time.time())}"
 
         # Simulate occasional failures for testing (only when explicitly enabled)
-        import os
         mock_failure_rate = float(os.getenv("MOCK_BROKER_FAILURE_RATE", "0"))
         if mock_failure_rate > 0 and random.random() < mock_failure_rate:
             return {
@@ -933,13 +993,17 @@ class OutboxWorker:
 
                     await session.commit()
 
-                    # §4.4 FIX: Notify connected clients via WebSocket about broker rejection
+                    # Uncertain acknowledgement is not broker rejection. The
+                    # outbox delivery stops, while the order stays unresolved
+                    # and normal client-key fill reconciliation remains valid.
                     try:
                         from backend.websocket import broadcaster
                         if broadcaster:
                             payload = event.get("payload", {})
                             await broadcaster.broadcast_to_topic("orders", {
-                                "type": "order.rejected",
+                                "type": ("order.reconciliation_required"
+                                         if error_result.get("submission_ambiguous")
+                                         else "order.rejected"),
                                 "order_id": payload.get("order_id", event_id),
                                 "symbol": payload.get("symbol"),
                                 "reason": error_message[:500],

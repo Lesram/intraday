@@ -193,3 +193,47 @@ def test_audit_index_classifies_phase4_shadow_tools_as_tooling_evidence():
     ])
 
     assert scope == "tooling/evidence_only"
+
+
+@pytest.mark.parametrize("changed,counts", [
+    (["backend/organism/example.py", "backend/config/settings.py", "scripts/ci/check.py",
+      ".github/workflows/check.yml", "tests/test_example.py", "docs/example.md",
+      "artifacts/proof.json", "evidence/session.json", "reports/session.md",
+      ".env.example", "docker-compose.test.yml", "frontend/page.tsx", "README.md"],
+     {"Backend": 2, "Scripts": 1, "CI": 1, "Tests": 1, "Docs": 1,
+      "Artifacts/evidence": 2, "Reports": 1, "Configuration": 2, "Other": 2}),
+    ([f"artifacts/proof_{index:02d}.json" for index in range(15)],
+     {"Artifacts/evidence": 15}),
+    ([], {}),
+])
+def test_audit_index_inventory_covers_complete_change_set(tmp_path, monkeypatch, changed, counts):
+    """Rendered inventory cannot omit evidence, overflow previews, or unknown paths."""
+    audit_index = _load_audit_index()
+    monkeypatch.setattr(audit_index, "ROOT", tmp_path)
+    monkeypatch.setattr(audit_index, "sh", lambda _args: "")
+    monkeypatch.setattr(audit_index, "get_change_set", lambda **_kwargs: SimpleNamespace(
+        paths=changed, scope="base", ref="fixture-base...HEAD"))
+    audit_index.main()
+    report = (tmp_path / "docs/engineering/LIVE_AUDIT_INDEX.md").read_text()
+    assert f"Total distinct changed files: **{len(changed)}**" in report
+    assert "Change scope: `base` (`fixture-base...HEAD`)" in report
+    table = report.split("|----------|-------|-----------------|\n", 1)[1].split("\n\n", 1)[0]
+    actual = {}
+    for row in table.splitlines():
+        fields = [field.strip() for field in row.split("|")]
+        actual[fields[1]] = int(fields[2])
+    assert {category: count for category, count in actual.items() if count} == counts
+    assert sum(actual.values()) == len(changed)
+    expected_organism = sum(p.startswith("backend/organism/") for p in changed)
+    assert f"Organism subset of Backend: **{expected_organism}**" in report
+    full_list = report.split("### Full changed-file list\n\n", 1)[1].split("\n\n", 1)[0]
+    if changed:
+        rendered = [line.removeprefix("- `").removesuffix("`") for line in full_list.splitlines()]
+        assert rendered == changed
+    else:
+        assert full_list == "No changed files."
+
+
+@pytest.mark.parametrize("path", ["reports/session.json", "evidence/verification.json", "artifacts/proof.json"])
+def test_audit_index_classifies_report_and_evidence_only_changes(path):
+    assert _load_audit_index().classify_pr_scope([path]) == "tooling/evidence_only"

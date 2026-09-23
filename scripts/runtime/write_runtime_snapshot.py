@@ -31,6 +31,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.alpha_scanner import AlphaScanner
         from backend.organism.close_accounting import ACCOUNTING_POLICY
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
+        from scripts.phase2_freeze import compute_data_pipeline_sources
         from backend.organism.research_policy import policy_status
         from backend.organism.governance import (
             DEFAULT_DRAWDOWN_COOLDOWN_S,
@@ -71,6 +72,9 @@ def _build_defaults_snapshot() -> dict:
         return {
             "source": "code_defaults",
             "close_accounting_policy": ACCOUNTING_POLICY,
+            # Checked-out source identity only. A running process must be
+            # bound to this candidate before these hashes describe deployment.
+            "candidate_data_pipeline_sources": compute_data_pipeline_sources(),
             "entry_freshness": {
                 "required_timeframe": ENTRY_TIMEFRAME,
                 "max_bar_age_seconds": MAX_ENTRY_BAR_AGE_SECONDS,
@@ -387,6 +391,7 @@ def _build_resolved_config_snapshot() -> dict:
         # This describes the checked-out candidate. Only live status below
         # establishes which accounting policy the installed process runs.
         "close_accounting_policy": defaults.get("close_accounting_policy"),
+        "candidate_data_pipeline_sources": defaults.get("candidate_data_pipeline_sources"),
         "entry_freshness": defaults.get("entry_freshness"),
         "drawdown_kill_pct": _resolve_float(
             "ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct", "drawdown_kill_pct",

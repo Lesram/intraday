@@ -1,0 +1,26 @@
+{
+  "label": "followup_config_broker",
+  "exit_code": 0,
+  "seconds": 9.04,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/artifacts/session_pipeline_repair/followup_config_broker.xml",
+    "tests/test_settings_comprehensive.py",
+    "tests/test_config_coordinator_comprehensive.py",
+    "tests/test_system_integration.py",
+    "tests/test_order_integrity_comprehensive.py",
+    "tests/test_position_reconciliation.py",
+    "tests/test_position_reconciliation_comprehensive.py",
+    "tests/test_broker_ack_reconciliation.py",
+    "tests/test_adversarial_inputs_v7.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

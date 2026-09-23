@@ -1,0 +1,1027 @@
+{
+  "base": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "head": "3f20cea30b66165fc8ba70a0773372330d7bb490",
+  "new_findings": [
+    {
+      "code": "F401",
+      "message": "`subprocess` imported but unused",
+      "path": "artifacts/session_pipeline_repair/candidate_freeze_builder.py",
+      "source_context_sha256": "aac5227aa47e30288d49b97f0fcfe1305cdfc5862f43d3d2708e496185323207"
+    },
+    {
+      "code": "F401",
+      "message": "`os` imported but unused",
+      "path": "artifacts/session_pipeline_repair/intra-scanner-safe-test.py",
+      "source_context_sha256": "d75a791cf6052978ee35b24aa31eb80be1ae41abeac44b460dd51a86a1e86763"
+    }
+  ],
+  "normalization": "path + diagnostic code + message + SHA256 of stripped diagnostic source span; counters preserve duplicate multiplicity, line numbers ignored",
+  "removed_findings": [
+    {
+      "code": "F823",
+      "message": "Local variable `os` referenced before assignment",
+      "path": "backend/infra/outbox_worker.py",
+      "source_context_sha256": "0f035306ca7b4b2b085e989e81f7fc29c53b25ac78c2df254221e28cfd079506"
+    },
+    {
+      "code": "BLE001",
+      "message": "Do not catch blind exception: `Exception`",
+      "path": "backend/integrations/alpaca_broker.py",
+      "source_context_sha256": "f6e48797edf576123a7d7b0b6b39edadacbcb4f5823054796840fefbe7ba0fb2"
+    },
+    {
+      "code": "F401",
+      "message": "`dataclasses.field` imported but unused",
+      "path": "backend/organism/market_scanner.py",
+      "source_context_sha256": "e98b1ef8c905ca7881ab778fdd7ac7001d0bb818527b22a1bc7321b3198135da"
+    },
+    {
+      "code": "F841",
+      "message": "Local variable `m_volume` is assigned to but never used",
+      "path": "backend/organism/market_scanner.py",
+      "source_context_sha256": "33d69e34e7140f1a8d0875984798ca31480cff186fdbb377c0516c1665321c9f"
+    },
+    {
+      "code": "BLE001",
+      "message": "Do not catch blind exception: `Exception`",
+      "path": "backend/organism/market_scanner.py",
+      "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+    },
+    {
+      "code": "F401",
+      "message": "`asyncio` imported but unused",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "9a98a75d0ce489197408f8db2156fc97c6b7fac760d083247f127a69c68c4172"
+    },
+    {
+      "code": "BLE001",
+      "message": "Do not catch blind exception: `Exception`",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+    },
+    {
+      "code": "BLE001",
+      "message": "Do not catch blind exception: `Exception`",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+    },
+    {
+      "code": "G004",
+      "message": "Logging statement uses f-string",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "c3a7e5f6dd68c27e52615691bb7979af31cb4ba300345fe3e206140e6237dbd2"
+    },
+    {
+      "code": "G004",
+      "message": "Logging statement uses f-string",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "02925d28a7084ff55c1541904a3bf6d32d13db373ebd0ce2b1700496bfaaa12e"
+    },
+    {
+      "code": "G004",
+      "message": "Logging statement uses f-string",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "edda0a2118ae50dc6bf8057ae5190359ea2fe9b73bfa3c609f856ee335144993"
+    },
+    {
+      "code": "G004",
+      "message": "Logging statement uses f-string",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "9d4c9901edefafd17e827ede7f20b96554c225d4d3b4c0ccf50b63bc158743b0"
+    },
+    {
+      "code": "G004",
+      "message": "Logging statement uses f-string",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "c22a6505450d10487594e078942c3ca76d6693c6c8f721ec74f8f813bdadb608"
+    },
+    {
+      "code": "G004",
+      "message": "Logging statement uses f-string",
+      "path": "scripts/ci/validate_checklist.py",
+      "source_context_sha256": "fb35345fd490370921dec4541495af0c047fb0e4c6926b7a55fcb5d07432d013"
+    },
+    {
+      "code": "BLE001",
+      "message": "Do not catch blind exception: `Exception`",
+      "path": "scripts/testing/performance_test.py",
+      "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+    },
+    {
+      "code": "F541",
+      "message": "f-string without any placeholders",
+      "path": "scripts/testing/performance_test.py",
+      "source_context_sha256": "caebaf12b82ed51edee7c78049af65edc58ddc63bc0a5136869dde8a3a999f0c"
+    },
+    {
+      "code": "F401",
+      "message": "`asyncio` imported but unused",
+      "path": "tests/test_market_scanner.py",
+      "source_context_sha256": "9a98a75d0ce489197408f8db2156fc97c6b7fac760d083247f127a69c68c4172"
+    },
+    {
+      "code": "F401",
+      "message": "`time` imported but unused",
+      "path": "tests/test_market_scanner.py",
+      "source_context_sha256": "4f9b8491ba4deee622e6c29ca383c71279fa604b7aff389b0bf5ba279f4453c3"
+    },
+    {
+      "code": "F401",
+      "message": "`unittest.mock.patch` imported but unused",
+      "path": "tests/test_market_scanner.py",
+      "source_context_sha256": "517ea6a7f6f4dfec5c3dce1a16813f4d6aec1ad0e636021eac20f6b03a93b2d6"
+    }
+  ],
+  "runs": {
+    "base": {
+      "file_exit_codes": {
+        "backend/infra/outbox_worker.py": 1,
+        "backend/integrations/alpaca_broker.py": 1,
+        "backend/integrations/alpaca_outbox.py": 1,
+        "backend/organism/live_engine.py": 0,
+        "backend/organism/market_scanner.py": 1,
+        "backend/organism/streaming_data_provider.py": 1,
+        "scripts/ci/generate_audit_index.py": 0,
+        "scripts/ci/validate_checklist.py": 1,
+        "scripts/ops/paper_daily_evidence.py": 0,
+        "scripts/ops/paper_daily_host.py": 0,
+        "scripts/phase2_freeze.py": 0,
+        "scripts/phase2_gate.py": 0,
+        "scripts/phase3_attribution_report.py": 0,
+        "scripts/research/paper_fill_reconciliation.py": 0,
+        "scripts/runtime/write_runtime_snapshot.py": 0,
+        "scripts/testing/performance_test.py": 1,
+        "tests/test_adversarial_inputs_v7.py": 1,
+        "tests/test_artifact_change_scope.py": 0,
+        "tests/test_entry_freshness.py": 0,
+        "tests/test_market_scanner.py": 1,
+        "tests/test_phase2_freeze.py": 0,
+        "tests/test_v12_baseline_invariants.py": 0,
+        "tests/test_v13_w100_live_tick_coverage.py": 0,
+        "tests/unit/test_alpaca_outbox_comprehensive.py": 1,
+        "tests/unit/test_streaming_data_provider.py": 1
+      },
+      "findings": [
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "2055a8be9c5729d7408692e5374dc019ad4edc13713f01a9b8bff7f999dd2a29"
+        },
+        {
+          "code": "S110",
+          "message": "`try`-`except`-`pass` detected, consider logging the exception",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "a716e9271f92b611f1139e75615281c42eaaf3bbe7e2871ec754b64eb9087b2c"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e9dc52bf3963abece45b9567d74508b27fc0844ba1a939f0900885876f6115bf"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "bbec50fad80e94140becf7b2ac7d2144494ff6a92eae2744adb7f40eee05d95d"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "F823",
+          "message": "Local variable `os` referenced before assignment",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "0f035306ca7b4b2b085e989e81f7fc29c53b25ac78c2df254221e28cfd079506"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "b43c83e8b8d7a6e94a5747dceabd2d8681f8b743097522569e4a448e2570b4b0"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "d5e6c1b156a0913c8efea073a5d68a4b412331b52f55b11ab72974262b5bc3a4"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "ef17b8072e5a8dd5b044dd95a82dc3aad7367a9fa14947d2e5b01303ff882832"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "dab46ede7aa38de6cf841b50b35bfd2cba0d9155dd6e287e6fc50a77bb616da7"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "b3b821080882885a67cb88c913996f0ab5a248172583a74b34d780c5d665434a"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "ad94c1d64aaefe809634db3c29760c9b444cfe73a4565c10a7b79e18fce919ef"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "90cbdbb034d8cc543571e95898a09931d5541eb0d231c27ed7a332c41befa79c"
+        },
+        {
+          "code": "F401",
+          "message": "`backend.infra.resilience.CircuitBreakerOpenException` imported but unused",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "893b5e858f4cf36d37bff9c583ec05dd3a04aeb51a376d27c180febc4465464a"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e9dc52bf3963abece45b9567d74508b27fc0844ba1a939f0900885876f6115bf"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "f6e48797edf576123a7d7b0b6b39edadacbcb4f5823054796840fefbe7ba0fb2"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "2c3b6fe817d4e82e1117703a828b31f19af5f6fcdf44712418dad4a1ba28e044"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "4be46dddf23973be1e53b85bd853272a69b612e0a47c5a1e2744987d0fecfa68"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "22c0ae3923da3b6f7b4aebfdb7cde9e9933c7fab603386f7a941343d099762df"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "4be46dddf23973be1e53b85bd853272a69b612e0a47c5a1e2744987d0fecfa68"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "04f0b1376e4c3d0e64a6059a55f29969e0cb3c0c345e5668e8969bc3ed1f5709"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "125ef0cbfbcd9518ab9421824ed341fbdde852b0eb1292883ab0042a5967fc19"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_outbox.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_outbox.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_outbox.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "F401",
+          "message": "`dataclasses.field` imported but unused",
+          "path": "backend/organism/market_scanner.py",
+          "source_context_sha256": "e98b1ef8c905ca7881ab778fdd7ac7001d0bb818527b22a1bc7321b3198135da"
+        },
+        {
+          "code": "F841",
+          "message": "Local variable `m_volume` is assigned to but never used",
+          "path": "backend/organism/market_scanner.py",
+          "source_context_sha256": "33d69e34e7140f1a8d0875984798ca31480cff186fdbb377c0516c1665321c9f"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/market_scanner.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/streaming_data_provider.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/streaming_data_provider.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "9a98a75d0ce489197408f8db2156fc97c6b7fac760d083247f127a69c68c4172"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "c3a7e5f6dd68c27e52615691bb7979af31cb4ba300345fe3e206140e6237dbd2"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "02925d28a7084ff55c1541904a3bf6d32d13db373ebd0ce2b1700496bfaaa12e"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "edda0a2118ae50dc6bf8057ae5190359ea2fe9b73bfa3c609f856ee335144993"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "9d4c9901edefafd17e827ede7f20b96554c225d4d3b4c0ccf50b63bc158743b0"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "c22a6505450d10487594e078942c3ca76d6693c6c8f721ec74f8f813bdadb608"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "scripts/ci/validate_checklist.py",
+          "source_context_sha256": "fb35345fd490370921dec4541495af0c047fb0e4c6926b7a55fcb5d07432d013"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "scripts/testing/performance_test.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "F541",
+          "message": "f-string without any placeholders",
+          "path": "scripts/testing/performance_test.py",
+          "source_context_sha256": "caebaf12b82ed51edee7c78049af65edc58ddc63bc0a5136869dde8a3a999f0c"
+        },
+        {
+          "code": "F401",
+          "message": "`os` imported but unused",
+          "path": "tests/test_adversarial_inputs_v7.py",
+          "source_context_sha256": "de2abade832c8e350a1bdc98cfcdb1e202ac4749c5fc51a4a970d41736b6df5c"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "tests/test_market_scanner.py",
+          "source_context_sha256": "9a98a75d0ce489197408f8db2156fc97c6b7fac760d083247f127a69c68c4172"
+        },
+        {
+          "code": "F401",
+          "message": "`time` imported but unused",
+          "path": "tests/test_market_scanner.py",
+          "source_context_sha256": "4f9b8491ba4deee622e6c29ca383c71279fa604b7aff389b0bf5ba279f4453c3"
+        },
+        {
+          "code": "F401",
+          "message": "`unittest.mock.patch` imported but unused",
+          "path": "tests/test_market_scanner.py",
+          "source_context_sha256": "517ea6a7f6f4dfec5c3dce1a16813f4d6aec1ad0e636021eac20f6b03a93b2d6"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+          "source_context_sha256": "9a98a75d0ce489197408f8db2156fc97c6b7fac760d083247f127a69c68c4172"
+        },
+        {
+          "code": "F401",
+          "message": "`datetime.time` imported but unused",
+          "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+          "source_context_sha256": "116c0ff184b880b1302fbe762105cdb9d2a1447f135c1631a33ea2165bdac990"
+        },
+        {
+          "code": "F841",
+          "message": "Local variable `result` is assigned to but never used",
+          "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+          "source_context_sha256": "58d5c360ed6b57e1316146f355cbf2df5224273bbeb55f139e02a8eb4deac570"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context_sha256": "9a98a75d0ce489197408f8db2156fc97c6b7fac760d083247f127a69c68c4172"
+        },
+        {
+          "code": "F401",
+          "message": "`time` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context_sha256": "4f9b8491ba4deee622e6c29ca383c71279fa604b7aff389b0bf5ba279f4453c3"
+        },
+        {
+          "code": "F401",
+          "message": "`collections.deque` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context_sha256": "0fef2c5d6de57e41fd885c0f996f4df8edf2513987c5cb56eee1a87364b7db40"
+        }
+      ],
+      "findings_count": 76
+    },
+    "head": {
+      "file_exit_codes": {
+        "artifacts/session_pipeline_repair/candidate_freeze_builder.py": 1,
+        "artifacts/session_pipeline_repair/expanded_freeze_verifier.py": 0,
+        "artifacts/session_pipeline_repair/expanded_isolated_test_runner.py": 0,
+        "artifacts/session_pipeline_repair/expanded_static_reproducer.py": 0,
+        "artifacts/session_pipeline_repair/intra-scanner-safe-test.py": 1,
+        "artifacts/session_pipeline_repair/isolated_test_runner.py": 0,
+        "backend/infra/outbox_worker.py": 1,
+        "backend/integrations/alpaca_broker.py": 1,
+        "backend/integrations/alpaca_outbox.py": 1,
+        "backend/organism/freeze_contract.py": 0,
+        "backend/organism/live_engine.py": 0,
+        "backend/organism/market_scanner.py": 0,
+        "backend/organism/streaming_data_provider.py": 1,
+        "scripts/ci/generate_audit_index.py": 0,
+        "scripts/ci/validate_checklist.py": 0,
+        "scripts/ops/paper_daily_evidence.py": 0,
+        "scripts/ops/paper_daily_host.py": 0,
+        "scripts/phase2_freeze.py": 0,
+        "scripts/phase2_gate.py": 0,
+        "scripts/phase3_attribution_report.py": 0,
+        "scripts/research/paper_fill_reconciliation.py": 0,
+        "scripts/runtime/write_runtime_snapshot.py": 0,
+        "scripts/testing/performance_test.py": 0,
+        "tests/test_active_freeze_contract.py": 0,
+        "tests/test_adversarial_inputs_v7.py": 1,
+        "tests/test_artifact_change_scope.py": 0,
+        "tests/test_broker_ack_reconciliation.py": 0,
+        "tests/test_developer_tool_credentials.py": 0,
+        "tests/test_entry_freshness.py": 0,
+        "tests/test_market_scanner.py": 0,
+        "tests/test_market_scanner_provider_contract.py": 0,
+        "tests/test_phase2_freeze.py": 0,
+        "tests/test_pipeline_freshness_recovery.py": 0,
+        "tests/test_pipeline_snapshot.py": 0,
+        "tests/test_scanner_pipeline_integration.py": 0,
+        "tests/test_streaming_provider_lifecycle.py": 0,
+        "tests/test_v12_baseline_invariants.py": 0,
+        "tests/test_v13_w100_live_tick_coverage.py": 0,
+        "tests/unit/test_alpaca_outbox_comprehensive.py": 1,
+        "tests/unit/test_streaming_data_provider.py": 1
+      },
+      "findings": [
+        {
+          "code": "F401",
+          "message": "`subprocess` imported but unused",
+          "path": "artifacts/session_pipeline_repair/candidate_freeze_builder.py",
+          "source_context_sha256": "aac5227aa47e30288d49b97f0fcfe1305cdfc5862f43d3d2708e496185323207"
+        },
+        {
+          "code": "F401",
+          "message": "`os` imported but unused",
+          "path": "artifacts/session_pipeline_repair/intra-scanner-safe-test.py",
+          "source_context_sha256": "d75a791cf6052978ee35b24aa31eb80be1ae41abeac44b460dd51a86a1e86763"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "2055a8be9c5729d7408692e5374dc019ad4edc13713f01a9b8bff7f999dd2a29"
+        },
+        {
+          "code": "S110",
+          "message": "`try`-`except`-`pass` detected, consider logging the exception",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "a716e9271f92b611f1139e75615281c42eaaf3bbe7e2871ec754b64eb9087b2c"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e9dc52bf3963abece45b9567d74508b27fc0844ba1a939f0900885876f6115bf"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "bbec50fad80e94140becf7b2ac7d2144494ff6a92eae2744adb7f40eee05d95d"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "b43c83e8b8d7a6e94a5747dceabd2d8681f8b743097522569e4a448e2570b4b0"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "d5e6c1b156a0913c8efea073a5d68a4b412331b52f55b11ab72974262b5bc3a4"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "ef17b8072e5a8dd5b044dd95a82dc3aad7367a9fa14947d2e5b01303ff882832"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "dab46ede7aa38de6cf841b50b35bfd2cba0d9155dd6e287e6fc50a77bb616da7"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "b3b821080882885a67cb88c913996f0ab5a248172583a74b34d780c5d665434a"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/infra/outbox_worker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "ad94c1d64aaefe809634db3c29760c9b444cfe73a4565c10a7b79e18fce919ef"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "90cbdbb034d8cc543571e95898a09931d5541eb0d231c27ed7a332c41befa79c"
+        },
+        {
+          "code": "F401",
+          "message": "`backend.infra.resilience.CircuitBreakerOpenException` imported but unused",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "893b5e858f4cf36d37bff9c583ec05dd3a04aeb51a376d27c180febc4465464a"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e9dc52bf3963abece45b9567d74508b27fc0844ba1a939f0900885876f6115bf"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "2c3b6fe817d4e82e1117703a828b31f19af5f6fcdf44712418dad4a1ba28e044"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "4be46dddf23973be1e53b85bd853272a69b612e0a47c5a1e2744987d0fecfa68"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "22c0ae3923da3b6f7b4aebfdb7cde9e9933c7fab603386f7a941343d099762df"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "4be46dddf23973be1e53b85bd853272a69b612e0a47c5a1e2744987d0fecfa68"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "d59cdf923e98fcb8b6e9d8b89aa51f8e64859925cbf0d3711a6f348960d7f713"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "c6e2c915acea1ee2e7dcae1364be427a8fad90b2701653e149a872fec1ba5ef5"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "04f0b1376e4c3d0e64a6059a55f29969e0cb3c0c345e5668e8969bc3ed1f5709"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "G004",
+          "message": "Logging statement uses f-string",
+          "path": "backend/integrations/alpaca_broker.py",
+          "source_context_sha256": "125ef0cbfbcd9518ab9421824ed341fbdde852b0eb1292883ab0042a5967fc19"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_outbox.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_outbox.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/integrations/alpaca_outbox.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/streaming_data_provider.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`",
+          "path": "backend/organism/streaming_data_provider.py",
+          "source_context_sha256": "e05a05669ca87bdfa220b20b557e1f5525a70ef2e11fc059ed7a37430a59a0ae"
+        },
+        {
+          "code": "F401",
+          "message": "`os` imported but unused",
+          "path": "tests/test_adversarial_inputs_v7.py",
+          "source_context_sha256": "de2abade832c8e350a1bdc98cfcdb1e202ac4749c5fc51a4a970d41736b6df5c"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+          "source_context_sha256": "9a98a75d0ce489197408f8db2156fc97c6b7fac760d083247f127a69c68c4172"
+        },
+        {
+          "code": "F401",
+          "message": "`datetime.time` imported but unused",
+          "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+          "source_context_sha256": "116c0ff184b880b1302fbe762105cdb9d2a1447f135c1631a33ea2165bdac990"
+        },
+        {
+          "code": "F841",
+          "message": "Local variable `result` is assigned to but never used",
+          "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+          "source_context_sha256": "58d5c360ed6b57e1316146f355cbf2df5224273bbeb55f139e02a8eb4deac570"
+        },
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context_sha256": "9a98a75d0ce489197408f8db2156fc97c6b7fac760d083247f127a69c68c4172"
+        },
+        {
+          "code": "F401",
+          "message": "`time` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context_sha256": "4f9b8491ba4deee622e6c29ca383c71279fa604b7aff389b0bf5ba279f4453c3"
+        },
+        {
+          "code": "F401",
+          "message": "`collections.deque` imported but unused",
+          "path": "tests/unit/test_streaming_data_provider.py",
+          "source_context_sha256": "0fef2c5d6de57e41fd885c0f996f4df8edf2513987c5cb56eee1a87364b7db40"
+        }
+      ],
+      "findings_count": 59
+    }
+  },
+  "version": "ruff 0.15.12"
+}

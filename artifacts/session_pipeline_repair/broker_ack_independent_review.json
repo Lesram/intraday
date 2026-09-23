@@ -1,0 +1,163 @@
+{
+  "accepted_contracts": [
+    "The existing last_error TEXT field carries the full versioned marker without truncation; actual SQLite claim/commit/fresh-worker tests preserve the original client key and payload, including nested legacy envelopes.",
+    "Recognized corrupt/unsupported markers and missing/mismatched identities hold delivery without broker requests. Exhaustion emits order.reconciliation_required and does not call local order-status mutation.",
+    "Valid direct acknowledgements keep their existing path; validated recovery returns the actual broker identifier and status. Logging now distinguishes lookup-only from submission.",
+    "The root-approved redundant local os import removal restores the intended simulation branch; direct market/limit regression requires real mock results and the production guard refuses before simulated delay.",
+    "The three changed legacy fixtures provide persisted client_key only; their original quantity/order/default assertions remain.",
+    "FF10/FF11 obsolete source-text xfails are replaced by executable response recovery and actual null-quantity websocket update-path assertions.",
+    "The workflow explicitly selects both acknowledgement and adversarial suites. Release prose and acceptance matrix correctly qualify post-marker-commit restart assurance and the remaining delivery boundary."
+  ],
+  "author_implementation": {
+    "bytes": 7528,
+    "path": "artifacts/session_pipeline_repair/broker_ack_implementation.json",
+    "sha256": "d152d03bdb11449391b1111235870fdd2c10d7bc73e754f68ccc84509937e2d1"
+  },
+  "author_test_evidence": {
+    "junit": {
+      "bytes": 33100,
+      "path": "artifacts/session_pipeline_repair/broker_ack_accepted_candidate.xml",
+      "sha256": "3286f39de6139eef062f7265b3417442c1eb75299864b1fdbad99ced365c3217"
+    },
+    "lint_delta": {
+      "bytes": 25613,
+      "path": "artifacts/session_pipeline_repair/broker_ack_lint_delta.json",
+      "sha256": "0f4cf1e0d2ccc04a329c64279c0f9175541c5f959b00d5ebea4b1d56e57c1d58"
+    },
+    "log": {
+      "bytes": 4298,
+      "path": "artifacts/session_pipeline_repair/broker_ack_accepted_candidate.log",
+      "sha256": "4f3b02c179452547138258e9a3c5c256051558550cf1d65db31f575eb1651e3d"
+    },
+    "new_normalized_lint_findings": 0,
+    "result": {
+      "cases": 230,
+      "errors": 0,
+      "failures": 0,
+      "passed": 230,
+      "skipped": 0
+    },
+    "runner_receipt": {
+      "bytes": 925,
+      "path": "artifacts/session_pipeline_repair/broker_ack_accepted_candidate.json",
+      "sha256": "a8d34170812590bd91e7d4537a9a9bbb610fb1dd59514af46ff1071bbd8f6110"
+    }
+  },
+  "blocking_findings": [],
+  "head_before_uncommitted_delta": "bfc7c50ca384492ab0d3e38452d8e211bd9c796d",
+  "independent_test": {
+    "clean_environment": true,
+    "database": "Temporary SQLite only; request transport and status mutation spies mocked.",
+    "deselected": 29,
+    "junit": {
+      "bytes": 4237,
+      "path": "artifacts/session_pipeline_repair/broker_ack_independent_proof.xml",
+      "sha256": "a9dca64b8e6847e33c6087e89348a379a1de8d0609e9038967c33e83984909a4"
+    },
+    "log": {
+      "bytes": 503,
+      "path": "artifacts/session_pipeline_repair/broker_ack_independent_proof.log",
+      "sha256": "0b5c5b32b51d760fa868baa8afd6ca11cd3d9946735df2c22d3967d7bffa8e91"
+    },
+    "network_denied": true,
+    "result": {
+      "cases": 23,
+      "errors": 0,
+      "failures": 0,
+      "passed": 23,
+      "skipped": 0
+    },
+    "runner": {
+      "bytes": 1309,
+      "path": "/tmp/intra-scanner-safe-test.py",
+      "sha256": "249fd7bc6ec368f5e823573a06c9690ef2692b5f99d5fd7054238611c94aaa63"
+    },
+    "selection": "restart_preserves or lookup_only_overrides or first_marker_commit_failure or exhaustion_reports or corrupt_unsupported or duplicate_recovery or invalid_existing or json_recursion or simulated_broker",
+    "warning": "One isolated-test warning for an ephemeral nonproduction SECRET_KEY; no installed credentials were supplied."
+  },
+  "installed_runtime_mutations": 0,
+  "limitations": [
+    "The 23 independently rerun cases are a subset of the authored230, not additional unique coverage; counts must not be added.",
+    "Durable lookup-only restart assurance begins after a successful marker commit. Crash/process cancellation or repeated database failure before that commit is not made atomic with broker submission.",
+    "Existing unmarked preflight uses broker-ID lookup plus a bounded list fallback; this patch does not certify exact-client recovery for all unmarked historic/process-crash cases. Original client-key idempotency remains the safeguard, and existing transport-level POST retries are unchanged.",
+    "No retrospective classification/backfill of old generic502 events; no guarantee against arbitrary marker destruction. Held events still need explicit reconciliation if neither validated lookup nor existing websocket recovery resolves them.",
+    "Temporary SQLite and mocked broker transport do not certify PostgreSQL concurrency, real broker behavior, natural trading results or profitability.",
+    "This acceptance binds the reviewed candidate files only. Root still owns final source commit, full required safety/replay pack, snapshot/freeze checks, secret/static scans, hosted CI and any separately approved deployment."
+  ],
+  "operational_calls": 0,
+  "resolved_findings": [
+    {
+      "finding": "Lookup-only could be replaced by simulated acknowledgement after a mock/execution-mode flip.",
+      "resolution": "Both worker and dispatcher prioritize lookup-only over shadow, dry_run and mock routes; actual worker/dispatcher tests require GET-only and the confirmed broker ID."
+    },
+    {
+      "finding": "First marker-persistence failure could enter generic retry handling and erase ambiguity.",
+      "resolution": "The original marker and lookup-only state are latched before persistence awaits; an injected first SQLite commit failure followed by successful persistence retains the exact marker and a fresh worker performs GET only."
+    },
+    {
+      "finding": "Existing-order and duplicate-response paths bypassed new acknowledgement validation.",
+      "resolution": "Both paths now require identity/shape validation or original-client lookup; malformed/mismatched results remain unresolved."
+    },
+    {
+      "finding": "Unexpected lookup errors and successful-response JSON recursion could become ordinary submission errors.",
+      "resolution": "Lookup failures retain BrokerAcknowledgementUnresolved; actual deeply nested HTTP200/201 decoding routes through original-key GET."
+    }
+  ],
+  "reviewed_at_utc": "2026-09-23T07:02:36.822953+00:00",
+  "reviewed_files": [
+    {
+      "bytes": 39785,
+      "path": "backend/integrations/alpaca_broker.py",
+      "sha256": "6cc57a1ae2369cb3d6b9219293edc27078c54b951f4478a6f31ce09c6c3b19ee"
+    },
+    {
+      "bytes": 11555,
+      "path": "backend/integrations/alpaca_outbox.py",
+      "sha256": "7ba67961260f144d684bf73162d2f58ba68d3552119b838140b694bbef507cb7"
+    },
+    {
+      "bytes": 44046,
+      "path": "backend/infra/outbox_worker.py",
+      "sha256": "0c072ed0894f4256870e930be089a17e16f6bc0cc33a5bbabeb3686c8aaed34a"
+    },
+    {
+      "bytes": 14701,
+      "path": "tests/test_broker_ack_reconciliation.py",
+      "sha256": "1490b59065679d56b982f520b7a7373e8443ab69ba2ff9affa29cf2c0451aa9e"
+    },
+    {
+      "bytes": 16350,
+      "path": "tests/test_adversarial_inputs_v7.py",
+      "sha256": "37061da5d6aaada108c0809237b76d0c5d3ccf087fa35cef9f435b202cd499bd"
+    },
+    {
+      "bytes": 33870,
+      "path": "tests/unit/test_alpaca_outbox_comprehensive.py",
+      "sha256": "2582fecadb83fc3db97a3dd746803f08befc42fbcd4c21352d53d1caeb950c72"
+    },
+    {
+      "bytes": 11141,
+      "path": "docs/engineering/SESSION_PIPELINE_REPAIR.md",
+      "sha256": "a875b61ba1f06a760cc3a424b4ed4d5fa3973a18cf68360110ea2ca1b97b009c"
+    },
+    {
+      "bytes": 9770,
+      "path": ".github/workflows/paper-readiness.yml",
+      "sha256": "11e0f241cf3be83da165b6e6d42b4ebef5557d65230f6957fc9ad9a7dbec39bb"
+    },
+    {
+      "bytes": 27864,
+      "path": "backend/infra/outbox.py",
+      "sha256": "9c83b31166d272e1a91f7b87278c32904482b8025b900d0f6ad1a323efb6ab8e"
+    },
+    {
+      "bytes": 53150,
+      "path": "backend/infra/schemas.py",
+      "sha256": "f3b927d8491a3f43e738cbfb8073a5b5942225136a521a8c597b9fb12617a052"
+    }
+  ],
+  "scope": "Independent read-only review of three broker/outbox production files, acknowledgement behavioral tests, two replaced adversarial probes, three stable-client-key fixture corrections, and root release/workflow claims. No reviewer application/test edits or operational calls.",
+  "source_mutations_by_reviewer": 0,
+  "status": "ACCEPTED_BOUNDED_SOURCE_AND_OFFLINE_BEHAVIOR",
+  "task_id": "ff10_ambiguous_broker_ack_independent_review"
+}

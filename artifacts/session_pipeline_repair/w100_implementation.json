@@ -1,0 +1,194 @@
+{
+  "task_id": "w100-session-pipeline-repair",
+  "status": "IMPLEMENTED_TARGETED_PASS_PENDING_FULL_RELEASE_VALIDATION",
+  "summary": "Repair valid1Min W100 replay fixtures, approved LOC guard, nonvacuous protective/EOD closes and real scanner-to-entry integration",
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "branch": "codex/sept22-pipeline-repair",
+  "owned_files": [
+    {
+      "path": "tests/test_v13_w100_live_tick_coverage.py",
+      "sha256": "cd9844039fcc632dcc5361a6f6ac5e19973488740c09104b98710fc59c1aa5de"
+    },
+    {
+      "path": "tests/test_scanner_pipeline_integration.py",
+      "sha256": "b506f0da6b1717cfcf0d676be4ae47473e0618a8eabbf392d6b8be311d519cd8"
+    }
+  ],
+  "runtime_behavior_changed": false,
+  "scope_note": "Only testfiles edited by this agent; scanner and freshness production changes belong to root/sibling agents. No commits or deployment.",
+  "current_validation": {
+    "passed": 25,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "by_module": {
+      "tests.test_v13_w100_live_tick_coverage": 13,
+      "tests.test_scanner_pipeline_integration": 4,
+      "tests.test_replay_close_accounting": 8
+    },
+    "suite_seconds": 13.178,
+    "junit": {
+      "path": "artifacts/session_pipeline_repair/w100_final.xml",
+      "sha256": "09ae4475b88b7ca17b9214d7f4df706bf5a18418d0427a02a2aac9aa953da7be"
+    },
+    "log": {
+      "path": "artifacts/session_pipeline_repair/w100_final.log",
+      "sha256": "634e03cebce48650393e047bcfbc47d3feed6015d3fa1179fc90baa465247ff5"
+    },
+    "ruff_findings": 0,
+    "diff_check": "pass"
+  },
+  "behavior_evidence": {
+    "test_w100_entries_gate_produces_orders_on_uptrend": {
+      "actual_entry_orders": "5",
+      "actual_accounted_closes": "5",
+      "first_entry_at": "2026-09-22T14:05:00+00:00"
+    },
+    "test_w100_position_management_loop_produces_exits_on_downturn": {
+      "protective_closes_after_shock": "1",
+      "actual_orders": "9",
+      "actual_accounted_closes": "4",
+      "exit_reasons": "['horizon_timeout', 'pyramid_cut_full_at_-1.3R', 'pyramid_cut_full_at_-2.1R', 'pyramid_cut_full_at_-7.9R']"
+    },
+    "test_w100_eod_flattens_real_entered_position": {
+      "actual_eod_closes": "1"
+    },
+    "test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]": {
+      "discovery": "most_actives",
+      "next_scan": "empty",
+      "actual_entry_orders": "1",
+      "valid_admission_receipts": "1"
+    },
+    "test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover]": {
+      "discovery": "mover",
+      "next_scan": "empty",
+      "actual_entry_orders": "1",
+      "valid_admission_receipts": "1"
+    },
+    "test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives]": {
+      "discovery": "most_actives",
+      "next_scan": "exception",
+      "actual_entry_orders": "1",
+      "valid_admission_receipts": "1"
+    },
+    "test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover]": {
+      "discovery": "mover",
+      "next_scan": "exception",
+      "actual_entry_orders": "1",
+      "valid_admission_receipts": "1"
+    }
+  },
+  "case_duration_seconds": {
+    "test_w100_live_tick_inner_loc_pinned": 0.019,
+    "test_w100_cached_feature_prefixes_match_real_visible_history": 0.735,
+    "test_w100_entries_gate_produces_orders_on_uptrend": 2.267,
+    "test_w100_entries_gate_signals_generated_on_uptrend": 1.234,
+    "test_w100_position_management_loop_produces_exits_on_downturn": 1.973,
+    "test_w100_eod_flattens_real_entered_position": 1.15,
+    "test_w100_position_management_no_orders_no_exits": 0.711,
+    "test_w100_equity_gates_max_daily_loss_branch_present": 0.002,
+    "test_w100_equity_gates_drawdown_kill_invocation": 0.003,
+    "test_w100_pyramid_path_present_in_source": 0.002,
+    "test_w100_existing_pyramid_tests_still_pass": 0.001,
+    "test_w100_tick_result_schema_includes_required_keys": 0.549,
+    "test_w100_tick_result_duration_bounded": 0.552,
+    "test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]": 0.729,
+    "test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover]": 0.758,
+    "test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives]": 0.73,
+    "test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover]": 0.739,
+    "test_actual_partial_receipts_reach_ledger_learner_and_restart_once": 0.01,
+    "test_pyramid_and_clipped_exit_use_actual_executions_not_requested_qty": 0.005,
+    "test_same_timestamp_multiple_lifetimes_keep_execution_order": 0.006,
+    "test_next_open_model_uses_actual_costed_fill_receipts": 0.005,
+    "test_future_or_conflicting_receipts_never_become_exact": 0.004,
+    "test_replay_run_wires_actual_receipts_to_real_engine_consumers": 0.01,
+    "test_broker_namespaces_prevent_identity_reuse_across_replays": 0.0,
+    "test_rejected_simulation_entry_is_verified_empty_before_later_close": 0.006
+  },
+  "loc_guard": {
+    "historical_w100_ceiling": 2805,
+    "approved_freshness_delta": 18,
+    "reviewed_candidate_pool_clear_delta": 1,
+    "new_ceiling": 2824,
+    "unallocated_tolerance": 0
+  },
+  "test_design": {
+    "actual_paths": [
+      "ReplayEngine and HistoricalBarProvider clock",
+      "real ML feature calculations cached by exact visible prefix",
+      "real scanners/shared gates/final freshness admission",
+      "fixed ATR learning sizing and ML isolation",
+      "real protective cut and EOD exits",
+      "SimulatedBroker fill receipts",
+      "actual close accounting/learner and repeated-reconcile idempotence"
+    ],
+    "collaborator_adaptations": [
+      "Precompute real causal features once for bounded280-row fixture; prefix output mustmatch raw visible input, direct computation at201/230/260 and adversarial future-tail modification",
+      "Observe real engine initialize without replacing behavior",
+      "Scanner integration replaces only external_request responses with provider schema; attaches offline realScanner after ReplayEngine disables externaldiscovery",
+      "Unexpected scanner exception injected only onsecond scan; normalempty path uses actualscanner logic"
+    ],
+    "prohibited_shortcuts_absent": [
+      "No gates, sizing, exit decisions or real reconciliation are stubbed",
+      "No global policy unlock or modeltraining promotion",
+      "No blanket zero-order success",
+      "No raised timeout: replay limits reduced from180 to60seconds and actual10tick monotonic time bounded30s"
+    ]
+  },
+  "prior_evidence": {
+    "hosted_report": {
+      "path": "artifacts/session_pipeline_repair/w100_prior_hosted.json",
+      "sha256": "1a5b021230340b6f3af6e1b57678a55e813b721acbb9541675f516f6bde068e5"
+    },
+    "prior_downturn_timeout_seconds": 180,
+    "prior_core_release_failures": [
+      "missingvalidtimestamp/1Min fixture nowrejectsentry",
+      "staleW100LOC ceiling2805 vsapproved2823"
+    ],
+    "development_attempts": [
+      {
+        "path": "artifacts/session_pipeline_repair/w100_initial.xml",
+        "result": "3passed: firstentry/protective/equivalence cases"
+      },
+      {
+        "path": "artifacts/session_pipeline_repair/w100_second.xml",
+        "result": "11passed2failed: EOD collidedwithhorizon, zero-throttle expected signals before actualearlythrottle; fixture assertionscorrected toactualobservablecontracts"
+      },
+      {
+        "path": "artifacts/session_pipeline_repair/scanner_integration_initial.xml",
+        "result": "4failed: SPY-only fixture correctlytripped3-feature requirement; correctedbaseuniversewithoutweakeninggate"
+      },
+      {
+        "path": "artifacts/session_pipeline_repair/w100_combined_initial.xml",
+        "result": "68passed6failed; failuresall oldunconstrainedMagicMock streamingfixture in sibling-ownedtest_entry_freshness, explicitpendingrepair; notcounted asfinalgreen"
+      }
+    ]
+  },
+  "isolation": {
+    "runner": "/tmp/intra-w100-safe-run.py",
+    "runner_sha256": "c8a2ec0ef8b72d608bec0998b48055be88cd08d2424b634937436d9f83fec7e9",
+    "python": "/Users/marselkei/VS/intra/venv/bin/python",
+    "cwd": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra",
+    "network": "sandbox-exec deny network*",
+    "environment": "allowlisted clean testingenvironment; no installed .env/credentials",
+    "brain": "pytest tmp_path for everyreplay; separate scratchdefaults",
+    "runtime_or_broker_calls": false
+  },
+  "commands": [
+    "python /tmp/intra-w100-safe-run.py -m pytest -q tests/test_v13_w100_live_tick_coverage.py tests/test_scanner_pipeline_integration.py tests/test_replay_close_accounting.py -o junit_family=xunit1 --junitxml=artifacts/session_pipeline_repair/w100_final.xml",
+    "python -m ruff check tests/test_v13_w100_live_tick_coverage.py tests/test_scanner_pipeline_integration.py --output-format=json",
+    "git diff --check -- tests/test_v13_w100_live_tick_coverage.py tests/test_scanner_pipeline_integration.py"
+  ],
+  "limitations": [
+    "Mechanism tests use explicit5bps same-bar simulatedfills, not promotion/expectancy or realistic market-performance evidence.",
+    "Causal cache equivalence applies to this boundedfixture, not arbitrary productionfeaturecache optimization.",
+    "Learning partialtakeprofit remainsdisabled; actualpartial/pyramidcashflowcovered separatelyby8 unchangedreplay-accounting cases.",
+    "Root owns candidatefreeze/snapshot/docs, complete nightly/core/replay/fullartifactpack and PR/CI; no all-repositorygreen claim.",
+    "Siblingentryfreshnessfixture repair and its rerun are tracked separately from scoped25pass."
+  ],
+  "follow_ups": [
+    "Independent reviewer sourceacceptance",
+    "Root finalsource and freeze verification",
+    "Complete isolatednightly and requiredrelease CI"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "task_id": "independent_audit_index_inventory_review",
+  "status": "ACCEPTED_SOURCE_PENDING_COMBINED_RELEASE_GATES",
+  "reviewed_at_utc": "2026-09-23T07:45:46.054924+00:00",
+  "scope": "Bounded read-only review of audit-index delta and its recorded targeted evidence; no independent test execution or runtime inspection.",
+  "source_sha256": {
+    "scripts/ci/generate_audit_index.py": "90c636dabb60572e498c42d5aa767cf1d4bf4fe388e9897b0385eb2ab04ae272",
+    "tests/test_artifact_change_scope.py": "723c58c4e477659ad775db75d6cf5a26874389c2cb6156357b9a529fee044b28"
+  },
+  "implementation_report": {
+    "path": "artifacts/session_pipeline_repair/audit_index_repair_implementation.json",
+    "sha256": "9291c0e2ab648ec806b6e53ef1ba1f13d8fc643a30b32d238e99be0c5e0fd00d"
+  },
+  "junit": {
+    "path": "artifacts/session_pipeline_repair/audit_index_complete_inventory.xml",
+    "sha256": "bcdded29b75394d0943fa339af09674a98cf25294bd80b93b829abf40531cb90",
+    "unique_cases": 33,
+    "passed": 33,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "findings": [],
+  "verified": [
+    "Categories form an exclusive partition of deduplicated nonempty paths; Other retains frontend/root/unrecognized paths.",
+    "The organism count is explicitly a Backend subset and cannot inflate the total.",
+    "Ten-path previews are labeled; full list is untruncated and preserves resolved change order.",
+    "Evidence/report-only classification is explicit; existing change-range resolution remains unchanged.",
+    "Rendered tests cover all categories, more-than-ten artifact paths, and empty changes.",
+    "Snapshot section retains expected-configuration scope and explicitly disclaims observed engine state."
+  ],
+  "limitations": [
+    "The final generated index must be regenerated from the final source/artifact head; this accepts generator behavior, not future inventory freshness.",
+    "Targeted evidence overlaps some scanner acceptance selections; counts must not be summed without testcase identity deduplication.",
+    "No trading code, constants, feed, ML/Kelly policy, active cutoff, or runtime state is altered by this generator delta."
+  ]
+}

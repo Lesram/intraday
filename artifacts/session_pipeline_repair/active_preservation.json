@@ -1,0 +1,90 @@
+{
+  "task_id": "active-runtime-preservation-session-pipeline-repair",
+  "observed_at_utc": "2026-09-23T05:49:41.533817+00:00",
+  "status": "VERIFIED",
+  "installed_root": "/Users/marselkei/VS/intra",
+  "candidate_worktree": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra",
+  "container": {
+    "id": "a2a84c7420b73a6bd059fd77791eb7b2888b49c47f76db2bd0240d347cf47ff2",
+    "image": "sha256:d3c8f81e1604d8007931e9c4f6a5eb59e0f362ea481a63f82bb0ef22cc7bbf9f",
+    "source_sha": "2bd27836381e38e0ae683eadfc193576a185440c",
+    "image_sha": "2bd27836381e38e0ae683eadfc193576a185440c",
+    "source_label": "2bd27836381e38e0ae683eadfc193576a185440c",
+    "started_at": "2026-09-22T08:50:09.565692215Z",
+    "restart_count": 0,
+    "running": true,
+    "health": "healthy"
+  },
+  "previous_observation": {
+    "path": "/Users/marselkei/VS/intra/reports/session_review_2026-09-22/current-health.json",
+    "sha256": "1d845e6d7c8d578e7b1e700e5ca97c21d27011e27015010a2b736bfb9cd05bf5",
+    "observed_at_utc": "2026-09-23T05:05:50.507837+00:00",
+    "comparison": {
+      "id": true,
+      "image": true,
+      "started_at": true,
+      "restart_count": true,
+      "running": true,
+      "health": true,
+      "source_sha": true
+    }
+  },
+  "installed_freeze": {
+    "path": "/Users/marselkei/VS/intra/artifacts/phase2/param_freeze.json",
+    "expected_sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "before_sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "after_sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "cutoff": "2026-09-22T08:49:11.247316+00:00",
+    "bytes_and_stat_unchanged": true
+  },
+  "verification": {
+    "returncode": 0,
+    "result_lines": [
+      "DRIFT-VERIFY OK: decision surface matches freeze (FROZEN_AT=2026-09-22T08:49:11.247316+00:00)"
+    ],
+    "installed_script_sha256": "782597e8ae29083ad73a5a240a1ebb106cabf18d60af32347ba236f38433bd1e",
+    "frozen_environment_keys": [
+      "ALPACA_DATA_FEED",
+      "ORGANISM_APPROVED_POLICY_BASELINE",
+      "ORGANISM_EXIT_ATR_MULT",
+      "ORGANISM_EXIT_DECAY_START",
+      "ORGANISM_EXIT_DECAY_START_MULT",
+      "ORGANISM_EXIT_MAX_BARS",
+      "ORGANISM_EXIT_MAX_BARS_MULT",
+      "ORGANISM_EXIT_PARTIAL_TP_PCT",
+      "ORGANISM_EXIT_PARTIAL_TP_R",
+      "ORGANISM_EXIT_PROFIT_LOCK_R",
+      "ORGANISM_EXIT_PROFIT_R",
+      "ORGANISM_EXIT_STOP_ATR_MULT",
+      "ORGANISM_EXIT_TRAIL_ATR_MULT",
+      "ORGANISM_EXIT_TRAIL_DIST_ATR",
+      "ORGANISM_EXIT_TRAIL_START_ATR",
+      "ORGANISM_FRAMEWORK_ROUTING",
+      "ORGANISM_FRAMEWORK_ROUTING_V2",
+      "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
+      "ORGANISM_OPERATOR_CONTROL_STATE",
+      "ORGANISM_ROUTING_RANK_POLICY"
+    ],
+    "set_frozen_environment_keys": [
+      "ALPACA_DATA_FEED",
+      "ORGANISM_APPROVED_POLICY_BASELINE",
+      "ORGANISM_FRAMEWORK_ROUTING_V2",
+      "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
+      "ORGANISM_OPERATOR_CONTROL_STATE",
+      "ORGANISM_ROUTING_RANK_POLICY"
+    ],
+    "environment_source": "Inspected running container; exact allowlisted frozen keys only. Synthetic non-frozen dependency bootstrap settings are not runtime configuration evidence.",
+    "private_evidence_directory": "/private/tmp/intra-active-preservation-o3ukawps",
+    "stdout_sha256": "fc9aa15ed7e51d3a4bfa04fef5b993233e13fe049e8ada8b1b1eb222de7f6c86",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sandbox_profile": "(version 1) (allow default) (deny network*) (deny file-write* (subpath \"/Users/marselkei/VS/intra\")) (deny file-read-data (literal \"/Users/marselkei/VS/intra/.env\"))",
+    "python_bytecode_disabled": true,
+    "installed_dotenv_read_denied": true,
+    "imports_initialized_in_private_scratch": true
+  },
+  "limitations": [
+    "Container metadata proves current image/identity/health and restart count only; prior API/broker fields were not refreshed.",
+    "No broker or API calls, Docker exec, service changes, model deserialization, source edits, freeze writes or deployment occurred.",
+    "Installed root writes were denied for the verification child; running platform may continue its normal independent state/log writes. Candidate freeze is intentionally separate and was not installed."
+  ]
+}

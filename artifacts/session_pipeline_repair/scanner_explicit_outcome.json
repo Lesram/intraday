@@ -1,0 +1,20 @@
+{
+  "label": "scanner_explicit_outcome",
+  "exit_code": 0,
+  "seconds": 1.3,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/artifacts/session_pipeline_repair/scanner_explicit_outcome.xml",
+    "tests/test_scanner_pipeline_integration.py::test_scanner_outcome_distinguishes_request_failures_from_empty_success",
+    "tests/test_market_scanner.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

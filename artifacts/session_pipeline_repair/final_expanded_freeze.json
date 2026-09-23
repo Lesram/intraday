@@ -1,0 +1,21 @@
+{
+  "source_sha": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "exit_code": 0,
+  "candidate_freeze_sha256": "d93ef5a9c24d4fdff65bac4cfeb072d5c2765fafdc80910070d37fe513aa873d",
+  "active_freeze_before": {
+    "sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "mtime_ns": 1790066951257963369
+  },
+  "active_freeze_after": {
+    "sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "mtime_ns": 1790066951257963369
+  },
+  "cutoff_changed": false,
+  "runtime_deployed": false,
+  "command": [
+    "python",
+    "scripts/phase2_freeze.py",
+    "--verify"
+  ],
+  "scope": "candidate verify under nonsecret deployment profile; installed freeze read only; no runtime or broker API call"
+}

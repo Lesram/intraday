@@ -1,0 +1,84 @@
+{
+  "evidence_scope": "Developer API tooling credential selection and current-report redaction; no backend/trading/runtime change",
+  "files": [
+    {
+      "bytes": 1034,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/evidence_secret_check.json",
+      "sha256": "87ff2201c787dc8a3e5ccfa9054ef9f2ec83535884bbe15a498c27de14516c75"
+    },
+    {
+      "bytes": 94,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/freeze.log",
+      "sha256": "bcc6ed3fc7022f419c85f226fc2e7448c9e8bc19783437785c747f7b27c72e0d"
+    },
+    {
+      "bytes": 6007,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/implementation.json",
+      "sha256": "3e8e6cd9055f3765801254c126032620bf03dfe57c82f23170140c9bc6e4ebd8"
+    },
+    {
+      "bytes": 5484,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/independent_review.json",
+      "sha256": "08da86dd6964ef3ca82249e5f53a4455d1c09fb45ae11349e78cd60cd266e9ea"
+    },
+    {
+      "bytes": 1810,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/plan.json",
+      "sha256": "4ba19f982274c256cf6e86ff9354f967832cf86ccf3a6ef28ebd781d6e831917"
+    },
+    {
+      "bytes": 5444,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/red.log",
+      "sha256": "5f6188a6be5d51ebbb799a23721212b2b0c1e0f5feeefb33baf55958e37619cc"
+    },
+    {
+      "bytes": 5779,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/red.xml",
+      "sha256": "a9c751fa0e566571eafeab9ece64fd25bc37ced9dfcf5ec442df1ea832de8239"
+    },
+    {
+      "bytes": 1370,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/report_redaction.json",
+      "sha256": "5d08b78b53d8250673b49ac0415b0a1c8ea80dada24df0266f4a9eb49c6566ea"
+    },
+    {
+      "bytes": 1711,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/root_plan.json",
+      "sha256": "fac7c8bf904434ae0f25d915eabee1183909fe0c6060e61616a890f753626ecf"
+    },
+    {
+      "bytes": 2,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/ruff.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "bytes": 99,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/targeted.log",
+      "sha256": "df9e28e05d90b973065157bbe55007b3fc1a0794a0d63cf989ec77d6b3adfd43"
+    },
+    {
+      "bytes": 4563,
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/targeted.xml",
+      "sha256": "d64fa2b785af5614e9db3b0f8de28999cd3dad6ea34111e630df6607f4f418c6"
+    }
+  ],
+  "generated_at_utc": "2026-09-23T06:50:03.886807+00:00",
+  "limitations": [
+    "Original credential values were compared in process only, never written into the evidence manifest.",
+    "This exact-value check is bounded to the removed tool token and three historical report values, including their originally truncated literal; it is not a repository-wide secret certification.",
+    "Historical validity/revocation remains unknown; Git history is unchanged."
+  ],
+  "original_value_check": {
+    "matching_file_count_after_check": 0,
+    "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/evidence_secret_check.json",
+    "sha256": "87ff2201c787dc8a3e5ccfa9054ef9f2ec83535884bbe15a498c27de14516c75"
+  },
+  "raw_original_exclusion": {
+    "allowed_in_PR_or_artifacts": false,
+    "private_originals_in_this_manifest": false,
+    "raw_original_count": 0
+  },
+  "status": "SANITIZED_READY_FOR_PR_EVIDENCE",
+  "task_id": "credential-hygiene-sanitized-evidence-manifest",
+  "test_result_note": "Original-code reproduction:9 failed,17 deselected. Final targeted suite:26 passed,0 failed/errors/skipped; Ruff clean, candidate freeze verification passed. Red evidence intentionally retains failures."
+}

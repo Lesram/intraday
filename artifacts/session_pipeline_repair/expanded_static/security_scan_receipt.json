@@ -1,0 +1,29 @@
+{
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "binary_checksum_verified": true,
+  "binary_sha256": "ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f",
+  "command": [
+    "/tmp/intra-gitleaks/gitleaks",
+    "git",
+    "--redact",
+    "--no-banner",
+    "--no-color",
+    "--log-opts=f8bc52de1687f664278e8a8c032cb3aca4b39876..bfc7c50ca384492ab0d3e38452d8e211bd9c796d",
+    "--report-format=json",
+    "--report-path=<private-temporary-redacted-report>"
+  ],
+  "exit_code": 0,
+  "findings_count": 0,
+  "head_sha": "bfc7c50ca384492ab0d3e38452d8e211bd9c796d",
+  "log": {
+    "path": "artifacts/session_pipeline_repair/expanded_static/security_gitleaks_redacted.log",
+    "sha256": "e367ee9214511ce8ac04e9ba49dc551b4dac6ac4e15bf498dda99318bd984c7c"
+  },
+  "output_policy": "finding metadata only; no Match/Secret fields retained",
+  "redaction_enabled": true,
+  "report": {
+    "path": "artifacts/session_pipeline_repair/expanded_static/security_gitleaks_redacted.json",
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  "version": "8.30.1"
+}

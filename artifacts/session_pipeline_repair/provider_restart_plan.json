@@ -1,0 +1,38 @@
+{
+  "task_id": "pr28_streaming_provider_session_restart",
+  "created_at_utc": "2026-09-23T07:29:36.782668+00:00",
+  "scope": "Reproduce and repair stale provider state and obsolete callbacks across explicit stop/start and interrupted lifecycle operations. Preserve freshness thresholds, same-session historical semantics and protected exit behavior.",
+  "source_before": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "owned_files": [
+    "backend/organism/streaming_data_provider.py",
+    "tests/test_streaming_provider_lifecycle.py"
+  ],
+  "design": [
+    "Clear session subscriptions, retired symbols, bars, quotes and all freshness timestamps at explicit stop/new session.",
+    "Bind transport callbacks to provider generation and stream identity; accept only current-session subscribed symbols.",
+    "Serialize lifecycle/transport changes and invalidate callbacks before awaiting shutdown; discard obsolete asynchronous prefill/subscription/start/reconnect continuations.",
+    "Retain stream reference when disconnect fails, so retries cannot replace an unclosed transport; normal reconnect retains stale evidence and requires new actual bars for recovery."
+  ],
+  "tests": [
+    "Real provider stop/start with changed symbols drops prior buffer/quote/freshness inventory.",
+    "Captured old bar/quote callbacks cannot write while stopped, after restart, or for reused symbols.",
+    "Failed connect/bar/quote subscription clears all session state, preserves failed disconnect reference and allows safe retry.",
+    "Stop during awaited connect/prefill/subscription/reconnect cannot resurrect old state or launch a replacement connection early.",
+    "Same-session recovery keeps actual stale timestamps; old generation callbacks cannot recover it and new advancing bar can.",
+    "Existing provider/freshness/scanner and real stale EOD regression suites remain green."
+  ],
+  "constraints": [
+    "No runtime/network/broker/model/state access or installed changes.",
+    "No threshold/feed/strategy/120-second guard changes; no active freeze/cutoff writes.",
+    "No commits; root owns candidate freeze update, full safety/replay pack, snapshots, docs/workflow and CI."
+  ],
+  "required_targeted_suites": [
+    "tests/test_streaming_provider_lifecycle.py",
+    "tests/test_pipeline_freshness_recovery.py",
+    "tests/unit/test_streaming_data_provider.py",
+    "tests/test_entry_freshness.py",
+    "tests/test_market_scanner.py",
+    "tests/test_market_scanner_provider_contract.py",
+    "tests/test_scanner_pipeline_integration.py"
+  ]
+}

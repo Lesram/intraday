@@ -1,0 +1,30 @@
+{
+  "changed_records": [
+    {
+      "line": 100,
+      "field": "evidence",
+      "redacted_literal_characters": 40,
+      "original_record_sha256": "14c64d52ceea097981942272c88814dda842b329d32b9ae1253bf89c796d34bc",
+      "redacted_record_sha256": "69b047792824dd013234afcd5c38b74b11a01fb740578fdb81b5593e5db7e7b5"
+    },
+    {
+      "line": 137,
+      "field": "evidence",
+      "redacted_literal_characters": 21,
+      "original_record_sha256": "910921195daa0d23f4446d655a434211880068124e3bb3d31d3dd7e2e23a5ad0",
+      "redacted_record_sha256": "1c5f6c04889b22421272e0473f61b11aa6887375c502a5e6a36729561eb4f5bb"
+    },
+    {
+      "line": 147,
+      "field": "evidence",
+      "redacted_literal_characters": 40,
+      "original_record_sha256": "3258ffb53eb49820d18351d023f046cfabec2e9efe62f9d9ca84be574513309a",
+      "redacted_record_sha256": "e52649b54f1bc18222e8b95af623de6cd1d105701cffa2de6aef5ca543dc61a4"
+    }
+  ],
+  "all_other_records_byte_identical": true,
+  "other_fields_in_changed_records_semantically_identical": true,
+  "before_sha256": "ab86687cc63d194ad7aa0e28ee4ea9c9f66d418db5d5560b17f2059a2f9e5530",
+  "after_sha256": "2e5dcfa5562276c776de61a05952c0b7d3ea2b926c894d9ffdba80433f217893",
+  "scope": "Current report only; Git history untouched. Literal values never printed or persisted separately. Historical validity/revocation remains unknown."
+}

@@ -1,9 +1,24 @@
 {
-  "FROZEN_AT": "2026-09-22T07:29:22.720890+00:00",
-  "_note_status": "Explicitly approved final-entry freshness candidate; actual forward reset remains pending held-flat deployment",
+  "FROZEN_AT": "2026-09-22T08:49:11.247316+00:00",
+  "_note_status": "Explicitly approved decision-surface change; new forward cutoff at held-flat release.",
+  "activation": {
+    "approval_reference": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-22/release-inputs/approval.json",
+    "id": "freshness-20260922-final",
+    "image_digest": "sha256:d3c8f81e1604d8007931e9c4f6a5eb59e0f362ea481a63f82bb0ef22cc7bbf9f",
+    "manifest": "/Users/marselkei/VS/intra/artifacts/paper_activation/2026-09-22-freshness/activation_manifest.json",
+    "source_sha": "2bd27836381e38e0ae683eadfc193576a185440c"
+  },
+  "approved_surface_paths": [
+    "research_policy_sources.entry_evidence",
+    "research_policy_sources.entry_frame_capture",
+    "research_policy_sources.entry_freshness",
+    "research_policy_sources.entry_submission",
+    "source_hashes.entry_gates_dispatch"
+  ],
   "authorization_plan": "artifacts/operations_evidence/baseline_repair_plan.json",
-  "candidate_only": true,
-  "git_sha": "9bda9ff72501b44f74604d279e52074d2e40b233",
+  "candidate_only": false,
+  "git_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "measurement_cutoff_changed": true,
   "n_target": 60,
   "n_target_range": [
     50,
@@ -12,8 +27,10 @@
   "note": "Forward-only by construction. The verdict corpus is trades taken STRICTLY AFTER FROZEN_AT. Any decision-surface drift (source_hashes/strategy_config/exit_env) RESETS the clock \u2014 re-run this script.",
   "original_six_source_groups_unchanged": true,
   "prior_active_cutoff": "2026-09-21T10:10:39.684894+00:00",
+  "prior_active_freeze_sha256": "b9bc852becdd159ec87577b510334a40833c8ebc3d99f002042b34c416fb8c19",
   "provenance": "no reconstructable fit-date; all pre-cutoff data contaminated by construction",
-  "purpose": "Candidate verification ONLY; never use this timestamp as the installed measurement cutoff",
+  "purpose": "Active paper research evaluation after approved final-entry freshness correction",
+  "status": "active",
   "surface": {
     "effective_policy_baseline": {
       "artifact_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",

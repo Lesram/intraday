@@ -1,0 +1,123 @@
+FFFFFFFFFFFFFF                                                           [100%]
+=================================== FAILURES ===================================
+__ test_stop_start_replaces_entire_session_and_keeps_new_unseen_symbols_stale __
+tests/test_streaming_provider_lifecycle.py:81: in test_stop_start_replaces_entire_session_and_keeps_new_unseen_symbols_stale
+    assert_empty(data)
+tests/test_streaming_provider_lifecycle.py:67: in assert_empty
+    assert not data._bars and not data._quotes and not data._last_bar_ts
+E   AssertionError: assert (not {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])})
+E    +  where {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])} = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10e9fba70>._bars
+___ test_old_callbacks_cannot_repopulate_stopped_or_restarted_session[False] ___
+tests/test_streaming_provider_lifecycle.py:101: in test_old_callbacks_cannot_repopulate_stopped_or_restarted_session
+    assert_empty(data)
+tests/test_streaming_provider_lifecycle.py:67: in assert_empty
+    assert not data._bars and not data._quotes and not data._last_bar_ts
+E   AssertionError: assert (not {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])})
+E    +  where {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])} = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10ea4b230>._bars
+___ test_old_callbacks_cannot_repopulate_stopped_or_restarted_session[True] ____
+tests/test_streaming_provider_lifecycle.py:101: in test_old_callbacks_cannot_repopulate_stopped_or_restarted_session
+    assert_empty(data)
+tests/test_streaming_provider_lifecycle.py:67: in assert_empty
+    assert not data._bars and not data._quotes and not data._last_bar_ts
+E   AssertionError: assert (not {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])})
+E    +  where {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])} = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10ea534a0>._bars
+_ test_failed_start_clears_session_and_late_callbacks_before_retry[False-connect] _
+tests/test_streaming_provider_lifecycle.py:139: in test_failed_start_clears_session_and_late_callbacks_before_retry
+    failed.disconnect.assert_awaited_once()
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py:2334: in assert_awaited_once
+    raise AssertionError(msg)
+E   AssertionError: Expected mock to have been awaited once. Awaited 0 times.
+------------------------------ Captured log call -------------------------------
+ERROR    backend.organism.streaming_data_provider:streaming_data_provider.py:114 {"event": "StreamingDataProvider failed to connect", "logger": "backend.organism.streaming_data_provider", "level": "error", "timestamp": "2026-09-23T07:31:18.145081Z"}
+_ test_failed_start_clears_session_and_late_callbacks_before_retry[False-subscribe_bars] _
+tests/test_streaming_provider_lifecycle.py:143: in test_failed_start_clears_session_and_late_callbacks_before_retry
+    assert_empty(data)
+tests/test_streaming_provider_lifecycle.py:67: in assert_empty
+    assert not data._bars and not data._quotes and not data._last_bar_ts
+E   AssertionError: assert (not {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])})
+E    +  where {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])} = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10ec0d700>._bars
+------------------------------ Captured log call -------------------------------
+ERROR    backend.organism.streaming_data_provider:streaming_data_provider.py:120 {"event": "StreamingDataProvider bar subscription failed", "logger": "backend.organism.streaming_data_provider", "level": "error", "timestamp": "2026-09-23T07:31:18.160241Z"}
+_ test_failed_start_clears_session_and_late_callbacks_before_retry[False-subscribe_quotes] _
+tests/test_streaming_provider_lifecycle.py:140: in test_failed_start_clears_session_and_late_callbacks_before_retry
+    assert_empty(data)
+tests/test_streaming_provider_lifecycle.py:67: in assert_empty
+    assert not data._bars and not data._quotes and not data._last_bar_ts
+E   AssertionError: assert (not {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])})
+E    +  where {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])} = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10ec08e30>._bars
+------------------------------ Captured log call -------------------------------
+ERROR    backend.organism.streaming_data_provider:streaming_data_provider.py:126 {"event": "StreamingDataProvider quote subscription failed", "logger": "backend.organism.streaming_data_provider", "level": "error", "timestamp": "2026-09-23T07:31:18.164290Z"}
+_ test_failed_start_clears_session_and_late_callbacks_before_retry[True-connect] _
+tests/test_streaming_provider_lifecycle.py:139: in test_failed_start_clears_session_and_late_callbacks_before_retry
+    failed.disconnect.assert_awaited_once()
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py:2334: in assert_awaited_once
+    raise AssertionError(msg)
+E   AssertionError: Expected mock to have been awaited once. Awaited 0 times.
+_ test_failed_start_clears_session_and_late_callbacks_before_retry[True-subscribe_bars] _
+tests/test_streaming_provider_lifecycle.py:139: in test_failed_start_clears_session_and_late_callbacks_before_retry
+    failed.disconnect.assert_awaited_once()
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py:2334: in assert_awaited_once
+    raise AssertionError(msg)
+E   AssertionError: Expected mock to have been awaited once. Awaited 0 times.
+_ test_failed_start_clears_session_and_late_callbacks_before_retry[True-subscribe_quotes] _
+tests/test_streaming_provider_lifecycle.py:139: in test_failed_start_clears_session_and_late_callbacks_before_retry
+    failed.disconnect.assert_awaited_once()
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py:2334: in assert_awaited_once
+    raise AssertionError(msg)
+E   AssertionError: Expected mock to have been awaited once. Awaited 0 times.
+__ test_disconnect_failure_holds_reference_but_invalidates_callbacks_and_data __
+tests/test_streaming_provider_lifecycle.py:160: in test_disconnect_failure_holds_reference_but_invalidates_callbacks_and_data
+    assert_empty(data)
+tests/test_streaming_provider_lifecycle.py:67: in assert_empty
+    assert not data._bars and not data._quotes and not data._last_bar_ts
+E   AssertionError: assert (not {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])})
+E    +  where {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])} = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10ea586e0>._bars
+_______ test_stop_during_prefill_discards_old_result_before_new_session ________
+tests/test_streaming_provider_lifecycle.py:189: in test_stop_during_prefill_discards_old_result_before_new_session
+    assert_empty(data)
+tests/test_streaming_provider_lifecycle.py:67: in assert_empty
+    assert not data._bars and not data._quotes and not data._last_bar_ts
+E   AssertionError: assert (not {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])})
+E    +  where {'OLD': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])} = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10eae19a0>._bars
+_______ test_stop_during_subscription_cannot_restore_obsolete_membership _______
+tests/test_streaming_provider_lifecycle.py:211: in test_stop_during_subscription_cannot_restore_obsolete_membership
+    await asyncio.gather(updating, stopping)
+backend/organism/streaming_data_provider.py:276: in update_subscriptions
+    if await self._stream.subscribe_quotes(quotes_to_add) is not True:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'subscribe_quotes'
+______ test_reconnect_rotates_callbacks_but_does_not_refresh_stale_health ______
+tests/test_streaming_provider_lifecycle.py:229: in test_reconnect_rotates_callbacks_but_does_not_refresh_stale_health
+    assert data._bars == before and data.get_bar_age("KEEP") == 301
+E   AssertionError: assert ({'KEEP': dequ...: 100, ...}])} == {'KEEP': dequ...: 100, ...}])}
+E     
+E     Differing items:
+E     {'KEEP': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}, {'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])} != {'KEEP': deque([{'close': 100, 'high': 101, 'low': 99, 'open': 100, ...}])}
+E     Use -v to get more diff)
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:474 {"event": "ALL 1 symbols stale (>300s) \u2014 forcing stream reconnect", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-23T07:31:18.224837Z"}
+___________ test_stop_during_reconnect_cannot_restart_old_transport ____________
+tests/test_streaming_provider_lifecycle.py:254: in test_stop_during_reconnect_cannot_restart_old_transport
+    assert stream.connect.await_count == 1  # Only original start, not obsolete recovery.
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert 2 == 1
+E    +  where 2 = <AsyncMock id='4541246896'>.await_count
+E    +    where <AsyncMock id='4541246896'> = <test_streaming_provider_lifecycle.Transport object at 0x10eadfd10>.connect
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:474 {"event": "ALL 1 symbols stale (>300s) \u2014 forcing stream reconnect", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-23T07:31:18.227865Z"}
+=========================== short test summary info ============================
+FAILED tests/test_streaming_provider_lifecycle.py::test_stop_start_replaces_entire_session_and_keeps_new_unseen_symbols_stale
+FAILED tests/test_streaming_provider_lifecycle.py::test_old_callbacks_cannot_repopulate_stopped_or_restarted_session[False]
+FAILED tests/test_streaming_provider_lifecycle.py::test_old_callbacks_cannot_repopulate_stopped_or_restarted_session[True]
+FAILED tests/test_streaming_provider_lifecycle.py::test_failed_start_clears_session_and_late_callbacks_before_retry[False-connect]
+FAILED tests/test_streaming_provider_lifecycle.py::test_failed_start_clears_session_and_late_callbacks_before_retry[False-subscribe_bars]
+FAILED tests/test_streaming_provider_lifecycle.py::test_failed_start_clears_session_and_late_callbacks_before_retry[False-subscribe_quotes]
+FAILED tests/test_streaming_provider_lifecycle.py::test_failed_start_clears_session_and_late_callbacks_before_retry[True-connect]
+FAILED tests/test_streaming_provider_lifecycle.py::test_failed_start_clears_session_and_late_callbacks_before_retry[True-subscribe_bars]
+FAILED tests/test_streaming_provider_lifecycle.py::test_failed_start_clears_session_and_late_callbacks_before_retry[True-subscribe_quotes]
+FAILED tests/test_streaming_provider_lifecycle.py::test_disconnect_failure_holds_reference_but_invalidates_callbacks_and_data
+FAILED tests/test_streaming_provider_lifecycle.py::test_stop_during_prefill_discards_old_result_before_new_session
+FAILED tests/test_streaming_provider_lifecycle.py::test_stop_during_subscription_cannot_restore_obsolete_membership
+FAILED tests/test_streaming_provider_lifecycle.py::test_reconnect_rotates_callbacks_but_does_not_refresh_stale_health
+FAILED tests/test_streaming_provider_lifecycle.py::test_stop_during_reconnect_cannot_restart_old_transport
+14 failed in 0.34s

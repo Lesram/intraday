@@ -1,0 +1,45 @@
+{
+  "review_id": "provider_session_restart_independent_review",
+  "status": "ACCEPTED_SOURCE_PENDING_COMBINED_RELEASE_GATES",
+  "base_source": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "files_sha256": {
+    "backend/organism/streaming_data_provider.py": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838",
+    "tests/test_streaming_provider_lifecycle.py": "912f7802f5e3cc3b18aca946a95fa58ccd8d3a20f166be5756ba749db5272227"
+  },
+  "author_report_sha256": "a918df384666a31daceb67e3da0c1597dcdda3c217b05a8ff3e253f324833c95",
+  "blocking_findings": [],
+  "accepted_reasoning": [
+    "Explicit stop revokes generation and empties state before awaiting lifecycle lock, then invalidates again after acquisition so earlier queued operations cannot restore final stopped state.",
+    "Callbacks require exact stream/generation and active symbol membership; real _on_bar/_on_quote bodies have no internal suspension after wrapper admission, preventing a stop interleave after check.",
+    "Start serializes reconnect/setup and handles unsuccessful/cancelled startup in finally; failed disconnect preserves original handle for retry while callbacks stay revoked.",
+    "Prefill and dynamic subscription continuations compare generation after awaits; in-flight results cannot repopulate the stopped/restarted generation.",
+    "Forced same-session reconnect retains stale buffers/receipt ages, revokes old callbacks and wires new callbacks only after positive connect; a connection result is not advertised as fresh bars.",
+    "Existing source timestamp, duplicate/out-of-order admission, freshness age and stale-symbol checks remain AST-equivalent to prior accepted source."
+  ],
+  "unchanged_methods_ast": {
+    "_on_bar": true,
+    "_on_quote": true,
+    "_bar_receipt_age": true,
+    "get_bars": true,
+    "stale_symbols": true
+  },
+  "validation": {
+    "independent_execution": false,
+    "author_junit_sha256": "436a93b7d1c101adc9081553ec0dd76a8d5a7bdf6bc512caab8fd30906b491b1",
+    "cases": 104,
+    "passed": 104,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "lifecycle_cases": 19,
+    "evidence_all_manifest_hashes_match": true,
+    "prior_red_preserved": true,
+    "prior_broader_205pass_1scannerfailure_not_claimed_final_green": true
+  },
+  "limits": [
+    "Read-only source/evidence review; no real websocket, broker, runtime or network requests.",
+    "Same-session recovery still relies on existing transport boolean/subscription contract, not new server-acknowledgement telemetry.",
+    "Stop invalidates immediately but waits for existing bounded transport/REST operations; no new cancellation/deadline mechanism is claimed.",
+    "Root must regenerate candidate provider fingerprint, combined safety/replay evidence, exact-source hosted/image proofs and activation plan. Earlier1eb/e1bd image is superseded as current candidate; active installed state and evaluation cutoff remain unchanged."
+  ]
+}

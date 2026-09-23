@@ -1,0 +1,65 @@
+[
+  {
+    "Commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "EndLine": 12,
+    "File": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/independent_review.json",
+    "Fingerprint": "1eb34339f621547b0334ceed67615fa539a09dea:artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/independent_review.json:generic-api-key:12",
+    "RuleID": "generic-api-key",
+    "StartLine": 12
+  },
+  {
+    "Commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "EndLine": 152,
+    "File": "artifacts/session_pipeline_repair/expanded_pack_acceptance_review.json",
+    "Fingerprint": "1eb34339f621547b0334ceed67615fa539a09dea:artifacts/session_pipeline_repair/expanded_pack_acceptance_review.json:generic-api-key:152",
+    "RuleID": "generic-api-key",
+    "StartLine": 152
+  },
+  {
+    "Commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "EndLine": 204,
+    "File": "artifacts/phase2/candidate_param_freeze.json",
+    "Fingerprint": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf:artifacts/phase2/candidate_param_freeze.json:generic-api-key:204",
+    "RuleID": "generic-api-key",
+    "StartLine": 204
+  },
+  {
+    "Commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "EndLine": 216,
+    "File": "artifacts/phase2/candidate_param_freeze.json",
+    "Fingerprint": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf:artifacts/phase2/candidate_param_freeze.json:generic-api-key:216",
+    "RuleID": "generic-api-key",
+    "StartLine": 216
+  },
+  {
+    "Commit": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "EndLine": 223,
+    "File": "artifacts/phase2/candidate_param_freeze.json",
+    "Fingerprint": "ee6e31ca6fd0c366d9d51dccac356f573c138cbf:artifacts/phase2/candidate_param_freeze.json:generic-api-key:223",
+    "RuleID": "generic-api-key",
+    "StartLine": 223
+  },
+  {
+    "Commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "EndLine": 60,
+    "File": "artifacts/session_pipeline_repair/expanded_static/static_review.json",
+    "Fingerprint": "1eb34339f621547b0334ceed67615fa539a09dea:artifacts/session_pipeline_repair/expanded_static/static_review.json:generic-api-key:60",
+    "RuleID": "generic-api-key",
+    "StartLine": 60
+  },
+  {
+    "Commit": "1eb34339f621547b0334ceed67615fa539a09dea",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "EndLine": 48,
+    "File": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/implementation.json",
+    "Fingerprint": "1eb34339f621547b0334ceed67615fa539a09dea:artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/implementation.json:generic-api-key:48",
+    "RuleID": "generic-api-key",
+    "StartLine": 48
+  }
+]

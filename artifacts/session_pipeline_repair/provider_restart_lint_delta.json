@@ -1,0 +1,27 @@
+{
+  "base_source": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "source_sha256": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838",
+  "test_sha256": "912f7802f5e3cc3b18aca946a95fa58ccd8d3a20f166be5756ba749db5272227",
+  "baseline_findings": [
+    [
+      "BLE001",
+      "Do not catch blind exception: `Exception`"
+    ],
+    [
+      "BLE001",
+      "Do not catch blind exception: `Exception`"
+    ]
+  ],
+  "candidate_findings": [
+    [
+      "BLE001",
+      "Do not catch blind exception: `Exception`"
+    ],
+    [
+      "BLE001",
+      "Do not catch blind exception: `Exception`"
+    ]
+  ],
+  "test_findings": [],
+  "new_findings": 0
+}

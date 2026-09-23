@@ -44,7 +44,7 @@ def classify_pr_scope(changed: list[str]) -> str:
         for p in changed
     )
     has_evidence_tooling = any(
-        p.startswith(("scripts/", "artifacts/", ".github/"))
+        p.startswith(("scripts/", "artifacts/", "evidence/", "reports/", ".github/"))
         for p in changed
     )
 
@@ -72,7 +72,7 @@ def main() -> None:
     pr_label = f"PR #{pr_number}" if pr_number else "n/a"
 
     change_set = get_change_set(root=ROOT)
-    all_changed = [p for p in change_set.paths if p.strip()]
+    all_changed = list(dict.fromkeys(p for p in change_set.paths if p.strip()))
     backend_changed = [p for p in all_changed if p.startswith("backend/")]
     backend_runtime_changed = [
         p for p in backend_changed
@@ -83,6 +83,25 @@ def main() -> None:
     docs_changed = [p for p in all_changed if p.startswith("docs/")]
     scripts_changed = [p for p in all_changed if p.startswith("scripts/")]
     ci_changed = [p for p in all_changed if p.startswith(".github/")]
+
+    # Categories partition the complete change set. The organism count below
+    # is explicitly a backend subset, not another additive category.
+    categories = {
+        "Backend": backend_changed,
+        "Scripts": scripts_changed,
+        "CI": ci_changed,
+        "Tests": tests_changed,
+        "Docs": docs_changed,
+        "Artifacts/evidence": [p for p in all_changed if p.startswith(("artifacts/", "evidence/"))],
+        "Reports": [p for p in all_changed if p.startswith("reports/")],
+        "Configuration": [p for p in all_changed if p.startswith((".env", "docker-compose"))],
+    }
+    categorized = {p for paths in categories.values() for p in paths}
+    categories["Other"] = [p for p in all_changed if p not in categorized]
+    category_rows = [
+        f"| {name} | {len(paths)} | {', '.join(f'`{p}`' for p in paths[:10]) or 'none'} |"
+        for name, paths in categories.items()
+    ]
 
     # PR scope classification
     scope = classify_pr_scope(all_changed)
@@ -193,14 +212,19 @@ def main() -> None:
         "",
         "## Changed files",
         "",
-        "| Category | Count | Files |",
-        "|----------|-------|-------|",
-        f"| Backend | {len(backend_changed)} | {', '.join(f'`{p}`' for p in backend_changed[:10]) or 'none'} |",
-        f"| Organism | {len(organism_changed)} | {', '.join(f'`{p}`' for p in organism_changed[:10]) or 'none'} |",
-        f"| Scripts | {len(scripts_changed)} | {', '.join(f'`{p}`' for p in scripts_changed[:10]) or 'none'} |",
-        f"| CI | {len(ci_changed)} | {', '.join(f'`{p}`' for p in ci_changed[:10]) or 'none'} |",
-        f"| Tests | {len(tests_changed)} | {', '.join(f'`{p}`' for p in tests_changed[:10]) or 'none'} |",
-        f"| Docs | {len(docs_changed)} | {', '.join(f'`{p}`' for p in docs_changed[:10]) or 'none'} |",
+        f"Total distinct changed files: **{len(all_changed)}**",
+        "",
+        "Category counts below partition that total. File previews show at most ten paths per category; the full list follows.",
+        "",
+        "| Category | Count | Files (preview) |",
+        "|----------|-------|-----------------|",
+        *category_rows,
+        "",
+        f"Organism subset of Backend: **{len(organism_changed)}** file(s).",
+        "",
+        "### Full changed-file list",
+        "",
+        *([f"- `{p}`" for p in all_changed] or ["No changed files."]),
         "",
         "## Configuration resolution (not engine observation)",
         "",

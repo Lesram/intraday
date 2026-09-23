@@ -1,0 +1,55 @@
+{
+  "task_id": "explicit_scanner_outcome_and_empty_recovery",
+  "status": "implemented_targeted_checks_passed_pending_independent_review",
+  "source_files_sha256": {
+    "backend/organism/market_scanner.py": "e1f911329cdd8ff737219d502809679805de1b99e6ddaf6dd366af6b32482fbf",
+    "backend/organism/live_engine.py": "fad1469f4f37f524a0bbe67d1d8c4358cc93f4d81c5dc2dbbf98cbf7516cb083",
+    "tests/test_scanner_pipeline_integration.py": "8ec70bfbc8ca06caa0f8196f0996e711ff362fddc0dd8784a2feb8653b1ef378"
+  },
+  "behavior": [
+    "MarketScanner.last_scan_succeeded is false until the most recent attempt completed without endpoint/snapshot errors. Valid empty discovery is true; swallowed HTTP failure, timeout, bad endpoint schema, snapshot failure and partial endpoint failure remain false.",
+    "Scanner list API and qualified partial candidates remain compatible. Engine keeps individually qualified partial candidates and base/current universe, while degraded outcome increments failure count and does not update last success.",
+    "Completely failed/empty scans clear candidate pool. Successful empty discovery resets consecutive failures and updates last-success tick. Existing persistent-failure alert now describes retained qualified partial candidates accurately."
+  ],
+  "preservation": {
+    "score_tension_AST_unchanged": true,
+    "request_retry_AST_unchanged": true,
+    "scanner_threshold_constants_AST_unchanged": true,
+    "live_tick_inner_LOC": 2824,
+    "LOC_delta": 0,
+    "strategy_parameters_changed": false,
+    "feed_changed": false,
+    "final_120s_feature_gate_changed": false,
+    "protective_and_EOD_paths_changed": false
+  },
+  "tests": {
+    "passed": 92,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suite_scope": "scanner real-tick integration + market scanner contracts + W100 behavioral replay + exact baseline LOC + audit index/workflow tests",
+    "network_denied": true,
+    "production_writes_denied": true,
+    "installed_credentials_and_brain_reads_denied": true
+  },
+  "red_reproductions": [
+    "scanner_empty_bookkeeping_red.xml",
+    "scanner_transport_bookkeeping_red.xml"
+  ],
+  "proof_sha256": {
+    "scanner_outcome_final.json": "059bc1b358d214c949b2e8ac4c0c9bf84bc5535e37a759a36d42f45ffe61e62b",
+    "scanner_outcome_final.xml": "0f19865baffd9a1b81aafd47752d0c4d41f1a82379c38daf94845458f1c23b61",
+    "scanner_outcome_final.log": "5675293dcaa7b2d8055aab45f57108c7674e5be6c7444d2b7812a49145dc546e",
+    "scanner_empty_bookkeeping_red.xml": "1b28fbbafb7507c29c84fa73c342c34fe538041d2ba791c5aff1200b94468635",
+    "scanner_transport_bookkeeping_red.xml": "5efd5b157d7c58c76c10ade170dad6f8eeebd653381530d52ce98bdae42f301d"
+  },
+  "runtime_behavior_changed": true,
+  "frozen_source_hash_changed": true,
+  "active_cutoff_changed": false,
+  "operational_mutations": false,
+  "limitations": [
+    "Tests use mocked provider HTTP and historical replay, not a live provider or deployed session.",
+    "Return-list compatibility preserves qualified partial discoveries; failed status does not by itself revoke previously admitted base/universe symbols.",
+    "Final combined organism safety/replay pack, regenerated candidate hashes/snapshots and hosted checks remain root-owned."
+  ]
+}

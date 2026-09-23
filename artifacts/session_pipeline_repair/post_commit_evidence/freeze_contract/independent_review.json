@@ -1,0 +1,43 @@
+{
+  "author_tests_verified": {
+    "errors": 0,
+    "failed": 0,
+    "passed": 353,
+    "skipped": 0
+  },
+  "base_source_sha": "1eb34339f621547b0334ceed67615fa539a09dea",
+  "blocking_findings": [],
+  "files_sha256": {
+    "backend/organism/freeze_contract.py": "5b8183d364f8a2143ea45f0f2345c96336d8c5b287c6a0e926a9936b611b8f5c",
+    "scripts/ops/paper_daily_evidence.py": "f0123ce3ece2127f31969006ad075ef63f5971042a3ad818510026765b532549",
+    "scripts/ops/paper_daily_host.py": "2c1b48d5689032812dad5e8da46472fd9ee21dbd2c6989143675bc00e7d9be0e",
+    "scripts/phase2_gate.py": "159c85ee3be288a483d883df4c07b422d0c59972e747bcb9976fdcb003b1a446",
+    "scripts/phase3_attribution_report.py": "cee467dcc0f9de4c78894721441fe67819efffcb8c395ba222857a7450c1430b",
+    "scripts/research/paper_fill_reconciliation.py": "913654d0e7a37ae501e11760fff6b72c47ca5353e32551022c0ce743a524b796",
+    "tests/test_active_freeze_contract.py": "b460e54d8aba3ce3429a74fc05a465ef20c6cc02e360e83a59658e7b5b72c2a0"
+  },
+  "implementation_sha256": "8756f5c404d7b5c0cc4ca7e3fa5da8fa9b99390455aff02a1a03d0ed0a417dc8",
+  "independent_test_rerun": false,
+  "junit_sha256": "e6f59bd81524e091eb469d51a83711ace3c1fbde270f3f750fd4094ab8fde84c",
+  "limitations": [
+    "Legacy absent flags retain compatibility; this is not a signature or proof of deployment approval. Existing activation/binding/hash chain remains required.",
+    "Root-owned candidate generator/path/artifacts/CI changes are outside this seven-file acceptance and need the separate root validation.",
+    "No production source, runtime, broker, installed freeze or state mutation; no model deserialization or external requests by review.",
+    "No arbitrary JSON parser or file-system hardening assurance beyond the scoped authority contract."
+  ],
+  "release_gates_remaining": [
+    "Combined source commit and exact-source full pack",
+    "Candidate-only surface verification and installed active preservation",
+    "Hosted checks and new immutable image; no deployment implied"
+  ],
+  "review_findings": [
+    "All artifact-input report/host boundaries reject explicit candidate or unapproved flags before selecting history, broker inventory or invoking strategy verdicts. Host validates before credentials or observer authentication.",
+    "Strict booleans and timezone-aware FROZEN_AT prevent coercion and ambiguous dates. Validation preserves the exact original cutoff and does not replace it with active_forward_cutoff.",
+    "Captured freeze bytes are revalidated and replay analysis applies the same authority check, including a candidate with internally matching activation hashes.",
+    "Legacy NO_SESSION replay exemption never consumes a cutoff or exposes a strategy gate; a present candidate is still refused.",
+    "Regression tests exercise actual collection, publish/replay and bound host flow with transport/auth/history tripwires rather than validator-only checks."
+  ],
+  "reviewed_at": "2026-09-23T07:44:01.117009+00:00",
+  "status": "ACCEPTED_WITHIN_SCOPE",
+  "task_id": "active_freeze_contract_independent_review"
+}

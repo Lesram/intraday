@@ -1,0 +1,1 @@
+{"scanner": "candidate", "candidate_count": 52, "discovery_counts": {"most_actives": 95, "movers_up": 5, "movers_down": 1}, "qualification_counts": {"discovered_unique": 99, "missing_snapshots": 0, "invalid_snapshots": 0, "price_volume_rejected": 44, "price_volume_qualified": 55, "tension_rejected": 3, "tension_qualified_before_cap": 52}, "snapshot_batch_count": 1}

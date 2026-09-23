@@ -1,0 +1,38 @@
+{
+  "changes": [
+    "Separate candidate_param_freeze validation, explicit aware VALIDATED_AT and false approval with no FROZEN_AT",
+    "Canonical and frozen_surface_reference exact expected installed cbff bytes; bind all references and cutoff, reject mismatch",
+    "Add19 lifecycle, active-freeze contract and phase2 generator suites to prior11 modules; retain20-module bound",
+    "Transport only3 exact committed public freeze JSON fixtures via stdin into tmpfs scratch for phase2 tests; never mount installed artifacts or write readonly image",
+    "Preserve prior runner/evidence and issue final source/test hashes for independent review"
+  ],
+  "forbidden": [
+    "No prepare/build until root final SHA",
+    "No deployment/startup/installed source/env/model/state writes",
+    "No actual broker/API calls",
+    "No source trading changes or commits"
+  ],
+  "ownership": [
+    "/tmp/intra-pipeline-candidate-build.py",
+    "/tmp/intra-pipeline-candidate-build-tests.py",
+    "artifacts/session_pipeline_repair/post_commit_evidence/candidate_image/followup_builder/**"
+  ],
+  "prepared_at": "2026-09-23T07:45:26.870536+00:00",
+  "prior_bytes": {
+    "/tmp/intra-pipeline-candidate-build-tests.py": {
+      "archive": "artifacts/session_pipeline_repair/post_commit_evidence/candidate_image/followup_builder/prior_builder_tests.py",
+      "sha256": "d25dc9409055100a340d9c2a8b05c6c536f2d1382a3b8699552f2f1f9c73bc5f"
+    },
+    "/tmp/intra-pipeline-candidate-build.py": {
+      "archive": "artifacts/session_pipeline_repair/post_commit_evidence/candidate_image/followup_builder/prior_builder.py",
+      "sha256": "6d5814ee9a053e72a86c10794e61ef74579b6862059ecc3ad3859aa16405549c"
+    }
+  },
+  "status": "PLAN_BEFORE_EDITS",
+  "task_id": "followup_candidate_builder",
+  "tests": [
+    "Offline unit tests with synthetic context and all external/operational calls mocked",
+    "Strict metadata/alias boundary, tampered reference, fixture-byte identity and no operational execution",
+    "Existing preparation tests unchanged except justified test selection/fixture coverage"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "label": "index",
+  "exit_code": 0,
+  "seconds": 0.15,
+  "command": [
+    "scripts/ci/generate_audit_index.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

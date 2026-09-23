@@ -1,0 +1,52 @@
+{
+  "task_id": "independent_followup_image_builder_review",
+  "status": "ACCEPTED_PREPARATION_LOGIC_PENDING_FINAL_SOURCE_AND_FRESH_SCAN_AUTHORIZATION",
+  "reviewed_at_utc": "2026-09-23T07:52:19.357194+00:00",
+  "scope": "Read-only private-runner delta and offline mock-evidence review; no prepare, build, Docker, API, broker or installed-state operation executed by reviewer.",
+  "implementation": {
+    "path": "artifacts/session_pipeline_repair/post_commit_evidence/candidate_image/followup_builder/implementation.json",
+    "sha256": "4c8336f8369f9ab96ada33e9c0f0d0fccf6b912cde008cfc01f56563f02e5cb9"
+  },
+  "files": {
+    "/tmp/intra-pipeline-candidate-build.py": "5d259c7740760deb706260ad97a533f119733c3bc20b2fce2d8222b5278db800",
+    "/tmp/intra-pipeline-candidate-build-tests.py": "1678a26620d56aeef1fc583441dfd8ecef12790dc1aa06db84c7107d6fc04a39",
+    "/tmp/intra-pipeline-followup-builder-tests.log": "f955af7b770e7c2e5fe57d133c2c6f762d0641d9bb222baec60d9761b0e8682d"
+  },
+  "offline_evidence": {
+    "test_count": 23,
+    "failures": 0,
+    "network_denied": true,
+    "independently_rerun": false,
+    "log_sha256": "f955af7b770e7c2e5fe57d133c2c6f762d0641d9bb222baec60d9761b0e8682d"
+  },
+  "ast_delta": {
+    "changed_functions": [
+      "build",
+      "main",
+      "prepare"
+    ],
+    "added_functions": [
+      "freeze_references",
+      "test_fixture_payload",
+      "test_support_manifest"
+    ]
+  },
+  "findings": [],
+  "resolved_findings": [
+    "Imported daily evidence/host fixture modules are now mandatory exact-hash test support, included in image proof without selecting additional full suites."
+  ],
+  "verified": [
+    "Separate candidate requires actual boolean candidate/approval flags, aware VALIDATED_AT, dictionary surface, no FROZEN_AT, and exact active_forward_cutoff context.",
+    "Archived canonical and readiness-reference bytes must equal the fixed approved cbff hash and currently observed installed hash; active cutoff is never derived from candidate validation time.",
+    "Prepare and build bind the same three references; changed runner/context/archive/scan/active identity causes refusal. Old prepared state cannot be reused with this runner.",
+    "Only three exact committed public JSON fixtures enter disposable /tmp via stdin, with path-set and byte-hash validation plus exclusive creation before pytest; no production mounts or /app writes.",
+    "Prior eleven suites retained plus lifecycle, active-freeze and generator suites; selected files and imported support are image-hash verified. Exact fresh JUnit determines counts; historical results are not copied.",
+    "Existing archive validation, exact false-positive scan matching, resource checks, unique tag, Docker readonly/network-none/capability constraints, cleanup identity and installed before/after preservation remain unchanged."
+  ],
+  "limitations": [
+    "Mocked tests establish orchestration contracts, not a successful final-source image build.",
+    "Root must supply a final committed source; fresh full-context scan must contain no unresolved findings and its exact digest must be approved before build.",
+    "Capacity/active identity, source/image/labels, exclusions, recomputed candidate surface and tests must pass during actual bounded build.",
+    "No deployment, startup, new cutoff, credential change or automatic reuse of expired activation helpers is authorized by this review."
+  ]
+}

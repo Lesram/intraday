@@ -1,0 +1,28 @@
+{
+  "task_id": "w100-session-pipeline-repair",
+  "scope": "Tests-only repair of real-engine W100 entry/exit replay and approved LOC limit",
+  "owned_files": [
+    "tests/test_v13_w100_live_tick_coverage.py",
+    "tests/test_scanner_pipeline_integration.py"
+  ],
+  "production_changes": false,
+  "design": [
+    "Aware ordered one-minute provider bar timestamps with aligned ReplayEngine clock",
+    "Retain real scanner, shared gate, final freshness, fixed ATR sizing, exits, broker and accounting",
+    "Cache genuine causal ML-feature prefixes for bounded histories; assert no future rows and compare direct computation before reuse",
+    "Require nonzero entries and protective closes plus matching real accounting; no zero-order success branch",
+    "Retain learning lock and disabled partial TP semantics; separately cover EOD when feasible",
+    "Pin2824 maximum: historical2805+approvedPR27 freshness18+reviewed candidate scannerpool-clear1; no arbitrary tolerance",
+    "Mock only external provider responses to realMarketScanner; prove both discovery shapes produce actual gated entry and subsequent empty/error clears only candidatepool, preservingheld/baseuniverse"
+  ],
+  "validation": [
+    "Archive prior hosted exact-source failures and counts",
+    "Run targeted W100 under network-denied allowlisted environment and scratchbrain",
+    "Required adjacent tests/fullnightly/fullartifactpack coordinated by root"
+  ],
+  "constraints": [
+    "No source changes outside ownership",
+    "No installed runtime, credentials, brain, broker, or env mutations",
+    "No commits or push"
+  ]
+}

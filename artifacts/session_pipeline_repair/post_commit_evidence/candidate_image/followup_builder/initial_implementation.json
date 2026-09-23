@@ -1,0 +1,86 @@
+{
+  "at": "2026-09-23T07:49:26.318154+00:00",
+  "files": {
+    "builder.py": {
+      "bytes": 33203,
+      "original_path": "/tmp/intra-pipeline-candidate-build.py",
+      "sha256": "82d5ff7696471419dc21e3d9ccb67fc04f0ca8da9d625e99df9e59f47b918215"
+    },
+    "builder_tests.py": {
+      "bytes": 14702,
+      "original_path": "/tmp/intra-pipeline-candidate-build-tests.py",
+      "sha256": "f022709513e20ab44a94338db1c2c7f0908d616e986105926122ef588a870c93"
+    },
+    "tests.log": {
+      "bytes": 121,
+      "original_path": "/tmp/intra-pipeline-followup-builder-tests.log",
+      "sha256": "679f707182acd8da25004e91ffb5ffab1d42c1d6ea87e8bf33edbcb932f9d74c"
+    }
+  },
+  "installed_mutations": false,
+  "offline_tests": {
+    "failed": 0,
+    "operational_commands_executed_by_tests": false,
+    "passed": 22,
+    "runner": "clean env sandbox-exec deny network*; python -B unittest",
+    "synthetic_metadata_subcases": 11
+  },
+  "plan_sha256": "6fb85eb0645fe2c5c0c67e16709ae94d6fea61509b13ff30579e23debe05a846",
+  "prepare_or_build_executed": false,
+  "production_source_edited": false,
+  "reference_rules": [
+    "Candidate must contain strict candidate_only true, deployment_approved false, aware VALIDATED_AT and dictionary surface; FROZEN_AT forbidden",
+    "Candidate active_forward_cutoff must equal approved active cutoff",
+    "Both canonical and historical frozen_surface_reference archived bytes must match the inspected installed SHA and pinned cbff",
+    "References checked at prepare and build; exact hashes bound to both receipts",
+    "Only three public committed fixture JSON bytes passed through stdin into disposable tmpfs; no mounted state or readonly-image mutation",
+    "Proof recomputes source surface against candidate; test environment retains mock broker/data and no network"
+  ],
+  "remaining": [
+    "Independent review and final manifest",
+    "Root final committed SHA before prepare",
+    "Exact fresh context scan authorization before build",
+    "Actual image source/surface proof and selected tests after build",
+    "Update proposed activation/rollback evidence only after final image; no deployment or cutoff authorization implied"
+  ],
+  "scope": {
+    "constants_added": [
+      "ACTIVE_FREEZE_SHA",
+      "ACTIVE_CUTOFF",
+      "ACTIVE_FREEZE_PATH",
+      "CANDIDATE_FREEZE_PATH",
+      "FROZEN_REFERENCE_PATH",
+      "FREEZE_FIXTURE_PATHS",
+      "DEFAULT_TESTS",
+      "TEST_RUNNER"
+    ],
+    "functions_added": [
+      "freeze_references",
+      "test_fixture_payload"
+    ],
+    "functions_changed": [
+      "build",
+      "main",
+      "prepare"
+    ]
+  },
+  "status": "OFFLINE_TESTED_AWAITING_INDEPENDENT_REVIEW_AND_FINAL_SOURCE",
+  "task_id": "followup_candidate_builder",
+  "test_selection": {
+    "default_modules": 14,
+    "expected_cases": "Not asserted by stale count; exact fresh JUnit recorded after final-source image test.",
+    "new_modules": [
+      "tests/test_streaming_provider_lifecycle.py",
+      "tests/test_active_freeze_contract.py",
+      "tests/test_phase2_freeze.py"
+    ],
+    "previous_modules": 11,
+    "upper_bound_unchanged": 20
+  },
+  "unchanged_safety": [
+    "Prior secret scan disposition requires exact file/span/hash and new scan approval",
+    "Private archive/source/image/runtime file identity, capacities and no live service startup",
+    "Docker network none, readonly root, tmpfs scratch, no mounts, resource/capability constraints",
+    "Installed before/after container/freeze/binding equality; no deployment action"
+  ]
+}

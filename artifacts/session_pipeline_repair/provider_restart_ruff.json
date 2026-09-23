@@ -1,0 +1,38 @@
+[
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 29,
+      "row": 421
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/organism/streaming_data_provider.py",
+    "fix": null,
+    "location": {
+      "column": 20,
+      "row": 421
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 421,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 25,
+      "row": 565
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/organism/streaming_data_provider.py",
+    "fix": null,
+    "location": {
+      "column": 16,
+      "row": 565
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 565,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  }
+]

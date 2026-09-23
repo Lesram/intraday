@@ -1,0 +1,127 @@
+{
+  "task_id": "sept22_stale_pipeline_repair",
+  "status": "implemented_and_targeted_tests_green_pending_combined_acceptance",
+  "generated_at_utc": "2026-09-23T05:47:06.017914+00:00",
+  "source_base": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "working_head": "98b9617bc43ba9ecbaaab0195cec78961e03a32b",
+  "branch": "codex/sept22-pipeline-repair",
+  "files_sha256": {
+    "backend/organism/streaming_data_provider.py": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b",
+    "backend/organism/live_engine.py": "f2f301862f3a8476374ea01170ee5aa1d1e79cb6c9ac4f746430c503fc6f603c",
+    "tests/test_pipeline_freshness_recovery.py": "8fda9f0db2f20779f863c226ac23f5a7c59a7a568ee2f98b40aa6db511546fd7",
+    "tests/unit/test_streaming_data_provider.py": "5bc206e4ff251394a5bd91739e39a138371f20105ce18bbdc5074b2cdb4ba535",
+    "tests/test_entry_freshness.py": "557d8326939bd5e7eff6f79648ccf67b05b494baa43caa3b97b0575c5ae01550"
+  },
+  "owned_live_engine_method": "_stage_update_data_staleness",
+  "owned_live_tick_inner_LOC_delta": 0,
+  "runtime_behavior_changed": true,
+  "active_runtime_mutations": false,
+  "active_freeze_mutations": false,
+  "approved_behavior_changes": [
+    "Recovery log follows final aggregate plus every-active-symbol freshness result. Freshness exceptions fail closed.",
+    "Only valid aware nonfuture ordered bar timestamps may advance history; duplicate corrections replace without renewing freshness.",
+    "A newer but already stale bar supports ordered history without refreshing prior health; first old bar uses historical timestamp.",
+    "Backward/nonfinite clock cannot be laundered by an advancing callback.",
+    "Subscribed unseen symbols block entries; confirmed unsubscribe removes obsolete bars/quotes/freshness while failure retains state for retry.",
+    "Late retired callbacks are ignored until explicit resubscription; independent bar/quote subscription retry handles partial success.",
+    "Failed start subscriptions disconnect before retry; failed disconnect preserves old stream reference.",
+    "All-stale reconnect preserves bar health; no-first-bar startup reconnect grace retained."
+  ],
+  "preserved": [
+    "Every active stale symbol can block the global entry gate.",
+    "120-second freshness thresholds and actual-feature final-entry gate.",
+    "REST data can support features/exits without clearing streaming entry block.",
+    "Quote traffic does not establish bar freshness; quote execution-age policy unchanged.",
+    "Protective exits, EOD entry block and flatten, feed, sizing and strategy parameters unchanged."
+  ],
+  "tests": [
+    {
+      "path": "artifacts/session_pipeline_repair/freshness_targeted.xml",
+      "sha256": "f3be8d71d2b4f1a773c8cc5820f4e0b189e500a7578ec3102994cfb9f9f1696d",
+      "tests": 103,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 2.427
+    },
+    {
+      "path": "artifacts/session_pipeline_repair/freshness_stale_exit.xml",
+      "sha256": "af5c527f12e79a8e17e2c552ba515824175d2d6b3120419892c6f7a1ee10c9e6",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 2.329
+    }
+  ],
+  "unique_tests_passed": 104,
+  "tests_failed": 0,
+  "test_execution": {
+    "network_denied": true,
+    "python": "existing isolated project test environment",
+    "source_services_started": false,
+    "production_models_loaded": false
+  },
+  "ruff_existing_baseline": [
+    {
+      "path": "backend/organism/streaming_data_provider.py",
+      "baseline": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+      "baseline_issues": [
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`"
+        },
+        {
+          "code": "BLE001",
+          "message": "Do not catch blind exception: `Exception`"
+        }
+      ]
+    },
+    {
+      "path": "tests/unit/test_streaming_data_provider.py",
+      "baseline": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+      "baseline_issues": [
+        {
+          "code": "F401",
+          "message": "`asyncio` imported but unused"
+        },
+        {
+          "code": "F401",
+          "message": "`time` imported but unused"
+        },
+        {
+          "code": "F401",
+          "message": "`collections.deque` imported but unused"
+        }
+      ]
+    }
+  ],
+  "new_ruff_findings": [],
+  "review": {
+    "path": "/tmp/intra-pipeline-freshness-review.json",
+    "sha256": "771f5c00fccc17774ad27087d8d4e6588ba9eb8cd6d686605fe6023dd762891e",
+    "scope": "Independent production/103-case review accepted; later extra stale/EOD test awaiting addendum."
+  },
+  "risks": [
+    "Synthetic tests do not establish live broker execution or profitability.",
+    "PP-6 can still block entries for genuinely sparse active feeds; Sept22 feed cause remains unproven.",
+    "Subscription True denotes successful local send/tracking, not a new remote acknowledgement protocol.",
+    "Fresh advancing bar health retains receipt-age semantics; final actual-feature age guard remains independently required.",
+    "Any deployment requires explicit frozen-surface transition/new forward cutoff, reviewed PR/CI, runtime snapshot and controlled rollout."
+  ],
+  "follow_ups": [
+    "Root combined required organism state/exits/sizing/replay regressions, candidate freeze verification, full artifact pack and audit index.",
+    "Root PR/hosted validation and future deployment authorization; no active cutoff reset from this work."
+  ],
+  "commands": [
+    "PYTHONDONTWRITEBYTECODE=1 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /usr/bin/sandbox-exec -p '(version 1) (allow default) (deny network*)' /Users/marselkei/VS/intra/venv/bin/python -m pytest -q tests/test_pipeline_freshness_recovery.py tests/unit/test_streaming_data_provider.py tests/test_wave45_fixes.py tests/test_wave40_fixes.py tests/test_entry_freshness.py --junitxml=/tmp/intra-pipeline-freshness-targeted.xml",
+    "PYTHONDONTWRITEBYTECODE=1 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /usr/bin/sandbox-exec -p '(version 1) (allow default) (deny network*)' /Users/marselkei/VS/intra/venv/bin/python -m pytest -q tests/test_pipeline_freshness_recovery.py::test_stale_stream_blocks_new_entries_but_real_eod_exit_still_flattens --junitxml=/tmp/intra-pipeline-stale-exit.xml",
+    "/Users/marselkei/VS/intra/venv/bin/python -m ruff check tests/test_pipeline_freshness_recovery.py tests/test_entry_freshness.py",
+    "git diff --check"
+  ],
+  "static": {
+    "changed_tests_ruff": "PASS",
+    "git_diff_check": "PASS",
+    "other_existing_lint_findings_verified_against_base": 5
+  }
+}

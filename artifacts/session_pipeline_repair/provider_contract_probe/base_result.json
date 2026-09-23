@@ -1,0 +1,61 @@
+{
+  "candidate_count": 0,
+  "candidate_details": [],
+  "candidates": [],
+  "data_base": "https://data.alpaca.markets/v2",
+  "discovery_counts": {
+    "most_actives": 0,
+    "movers_down": 0,
+    "movers_up": 0
+  },
+  "effective_constants": {
+    "SCAN_INTERVAL_TICKS": 6,
+    "SCAN_MAX_CANDIDATES": 80,
+    "SCAN_MAX_PRICE": 1500.0,
+    "SCAN_MIN_MARKET_CAP": 1000000000.0,
+    "SCAN_MIN_PRICE": 10.0,
+    "SCAN_MIN_VOLUME": 500000,
+    "SCAN_TENSION_THRESHOLD": 0.3,
+    "SCAN_TOP_ACTIVES": 100,
+    "SCAN_TOP_MOVERS": 50
+  },
+  "engine_imported": false,
+  "feed": "iex",
+  "model_loads": false,
+  "network_access": "Denied by sandbox",
+  "qualification_counts": {
+    "discovered_unique": 0,
+    "invalid_snapshots": 0,
+    "missing_snapshots": 0,
+    "price_volume_qualified": 0,
+    "price_volume_rejected": 0,
+    "tension_qualified_before_cap": 0,
+    "tension_rejected": 0
+  },
+  "qualifications": "Actual scan/fetch/score methods executed; only HTTP _request replaced with captured-data lookup. Additional stage counts derived using identical production validation/scoring functions and constants.",
+  "scan_requests": [
+    {
+      "params": {
+        "by": "volume",
+        "top": 100
+      },
+      "url": "https://data.alpaca.markets/v1beta1/screener/stocks/most-actives"
+    },
+    {
+      "params": {
+        "top": 50
+      },
+      "url": "https://data.alpaca.markets/v1beta1/screener/stocks/movers"
+    },
+    {
+      "params": {
+        "top": 50
+      },
+      "url": "https://data.alpaca.markets/v1beta1/screener/stocks/movers"
+    }
+  ],
+  "scanner": "base",
+  "snapshot_batch_count": 0,
+  "source_path": "/Users/marselkei/VS/intra/backend/organism/market_scanner.py",
+  "source_sha256": "cb0bf8c17863909b16d9b2df66d44e39307aed3cdf25bb31995dc71ae50dc7be"
+}

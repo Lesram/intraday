@@ -1,0 +1,40 @@
+........................................................................ [ 31%]
+........................................................................ [ 62%]
+........................................................................ [ 93%]
+.s.............                                                          [100%]
+=============================== warnings summary ===============================
+tests/test_entry_freshness.py::test_inclusive_start_timestamp_boundary_submits_once[0]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend
+  tests/test_v13_w100_live_tick_coverage.py:192: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn
+  tests/test_v13_w100_live_tick_coverage.py:219: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_eod_flattens_real_entered_position
+  tests/test_v13_w100_live_tick_coverage.py:260: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover]
+  tests/test_scanner_pipeline_integration.py:11: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+2.00s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend
+1.95s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn
+1.25s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_signals_generated_on_uptrend
+1.11s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_eod_flattens_real_entered_position
+0.76s call     tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover]
+0.73s call     tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives]
+0.73s call     tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover]
+0.72s call     tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]
+0.72s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_cached_feature_prefixes_match_real_visible_history
+0.70s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_no_orders_no_exits
+230 passed, 1 skipped, 8 warnings in 15.36s

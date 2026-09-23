@@ -1,0 +1,326 @@
+{
+  "review_id": "session_pipeline_final_local_pack_acceptance",
+  "reviewed_at_utc": "2026-09-23T05:57:57.435697+00:00",
+  "status": "LOCAL_ARTIFACT_PACK_ACCEPTED",
+  "blocking_findings": [],
+  "validated_source_sha": "332cb6babc1778094c1559d9b83f176f707a7406",
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "method": "Read-only source hashes, git deltas, fresh JUnit identity/count/timestamps, summaries, independent reviews, freeze and preservation receipts; no test reruns or runtime calls.",
+  "full_pack": {
+    "runner_exit_code": 0,
+    "runner_seconds": 214.09,
+    "core_passed": 168,
+    "replay_passed": 28,
+    "semantic_passed": 20,
+    "distinct_testcases": 216,
+    "junit_rows": 216,
+    "duplicate_case_identities": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": {
+      "organism_live_engine": {
+        "path": "artifacts/organism_live_engine.junit.xml",
+        "sha256": "2747aa1dffcddcdcbd139f188ad0435511fbe70eaeb320fb609151125f40042f",
+        "counts": {
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 26
+        },
+        "started_at_utc": [
+          "2026-09-23T05:51:05.966268+00:00"
+        ],
+        "duration_seconds": 15.56
+      },
+      "organism_engine_scenarios": {
+        "path": "artifacts/organism_engine_scenarios.junit.xml",
+        "sha256": "5329e95e88d8ddbc88877d90405c4496f9284342e45adaf79c6fca2a6c370f6d",
+        "counts": {
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 31
+        },
+        "started_at_utc": [
+          "2026-09-23T05:51:21.995784+00:00"
+        ],
+        "duration_seconds": 39.173
+      },
+      "multi_tick_state": {
+        "path": "artifacts/multi_tick_state.junit.xml",
+        "sha256": "bc2d885342a35e1638b7a780f1b76db602d9a12be90ffdf71177cc208531845f",
+        "counts": {
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 9
+        },
+        "started_at_utc": [
+          "2026-09-23T05:52:01.631547+00:00"
+        ],
+        "duration_seconds": 1.228
+      },
+      "safety_invariants": {
+        "path": "artifacts/safety_invariants.junit.xml",
+        "sha256": "722936c386f1714ea80af69a76dbaf01649f10f734b4c0a8719bba366ef665fb",
+        "counts": {
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 29
+        },
+        "started_at_utc": [
+          "2026-09-23T05:52:03.294406+00:00"
+        ],
+        "duration_seconds": 1.266
+      },
+      "self_evolution": {
+        "path": "artifacts/self_evolution.junit.xml",
+        "sha256": "3bb380b440f6f0088649e03cc8342bbc75305e0590aedc5f1e6cd463806ebaa6",
+        "counts": {
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 15
+        },
+        "started_at_utc": [
+          "2026-09-23T05:52:05.014302+00:00"
+        ],
+        "duration_seconds": 0.847
+      },
+      "algorithm_improvements": {
+        "path": "artifacts/algorithm_improvements.junit.xml",
+        "sha256": "ce21eafc1cdd973a146733761381151eca66d2b4a7399fc9447f46e5fd4c1096",
+        "counts": {
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 58
+        },
+        "started_at_utc": [
+          "2026-09-23T05:52:06.215935+00:00"
+        ],
+        "duration_seconds": 1.135
+      },
+      "replay_simulator": {
+        "path": "artifacts/replay_simulator.junit.xml",
+        "sha256": "29898b39858348e04162c58989cda27632b80c1a36223955ce22125e16609706",
+        "counts": {
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 28
+        },
+        "started_at_utc": [
+          "2026-09-23T05:52:07.719988+00:00"
+        ],
+        "duration_seconds": 148.676
+      },
+      "semantic_invariants": {
+        "path": "artifacts/semantic_invariants.junit.xml",
+        "sha256": "168aff9fd2abedd72624ff28a4d64028b2d135f00fd2ba893ef4b86936c8b838",
+        "counts": {
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 20
+        },
+        "started_at_utc": [
+          "2026-09-23T05:54:36.859524+00:00"
+        ],
+        "duration_seconds": 1.434
+      }
+    },
+    "grep_passed": 15,
+    "spec_drift_count": 0,
+    "snapshot_generation": "pass; installed engine not observed"
+  },
+  "source_binding": {
+    "changed_python_files": {
+      "backend/organism/live_engine.py": "f2f301862f3a8476374ea01170ee5aa1d1e79cb6c9ac4f746430c503fc6f603c",
+      "backend/organism/market_scanner.py": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
+      "backend/organism/streaming_data_provider.py": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b",
+      "scripts/phase2_freeze.py": "568e2dcae6e6e2a8d397f2292c6d560e24bb31c8cdf3438c74847336b759f9db",
+      "scripts/runtime/write_runtime_snapshot.py": "11792d071c72a3ad797c8e06d8e32898cf4435701a0df202c77ea46d8f059c33",
+      "tests/test_entry_freshness.py": "557d8326939bd5e7eff6f79648ccf67b05b494baa43caa3b97b0575c5ae01550",
+      "tests/test_market_scanner.py": "b7e8310e0c3e721c8c2d0451c0bdbeb99ec7f291f7f74db4ad4ca88a0dea37af",
+      "tests/test_market_scanner_provider_contract.py": "d01a6097dccdb27851c0d1c0a02de6ec15c317c7523402a3cf5da9fb91044360",
+      "tests/test_phase2_freeze.py": "c9f750609087ab87d8e685a1ffdf39cd8e479350a1b1cffc6fd89724d98531e2",
+      "tests/test_pipeline_freshness_recovery.py": "8fda9f0db2f20779f863c226ac23f5a7c59a7a568ee2f98b40aa6db511546fd7",
+      "tests/test_pipeline_snapshot.py": "d638e5d9478785d6090a40e7867eff027a14677fb8c116a56e9ac40875bcbd93",
+      "tests/test_scanner_pipeline_integration.py": "b506f0da6b1717cfcf0d676be4ae47473e0618a8eabbf392d6b8be311d519cd8",
+      "tests/test_v12_baseline_invariants.py": "57302f2c0b0e2b30df4157055e5592b066734935af922d0e9d2921e151ab4ee3",
+      "tests/test_v13_w100_live_tick_coverage.py": "cd9844039fcc632dcc5361a6f6ac5e19973488740c09104b98710fc59c1aa5de",
+      "tests/unit/test_streaming_data_provider.py": "5bc206e4ff251394a5bd91739e39a138371f20105ce18bbdc5074b2cdb4ba535"
+    },
+    "all_match_worktree_and_committed_source": true,
+    "no_uncommitted_backend_test_script_workflow_architecture_source_delta": true,
+    "candidate_freeze_metadata_code_sha": "98b9617bc43ba9ecbaaab0195cec78961e03a32b",
+    "candidate_freeze_prior_code_equivalence": "Backend and scripts byte-identical from 98b9617 to 332cb6; later commit includes reviewed tests/workflow/docs and candidate artifacts. Metadata code SHA is not misrepresented as full test-run SHA.",
+    "candidate_freeze_sha256": "d93ef5a9c24d4fdff65bac4cfeb072d5c2765fafdc80910070d37fe513aa873d",
+    "ci_reference_identical": true
+  },
+  "independent_reviews": {
+    "root_scope_review.json": {
+      "sha256": "f898c0b5c9894465336049cdfcd9e5f908b8db1f454c902f3081cec850c3471b",
+      "status": "ACCEPTED_FOR_RELEASE_VALIDATION",
+      "all_bound_source_hashes_match": true,
+      "blocking_findings": []
+    },
+    "scanner_review.json": {
+      "sha256": "390dbb83a4c46d3cc4e3c8c0cc2413ae2f957ba8d2be2d6dacbe640983f39d6f",
+      "status": "ACCEPTED_BOUNDED_REVIEW",
+      "all_bound_source_hashes_match": true,
+      "blocking_findings": []
+    },
+    "freshness_review.json": {
+      "sha256": "771f5c00fccc17774ad27087d8d4e6588ba9eb8cd6d686605fe6023dd762891e",
+      "status": "ACCEPTED_BOUNDED_REVIEW",
+      "all_bound_source_hashes_match": true,
+      "blocking_findings": []
+    }
+  },
+  "static_security": {
+    "head_sha": "332cb6babc1778094c1559d9b83f176f707a7406",
+    "ruff_new": 0,
+    "ruff_retained_findings": 5,
+    "bandit_high_new": 0,
+    "bandit_high_total": 0,
+    "gitleaks_findings": 0,
+    "scope": "Changed Python delta and exact committed base..332cb6 range. Final artifact-only commit still requires its own scan; not a repository-wide clean bill."
+  },
+  "preservation": {
+    "receipt_sha256": "00abc08667fa1b3684f9a607a640bf4dd710aa09066dbc509cdae82c2dce0378",
+    "installed_freeze_current_read_matches": true,
+    "installed_freeze_sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "installed_cutoff": "2026-09-22T08:49:11.247316+00:00",
+    "installed_source_from_receipt": "2bd27836381e38e0ae683eadfc193576a185440c",
+    "installed_container_identity_from_receipt": "a2a84c7420b73a6bd059fd77791eb7b2888b49c47f76db2bd0240d347cf47ff2",
+    "runtime_receipt_observed_at_utc": "2026-09-23T05:49:41.533817+00:00",
+    "independent_runtime_refresh_performed": false
+  },
+  "provenance_and_claims": {
+    "task_report_source_and_scope_match": true,
+    "no_candidate_deployment_claim": true,
+    "expected_config_may_be_offline_1Day_defaults": true,
+    "resolved_engine_observed": false,
+    "legacy_config_truth_status": "unverified",
+    "live_snapshot_reachable": false,
+    "audit_index_source_matches": true,
+    "index_pr_field": "n/a at review; PR creation/metadata pending",
+    "initial_full_failure_retained": {
+      "reported_sha": "98b9617bc43ba9ecbaaab0195cec78961e03a32b",
+      "status": "fail",
+      "errors": [
+        "task_report.json: SHA mismatch \u2014 report=98b9617bc4 vs HEAD=332cb6babc"
+      ],
+      "used_as_acceptance": false
+    },
+    "targeted_suite_counts_not_added_to_full_pack": true
+  },
+  "artifact_sha256": {
+    "artifacts/task_report.json": "e065f0424669615658d116dde183adeb7f6d1f7ef24d56eb9056e10c4be8f4fe",
+    "artifacts/test_summary.json": "f06d5f210371a3d91ab1f55e0f7d61ce7f2a89bdab1ec8e2f62efcbc6a783365",
+    "artifacts/replay_summary.json": "b2474baf26d7bb034bf9a87b9ac71d28a1724e43f4574b3dae8609b688054dc2",
+    "artifacts/semantic_invariants_summary.json": "f6c282231899e39bcb3a61a03b43f561b9d7a8882de3d9b1d1b7b179801c5e8b",
+    "artifacts/grep_assertions.json": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b",
+    "artifacts/spec_drift_summary.json": "22b51305a1c0f1de9da3fb512f4a6b992059c7c0062d69430d9dadcf4601a3c5",
+    "artifacts/runtime_snapshot_summary.json": "396ff5b5bb1515ca5ba63892ca979b7ca4c158b7ce87dffd0af9f2f831adf6bd",
+    "artifacts/runtime_defaults_snapshot.json": "f911cd7d104bfa1cca057ec04203f2098d71e34099aa7befe850b3193a6c4ebb",
+    "artifacts/resolved_config_snapshot.json": "ae570c4e3ad8c3870ecc71991df5429b63de4b8c2995e29e479ae33f02b283f7",
+    "artifacts/runtime_config_snapshot.json": "3cd0b08f18d1f2d2fd293dddb17c112e39a0ea4950a6084a0ee9f4c44fc38fac",
+    "artifacts/live_process_runtime_snapshot.json": "48c8c935555f59c45c4d9a8489bba9d7d162f8181b11ca3733a5e93aaefbfc87",
+    "artifacts/changed_files.json": "b04491ec8c7a70b908ea20d7fc448d2902aab7887577ead434572f58ea4eb236",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "9c78542fa9bf3b592f032758dd306391a9c65f81e898e88710971e4f41edf4bf",
+    "artifacts/session_pipeline_repair/full_stable_source.json": "a972dbacea85b7edfc6e61ff3ba8c6f7f5171d0edbe817606c68d1dee100ca1b",
+    "artifacts/session_pipeline_repair/index_stable_source.json": "7968c1c3bc668dcb811567728b1a9f59a28d12007f9ac360c414afdbab58541c",
+    "artifacts/session_pipeline_repair/active_preservation.json": "00abc08667fa1b3684f9a607a640bf4dd710aa09066dbc509cdae82c2dce0378",
+    "artifacts/session_pipeline_repair/static_review.json": "197db1ad196cd7ce882309bf1e9a76805c387e392e8a4917ff36de130e9f6245",
+    "artifacts/session_pipeline_repair/security_scan_receipt.json": "7b56049c440851af428374ac21182afe96a580d5fbedd0c27e779e1f551df77d",
+    "artifacts/session_pipeline_repair/candidate_freeze_receipt.json": "bcfdd9dc9ed053e3883fa3e36dbd08115e52ba40ea7a7f41114131ae438205b7",
+    "artifacts/session_pipeline_repair/freshness_review_stale_exit_addendum.json": "f61b173283b2c9a7c7d3b6ad2d4c81f12319c75b51a3f633de6596aefb24d848",
+    "artifacts/session_pipeline_repair/full.json": "f8a3223518fed63c885ee9dc9b316e65872cf606806ec8a81704470a81e497f8",
+    "artifacts/session_pipeline_repair/initial_full_task_report.json": "bf9de72436a44253951cd3b5b19ec2ecd2b9f5c58feeda45ec47dc883ec21629",
+    "artifacts/session_pipeline_repair/provider_contract_probe/report.json": "d3eb81e94b015bcaeefb82507bd35c719cecddcc4f310cd4c45be23560f8ecbf",
+    "artifacts/session_pipeline_repair/provider_contract_probe/candidate_snapshot_age.json": "133a3bd9253bbfd13c5e3244d8d1afd0b7ca71c0809546d9244cdd959cbc078b",
+    "artifacts/session_pipeline_repair/active_configuration_reference.json": "a587adc83ca8e4f7e5b6ae7d397159b45de2561e125b94ca251af615803c852c"
+  },
+  "separate_pending_work": [
+    {
+      "item": "Hosted applicable nightly core and seven-case replay lane",
+      "run_url": "https://github.com/Lesram/intraday/actions/runs/35824045042",
+      "status": "pending as packaged; no fresh GitHub query in this review"
+    },
+    {
+      "item": "Hosted PR readiness and final evidence-only commit",
+      "status": "pending; future source/artifact/PR bindings and secret scan must be checked"
+    },
+    {
+      "item": "After-hours read-only actual-provider probe",
+      "status": "Completed bounded contract comparison reviewed in consistency refresh; 0 to 52 qualified scanner candidates on identical captured inputs. Separate from local tests, freshness, trading outcomes and release approval."
+    },
+    {
+      "item": "Controlled deployment/new forward-boundary approval and actual runtime validation",
+      "status": "not performed; candidate timestamp must not become installed cutoff by copying"
+    }
+  ],
+  "limitations": [
+    "216 passing local testcases are not a full-nightly result or proof of profitability/live session qualification.",
+    "Separate targeted suites overlap; no inflated union total is claimed.",
+    "External API/disposable-broker integration lane is unavailable, not a pass.",
+    "Existing low/medium security/lint debt and parked CI cleanup remain outside bounded review.",
+    "Generated unavailable live snapshot does not contradict the separate healthy installed-container observation; they use distinct evidence scopes."
+  ],
+  "report_only_consistency_refresh": {
+    "reviewed_at_utc": "2026-09-23T06:02:51.804392+00:00",
+    "prior_review_sha256": "e49e8ffa279eb07de1d5a2ee56b284a138d94c898218823efbe3be24be7b0e67",
+    "source_unchanged": true,
+    "status": "ACCEPTED_NO_NEW_BLOCKERS",
+    "task_report_sha256": "e065f0424669615658d116dde183adeb7f6d1f7ef24d56eb9056e10c4be8f4fe",
+    "hash_cycle_avoided": "Task report references this review by path only. This review binds task-report bytes; no reciprocal hash.",
+    "provider_probe": {
+      "report_sha256": "d3eb81e94b015bcaeefb82507bd35c719cecddcc4f310cd4c45be23560f8ecbf",
+      "all_ten_manifest_files_verified": true,
+      "manifest_sha256": {
+        "active_scanner_config.json": "ab5ad03476177388f0127bfb13e814bf3cced4f23fc9e5a60fe5d05f9e73a0c9",
+        "base_offline.log": "02f019985e96a8a1b5441d8b02f656d9dba8af0eaca5bc5dc516cab9edc3bf60",
+        "base_result.json": "fc8be5502b4d2948db5b717c42a2f7e8cf91795fccd741854c2c8510af1b8743",
+        "candidate_offline.log": "2dc320ebf195c0545693b6343cbaf17e0175f5938cb4cd3bf14cf8dc4fb0c5b7",
+        "candidate_result.json": "9511b3599178dcfc689720d864524ce687486b8405a4a6ec35f615cc328bdb84",
+        "capture.json": "86fcd5123435b4714ef6bf7a03580eea7414828f9c17066832b8bc0aed9e8385",
+        "most_actives.json": "b3700eaf9f3ba0bdd8961e00fd6fcf670495748efa52be20d8e8780cef285dee",
+        "movers.json": "60a57ef6564d9eaf503ed5d3c5a15303ef423a726120a9e1b8448f41ec516d31",
+        "plan.json": "cd542612665496809c8c3e7852b959477dca992a1a1ac82f581cf9cfbc237ae9",
+        "snapshots.json": "1b76ce011dd34eb6fc7c78e3d3d2c2fcd0ca5281b5966cae1a920c1cf8cb85f3"
+      },
+      "base_candidates": 0,
+      "candidate_candidates": 52,
+      "distinct_candidate_symbols": 52,
+      "same_captured_inputs_per_report": true,
+      "same_effective_constants_and_iex_feed_verified": true,
+      "source_identities_verified": true,
+      "candidate_snapshot_dates_independently_recomputed": {
+        "dailyBar": {
+          "2026-09-22": 52
+        },
+        "minuteBar": {
+          "2026-09-22": 52
+        },
+        "latestTrade": {
+          "2026-09-22": 52
+        }
+      },
+      "scope": "After-hours HTTP-schema and unchanged qualification demonstration only. No final freshness gate invoked, no executable-entry claim, no retrospective Sept22 opportunity or profitability claim.",
+      "private_harnesses_not_reexecuted": true
+    },
+    "active_configuration_reference": {
+      "sha256": "a587adc83ca8e4f7e5b6ae7d397159b45de2561e125b94ca251af615803c852c",
+      "retained_deployment_snapshot_hash_verified": true,
+      "all_selected_config_values_match_retained_snapshot": true,
+      "source_sha": "2bd27836381e38e0ae683eadfc193576a185440c",
+      "prior_policy_observation_utc": "2026-09-23T05:05:50.507837+00:00",
+      "scope": "Existing installed release configuration; corroboration is from the earlier authenticated observation, not a fresh candidate/runtime or per-decision observation."
+    }
+  }
+}

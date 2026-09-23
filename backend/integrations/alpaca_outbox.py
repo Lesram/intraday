@@ -11,6 +11,7 @@ import os
 from typing import Any
 
 from backend.config import get_settings
+from backend.integrations.alpaca_broker import BrokerAcknowledgementUnresolved
 from backend.utils.logger import get_structured_logger
 from backend.utils.market_hours import ET, is_market_open
 
@@ -117,15 +118,19 @@ class AlpacaOutboxDispatcher:
                        qty=qty,
                        use_mock_broker=self.use_mock_broker)
 
-            if self.use_mock_broker:
+            if event_data.get("_broker_ack_lookup_only"):
+                # A mock toggle cannot acknowledge an unresolved real order.
+                result = await self._dispatch_to_alpaca_broker(event_data)
+            elif self.use_mock_broker:
                 # Use mock broker processing
                 result = await self._dispatch_to_mock_broker(event_data)
             else:
                 # Use real Alpaca broker
                 result = await self._dispatch_to_alpaca_broker(event_data)
 
-            logger.info("Order event dispatched successfully",
+            logger.info("Order event dispatch completed",
                        order_id=order_id,
+                       success=result.get("success", False),
                        broker_order_id=result.get("broker_order_id"),
                        status=result.get("status"))
 
@@ -205,7 +210,9 @@ class AlpacaOutboxDispatcher:
 
             client_key = event_data.get("client_key")
 
-            logger.info("Placing order with Alpaca",
+            lookup_only = bool(event_data.get("_broker_ack_lookup_only"))
+            logger.info("Reconciling Alpaca order acknowledgement" if lookup_only else "Placing order with Alpaca",
+                       operation="lookup_only" if lookup_only else "submit",
                        symbol=symbol,
                        side=side,
                        qty=qty,
@@ -215,22 +222,30 @@ class AlpacaOutboxDispatcher:
                        requested_tif=requested_tif,
                        selected_tif=tif)
 
-            # Place order with Alpaca
-            alpaca_result = await broker_client.place_order(
-                symbol=symbol,
-                side=side,
-                qty=qty,
-                type=order_type,
-                tif=tif,
-                limit_price=limit_price,
-                stop_price=stop_price,
-                client_order_id=client_key
-            )
+            if not isinstance(client_key, str) or not client_key.strip():
+                raise BrokerAcknowledgementUnresolved(None, "missing_persisted_client_order_id")
+
+            # Once acknowledgement is uncertain, retries only read the exact
+            # persisted identity; neither restart nor lookup failure may POST.
+            if event_data.get("_broker_ack_lookup_only"):
+                alpaca_result = await broker_client.reconcile_order_acknowledgement(client_key)
+            else:
+                alpaca_result = await broker_client.place_order(
+                    symbol=symbol,
+                    side=side,
+                    qty=qty,
+                    type=order_type,
+                    tif=tif,
+                    limit_price=limit_price,
+                    stop_price=stop_price,
+                    client_order_id=client_key
+                )
 
             broker_order_id = alpaca_result.get("id")
             status = alpaca_result.get("status", "unknown")
 
-            logger.info("Alpaca broker order placed",
+            logger.info("Alpaca broker acknowledgement confirmed",
+                       operation="lookup_only" if lookup_only else "submit",
                        order_id=event_data.get("order_id"),
                        broker_order_id=broker_order_id,
                        status=status,
@@ -242,10 +257,20 @@ class AlpacaOutboxDispatcher:
                 "broker_order_id": broker_order_id,
                 "status": status,
                 "broker": "alpaca",
-                "message": "Order submitted to Alpaca",
+                "message": "Order acknowledgement reconciled" if lookup_only else "Order submitted to Alpaca",
                 "alpaca_response": alpaca_result
             }
 
+        except BrokerAcknowledgementUnresolved as e:
+            return {
+                "success": False,
+                "submission_ambiguous": True,
+                "client_order_id": e.client_order_id,
+                "broker_order_id": None,
+                "status": "reconciliation_required",
+                "broker": "alpaca",
+                "error": e.reason,
+            }
         except Exception as e:
             logger.error("Alpaca broker dispatch failed",
                         order_id=event_data.get("order_id"),

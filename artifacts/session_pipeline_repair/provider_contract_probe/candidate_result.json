@@ -1,0 +1,539 @@
+{
+  "candidate_count": 52,
+  "candidate_details": [
+    {
+      "change_pct": 0.0,
+      "price": 83.89,
+      "source": "most_actives",
+      "symbol": "IEMG",
+      "tension_score": 0.5919,
+      "volume": 1898363
+    },
+    {
+      "change_pct": 0.0,
+      "price": 10.84,
+      "source": "most_actives",
+      "symbol": "NOK",
+      "tension_score": 0.5602,
+      "volume": 8635231
+    },
+    {
+      "change_pct": 0.0,
+      "price": 47.64,
+      "source": "most_actives",
+      "symbol": "BAI",
+      "tension_score": 0.5602,
+      "volume": 1559948
+    },
+    {
+      "change_pct": 0.0,
+      "price": 40.83,
+      "source": "most_actives",
+      "symbol": "VKTX",
+      "tension_score": 0.5315,
+      "volume": 889223
+    },
+    {
+      "change_pct": 0.0,
+      "price": 22.28,
+      "source": "most_actives",
+      "symbol": "CCL",
+      "tension_score": 0.5266,
+      "volume": 3028866
+    },
+    {
+      "change_pct": 0.0,
+      "price": 30.82,
+      "source": "most_actives",
+      "symbol": "WBD",
+      "tension_score": 0.5151,
+      "volume": 4470979
+    },
+    {
+      "change_pct": 0.0,
+      "price": 123.86,
+      "source": "most_actives",
+      "symbol": "INTC",
+      "tension_score": 0.508,
+      "volume": 2268305
+    },
+    {
+      "change_pct": 0.0,
+      "price": 22.43,
+      "source": "most_actives",
+      "symbol": "CMCSA",
+      "tension_score": 0.5052,
+      "volume": 3283627
+    },
+    {
+      "change_pct": 0.0,
+      "price": 13.59,
+      "source": "most_actives",
+      "symbol": "AAL",
+      "tension_score": 0.5003,
+      "volume": 2939245
+    },
+    {
+      "change_pct": 0.0,
+      "price": 37.29,
+      "source": "most_actives",
+      "symbol": "CORO",
+      "tension_score": 0.49,
+      "volume": 2973700
+    },
+    {
+      "change_pct": 0.0,
+      "price": 12.73,
+      "source": "most_actives",
+      "symbol": "RKT",
+      "tension_score": 0.4866,
+      "volume": 2182760
+    },
+    {
+      "change_pct": 0.0,
+      "price": 54.78,
+      "source": "most_actives",
+      "symbol": "XLF",
+      "tension_score": 0.4858,
+      "volume": 5677852
+    },
+    {
+      "change_pct": 0.0,
+      "price": 77.87,
+      "source": "most_actives",
+      "symbol": "ACWX",
+      "tension_score": 0.4819,
+      "volume": 1316956
+    },
+    {
+      "change_pct": 0.0,
+      "price": 44.91,
+      "source": "most_actives",
+      "symbol": "IUSB",
+      "tension_score": 0.4732,
+      "volume": 2117233
+    },
+    {
+      "change_pct": 0.0,
+      "price": 11.59,
+      "source": "most_actives",
+      "symbol": "BITO",
+      "tension_score": 0.473,
+      "volume": 12609849
+    },
+    {
+      "change_pct": 0.0,
+      "price": 17.16,
+      "source": "most_actives",
+      "symbol": "SOFI",
+      "tension_score": 0.4716,
+      "volume": 2538038
+    },
+    {
+      "change_pct": 0.0,
+      "price": 29.4,
+      "source": "most_actives",
+      "symbol": "ONON",
+      "tension_score": 0.4632,
+      "volume": 2513596
+    },
+    {
+      "change_pct": 0.0,
+      "price": 12.88,
+      "source": "most_actives",
+      "symbol": "PCG",
+      "tension_score": 0.4602,
+      "volume": 2584012
+    },
+    {
+      "change_pct": 0.0,
+      "price": 36.1,
+      "source": "most_actives",
+      "symbol": "NKE",
+      "tension_score": 0.4554,
+      "volume": 1412674
+    },
+    {
+      "change_pct": 0.0,
+      "price": 149.13,
+      "source": "most_actives",
+      "symbol": "ORCL",
+      "tension_score": 0.4546,
+      "volume": 1333143
+    },
+    {
+      "change_pct": 0.0,
+      "price": 32.01,
+      "source": "most_actives",
+      "symbol": "IDEF",
+      "tension_score": 0.4535,
+      "volume": 800758
+    },
+    {
+      "change_pct": 0.0,
+      "price": 154.74,
+      "source": "most_actives",
+      "symbol": "SPCX",
+      "tension_score": 0.4404,
+      "volume": 1934334
+    },
+    {
+      "change_pct": 0.0,
+      "price": 91.46,
+      "source": "most_actives",
+      "symbol": "MBB",
+      "tension_score": 0.4387,
+      "volume": 2563100
+    },
+    {
+      "change_pct": 0.0,
+      "price": 28.75,
+      "source": "most_actives",
+      "symbol": "BMNR",
+      "tension_score": 0.4355,
+      "volume": 1693169
+    },
+    {
+      "change_pct": 0.0,
+      "price": 228.85,
+      "source": "most_actives",
+      "symbol": "NVDA",
+      "tension_score": 0.4349,
+      "volume": 2460762
+    },
+    {
+      "change_pct": 0.0,
+      "price": 10.85,
+      "source": "most_actives",
+      "symbol": "UNG",
+      "tension_score": 0.4302,
+      "volume": 4210489
+    },
+    {
+      "change_pct": 0.0,
+      "price": 773.44,
+      "source": "most_actives",
+      "symbol": "SPY",
+      "tension_score": 0.4224,
+      "volume": 1046410
+    },
+    {
+      "change_pct": 0.0,
+      "price": 13.26,
+      "source": "most_actives",
+      "symbol": "PATH",
+      "tension_score": 0.4141,
+      "volume": 1612956
+    },
+    {
+      "change_pct": 0.0,
+      "price": 48.82,
+      "source": "most_actives",
+      "symbol": "IBIT",
+      "tension_score": 0.4129,
+      "volume": 2161788
+    },
+    {
+      "change_pct": 0.0,
+      "price": 56.22,
+      "source": "most_actives",
+      "symbol": "BAC",
+      "tension_score": 0.4,
+      "volume": 2995416
+    },
+    {
+      "change_pct": 0.0,
+      "price": 14.17,
+      "source": "most_actives",
+      "symbol": "NU",
+      "tension_score": 0.3923,
+      "volume": 2982419
+    },
+    {
+      "change_pct": 0.0,
+      "price": 13.18,
+      "source": "most_actives",
+      "symbol": "TTD",
+      "tension_score": 0.3914,
+      "volume": 1587257
+    },
+    {
+      "change_pct": 0.0,
+      "price": 10.13,
+      "source": "most_actives",
+      "symbol": "PSKY",
+      "tension_score": 0.3864,
+      "volume": 2667631
+    },
+    {
+      "change_pct": 0.0,
+      "price": 25.13,
+      "source": "most_actives",
+      "symbol": "T",
+      "tension_score": 0.3863,
+      "volume": 1979815
+    },
+    {
+      "change_pct": 0.0,
+      "price": 46.45,
+      "source": "most_actives",
+      "symbol": "VZ",
+      "tension_score": 0.3828,
+      "volume": 1603174
+    },
+    {
+      "change_pct": 0.0,
+      "price": 63.67,
+      "source": "most_actives",
+      "symbol": "DRAM",
+      "tension_score": 0.3794,
+      "volume": 1362639
+    },
+    {
+      "change_pct": 0.0,
+      "price": 15.68,
+      "source": "most_actives",
+      "symbol": "HBAN",
+      "tension_score": 0.3793,
+      "volume": 1679088
+    },
+    {
+      "change_pct": 0.0,
+      "price": 72.16,
+      "source": "most_actives",
+      "symbol": "NFLX",
+      "tension_score": 0.3741,
+      "volume": 1681216
+    },
+    {
+      "change_pct": 0.0,
+      "price": 14.02,
+      "source": "most_actives",
+      "symbol": "RWM",
+      "tension_score": 0.3717,
+      "volume": 1762016
+    },
+    {
+      "change_pct": 0.0,
+      "price": 13.1,
+      "source": "most_actives",
+      "symbol": "F",
+      "tension_score": 0.3646,
+      "volume": 1328314
+    },
+    {
+      "change_pct": 0.0,
+      "price": 20.76,
+      "source": "most_actives",
+      "symbol": "ETHA",
+      "tension_score": 0.3612,
+      "volume": 1884641
+    },
+    {
+      "change_pct": 0.0,
+      "price": 254.99,
+      "source": "most_actives",
+      "symbol": "AMZN",
+      "tension_score": 0.3474,
+      "volume": 1262762
+    },
+    {
+      "change_pct": 0.0,
+      "price": 1095.47,
+      "source": "most_actives",
+      "symbol": "MU",
+      "tension_score": 0.3452,
+      "volume": 587727
+    },
+    {
+      "change_pct": 0.0,
+      "price": 106.44,
+      "source": "most_actives",
+      "symbol": "CSCO",
+      "tension_score": 0.3431,
+      "volume": 1859985
+    },
+    {
+      "change_pct": 0.0,
+      "price": 351.18,
+      "source": "most_actives",
+      "symbol": "GOOGL",
+      "tension_score": 0.3425,
+      "volume": 1033346
+    },
+    {
+      "change_pct": 0.0,
+      "price": 19.8,
+      "source": "most_actives",
+      "symbol": "SNXX",
+      "tension_score": 0.3408,
+      "volume": 1649501
+    },
+    {
+      "change_pct": 0.0,
+      "price": 61.77,
+      "source": "most_actives",
+      "symbol": "XLE",
+      "tension_score": 0.3386,
+      "volume": 3239587
+    },
+    {
+      "change_pct": 0.0,
+      "price": 10.31,
+      "source": "most_actives",
+      "symbol": "TSLL",
+      "tension_score": 0.3283,
+      "volume": 4826786
+    },
+    {
+      "change_pct": 0.0,
+      "price": 41.52,
+      "source": "most_actives",
+      "symbol": "SMCI",
+      "tension_score": 0.3278,
+      "volume": 1339855
+    },
+    {
+      "change_pct": 0.0,
+      "price": 339.85,
+      "source": "most_actives",
+      "symbol": "AAPL",
+      "tension_score": 0.3252,
+      "volume": 986501
+    },
+    {
+      "change_pct": 0.0,
+      "price": 20.5,
+      "source": "most_actives",
+      "symbol": "CDE",
+      "tension_score": 0.3188,
+      "volume": 978721
+    },
+    {
+      "change_pct": 0.0,
+      "price": 19.05,
+      "source": "most_actives",
+      "symbol": "HL",
+      "tension_score": 0.3051,
+      "volume": 1390919
+    }
+  ],
+  "candidates": [
+    "IEMG",
+    "NOK",
+    "BAI",
+    "VKTX",
+    "CCL",
+    "WBD",
+    "INTC",
+    "CMCSA",
+    "AAL",
+    "CORO",
+    "RKT",
+    "XLF",
+    "ACWX",
+    "IUSB",
+    "BITO",
+    "SOFI",
+    "ONON",
+    "PCG",
+    "NKE",
+    "ORCL",
+    "IDEF",
+    "SPCX",
+    "MBB",
+    "BMNR",
+    "NVDA",
+    "UNG",
+    "SPY",
+    "PATH",
+    "IBIT",
+    "BAC",
+    "NU",
+    "TTD",
+    "PSKY",
+    "T",
+    "VZ",
+    "DRAM",
+    "HBAN",
+    "NFLX",
+    "RWM",
+    "F",
+    "ETHA",
+    "AMZN",
+    "MU",
+    "CSCO",
+    "GOOGL",
+    "SNXX",
+    "XLE",
+    "TSLL",
+    "SMCI",
+    "AAPL",
+    "CDE",
+    "HL"
+  ],
+  "data_base": "https://data.alpaca.markets/v2",
+  "discovery_counts": {
+    "most_actives": 95,
+    "movers_down": 1,
+    "movers_up": 5
+  },
+  "effective_constants": {
+    "SCAN_INTERVAL_TICKS": 6,
+    "SCAN_MAX_CANDIDATES": 80,
+    "SCAN_MAX_PRICE": 1500.0,
+    "SCAN_MIN_MARKET_CAP": 1000000000.0,
+    "SCAN_MIN_PRICE": 10.0,
+    "SCAN_MIN_VOLUME": 500000,
+    "SCAN_TENSION_THRESHOLD": 0.3,
+    "SCAN_TOP_ACTIVES": 100,
+    "SCAN_TOP_MOVERS": 50
+  },
+  "engine_imported": false,
+  "feed": "iex",
+  "model_loads": false,
+  "network_access": "Denied by sandbox",
+  "qualification_counts": {
+    "discovered_unique": 99,
+    "invalid_snapshots": 0,
+    "missing_snapshots": 0,
+    "price_volume_qualified": 55,
+    "price_volume_rejected": 44,
+    "tension_qualified_before_cap": 52,
+    "tension_rejected": 3
+  },
+  "qualifications": "Actual scan/fetch/score methods executed; only HTTP _request replaced with captured-data lookup. Additional stage counts derived using identical production validation/scoring functions and constants.",
+  "scan_requests": [
+    {
+      "params": {
+        "by": "volume",
+        "top": 100
+      },
+      "url": "https://data.alpaca.markets/v1beta1/screener/stocks/most-actives"
+    },
+    {
+      "params": {
+        "top": 50
+      },
+      "url": "https://data.alpaca.markets/v1beta1/screener/stocks/movers"
+    },
+    {
+      "params": {
+        "top": 50
+      },
+      "url": "https://data.alpaca.markets/v1beta1/screener/stocks/movers"
+    },
+    {
+      "capture_lookup": "Exact captured per-symbol snapshot objects selected from one larger batch; missing requested symbols remain absent.",
+      "params": {
+        "feed": "iex",
+        "symbols": "ZEO,LHSW,FAMI,GRAB,QNME,CORO,IUSB,WBD,INTC,NOK,DCOY,TOPS,CWD,GRML,SOFI,NVDA,FLNA,SNXX,ACWX,BITO,GLND,NVD,AAL,ONDS,FBGL,XLF,NU,BFRG,RAIN,RIG,MBB,PCG,TSLL,SPCX,IEMG,CAPS,TSLG,EDVA,DVLT,SNDQ,RKT,HL,MSTZ,PSKY,UNG,F,BAC,CMCSA,IBIT,MARA,ONON,PATH,AMZN,VKTX,AAPL,BMNR,CCL,BAI,RXRX,QQQ,BLCR,IALT,XLE,NIO,CDE,T,XNDU,SPY,ETHA,RWM,NFLX,KEEL,IDEF,IREN,GELS,RETO,SMR,CSCO,VZ,SLXN,NKE,ORCL,AMC,HYG,DRAM,SMCI,BB,DBRG,GOOGL,MUU,TTD,BBD,MU,HBAN,SDST,JAGX,ENRG,MAZE,EDRY"
+      },
+      "url": "https://data.alpaca.markets/v2/stocks/snapshots"
+    }
+  ],
+  "scanner": "candidate",
+  "snapshot_batch_count": 1,
+  "source_path": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/backend/organism/market_scanner.py",
+  "source_sha256": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561"
+}

@@ -1,0 +1,34 @@
+{
+  "task_id": "developer-tool-credential-hygiene",
+  "scope": [
+    "Replace embedded performance/checklist tool tokens with explicit caller/CLI token then INTRA_API_TOKEN env fallback",
+    "Missing token fails before any HTTP request; remove demo credential login and opaque token fallback",
+    "Redact only three specified current-report ALPACA_API_SECRET_KEY literal evidence values while preserving all other records",
+    "Meaningful offline credential source/header/no-request/redaction tests"
+  ],
+  "owned_files": [
+    "scripts/testing/performance_test.py",
+    "scripts/ci/validate_checklist.py",
+    "reports/comprehensive_audit_findings.jsonl",
+    "tests/test_developer_tool_credentials.py"
+  ],
+  "tests": [
+    "tests/test_developer_tool_credentials.py",
+    "Relevant existing developer-tool tests if identified"
+  ],
+  "validation": [
+    "Isolated clean environment with sandbox deny network; explicit pytest asyncio/timeout plugins and no cache",
+    "Ruff changed Python files",
+    "Structured report comparison preserving all unaffected records and excluding secret-value output"
+  ],
+  "constraints": [
+    "No commits, push, history rewrite, rotations, credential validation, real requests, backend/auth/trading changes or pipeline changes",
+    "Parent owns CI/docs/artifacts/final full regression",
+    "Historical credentials do not match active key per parent receipt; past validity/revocation remains unknown"
+  ],
+  "before_hashes": {
+    "scripts/testing/performance_test.py": "1ab2c48f8ecb43dd56b8b14735dff43172445d05bea1ec6d5ce45475c6c5c9c2",
+    "scripts/ci/validate_checklist.py": "e1e8e67742a22b236e4158cadc2bcc24abeb38dc6e69cfed0e06f284cfe3cc96",
+    "reports/comprehensive_audit_findings.jsonl": "ab86687cc63d194ad7aa0e28ee4ea9c9f66d418db5d5560b17f2059a2f9e5530"
+  }
+}

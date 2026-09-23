@@ -1,0 +1,79 @@
+{
+  "branch": "codex/sept22-pipeline-repair",
+  "files_changed": {
+    "backend/organism/market_scanner.py": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
+    "tests/test_market_scanner.py": "b7e8310e0c3e721c8c2d0451c0bdbeb99ec7f291f7f74db4ad4ca88a0dea37af",
+    "tests/test_market_scanner_provider_contract.py": "d01a6097dccdb27851c0d1c0a02de6ec15c317c7523402a3cf5da9fb91044360"
+  },
+  "harness": {
+    "environment": "explicit allowlist, scratch brain/shadow paths, no installed .env",
+    "network": "denied by sandbox-exec",
+    "path": "/tmp/intra-scanner-safe-test.py",
+    "python": "/Users/marselkei/VS/intra/venv/bin/python",
+    "sha256": "249fd7bc6ec368f5e823573a06c9690ef2692b5f99d5fd7054238611c94aaa63"
+  },
+  "limitations": [
+    "Scanner qualification is not a freshness guarantee for an executable entry; final actual-feature-age admission remains a separate unchanged guard.",
+    "No actual provider calls, broker activity, credentials, production model loads or deployment actions were performed.",
+    "No source commit or PR action by this agent."
+  ],
+  "logs": {
+    "/tmp/intra-scanner-provider-red.log": "77aab9701c5c5c326bbc3e0104969f1d7eb0af5985e8ca65ceedcf0ff6ebe120",
+    "/tmp/intra-scanner-targeted.log": "dedfc0ac55caec61b0c20635020352370ad2471fae420e883cc521d63c88412d",
+    "/tmp/intra-scanner-volume-regression.log": "e7b6eeb54037b66073086cb17fc98ddfa7c0e3240e6013134d19a0911af7e0b6"
+  },
+  "plan": "/tmp/intra-scanner-implementation-plan.json",
+  "recorded_at_utc": "2026-09-23T05:38:41.659309+00:00",
+  "remaining_parent_gates": [
+    "Root-owned engine retained candidate list must clear on empty/error without removing base/held universe.",
+    "Colleague-owned real MarketScanner-to-engine replay must demonstrate discovered symbol admission through existing final safety gate and preserve protective/EOD exits.",
+    "Required organism/state/safety/replay/evolution tests, full nightly and artifact pack, runtime snapshot and independent review.",
+    "Root adds scanner source to candidate frozen surface; active freeze/cutoff stays untouched until separately approved deployment."
+  ],
+  "runtime_behavior_changed": true,
+  "runtime_behavior_delta": [
+    "Real most-active rows without price and mover rows without volume can now produce candidates when snapshots independently satisfy existing limits.",
+    "Known supplied discovery fields retain early hard thresholds; missing fields do not masquerade as zero and malformed fields are never rehabilitated by enrichment.",
+    "Snapshot daily OHLCV must be present, finite and internally coherent; price/volume limits are reapplied to authoritative snapshot values.",
+    "Failed/empty scanner attempts clear both scanner caches instead of returning an earlier candidate list.",
+    "Discovery and qualification logs separately count invalid supplied rows, missing/invalid snapshots, price/volume rejects and tension rejects."
+  ],
+  "static": {
+    "git_diff_check": "PASS",
+    "ruff": "PASS"
+  },
+  "status": "SCOPED_IMPLEMENTATION_READY_FOR_COMBINED_REVIEW",
+  "summary": "Provider-absent discovery fields reach one deduplicated snapshot batch; valid snapshot OHLCV qualifies price/volume before unchanged tension scoring. Malformed supplied values fail closed and failed scans invalidate old candidate caches.",
+  "task_id": "sept22-scanner-provider-contract",
+  "tests": {
+    "/tmp/intra-scanner-provider-red.xml": {
+      "cases": 3,
+      "failed": 3,
+      "passed": 0,
+      "sha256": "c81373a8513695e5a4b3eeeedc29a8bdeaafea61200afe545aa89d28758578e1",
+      "skipped": 0
+    },
+    "/tmp/intra-scanner-targeted.xml": {
+      "cases": 100,
+      "failed": 0,
+      "passed": 100,
+      "sha256": "7c403ce39f538c358488a9c583541a26106c02724b55fd365ddc88ca00d712a6",
+      "skipped": 0
+    },
+    "/tmp/intra-scanner-volume-regression.xml": {
+      "cases": 1,
+      "failed": 0,
+      "passed": 1,
+      "sha256": "f83026f72b4b4fff9399361335aed8bde1d2c15d3a45ae65863feb6b0fe9eda1",
+      "skipped": 0
+    }
+  },
+  "unchanged": [
+    "Configured feed and endpoint selection",
+    "Three screener requests and one shared snapshot request at the default top limits; existing batching at 1,000 symbols retained for larger configurations.",
+    "Exclusions, min/max prices, min volume, tension threshold, score weights/formula, descending stable sort and candidate cap",
+    "Optional absent minute/prior-bar scoring defaults",
+    "Entry-age guard, sizing, exits, strategy parameters, freeze artifacts, history, model state and running deployment"
+  ],
+  "worktree": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra"
+}

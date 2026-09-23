@@ -1,0 +1,22 @@
+...............................................                          [100%]
+=============================== warnings summary ===============================
+tests/test_pipeline_freshness_recovery.py::test_stale_stream_blocks_new_entries_but_real_eod_exit_still_flattens
+  tests/test_pipeline_freshness_recovery.py:365: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_pipeline_freshness_recovery.py::test_stale_stream_blocks_new_entries_but_real_eod_exit_still_flattens
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+1.48s call     tests/test_pipeline_freshness_recovery.py::test_stale_stream_blocks_new_entries_but_real_eod_exit_still_flattens
+0.09s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[streaming_data_provider]
+0.09s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[staleness_admission]
+0.09s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[live_engine_data]
+0.08s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[market_scanner]
+0.08s call     tests/test_phase2_freeze.py::test_verify_detects_model_fingerprint_source_drift
+0.06s call     tests/test_phase2_freeze.py::test_verify_detects_freshness_dependency_drift[entry_evidence]
+0.06s call     tests/test_phase2_freeze.py::test_verify_detects_freshness_dependency_drift[entry_freshness]
+0.05s call     tests/test_phase2_freeze.py::test_verify_mode_detects_missing_deployment_env[ORGANISM_APPROVED_POLICY_BASELINE]
+0.03s call     tests/test_phase2_freeze.py::test_decision_surface_unchanged
+47 passed, 2 warnings in 3.30s

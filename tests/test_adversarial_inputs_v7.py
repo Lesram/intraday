@@ -316,29 +316,61 @@ def test_broker_request_has_bounded_retries():
     assert "max_retries" in src and "for attempt in range" in src
 
 
-@pytest.mark.xfail(
-    reason="FINDING FF-10: place_order calls response.json() on 200 status "
-           "without checking for empty body. An empty 200 raises "
-           "json.JSONDecodeError → swallowed by outer except and re-raised "
-           "as opaque 502.",
-    strict=True,
-)
-def test_broker_handles_empty_200_body():
-    from backend.integrations import alpaca_broker
-    src = inspect.getsource(alpaca_broker.AlpacaBrokerClient.place_order)
-    # Look for a guard against empty body
-    assert "response.text" in src and "if not response" in src or "len(response" in src
+@pytest.mark.asyncio
+async def test_broker_handles_empty_200_body():
+    """An empty success is resolved by exact identity, without another POST."""
+    from unittest.mock import AsyncMock
+    from fastapi import HTTPException
+    import httpx
+    from backend.integrations.alpaca_broker import AlpacaBrokerClient
+
+    broker = AlpacaBrokerClient.__new__(AlpacaBrokerClient)
+    broker.base_url = "https://broker.invalid"
+    broker.is_paper = True
+    broker.get_order = AsyncMock(side_effect=HTTPException(404, "not found"))
+    confirmed = {"id": "broker-id", "status": "accepted", "client_order_id": "original"}
+    broker._make_request_with_retry = AsyncMock(side_effect=[
+        httpx.Response(200, content=b""), httpx.Response(200, json=confirmed),
+    ])
+    result = await broker.place_order("AAPL", "buy", 1, client_order_id="original")
+    assert result == confirmed
+    calls = broker._make_request_with_retry.await_args_list
+    assert [call.args[0] for call in calls] == ["POST", "GET"]
+    assert calls[1].kwargs["params"] == {"client_order_id": "original"}
 
 
-@pytest.mark.xfail(
-    reason="FINDING FF-11: _process_trade_update calls float(order_data.get('filled_qty', 0)). "
-           "If broker sends filled_qty=null (JSON null → None), float(None) raises TypeError. "
-           "The outer except Exception catches and DROPS the message — the fill never lands "
-           "in DB → state divergence.",
-    strict=True,
-)
-def test_ws_handler_handles_null_filled_qty():
+@pytest.mark.asyncio
+async def test_ws_handler_handles_null_filled_qty(monkeypatch):
+    """A null cumulative quantity still reaches the actual order update path."""
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
     from backend.integrations import alpaca_stream
-    src = inspect.getsource(alpaca_stream.AlpacaStreamClient._process_trade_update)
-    # Should use `or 0` after .get to handle JSON null
-    assert "filled_qty\", 0) or 0" in src or "filled_qty\") or 0" in src
+    from backend.api import socketio_server
+
+    order = SimpleNamespace(id="local-id", filled_qty=0, user_id="test", symbol="AAPL",
+                            side="buy", qty=1, order_type="market", submitted_at=None)
+    repo = SimpleNamespace(get_by_broker_order_id=AsyncMock(return_value=order),
+                           attach_broker_result=AsyncMock())
+    session = SimpleNamespace(commit=AsyncMock())
+
+    @asynccontextmanager
+    async def session_context():
+        yield session
+
+    monkeypatch.setattr(alpaca_stream, "get_session_context", session_context)
+    monkeypatch.setattr(alpaca_stream, "OrdersRepo", lambda _: repo)
+    accounting = AsyncMock(return_value={"applied": False, "reason": "non_fill_status"})
+    monkeypatch.setattr(alpaca_stream, "apply_incremental_fill_accounting", accounting)
+    broadcast = AsyncMock()
+    monkeypatch.setattr(socketio_server, "broadcast_order_update", broadcast)
+    stream = alpaca_stream.AlpacaStreamClient.__new__(alpaca_stream.AlpacaStreamClient)
+    await stream._process_trade_update({"data": {"event": "new", "order": {
+        "id": "broker-id", "status": "new", "filled_qty": None,
+    }}})
+    repo.attach_broker_result.assert_awaited_once()
+    assert repo.attach_broker_result.await_args.kwargs["status"] == stream._map_alpaca_status("new")
+    assert repo.attach_broker_result.await_args.kwargs["filled_qty"] is None
+    assert accounting.await_args.kwargs["cumulative_filled_qty"] == 0.0
+    session.commit.assert_awaited_once()
+    assert broadcast.await_args.args[1]["filled_qty"] == 0.0

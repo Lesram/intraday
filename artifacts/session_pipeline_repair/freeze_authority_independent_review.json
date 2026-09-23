@@ -1,0 +1,23 @@
+{
+  "label": "freeze_authority_independent_review",
+  "exit_code": 0,
+  "seconds": 2.97,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra/artifacts/session_pipeline_repair/freeze_authority_independent_review.xml",
+    "tests/test_phase2_freeze.py",
+    "tests/test_active_freeze_contract.py",
+    "tests/test_artifact_workflow_contract.py",
+    "tests/test_phase3_attribution_report.py",
+    "tests/test_pipeline_snapshot.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

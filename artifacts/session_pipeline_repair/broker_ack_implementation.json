@@ -1,0 +1,99 @@
+{
+  "task_id": "ff10_ambiguous_broker_ack_repair",
+  "status": "implemented_and_targeted_checks_passed_pending_independent_acceptance",
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "head_before_uncommitted_delta": "3a9e35582cbb6083f650dc081175124d8a32e64e",
+  "branch": "codex/sept22-pipeline-repair",
+  "source_files_sha256": {
+    "backend/integrations/alpaca_broker.py": "6cc57a1ae2369cb3d6b9219293edc27078c54b951f4478a6f31ce09c6c3b19ee",
+    "backend/integrations/alpaca_outbox.py": "7ba67961260f144d684bf73162d2f58ba68d3552119b838140b694bbef507cb7",
+    "backend/infra/outbox_worker.py": "0c072ed0894f4256870e930be089a17e16f6bc0cc33a5bbabeb3686c8aaed34a",
+    "tests/test_broker_ack_reconciliation.py": "1490b59065679d56b982f520b7a7373e8443ab69ba2ff9affa29cf2c0451aa9e",
+    "tests/test_adversarial_inputs_v7.py": "37061da5d6aaada108c0809237b76d0c5d3ccf087fa35cef9f435b202cd499bd",
+    "tests/unit/test_alpaca_outbox_comprehensive.py": "2582fecadb83fc3db97a3dd746803f08befc42fbcd4c21352d53d1caeb950c72"
+  },
+  "behavior": [
+    "Validate successful, existing-order and duplicate-recovery acknowledgement identity/shape. Malformed 200/201 including empty, non-object, missing-id, or JSON recursion resolves by GET of original client_order_id only.",
+    "Persist versioned lookup-only state in existing outbox last_error TEXT. Claimed events restore marker across fresh worker instances; exact persisted client_key is never regenerated. Generic lookup failure and first persistence failure cannot downgrade ambiguity into ordinary submission retry.",
+    "Corrupt/unsupported marker or missing/mismatched identity fails closed. Exhaustion holds delivery and broadcasts order.reconciliation_required; unresolved order status is not fabricated as accepted, filled or rejected.",
+    "Lookup-only routing takes precedence over shadow, dry_run and both mock toggles. Logs distinguish lookup_only from submit.",
+    "Replace FF10/FF11 spelling-based XFAIL probes with real empty-response recovery and websocket null-quantity update behavior.",
+    "Root-approved same-file correction removes redundant local os import that prevented actual mock simulation before its production guard. Existing market/limit simulation now executes offline; production mode remains refused.",
+    "Three existing dispatcher fixture payloads now include explicit persisted client_key; original parameter/default assertions retained."
+  ],
+  "tests": {
+    "passed": 230,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "per_module_cases": {
+      "tests.test_broker_ack_reconciliation": 52,
+      "tests.test_adversarial_inputs_v7": 29,
+      "tests.test_alpaca_broker_comprehensive.TestRetryOnTransientError": 4,
+      "tests.test_alpaca_broker_comprehensive.TestAlpacaBrokerClientInit": 4,
+      "tests.test_alpaca_broker_comprehensive.TestGetAuthHeaders": 2,
+      "tests.test_alpaca_broker_comprehensive.TestOrderMappings": 9,
+      "tests.test_alpaca_broker_comprehensive.TestPlaceOrder": 2,
+      "tests.test_alpaca_broker_comprehensive.TestMakeRequestWithRetry": 4,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestGetSmartTif": 12,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestAlpacaOutboxDispatcherInit": 4,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestAlpacaOutboxDispatcherDispatch": 3,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestAlpacaOutboxDispatcherMockBroker": 3,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestAlpacaOutboxDispatcherAlpacaBroker": 5,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestAlpacaOutboxDispatcherGlobalInstance": 2,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestHandleOrderSubmittedEvent": 2,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestAlpacaOutboxDispatcherEdgeCases": 4,
+      "tests.unit.test_alpaca_outbox_comprehensive.TestSmartTifEdgeCases": 4,
+      "tests.test_outbox_shadow_mode": 1,
+      "tests.test_order_pipeline_e2e.TestOrderPipelineE2E": 4,
+      "tests.test_order_integrity_comprehensive.TestOrderState": 5,
+      "tests.test_order_integrity_comprehensive.TestOrderEventType": 2,
+      "tests.test_order_integrity_comprehensive.TestTransitionTrigger": 2,
+      "tests.test_order_integrity_comprehensive.TestValidTransitions": 5,
+      "tests.test_order_integrity_comprehensive.TestOrderSnapshot": 5,
+      "tests.test_order_integrity_comprehensive.TestOrderEventSchema": 6,
+      "tests.test_order_integrity_comprehensive.TestAuditLogEntry": 2,
+      "tests.test_order_integrity_comprehensive.TestOrderStateMachine": 14,
+      "tests.test_order_integrity_comprehensive.TestIdempotencyManager": 9,
+      "tests.test_order_integrity_comprehensive.TestAuditLogger": 3,
+      "tests.test_order_integrity_comprehensive.TestOrderIntegrityService": 8,
+      "tests.test_order_integrity_comprehensive.TestOrderIntegrationScenarios": 3,
+      "tests.test_position_reconciliation": 4,
+      "tests.test_position_reconciliation_comprehensive.TestPositionReconciliationInit": 1,
+      "tests.test_position_reconciliation_comprehensive.TestGetPositionStatusForOrders": 7,
+      "tests.test_position_reconciliation_comprehensive.TestGetReconciliationSummary": 3,
+      "tests.test_position_reconciliation_comprehensive.TestMultipleOrdersSameSymbol": 1
+    },
+    "network_denied": true,
+    "production_writes_denied": true,
+    "installed_credentials_and_brain_reads_denied": true,
+    "temporary_sqlite_actual_persistence": true
+  },
+  "lint": {
+    "normalized_new_findings": 0,
+    "removed_findings": 2,
+    "existing_findings_not_cleaned": true
+  },
+  "proof_files": {
+    "artifacts/session_pipeline_repair/broker_ack_plan.json": "b1a5189519c824b20209e8dbde79b08ee987212f61ea6c4c4e4057493c1f43aa",
+    "artifacts/session_pipeline_repair/broker_ack_accepted_candidate.json": "a8d34170812590bd91e7d4537a9a9bbb610fb1dd59514af46ff1071bbd8f6110",
+    "artifacts/session_pipeline_repair/broker_ack_accepted_candidate.xml": "3286f39de6139eef062f7265b3417442c1eb75299864b1fdbad99ced365c3217",
+    "artifacts/session_pipeline_repair/broker_ack_accepted_candidate.log": "4f3b02c179452547138258e9a3c5c256051558550cf1d65db31f575eb1651e3d",
+    "artifacts/session_pipeline_repair/broker_ack_lint_delta.json": "0f4cf1e0d2ccc04a329c64279c0f9175541c5f959b00d5ebea4b1d56e57c1d58"
+  },
+  "runtime_behavior_changed": true,
+  "frozen_strategy_surface_changed": false,
+  "schema_migration": false,
+  "operational_mutations": false,
+  "real_broker_validation": false,
+  "limitations": [
+    "The broker request and local database commit are not atomic. Lookup-only restart guarantee begins once marker persistence succeeds. Crash before any successful marker commit remains an existing delivery/reconciliation risk; no crash-atomic guarantee is made.",
+    "No attempt to backfill historically unresolved pre-patch events or infer uncertainty from ordinary historical 502 errors. Existing transport-level POST retry policy is unchanged.",
+    "Terminal held events require explicit operator/broker reconciliation if no validated lookup or websocket fill arrives. They are not silently requeued or marked rejected.",
+    "Real broker network, concurrency under PostgreSQL, runtime deployment and strategy profitability are not certified by isolated SQLite/offline tests."
+  ],
+  "follow_ups": [
+    "Independent final review; root-owned full safety/replay artifact pack, snapshot/freeze verification, final committed-head secret/static checks and hosted CI.",
+    "No merge or deployment by this implementation agent."
+  ]
+}

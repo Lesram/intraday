@@ -2630,44 +2630,51 @@ class OrganismLiveEngine(
 
     def _stage_update_data_staleness(self) -> None:
         """Stage 0.5 — refresh aggregate and per-symbol data-stale state."""
+        import math
+
         _was_stale = self._data_stale
         if self._streaming_provider is None:
             return
         try:
+            now = self._time_fn()
+            if not math.isfinite(now):
+                raise ValueError("invalid freshness clock")
             last_update = getattr(self._streaming_provider, "last_update_time", None)
+            aggregate_stale = False
+            staleness_s = 0.0
             if last_update is not None:
-                staleness_s = self._time_fn() - last_update
-                self._data_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
-                if self._data_stale and not _was_stale:
+                if not math.isfinite(last_update) or last_update > now:
+                    raise ValueError("invalid freshness timestamp")
+                staleness_s = now - last_update
+                aggregate_stale = staleness_s > self._DATA_STALE_THRESHOLD_S
+            # V9 PP-6: per-symbol staleness check.
+            stale_syms = []
+            if hasattr(self._streaming_provider, "stale_symbols"):
+                stale_syms = self._streaming_provider.stale_symbols(
+                    threshold_s=self._DATA_STALE_THRESHOLD_S,
+                    now=now,
+                )
+            self._data_stale = aggregate_stale or bool(stale_syms)
+            if self._data_stale and not _was_stale:
+                if aggregate_stale:
                     logger.warning(
                         "Data stream stale: %.0fs since last update "
                         "(threshold=%.0fs) — blocking entries",
                         staleness_s, self._DATA_STALE_THRESHOLD_S,
                     )
-                elif not self._data_stale and _was_stale:
-                    logger.info("Data stream fresh again — entries unblocked")
-            else:
-                self._data_stale = False
-            # V9 PP-6: per-symbol staleness check.
-            if hasattr(self._streaming_provider, "stale_symbols"):
-                stale_syms = self._streaming_provider.stale_symbols(
-                    threshold_s=self._DATA_STALE_THRESHOLD_S,
-                    now=self._time_fn(),
-                )
-                if stale_syms:
-                    # Trigger _data_stale even if aggregate looked fresh.
-                    self._data_stale = True
-                    if not _was_stale:
-                        logger.warning(
-                            "PP-6: %d symbol(s) stale beyond threshold "
-                            "(aggregate looked fresh): %s",
-                            len(stale_syms),
-                            [(s, round(a, 1)) for s, a in stale_syms[:5]],
-                        )
+                else:
+                    logger.warning(
+                        "PP-6: %d symbol(s) stale beyond threshold "
+                        "(aggregate looked fresh): %s",
+                        len(stale_syms),
+                        [(s, round(a, 1)) for s, a in stale_syms[:5]],
+                    )
+            elif not self._data_stale and _was_stale:
+                logger.info("Data stream fresh again — stale-data entry block cleared")
         except Exception as _stale_err:
-            # V9 UU pattern: surface, don't pass.
-            logger.debug(
-                "Stale-data check error (non-fatal): %s", _stale_err,
+            self._data_stale = True
+            logger.warning(
+                "Stale-data check failed — entries blocked: %s", _stale_err,
             )
 
     def _get_strategy_selector(self):
@@ -2984,14 +2991,11 @@ class OrganismLiveEngine(
                 self.market_scanner is not None
                 and self._tick_count % SCAN_INTERVAL_TICKS == 0
             ):
+                _scanner_error = None
                 try:
                     new_candidates = await self.market_scanner.scan()
+                    self._scanner_candidates = new_candidates
                     if new_candidates:
-                        self._scanner_candidates = new_candidates
-                        # V9 PP-5 / Wave-45 (2026-05-03): record success time
-                        # so a long missing-API run can be detected.
-                        self._scanner_last_success_tick = self._tick_count
-                        self._scanner_consecutive_failures = 0
                         # Temporarily add top scanner picks to universe for this tick
                         scanner_additions = [
                             s for s in new_candidates[:20]
@@ -3015,7 +3019,15 @@ class OrganismLiveEngine(
                             timestamp=now_iso,
                         ))
                 except Exception as e:
-                    logger.warning("Market scan failed: %s", e)
+                    self._scanner_candidates = []
+                    _scanner_error = str(e)
+                if _scanner_error is None and getattr(self.market_scanner, "last_scan_succeeded", False) is not True:
+                    _scanner_error = "Scanner completed with endpoint or snapshot errors"
+                if _scanner_error is None:
+                    self._scanner_last_success_tick = self._tick_count
+                    self._scanner_consecutive_failures = 0
+                else:
+                    logger.warning("Market scan failed or degraded: %s", _scanner_error)
                     # V9 PP-5: track consecutive failures + alert at threshold.
                     self._scanner_consecutive_failures = (
                         getattr(self, "_scanner_consecutive_failures", 0) + 1
@@ -3029,21 +3041,17 @@ class OrganismLiveEngine(
                                 AlertCategory, AlertSeverity, send_alert,
                                 dispatch_alert_from_thread,
                             )
-                            # V12 W75 (UU3-2 / F821): capture exception text
-                            # as a string before the lambda — Python deletes
-                            # the ``except`` exception variable at block exit,
-                            # and ``dispatch_alert_from_thread`` may run the
-                            # lambda on another thread after that point,
-                            # which would raise NameError on ``e``.
-                            _last_err_text = str(e)
+                            # Capture the error string before thread dispatch;
+                            # no exception-local variable escapes its handler.
+                            _last_err_text = _scanner_error
                             dispatch_alert_from_thread(
                                 lambda: send_alert(
                                     AlertCategory.SYSTEM_ERROR,
                                     AlertSeverity.WARNING,
                                     "Market Scanner Persistent Failure",
                                     f"Scanner failed {_PP5_FAIL_ALERT} consecutive "
-                                    f"runs.  Universe will trade off STALE candidates "
-                                    f"until scanner recovers.  Last error: {_last_err_text}",
+                                    f"runs. Only individually qualified returned candidates "
+                                    f"and the current universe are retained. Last error: {_last_err_text}",
                                 )
                             )
                         except Exception as _alert_err:

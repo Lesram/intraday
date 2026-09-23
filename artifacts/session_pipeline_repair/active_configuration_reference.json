@@ -1,0 +1,58 @@
+{
+  "source_sha": "2bd27836381e38e0ae683eadfc193576a185440c",
+  "image_digest": "sha256:d3c8f81e1604d8007931e9c4f6a5eb59e0f362ea481a63f82bb0ef22cc7bbf9f",
+  "runtime_config_hash": "ffc18df3e0051af4",
+  "current_policy_verified_at": "2026-09-23T05:05:50.507837+00:00",
+  "fixed_risk_sizing": true,
+  "ml_influence_enabled": false,
+  "policy_locked": true,
+  "daily_binding_verified": true,
+  "deployment_snapshot": "/Users/marselkei/VS/intra/artifacts/paper_activation/2026-09-22-freshness/runtime_snapshot/runtime_config_snapshot.json",
+  "deployment_snapshot_sha256": "01dbe86f1ecdf144cb807059fdd1d6fa1c5d71e70742436922251c85dc2b6690",
+  "snapshot_scope": "Configuration snapshot from deployment, corroborated by closing status and current authenticated identity/policy checks; not a new full per-decision configuration dump.",
+  "configuration_values": {
+    "timeframe": "1Min",
+    "tick_interval_seconds": 10,
+    "universe_size": 20,
+    "max_positions": 8,
+    "max_notional_per_trade": 2000.0,
+    "max_daily_loss": 1100.0,
+    "drawdown_kill_pct": 0.1,
+    "learning_mode_threshold_trades": 200,
+    "evolution_freeze_until_trades": 300,
+    "risk_budget_learning": 0.001,
+    "exploration_enabled": false,
+    "entry_freshness": {
+      "required_timeframe": "1Min",
+      "max_bar_age_seconds": 120.0,
+      "minimum_bar_age_seconds": 0.0,
+      "timestamp_semantics": "provider_bar_start_utc",
+      "checked_at": "final_entry_submission",
+      "missing_or_invalid_timestamp": "reject_entry",
+      "protective_exits_exempt": true
+    },
+    "research_policy": {
+      "id": "paper_research_locked_v1",
+      "locked": true,
+      "reason": "reviewed_paper_baseline_requires_explicit_promotion",
+      "raw_strategy_trade_count": null,
+      "qualified_trade_count": null,
+      "qualification_status": "unverified",
+      "automatic_promotion_enabled": false,
+      "frozen_models": true,
+      "ml_reversal_exit_policy": "retained_saved_model_baseline",
+      "effective_policy_params": null,
+      "effective_policy_hash": null
+    },
+    "bar_boundary_entry_only": true,
+    "snapshot_source": "resolved_config_snapshot",
+    "evidence_scope": "container_configuration_resolution_not_engine_observation",
+    "engine_observed": false,
+    "config_truth_status": {
+      "status": "consistent",
+      "mismatches": []
+    }
+  },
+  "candidate_deployed": false,
+  "interpretation": "Retained approved deployment configuration, corroborated at prior authenticated check; current container/freeze preservation is separately verified. This is not a fresh per-decision runtime observation or the candidate configuration."
+}

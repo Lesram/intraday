@@ -1,0 +1,75 @@
+{
+  "review_id": "credential_hygiene_independent_source_review",
+  "reviewed_at_utc": "2026-09-23T06:43:57.504644+00:00",
+  "status": "ACCEPTED_FOR_COMMIT_AND_FRESH_CONTEXT_VALIDATION",
+  "base_source_sha": "3a9e35582cbb6083f650dc081175124d8a32e64e",
+  "reviewed_working_tree_sha": "3a9e35582cbb6083f650dc081175124d8a32e64e",
+  "source_binding": "Exact current file hashes; final source commit not yet created. Old3a image/archive remains rejected and must not be reused.",
+  "files_sha256": {
+    "scripts/testing/performance_test.py": "b777eb99ae6b1f1d82d47641bd22a4673c31ef8ace73d2a2498bcb6fc08537ec",
+    "scripts/ci/validate_checklist.py": "9cb3be8b41985d9c41a78c7185febf1fc0bc280268b41e24dd2bf186788ba4fd",
+    "reports/comprehensive_audit_findings.jsonl": "2e5dcfa5562276c776de61a05952c0b7d3ea2b926c894d9ffdba80433f217893",
+    "tests/test_developer_tool_credentials.py": "830064967c382ad765f441104fab36287545151ad7d621d7ba084a94eb428067",
+    ".github/workflows/paper-readiness.yml": "ab53d7377a8a983d4a5426305adc08d30f49e68e633f34cf6dcf1e70fd14da59",
+    "docs/engineering/SESSION_PIPELINE_REPAIR.md": "8cd6aa2177a08073f6bb092586818fbb19f69e352617b89d3577962a443f0115"
+  },
+  "blocking_source_findings": [],
+  "accepted_checks": [
+    "Explicit api_token takes precedence whenever not None; only omitted arguments use INTRA_API_TOKEN. Invalid explicit input cannot fall back.",
+    "Missing/blank/whitespace credentials raise fixed error/CLI status2 before client construction, automatic login or HTTP requests.",
+    "Checklist automatic demo login and hardcoded fallback removed; explicit constructor/CLI input retained.",
+    "Real smoke/checklist tests preserve unauthenticated probes and require correct Bearer headers on protected probes.",
+    "Performance response/exception redaction occurs before truncation; checklist request/results/CLI exception paths redact supplied token.",
+    "Exactly report rows100/137/147 changed, only evidence field in each. Other lines byte-identical and other fields equal.",
+    "Historical opaque token absent from changed tools; prior Git history retained.",
+    "CI only adds focused test path; docs disclose history/revocation and scan limitations.",
+    "No backend/auth/strategy/model/feed/freeze/build/dependency change in this delta."
+  ],
+  "author_validation": {
+    "implementation_sha256": "3e8e6cd9055f3765801254c126032620bf03dfe57c82f23170140c9bc6e4ebd8",
+    "reported_artifact_binding_mismatches": [],
+    "current_root_plan_sha256": "fac7c8bf904434ae0f25d915eabee1183909fe0c6060e61616a890f753626ecf",
+    "artifact_hashes": {
+      "freeze.log": "bcc6ed3fc7022f419c85f226fc2e7448c9e8bc19783437785c747f7b27c72e0d",
+      "plan.json": "4ba19f982274c256cf6e86ff9354f967832cf86ccf3a6ef28ebd781d6e831917",
+      "red.log": "5f6188a6be5d51ebbb799a23721212b2b0c1e0f5feeefb33baf55958e37619cc",
+      "red.xml": "a9c751fa0e566571eafeab9ece64fd25bc37ced9dfcf5ec442df1ea832de8239",
+      "report_redaction.json": "5d08b78b53d8250673b49ac0415b0a1c8ea80dada24df0266f4a9eb49c6566ea",
+      "root_plan.json": "fac7c8bf904434ae0f25d915eabee1183909fe0c6060e61616a890f753626ecf",
+      "ruff.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "targeted.log": "df9e28e05d90b973065157bbe55007b3fc1a0794a0d63cf989ec77d6b3adfd43",
+      "targeted.xml": "d64fa2b785af5614e9db3b0f8de28999cd3dad6ea34111e630df6607f4f418c6"
+    },
+    "targeted_junit_sha256": "d64fa2b785af5614e9db3b0f8de28999cd3dad6ea34111e630df6607f4f418c6",
+    "passed": 26,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "original_source_red": {
+      "junit_sha256": "a9c751fa0e566571eafeab9ece64fd25bc37ced9dfcf5ec442df1ea832de8239",
+      "cases": 9,
+      "failed": 9,
+      "used_as_pass": false
+    },
+    "ruff": [],
+    "candidate_freeze": "Author log pass; frozen source/files unchanged in this delta.",
+    "independent_tests_run": false
+  },
+  "metadata_observation": {
+    "issue": "Root expanded root_plan after author artifact inventory; initial binding mismatch was isolated to that metadata file.",
+    "current_status": "resolved by author metadata-only refresh",
+    "source_acceptance_affected": false,
+    "later_parallel_work": "Root subsequently added broker test paths to workflow and broker source repairs are underway; original workflow hash in this review is historical and full release review must bind final root workflow/docs. Credential source bytes and tests are unchanged."
+  },
+  "pending_gates": [
+    "Commit exact reviewed bytes and rebind required hosted/local release evidence.",
+    "Fresh exact-source context scan must contain no unresolved credential material; unchanged safe findings require hash-bound disposition.",
+    "Do not silently modify/reuse rejected3a archive or tag.",
+    "Build/image proof and bounded pipeline checks are still pending; no deployment/new-cutoff approval inferred."
+  ],
+  "limitations": [
+    "Redaction covers supplied literal tokens in reviewed error paths, not arbitrary third-party logging or credentials placed in user-chosen URLs/filenames. Environment input avoids optional CLI process-list exposure.",
+    "Current-tree hygiene is not credential revocation or Git-history erasure. Root reports historical values differ from active secret; reviewer performed no active-secret read/authentication.",
+    "Developer diagnostic GET behavior with explicitly supplied credentials remains; all author test transports were mocked and network-denied."
+  ]
+}

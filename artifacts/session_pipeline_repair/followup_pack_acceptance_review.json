@@ -1,0 +1,305 @@
+{
+  "task_id": "independent_followup_full_pack_acceptance",
+  "status": "ACCEPTED_LOCAL_PACK_PENDING_DELIVERY_EQUIVALENCE_HOSTED_GATES_AND_NEW_IMAGE",
+  "reviewed_at_utc": "2026-09-23T08:00:09.267632+00:00",
+  "tested_source_sha": "3f20cea30b66165fc8ba70a0773372330d7bb490",
+  "repair_base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "review_scope": "Read-only inspection of final source equality, fresh JUnit counts, evidence hashes, snapshot provenance, approved review chain and complete staged delivery inventory. No tests rerun, runtime/auth/broker calls, source edit, commit or deployment.",
+  "findings": [],
+  "full_pack": {
+    "exit_code": 0,
+    "elapsed_seconds": 224.83,
+    "unique_passed": 216,
+    "core_passed": 168,
+    "replay_passed": 28,
+    "semantic_passed": 20,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": [
+      {
+        "path": "artifacts/organism_live_engine.junit.xml",
+        "sha256": "f44f153460a3b1f9357ebdf77b3b7d1f4cc63ef388c944e54c9631801c32c660",
+        "passed": 26,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "started_at": [
+          "2026-09-23T00:51:00.169745-07:00"
+        ]
+      },
+      {
+        "path": "artifacts/organism_engine_scenarios.junit.xml",
+        "sha256": "e44c332e981de9bda827d8973ef03df03337555ed64d68019c884132d30f6ec6",
+        "passed": 31,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "started_at": [
+          "2026-09-23T00:51:17.334147-07:00"
+        ]
+      },
+      {
+        "path": "artifacts/multi_tick_state.junit.xml",
+        "sha256": "828e3893db44ce5c937c2159c52192bcba0e842f52041ecc19888652f39d422d",
+        "passed": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "started_at": [
+          "2026-09-23T00:51:59.089207-07:00"
+        ]
+      },
+      {
+        "path": "artifacts/safety_invariants.junit.xml",
+        "sha256": "3e38c74d02485e2df645e43efa48314d27afb29884bdcd99c0a2283ef02cb596",
+        "passed": 29,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "started_at": [
+          "2026-09-23T00:52:00.979813-07:00"
+        ]
+      },
+      {
+        "path": "artifacts/self_evolution.junit.xml",
+        "sha256": "8a47bed1d9a7c7c10703067670bfb109d60068c08bc1367e66e4114815f3bf88",
+        "passed": 15,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "started_at": [
+          "2026-09-23T00:52:02.909427-07:00"
+        ]
+      },
+      {
+        "path": "artifacts/algorithm_improvements.junit.xml",
+        "sha256": "143c0a5abc208376888118c85a493b1c51fb5ad58b72e7053a887d2e62eac208",
+        "passed": 58,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "started_at": [
+          "2026-09-23T00:52:04.251830-07:00"
+        ]
+      },
+      {
+        "path": "artifacts/replay_simulator.junit.xml",
+        "sha256": "8e109720a984cef4d557097a2de617b786a2ed2f468ae500f83011f4ea47ed31",
+        "passed": 28,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "started_at": [
+          "2026-09-23T00:52:05.892530-07:00"
+        ]
+      },
+      {
+        "path": "artifacts/semantic_invariants.junit.xml",
+        "sha256": "a001f012af01409246da4b65ab1ab53b0a419c9b230bfaddd46cdbe792eb44b3",
+        "passed": 20,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "started_at": [
+          "2026-09-23T00:54:41.579945-07:00"
+        ]
+      }
+    ],
+    "freshness": "All suite timestamps belong to the current 2026-09-23 07:51\u201307:54 UTC pack; archived red or earlier green files are excluded."
+  },
+  "supplementary_evidence": [
+    {
+      "path": "artifacts/session_pipeline_repair/followup_config_broker.xml",
+      "sha256": "f227b9e4d1d1cdd9643a29a310a2e32bdbae7de68c6404b8d6a0747ac2353a73",
+      "passed": 202,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/session_pipeline_repair/final_followup_candidate_contract.xml",
+      "sha256": "c94697fa987e2b0389b1d7973a2032716e504720779db8860be640653a81efa0",
+      "passed": 37,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/session_pipeline_repair/scanner_complete_outcome_final.xml",
+      "sha256": "4c0806ff74cdac4f144899eaedeb1806f46c9a1c21afdc0500fbfaca983297e2",
+      "passed": 145,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/session_pipeline_repair/provider_restart_stable.xml",
+      "sha256": "436a93b7d1c101adc9081553ec0dd76a8d5a7bdf6bc512caab8fd30906b491b1",
+      "passed": 104,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/freeze_contract/targeted.xml",
+      "sha256": "e6f59bd81524e091eb469d51a83711ace3c1fbde270f3f750fd4094ab8fde84c",
+      "passed": 353,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/session_pipeline_repair/audit_index_complete_inventory.xml",
+      "sha256": "bcdded29b75394d0943fa339af09674a98cf25294bd80b93b829abf40531cb90",
+      "passed": 33,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "counting_rule": "Supplementary selections overlap. Counts above are separate scopes and are not summed into a fabricated unique aggregate. The216 full-pack identities are verified disjoint.",
+  "required_coverage": [
+    "All six AGENTS organism suite requirements are in the current full pack, including28 replay cases.",
+    "Required settings/config/system and order-integrity/two-reconciliation suites appear in202-pass followup_config_broker, alongside broker/adversarial cases.",
+    "Final scanner145 cases cover actual entry/exit replay and partial/degraded/empty bookkeeping; provider104 covers19 lifecycle cases and real stale-EOD behavior.",
+    "Cutoff353-case selection covers native reports, reconciliation, collector/replay, host and watchdog authority refusal; final37 candidate-contract cases cover regenerated surface and snapshot."
+  ],
+  "source_consistency": {
+    "application_test_config_workflow_diff_since_tested_source": false,
+    "changed_python_hashes_verified": 40,
+    "independent_report_references_verified": 19,
+    "candidate_reference_sha256": "157a866f674749b9c05a57e4bc793833ffd6898d9944088ab51e17f58962d5be",
+    "candidate_validation_time": "2026-09-23T07:50:50.906823+00:00",
+    "candidate_is_active": false,
+    "canonical_active_sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "active_cutoff": "2026-09-22T08:49:11.247316+00:00",
+    "candidate_reference_note": "The final regenerated candidate artifact was present during final contract/full-pack validation and is separately hash-bound here. It updates the prior committed candidate scanner hash and validation metadata; it is not an active-clock change."
+  },
+  "inventory": {
+    "total_distinct_paths": 320,
+    "index_task_report_changed_files_and_git_diff_match": true,
+    "diff_reference": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+    "scope_includes_staged_evidence": true,
+    "organism_count_is_backend_subset": true,
+    "complete_list_untruncated": true,
+    "delivery_manifest_note": "The staged delivery manifest and this review are included by path only. This review intentionally excludes its own hash and the downstream manifest hash to avoid cycles."
+  },
+  "checks": {
+    "spec_drift": "pass;9 core keys,0 drift",
+    "grep_assertions": "15/15 pass; not a substitute for behavioral safety tests",
+    "snapshot_generation": "pass; offline expected configuration only",
+    "live_process_observation": "unreachable; no installed engine certification claimed",
+    "static": "0 new high-severity Bandit;7 individually proven source-hash Gitleaks false positives with raw exit1 retained;2 historical-evidence F401 warnings plus57 baseline warnings retained,0 new active-source lint findings"
+  },
+  "artifact_sha256": {
+    "artifacts/task_report.json": "6ecc4fa3f622f28deeac28df67a8bf7c06e5f18d8a291fe7a04b315618d9c677",
+    "docs/engineering/LIVE_AUDIT_INDEX.md": "8855fbff73670aa02b9c92da28d397a53a861cd990d7636736f1b5404484bf3e",
+    "artifacts/changed_files.json": "34d890a965788ebdb3cc43378873ce035ea4aa136de247fede8e0570bd95039f",
+    "artifacts/test_summary.json": "fa239fd6e140e53bf8ae77512d373f5fa391f24b43e8c2e932757a024fe042e6",
+    "artifacts/replay_summary.json": "557d6338a16648b67e47e027fb9229cb79206e0c9120badaedb22427e512ac2a",
+    "artifacts/semantic_invariants_summary.json": "a8f2c85e152394012eaf6f4505ff189be0633a3aaae584dca8ff2990cdab763b",
+    "artifacts/spec_drift_summary.json": "22b51305a1c0f1de9da3fb512f4a6b992059c7c0062d69430d9dadcf4601a3c5",
+    "artifacts/runtime_snapshot_summary.json": "396ff5b5bb1515ca5ba63892ca979b7ca4c158b7ce87dffd0af9f2f831adf6bd",
+    "artifacts/grep_assertions.json": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b",
+    "artifacts/runtime_defaults_snapshot.json": "6e3eff1e28cc384e19c92a511b9504a5077e811a5fe1c218282a0515c33e2773",
+    "artifacts/resolved_config_snapshot.json": "0bf0d5a19cff6f2edb39672fd3678e65d034d83bec0be3710ae2dbec2ddd1382",
+    "artifacts/runtime_config_snapshot.json": "37a2c27bab2f318b988eae8ecd1f1f3ea36326eaf3b431f860b2e5f15fd6fd64",
+    "artifacts/live_process_runtime_snapshot.json": "ed0cdb1e19941391bcfaa56eb800997bd055a0e626fe6f9e7d6f24cbc8d3bcba",
+    "artifacts/phase2/candidate_param_freeze.json": "157a866f674749b9c05a57e4bc793833ffd6898d9944088ab51e17f58962d5be",
+    "artifacts/phase2/param_freeze.json": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "artifacts/monday_readiness/frozen_surface_reference.json": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "artifacts/session_pipeline_repair/full_review_followup.json": "cb94a77923d85ed1c866c77f5b704f50e8476f40388c812043ac2b6386e808ad",
+    "artifacts/session_pipeline_repair/followup_static/static_review.json": "c945119316767a78853675c11dc833ed0d18fb18cb9a3180b04b8e3f32d08a49",
+    "artifacts/session_pipeline_repair/followup_static/static_disposition.json": "227bbb702ddede0bd7ff55ad5fbe4c44c807e65103570b16d59802eca78de74e"
+  },
+  "independent_reviews": {
+    "broker_ack_independent_review.json": {
+      "path": "artifacts/session_pipeline_repair/broker_ack_independent_review.json",
+      "sha256": "28547ace8d661ac64ed2e66b4b852b67ac7684dc87f95be8402da526cbb772bc"
+    },
+    "post_commit_evidence/credential_hygiene/independent_review.json": {
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/credential_hygiene/independent_review.json",
+      "sha256": "08da86dd6964ef3ca82249e5f53a4455d1c09fb45ae11349e78cd60cd266e9ea"
+    },
+    "review_followup_plan.json": {
+      "path": "artifacts/session_pipeline_repair/review_followup_plan.json",
+      "sha256": "094de6bf977b761df58fc2e1ca463a51cda42798d64ae7e65952eded2a7a95bb"
+    },
+    "review_followup_freeze.json": {
+      "path": "artifacts/session_pipeline_repair/review_followup_freeze.json",
+      "sha256": "ca867460fc57d194aea65160d83a96d4f1450d1a3de93a28d1278dda310158ed"
+    },
+    "provider_restart_implementation.json": {
+      "path": "artifacts/session_pipeline_repair/provider_restart_implementation.json",
+      "sha256": "a918df384666a31daceb67e3da0c1597dcdda3c217b05a8ff3e253f324833c95"
+    },
+    "provider_restart_independent_review.json": {
+      "path": "artifacts/session_pipeline_repair/provider_restart_independent_review.json",
+      "sha256": "b56405a047890cbbc0624b70a1e63836da121ea60a57c43fb127bc91f3e391e8"
+    },
+    "post_commit_evidence/freeze_contract/implementation.json": {
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/freeze_contract/implementation.json",
+      "sha256": "8756f5c404d7b5c0cc4ca7e3fa5da8fa9b99390455aff02a1a03d0ed0a417dc8"
+    },
+    "post_commit_evidence/freeze_contract/independent_review.json": {
+      "path": "artifacts/session_pipeline_repair/post_commit_evidence/freeze_contract/independent_review.json",
+      "sha256": "f0f0d92a4142fc6d7d68280006ae899d2a6ff837ac4859d54ebd838fd7ddb860"
+    },
+    "audit_index_repair_implementation.json": {
+      "path": "artifacts/session_pipeline_repair/audit_index_repair_implementation.json",
+      "sha256": "9291c0e2ab648ec806b6e53ef1ba1f13d8fc643a30b32d238e99be0c5e0fd00d"
+    },
+    "audit_index_independent_review.json": {
+      "path": "artifacts/session_pipeline_repair/audit_index_independent_review.json",
+      "sha256": "5dda8c08cc2317212ae703cd04c7ec42469ba9a3cfaf62a38669f9a1a737f147"
+    },
+    "scanner_outcome_implementation.json": {
+      "path": "artifacts/session_pipeline_repair/scanner_outcome_implementation.json",
+      "sha256": "a79317ec3f25f98deea36fd7ca30cab22daf76ac11c94c89d6753d89ef94e406"
+    },
+    "scanner_malformed_outcome_implementation.json": {
+      "path": "artifacts/session_pipeline_repair/scanner_malformed_outcome_implementation.json",
+      "sha256": "c46a9d59386a5179827ba05447c448c5a1e5f88b47835605e5fa293f2d0d0b9d"
+    },
+    "scanner_complete_outcome_implementation.json": {
+      "path": "artifacts/session_pipeline_repair/scanner_complete_outcome_implementation.json",
+      "sha256": "04a912d5117ff53232d27eb062db1c01ca6f5eaa4d00665fc6af37972f9b0008"
+    },
+    "scanner_outcome_independent_review.json": {
+      "path": "artifacts/session_pipeline_repair/scanner_outcome_independent_review.json",
+      "sha256": "2637009dd082c8259cc488e65b33fd905dc1296b75e4a85b1f11cb09f432d83f"
+    },
+    "freeze_authority_independent_acceptance.json": {
+      "path": "artifacts/session_pipeline_repair/freeze_authority_independent_acceptance.json",
+      "sha256": "708d9536a314839bb7bf793b7346b220392e82e0bb5070ee8ec4e69ba462d12f"
+    },
+    "followup_root_contract.json": {
+      "path": "artifacts/session_pipeline_repair/followup_root_contract.json",
+      "sha256": "181fcbe7684b10f412cf2fe718046d269f8d33839e9e29fcb428e1f3232583c0"
+    },
+    "followup_config_broker.json": {
+      "path": "artifacts/session_pipeline_repair/followup_config_broker.json",
+      "sha256": "3e9fdec730f788ab747444a439ead906afb9682d7c24931a782b029fcf2974c5"
+    },
+    "final_followup_candidate_contract.json": {
+      "path": "artifacts/session_pipeline_repair/final_followup_candidate_contract.json",
+      "sha256": "7db7413e5b8afd21047b025164ae1c046c2dd208f9f00120939be874e624a2b1"
+    },
+    "followup_static/static_disposition.json": {
+      "path": "artifacts/session_pipeline_repair/followup_static/static_disposition.json",
+      "sha256": "227bbb702ddede0bd7ff55ad5fbe4c44c807e65103570b16d59802eca78de74e"
+    }
+  },
+  "limitations": [
+    "Local simulation and mocked provider/broker transport do not prove live connectivity, profitability, natural-session fills, protective exits or EOD flatten.",
+    "Historical source3a hosted results and superseded source1eb/imagee1bd307-case results are explicitly historical, not final-source acceptance.",
+    "Offline snapshots include source/process defaults such as1Day; active approved1Min configuration is separately referenced, not inferred from these snapshots.",
+    "Global active-stale gating, final0..120s provider-bar-start entry gate, fixedATR learning sizing, learning ML isolation and frozen parameters/feed remain preserved within the authorized source repair scope.",
+    "Broker uncertainty protection begins when its durable marker commits; pre-marker crash/database failure remain boundaries. Old worker cannot safely consume unresolved new marker records; rollback must preserve/reconcile them.",
+    "Legacy active artifacts may omit flags; source/image/activation/binding checks remain necessary. Candidate verification is not activation approval.",
+    "Current-file historical credential redaction does not rewrite Git history or prove revocation. Full-context new image scan still required.",
+    "No new image exists for this final source and hosted exact-delivery checks are pending. Final artifact commit must prove implementation equivalence, refresh exact-head secret scan, then pass hosted and constrained image gates.",
+    "Any future activation needs explicit changed-surface/new-boundary signoff and fresh held-state checks; no installed state, history, binding or clock was changed by this review."
+  ]
+}

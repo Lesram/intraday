@@ -1,0 +1,36 @@
+{
+  "receipts": [
+    {
+      "arguments": [],
+      "exit_code": 0,
+      "output": "candidate decision surface -> artifacts/phase2/candidate_param_freeze.json\n  VALIDATED_AT=2026-09-23T07:50:50.906823+00:00  (new candidate validation boundary; no active clock change)\n  git_sha=3f20cea30b66165fc8ba70a0773372330d7bb490  n_target=60\n  source_hashes=['entry_direction', 'entry_gates_dispatch', 'exit_engine', 'kelly_sizer', 'regime_detector', 'selector_routing']\n"
+    },
+    {
+      "arguments": [
+        "--verify",
+        "--candidate"
+      ],
+      "exit_code": 0,
+      "output": "CANDIDATE DRIFT-VERIFY OK: decision surface matches reference (boundary=2026-09-23T07:50:50.906823+00:00; read-only)\n"
+    },
+    {
+      "arguments": [
+        "--verify"
+      ],
+      "exit_code": 1,
+      "output": "ACTIVE DRIFT-VERIFY FAIL: decision surface DRIFTED from reference (boundary=2026-09-22T08:49:11.247316+00:00); no clock change performed. Offending keys:\n    data_pipeline_sources: frozen=None current={'live_engine_data': '89e892f19009b7956a072a31f8be35d8dadec0c0056b80b30e29aa08fe70e719', 'market_scanner': '2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f', 'staleness_admission': '0399e7a2e534aaa52fd88d6734dad6320427fd106227343fe6884dbe1e9c7879', 'streaming_data_provider': '0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838'}\n    source_hashes.entry_gates_dispatch: frozen='f928b665155cc3bc92a82aeb6589213a682a75cf241dc70c1717f94cd0e5fcba' current='1ff808a56bfee0620aa53411084035c8937bc2ae8ed11bdf75227a04d6c374fb'\n"
+    }
+  ],
+  "candidate_sha256": "157a866f674749b9c05a57e4bc793833ffd6898d9944088ab51e17f58962d5be",
+  "active_sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+  "active_unchanged": true,
+  "active_cutoff": "2026-09-22T08:49:11.247316+00:00",
+  "candidate_validation": "2026-09-23T07:50:50.906823+00:00",
+  "candidate_has_no_frozen_at": true,
+  "changed_groups": [
+    "data_pipeline_sources",
+    "source_hashes"
+  ],
+  "active_verify_on_candidate_source": "expected drift; no authority promotion",
+  "source_sha": "3f20cea30b66165fc8ba70a0773372330d7bb490"
+}

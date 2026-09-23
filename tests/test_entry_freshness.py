@@ -218,6 +218,8 @@ async def test_real_tick_callers_share_gate_and_stale_is_normal_skip(tmp_path, m
     engine.regime_detector.detect = MagicMock(return_value=SimpleNamespace(primary="trending_up", confidence=.9))
     engine._streaming_provider = None if source == "rest" else MagicMock()
     if source == "streaming":
+        engine._streaming_provider.last_update_time = NOW.timestamp()
+        engine._streaming_provider.stale_symbols.return_value = []
         engine._streaming_provider.get_bar_age.return_value = 0.
         engine._streaming_provider.is_ready.return_value = True
         engine._streaming_provider.get_latest_quote.return_value = {"bid": 99., "ask": 100.}

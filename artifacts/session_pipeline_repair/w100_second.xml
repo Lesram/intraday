@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="13" time="10.854" timestamp="2026-09-22T22:32:50.444857-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_live_tick_inner_loc_pinned" file="tests/test_v13_w100_live_tick_coverage.py" line="79" time="0.022" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_cached_feature_prefixes_match_real_visible_history" file="tests/test_v13_w100_live_tick_coverage.py" line="166" time="0.644" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_entries_gate_produces_orders_on_uptrend" file="tests/test_v13_w100_live_tick_coverage.py" line="179" time="3.204"><properties><property name="actual_entry_orders" value="5" /><property name="actual_accounted_closes" value="5" /><property name="first_entry_at" value="2026-09-22T14:05:00+00:00" /></properties></testcase><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_entries_gate_signals_generated_on_uptrend" file="tests/test_v13_w100_live_tick_coverage.py" line="195" time="1.391" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_position_management_loop_produces_exits_on_downturn" file="tests/test_v13_w100_live_tick_coverage.py" line="205" time="2.121"><properties><property name="protective_closes_after_shock" value="1" /><property name="actual_orders" value="9" /><property name="actual_accounted_closes" value="4" /><property name="exit_reasons" value="['horizon_timeout', 'pyramid_cut_full_at_-1.3R', 'pyramid_cut_full_at_-2.1R', 'pyramid_cut_full_at_-7.9R']" /></properties></testcase><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_eod_flattens_real_entered_position" file="tests/test_v13_w100_live_tick_coverage.py" line="246" time="1.207"><failure message="assert []">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x10a172b40&gt;
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-113/test_w100_eod_flattens_real_en0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10b279ee0&gt;
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    async def test_w100_eod_flattens_real_entered_position(monkeypatch, tmp_path, record_property):
+        """Late-session replay must flatten a position and forbid later entries."""
+        replay, engines, _ = _replay(
+            monkeypatch, tmp_path, _minute_bars(start="2026-09-22T16:15:00Z"))
+        result = await replay.run(max_ticks=35)
+        _assert_real_ticks(result, 35)
+        assert any(order["side"] == "buy" for order in result.orders)
+        eod_closes = [trade for trade in result.accounted_trades
+                      if trade["exit_reason"] == "eod_flatten"]
+&gt;       assert eod_closes
+E       assert []
+
+tests/test_v13_w100_live_tick_coverage.py:258: AssertionError</failure></testcase><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_position_management_no_orders_no_exits" file="tests/test_v13_w100_live_tick_coverage.py" line="267" time="0.761"><failure message="assert 0 &gt; 0&#10; +  where 0 = sum(&lt;generator object test_w100_position_management_no_orders_no_exits.&lt;locals&gt;.&lt;genexpr&gt; at 0x11304cee0&gt;)">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x112e83ec0&gt;
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-113/test_w100_position_management_1')
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    async def test_w100_position_management_no_orders_no_exits(monkeypatch, tmp_path):
+        """A real zero-entry throttle produces no phantom positions or exits."""
+        replay, _, _ = _replay(monkeypatch, tmp_path, _minute_bars(), max_entries_per_hour=0)
+        result = await replay.run(max_ticks=20)
+        _assert_real_ticks(result, 20)
+&gt;       assert sum(tick["signals_generated"] for tick in result.tick_results) &gt; 0
+E       assert 0 &gt; 0
+E        +  where 0 = sum(&lt;generator object test_w100_position_management_no_orders_no_exits.&lt;locals&gt;.&lt;genexpr&gt; at 0x11304cee0&gt;)
+
+tests/test_v13_w100_live_tick_coverage.py:275: AssertionError</failure></testcase><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_equity_gates_max_daily_loss_branch_present" file="tests/test_v13_w100_live_tick_coverage.py" line="284" time="0.002" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_equity_gates_drawdown_kill_invocation" file="tests/test_v13_w100_live_tick_coverage.py" line="325" time="0.003" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_pyramid_path_present_in_source" file="tests/test_v13_w100_live_tick_coverage.py" line="345" time="0.002" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_existing_pyramid_tests_still_pass" file="tests/test_v13_w100_live_tick_coverage.py" line="367" time="0.000" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_tick_result_schema_includes_required_keys" file="tests/test_v13_w100_live_tick_coverage.py" line="383" time="0.600" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_tick_result_duration_bounded" file="tests/test_v13_w100_live_tick_coverage.py" line="409" time="0.634" /></testsuite></testsuites>

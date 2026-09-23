@@ -1,0 +1,69 @@
+FFFFFFFFF                                                                [100%]
+=================================== FAILURES ===================================
+_ test_missing_or_invalid_token_fails_before_client_or_login[None-performance] _
+tests/test_developer_tool_credentials.py:39: in test_missing_or_invalid_token_fails_before_client_or_login
+    make_tool(tool, api_token=token)
+tests/test_developer_tool_credentials.py:32: in make_tool
+    return cls(**kwargs)
+           ^^^^^^^^^^^^^
+E   TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'
+__ test_missing_or_invalid_token_fails_before_client_or_login[None-checklist] __
+tests/test_developer_tool_credentials.py:38: in test_missing_or_invalid_token_fails_before_client_or_login
+    with pytest.raises(ValueError, match="INTRA_API_TOKEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+------------------------------ Captured log call -------------------------------
+WARNING  scripts.ci.validate_checklist:validate_checklist.py:62 ❌ Error generating JWT token: No automatic identity/login allowed, using fallback
+___ test_missing_or_invalid_token_fails_before_client_or_login[-performance] ___
+tests/test_developer_tool_credentials.py:39: in test_missing_or_invalid_token_fails_before_client_or_login
+    make_tool(tool, api_token=token)
+tests/test_developer_tool_credentials.py:32: in make_tool
+    return cls(**kwargs)
+           ^^^^^^^^^^^^^
+E   TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'
+____ test_missing_or_invalid_token_fails_before_client_or_login[-checklist] ____
+tests/test_developer_tool_credentials.py:38: in test_missing_or_invalid_token_fails_before_client_or_login
+    with pytest.raises(ValueError, match="INTRA_API_TOKEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+------------------------------ Captured log call -------------------------------
+WARNING  scripts.ci.validate_checklist:validate_checklist.py:62 ❌ Error generating JWT token: No automatic identity/login allowed, using fallback
+_ test_missing_or_invalid_token_fails_before_client_or_login[   -performance] __
+tests/test_developer_tool_credentials.py:39: in test_missing_or_invalid_token_fails_before_client_or_login
+    make_tool(tool, api_token=token)
+tests/test_developer_tool_credentials.py:32: in make_tool
+    return cls(**kwargs)
+           ^^^^^^^^^^^^^
+E   TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'
+__ test_missing_or_invalid_token_fails_before_client_or_login[   -checklist] ___
+tests/test_developer_tool_credentials.py:38: in test_missing_or_invalid_token_fails_before_client_or_login
+    with pytest.raises(ValueError, match="INTRA_API_TOKEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_missing_or_invalid_token_fails_before_client_or_login[unsafe\nheader-performance] _
+tests/test_developer_tool_credentials.py:39: in test_missing_or_invalid_token_fails_before_client_or_login
+    make_tool(tool, api_token=token)
+tests/test_developer_tool_credentials.py:32: in make_tool
+    return cls(**kwargs)
+           ^^^^^^^^^^^^^
+E   TypeError: PerformanceTest.__init__() got an unexpected keyword argument 'api_token'
+_ test_missing_or_invalid_token_fails_before_client_or_login[unsafe\nheader-checklist] _
+tests/test_developer_tool_credentials.py:38: in test_missing_or_invalid_token_fails_before_client_or_login
+    with pytest.raises(ValueError, match="INTRA_API_TOKEN"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_________________ test_checklist_request_errors_redact_results _________________
+tests/test_developer_tool_credentials.py:161: in test_checklist_request_errors_redact_results
+    assert "[REDACTED]" in output
+E   assert '[REDACTED]' in '{"authentication": {"protected_401_without_token": {"/api/v1/signals": {"error": "reflected credential: checklist-err...cessible": {"error": "reflected credential: checklist-error-fixture-token", "pass": false}, "overall_status": "FAIL"}}'
+=========================== short test summary info ============================
+FAILED tests/test_developer_tool_credentials.py::test_missing_or_invalid_token_fails_before_client_or_login[None-performance]
+FAILED tests/test_developer_tool_credentials.py::test_missing_or_invalid_token_fails_before_client_or_login[None-checklist]
+FAILED tests/test_developer_tool_credentials.py::test_missing_or_invalid_token_fails_before_client_or_login[-performance]
+FAILED tests/test_developer_tool_credentials.py::test_missing_or_invalid_token_fails_before_client_or_login[-checklist]
+FAILED tests/test_developer_tool_credentials.py::test_missing_or_invalid_token_fails_before_client_or_login[   -performance]
+FAILED tests/test_developer_tool_credentials.py::test_missing_or_invalid_token_fails_before_client_or_login[   -checklist]
+FAILED tests/test_developer_tool_credentials.py::test_missing_or_invalid_token_fails_before_client_or_login[unsafe\nheader-performance]
+FAILED tests/test_developer_tool_credentials.py::test_missing_or_invalid_token_fails_before_client_or_login[unsafe\nheader-checklist]
+FAILED tests/test_developer_tool_credentials.py::test_checklist_request_errors_redact_results
+9 failed, 17 deselected in 0.14s

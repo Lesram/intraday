@@ -1,0 +1,43 @@
+{
+  "candidate_only": true,
+  "deployment_approved": false,
+  "candidate_code_sha": "98b9617bc43ba9ecbaaab0195cec78961e03a32b",
+  "candidate_validation_timestamp": "2026-09-23T05:46:45.011846+00:00",
+  "active_forward_cutoff_unchanged": "2026-09-22T08:49:11.247316+00:00",
+  "active_freeze_sha256_unchanged": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+  "candidate_freeze_sha256": "d93ef5a9c24d4fdff65bac4cfeb072d5c2765fafdc80910070d37fe513aa873d",
+  "candidate_verify_exit_code": 0,
+  "changed_surface_groups": [
+    "data_pipeline_sources",
+    "source_hashes"
+  ],
+  "changed_original_function_hashes": [
+    "entry_gates_dispatch"
+  ],
+  "new_data_pipeline_sources": {
+    "live_engine_data": "89e892f19009b7956a072a31f8be35d8dadec0c0056b80b30e29aa08fe70e719",
+    "market_scanner": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
+    "staleness_admission": "0399e7a2e534aaa52fd88d6734dad6320427fd106227343fe6884dbe1e9c7879",
+    "streaming_data_provider": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b"
+  },
+  "active_surface_diff": [
+    "    data_pipeline_sources: frozen=None current={'live_engine_data': '89e892f19009b7956a072a31f8be35d8dadec0c0056b80b30e29aa08fe70e719', 'market_scanner': '78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561', 'staleness_admission': '0399e7a2e534aaa52fd88d6734dad6320427fd106227343fe6884dbe1e9c7879', 'streaming_data_provider': '874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b'}",
+    "    source_hashes.entry_gates_dispatch: frozen='f928b665155cc3bc92a82aeb6589213a682a75cf241dc70c1717f94cd0e5fcba' current='39df0bd590043a5d1b418f4e458a4ec6f5e780704f3c5b9967b3a2dfb703ff4d'"
+  ],
+  "previous_candidate_surface_diff": [
+    "    data_pipeline_sources: frozen=None current={'live_engine_data': '89e892f19009b7956a072a31f8be35d8dadec0c0056b80b30e29aa08fe70e719', 'market_scanner': '78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561', 'staleness_admission': '0399e7a2e534aaa52fd88d6734dad6320427fd106227343fe6884dbe1e9c7879', 'streaming_data_provider': '874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b'}",
+    "    source_hashes.entry_gates_dispatch: frozen='f928b665155cc3bc92a82aeb6589213a682a75cf241dc70c1717f94cd0e5fcba' current='39df0bd590043a5d1b418f4e458a4ec6f5e780704f3c5b9967b3a2dfb703ff4d'"
+  ],
+  "unchanged_groups": [
+    "effective_policy_baseline",
+    "exit_env",
+    "regime_policy",
+    "research_policy",
+    "research_policy_enforcement_env",
+    "research_policy_sources",
+    "routing_data_env",
+    "strategy_config",
+    "strategy_config_hash"
+  ],
+  "environment_profile": "artifacts/monday_readiness/freeze_environment.json"
+}

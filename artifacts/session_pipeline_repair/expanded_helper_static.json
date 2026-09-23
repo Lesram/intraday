@@ -1,0 +1,11 @@
+{
+  "source": "new evidence helpers only; not runtime",
+  "ruff_version": "0.15.12",
+  "exit_code": 0,
+  "findings": [],
+  "files": {
+    "artifacts/session_pipeline_repair/expanded_isolated_test_runner.py": "d661005e94b8a103211d7639b6a8e48c708b1cbf1a734d0b6ba32678b485eaed",
+    "artifacts/session_pipeline_repair/expanded_freeze_verifier.py": "99d5ee65f0e96dd8a27fafb692698aa156c9b1561d258e81037041cdc471e98e",
+    "artifacts/session_pipeline_repair/expanded_static_reproducer.py": "acd645ca23d149566071e5d913aa0ba0b7c16987d70fddf13d7a3178cb7a08d2"
+  }
+}

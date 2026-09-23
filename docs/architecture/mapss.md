@@ -4,6 +4,57 @@
 
 ---
 
+## Candidate scanner and streaming pipeline repair (2026-09-23)
+
+This candidate fixes provider-contract and streaming-state defects found during
+the September 22 paper session. It is **not a deployed release** and does not
+replace that session's active freeze, binding, history or measurement cutoff.
+See `docs/engineering/SESSION_PIPELINE_REPAIR.md` for the acceptance and rollout
+gates.
+
+Scanner discovery accepts the provider's asymmetric response shapes: most-active
+rows lack price, and movers lack volume. Missing discovery fields must be
+enriched from valid snapshots before price/volume qualification. Supplied invalid
+values fail closed. The existing price, volume, scoring, feed and ranking rules
+are unchanged. An empty/failed scan clears the scanner candidate caches and the
+engine's scanner candidate pool; the current/base/held universe is retained.
+
+Streaming health cannot be refreshed by duplicate, out-of-order, invalid,
+future-dated or delayed historical bars. Successful unsubscription retires that
+symbol's obsolete buffers/health; failed unsubscription retains state for retry.
+Every currently subscribed symbol still participates in the global 120-second
+streaming-health gate. REST fallback and quote updates do not clear that gate.
+Recovery logging reflects the final aggregate and per-symbol decision.
+
+The final passed-feature-bar admission limit remains **0 through 120 seconds**,
+with its existing one-minute timestamp contract. Protective exits and EOD rules,
+fixed risk sizing, model/policy locks and strategy parameters are unchanged.
+Genuinely sparse/stale active feeds still block entries; this candidate does not
+promise to eliminate all stand-down cycles or force additional trades.
+
+The freeze now explicitly hashes the market scanner, streaming provider,
+live-engine data helper and staleness-admission method. Source/config snapshots
+label these `candidate_data_pipeline_sources`; checked-out code hashes are not
+an observation of a running process. The original entry-dispatch hash also
+changes for scanner candidate clearing and explicit scan-outcome bookkeeping. These changes require
+an explicitly approved new forward boundary at deployment; a candidate freeze
+must never be installed as if its build timestamp were the activation time.
+
+Candidate references are separate from active cutoff authority. The canonical
+`artifacts/phase2/param_freeze.json` and readiness reference retain the approved
+installed September 22 artifact. Generation writes only
+`artifacts/phase2/candidate_param_freeze.json`, using `VALIDATED_AT` and explicit
+unapproved candidate flags, with no `FROZEN_AT`. `--verify --candidate` checks
+that surface without promotion. Active gate, attribution, reconciliation, daily
+evidence and host-binding readers reject candidate/unapproved/invalid cutoffs.
+They never substitute the candidate's contextual `active_forward_cutoff`.
+
+Provider lifecycle transitions clear old session state and invalidate obsolete
+callbacks; same-session recovery retains stale health. Scanner success counters
+reset only on a complete successful scan, including a genuine empty result.
+Provider errors remain failures even if valid partial candidates are available;
+those candidates retain the existing qualification and admission gates.
+
 ## Approved final-entry freshness repair (2026-09-22)
 
 The candidate release enforces actual feature-bar age at the final shared entry

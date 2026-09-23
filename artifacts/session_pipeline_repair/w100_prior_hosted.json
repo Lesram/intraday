@@ -1,0 +1,87 @@
+{
+  "scope": "Prior exact-source scheduled failure; no rerun or relabeling",
+  "source": "2bd27836381e38e0ae683eadfc193576a185440c",
+  "nightly_run": 35810009592,
+  "url": "https://github.com/Lesram/intraday/actions/runs/35810009592",
+  "core": {
+    "path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-sept22-hosted-74_rno_h/35810009592/deep-test-results/test_reports/nightly.xml",
+    "sha256": "ecdaa15b1a7176cd3f152714569d0a8cdfd50ad5ebe4a4b561857350032f8d65",
+    "counts": {
+      "passed": 8676,
+      "failed": 2,
+      "errors": 0,
+      "skipped": 546,
+      "xfailed": 2
+    },
+    "total": 9226,
+    "timestamps": [
+      "2026-09-23T02:25:21.822824+00:00"
+    ],
+    "failures": [
+      {
+        "case": "tests.test_v13_w100_live_tick_coverage::test_w100_entries_gate_produces_orders_on_uptrend",
+        "duration_seconds": 169.616
+      },
+      {
+        "case": "tests.test_v13_w100_live_tick_coverage::test_w100_live_tick_inner_loc_pinned",
+        "duration_seconds": 0.065
+      }
+    ]
+  },
+  "replay": {
+    "path": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-sept22-hosted-74_rno_h/35810009592/deep-test-results/test_reports/replay.xml",
+    "sha256": "850bb02a78dad660c6742f92b845eead6bcefa59714bc9917f5b4fc78278d941",
+    "counts": {
+      "passed": 6,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "xfailed": 0
+    },
+    "total": 7,
+    "timestamps": [
+      "2026-09-23T03:00:34.231202+00:00"
+    ],
+    "failures": [
+      {
+        "case": "tests.test_v13_w100_live_tick_coverage::test_w100_position_management_loop_produces_exits_on_downturn",
+        "duration_seconds": 180.896
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "N1",
+      "severity": "test_integration_regression",
+      "case": "tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend",
+      "location": "tests/test_v13_w100_live_tick_coverage.py:89",
+      "observed": "100-tick replay submitted zero orders; assertion requiring at least one failed. Same case passed in the pre-release scheduled run.",
+      "source_evidence": [
+        "W100 uses make_features_dict without timestamps and omits timeframe.",
+        "ReplayEngine defaults to1Day at replay_simulator.py:649; make_price_df at916 returns OHLCV without timestamps.",
+        "New entry_freshness guard requires complete aware timestamps and1Min."
+      ],
+      "assessment": "Source-level inference: legacy W100 synthetic inputs were not updated for the approved final-admission contract. This is a real missed test integration change, not evidence that valid live1Min entries fail. No new reproduction was run.",
+      "acceptance_gate": "Update only W100 test fixture to realistic aware1Min bars and aligned clock, retain at least one submitted order and observable exit assertions; run targeted tests and required CI."
+    },
+    {
+      "id": "N2",
+      "severity": "test_integration_regression",
+      "case": "tests/test_v13_w100_live_tick_coverage.py::test_w100_live_tick_inner_loc_pinned",
+      "location": "tests/test_v13_w100_live_tick_coverage.py:62",
+      "observed": "Actual2823 lines exceed independent W100 ceiling2805. Same check passed before release.",
+      "assessment": "The approved freshness skip-handling increased LOC, but this second structural guard was missed when the v12 baseline guard was updated. No evidence of unapproved runtime growth beyond the reviewed2823.",
+      "acceptance_gate": "Explicitly document the approved18-line delta from2805 in this separate guard while preserving its future-growth limit; do not decompose frozen engine or relax unrelated assertions."
+    },
+    {
+      "id": "N3",
+      "severity": "preexisting_unresolved_replay_coverage",
+      "case": "tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn",
+      "location": "tests/test_v13_w100_live_tick_coverage.py:155",
+      "observed": "200-tick replay timed out at180s; traceback ended in rolling ML-feature autocorrelation computation. Same180s timeout is present in preceding scheduled run.",
+      "assessment": "Not demonstrated to be a new release regression or live exit failure. Current fixture also uses timestamp-less daily defaults and permits success with no orders, so its exit coverage is weak even if timeout is removed.",
+      "acceptance_gate": "Diagnose replay cost and use a deterministic bounded valid1Min fixture that actually opens and closes a position; preserve an explicit duration bound and substantive exit assertions."
+    }
+  ],
+  "original_review_sha256": "b5980142d507d5b10de6a38e20607512bb33eeb56336a27b16f271832c69ac02"
+}

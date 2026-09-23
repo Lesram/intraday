@@ -1,0 +1,10 @@
+........                                                                 [100%]
+============================= slowest 10 durations =============================
+0.89s call     tests/test_pipeline_snapshot.py::test_snapshot_identifies_actual_scanner_source_without_runtime_claim
+0.09s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[market_scanner]
+0.08s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[live_engine_data]
+0.08s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[staleness_admission]
+0.08s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[streaming_data_provider]
+
+(5 durations < 0.005s hidden.  Use -vv to show these durations.)
+8 passed, 15 deselected in 1.33s

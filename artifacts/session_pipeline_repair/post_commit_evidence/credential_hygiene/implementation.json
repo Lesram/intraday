@@ -1,0 +1,127 @@
+{
+  "artifacts": {
+    "freeze.log": {
+      "bytes": 94,
+      "sha256": "bcc6ed3fc7022f419c85f226fc2e7448c9e8bc19783437785c747f7b27c72e0d"
+    },
+    "plan.json": {
+      "bytes": 1810,
+      "sha256": "4ba19f982274c256cf6e86ff9354f967832cf86ccf3a6ef28ebd781d6e831917"
+    },
+    "red.log": {
+      "bytes": 5444,
+      "sha256": "5f6188a6be5d51ebbb799a23721212b2b0c1e0f5feeefb33baf55958e37619cc"
+    },
+    "red.xml": {
+      "bytes": 5779,
+      "sha256": "a9c751fa0e566571eafeab9ece64fd25bc37ced9dfcf5ec442df1ea832de8239"
+    },
+    "report_redaction.json": {
+      "bytes": 1370,
+      "sha256": "5d08b78b53d8250673b49ac0415b0a1c8ea80dada24df0266f4a9eb49c6566ea"
+    },
+    "root_plan.json": {
+      "bytes": 1711,
+      "sha256": "fac7c8bf904434ae0f25d915eabee1183909fe0c6060e61616a890f753626ecf"
+    },
+    "ruff.json": {
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "targeted.log": {
+      "bytes": 99,
+      "sha256": "df9e28e05d90b973065157bbe55007b3fc1a0794a0d63cf989ec77d6b3adfd43"
+    },
+    "targeted.xml": {
+      "bytes": 4563,
+      "sha256": "d64fa2b785af5614e9db3b0f8de28999cd3dad6ea34111e630df6607f4f418c6"
+    }
+  },
+  "base_head": "3a9e35582cbb6083f650dc081175124d8a32e64e",
+  "branch": "codex/sept22-pipeline-repair",
+  "committed": false,
+  "docs_updated": "Tool module documentation and CLI help describe token priority; parent owns broader release prose.",
+  "files_changed": {
+    "reports/comprehensive_audit_findings.jsonl": "2e5dcfa5562276c776de61a05952c0b7d3ea2b926c894d9ffdba80433f217893",
+    "scripts/ci/validate_checklist.py": "9cb3be8b41985d9c41a78c7185febf1fc0bc280268b41e24dd2bf186788ba4fd",
+    "scripts/testing/performance_test.py": "b777eb99ae6b1f1d82d47641bd22a4673c31ef8ace73d2a2498bcb6fc08537ec",
+    "tests/test_developer_tool_credentials.py": "830064967c382ad765f441104fab36287545151ad7d621d7ba084a94eb428067"
+  },
+  "follow_ups": [
+    "Parent independent source review",
+    "Parent final source commit/CI/artifact regeneration and credential scan"
+  ],
+  "generated_at_utc": "2026-09-23T06:39:50.582764+00:00",
+  "isolation": {
+    "HTTP_transport": "in-process fake sessions only",
+    "cwd": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra",
+    "environment": "Clean allowlisted testing environment, synthetic values, scratch brain paths, no installed .env or broker credentials",
+    "network": "sandbox-exec deny network*",
+    "no_runtime_or_broker_calls": true,
+    "pytest_plugins": "autoload disabled; explicit asyncio + timeout, cache disabled",
+    "python": "/Users/marselkei/VS/intra/venv/bin/python",
+    "test_runner": "/tmp/intra-scanner-safe-test.py",
+    "test_runner_sha256": "249fd7bc6ec368f5e823573a06c9690ef2692b5f99d5fd7054238611c94aaa63"
+  },
+  "limitations": [
+    "Historical report values were removed only from current report; history was not rewritten. Past validity and revocation remain unknown.",
+    "Parent separately compared historical literals against active container secret and found no matches/prefix matches; this task made no authentication attempt and does not assert historical revocation or an active leak.",
+    "Whole-context/new-diff rescanning, CI selection and final full validation/PR are parent-owned gates."
+  ],
+  "metadata_refresh": {
+    "at_utc": "2026-09-23T06:44:17.145900+00:00",
+    "current_root_plan_binding": {
+      "bytes": 1711,
+      "sha256": "fac7c8bf904434ae0f25d915eabee1183909fe0c6060e61616a890f753626ecf"
+    },
+    "previous_root_plan_binding": {
+      "bytes": 1274,
+      "sha256": "bd06b20ff2ea23bdc79a01447c9c77678eda9b9d74234b95d24506363f278dbd"
+    },
+    "reason": "Parent expanded supplemental root plan after the original implementation receipt; refresh this plan binding only. All source/test/result hashes remain unchanged.",
+    "source_changes": false,
+    "superseded_implementation_sha256": "6a7516f4172ca5a34c823b1b4d151068fa917358501d3b9a2db9734ae129be4a",
+    "test_result_changes": false
+  },
+  "runtime_behavior_changed": {
+    "backend_auth_trading_strategy": false,
+    "developer_tools": true,
+    "installed_runtime": false
+  },
+  "source_stable": true,
+  "status": "IMPLEMENTED_TARGETED_GREEN",
+  "summary": [
+    "Removed opaque embedded token from two developer API tools; no automatic demo login/fallback remains.",
+    "Explicit constructor or --api-token argument has priority; INTRA_API_TOKEN is used only when argument is omitted. Blank/whitespace credentials fail before HTTP client creation.",
+    "Reflected supplied token is removed from performance/checklist error results and logs, before response truncation.",
+    "Only three current audit-report evidence fields redacted; all other records preserved byte-for-byte and all other fields in changed records preserved semantically."
+  ],
+  "task_id": "developer-tool-credential-hygiene",
+  "test_scope": [
+    "Missing/blank/whitespace credential creates no requests session and performs no identity/login request",
+    "Explicit constructor and CLI credentials override environment; omitted argument uses environment",
+    "Real smoke/checklist method flow sends correct Authorization header to protected probes and leaves unauthenticated probes unchanged",
+    "Transport exception and reflected error body redaction, including long token redaction before truncation",
+    "CLI missing credential returns argparse status2; unexpected checklist error status1 contains no token"
+  ],
+  "tests": {
+    "candidate_freeze_verify": "PASS; unchanged candidate surface/cutoff, not active runtime installation",
+    "diff_check": "PASS",
+    "final_targeted": {
+      "errors": 0,
+      "failed": 0,
+      "passed": 26,
+      "skipped": 0,
+      "total": 26
+    },
+    "original_source_red": {
+      "errors": 0,
+      "failed": 9,
+      "passed": 0,
+      "skipped": 0,
+      "total": 9
+    },
+    "ruff_findings": []
+  },
+  "worktree": "/Users/marselkei/.codex/worktrees/intra-session-pipeline-repair/intra"
+}

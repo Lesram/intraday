@@ -1,0 +1,14 @@
+........................................................................ [ 53%]
+..............................................................           [100%]
+============================= slowest 10 durations =============================
+0.84s call     tests/test_phase2_freeze.py::test_decision_surface_unchanged
+0.38s call     tests/test_phase3_attribution_report.py::test_primary_six_bps_report_processes_preserve_inputs_and_parent_env
+0.10s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[live_engine_data]
+0.09s call     tests/test_phase2_freeze.py::test_verify_detects_model_fingerprint_source_drift
+0.08s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[market_scanner]
+0.08s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[streaming_data_provider]
+0.08s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[staleness_admission]
+0.06s call     tests/test_phase2_freeze.py::test_verify_detects_freshness_dependency_drift[entry_evidence]
+0.06s call     tests/test_phase2_freeze.py::test_verify_detects_freshness_dependency_drift[entry_freshness]
+0.02s call     tests/test_phase2_freeze.py::test_verify_mode_detects_missing_deployment_env[ORGANISM_MIN_AVG_DOLLAR_VOLUME]
+134 passed in 2.55s

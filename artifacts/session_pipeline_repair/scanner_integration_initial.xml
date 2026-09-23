@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="4" time="2.812" timestamp="2026-09-22T22:37:06.668276-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_scanner_pipeline_integration" name="test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]" file="tests/test_scanner_pipeline_integration.py" line="10" time="1.428"><failure message="assert False&#10; +  where False = all(&lt;generator object _assert_real_ticks.&lt;locals&gt;.&lt;genexpr&gt; at 0x112e14040&gt;)">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x1086132f0&gt;
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-115/test_scanner_discovery_admits_0')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10af4ef20&gt;
+discovery = 'most_actives', next_scan = 'empty'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("discovery", ["most_actives", "mover"])
+    @pytest.mark.parametrize("next_scan", ["empty", "exception"])
+    async def test_scanner_discovery_admits_entry_and_invalidates_pool(
+        monkeypatch, tmp_path, record_property, discovery, next_scan,
+    ):
+        from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+        from backend.organism.market_scanner import MarketScanner
+    
+        bars = _minute_bars()
+        replay, engines, feature_calls = _replay(
+            monkeypatch, tmp_path, bars, universe=["SPY"])
+        scanner = MarketScanner()
+        requests = []
+        observations = []
+        real_scan = scanner.scan
+        scan_attempts = 0
+    
+        async def provider_response(url, params=None):
+            # Mock only external I/O. The real discovery parsers, snapshot
+            # qualification, tension scores, engine injection and gates all run.
+            requests.append((scan_attempts, url.rsplit("/", 1)[-1]))
+            if url.endswith("most-actives"):
+                return {"most_actives": ([{"symbol": "MSFT", "volume": 8_000_000,
+                                           "trade_count": 100_000}]
+                                          if scan_attempts == 1 and discovery == "most_actives" else [])}
+            if url.endswith("movers"):
+                return {"gainers": ([{"symbol": "MSFT", "price": 102.0,
+                                       "change": 3.0, "percent_change": 3.03}]
+                                      if scan_attempts == 1 and discovery == "mover" else []),
+                        "losers": []}
+            assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+            return {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8,
+                                          "c": 102., "v": 8_000_000},
+                             "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                             "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+    
+        async def scan_then_invalidate():
+            nonlocal scan_attempts
+            scan_attempts += 1
+            if scan_attempts &gt; 1 and next_scan == "exception":
+                raise RuntimeError("synthetic scanner boundary failure")
+            return await real_scan()
+    
+        monkeypatch.setattr(scanner, "_request", provider_response)
+        monkeypatch.setattr(scanner, "scan", scan_then_invalidate)
+        real_tick = OrganismLiveEngine.live_tick
+    
+        async def observe_tick(engine):
+            # Replay deliberately disables external discovery; attach this offline
+            # scanner after its setup, without changing decisions or tick order.
+            engine.market_scanner = scanner
+            result = await real_tick(engine)
+            observations.append({"tick": engine._tick_count,
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe),
+                                 "held": set(await engine._positions_service.get_all_positions())})
+            return result
+    
+        monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+        try:
+            result = await replay.run(max_ticks=2 * SCAN_INTERVAL_TICKS + 1)
+        finally:
+            await scanner.close()
+&gt;       _assert_real_ticks(result, 2 * SCAN_INTERVAL_TICKS + 1)
+
+tests/test_scanner_pipeline_integration.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = ReplayResult(ticks=13, orders=[], trades=[], accounted_trades=[], accounting_pending={}, equity_curve=[1000000, 100000...count': 0, 'current_streak': 0}, 'universe_drift': {}, 'brain_save': {'ticks_since_last_save': 13, 'healthy': True}}}])
+expected = 13
+
+    def _assert_real_ticks(result, expected):
+        assert result.ticks == len(result.tick_results) == expected
+&gt;       assert all(not tick.get("errors") and "error" not in tick
+                   for tick in result.tick_results)
+E       assert False
+E        +  where False = all(&lt;generator object _assert_real_ticks.&lt;locals&gt;.&lt;genexpr&gt; at 0x112e14040&gt;)
+
+tests/test_v13_w100_live_tick_coverage.py:164: AssertionError</failure></testcase><testcase classname="tests.test_scanner_pipeline_integration" name="test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover]" file="tests/test_scanner_pipeline_integration.py" line="10" time="0.381"><failure message="assert False&#10; +  where False = all(&lt;generator object _assert_real_ticks.&lt;locals&gt;.&lt;genexpr&gt; at 0x112e169b0&gt;)">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x110e12db0&gt;
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-115/test_scanner_discovery_admits_1')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10af4f740&gt;
+discovery = 'mover', next_scan = 'empty'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("discovery", ["most_actives", "mover"])
+    @pytest.mark.parametrize("next_scan", ["empty", "exception"])
+    async def test_scanner_discovery_admits_entry_and_invalidates_pool(
+        monkeypatch, tmp_path, record_property, discovery, next_scan,
+    ):
+        from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+        from backend.organism.market_scanner import MarketScanner
+    
+        bars = _minute_bars()
+        replay, engines, feature_calls = _replay(
+            monkeypatch, tmp_path, bars, universe=["SPY"])
+        scanner = MarketScanner()
+        requests = []
+        observations = []
+        real_scan = scanner.scan
+        scan_attempts = 0
+    
+        async def provider_response(url, params=None):
+            # Mock only external I/O. The real discovery parsers, snapshot
+            # qualification, tension scores, engine injection and gates all run.
+            requests.append((scan_attempts, url.rsplit("/", 1)[-1]))
+            if url.endswith("most-actives"):
+                return {"most_actives": ([{"symbol": "MSFT", "volume": 8_000_000,
+                                           "trade_count": 100_000}]
+                                          if scan_attempts == 1 and discovery == "most_actives" else [])}
+            if url.endswith("movers"):
+                return {"gainers": ([{"symbol": "MSFT", "price": 102.0,
+                                       "change": 3.0, "percent_change": 3.03}]
+                                      if scan_attempts == 1 and discovery == "mover" else []),
+                        "losers": []}
+            assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+            return {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8,
+                                          "c": 102., "v": 8_000_000},
+                             "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                             "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+    
+        async def scan_then_invalidate():
+            nonlocal scan_attempts
+            scan_attempts += 1
+            if scan_attempts &gt; 1 and next_scan == "exception":
+                raise RuntimeError("synthetic scanner boundary failure")
+            return await real_scan()
+    
+        monkeypatch.setattr(scanner, "_request", provider_response)
+        monkeypatch.setattr(scanner, "scan", scan_then_invalidate)
+        real_tick = OrganismLiveEngine.live_tick
+    
+        async def observe_tick(engine):
+            # Replay deliberately disables external discovery; attach this offline
+            # scanner after its setup, without changing decisions or tick order.
+            engine.market_scanner = scanner
+            result = await real_tick(engine)
+            observations.append({"tick": engine._tick_count,
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe),
+                                 "held": set(await engine._positions_service.get_all_positions())})
+            return result
+    
+        monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+        try:
+            result = await replay.run(max_ticks=2 * SCAN_INTERVAL_TICKS + 1)
+        finally:
+            await scanner.close()
+&gt;       _assert_real_ticks(result, 2 * SCAN_INTERVAL_TICKS + 1)
+
+tests/test_scanner_pipeline_integration.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = ReplayResult(ticks=13, orders=[], trades=[], accounted_trades=[], accounting_pending={}, equity_curve=[1000000, 100000...count': 0, 'current_streak': 0}, 'universe_drift': {}, 'brain_save': {'ticks_since_last_save': 13, 'healthy': True}}}])
+expected = 13
+
+    def _assert_real_ticks(result, expected):
+        assert result.ticks == len(result.tick_results) == expected
+&gt;       assert all(not tick.get("errors") and "error" not in tick
+                   for tick in result.tick_results)
+E       assert False
+E        +  where False = all(&lt;generator object _assert_real_ticks.&lt;locals&gt;.&lt;genexpr&gt; at 0x112e169b0&gt;)
+
+tests/test_v13_w100_live_tick_coverage.py:164: AssertionError</failure></testcase><testcase classname="tests.test_scanner_pipeline_integration" name="test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives]" file="tests/test_scanner_pipeline_integration.py" line="10" time="0.379"><failure message="assert False&#10; +  where False = all(&lt;generator object _assert_real_ticks.&lt;locals&gt;.&lt;genexpr&gt; at 0x112eb53c0&gt;)">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x10a080440&gt;
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-115/test_scanner_discovery_admits_2')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x112e94b80&gt;
+discovery = 'most_actives', next_scan = 'exception'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("discovery", ["most_actives", "mover"])
+    @pytest.mark.parametrize("next_scan", ["empty", "exception"])
+    async def test_scanner_discovery_admits_entry_and_invalidates_pool(
+        monkeypatch, tmp_path, record_property, discovery, next_scan,
+    ):
+        from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+        from backend.organism.market_scanner import MarketScanner
+    
+        bars = _minute_bars()
+        replay, engines, feature_calls = _replay(
+            monkeypatch, tmp_path, bars, universe=["SPY"])
+        scanner = MarketScanner()
+        requests = []
+        observations = []
+        real_scan = scanner.scan
+        scan_attempts = 0
+    
+        async def provider_response(url, params=None):
+            # Mock only external I/O. The real discovery parsers, snapshot
+            # qualification, tension scores, engine injection and gates all run.
+            requests.append((scan_attempts, url.rsplit("/", 1)[-1]))
+            if url.endswith("most-actives"):
+                return {"most_actives": ([{"symbol": "MSFT", "volume": 8_000_000,
+                                           "trade_count": 100_000}]
+                                          if scan_attempts == 1 and discovery == "most_actives" else [])}
+            if url.endswith("movers"):
+                return {"gainers": ([{"symbol": "MSFT", "price": 102.0,
+                                       "change": 3.0, "percent_change": 3.03}]
+                                      if scan_attempts == 1 and discovery == "mover" else []),
+                        "losers": []}
+            assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+            return {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8,
+                                          "c": 102., "v": 8_000_000},
+                             "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                             "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+    
+        async def scan_then_invalidate():
+            nonlocal scan_attempts
+            scan_attempts += 1
+            if scan_attempts &gt; 1 and next_scan == "exception":
+                raise RuntimeError("synthetic scanner boundary failure")
+            return await real_scan()
+    
+        monkeypatch.setattr(scanner, "_request", provider_response)
+        monkeypatch.setattr(scanner, "scan", scan_then_invalidate)
+        real_tick = OrganismLiveEngine.live_tick
+    
+        async def observe_tick(engine):
+            # Replay deliberately disables external discovery; attach this offline
+            # scanner after its setup, without changing decisions or tick order.
+            engine.market_scanner = scanner
+            result = await real_tick(engine)
+            observations.append({"tick": engine._tick_count,
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe),
+                                 "held": set(await engine._positions_service.get_all_positions())})
+            return result
+    
+        monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+        try:
+            result = await replay.run(max_ticks=2 * SCAN_INTERVAL_TICKS + 1)
+        finally:
+            await scanner.close()
+&gt;       _assert_real_ticks(result, 2 * SCAN_INTERVAL_TICKS + 1)
+
+tests/test_scanner_pipeline_integration.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = ReplayResult(ticks=13, orders=[], trades=[], accounted_trades=[], accounting_pending={}, equity_curve=[1000000, 100000...count': 0, 'current_streak': 0}, 'universe_drift': {}, 'brain_save': {'ticks_since_last_save': 13, 'healthy': True}}}])
+expected = 13
+
+    def _assert_real_ticks(result, expected):
+        assert result.ticks == len(result.tick_results) == expected
+&gt;       assert all(not tick.get("errors") and "error" not in tick
+                   for tick in result.tick_results)
+E       assert False
+E        +  where False = all(&lt;generator object _assert_real_ticks.&lt;locals&gt;.&lt;genexpr&gt; at 0x112eb53c0&gt;)
+
+tests/test_v13_w100_live_tick_coverage.py:164: AssertionError</failure></testcase><testcase classname="tests.test_scanner_pipeline_integration" name="test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover]" file="tests/test_scanner_pipeline_integration.py" line="10" time="0.374"><failure message="assert False&#10; +  where False = all(&lt;generator object _assert_real_ticks.&lt;locals&gt;.&lt;genexpr&gt; at 0x112f5dff0&gt;)">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x112f05580&gt;
+tmp_path = PosixPath('/private/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/pytest-of-marselkei/pytest-115/test_scanner_discovery_admits_3')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x112e974c0&gt;
+discovery = 'mover', next_scan = 'exception'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("discovery", ["most_actives", "mover"])
+    @pytest.mark.parametrize("next_scan", ["empty", "exception"])
+    async def test_scanner_discovery_admits_entry_and_invalidates_pool(
+        monkeypatch, tmp_path, record_property, discovery, next_scan,
+    ):
+        from backend.organism.live_engine import OrganismLiveEngine, SCAN_INTERVAL_TICKS
+        from backend.organism.market_scanner import MarketScanner
+    
+        bars = _minute_bars()
+        replay, engines, feature_calls = _replay(
+            monkeypatch, tmp_path, bars, universe=["SPY"])
+        scanner = MarketScanner()
+        requests = []
+        observations = []
+        real_scan = scanner.scan
+        scan_attempts = 0
+    
+        async def provider_response(url, params=None):
+            # Mock only external I/O. The real discovery parsers, snapshot
+            # qualification, tension scores, engine injection and gates all run.
+            requests.append((scan_attempts, url.rsplit("/", 1)[-1]))
+            if url.endswith("most-actives"):
+                return {"most_actives": ([{"symbol": "MSFT", "volume": 8_000_000,
+                                           "trade_count": 100_000}]
+                                          if scan_attempts == 1 and discovery == "most_actives" else [])}
+            if url.endswith("movers"):
+                return {"gainers": ([{"symbol": "MSFT", "price": 102.0,
+                                       "change": 3.0, "percent_change": 3.03}]
+                                      if scan_attempts == 1 and discovery == "mover" else []),
+                        "losers": []}
+            assert url.endswith("snapshots") and params["symbols"] == "MSFT"
+            return {"MSFT": {"dailyBar": {"o": 100., "h": 102.2, "l": 99.8,
+                                          "c": 102., "v": 8_000_000},
+                             "minuteBar": {"o": 101.5, "c": 102., "v": 50_000},
+                             "prevDailyBar": {"c": 99., "h": 100., "l": 95., "v": 1_000_000}}}
+    
+        async def scan_then_invalidate():
+            nonlocal scan_attempts
+            scan_attempts += 1
+            if scan_attempts &gt; 1 and next_scan == "exception":
+                raise RuntimeError("synthetic scanner boundary failure")
+            return await real_scan()
+    
+        monkeypatch.setattr(scanner, "_request", provider_response)
+        monkeypatch.setattr(scanner, "scan", scan_then_invalidate)
+        real_tick = OrganismLiveEngine.live_tick
+    
+        async def observe_tick(engine):
+            # Replay deliberately disables external discovery; attach this offline
+            # scanner after its setup, without changing decisions or tick order.
+            engine.market_scanner = scanner
+            result = await real_tick(engine)
+            observations.append({"tick": engine._tick_count,
+                                 "candidates": list(engine._scanner_candidates),
+                                 "universe": set(engine._universe),
+                                 "held": set(await engine._positions_service.get_all_positions())})
+            return result
+    
+        monkeypatch.setattr(OrganismLiveEngine, "live_tick", observe_tick)
+        try:
+            result = await replay.run(max_ticks=2 * SCAN_INTERVAL_TICKS + 1)
+        finally:
+            await scanner.close()
+&gt;       _assert_real_ticks(result, 2 * SCAN_INTERVAL_TICKS + 1)
+
+tests/test_scanner_pipeline_integration.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = ReplayResult(ticks=13, orders=[], trades=[], accounted_trades=[], accounting_pending={}, equity_curve=[1000000, 100000...count': 0, 'current_streak': 0}, 'universe_drift': {}, 'brain_save': {'ticks_since_last_save': 13, 'healthy': True}}}])
+expected = 13
+
+    def _assert_real_ticks(result, expected):
+        assert result.ticks == len(result.tick_results) == expected
+&gt;       assert all(not tick.get("errors") and "error" not in tick
+                   for tick in result.tick_results)
+E       assert False
+E        +  where False = all(&lt;generator object _assert_real_ticks.&lt;locals&gt;.&lt;genexpr&gt; at 0x112f5dff0&gt;)
+
+tests/test_v13_w100_live_tick_coverage.py:164: AssertionError</failure></testcase></testsuite></testsuites>

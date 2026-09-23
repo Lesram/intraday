@@ -4,9 +4,11 @@ Phase 4 Staging Checklist Automation Script
 
 Automates validation of key checklist items for the Go/No-Go gate.
 Provides structured output for manual verification of remaining items.
+Supply api_token/--api-token explicitly, or set INTRA_API_TOKEN. Explicit
+credentials take priority; this tool never creates an identity or logs in.
 """
 
-import asyncio
+import os
 import json
 import sys
 import time
@@ -32,8 +34,11 @@ class StagingChecklistValidator:
     """Validates Phase 4 staging checklist items."""
     
     def __init__(self, base_url="http://localhost:8000", api_token=None):
+        token = api_token if api_token is not None else os.getenv("INTRA_API_TOKEN")
+        if not isinstance(token, str) or not token or any(c.isspace() for c in token):
+            raise ValueError("Provide --api-token/api_token or a nonempty INTRA_API_TOKEN without whitespace")
         self.base_url = base_url.rstrip('/')
-        self.api_token = api_token or self._get_fresh_token()  # Generate fresh JWT token
+        self.api_token = token
         self.results = {}
         # Use session for connection reuse to avoid 2-second connection establishment delays
         self.session = requests.Session()
@@ -47,21 +52,10 @@ class StagingChecklistValidator:
         self.session.mount('http://', adapter)
         self.session.mount('https://', adapter)
         
-    def _get_fresh_token(self):
-        """Get a fresh JWT token for testing."""
-        try:
-            from scripts.get_token import get_jwt_token
-            token = get_jwt_token(self.base_url, "admin", "admin123")
-            if token:
-                logger.info("✅ Generated fresh JWT token for testing")
-                return token
-            else:
-                logger.warning("❌ Failed to generate JWT token, using fallback")
-                return "6Av--QEcw6s7O0U7i4nxbNqwSUtL3PfNzC07BIOIzFI"  # Fallback
-        except Exception as e:
-            logger.warning(f"❌ Error generating JWT token: {e}, using fallback")
-            return "6Av--QEcw6s7O0U7i4nxbNqwSUtL3PfNzC07BIOIzFI"  # Fallback
-        
+    def _safe_error(self, value: object) -> str:
+        """Keep reflected credentials out of stored results and log messages."""
+        return str(value).replace(self.api_token, "[REDACTED]")
+
     def run_all_checks(self):
         """Run all automated checklist validations."""
         logger.info("Starting Phase 4 Staging Checklist Validation...")
@@ -115,7 +109,7 @@ class StagingChecklistValidator:
                     
             except requests.RequestException as e:
                 auth_results['protected_401_without_token'][endpoint] = {
-                    'error': str(e),
+                    'error': self._safe_error(e),
                     'pass': False
                 }
                 auth_results['overall_status'] = 'FAIL'
@@ -137,13 +131,13 @@ class StagingChecklistValidator:
                     
             except requests.RequestException as e:
                 auth_results['protected_200_with_token'][endpoint] = {
-                    'error': str(e),
+                    'error': self._safe_error(e),
                     'pass': False
                 }
                 auth_results['overall_status'] = 'FAIL'
         
         self.results['authentication'] = auth_results
-        logger.info(f"🔐 Authentication check: {auth_results['overall_status']}")
+        logger.info("🔐 Authentication check: %s", auth_results["overall_status"])
 
     def check_route_registry(self):
         """Validate route registry and API documentation."""
@@ -170,7 +164,7 @@ class StagingChecklistValidator:
                 
         except requests.RequestException as e:
             registry_results['health_check'] = {
-                'error': str(e),
+                'error': self._safe_error(e),
                 'pass': False
             }
             registry_results['overall_status'] = 'FAIL'
@@ -198,7 +192,7 @@ class StagingChecklistValidator:
                 
         except requests.RequestException as e:
             registry_results['openapi_spec'] = {
-                'error': str(e),
+                'error': self._safe_error(e),
                 'pass': False
             }
             registry_results['overall_status'] = 'FAIL'
@@ -216,13 +210,13 @@ class StagingChecklistValidator:
                 
         except requests.RequestException as e:
             registry_results['docs_accessible'] = {
-                'error': str(e),
+                'error': self._safe_error(e),
                 'pass': False
             }
             registry_results['overall_status'] = 'FAIL'
         
         self.results['route_registry'] = registry_results
-        logger.info(f"🛣️ Route registry check: {registry_results['overall_status']}")
+        logger.info("🛣️ Route registry check: %s", registry_results["overall_status"])
 
     def check_api_health(self):
         """Check basic API responsiveness."""
@@ -285,7 +279,7 @@ class StagingChecklistValidator:
                 health_results['overall_status'] = 'FAIL'
         
         self.results['api_health'] = health_results
-        logger.info(f"⚡ API health check: {health_results['overall_status']}")
+        logger.info("⚡ API health check: %s", health_results["overall_status"])
 
     def generate_report(self):
         """Generate a comprehensive validation report."""
@@ -370,7 +364,7 @@ def main():
     )
     parser.add_argument(
         "--api-token",
-        help="API token for authenticated requests"
+        help="API token for authenticated requests; takes priority over INTRA_API_TOKEN"
     )
     parser.add_argument(
         "--output",
@@ -380,10 +374,13 @@ def main():
     args = parser.parse_args()
     
     # Create validator and run checks
-    validator = StagingChecklistValidator(
-        base_url=args.base_url,
-        api_token=args.api_token
-    )
+    try:
+        validator = StagingChecklistValidator(
+            base_url=args.base_url,
+            api_token=args.api_token
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     
     try:
         results = validator.run_all_checks()
@@ -396,7 +393,7 @@ def main():
                     'base_url': args.base_url,
                     'results': results
                 }, f, indent=2)
-            logger.info(f"Results saved to {args.output}")
+            logger.info("Results saved to %s", args.output)
         
         # Exit with appropriate code
         overall_pass = all(
@@ -406,8 +403,8 @@ def main():
         
         sys.exit(0 if overall_pass else 1)
         
-    except Exception as e:
-        logger.error(f"Validation failed with error: {e}")
+    except Exception as e:  # noqa: BLE001 - Report unexpected tool failures with token redaction.
+        logger.error("Validation failed with error: %s", validator._safe_error(e))
         sys.exit(1)
 
 

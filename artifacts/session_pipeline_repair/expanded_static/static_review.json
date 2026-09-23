@@ -1,0 +1,112 @@
+{
+  "application_imports": false,
+  "bandit_high": {
+    "baseline_findings": 0,
+    "candidate_findings": 0,
+    "new_findings": 0,
+    "receipt": {
+      "path": "artifacts/session_pipeline_repair/expanded_static/security_bandit_delta.json",
+      "sha256": "b3211c99efb22f930252200c36f7b9baadab297e577b6c359aac9503139a3e36"
+    },
+    "removed_findings": 0,
+    "version": "__main__.py 1.9.4\n  python version = 3.12.12 (main, Oct  9 2025, 11:07:00) [Clang 17.0.0 (clang-1700.6.3.2)]"
+  },
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "changed_python_files": [
+    "artifacts/session_pipeline_repair/candidate_freeze_builder.py",
+    "artifacts/session_pipeline_repair/intra-scanner-safe-test.py",
+    "artifacts/session_pipeline_repair/isolated_test_runner.py",
+    "backend/infra/outbox_worker.py",
+    "backend/integrations/alpaca_broker.py",
+    "backend/integrations/alpaca_outbox.py",
+    "backend/organism/live_engine.py",
+    "backend/organism/market_scanner.py",
+    "backend/organism/streaming_data_provider.py",
+    "scripts/ci/validate_checklist.py",
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "scripts/testing/performance_test.py",
+    "tests/test_adversarial_inputs_v7.py",
+    "tests/test_broker_ack_reconciliation.py",
+    "tests/test_developer_tool_credentials.py",
+    "tests/test_entry_freshness.py",
+    "tests/test_market_scanner.py",
+    "tests/test_market_scanner_provider_contract.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_pipeline_freshness_recovery.py",
+    "tests/test_pipeline_snapshot.py",
+    "tests/test_scanner_pipeline_integration.py",
+    "tests/test_v12_baseline_invariants.py",
+    "tests/test_v13_w100_live_tick_coverage.py",
+    "tests/unit/test_alpaca_outbox_comprehensive.py",
+    "tests/unit/test_streaming_data_provider.py"
+  ],
+  "head_python_sha256": {
+    "artifacts/session_pipeline_repair/candidate_freeze_builder.py": "e22a753cb16ca13637bf460bed3705520575cfb5ebcf368613e97539989a2f6a",
+    "artifacts/session_pipeline_repair/intra-scanner-safe-test.py": "249fd7bc6ec368f5e823573a06c9690ef2692b5f99d5fd7054238611c94aaa63",
+    "artifacts/session_pipeline_repair/isolated_test_runner.py": "88d309c1e552da5216acc498a79f564321371672b4961e3517f0754f518ee1bb",
+    "backend/infra/outbox_worker.py": "0c072ed0894f4256870e930be089a17e16f6bc0cc33a5bbabeb3686c8aaed34a",
+    "backend/integrations/alpaca_broker.py": "6cc57a1ae2369cb3d6b9219293edc27078c54b951f4478a6f31ce09c6c3b19ee",
+    "backend/integrations/alpaca_outbox.py": "7ba67961260f144d684bf73162d2f58ba68d3552119b838140b694bbef507cb7",
+    "backend/organism/live_engine.py": "f2f301862f3a8476374ea01170ee5aa1d1e79cb6c9ac4f746430c503fc6f603c",
+    "backend/organism/market_scanner.py": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
+    "backend/organism/streaming_data_provider.py": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b",
+    "scripts/ci/validate_checklist.py": "9cb3be8b41985d9c41a78c7185febf1fc0bc280268b41e24dd2bf186788ba4fd",
+    "scripts/phase2_freeze.py": "568e2dcae6e6e2a8d397f2292c6d560e24bb31c8cdf3438c74847336b759f9db",
+    "scripts/runtime/write_runtime_snapshot.py": "11792d071c72a3ad797c8e06d8e32898cf4435701a0df202c77ea46d8f059c33",
+    "scripts/testing/performance_test.py": "b777eb99ae6b1f1d82d47641bd22a4673c31ef8ace73d2a2498bcb6fc08537ec",
+    "tests/test_adversarial_inputs_v7.py": "37061da5d6aaada108c0809237b76d0c5d3ccf087fa35cef9f435b202cd499bd",
+    "tests/test_broker_ack_reconciliation.py": "1490b59065679d56b982f520b7a7373e8443ab69ba2ff9affa29cf2c0451aa9e",
+    "tests/test_developer_tool_credentials.py": "830064967c382ad765f441104fab36287545151ad7d621d7ba084a94eb428067",
+    "tests/test_entry_freshness.py": "557d8326939bd5e7eff6f79648ccf67b05b494baa43caa3b97b0575c5ae01550",
+    "tests/test_market_scanner.py": "b7e8310e0c3e721c8c2d0451c0bdbeb99ec7f291f7f74db4ad4ca88a0dea37af",
+    "tests/test_market_scanner_provider_contract.py": "d01a6097dccdb27851c0d1c0a02de6ec15c317c7523402a3cf5da9fb91044360",
+    "tests/test_phase2_freeze.py": "c9f750609087ab87d8e685a1ffdf39cd8e479350a1b1cffc6fd89724d98531e2",
+    "tests/test_pipeline_freshness_recovery.py": "8fda9f0db2f20779f863c226ac23f5a7c59a7a568ee2f98b40aa6db511546fd7",
+    "tests/test_pipeline_snapshot.py": "d638e5d9478785d6090a40e7867eff027a14677fb8c116a56e9ac40875bcbd93",
+    "tests/test_scanner_pipeline_integration.py": "b506f0da6b1717cfcf0d676be4ae47473e0618a8eabbf392d6b8be311d519cd8",
+    "tests/test_v12_baseline_invariants.py": "57302f2c0b0e2b30df4157055e5592b066734935af922d0e9d2921e151ab4ee3",
+    "tests/test_v13_w100_live_tick_coverage.py": "cd9844039fcc632dcc5361a6f6ac5e19973488740c09104b98710fc59c1aa5de",
+    "tests/unit/test_alpaca_outbox_comprehensive.py": "2582fecadb83fc3db97a3dd746803f08befc42fbcd4c21352d53d1caeb950c72",
+    "tests/unit/test_streaming_data_provider.py": "5bc206e4ff251394a5bd91739e39a138371f20105ce18bbdc5074b2cdb4ba535"
+  },
+  "head_sha": "bfc7c50ca384492ab0d3e38452d8e211bd9c796d",
+  "limitations": [
+    "This is a changed-Python/static delta review, not repository-wide lint cleanup or complete security assurance.",
+    "Gitleaks scans the exact committed revision range; root must rescan after final artifact-only commit.",
+    "Existing parked baseline findings remain unchanged unless naturally removed by this scoped work."
+  ],
+  "network_denied": true,
+  "recorded_at_utc": "2026-09-23T07:02:50.468991+00:00",
+  "reproducer": {
+    "path": "/tmp/intra-pipeline-expanded-static.py",
+    "sha256": "acd645ca23d149566071e5d913aa0ba0b7c16987d70fddf13d7a3178cb7a08d2"
+  },
+  "ruff": {
+    "baseline_findings": 76,
+    "candidate_findings": 59,
+    "new_findings": 2,
+    "receipt": {
+      "path": "artifacts/session_pipeline_repair/expanded_static/security_ruff_delta.json",
+      "sha256": "8598e4306ba0bbfe91ae5a2a250856025b064f2c5072b23c9a3057cb16ffacfc"
+    },
+    "removed_findings": 19,
+    "version": "ruff 0.15.12"
+  },
+  "runtime_calls": false,
+  "secrets": {
+    "findings": 0,
+    "receipt": {
+      "path": "artifacts/session_pipeline_repair/expanded_static/security_scan_receipt.json",
+      "sha256": "e9bb02a7138f15a546eb66eab1902a0aa53782c7c70dd20f41cdbb5ac7345187"
+    }
+  },
+  "source_edits": false,
+  "status": "REQUIRES_REVIEW",
+  "task_id": "sept22_pipeline_final_static_security_delta",
+  "unchanged_lint_configuration": {
+    ".bandit": "672d29ce1d156a932ba5b3b8c9eb237271e26567efb33f4b6986c623d70c7c15",
+    "pyproject.toml": "cf0c86fa39147a2cc93ba4a184bf40f74221aa448d8d0f0a0a520977e7410ab0"
+  },
+  "working_head_unchanged_at_completion": true
+}

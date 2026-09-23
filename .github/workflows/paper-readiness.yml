@@ -73,8 +73,11 @@ jobs:
             tests/test_v12_w78_deploy_health.py \
             tests/test_v13_w95_data_integrity.py \
             tests/test_security_boundaries.py \
+            tests/test_developer_tool_credentials.py \
             tests/test_v13_security_cleanup.py \
             tests/test_order_integrity_comprehensive.py \
+            tests/test_broker_ack_reconciliation.py \
+            tests/test_adversarial_inputs_v7.py \
             tests/test_position_reconciliation.py \
             tests/test_position_reconciliation_comprehensive.py \
             tests/test_settings_comprehensive.py \
@@ -92,6 +95,15 @@ jobs:
             tests/unit/test_alpaca_data_comprehensive.py \
             tests/unit/test_streaming_data_provider.py \
             tests/unit/test_paper_data_freshness.py \
+            tests/test_market_scanner.py \
+            tests/test_market_scanner_provider_contract.py \
+            tests/test_pipeline_freshness_recovery.py \
+            tests/test_streaming_provider_lifecycle.py \
+            tests/test_active_freeze_contract.py \
+            tests/test_artifact_change_scope.py \
+            tests/test_pipeline_snapshot.py \
+            tests/test_v13_w100_live_tick_coverage.py \
+            tests/test_scanner_pipeline_integration.py \
             tests/test_live_engine_fill_accounting.py \
             tests/test_pending_close_accounting.py \
             tests/test_replay_close_accounting.py \
@@ -149,20 +161,21 @@ jobs:
             tests/test_v12_w84_governance_docs.py \
             --junitxml=artifacts/nightly_test_harness/github_targeted.xml \
             2>&1 | tee artifacts/nightly_test_harness/github_targeted.log
-      - name: Verify unchanged frozen decision surface
+      - name: Verify candidate surface without changing active authority
         timeout-minutes: 2
         shell: bash
         run: |
           python - <<'PY'
-          import json, os, pathlib, shutil, subprocess, sys
+          import json, os, pathlib, subprocess, sys
           root = pathlib.Path.cwd()
           reference = root / 'artifacts/monday_readiness/frozen_surface_reference.json'
           target = root / 'artifacts/phase2/param_freeze.json'
-          target.parent.mkdir(parents=True, exist_ok=True)
-          shutil.copyfile(reference, target)
+          before = target.read_bytes()
+          assert before == reference.read_bytes(), "Approved active references differ"
           env = dict(os.environ)
           env.update(json.loads((root / 'artifacts/monday_readiness/freeze_environment.json').read_text()))
-          subprocess.run([sys.executable, 'scripts/phase2_freeze.py', '--verify'], env=env, check=True)
+          subprocess.run([sys.executable, 'scripts/phase2_freeze.py', '--verify', '--candidate'], env=env, check=True)
+          assert target.read_bytes() == before, "Candidate verification changed active authority"
           PY
       - name: Full safety and replay artifact pack
         if: always()

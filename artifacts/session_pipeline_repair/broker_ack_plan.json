@@ -1,0 +1,52 @@
+{
+  "task_id": "ff10_ambiguous_broker_ack_repair",
+  "status": "approved_implementation_scope",
+  "branch": "codex/sept22-pipeline-repair",
+  "scope": [
+    "Validate successful broker order acknowledgement shape; on empty/malformed/non-object/missing-id perform exact client_order_id GET recovery without another POST.",
+    "Persist versioned ambiguous-ack state through existing outbox last_error; claims restore lookup-only mode even after process restart. Missing/corrupt marker identity fails closed.",
+    "Retry exhaustion stops delivery and reports reconciliation-required, leaving order state untouched; never falsely emit order.rejected.",
+    "Replace obsolete FF10/FF11 textual xfails with meaningful behavior tests.",
+    "Root approved narrow same-file mock defect correction: remove redundant function-local os import that shadows module os before environment guard; offline actual mock branch and production-refusal regressions."
+  ],
+  "owned_files": [
+    "backend/integrations/alpaca_broker.py",
+    "backend/integrations/alpaca_outbox.py",
+    "backend/infra/outbox_worker.py",
+    "tests/test_broker_ack_reconciliation.py",
+    "tests/test_adversarial_inputs_v7.py",
+    "tests/unit/test_alpaca_outbox_comprehensive.py (three existing fixture client_key fields only)"
+  ],
+  "invariants": [
+    "No broker/network calls; offline isolated tests only.",
+    "No second POST inside acknowledgement recovery; same persisted client_order_id throughout retries.",
+    "No strategy, feed, sizing, exit, final-feature-gate, active cutoff, freeze artifact, runtime, or model-state changes.",
+    "No schema migration; last_error existing Text field must be confirmed before implementation.",
+    "Unresolved broker state is not accepted/filled/rejected; existing websocket client-key recovery remains usable."
+  ],
+  "tests": [
+    "200/201 empty/malformed/non-object/missing-id response; valid response unchanged.",
+    "Matching validated client-key lookup succeeds; mismatched/missing/invalid/unavailable lookup remains unresolved.",
+    "Fresh worker rehydrates marker and retries GET only; no identity invention or mutation.",
+    "Corrupt/unsupported marker remains failclosed; full marker persisted without truncation.",
+    "Exhaustion never broadcasts rejection or changes order state.",
+    "Websocket None filled_qty behavior replaces stale source-spelling xfail.",
+    "Deep JSON RecursionError remains uncertain; actual mock market/limit behavior and production refusal."
+  ],
+  "required_suites": [
+    "tests/test_broker_ack_reconciliation.py",
+    "tests/test_adversarial_inputs_v7.py",
+    "tests/test_alpaca_broker_comprehensive.py",
+    "tests/unit/test_alpaca_outbox_comprehensive.py",
+    "tests/test_outbox_shadow_mode.py",
+    "tests/test_order_pipeline_e2e.py",
+    "tests/test_order_integrity_comprehensive.py",
+    "tests/test_position_reconciliation.py",
+    "tests/test_position_reconciliation_comprehensive.py"
+  ],
+  "root_owned_followups": [
+    "Workflow/docs/artifact updates; candidate freeze verification; independent review; PR/CI; no merge/deployment by this agent."
+  ],
+  "runtime_behavior_changed": true,
+  "operational_mutations": false
+}

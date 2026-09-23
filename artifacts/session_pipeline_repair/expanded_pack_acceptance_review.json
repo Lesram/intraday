@@ -1,0 +1,392 @@
+{
+  "blocking_findings": [],
+  "bound_artifacts": [
+    {
+      "bytes": 18855,
+      "path": "artifacts/task_report.json",
+      "sha256": "a88d890a8f73f5de51d2d1d2a989dfc69c3598bed3266f30392be65c60637aaf"
+    },
+    {
+      "bytes": 2988,
+      "path": "docs/engineering/LIVE_AUDIT_INDEX.md",
+      "sha256": "6bea38e8f18e305613217852496b240e7fabc76855ad6af05e31133bd7f7a4b6"
+    },
+    {
+      "bytes": 11141,
+      "path": "docs/engineering/SESSION_PIPELINE_REPAIR.md",
+      "sha256": "a875b61ba1f06a760cc3a424b4ed4d5fa3973a18cf68360110ea2ca1b97b009c"
+    },
+    {
+      "bytes": 235695,
+      "path": "docs/architecture/mapss.md",
+      "sha256": "fb2b553bf25d382e5a4ebb004e3beb9db47b48ca4fdb155b706378ed4ed9010b"
+    },
+    {
+      "bytes": 10033,
+      "path": "artifacts/changed_files.json",
+      "sha256": "11c1baacefe6b4ae5e3b193ef7f5ed8de5eeda49214d64b70c92d20f5dad94d8"
+    },
+    {
+      "bytes": 22826,
+      "path": "artifacts/test_summary.json",
+      "sha256": "10fbde45024becc1384016f9089083fbc477032ecd02716a74f9123a983779d5"
+    },
+    {
+      "bytes": 3677,
+      "path": "artifacts/replay_summary.json",
+      "sha256": "a52293ef582ba1810b864d74a914584b1f0e463e516a3f60086b742ee57c84e6"
+    },
+    {
+      "bytes": 2273,
+      "path": "artifacts/semantic_invariants_summary.json",
+      "sha256": "28ab7bb53f6c2541a59b02312c4373c97649b9db229c264b7ae2e76c92347b7b"
+    },
+    {
+      "bytes": 527,
+      "path": "artifacts/spec_drift_summary.json",
+      "sha256": "22b51305a1c0f1de9da3fb512f4a6b992059c7c0062d69430d9dadcf4601a3c5"
+    },
+    {
+      "bytes": 4007,
+      "path": "artifacts/grep_assertions.json",
+      "sha256": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b"
+    },
+    {
+      "bytes": 740,
+      "path": "artifacts/runtime_snapshot_summary.json",
+      "sha256": "396ff5b5bb1515ca5ba63892ca979b7ca4c158b7ce87dffd0af9f2f831adf6bd"
+    },
+    {
+      "bytes": 4875,
+      "path": "artifacts/runtime_config_snapshot.json",
+      "sha256": "ad421f30fdb357af1601afbf500a7f0ae927ab0b21e11ae84897f60751df00a6"
+    },
+    {
+      "bytes": 4274,
+      "path": "artifacts/resolved_config_snapshot.json",
+      "sha256": "a9894c0c4b3f17e0bf424fce8b66695804b90fe1a506d296c2430a064c9cd7bd"
+    },
+    {
+      "bytes": 4138,
+      "path": "artifacts/runtime_defaults_snapshot.json",
+      "sha256": "41cf04336b5d317875d8684cd4d9713f638dbc01f876bf0c1ba53f7688aea9e4"
+    },
+    {
+      "bytes": 399,
+      "path": "artifacts/live_process_runtime_snapshot.json",
+      "sha256": "03f82dfa37429159a1b5708ce02960209c874c40b39a4137a39857a48df9bd90"
+    },
+    {
+      "bytes": 12903,
+      "path": "artifacts/phase2/param_freeze.json",
+      "sha256": "d93ef5a9c24d4fdff65bac4cfeb072d5c2765fafdc80910070d37fe513aa873d"
+    },
+    {
+      "bytes": 12903,
+      "path": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "sha256": "d93ef5a9c24d4fdff65bac4cfeb072d5c2765fafdc80910070d37fe513aa873d"
+    },
+    {
+      "bytes": 294,
+      "path": "artifacts/session_pipeline_repair/full_expanded_candidate.json",
+      "sha256": "924104951d0a5fafc0f97993cf622c37b23f06adb1c55f2d5e7ea6f7d50cdcaa"
+    },
+    {
+      "bytes": 952,
+      "path": "artifacts/session_pipeline_repair/full_expanded_candidate.log",
+      "sha256": "89c7d5f5d2aa531a076b24b48c74e616c4d93962b76b91b9ec8974b09ccba134"
+    },
+    {
+      "bytes": 284,
+      "path": "artifacts/session_pipeline_repair/index_expanded_candidate.json",
+      "sha256": "147925e46a7c5846945e84ea77e80a35fafdb6d3dfb5f3ed033eda59c8b943ff"
+    },
+    {
+      "bytes": 741,
+      "path": "artifacts/session_pipeline_repair/expanded_committed_freeze.json",
+      "sha256": "210625cd05d547f380476917c7dd69da174ba1e8bd47900a3b4a17a4511c804f"
+    },
+    {
+      "bytes": 8838,
+      "path": "artifacts/session_pipeline_repair/broker_ack_independent_review.json",
+      "sha256": "28547ace8d661ac64ed2e66b4b852b67ac7684dc87f95be8402da526cbb772bc"
+    },
+    {
+      "bytes": 7528,
+      "path": "artifacts/session_pipeline_repair/broker_ack_implementation.json",
+      "sha256": "d152d03bdb11449391b1111235870fdd2c10d7bc73e754f68ccc84509937e2d1"
+    },
+    {
+      "bytes": 606,
+      "path": "artifacts/session_pipeline_repair/hygiene_acceptance.json",
+      "sha256": "c8d1ba2555186b04dc6b7bfb71af1512e9e4144192e6cec265c5d30305d292fa"
+    },
+    {
+      "bytes": 6625,
+      "path": "artifacts/session_pipeline_repair/expanded_static/static_review.json",
+      "sha256": "e03c49f31513dc9ec6aba612fa5c74233aba9a8a678398af8fd350e92d192d9c"
+    },
+    {
+      "bytes": 4934,
+      "path": "artifacts/session_pipeline_repair/expanded_static/static_disposition.json",
+      "sha256": "2de6084852fb6577208d32418b522f88cdf74988aa8d2745c7e4889fcd142a4c"
+    }
+  ],
+  "branch": "codex/sept22-pipeline-repair",
+  "candidate_code_sha256": {
+    "artifacts/session_pipeline_repair/candidate_freeze_builder.py": "e22a753cb16ca13637bf460bed3705520575cfb5ebcf368613e97539989a2f6a",
+    "artifacts/session_pipeline_repair/intra-scanner-safe-test.py": "249fd7bc6ec368f5e823573a06c9690ef2692b5f99d5fd7054238611c94aaa63",
+    "artifacts/session_pipeline_repair/isolated_test_runner.py": "88d309c1e552da5216acc498a79f564321371672b4961e3517f0754f518ee1bb",
+    "backend/infra/outbox_worker.py": "0c072ed0894f4256870e930be089a17e16f6bc0cc33a5bbabeb3686c8aaed34a",
+    "backend/integrations/alpaca_broker.py": "6cc57a1ae2369cb3d6b9219293edc27078c54b951f4478a6f31ce09c6c3b19ee",
+    "backend/integrations/alpaca_outbox.py": "7ba67961260f144d684bf73162d2f58ba68d3552119b838140b694bbef507cb7",
+    "backend/organism/live_engine.py": "f2f301862f3a8476374ea01170ee5aa1d1e79cb6c9ac4f746430c503fc6f603c",
+    "backend/organism/market_scanner.py": "78b6ce46a6996f666f2770a41bfcbaff84dc9f0248128f2ecac86be70980e561",
+    "backend/organism/streaming_data_provider.py": "874427689f9d2bdd4eefa3c908e5f32d45217366a9f8cf2e7ef914a75e6d1f6b",
+    "scripts/ci/validate_checklist.py": "9cb3be8b41985d9c41a78c7185febf1fc0bc280268b41e24dd2bf186788ba4fd",
+    "scripts/phase2_freeze.py": "568e2dcae6e6e2a8d397f2292c6d560e24bb31c8cdf3438c74847336b759f9db",
+    "scripts/runtime/write_runtime_snapshot.py": "11792d071c72a3ad797c8e06d8e32898cf4435701a0df202c77ea46d8f059c33",
+    "scripts/testing/performance_test.py": "b777eb99ae6b1f1d82d47641bd22a4673c31ef8ace73d2a2498bcb6fc08537ec",
+    "tests/test_adversarial_inputs_v7.py": "37061da5d6aaada108c0809237b76d0c5d3ccf087fa35cef9f435b202cd499bd",
+    "tests/test_broker_ack_reconciliation.py": "1490b59065679d56b982f520b7a7373e8443ab69ba2ff9affa29cf2c0451aa9e",
+    "tests/test_developer_tool_credentials.py": "830064967c382ad765f441104fab36287545151ad7d621d7ba084a94eb428067",
+    "tests/test_entry_freshness.py": "557d8326939bd5e7eff6f79648ccf67b05b494baa43caa3b97b0575c5ae01550",
+    "tests/test_market_scanner.py": "b7e8310e0c3e721c8c2d0451c0bdbeb99ec7f291f7f74db4ad4ca88a0dea37af",
+    "tests/test_market_scanner_provider_contract.py": "d01a6097dccdb27851c0d1c0a02de6ec15c317c7523402a3cf5da9fb91044360",
+    "tests/test_phase2_freeze.py": "c9f750609087ab87d8e685a1ffdf39cd8e479350a1b1cffc6fd89724d98531e2",
+    "tests/test_pipeline_freshness_recovery.py": "8fda9f0db2f20779f863c226ac23f5a7c59a7a568ee2f98b40aa6db511546fd7",
+    "tests/test_pipeline_snapshot.py": "d638e5d9478785d6090a40e7867eff027a14677fb8c116a56e9ac40875bcbd93",
+    "tests/test_scanner_pipeline_integration.py": "b506f0da6b1717cfcf0d676be4ae47473e0618a8eabbf392d6b8be311d519cd8",
+    "tests/test_v12_baseline_invariants.py": "57302f2c0b0e2b30df4157055e5592b066734935af922d0e9d2921e151ab4ee3",
+    "tests/test_v13_w100_live_tick_coverage.py": "cd9844039fcc632dcc5361a6f6ac5e19973488740c09104b98710fc59c1aa5de",
+    "tests/unit/test_alpaca_outbox_comprehensive.py": "2582fecadb83fc3db97a3dd746803f08befc42fbcd4c21352d53d1caeb950c72",
+    "tests/unit/test_streaming_data_provider.py": "5bc206e4ff251394a5bd91739e39a138371f20105ce18bbdc5074b2cdb4ba535"
+  },
+  "candidate_source_sha": "bfc7c50ca384492ab0d3e38452d8e211bd9c796d",
+  "coherence_checks": {
+    "all12_task_report_hashed_references_verified": true,
+    "all27_changed_python_hashes_equal_current_and_committed_source": true,
+    "all_suite_summaries_equal_parsed_XML_case_results": true,
+    "bandit_high_new_findings": 0,
+    "changed_inventory_and_task_report_agree_count": 149,
+    "committed_range_gitleaks_findings": 0,
+    "grep_assertions_all15_pass": true,
+    "index_source_and_offline_labels_agree": true,
+    "new_active_source_lint_findings": 0,
+    "raw_static_retains_two_evidence_warnings": true,
+    "removed_lint_findings": 19,
+    "semantic20_pass": true,
+    "spec_drift_count": 0,
+    "task_report_sha_and_validated_source_equal_committed_head": true
+  },
+  "configuration_scope": {
+    "installed_reference_timeframe": "1Min",
+    "interpretation": "Source/process defaults and scratch paths are explicitly separated from installed paper configuration. The offline snapshot is not a new runtime observation and does not establish candidate deployment.",
+    "offline_config_truth": "unverified",
+    "offline_engine_observed": false,
+    "offline_live_process_reachable": false,
+    "offline_snapshot_timeframe": "1Day"
+  },
+  "freeze_preservation": {
+    "active_cutoff": "2026-09-22T08:49:11.247316+00:00",
+    "candidate_different_surface_groups": [
+      "data_pipeline_sources",
+      "source_hashes"
+    ],
+    "candidate_freeze_sha256": "d93ef5a9c24d4fdff65bac4cfeb072d5c2765fafdc80910070d37fe513aa873d",
+    "candidate_timestamp_is_not_active_cutoff": true,
+    "candidate_validation_timestamp": "2026-09-23T05:46:45.011846+00:00",
+    "candidate_verify_exit_code": 0,
+    "changed_original_function_hashes": [
+      "entry_gates_dispatch"
+    ],
+    "installed_freeze_read_only_check": {
+      "mtime_ns": 1790066951257963369,
+      "sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb"
+    },
+    "other_exit_env_routing_feed_regime_strategy_groups_match_installed": true,
+    "runtime_calls": 0
+  },
+  "full_pack_suites": {
+    "algorithm_improvements": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 8108,
+        "path": "artifacts/algorithm_improvements.junit.xml",
+        "sha256": "a9520b488f2f8320a5b466c989e36869f29f5f4092c084f98989473ba6ec0593"
+      },
+      "passed": 58,
+      "skipped": 0,
+      "total": 58
+    },
+    "multi_tick_state": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 1395,
+        "path": "artifacts/multi_tick_state.junit.xml",
+        "sha256": "21561d731258ab332d8f4b97ddfb59f8147013a833470576440c2a2dc21771c4"
+      },
+      "passed": 9,
+      "skipped": 0,
+      "total": 9
+    },
+    "organism_engine_scenarios": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 4024,
+        "path": "artifacts/organism_engine_scenarios.junit.xml",
+        "sha256": "13572707fc7d47ac26845bfba87c6a9ef0290dbcc6b5f3f4527189226b515d2e"
+      },
+      "passed": 31,
+      "skipped": 0,
+      "total": 31
+    },
+    "organism_live_engine": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 3581,
+        "path": "artifacts/organism_live_engine.junit.xml",
+        "sha256": "195e8f0bfa0f0b5f3fcd0a3aea7d433c0f9b5709efba98bbbb8cee4d2fe4004a"
+      },
+      "passed": 26,
+      "skipped": 0,
+      "total": 26
+    },
+    "replay_simulator": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 3315,
+        "path": "artifacts/replay_simulator.junit.xml",
+        "sha256": "b4b8ccbb165493263c55e6d32e1f505b1a33569d0c647b31e2f7efb95c79c0f4"
+      },
+      "passed": 28,
+      "skipped": 0,
+      "total": 28
+    },
+    "safety_invariants": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 4233,
+        "path": "artifacts/safety_invariants.junit.xml",
+        "sha256": "bcd8b6ff2d42a9f969802da2d00a1cd74cbcad167fb07e9ee1dc32b3cdefc352"
+      },
+      "passed": 29,
+      "skipped": 0,
+      "total": 29
+    },
+    "self_evolution": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 2061,
+        "path": "artifacts/self_evolution.junit.xml",
+        "sha256": "6fee3d531f1d78fd78a9e90848588077751a33b9256169d11423ebd94cb9630a"
+      },
+      "passed": 15,
+      "skipped": 0,
+      "total": 15
+    },
+    "semantic_invariants": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 3073,
+        "path": "artifacts/semantic_invariants.junit.xml",
+        "sha256": "c9d50924305184829c56556880b07a1ea3bf62a20efeb4c01b553d03d4460b11"
+      },
+      "passed": 20,
+      "skipped": 0,
+      "total": 20
+    }
+  },
+  "full_pack_totals": {
+    "errors": 0,
+    "failed": 0,
+    "generator_elapsed_seconds": 210.5,
+    "generator_exit_code": 0,
+    "passed": 216,
+    "skipped": 0
+  },
+  "hash_cycle_policy": "Task report names this review by path only. This receipt binds its immutable reviewed task-report/index bytes; neither is rewritten to contain this receipt hash.",
+  "limitations": [
+    "216 local full-pack passes are not a full-nightly result or proof of strategy expectancy. Final exact-head hosted CI and constrained image validation remain pending.",
+    "This report binds pre-delivery sourcebfc plus current evidence bytes; adding artifacts must not modify production/test source identity. Final artifact commit needs the root-owned final secret scan.",
+    "Installed freeze preservation was independently checked by file hash, mtime and cutoff only; this review makes no fresh authenticated runtime-health assertion.",
+    "Unavailable external API/disposable-broker scopes remain unavailable, not passing. SQLite/mock tests do not certify all real broker/concurrency behavior.",
+    "Current changed-file inventory reflects149 source/prior-evidence paths at generation time. Upcoming new evidence files and this receipt are intentionally not represented as prior committed changes; root will deliver them separately."
+  ],
+  "prior_hosted_results": {
+    "core": {
+      "passed": 8783,
+      "skipped": 546,
+      "xfailed": 2
+    },
+    "final_hosted_status": "PENDING_FINAL_DELIVERY_COMMIT",
+    "former_two_xfails": "Now replaced by executable FF10 acknowledgement recovery and FF11 null-quantity behavior checks; current authored230-case receipt has no xfails or skips.",
+    "nightly_url": "https://github.com/Lesram/intraday/actions/runs/35825090880",
+    "readiness_url": "https://github.com/Lesram/intraday/actions/runs/35825078704",
+    "replay_passed": 7,
+    "source_distinction": "Explicitly prior3a only; not final bfc or upcoming delivery-head certification. No fresh hosted queries in this review. Prior4MB artifacts remain local and linked immutable GitHub artifacts per root packaging policy.",
+    "source_sha": "3a9e35582cbb6083f650dc081175124d8a32e64e"
+  },
+  "release_claim_review": [
+    "Docs/report describe candidate operational repairs, not strategy tuning, a demonstrated edge, profitability, or natural-session execution qualification.",
+    "After-hours provider result old0/repaired52 remains discovery contract evidence only, not fresh executable entry opportunity or September22 counterfactual trades.",
+    "Retired-symbol attribution remains unproven for427 prior blocked cycles; no counterfactual trade recovery claim is added.",
+    "Broker recovery guarantee starts after marker commit; pre-marker process failure and repeated failed writes remain an explicit delivery boundary.",
+    "Historical credential values were removed from current files; revocation/history remain unresolved and current values were not tested against any external service.",
+    "Two raw retained-evidence F401 findings are accepted as unchanged historical copied scripts, not relabeled zero raw findings.",
+    "Deployment/new cutoff approval and actual held-flat activation remain separate gates; current installed cutoff is preserved."
+  ],
+  "reviewed_at_utc": "2026-09-23T07:17:44.838508+00:00",
+  "scope": "Read-only evidence coherence and identity review; no suites rerun, no network/API/observer/broker calls. Only this new review receipt written. Root retains responsibility for immutable final delivery/hosted/build gates.",
+  "separate_test_evidence": {
+    "broker_order_reconciliation": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 33100,
+        "path": "artifacts/session_pipeline_repair/broker_ack_accepted_candidate.xml",
+        "sha256": "3286f39de6139eef062f7265b3417442c1eb75299864b1fdbad99ced365c3217"
+      },
+      "passed": 230,
+      "skipped": 0,
+      "total": 230
+    },
+    "credential_and_existing_security": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 7806,
+        "path": "artifacts/session_pipeline_repair/hygiene_acceptance.xml",
+        "sha256": "4e4db15fd668cb90c1a6fb36ff4e7dae5e81ded95dac79974f916b0dbda5414d"
+      },
+      "passed": 50,
+      "skipped": 0,
+      "total": 50
+    },
+    "credential_subset_cases": 26,
+    "independent_broker_subset": {
+      "errors": 0,
+      "failed": 0,
+      "junit": {
+        "bytes": 4237,
+        "path": "artifacts/session_pipeline_repair/broker_ack_independent_proof.xml",
+        "sha256": "a9dca64b8e6847e33c6087e89348a379a1de8d0609e9038967c33e83984909a4"
+      },
+      "passed": 23,
+      "skipped": 0,
+      "total": 23
+    },
+    "overlap_note": "Independent23 overlap authored230; credential26 are included in50. Separate suites and prior runs are not summed into an inflated unique total."
+  },
+  "source_or_runtime_mutations": 0,
+  "status": "LOCAL_EXPANDED_ARTIFACT_PACK_ACCEPTED",
+  "task_id": "sept22_pipeline_expanded_full_pack_independent_acceptance"
+}

@@ -1,0 +1,143 @@
+{
+  "review_id": "session_pipeline_root_scope_independent_review",
+  "reviewed_at_utc": "2026-09-23T05:49:06.791024+00:00",
+  "status": "ACCEPTED_FOR_RELEASE_VALIDATION",
+  "blocking_findings": [],
+  "base_sha": "f8bc52de1687f664278e8a8c032cb3aca4b39876",
+  "checkout_code_sha": "332cb6babc1778094c1559d9b83f176f707a7406",
+  "binding_scope": "Exact working-tree file hashes below. Some reviewed tests/docs/workflow files are not yet committed at checkout_code_sha; final release commit must contain these bytes.",
+  "files": {
+    "scripts/phase2_freeze.py": {
+      "sha256": "568e2dcae6e6e2a8d397f2292c6d560e24bb31c8cdf3438c74847336b759f9db",
+      "matches_checkout_commit": true
+    },
+    "scripts/runtime/write_runtime_snapshot.py": {
+      "sha256": "11792d071c72a3ad797c8e06d8e32898cf4435701a0df202c77ea46d8f059c33",
+      "matches_checkout_commit": true
+    },
+    "tests/test_phase2_freeze.py": {
+      "sha256": "c9f750609087ab87d8e685a1ffdf39cd8e479350a1b1cffc6fd89724d98531e2",
+      "matches_checkout_commit": true
+    },
+    "tests/test_pipeline_snapshot.py": {
+      "sha256": "d638e5d9478785d6090a40e7867eff027a14677fb8c116a56e9ac40875bcbd93",
+      "matches_checkout_commit": true
+    },
+    "tests/test_v12_baseline_invariants.py": {
+      "sha256": "57302f2c0b0e2b30df4157055e5592b066734935af922d0e9d2921e151ab4ee3",
+      "matches_checkout_commit": true
+    },
+    ".github/workflows/paper-readiness.yml": {
+      "sha256": "94e9b2dcf0cd837c624d9f69d16096ec92569fc1f9d4eb7a3c81c30f53aa152f",
+      "matches_checkout_commit": true
+    },
+    "docs/architecture/mapss.md": {
+      "sha256": "fb2b553bf25d382e5a4ebb004e3beb9db47b48ca4fdb155b706378ed4ed9010b",
+      "matches_checkout_commit": true
+    },
+    "docs/engineering/SESSION_PIPELINE_REPAIR.md": {
+      "sha256": "5e0fb9a96a890ccea9ec0cbf3db8cc2cf152aab9e421a2cf079b8d3bebd7066f",
+      "matches_checkout_commit": true
+    }
+  },
+  "checks": {
+    "helper_hash_coverage": {
+      "market_scanner": "entire module source",
+      "streaming_data_provider": "entire module source",
+      "live_engine_data": "entire module source",
+      "staleness_admission": "OrganismLiveEngine._stage_update_data_staleness source"
+    },
+    "drift_verification": "Four independent module/method drift tests require verify failure while preserving temporary freeze bytes and the original six source hashes.",
+    "source_changes": "Static AST comparison of OrganismLiveEngine against base finds only _stage_update_data_staleness and _live_tick_inner changed. Shared entry gate/submission, authorization and exit methods remain unchanged.",
+    "original_six_changed": [
+      "entry_gates_dispatch"
+    ],
+    "unchanged_surface_groups": [
+      "effective_policy_baseline",
+      "exit_env",
+      "regime_policy",
+      "research_policy",
+      "research_policy_enforcement_env",
+      "research_policy_sources",
+      "routing_data_env",
+      "strategy_config",
+      "strategy_config_hash"
+    ],
+    "freeze_environment_unchanged_from_base": true,
+    "loc": {
+      "actual": 2824,
+      "v12_historical_baseline": 2802,
+      "prior_approved_freshness_growth": 21,
+      "scanner_exception_clear_growth": 1,
+      "w100_equivalent": "2805 + 18 + 1",
+      "extra_tolerance": 0
+    },
+    "snapshot": "Candidate source identities only; resolved and legacy generated snapshots report engine_observed=false, legacy status unverified. No running process is certified by these hashes.",
+    "workflow": "Only six new focused test paths added; no trigger, permission, job budget, recovery or deployment action changed.",
+    "documentation": "Candidate status, unchanged strategy/feed/ML isolation/fixed risk/exit rules, exact LOC cap, sparse-feed stand-down limits and explicit new deployment boundary are disclosed."
+  },
+  "candidate_freeze": {
+    "status": "Regeneration completed during review; prior pending condition resolved",
+    "path": "artifacts/phase2/param_freeze.json",
+    "reference": "artifacts/monday_readiness/frozen_surface_reference.json",
+    "sha256": "d93ef5a9c24d4fdff65bac4cfeb072d5c2765fafdc80910070d37fe513aa873d",
+    "reference_identical": true,
+    "candidate_only": true,
+    "deployment_approved": false,
+    "validation_boundary": "2026-09-23T05:46:45.011846+00:00",
+    "metadata_code_sha": "98b9617bc43ba9ecbaaab0195cec78961e03a32b",
+    "receipt_sha256": "bcfdd9dc9ed053e3883fa3e36dbd08115e52ba40ea7a7f41114131ae438205b7",
+    "verify_exit_code_from_root_receipt": 0
+  },
+  "installed_freeze_read_only_check": {
+    "path": "/Users/marselkei/VS/intra/artifacts/phase2/param_freeze.json",
+    "sha256": "cbff5d2c405031346426c7fa4cc496ffb21b8a6d9274fc7a329239ae9eb128cb",
+    "cutoff": "2026-09-22T08:49:11.247316+00:00",
+    "matches_root_preservation_receipt": true,
+    "no_write_performed": true
+  },
+  "reviewed_test_artifacts": {
+    "artifacts/session_pipeline_repair/combined_corrected.xml": {
+      "sha256": "477d9b8d95b8e5fdc0027f54578fea11336e346ed22760bab1480e6e2f79aa6c",
+      "passed": 230,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "artifacts/session_pipeline_repair/freeze_and_stale_exit.xml": {
+      "sha256": "ec8e3c090fc2f1973a46a9d4b67463598a6380422c2a462529fb4dfee8b6f99a",
+      "passed": 47,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "artifacts/session_pipeline_repair/config_and_reconciliation.xml": {
+      "sha256": "58435785408e80f31ffbf639179fbea30376e545128ebffb59ab53e91834c443",
+      "passed": 121,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "artifacts/session_pipeline_repair/root_snapshot.xml": {
+      "sha256": "10a2e70d07633fda5cd83b5bd2a1134e87e4d0d01ce9da47aed85348d093f102",
+      "passed": 8,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "test_count_note": "JUnit files were parsed read-only; overlapping suites are not summed. Reviewer did not rerun suites.",
+  "pending_release_gates": [
+    "Commit reviewed test/workflow/docs bytes and bind final source/evidence identities.",
+    "Finish required full artifact pack and applicable nightly/replay lanes; retain explicit unavailable external tests.",
+    "Required hosted checks, final artifact/index consistency, independent source acceptance and secret-scan disposition.",
+    "Explicitly approved held-flat activation must establish a fresh active cutoff; do not install candidate timestamp as active boundary.",
+    "Actual deployed runtime/source/config, preserved historical state and natural-session behavior require separate acceptance."
+  ],
+  "limitations": [
+    "Bounded root-owned scope review, not an independent whole-repository or profitability audit.",
+    "Root session counts in the new engineering document were not independently recomputed in this review.",
+    "No service, broker, API, container, auth, model, history or runtime mutation performed.",
+    "Candidate source does not establish live natural order, protective-exit or EOD execution."
+  ]
+}
