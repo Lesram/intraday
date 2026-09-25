@@ -1,0 +1,33 @@
+{
+  "task_id": "scalar_composite_contract_repair_20260925",
+  "authorization": "User explicitly approved including indicator correction and replay in PR30; root assigned direct implementation to this agent.",
+  "worktree": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra",
+  "branch": "codex/session-streaming-readiness",
+  "base_head": "ab899be855675d4437279a701b778a18c3c2c9f1",
+  "owned_files": [
+    "backend/organism/composite_indicators.py",
+    "tests/test_composite_indicator_contract.py"
+  ],
+  "production_change": "Use abs(a) for scalar or Series numerators in _safe_div, broaden the type annotation truthfully, retain denominator/near-zero guard and every formula/threshold unchanged.",
+  "source_before_sha256": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+  "affected_tests": [
+    "New direct scalar int/float/signed/zero/Series/NaN/epsilon/index-alignment contract cases",
+    "All three existing scalar callers (volume-price divergence, mean reversion extremity, momentum quality)",
+    "Master composite output finite and ranges, including signed mean reversion",
+    "Real compute_ml_features completes composites on varied synthetic frames; input and non-composite parity against original fallback",
+    "Existing composite/adversarial regression suites as identified by source search"
+  ],
+  "red_green_required": true,
+  "isolation": "Root-owned cleanenv/network-denied runner; synthetic input only; no actual credentials/brains/models/API calls",
+  "excluded": [
+    "No cache/refactor",
+    "No fallback removal or threshold/strategy tuning",
+    "No active freeze/cutoff/snapshot/deployment/source-root mutation",
+    "No commit"
+  ],
+  "external_validation_owners": {
+    "root": "Final candidate freeze/snapshot/docs, required safety suites and full artifact pack, PR/commit",
+    "session_contract_explorer": "Paired real replay implementation/evidence",
+    "combined_acceptance_review": "Independent source/test review"
+  }
+}

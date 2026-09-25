@@ -1,0 +1,20 @@
+{
+  "label": "contract_existing",
+  "exit_code": 0,
+  "seconds": 3.42,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/composite_indicator_repair/contract_existing.xml",
+    "tests/test_reachability_v8.py::test_dd_1_safe_div_returns_nan_on_double_zero",
+    "tests/test_adversarial_inputs_v7.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

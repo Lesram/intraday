@@ -1,0 +1,184 @@
+{
+  "task_id": "scalar_composite_contract_repair_20260925",
+  "status": "SCOPED_IMPLEMENTATION_COMPLETE_PENDING_ROOT_RELEASE_GATES",
+  "completed_at_utc": "2026-09-25T16:52:59.987543+00:00",
+  "base_head": "ab899be855675d4437279a701b778a18c3c2c9f1",
+  "head_at_report": "ab899be855675d4437279a701b778a18c3c2c9f1",
+  "branch": "codex/session-streaming-readiness",
+  "scope": "Approved scalar numerator compatibility repair, plus focused synthetic contract tests; no cache",
+  "files_changed": {
+    "backend/organism/composite_indicators.py": {
+      "before_sha256": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+      "after_sha256": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
+      "behavior": "Scalar int/float numerators now use builtin abs; Series semantics, epsilon, near-zero mask, indicator formulas and thresholds retained."
+    },
+    "tests/test_composite_indicator_contract.py": {
+      "sha256": "206e1e8b98afa5570c1be4c01f4fad586f8faf8e3ea1e94b619920411a6ad7d9",
+      "new_cases": 41
+    }
+  },
+  "latest_passing_tests": 71,
+  "latest_failed_tests": 0,
+  "latest_skipped_tests": 0,
+  "test_runs": {
+    "contract_red": {
+      "cases": 40,
+      "failed": 35,
+      "errors": 0,
+      "skipped": 0,
+      "run_receipt": {
+        "label": "contract_red",
+        "exit_code": 1,
+        "seconds": 1.22,
+        "command": [
+          "-m",
+          "pytest",
+          "-q",
+          "--timeout=30",
+          "--tb=short",
+          "--durations=10",
+          "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/composite_indicator_repair/contract_red.xml",
+          "tests/test_composite_indicator_contract.py"
+        ],
+        "network_denied": true,
+        "production_writes_denied": true,
+        "installed_credentials_and_brain_reads_denied": true,
+        "candidate_only": true
+      },
+      "files": {
+        "contract_red.xml": "bfca73efe54432f19f45971800bda80321630fb01bd8bf905bfa13a77e6ad453",
+        "contract_red.log": "1ce30a10bbe8f60c2a027eae6f5dab6a1d6b87008551c9d34d2c6af51298ff1a",
+        "contract_red.json": "9682314dae7c9dc5cc6e9feb75f5a2bb7309864a9e6882a586316d43eea9e652"
+      }
+    },
+    "contract_green": {
+      "cases": 40,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "run_receipt": {
+        "label": "contract_green",
+        "exit_code": 1,
+        "seconds": 1.48,
+        "command": [
+          "-m",
+          "pytest",
+          "-q",
+          "--timeout=30",
+          "--tb=short",
+          "--durations=10",
+          "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/composite_indicator_repair/contract_green.xml",
+          "tests/test_composite_indicator_contract.py"
+        ],
+        "network_denied": true,
+        "production_writes_denied": true,
+        "installed_credentials_and_brain_reads_denied": true,
+        "candidate_only": true
+      },
+      "files": {
+        "contract_green.xml": "184d14ecf72a4ce7b0c485ee304f1d2cc6228ecb29550db4d512f12ab950fa61",
+        "contract_green.log": "482c69dc71f432962111b8204e1b6f4d19dccb908022b6a1b5b1be44bc7b766e",
+        "contract_green.json": "70f47c9a261cd59e3b7309422e0245ddc79806e1dac9646de5e264153ac762d0"
+      }
+    },
+    "contract_final": {
+      "cases": 41,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "run_receipt": {
+        "label": "contract_final",
+        "exit_code": 0,
+        "seconds": 1.8,
+        "command": [
+          "-m",
+          "pytest",
+          "-q",
+          "--timeout=30",
+          "--tb=short",
+          "--durations=10",
+          "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/composite_indicator_repair/contract_final.xml",
+          "tests/test_composite_indicator_contract.py"
+        ],
+        "network_denied": true,
+        "production_writes_denied": true,
+        "installed_credentials_and_brain_reads_denied": true,
+        "candidate_only": true
+      },
+      "files": {
+        "contract_final.xml": "165fb6edb6fa48b265758afaf02fefdd797c6159e2b1583146a94eaaae364913",
+        "contract_final.log": "e23df73ce4ba9692ea2c9c4595069ab9873d3a59d311b3867ae91a2582fd5e11",
+        "contract_final.json": "9976369957ede6eff713ecbe2889e6a12f03b63b1ca8cb987f3939745d7b9650"
+      }
+    },
+    "contract_existing": {
+      "cases": 30,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "run_receipt": {
+        "label": "contract_existing",
+        "exit_code": 0,
+        "seconds": 3.42,
+        "command": [
+          "-m",
+          "pytest",
+          "-q",
+          "--timeout=30",
+          "--tb=short",
+          "--durations=10",
+          "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/composite_indicator_repair/contract_existing.xml",
+          "tests/test_reachability_v8.py::test_dd_1_safe_div_returns_nan_on_double_zero",
+          "tests/test_adversarial_inputs_v7.py"
+        ],
+        "network_denied": true,
+        "production_writes_denied": true,
+        "installed_credentials_and_brain_reads_denied": true,
+        "candidate_only": true
+      },
+      "files": {
+        "contract_existing.xml": "01b388b7134ee7aa3a48ea21816c1ec809e67c9643ca5c1906ec8621f9345039",
+        "contract_existing.log": "38a9135792b5e64c4f3d81f3ec455e6bd421a9caff4b1824071928f0ec54b93a",
+        "contract_existing.json": "956a8f81ad358105277a35e188238a0fd3d8efb6d6e015ae3e57a4cbd5c26de1"
+      }
+    }
+  },
+  "red_green_notes": [
+    "Existing unchanged source failed35/40 new cases;5 Series/warmup cases already passed.",
+    "First corrected run passed39/40; the sole remaining test incorrectly required nonzero squeeze at exactly20 bars. Adjusted test to allow legitimate longer-window zero while requiring actual master success and some computed nonzero values; all seven fields still must exhibit nonzero values on longer representative frames. Production source was unchanged for this diagnostic correction.",
+    "Added one independent transient exception/fallback then identical-input retry test; final new suite41/41 passed.",
+    "Existing original DD-1 zero-over-zero test plus adversarial suite30/30 passed. Counts exclude superseded/red attempts."
+  ],
+  "proof": [
+    "Signed scalar int/float and exact zero, tiny numerator, exact/near-zero/NaN denominator expectations",
+    "Series index alignment, NaN behavior, input immutability and exact old arithmetic parity",
+    "All3 real scalar callers complete with finite declared-range output",
+    "Master all7 columns, signed mean-reversion range[-1,1], other composites[0,1], explicit short-input zeros and no flat-bar phantom breakout",
+    "Actual compute_ml_features observes successful real master completion at full indicator context, with exact final composite equality",
+    "Exact non-composite values, dtypes, ordering, index, timestamps, attrs and missingness against pre-repair fallback",
+    "Transient failure keeps zero fallback and retries identical input on subsequent call"
+  ],
+  "lint": {
+    "receipt_sha256": "b7c674410e2c7750cd62ed33777a441ab3e7471197b856a4ae8b9e59c22735a9",
+    "new_findings": 0,
+    "raw_current_findings": 1,
+    "retained_preexisting": "F401 unused math import at composite_indicators.py:22; no unrelated cleanup"
+  },
+  "numeric_warnings": "Retained expected NumPy/Pandas warnings in flat/invalid synthetic cases; complete returned composite fields checked finite. No warning suppression or source masking added.",
+  "runtime_behavior_changed": true,
+  "deployed_runtime_changed": false,
+  "invariant_notes": "This repairs previously zeroed decision-input features and can change candidate scores/trades. User approved candidate correction; active cutoff/freeze/runtime untouched by this agent.",
+  "limitations": [
+    "Synthetic unit/contract evidence is not profitability evidence or attribution for Sept24.",
+    "Broad ML composite exception fallback remains intentionally unchanged.",
+    "Root must complete candidate freeze/runtime snapshot/docs/fullpack and release gates; independent replay agent owns paired engine replay.",
+    "No commit, push, deployment, broker/API calls, real-data access, saved model load or active state mutation by this task."
+  ],
+  "bound_artifacts": {
+    "artifacts/composite_indicator_repair/implementation_plan.json": "511e04669caa6817eed63451cce7a32351ea4791ca538e95020b652fc55bfde8",
+    "artifacts/composite_indicator_repair/isolated_test_runner.py": "fc75603fa029e57c8c2f712650e58067e8dbb7f106252c872f276c0d64fc50b2",
+    "artifacts/composite_indicator_repair/contract_lint.json": "b7c674410e2c7750cd62ed33777a441ab3e7471197b856a4ae8b9e59c22735a9",
+    "artifacts/composite_indicator_repair/production.patch": "f5c9671265aea9f4d90bca84705559d9d5cc9651514a1833236942451eb989ab"
+  },
+  "independent_review_owner": "combined_acceptance_review"
+}

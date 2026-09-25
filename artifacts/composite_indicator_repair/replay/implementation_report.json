@@ -1,0 +1,622 @@
+{
+  "baseline_commit": "ab899be855675d4437279a701b778a18c3c2c9f1",
+  "baseline_helper_sha256": "11d91ad0845cd8b274718efe2edb5c9233a5531b63b2b64899536e0cef02b6b0",
+  "baseline_module_sha256": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+  "baseline_scope": "Current candidate engine with exact prior composite helper only; not a reproduction of the entire old deployed release",
+  "commands": [
+    "python artifacts/composite_indicator_repair/isolated_test_runner.py paired_02 tests/test_composite_correction_replay.py",
+    "ruff check scripts/diagnostics/replay_composite_correction.py tests/test_composite_correction_replay.py --output-format json"
+  ],
+  "commit_or_deployment_performed": false,
+  "file_hashes": {
+    "artifacts/composite_indicator_repair/paired_02.json": "70df6563eefca80202b3ed1c2e81d8536e2457d04b89d0f24e8772d845758839",
+    "artifacts/composite_indicator_repair/paired_02.log": "eaef90cf3ce89bcc4a47bd7c28766e9872d4bc983d84ac86b3ed05e6672d131c",
+    "artifacts/composite_indicator_repair/paired_02.xml": "2421b21653dd5e44844eba31546853ddaa081cac87cacb31ee6ec09fafa824a7",
+    "artifacts/composite_indicator_repair/replay/paired_summary.json": "bdd93ca9e4e1c3af0c98c5d0384e3fd339e0474e7ed4b3680fdcbf1fec318758",
+    "artifacts/composite_indicator_repair/replay/plan.json": "d46388a15e9611ffc9b24e9386ec4ac6336e8f4065ca0b982e70cd405eacd67f",
+    "scripts/diagnostics/replay_composite_correction.py": "21e3b9924344a0cca84dacdc97f5421e84d3876bafc1b8a1c9cca71c4a667dee",
+    "tests/test_composite_correction_replay.py": "b06330323c5a340bccde99a6044594c951db6b6f44345e802df04da1dd4d7b9f"
+  },
+  "limitations": [
+    "Synthetic mechanics and causal counterfactual only; no profitability/edge or September24 lost-trade claim.",
+    "Existing synchronous next-open fills with class spread and5bp slippage; no exchange queue, latency or partial fill model.",
+    "Same fixed pre-existing W100 capital/history/throttle fixture, not the deployed account.",
+    "Historical bars only; live subscription/sparse-feed behavior belongs to separate integration tests.",
+    "Candidate/gate counts are repeated per-tick evaluations, not unique opportunities or ordered exclusive funnels.",
+    "Repeat equality excludes random order/lifetime/client IDs and wall performance telemetry; preserves ordered decisions, quantities, fills, simulated timestamps, position ledger, equity and risk.",
+    "Synthetic entry receipts remain UNVERIFIED for real runtime/feed identity and cannot count toward forward-trade qualification.",
+    "Same policy code and existing research lock/fixed ATR-risk flags are preserved; this does not prove readiness under actual sparse live feeds."
+  ],
+  "material_outcomes": [
+    "All corrected arms produced actual admitted orders; protective crash and EOD exits were reconciled with no pending accounting.",
+    "Down scenario deteriorated: equity delta +1064.2013 baseline to -836.1262 corrected.",
+    "Crash maximum drawdown increased from 0.401357% to 0.771973%, despite terminal loss improving from -3293.5210 to -1476.1178. Gap-loss magnitudes remain material in this simulated scenario.",
+    "EOD flattened both arms and admitted no buys at/after19:58UTC.",
+    "Up corrected scenario retains an open position at the end; equity delta includes open marked exposure and is not identical to closed-position PnL."
+  ],
+  "matrix": {
+    "actual_ticks": 1100,
+    "adversarial_future_tail_checks": 30,
+    "arms": 2,
+    "direct_feature_prefix_checks": 90,
+    "exact_outcome_repeat_pairs": 10,
+    "identical_noncomposite_features_all_scenarios": true,
+    "repeats_per_arm": 2,
+    "scenarios": 5
+  },
+  "metric_definitions": {
+    "candidates": "Repeated per-tick evaluations; not unique opportunities and not an exclusive ordered funnel",
+    "closes": "Whole-position outcomes consumed by engine learner; partial sell legs counted separately",
+    "costs": "Existing synchronous next-open model, auto class half-spread,5bp slippage,zero per-share commission; no exchange queue or latency model",
+    "drawdown": "Peak-to-trough fraction including initial1000000 cash before the first tick",
+    "entries": "Filled simulated buy order submissions joined exactly to final-admission receipts",
+    "equity_delta": "Final cash plus marked open positions minus identical initial1000000 cash; includes modeled fills/commission"
+  },
+  "observed_summary": [
+    {
+      "baseline": {
+        "accounted_closes": 5,
+        "accounted_position_pnl": -280.7418738593569,
+        "accounting_pending": 0,
+        "alpha_considered": 55,
+        "alpha_scanned": 55,
+        "alpha_terminal": {
+          "candidate_built": 4,
+          "shared_gate:exit_cooldown": 6,
+          "shared_gate:open_position": 42,
+          "shared_gate:pending_entry": 3
+        },
+        "combined_candidates_pre_sizing": 5,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 5,
+        "equity_delta_including_open_mark_and_commission": -280.74187385942787,
+        "exit_leg_realized_pnl_before_commission": -280.74187385935704,
+        "exit_legs": 8,
+        "exit_mix": {
+          "horizon_timeout": 2,
+          "pyramid_cut_full_at_-1.2R": 1,
+          "pyramid_cut_full_at_-1.3R": 1,
+          "pyramid_cut_full_at_-1.9R": 1
+        },
+        "exit_orders": 8,
+        "final_cash": 999719.2581261406,
+        "final_equity": 999719.2581261406,
+        "final_open_positions": 0,
+        "freshness_receipts": 5,
+        "maximum_equity_drawdown_fraction": 0.0015792604611630802,
+        "maximum_gross_exposure": 30248.27113392768,
+        "shared_gate_evaluations": 59,
+        "shared_gate_passes": 5,
+        "shared_gate_rejections": {
+          "exit_cooldown": 6,
+          "open_position": 43,
+          "pending_entry": 5
+        },
+        "signals": 5,
+        "tick_errors": 0,
+        "ticks": 60
+      },
+      "corrected": {
+        "accounted_closes": 5,
+        "accounted_position_pnl": 1496.9981260503594,
+        "accounting_pending": 0,
+        "alpha_considered": 135,
+        "alpha_scanned": 135,
+        "alpha_terminal": {
+          "below_exploration_confidence": 6,
+          "candidate_built": 5,
+          "direction_zero": 1,
+          "shared_gate:exit_cooldown": 17,
+          "shared_gate:long_only": 12,
+          "shared_gate:open_position": 62,
+          "shared_gate:pending_entry": 32
+        },
+        "combined_candidates_pre_sizing": 5,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 5,
+        "equity_delta_including_open_mark_and_commission": 1496.9981260502245,
+        "exit_leg_realized_pnl_before_commission": 1496.9981260503591,
+        "exit_legs": 7,
+        "exit_mix": {
+          "horizon_timeout": 3,
+          "pyramid_cut_full_at_-1.1R": 1,
+          "pyramid_cut_full_at_-1.3R": 1
+        },
+        "exit_orders": 7,
+        "final_cash": 1001496.9981260502,
+        "final_equity": 1001496.9981260502,
+        "final_open_positions": 0,
+        "freshness_receipts": 5,
+        "maximum_equity_drawdown_fraction": 0.001205670506685929,
+        "maximum_gross_exposure": 31693.102456231685,
+        "shared_gate_evaluations": 139,
+        "shared_gate_passes": 12,
+        "shared_gate_rejections": {
+          "exit_cooldown": 17,
+          "long_only": 12,
+          "open_position": 64,
+          "pending_entry": 34
+        },
+        "signals": 5,
+        "tick_errors": 0,
+        "ticks": 60
+      },
+      "scenario": "chop"
+    },
+    {
+      "baseline": {
+        "accounted_closes": 4,
+        "accounted_position_pnl": -3293.52096448448,
+        "accounting_pending": 0,
+        "alpha_considered": 35,
+        "alpha_scanned": 35,
+        "alpha_terminal": {
+          "below_exploration_confidence": 1,
+          "candidate_built": 4,
+          "shared_gate:exit_cooldown": 1,
+          "shared_gate:open_position": 13,
+          "shared_gate:pending_entry": 16
+        },
+        "combined_candidates_pre_sizing": 4,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 4,
+        "equity_delta_including_open_mark_and_commission": -3293.5209644845454,
+        "exit_leg_realized_pnl_before_commission": -3293.52096448448,
+        "exit_legs": 5,
+        "exit_mix": {
+          "horizon_timeout": 1,
+          "pyramid_cut_full_at_-1.3R": 1,
+          "pyramid_cut_full_at_-2.1R": 1,
+          "pyramid_cut_full_at_-7.9R": 1
+        },
+        "exit_orders": 5,
+        "final_cash": 996706.4790355155,
+        "final_equity": 996706.4790355155,
+        "final_open_positions": 0,
+        "freshness_receipts": 4,
+        "maximum_equity_drawdown_fraction": 0.00401356984003389,
+        "maximum_gross_exposure": 30988.932096368262,
+        "shared_gate_evaluations": 35,
+        "shared_gate_passes": 5,
+        "shared_gate_rejections": {
+          "exit_cooldown": 1,
+          "open_position": 13,
+          "pending_entry": 16
+        },
+        "signals": 4,
+        "tick_errors": 0,
+        "ticks": 60
+      },
+      "corrected": {
+        "accounted_closes": 5,
+        "accounted_position_pnl": -1476.1177592126203,
+        "accounting_pending": 0,
+        "alpha_considered": 111,
+        "alpha_scanned": 111,
+        "alpha_terminal": {
+          "below_exploration_confidence": 2,
+          "candidate_built": 5,
+          "shared_gate:exit_cooldown": 27,
+          "shared_gate:long_only": 5,
+          "shared_gate:open_position": 56,
+          "shared_gate:pending_entry": 16
+        },
+        "combined_candidates_pre_sizing": 5,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 5,
+        "equity_delta_including_open_mark_and_commission": -1476.117759212735,
+        "exit_leg_realized_pnl_before_commission": -1476.1177592126205,
+        "exit_legs": 6,
+        "exit_mix": {
+          "horizon_timeout": 2,
+          "pyramid_cut_full_at_-7.9R": 1,
+          "pyramid_cut_full_at_-8.5R": 1,
+          "trailing_stop": 1
+        },
+        "exit_orders": 6,
+        "final_cash": 998523.8822407873,
+        "final_equity": 998523.8822407873,
+        "final_open_positions": 0,
+        "freshness_receipts": 5,
+        "maximum_equity_drawdown_fraction": 0.007719725839061579,
+        "maximum_gross_exposure": 45696.00640984822,
+        "shared_gate_evaluations": 111,
+        "shared_gate_passes": 7,
+        "shared_gate_rejections": {
+          "exit_cooldown": 27,
+          "long_only": 5,
+          "open_position": 56,
+          "pending_entry": 16
+        },
+        "signals": 5,
+        "tick_errors": 0,
+        "ticks": 60
+      },
+      "scenario": "crash"
+    },
+    {
+      "baseline": {
+        "accounted_closes": 2,
+        "accounted_position_pnl": 1064.2012955047053,
+        "accounting_pending": 0,
+        "alpha_considered": 0,
+        "alpha_scanned": 0,
+        "alpha_terminal": {},
+        "combined_candidates_pre_sizing": 2,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 2,
+        "equity_delta_including_open_mark_and_commission": 1064.2012955046957,
+        "exit_leg_realized_pnl_before_commission": 1064.2012955047032,
+        "exit_legs": 3,
+        "exit_mix": {
+          "horizon_timeout": 1,
+          "pyramid_cut_full_at_-1.2R": 1
+        },
+        "exit_orders": 3,
+        "final_cash": 1001064.2012955047,
+        "final_equity": 1001064.2012955047,
+        "final_open_positions": 0,
+        "freshness_receipts": 2,
+        "maximum_equity_drawdown_fraction": 0.0004666836540453001,
+        "maximum_gross_exposure": 19492.112374049535,
+        "shared_gate_evaluations": 7,
+        "shared_gate_passes": 2,
+        "shared_gate_rejections": {
+          "open_position": 4,
+          "pending_entry": 1
+        },
+        "signals": 2,
+        "tick_errors": 0,
+        "ticks": 60
+      },
+      "corrected": {
+        "accounted_closes": 4,
+        "accounted_position_pnl": -836.1262448509391,
+        "accounting_pending": 0,
+        "alpha_considered": 84,
+        "alpha_scanned": 84,
+        "alpha_terminal": {
+          "below_exploration_confidence": 5,
+          "candidate_built": 3,
+          "direction_zero": 1,
+          "shared_gate:exit_cooldown": 8,
+          "shared_gate:long_only": 8,
+          "shared_gate:open_position": 18,
+          "shared_gate:pending_entry": 41
+        },
+        "combined_candidates_pre_sizing": 4,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 4,
+        "equity_delta_including_open_mark_and_commission": -836.126244850806,
+        "exit_leg_realized_pnl_before_commission": -836.1262448509391,
+        "exit_legs": 5,
+        "exit_mix": {
+          "pyramid_cut_full_at_-1.0R": 1,
+          "pyramid_cut_full_at_-1.2R": 1,
+          "pyramid_cut_full_at_-1.4R": 1,
+          "trailing_stop": 1
+        },
+        "exit_orders": 5,
+        "final_cash": 999163.8737551492,
+        "final_equity": 999163.8737551492,
+        "final_open_positions": 0,
+        "freshness_receipts": 4,
+        "maximum_equity_drawdown_fraction": 0.001232336851062921,
+        "maximum_gross_exposure": 24315.68390459924,
+        "shared_gate_evaluations": 91,
+        "shared_gate_passes": 10,
+        "shared_gate_rejections": {
+          "exit_cooldown": 8,
+          "long_only": 8,
+          "open_position": 18,
+          "pending_entry": 47
+        },
+        "signals": 4,
+        "tick_errors": 0,
+        "ticks": 60
+      },
+      "scenario": "down"
+    },
+    {
+      "baseline": {
+        "accounted_closes": 1,
+        "accounted_position_pnl": 99.05774249989005,
+        "accounting_pending": 0,
+        "alpha_considered": 4,
+        "alpha_scanned": 30,
+        "alpha_terminal": {
+          "candidate_built": 1,
+          "shared_gate:open_position": 3
+        },
+        "combined_candidates_pre_sizing": 1,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 1,
+        "equity_delta_including_open_mark_and_commission": 99.0577424998628,
+        "exit_leg_realized_pnl_before_commission": 99.05774249989086,
+        "exit_legs": 1,
+        "exit_mix": {
+          "eod_flatten": 1
+        },
+        "exit_orders": 1,
+        "final_cash": 1000099.0577424999,
+        "final_equity": 1000099.0577424999,
+        "final_open_positions": 0,
+        "freshness_receipts": 1,
+        "maximum_equity_drawdown_fraction": 0.0005055992436034131,
+        "maximum_gross_exposure": 16351.028393352628,
+        "shared_gate_evaluations": 4,
+        "shared_gate_passes": 1,
+        "shared_gate_rejections": {
+          "open_position": 3
+        },
+        "signals": 1,
+        "tick_errors": 0,
+        "ticks": 35
+      },
+      "corrected": {
+        "accounted_closes": 1,
+        "accounted_position_pnl": 99.05774249989005,
+        "accounting_pending": 0,
+        "alpha_considered": 8,
+        "alpha_scanned": 76,
+        "alpha_terminal": {
+          "below_exploration_confidence": 2,
+          "candidate_built": 1,
+          "shared_gate:long_only": 2,
+          "shared_gate:open_position": 3
+        },
+        "combined_candidates_pre_sizing": 1,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 1,
+        "equity_delta_including_open_mark_and_commission": 99.0577424998628,
+        "exit_leg_realized_pnl_before_commission": 99.05774249989086,
+        "exit_legs": 1,
+        "exit_mix": {
+          "eod_flatten": 1
+        },
+        "exit_orders": 1,
+        "final_cash": 1000099.0577424999,
+        "final_equity": 1000099.0577424999,
+        "final_open_positions": 0,
+        "freshness_receipts": 1,
+        "maximum_equity_drawdown_fraction": 0.0005055992436034131,
+        "maximum_gross_exposure": 16351.028393352628,
+        "shared_gate_evaluations": 8,
+        "shared_gate_passes": 3,
+        "shared_gate_rejections": {
+          "long_only": 2,
+          "open_position": 3
+        },
+        "signals": 1,
+        "tick_errors": 0,
+        "ticks": 35
+      },
+      "scenario": "eod"
+    },
+    {
+      "baseline": {
+        "accounted_closes": 5,
+        "accounted_position_pnl": 571.1300759592035,
+        "accounting_pending": 0,
+        "alpha_considered": 55,
+        "alpha_scanned": 55,
+        "alpha_terminal": {
+          "below_exploration_confidence": 1,
+          "candidate_built": 5,
+          "shared_gate:exit_cooldown": 7,
+          "shared_gate:open_position": 26,
+          "shared_gate:pending_entry": 16
+        },
+        "combined_candidates_pre_sizing": 5,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 5,
+        "equity_delta_including_open_mark_and_commission": 571.1300759591395,
+        "exit_leg_realized_pnl_before_commission": 571.1300759592039,
+        "exit_legs": 6,
+        "exit_mix": {
+          "horizon_timeout": 2,
+          "pyramid_cut_full_at_-1.1R": 1,
+          "pyramid_cut_full_at_-1.3R": 1,
+          "pyramid_cut_full_at_-2.1R": 1
+        },
+        "exit_orders": 6,
+        "final_cash": 1000571.1300759591,
+        "final_equity": 1000571.1300759591,
+        "final_open_positions": 0,
+        "freshness_receipts": 5,
+        "maximum_equity_drawdown_fraction": 0.0008925159933199365,
+        "maximum_gross_exposure": 30988.932096368262,
+        "shared_gate_evaluations": 55,
+        "shared_gate_passes": 6,
+        "shared_gate_rejections": {
+          "exit_cooldown": 7,
+          "open_position": 26,
+          "pending_entry": 16
+        },
+        "signals": 5,
+        "tick_errors": 0,
+        "ticks": 60
+      },
+      "corrected": {
+        "accounted_closes": 5,
+        "accounted_position_pnl": 2604.3235274686494,
+        "accounting_pending": 0,
+        "alpha_considered": 136,
+        "alpha_scanned": 136,
+        "alpha_terminal": {
+          "below_exploration_confidence": 2,
+          "candidate_built": 6,
+          "shared_gate:exit_cooldown": 26,
+          "shared_gate:long_only": 5,
+          "shared_gate:open_position": 93,
+          "shared_gate:pending_entry": 4
+        },
+        "combined_candidates_pre_sizing": 6,
+        "commission": 0.0,
+        "daily_loss_halted_ticks": 0,
+        "entry_orders": 6,
+        "equity_delta_including_open_mark_and_commission": 2361.899712517974,
+        "exit_leg_realized_pnl_before_commission": 2604.32352746865,
+        "exit_legs": 6,
+        "exit_mix": {
+          "horizon_timeout": 4,
+          "trailing_stop": 1
+        },
+        "exit_orders": 6,
+        "final_cash": 989023.9853457786,
+        "final_equity": 1002361.899712518,
+        "final_open_positions": 1,
+        "freshness_receipts": 6,
+        "maximum_equity_drawdown_fraction": 0.0009100346873110207,
+        "maximum_gross_exposure": 45696.00640984822,
+        "shared_gate_evaluations": 136,
+        "shared_gate_passes": 8,
+        "shared_gate_rejections": {
+          "exit_cooldown": 26,
+          "long_only": 5,
+          "open_position": 93,
+          "pending_entry": 4
+        },
+        "signals": 6,
+        "tick_errors": 0,
+        "ticks": 60
+      },
+      "scenario": "up"
+    }
+  ],
+  "owned_files": [
+    "scripts/diagnostics/replay_composite_correction.py",
+    "tests/test_composite_correction_replay.py"
+  ],
+  "post_run_ledger_checks": [
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "baseline",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "366262a338c14de6cb76e8f3fcb304e7ab1609b66a52e119eabe3a8ff5201e4e",
+      "orders": 13,
+      "position_quantities_conserved": true,
+      "scenario": "chop"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "corrected",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "88fdcb259153bd1f0cdb68495dd7ce80b465d95139ed6517ce32552499f8e668",
+      "orders": 12,
+      "position_quantities_conserved": true,
+      "scenario": "chop"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "baseline",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "9a2d5e5cc54d9d3c97e28c22d1cb1d14500f4fa6b542d23ff098a12ce42a91c6",
+      "orders": 9,
+      "position_quantities_conserved": true,
+      "scenario": "crash"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "corrected",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "e8663454f62019862f70db82ae2e4bee5d4c3c2699593a22373bf64dabf111f3",
+      "orders": 11,
+      "position_quantities_conserved": true,
+      "scenario": "crash"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "baseline",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "43691e637d11b087ba335b00d4d3e835b5e45f0f6c2b52daac24d9c542ce22e4",
+      "orders": 5,
+      "position_quantities_conserved": true,
+      "scenario": "down"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "corrected",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "07847cd692b8bf18441fbbc1fb6893cc115c67e1ad3264165a78296c2adf824d",
+      "orders": 9,
+      "position_quantities_conserved": true,
+      "scenario": "down"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "baseline",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "44a5c099d53e9e7e2828eeed800cbcc0400315665aad2c76dd7ef8c6469cc5aa",
+      "orders": 2,
+      "position_quantities_conserved": true,
+      "scenario": "eod"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "corrected",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "e2d6c6405bd5c38d2a87713e0d5fd1d6a54ff62ba8b2ed87b1a66bd437d95648",
+      "orders": 2,
+      "position_quantities_conserved": true,
+      "scenario": "eod"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "baseline",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "b1f7195c8181da4bc640be4a68645a71db95a79cf96d7782c91099ed16a1893b",
+      "orders": 11,
+      "position_quantities_conserved": true,
+      "scenario": "up"
+    },
+    {
+      "all_order_client_keys_unique": true,
+      "arm": "corrected",
+      "cashflow_conserved": true,
+      "normalized_outcome_sha256": "0076abe38a16b853f66419e2529f527dd6768522a48a58aec60c829de29fea41",
+      "orders": 12,
+      "position_quantities_conserved": true,
+      "scenario": "up"
+    }
+  ],
+  "prior_green_matrix": "superseded_first/receipt.json",
+  "runtime_changes": false,
+  "source_and_tests_stable": true,
+  "source_hashes": {
+    "backend/organism/adaptive_exits.py": "350b0e58415531ce563b0b74b52a33d1d04c62c41bc624102ff73ed919ccc46d",
+    "backend/organism/alpha_scanner.py": "8bed20281f02ad3fd95953aa7c981a2e8c0393e4b29c38f808d3a570b6c19490",
+    "backend/organism/composite_indicators.py": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
+    "backend/organism/entry_evidence.py": "e5c303a49974d8a14a0d54ab8488dc67427ae194a21cd5b675ee8df769e229e9",
+    "backend/organism/entry_freshness.py": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "backend/organism/ml_features.py": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "backend/organism/replay_simulator.py": "d991bcca5e65021fee059d2c41aa9df6e2a762f4f29c6a8857a67d00f868b763",
+    "backend/organism/research_policy.py": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
+    "scripts/diagnostics/replay_composite_correction.py": "21e3b9924344a0cca84dacdc97f5421e84d3876bafc1b8a1c9cca71c4a667dee"
+  },
+  "static_findings": 0,
+  "status": "PASS_SYNTHETIC_MECHANICS_NOT_EDGE",
+  "task_id": "composite-correction-paired-replay-20260925",
+  "test_result": {
+    "errors": 0,
+    "failed": 0,
+    "harness_seconds": 54.18,
+    "installed_credentials_and_brain_reads_denied": true,
+    "installed_writes_denied": true,
+    "network_denied": true,
+    "passed": 16,
+    "pytest_seconds": 53.61,
+    "skipped": 0
+  }
+}

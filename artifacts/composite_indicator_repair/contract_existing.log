@@ -1,0 +1,29 @@
+..............................                                           [100%]
+=============================== warnings summary ===============================
+tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log1p
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_single_row_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: divide by zero encountered in log10
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+0.86s call     tests/test_adversarial_inputs_v7.py::test_ml_predict_before_training_returns_neutral
+0.37s call     tests/test_adversarial_inputs_v7.py::test_order_validate_negative_qty_rejected
+0.13s call     tests/test_adversarial_inputs_v7.py::test_ws_handler_handles_null_filled_qty
+0.13s call     tests/test_adversarial_inputs_v7.py::test_bar_ts_uses_utc_for_dst_safety
+0.13s call     tests/test_adversarial_inputs_v7.py::test_bar_frozen_100_bars
+0.09s call     tests/test_adversarial_inputs_v7.py::test_bar_duplicate_timestamps_does_not_crash
+0.08s call     tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+0.08s call     tests/test_adversarial_inputs_v7.py::test_bar_out_of_order_timestamps_silently_accepted
+0.08s call     tests/test_adversarial_inputs_v7.py::test_bar_50pct_gap_computed
+0.08s call     tests/test_adversarial_inputs_v7.py::test_bar_inf_volume_replaced
+30 passed, 5 warnings in 2.69s

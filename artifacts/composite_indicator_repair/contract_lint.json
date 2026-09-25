@@ -1,0 +1,82 @@
+{
+  "network_denied": true,
+  "source_sha256": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
+  "test_sha256": "206e1e8b98afa5570c1be4c01f4fad586f8faf8e3ea1e94b619920411a6ad7d9",
+  "prior_source_sha256": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+  "new_lint_findings": [],
+  "current_raw_findings": [
+    {
+      "cell": null,
+      "code": "F401",
+      "end_location": {
+        "column": 12,
+        "row": 22
+      },
+      "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/composite_indicators.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "",
+            "end_location": {
+              "column": 1,
+              "row": 23
+            },
+            "location": {
+              "column": 1,
+              "row": 22
+            }
+          }
+        ],
+        "message": "Remove unused import: `math`"
+      },
+      "location": {
+        "column": 8,
+        "row": 22
+      },
+      "message": "`math` imported but unused",
+      "noqa_row": 22,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/unused-import"
+    }
+  ],
+  "prior_raw_findings": [
+    {
+      "cell": null,
+      "code": "F401",
+      "end_location": {
+        "column": 12,
+        "row": 22
+      },
+      "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/composite_indicators.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "",
+            "end_location": {
+              "column": 1,
+              "row": 23
+            },
+            "location": {
+              "column": 1,
+              "row": 22
+            }
+          }
+        ],
+        "message": "Remove unused import: `math`"
+      },
+      "location": {
+        "column": 8,
+        "row": 22
+      },
+      "message": "`math` imported but unused",
+      "noqa_row": 22,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/unused-import"
+    }
+  ],
+  "current_exit_code": 1,
+  "prior_exit_code": 1,
+  "disposition": "One existing unused math import retained; no new lint findings. No unrelated cleanup."
+}

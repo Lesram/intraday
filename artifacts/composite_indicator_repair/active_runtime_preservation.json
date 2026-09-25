@@ -1,0 +1,53 @@
+{
+  "observed_at_utc": "2026-09-25T16:56:25.311320+00:00",
+  "status": "ACTIVE_RUNTIME_UNCHANGED",
+  "issues": [],
+  "active_container": {
+    "id": "9433e8ebd6248e51ce7c66a99350057e777023064a43be6f5f9613d6de6fd21e",
+    "image_digest": "sha256:16805a19dcbe943003213305cedb6585bec374b8346b88df47fe251d5dfd1e8a",
+    "started_at": "2026-09-23T15:45:16.945454877Z",
+    "restart_count": 0,
+    "status": "running",
+    "health": "healthy",
+    "source_sha": "3acb796715cc80ac1475f18c7889dedb50f62256"
+  },
+  "container_unchanged_during_check": true,
+  "active_freeze_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+  "active_cutoff": "2026-09-23T15:29:47.287731+00:00",
+  "private_binding_sha256": "e76e0111ca149338a8a92c33b6b23229cce543043e34eee398eea65e6c57a8a3",
+  "installed_source_sha256": {
+    "backend/organism/live_engine.py": "fad1469f4f37f524a0bbe67d1d8c4358cc93f4d81c5dc2dbbf98cbf7516cb083",
+    "backend/organism/streaming_data_provider.py": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838",
+    "backend/organism/composite_indicators.py": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+    "scripts/phase2_freeze.py": "7f02d110a9aa367d7815366f4a1b14d66597465696589806c1406fbb8268bd36"
+  },
+  "installed_six_function_hashes": {
+    "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
+    "entry_gates_dispatch": "1ff808a56bfee0620aa53411084035c8937bc2ae8ed11bdf75227a04d6c374fb",
+    "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
+    "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
+    "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",
+    "selector_routing": "bed6a91e7f95f3ad11e159767ecdb6d54b42c022997df3b801bcbe20ad8628d2"
+  },
+  "active_verification_exit": 0,
+  "verification_log_sha256": "c1719a4930d05660c1486a95bfd3c2075bd09ed8eb121917be4e36b037ef4d6d",
+  "baseline_receipt_sha256": "dbef47ed5f986fe369b8b20599a3c5d112c22c9c5b94acac06f66b8d0ef18120",
+  "frozen_environment_receipt_sha256": "fe1a79765063592a725095d3bc8c67a36af1e839a5639031bf2568d64809190a",
+  "frozen_environment_keys_only": [
+    "ALPACA_DATA_FEED",
+    "ORGANISM_APPROVED_POLICY_BASELINE",
+    "ORGANISM_FRAMEWORK_ROUTING_V2",
+    "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
+    "ORGANISM_OPERATOR_CONTROL_STATE",
+    "ORGANISM_ROUTING_RANK_POLICY"
+  ],
+  "method": "Absolute installed verification script and modules, exact canonical freeze copy in private scratch cwd; clean env plus retained allowlisted deployed frozen env. Logger writes only scratch. Network and installed writes/credentials/brain reads denied.",
+  "preserved_files_changed": [],
+  "helper_sha256": "31fe9e7bc411f81205ac36c81b8f2d364705f845cddee708884386e4db3e6362",
+  "limits": [
+    "Docker health is container metadata, not trading or live-feed qualification.",
+    "No API, observer authentication, broker/order, model deserialization or account-state calls.",
+    "Original six function match follows successful full installed-surface verification; candidate changes are not installed."
+  ],
+  "runtime_mutations": false
+}

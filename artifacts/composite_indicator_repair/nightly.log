@@ -1,0 +1,20 @@
+........................................................................ [ 34%]
+........................................................................ [ 69%]
+...............................................................          [100%]
+=============================== warnings summary ===============================
+tests/test_strategy_engine_comprehensive.py::TestFactoryMethod::test_create_default_returns_engine
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+9.65s call     tests/test_wave48_fixes.py::test_z7_1_pytest_collection_clean
+6.12s call     tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_10_tick_invariants
+4.87s call     tests/test_organism_integration_smoke.py::TestBrainRoundTrip::test_tick_count_survives_restart
+4.34s call     tests/test_organism_integration_smoke.py::TestFitnessGate::test_low_fitness_blocks_entry
+2.44s call     tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_save_load_invariant
+2.28s call     tests/test_organism_integration_smoke.py::TestRetrainTrigger::test_bars_since_retrain_increments
+2.15s call     tests/test_organism_integration_smoke.py::TestPartialFillNoDoubleEntry::test_fresh_position_check_blocks_duplicate
+1.29s call     tests/test_organism_integration_smoke.py::TestGovernanceDrawdown::test_halts_on_drawdown
+0.96s call     tests/test_organism_integration_smoke.py::TestPartialFillNoDoubleEntry::test_no_double_entry_after_partial_fill
+0.49s call     tests/test_organism_integration_smoke.py::TestGovernanceDrawdown::test_no_orders_after_halt
+207 passed, 1 warning in 43.98s

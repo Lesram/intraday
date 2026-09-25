@@ -1,0 +1,41 @@
+.................................F......                                 [100%]
+=================================== FAILURES ===================================
+_ test_actual_ml_path_completes_composites_without_changing_other_features[rising-20] _
+tests/test_composite_indicator_contract.py:177: in test_actual_ml_path_completes_composites_without_changing_other_features
+    assert (actual[indicators.COMPOSITE_COLUMNS] != 0.).any().all()
+E   assert np.False_
+E    +  where np.False_ = all()
+E    +    where all = comp_squeeze_momentum      False\ncomp_vol_price_div          True\ncomp_trend_alignment        True\ncomp_institutional_...    True\ncomp_mean_rev_extreme       True\ncomp_breakout_readiness     True\ncomp_momentum_quality       True\ndtype: bool.all
+E    +      where comp_squeeze_momentum      False\ncomp_vol_price_div          True\ncomp_trend_alignment        True\ncomp_institutional_...    True\ncomp_mean_rev_extreme       True\ncomp_breakout_readiness     True\ncomp_momentum_quality       True\ndtype: bool = any()
+E    +        where any =                   comp_squeeze_momentum  ...  comp_momentum_quality\ncausal_bar_index                         ...      ...  ...               0.695000\n19                                  0.0  ...               0.695000\n\n[20 rows x 7 columns] != 0.0.any
+=============================== warnings summary ===============================
+tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[flat-80]
+tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[flat-80]
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3023: RuntimeWarning: invalid value encountered in divide
+    c /= stddev[:, None]
+
+tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[flat-80]
+tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[flat-80]
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3024: RuntimeWarning: invalid value encountered in divide
+    c /= stddev[None, :]
+
+tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[flat-80]
+tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[flat-80]
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: divide by zero encountered in log10
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+0.29s call     tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[rising-500]
+0.10s call     tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[oscillating-120]
+0.08s call     tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[falling-80]
+0.08s call     tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[rising-80]
+0.08s call     tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[zero_volume-80]
+0.08s call     tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[flat-80]
+0.04s call     tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[rising-20]
+0.02s call     tests/test_composite_indicator_contract.py::test_master_computes_all_seven_and_preserves_input[rising]
+0.02s call     tests/test_composite_indicator_contract.py::test_master_computes_all_seven_and_preserves_input[falling]
+0.02s call     tests/test_composite_indicator_contract.py::test_master_computes_all_seven_and_preserves_input[zero_volume]
+=========================== short test summary info ============================
+FAILED tests/test_composite_indicator_contract.py::test_actual_ml_path_completes_composites_without_changing_other_features[rising-20]
+1 failed, 39 passed, 6 warnings in 1.13s

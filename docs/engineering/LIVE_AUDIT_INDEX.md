@@ -1,53 +1,274 @@
 # Live Audit Index
 
-Generated: 2026-09-25T05:14:09Z
+Generated: 2026-09-25T17:05:26Z
 PR: n/a
-SHA: `7e63a494b9`
+SHA: `029f1c37f7`
 Branch: `codex/session-streaming-readiness`
 Scope: **backend_logic**
 Change scope: `base` (`a69949a216fdcb6a7f210933f885b3cabafd1ae0...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **29**
+Total distinct changed files: **251**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 6 | `backend/api/routes/health.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_data.py`, `backend/organism/pipeline_diagnostics.py`, `backend/organism/scheduler.py`, `backend/organism/streaming_data_provider.py` |
-| Scripts | 4 | `scripts/diagnostics/profile_paper_pipeline.py`, `scripts/ops/paper_watchdog.py`, `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
+| Backend | 7 | `backend/api/routes/health.py`, `backend/organism/composite_indicators.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_data.py`, `backend/organism/pipeline_diagnostics.py`, `backend/organism/scheduler.py`, `backend/organism/streaming_data_provider.py` |
+| Scripts | 5 | `scripts/diagnostics/profile_paper_pipeline.py`, `scripts/diagnostics/replay_composite_correction.py`, `scripts/ops/paper_watchdog.py`, `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 10 | `tests/test_entry_freshness.py`, `tests/test_paper_watchdog.py`, `tests/test_phase2_freeze.py`, `tests/test_pipeline_diagnostics.py`, `tests/test_pipeline_freshness_recovery.py`, `tests/test_pipeline_profile.py`, `tests/test_pipeline_snapshot.py`, `tests/test_readiness_contract.py`, `tests/test_scanner_streaming_integration.py`, `tests/test_v13_w100_live_tick_coverage.py` |
-| Docs | 2 | `docs/architecture/mapss.md`, `docs/engineering/STREAMING_READINESS_REPAIR.md` |
-| Artifacts/evidence | 4 | `artifacts/monday_readiness/frozen_surface_reference.json`, `artifacts/phase2/candidate_param_freeze.json`, `artifacts/phase2/param_freeze.json`, `artifacts/streaming_readiness_repair/plan.json` |
+| Tests | 13 | `tests/test_composite_correction_replay.py`, `tests/test_composite_indicator_contract.py`, `tests/test_entry_freshness.py`, `tests/test_paper_watchdog.py`, `tests/test_phase2_freeze.py`, `tests/test_pipeline_diagnostics.py`, `tests/test_pipeline_freshness_recovery.py`, `tests/test_pipeline_profile.py`, `tests/test_pipeline_snapshot.py`, `tests/test_readiness_contract.py` |
+| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/STREAMING_READINESS_REPAIR.md` |
+| Artifacts/evidence | 220 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/monday_readiness/frozen_surface_reference.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml` |
 | Reports | 2 | `reports/session_review_2026-09-24/SESSION_REVIEW.md`, `reports/session_review_2026-09-24/metrics.json` |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **5** file(s).
+Organism subset of Backend: **6** file(s).
 
 ### Full changed-file list
 
 - `.github/workflows/paper-readiness.yml`
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
 - `artifacts/monday_readiness/frozen_surface_reference.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
 - `artifacts/phase2/candidate_param_freeze.json`
 - `artifacts/phase2/param_freeze.json`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/resolved_config_snapshot.json`
+- `artifacts/runtime_config_snapshot.json`
+- `artifacts/runtime_defaults_snapshot.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/spec_drift.log`
+- `artifacts/spec_drift_summary.json`
+- `artifacts/streaming_readiness_repair/README.md`
+- `artifacts/streaming_readiness_repair/active_freeze_verify_final.log`
+- `artifacts/streaming_readiness_repair/active_freeze_verify_final_attempt.log`
+- `artifacts/streaming_readiness_repair/active_runtime_preservation.json`
+- `artifacts/streaming_readiness_repair/build.log`
+- `artifacts/streaming_readiness_repair/cache_removal_validation.json`
+- `artifacts/streaming_readiness_repair/candidate_freeze_receipt.json`
+- `artifacts/streaming_readiness_repair/candidate_verify.log`
+- `artifacts/streaming_readiness_repair/combined_core_01.json`
+- `artifacts/streaming_readiness_repair/combined_core_01.log`
+- `artifacts/streaming_readiness_repair/combined_core_01.xml`
+- `artifacts/streaming_readiness_repair/composite_call_sites_01.json`
+- `artifacts/streaming_readiness_repair/composite_call_sites_01.log`
+- `artifacts/streaming_readiness_repair/composite_call_sites_01.xml`
+- `artifacts/streaming_readiness_repair/composite_defect/assessment.json`
+- `artifacts/streaming_readiness_repair/composite_defect/call_site_results.json`
+- `artifacts/streaming_readiness_repair/composite_defect/diagnostic.py`
+- `artifacts/streaming_readiness_repair/composite_defect/plan.json`
+- `artifacts/streaming_readiness_repair/composite_defect/results.json`
+- `artifacts/streaming_readiness_repair/composite_defect_01.json`
+- `artifacts/streaming_readiness_repair/composite_defect_01.log`
+- `artifacts/streaming_readiness_repair/composite_defect_01.xml`
+- `artifacts/streaming_readiness_repair/composite_defect_02.json`
+- `artifacts/streaming_readiness_repair/composite_defect_02.log`
+- `artifacts/streaming_readiness_repair/composite_defect_02.xml`
+- `artifacts/streaming_readiness_repair/composite_feature_defect.md`
+- `artifacts/streaming_readiness_repair/composite_feature_defect_review.json`
+- `artifacts/streaming_readiness_repair/deadline_drift_01.json`
+- `artifacts/streaming_readiness_repair/deadline_drift_01.log`
+- `artifacts/streaming_readiness_repair/deadline_drift_01.xml`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_01.json`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_01.log`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_01.xml`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_02.json`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_02.log`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_02.xml`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_03.json`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_03.log`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_03.xml`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_final.json`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_final.log`
+- `artifacts/streaming_readiness_repair/diagnostic_routes_final.xml`
+- `artifacts/streaming_readiness_repair/diagnostics_01.json`
+- `artifacts/streaming_readiness_repair/diagnostics_01.log`
+- `artifacts/streaming_readiness_repair/diagnostics_01.xml`
+- `artifacts/streaming_readiness_repair/diagnostics_02.json`
+- `artifacts/streaming_readiness_repair/diagnostics_02.log`
+- `artifacts/streaming_readiness_repair/diagnostics_02.xml`
+- `artifacts/streaming_readiness_repair/diagnostics_03.json`
+- `artifacts/streaming_readiness_repair/diagnostics_03.log`
+- `artifacts/streaming_readiness_repair/diagnostics_03.xml`
+- `artifacts/streaming_readiness_repair/feature_cache_01.json`
+- `artifacts/streaming_readiness_repair/feature_cache_01.log`
+- `artifacts/streaming_readiness_repair/feature_cache_01.xml`
+- `artifacts/streaming_readiness_repair/feature_cache_02.json`
+- `artifacts/streaming_readiness_repair/feature_cache_02.log`
+- `artifacts/streaming_readiness_repair/feature_cache_02.xml`
+- `artifacts/streaming_readiness_repair/feature_cache_03.json`
+- `artifacts/streaming_readiness_repair/feature_cache_03.log`
+- `artifacts/streaming_readiness_repair/feature_cache_03.xml`
+- `artifacts/streaming_readiness_repair/feature_cache_04.json`
+- `artifacts/streaming_readiness_repair/feature_cache_04.log`
+- `artifacts/streaming_readiness_repair/feature_cache_04.xml`
+- `artifacts/streaming_readiness_repair/feature_cache_boundary.json`
+- `artifacts/streaming_readiness_repair/feature_cache_plan.json`
+- `artifacts/streaming_readiness_repair/feature_cache_red.json`
+- `artifacts/streaming_readiness_repair/feature_cache_red.log`
+- `artifacts/streaming_readiness_repair/feature_cache_red.xml`
+- `artifacts/streaming_readiness_repair/final_local_validation_addendum.json`
+- `artifacts/streaming_readiness_repair/freeze_snapshot_01.json`
+- `artifacts/streaming_readiness_repair/freeze_snapshot_01.log`
+- `artifacts/streaming_readiness_repair/freeze_snapshot_01.xml`
+- `artifacts/streaming_readiness_repair/frozen-environment.json`
+- `artifacts/streaming_readiness_repair/full_final_01.json`
+- `artifacts/streaming_readiness_repair/full_final_01.log`
+- `artifacts/streaming_readiness_repair/index_final_01.json`
+- `artifacts/streaming_readiness_repair/index_final_01.log`
+- `artifacts/streaming_readiness_repair/index_final_02.json`
+- `artifacts/streaming_readiness_repair/index_final_02.log`
+- `artifacts/streaming_readiness_repair/isolated_test_runner.py`
+- `artifacts/streaming_readiness_repair/local_acceptance.json`
+- `artifacts/streaming_readiness_repair/operational_final_01.json`
+- `artifacts/streaming_readiness_repair/operational_final_01.log`
+- `artifacts/streaming_readiness_repair/operational_final_01.xml`
+- `artifacts/streaming_readiness_repair/operational_source_acceptance_review.json`
+- `artifacts/streaming_readiness_repair/pipeline_diagnostics_independent_review.json`
 - `artifacts/streaming_readiness_repair/plan.json`
+- `artifacts/streaming_readiness_repair/prior_active_drift.log`
+- `artifacts/streaming_readiness_repair/profile_01.json`
+- `artifacts/streaming_readiness_repair/profile_01.log`
+- `artifacts/streaming_readiness_repair/profile_01.xml`
+- `artifacts/streaming_readiness_repair/profile_02.json`
+- `artifacts/streaming_readiness_repair/profile_02.log`
+- `artifacts/streaming_readiness_repair/profile_02.xml`
+- `artifacts/streaming_readiness_repair/profile_03.json`
+- `artifacts/streaming_readiness_repair/profile_03.log`
+- `artifacts/streaming_readiness_repair/profile_03.xml`
+- `artifacts/streaming_readiness_repair/profile_04.json`
+- `artifacts/streaming_readiness_repair/profile_04.log`
+- `artifacts/streaming_readiness_repair/profile_04.xml`
+- `artifacts/streaming_readiness_repair/profile_05.json`
+- `artifacts/streaming_readiness_repair/profile_05.log`
+- `artifacts/streaming_readiness_repair/profile_05.xml`
+- `artifacts/streaming_readiness_repair/profile_06.json`
+- `artifacts/streaming_readiness_repair/profile_06.log`
+- `artifacts/streaming_readiness_repair/profile_06.xml`
+- `artifacts/streaming_readiness_repair/profile_baseline_assessment.json`
+- `artifacts/streaming_readiness_repair/profile_cache_removal_01.json`
+- `artifacts/streaming_readiness_repair/profile_cache_removal_01.log`
+- `artifacts/streaming_readiness_repair/profile_cache_removal_01.xml`
+- `artifacts/streaming_readiness_repair/profile_experiment.log`
+- `artifacts/streaming_readiness_repair/profile_experiment.py`
+- `artifacts/streaming_readiness_repair/profile_experiment_final.log`
+- `artifacts/streaming_readiness_repair/profile_lint.json`
+- `artifacts/streaming_readiness_repair/profile_plan.json`
+- `artifacts/streaming_readiness_repair/profile_results.json`
+- `artifacts/streaming_readiness_repair/public_security/coverage_recheck.json`
+- `artifacts/streaming_readiness_repair/public_security/disposition.json`
+- `artifacts/streaming_readiness_repair/public_security/findings_metadata.json`
+- `artifacts/streaming_readiness_repair/public_security/gitleaks_redacted.json`
+- `artifacts/streaming_readiness_repair/public_security/scan_receipt.json`
+- `artifacts/streaming_readiness_repair/readiness_01.json`
+- `artifacts/streaming_readiness_repair/readiness_01.log`
+- `artifacts/streaming_readiness_repair/readiness_01.xml`
+- `artifacts/streaming_readiness_repair/readiness_02.json`
+- `artifacts/streaming_readiness_repair/readiness_02.log`
+- `artifacts/streaming_readiness_repair/readiness_02.xml`
+- `artifacts/streaming_readiness_repair/readiness_plan.json`
+- `artifacts/streaming_readiness_repair/readiness_watchdog_implementation.json`
+- `artifacts/streaming_readiness_repair/readiness_watchdog_lint.json`
+- `artifacts/streaming_readiness_repair/readiness_watchdog_lint_comparison.json`
+- `artifacts/streaming_readiness_repair/required_broker_config_01.json`
+- `artifacts/streaming_readiness_repair/required_broker_config_01.log`
+- `artifacts/streaming_readiness_repair/required_broker_config_01.xml`
+- `artifacts/streaming_readiness_repair/required_organism_01.json`
+- `artifacts/streaming_readiness_repair/required_organism_01.log`
+- `artifacts/streaming_readiness_repair/required_organism_01.xml`
+- `artifacts/streaming_readiness_repair/snapshot_docs_independent_addendum.json`
+- `artifacts/streaming_readiness_repair/snapshots_final_01.json`
+- `artifacts/streaming_readiness_repair/snapshots_final_01.log`
+- `artifacts/streaming_readiness_repair/snapshots_final_01.xml`
+- `artifacts/streaming_readiness_repair/source_security/disposition.json`
+- `artifacts/streaming_readiness_repair/source_security/findings_metadata.json`
+- `artifacts/streaming_readiness_repair/source_security/gitleaks_redacted.json`
+- `artifacts/streaming_readiness_repair/source_security/scan_receipt.json`
+- `artifacts/streaming_readiness_repair/subscription_01.json`
+- `artifacts/streaming_readiness_repair/subscription_01.log`
+- `artifacts/streaming_readiness_repair/subscription_01.xml`
+- `artifacts/streaming_readiness_repair/subscription_02.json`
+- `artifacts/streaming_readiness_repair/subscription_02.log`
+- `artifacts/streaming_readiness_repair/subscription_02.xml`
+- `artifacts/streaming_readiness_repair/subscription_03.json`
+- `artifacts/streaming_readiness_repair/subscription_03.log`
+- `artifacts/streaming_readiness_repair/subscription_03.xml`
+- `artifacts/streaming_readiness_repair/subscription_04.json`
+- `artifacts/streaming_readiness_repair/subscription_04.log`
+- `artifacts/streaming_readiness_repair/subscription_04.xml`
+- `artifacts/streaming_readiness_repair/subscription_final.json`
+- `artifacts/streaming_readiness_repair/subscription_final.log`
+- `artifacts/streaming_readiness_repair/subscription_final.xml`
+- `artifacts/streaming_readiness_repair/subscription_freeze_independent_review.json`
+- `artifacts/streaming_readiness_repair/subscription_implementation.json`
+- `artifacts/streaming_readiness_repair/subscription_plan.json`
+- `artifacts/streaming_readiness_repair/unaccepted_cache_prototype/archive_manifest.json`
+- `artifacts/streaming_readiness_repair/unaccepted_cache_prototype/feature_cache.patch`
+- `artifacts/streaming_readiness_repair/unaccepted_cache_prototype/live_engine_data.pre_cache.py.txt`
+- `artifacts/streaming_readiness_repair/unaccepted_cache_prototype/live_engine_data.prototype.py.txt`
+- `artifacts/streaming_readiness_repair/unaccepted_cache_prototype/pipeline_feature_cache_tests.py.txt`
+- `artifacts/streaming_readiness_repair/unaccepted_cache_prototype/removal_plan.json`
+- `artifacts/streaming_readiness_repair/watchdog_01.json`
+- `artifacts/streaming_readiness_repair/watchdog_01.log`
+- `artifacts/streaming_readiness_repair/watchdog_01.xml`
+- `artifacts/streaming_readiness_repair/watchdog_02.json`
+- `artifacts/streaming_readiness_repair/watchdog_02.log`
+- `artifacts/streaming_readiness_repair/watchdog_02.xml`
+- `artifacts/streaming_readiness_repair/watchdog_03.json`
+- `artifacts/streaming_readiness_repair/watchdog_03.log`
+- `artifacts/streaming_readiness_repair/watchdog_03.xml`
+- `artifacts/streaming_readiness_repair/watchdog_04.json`
+- `artifacts/streaming_readiness_repair/watchdog_04.log`
+- `artifacts/streaming_readiness_repair/watchdog_04.xml`
+- `artifacts/streaming_readiness_repair/watchdog_05.json`
+- `artifacts/streaming_readiness_repair/watchdog_05.log`
+- `artifacts/streaming_readiness_repair/watchdog_05.xml`
+- `artifacts/streaming_readiness_repair/watchdog_independent_review.json`
+- `artifacts/streaming_readiness_repair/workflow_contract_01.json`
+- `artifacts/streaming_readiness_repair/workflow_contract_01.log`
+- `artifacts/streaming_readiness_repair/workflow_contract_01.xml`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
 - `backend/api/routes/health.py`
+- `backend/organism/composite_indicators.py`
 - `backend/organism/live_engine.py`
 - `backend/organism/live_engine_data.py`
 - `backend/organism/pipeline_diagnostics.py`
 - `backend/organism/scheduler.py`
 - `backend/organism/streaming_data_provider.py`
 - `docs/architecture/mapss.md`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `docs/engineering/STREAMING_READINESS_REPAIR.md`
 - `reports/session_review_2026-09-24/SESSION_REVIEW.md`
 - `reports/session_review_2026-09-24/metrics.json`
 - `scripts/diagnostics/profile_paper_pipeline.py`
+- `scripts/diagnostics/replay_composite_correction.py`
 - `scripts/ops/paper_watchdog.py`
 - `scripts/phase2_freeze.py`
 - `scripts/runtime/write_runtime_snapshot.py`
+- `tests/test_composite_correction_replay.py`
+- `tests/test_composite_indicator_contract.py`
 - `tests/test_entry_freshness.py`
 - `tests/test_paper_watchdog.py`
 - `tests/test_phase2_freeze.py`
@@ -57,6 +278,7 @@ Organism subset of Backend: **5** file(s).
 - `tests/test_pipeline_snapshot.py`
 - `tests/test_readiness_contract.py`
 - `tests/test_scanner_streaming_integration.py`
+- `tests/test_v12_baseline_invariants.py`
 - `tests/test_v13_w100_live_tick_coverage.py`
 
 ## Configuration resolution (not engine observation)
@@ -98,4 +320,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 5 organism file(s) changed — require replay verification
+- 6 organism file(s) changed — require replay verification
