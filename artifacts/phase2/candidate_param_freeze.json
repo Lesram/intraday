@@ -1,10 +1,10 @@
 {
-  "VALIDATED_AT": "2026-09-23T07:50:50.906823+00:00",
+  "VALIDATED_AT": "2026-09-25T05:06:00.803082+00:00",
   "_note_status": "new candidate validation boundary; no active clock change",
-  "active_forward_cutoff": "2026-09-22T08:49:11.247316+00:00",
+  "active_forward_cutoff": "2026-09-23T15:29:47.287731+00:00",
   "candidate_only": true,
   "deployment_approved": false,
-  "git_sha": "3f20cea30b66165fc8ba70a0773372330d7bb490",
+  "git_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -14,10 +14,14 @@
   "provenance": "no reconstructable fit-date; all pre-cutoff data contaminated by construction",
   "surface": {
     "data_pipeline_sources": {
-      "live_engine_data": "89e892f19009b7956a072a31f8be35d8dadec0c0056b80b30e29aa08fe70e719",
+      "live_engine_data": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
       "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
-      "staleness_admission": "0399e7a2e534aaa52fd88d6734dad6320427fd106227343fe6884dbe1e9c7879",
-      "streaming_data_provider": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838"
+      "pipeline_diagnostics": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
+      "staleness_admission": "6cbb82f794c6fd63edfa750e70b4116ce8b2117af4b05d23fff60fe3e56e5b0b",
+      "streaming_data_provider": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+      "streaming_subscription_sync": "ce1d1d94393813783d8458c10b4c508b25f9b5a6329d9d6e04daffc0c75f3da0",
+      "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
+      "streaming_universe_initialization": "e3c0cc8f1d0c554138d4bdedc810474badfa0ed19f6681b6c69c774411c39f85"
     },
     "effective_policy_baseline": {
       "artifact_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
@@ -219,7 +223,7 @@
       "phase": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
       "phase_resolution": "7b53df7368535020c692d2106b93e036bd12029622a4a93d24818357dd072d64",
       "policy": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
-      "scheduler": "4e799fc7ab6dd77df902e03c022b3acda1baf81fc92d2eadcba0a3419055160c",
+      "scheduler": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
       "settings_api": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
       "settings_update": "34b9d92c3930487f06dab1abfd606ed5f4124a79f443adf8b6c019b5b184fc54",
       "startup": "783c6a324b6eb7edfff6f5835f3b46dc559bc3fa978a25a7b248eec7b76037cf",
@@ -235,7 +239,7 @@
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "1ff808a56bfee0620aa53411084035c8937bc2ae8ed11bdf75227a04d6c374fb",
+      "entry_gates_dispatch": "2380940f730bcf4c9568dbcffa2e7f4a9d8220666f99214201fe4a90ce6a82a2",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
       "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",

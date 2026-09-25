@@ -13,6 +13,7 @@ from pathlib import Path
 import stat
 import subprocess
 import re
+import selectors
 import sys
 import time
 import urllib.error
@@ -32,6 +33,18 @@ BACKUP_MAX_BYTES = 512 * 1024 * 1024
 POSTGRES_BACKUP_DIR = Path.home() / "Library/Application Support/Intra/backups/postgres"
 READINESS_MAX_BYTES = 8192
 READINESS_MAX_DEPTH = 16
+CRITICAL_LOG_MAX_BYTES = 262144
+CRITICAL_LOG_MAX_LINES = 1000
+CRITICAL_LOG_WINDOW_SECONDS = 60
+CRITICAL_LOG_MIN_WINDOW_SECONDS = 1
+CRITICAL_LOG_MAX_QUERIES = 12
+CRITICAL_LOG_BUDGET_SECONDS = 10
+
+RUNTIME_STATES = frozenset({
+    "disabled", "missing_scheduler", "scheduler_stopped", "engine_uninitialized",
+    "brain_unloaded", "invalid_timing", "diagnostic_error", "loop_stale",
+    "tick_stale", "warming_up", "market_closed", "tick_recent",
+})
 
 
 class ReadinessPayloadError(ValueError):
@@ -98,7 +111,8 @@ def _readiness_diagnostics(response, payload=None, *, body_status="parsed") -> d
     if not isinstance(checks, dict) or not isinstance(problems, dict):
         result["body_status"] = "invalid_fields"
         return result
-    for component in ("database", "broker", "brain_loaded", "tick_recent"):
+    for component in ("database", "broker", "brain_loaded", "tick_recent",
+                      "scheduler_running", "engine_initialized", "scheduler_loop_recent", "runtime_diagnostics"):
         if component in checks:
             if type(checks[component]) is bool:
                 result["checks"][component] = checks[component]
@@ -124,11 +138,91 @@ def _readiness_diagnostics(response, payload=None, *, body_status="parsed") -> d
         elif component == "readiness_diag":
             reason = "diagnostic_error"
         result["reasons"][component] = reason
+    # New typed diagnostics augment legacy checks without granting recovery.
+    if "dependencies" in payload:
+        dependencies = payload["dependencies"]
+        result["dependencies"] = {}
+        if not isinstance(dependencies, dict):
+            result["body_status"] = "invalid_fields"
+        else:
+            for key, identity, budget in (("database", "postgresql", 100), ("broker", "redis", 200)):
+                value = dependencies.get(key)
+                if not isinstance(value, dict):
+                    result["body_status"] = "invalid_fields"
+                    continue
+                elapsed = value.get("elapsed_ms")
+                if (value.get("component") != identity
+                    or value.get("outcome") not in ("ok", "timeout", "error", "false")
+                    or type(value.get("budget_ms")) is not int or value["budget_ms"] != budget
+                    or type(elapsed) not in (int, float) or not 0 <= elapsed <= 1_000_000_000
+                    or not math.isfinite(elapsed)):
+                    result["body_status"] = "invalid_fields"
+                    continue
+                result["dependencies"][key] = {"component": identity, "outcome": value["outcome"],
+                                                "budget_ms": budget, "elapsed_ms": elapsed}
+    if "runtime" in payload:
+        runtime = payload["runtime"]
+        state = runtime.get("state") if isinstance(runtime, dict) else None
+        if not isinstance(state, str) or state not in RUNTIME_STATES:
+            result["body_status"] = "invalid_fields"
+        else:
+            result["runtime"] = {"state": state}
+            expected = runtime.get("tick_expected")
+            if type(expected) is bool:
+                result["runtime"]["tick_expected"] = expected
+            for field in ("budget_seconds", "loop_age_seconds", "tick_age_seconds"):
+                value = runtime.get(field)
+                if value is not None:
+                    if type(value) in (int, float) and 0 <= value <= 1_000_000_000 and math.isfinite(value):
+                        result["runtime"][field] = value
+                    else:
+                        result["body_status"] = "invalid_fields"
     return result
 
 
-def command(args: list[str], timeout: int = 10) -> subprocess.CompletedProcess:
+def command(args: list[str], timeout: float = 10, *, max_output_bytes: int | None = None) -> subprocess.CompletedProcess:
+    if max_output_bytes is not None:
+        return _bounded_command(args, timeout, max_output_bytes)
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
+
+
+def _bounded_command(args: list[str], timeout: float, limit: int) -> subprocess.CompletedProcess:
+    """Bound memory and duration of a read-only log CLI; reap only this child."""
+    deadline = time.monotonic() + timeout
+    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    content = bytearray()
+    truncated = False
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ)
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(args, timeout)
+                if not selector.select(remaining):
+                    raise subprocess.TimeoutExpired(args, timeout)
+                chunk = os.read(process.stdout.fileno(), min(65536, limit + 1 - len(content)))
+                if not chunk:
+                    break
+                content.extend(chunk)
+                if len(content) > limit:
+                    truncated = True
+                    break
+        if truncated:
+            process.kill()
+        code = process.wait(timeout=max(0.001, deadline - time.monotonic()))
+        result = subprocess.CompletedProcess(args, 0 if truncated else code,
+                                             bytes(content[:limit]).decode("utf-8", errors="replace"), "")
+        result.output_truncated = truncated
+        return result
+    finally:
+        # Includes read errors and caller cancellation; never touches a service.
+        try:
+            if process.poll() is None:
+                process.kill()
+            process.wait(timeout=1)
+        finally:
+            process.stdout.close()
 
 
 def write_json(path: Path, payload: dict) -> None:
@@ -258,52 +352,105 @@ def notify_local(message: str) -> bool:
 
 
 def scan_critical_events(previous: dict, now: float) -> dict:
-    """Bridge undelivered application alerts using bounded logs, without secrets."""
-    previous_monitor = previous.get("critical_monitor") or {}
-    if not isinstance(previous_monitor, dict):
-        previous_monitor = {}
+    """Read oldest bounded windows; never acknowledge an unread truncated prefix."""
+    raw_monitor = previous.get("critical_monitor", {})
+    previous_monitor = raw_monitor if isinstance(raw_monitor, dict) else {}
+    malformed_monitor = "critical_monitor" in previous and (
+        not isinstance(raw_monitor, dict) or "scanned_at" not in raw_monitor
+    )
     seen = previous_monitor.get("seen", [])
-    if not isinstance(seen, list):
-        seen = []
-    since = previous_monitor.get("scanned_at")
-    if not isinstance(since, str):
-        since = datetime.fromtimestamp(now - 900, timezone.utc).isoformat()
+    seen = [v for v in seen if isinstance(v, str) and re.fullmatch(r"[a-f0-9]{64}", v)] if isinstance(seen, list) else []
     pending = previous_monitor.get("pending_events", 0)
-    pending = pending if isinstance(pending, int) and pending >= 0 else 0
-    result = {"scanned_at": since,
-              "available": False, "new_events": 0, "seen": seen[-1000:], "truncated": False,
-              "pending_events": pending}
-    try:
-        logs = command(["docker", "logs", "--timestamps", "--since", since,
-                        "--tail", "1000", SERVICES["api"]], timeout=10)
-        if logs.returncode:
-            return result
-    except (OSError, subprocess.TimeoutExpired):
+    pending = pending if type(pending) is int and pending >= 0 else 0
+    result = {"scanned_at": None, "available": False, "new_events": 0,
+              "seen": seen[-1000:], "truncated": False, "pending_events": pending,
+              "backlog": True, "scan_status": "unavailable", "queries": 0}
+    if malformed_monitor:
+        result["scan_status"] = "invalid_cursor"
         return result
-    content = (logs.stdout or "") + (logs.stderr or "")
-    lines = content[-262144:].splitlines()
-    result["truncated"] = len(content) > 262144 or len(lines) >= 1000
-    hashes = list(result["seen"])
-    for line in lines:
-        # Startup INFO prose mentions critical tables and zero failures. Match
-        # explicit uppercase severity/text or a structured logging level only.
-        severity_text = re.sub(r"\b0\s+CRITICAL\s+failures?\b", "", line)
-        if not (
-            re.search(r"ALERT-(?:NO-CHANNELS|DELIVERY-FAILED)", line, re.IGNORECASE)
-            or re.search(r"\bCRITICAL\b", severity_text)
-            or re.search(r'"(?:level|levelname|severity)"\s*:\s*"critical"', line, re.IGNORECASE)
-        ):
+    try:
+        if not math.isfinite(now):
+            raise ValueError("invalid time")
+        since = previous_monitor.get("scanned_at")
+        if "scanned_at" not in previous_monitor:
+            since = datetime.fromtimestamp(now - 900, timezone.utc).isoformat()
+        if not isinstance(since, str):
+            raise ValueError("invalid cursor")
+        parsed = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError("invalid cursor")
+        cursor = parsed.timestamp()
+        result["scanned_at"] = parsed.astimezone(timezone.utc).isoformat()
+        if cursor > now:
+            result["scan_status"] = "clock_rollback"
+            return result
+    except (ValueError, TypeError, OverflowError):
+        result["scan_status"] = "invalid_cursor"
+        return result
+    window = previous_monitor.get("retry_window_seconds", CRITICAL_LOG_WINDOW_SECONDS)
+    if type(window) not in (int, float) or not 1 <= window <= CRITICAL_LOG_WINDOW_SECONDS or not math.isfinite(window):
+        window = CRITICAL_LOG_WINDOW_SECONDS
+    deadline = time.monotonic() + CRITICAL_LOG_BUDGET_SECONDS
+    # Fixed target prevents new logs extending this invocation indefinitely.
+    while result["queries"] < CRITICAL_LOG_MAX_QUERIES and cursor < now:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        end = min(cursor + window, now)
+        args = ["docker", "logs", "--timestamps", "--since", result["scanned_at"],
+                "--until", datetime.fromtimestamp(end, timezone.utc).isoformat(), SERVICES["api"]]
+        result["queries"] += 1
+        try:
+            logs = command(args, timeout=remaining, max_output_bytes=CRITICAL_LOG_MAX_BYTES)
+            if logs.returncode:
+                result["available"] = False
+                result["scan_status"] = "unavailable"
+                return result
+        except (OSError, subprocess.TimeoutExpired):
+            result["available"] = False
+            result["scan_status"] = "unavailable"
+            return result
+        content = (logs.stdout or "") + (logs.stderr or "")
+        lines = content.splitlines()
+        truncated = (getattr(logs, "output_truncated", False) or
+                     len(content.encode("utf-8")) > CRITICAL_LOG_MAX_BYTES or
+                     len(lines) >= CRITICAL_LOG_MAX_LINES)
+        if truncated:
+            result["truncated"] = True
+            result["scan_status"] = "truncated"
+            if end - cursor <= CRITICAL_LOG_MIN_WINDOW_SECONDS:
+                result["retry_window_seconds"] = CRITICAL_LOG_MIN_WINDOW_SECONDS
+                return result
+            window = max(CRITICAL_LOG_MIN_WINDOW_SECONDS, (end - cursor) / 2)
+            result["retry_window_seconds"] = window
             continue
-        fingerprint = hashlib.sha256(line.encode()).hexdigest()
-        if fingerprint not in hashes:
-            hashes.append(fingerprint)
-            result["new_events"] += 1
-    # Persist only fingerprints/counts. Alert payloads can include private
-    # account details, so never copy raw lines into reports/notifications.
-    result["seen"] = hashes[-1000:]
-    result["available"] = True
-    result["scanned_at"] = datetime.fromtimestamp(now, timezone.utc).isoformat()
-    result["pending_events"] += result["new_events"]
+        # Only a complete window can contribute alerts or advance the cursor.
+        hashes = list(result["seen"])
+        for line in lines:
+            severity_text = re.sub(r"\b0\s+CRITICAL\s+failures?\b", "", line)
+            if not (
+                re.search(r"ALERT-(?:NO-CHANNELS|DELIVERY-FAILED)", line, re.IGNORECASE)
+                or re.search(r"\bCRITICAL\b", severity_text)
+                or re.search(r'"(?:level|levelname|severity)"\s*:\s*"critical"', line, re.IGNORECASE)
+            ):
+                continue
+            fingerprint = hashlib.sha256(line.encode()).hexdigest()
+            if fingerprint not in hashes:
+                hashes.append(fingerprint)
+                result["new_events"] += 1
+                result["pending_events"] += 1
+        result["seen"] = hashes[-1000:]
+        result["available"] = True
+        result["truncated"] = False
+        cursor = end
+        result["scanned_at"] = datetime.fromtimestamp(cursor, timezone.utc).isoformat()
+        result["retry_window_seconds"] = CRITICAL_LOG_WINDOW_SECONDS
+        result["scan_status"] = "backlog"
+        window = CRITICAL_LOG_WINDOW_SECONDS
+    result["backlog"] = cursor < now
+    if not result["backlog"]:
+        result["available"] = True
+        result["scan_status"] = "complete"
     return result
 
 
@@ -573,6 +720,9 @@ def run_watchdog(root: Path, *, recover: bool = False, reopen_docker: bool = Fal
     result["critical_monitor"] = monitor
     if not monitor["available"] and result["daemon"]:
         result["problems"].append("critical_alert_monitor_unavailable")
+        result["healthy"] = False
+    if monitor.get("backlog"):
+        result["problems"].append("critical_alert_log_backlog")
         result["healthy"] = False
     if monitor["truncated"]:
         result["problems"].append("critical_alert_log_window_truncated")

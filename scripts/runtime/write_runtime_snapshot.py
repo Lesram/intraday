@@ -48,6 +48,7 @@ def _build_defaults_snapshot() -> dict:
             ML_ISOLATION_TRADES,
         )
         from backend.organism.live_engine import (
+            OrganismLiveEngine,
             ALPHA_TOP_N,
             ALPHA_BREAKOUT_BAD_REGIME_FILTER_ENABLED,
             CANDIDATE_FILTER_SHADOW_TELEMETRY_ENABLED,
@@ -75,6 +76,14 @@ def _build_defaults_snapshot() -> dict:
             # Checked-out source identity only. A running process must be
             # bound to this candidate before these hashes describe deployment.
             "candidate_data_pipeline_sources": compute_data_pipeline_sources(),
+            "streaming_subscription_sync": {
+                "timeout_seconds": OrganismLiveEngine._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S,
+                "universe": "constructor_base_plus_SPY_QQQ_current_universe_and_held_positions",
+                "checked_at": "after_fresh_position_query_before_entry_dispatch",
+                "failure": "block_entries_retry_next_tick_preserve_exits",
+                "new_symbols": "wait_for_actual_bars_no_REST_prefill",
+                "global_staleness_policy": "any_subscribed_symbol_stale_blocks_entries",
+            },
             "entry_freshness": {
                 "required_timeframe": ENTRY_TIMEFRAME,
                 "max_bar_age_seconds": MAX_ENTRY_BAR_AGE_SECONDS,
@@ -392,6 +401,7 @@ def _build_resolved_config_snapshot() -> dict:
         # establishes which accounting policy the installed process runs.
         "close_accounting_policy": defaults.get("close_accounting_policy"),
         "candidate_data_pipeline_sources": defaults.get("candidate_data_pipeline_sources"),
+        "streaming_subscription_sync": defaults.get("streaming_subscription_sync"),
         "entry_freshness": defaults.get("entry_freshness"),
         "drawdown_kill_pct": _resolve_float(
             "ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct", "drawdown_kill_pct",

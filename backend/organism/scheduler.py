@@ -33,6 +33,7 @@ import asyncio
 from collections import deque
 import os
 import random
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -110,6 +111,11 @@ class OrganismScheduler:
         self._streaming_provider: Any = None
 
         self._task: asyncio.Task | None = None
+        # Observational readiness clocks; never used by trading decisions.
+        self._readiness_started_at: float | None = None
+        self._readiness_last_loop_at: float | None = None
+        self._readiness_tick_expected_since: float | None = None
+        self._readiness_last_tick_completed_at: float | None = None
         self._stop = asyncio.Event()
         self._engine: Any = None  # lazily created
         self._last_tick_result: dict[str, Any] | None = None
@@ -196,6 +202,10 @@ class OrganismScheduler:
         )
 
         self._stop.clear()
+        self._readiness_started_at = time.monotonic()
+        self._readiness_last_loop_at = None
+        self._readiness_tick_expected_since = None
+        self._readiness_last_tick_completed_at = None
         self._task = asyncio.create_task(self._run_loop())
 
     async def stop(self) -> None:
@@ -309,6 +319,7 @@ class OrganismScheduler:
         _last_outside_hours_log: float = 0  # throttle "outside hours" logs
 
         while not self._stop.is_set():
+            self._readiness_last_loop_at = time.monotonic()
             # Scheduled diagnostics (pre-open / post-close) run regardless of market hours
             try:
                 await self._diag_runner.check_and_run(self._engine)
@@ -317,6 +328,7 @@ class OrganismScheduler:
 
             try:
                 if not _is_market_tick_window():
+                    self._readiness_tick_expected_since = None
                     # Log once per 5 minutes to avoid spam
                     now_ts = datetime.now(UTC).timestamp()
                     if now_ts - _last_outside_hours_log > 300:
@@ -328,10 +340,13 @@ class OrganismScheduler:
                         )
                         _last_outside_hours_log = now_ts
                 else:
+                    if self._readiness_tick_expected_since is None:
+                        self._readiness_tick_expected_since = time.monotonic()
                     result = await asyncio.wait_for(
                         self._engine.live_tick(),
                         timeout=60,  # HFT: 60s hard timeout (was 300s)
                     )
+                    self._readiness_last_tick_completed_at = time.monotonic()
                     self._last_tick_result = result.to_dict()
                     self._tick_history.append(self._last_tick_result)
                     consecutive_errors = 0  # success → reset

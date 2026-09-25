@@ -1,0 +1,166 @@
+{
+  "session": "2026-09-24",
+  "rth_utc": [
+    "2026-09-24T13:30:00Z",
+    "2026-09-24T20:00:00Z"
+  ],
+  "successful_cycles": 845,
+  "tick_errors": 0,
+  "max_completed_cycle_gap_seconds": 31.959869,
+  "stale_blocked_cycles": 250,
+  "stale_blocked_pct": 29.585798816568047,
+  "processing_median_seconds": 17.1,
+  "processing_max_seconds": 22,
+  "all_scans": 141,
+  "positive_scans": 134,
+  "empty_scans": 7,
+  "median_candidates": 38,
+  "orders": 0,
+  "fills": 0,
+  "closes": 0,
+  "equity_usd": "100067.85",
+  "session_equity_change_usd": "0.00",
+  "positions": 0,
+  "watchdog_checks": 77,
+  "readiness_timeouts": 20,
+  "truncated_alert_windows": 41,
+  "observed_restarts": 0,
+  "daily_evidence": "READY_FOR_REVIEW",
+  "strategy_gate": "INSUFFICIENT",
+  "source_sha": "3acb796715cc80ac1475f18c7889dedb50f62256",
+  "active_cutoff": "2026-09-23T15:29:47.287731+00:00",
+  "sources": [
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/scanner_qualification.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/scanner_qualification.json",
+      "bytes": 35948,
+      "sha256": "d27ea9ab947be3fab6522f18a6c03fbde3e2742447758d6b5857ce333487247f"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/analysis.log",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/analysis.log",
+      "bytes": 2990,
+      "sha256": "e9d13a3a6b30bc47b36e4c73938521a4c446d9b0ed3b40e5bef2b5dd2d6753d9"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/summary.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/summary.json",
+      "bytes": 70352,
+      "sha256": "f566120b247afb97a13f3a313e29983060065aa89e9b5e842bcaf5990ea1ad70"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/session_transition_samples.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/session_transition_samples.json",
+      "bytes": 21523,
+      "sha256": "c70ff42b254c463206a8fd500ccc5fe03178042346c4e90d6582298291fabe87"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/evidence_samples.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/evidence_samples.json",
+      "bytes": 422,
+      "sha256": "a5ee7c1c06423901ced7100a8a5a32bc26966554894faad69b9705de5fd27920"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/accidental_source_edit_restoration.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/accidental_source_edit_restoration.json",
+      "bytes": 977,
+      "sha256": "8555443eb66ba1c319086f3b7fe57c63d632e04bd5b4603299c348008715295d"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/gate_log_events.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/gate_log_events.json",
+      "bytes": 468363,
+      "sha256": "b0c3ced0f34899dc5c7ff28a88982e99560bd46004d30cef15929fec053dd8bc"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/analyze_session.py",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/analyze_session.py",
+      "bytes": 30146,
+      "sha256": "7dcd725c202b734475c1d804e7b53676e2df60cfeb95cded54f265776a5215da"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/canonical-session.capture.jsonl",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/canonical-session.capture.jsonl",
+      "bytes": 7759612,
+      "sha256": "60d4cd23365ddd655e249dbb72e2a0afbbe1a0d0466090dc15924c95747bfbb8"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/lifecycle_subscription_events.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/lifecycle_subscription_events.json",
+      "bytes": 1993,
+      "sha256": "7326bbc3afd545ff06564f1bb95088ad30ee855cc6338e42b9d4d5e6c03951c1"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/manifest.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/manifest.json",
+      "bytes": 1807,
+      "sha256": "8bddef109fe520c28376b1b2072bd2f0d9cdc2a134cd1f0c47318404cae94572"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/completed_ticks.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/completed_ticks.json",
+      "bytes": 499566,
+      "sha256": "54b8545126bc63655324c4b05644d87b2f7798d0bf8b0b13fac93396632f9cdc"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/capture-receipt.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/capture-receipt.json",
+      "bytes": 307,
+      "sha256": "1d9af668db8b5068cb4d1bfdf4b2a1cc0439ade7e6680b945c35d58002833916"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/scanner_events.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/scanner_events.json",
+      "bytes": 27785,
+      "sha256": "44e1a8dc4af28ec527cfc3e265280d6664ac29cc7771305093255c5aa2710fd4"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-session-analysis/stream_rejections.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-session-analysis/stream_rejections.json",
+      "bytes": 64403,
+      "sha256": "6c2d448acbc8f6a5106a3d67ce1f8574ce9c9978b1802a381aafc6c57767390a"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-evidence-review/logs__paper_watchdog_events.jsonl",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-evidence-review/logs__paper_watchdog_events.jsonl",
+      "bytes": 2114017,
+      "sha256": "153a0ea88b401afd1f8daf8265c44aeddb5d7074fd25cd1003ba924f84a410f7"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-evidence-review/logs__paper_watchdog_status.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-evidence-review/logs__paper_watchdog_status.json",
+      "bytes": 1750,
+      "sha256": "93ca4f8368fc500285d2da41de587a7df28cd3f57e7d29d45143378b26321018"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-evidence-review/logs__postgres_backup.log",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-evidence-review/logs__postgres_backup.log",
+      "bytes": 6286,
+      "sha256": "f7580a5a15fb1e197a1700b7a146e572c6d5682aabc8c6e1c5066b82fa01dd4e"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-evidence-review/review.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-evidence-review/review.json",
+      "bytes": 69146,
+      "sha256": "00ce6c1c3fbaaf81eca93a24ebbfbbf57ff3b992f1b69ba40f83d6778cad3ee5"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-evidence-review/review-manifest.json",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-evidence-review/review-manifest.json",
+      "bytes": 1479,
+      "sha256": "b855a2da6f953dd8537306c8b3ba0ee4201db0921a795ee1211747868245667c"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-evidence-review/logs__brain_backup.log",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-evidence-review/logs__brain_backup.log",
+      "bytes": 25692,
+      "sha256": "3bdde89470f10a1ab21a5bafd95da97ddf6c1ddb7e61095840d6d78386f9d2f5"
+    },
+    {
+      "source": "/private/tmp/intra-sept24-evidence-review/analyze.py",
+      "archive": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-24/session-review/analysis-sources/intra-sept24-evidence-review/analyze.py",
+      "bytes": 14731,
+      "sha256": "3f3838859acc60c7669707f4642c0d0210252d5a4dc072c320743d743d1b9ff0"
+    }
+  ]
+}

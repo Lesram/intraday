@@ -98,6 +98,10 @@ jobs:
             tests/test_market_scanner.py \
             tests/test_market_scanner_provider_contract.py \
             tests/test_pipeline_freshness_recovery.py \
+            tests/test_scanner_streaming_integration.py \
+            tests/test_pipeline_diagnostics.py \
+            tests/test_pipeline_profile.py \
+            tests/test_readiness_contract.py \
             tests/test_streaming_provider_lifecycle.py \
             tests/test_active_freeze_contract.py \
             tests/test_artifact_change_scope.py \

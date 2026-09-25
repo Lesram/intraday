@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import plistlib
 import subprocess
+from types import SimpleNamespace
 import urllib.error
 
 import pytest
@@ -25,6 +26,7 @@ def watchdog(monkeypatch):
     module._scan_for_test = module.scan_critical_events
     monkeypatch.setattr(module, "scan_critical_events", lambda previous, now: {
         "available": True, "new_events": 0, "truncated": False, "seen": [],
+        "scanned_at": datetime.fromtimestamp(now, timezone.utc).isoformat(),
     })
     return module
 
@@ -427,7 +429,7 @@ def test_critical_log_bridge_deduplicates_and_never_persists_payloads(watchdog, 
     line = "2026-09-19T18:00:00Z CRITICAL ALERT-NO-CHANNELS: private-account-detail"
     calls = []
 
-    def logs(args, timeout):
+    def logs(args, timeout, **kwargs):
         calls.append(args)
         assert timeout <= 10
         return subprocess.CompletedProcess(args, 0, line + "\n", "")
@@ -438,7 +440,7 @@ def test_critical_log_bridge_deduplicates_and_never_persists_payloads(watchdog, 
     second = watchdog._scan_for_test({"critical_monitor": first}, 1800000300)
     assert second["new_events"] == 0
     assert "private-account-detail" not in json.dumps(first)
-    assert "--tail" in calls[0] and "--since" in calls[0]
+    assert "--tail" not in calls[0] and "--since" in calls[0] and "--until" in calls[0]
 
 
 @pytest.mark.parametrize("message,expected", [
@@ -493,6 +495,13 @@ def test_new_critical_event_notifies_even_when_api_remains_healthy(watchdog, mon
 def test_pending_critical_notice_survives_log_failure_until_delivered(watchdog, monkeypatch, tmp_path):
     monkeypatch.setattr(watchdog, "observe", lambda now: healthy(watchdog))
     monkeypatch.setattr(watchdog, "scan_critical_events", watchdog._scan_for_test)
+    # Seed a recent completed scan so each invocation exercises one new window.
+    times = iter([1800000000.0, 1800000030.0, 1800000060.0, 1800000090.0])
+    monkeypatch.setattr(watchdog, "time", SimpleNamespace(time=lambda: next(times), monotonic=watchdog.time.monotonic))
+    (tmp_path / "logs").mkdir()
+    watchdog.write_json(tmp_path / "logs/paper_watchdog_status.json", {
+        "critical_monitor": {"scanned_at": datetime.fromtimestamp(1799999970, timezone.utc).isoformat()}
+    })
     line = "2026-09-19T18:00:00Z CRITICAL ALERT-NO-CHANNELS: risk event\n"
     outcomes = iter([0, 1, 0, 0])
     monkeypatch.setattr(watchdog, "command", lambda args, **kwargs: subprocess.CompletedProcess(args, next(outcomes), line, ""))
@@ -835,3 +844,277 @@ def test_cli_passes_policy_opt_in(watchdog, monkeypatch, tmp_path):
     monkeypatch.setattr(watchdog, 'run_watchdog', lambda root, **kwargs: calls.append(kwargs) or {'healthy': False, 'paused': False})
     assert watchdog.main() == 1
     assert calls[0]['check_policy'] is True
+
+
+def scan_prior(at, **kwargs):
+    return {"critical_monitor": {"scanned_at": datetime.fromtimestamp(at, timezone.utc).isoformat(), **kwargs}}
+
+
+def window_bounds(args):
+    return tuple(datetime.fromisoformat(args[args.index(key) + 1]).timestamp() for key in ("--since", "--until"))
+
+
+def test_typed_readiness_fields_are_allowlisted_and_redis_explicit(watchdog):
+    payload = {"status": "not ready", "checks": {"scheduler_running": True, "tick_recent": False},
+               "problems": {}, "dependencies": {
+                   "database": {"component": "postgresql", "outcome": "ok", "budget_ms": 100, "elapsed_ms": 1},
+                   "broker": {"component": "redis", "outcome": "error", "budget_ms": 200, "elapsed_ms": 202.1, "exception": "private-token"}},
+               "runtime": {"state": "tick_stale", "tick_expected": True, "budget_seconds": 70,
+                           "tick_age_seconds": 80, "details": "private-token"}}
+    result = watchdog._readiness_diagnostics(SimpleNamespace(status=503), payload)
+    assert result["dependencies"]["broker"] == {"component": "redis", "outcome": "error", "budget_ms": 200, "elapsed_ms": 202.1}
+    assert result["runtime"] == {"state": "tick_stale", "tick_expected": True, "budget_seconds": 70, "tick_age_seconds": 80}
+    assert result["checks"]["scheduler_running"] is True
+    assert "private" not in json.dumps(result)
+    observation = healthy(watchdog)
+    observation["readiness"] = {"reachable": True, "status": "not_ready", "diagnostics": result}
+    assert watchdog.choose_recovery(observation, True) is None
+
+
+@pytest.mark.parametrize("value", [None, True, -1, float("nan"), float("inf"), 10 ** 400, "private-token"])
+def test_typed_diagnostic_invalid_numbers_never_escape(watchdog, value):
+    payload = {"status": "not ready", "dependencies": {
+        "database": {"component": "postgresql", "outcome": "error", "budget_ms": 100, "elapsed_ms": value},
+        "broker": {"component": "redis", "outcome": "false", "budget_ms": 200, "elapsed_ms": 2}},
+        "runtime": {"state": "warming_up", "loop_age_seconds": value}}
+    result = watchdog._readiness_diagnostics(SimpleNamespace(status=503), payload)
+    assert result["body_status"] == "invalid_fields"
+    assert "database" not in result["dependencies"]
+    assert "private" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("runtime", [None, [], {"state": "private-token"}, {"state": {"private": True}}])
+def test_unknown_runtime_diagnostics_are_omitted(watchdog, runtime):
+    result = watchdog._readiness_diagnostics(SimpleNamespace(status=503), {"status": "not ready", "runtime": runtime})
+    assert result["body_status"] == "invalid_fields"
+    assert "runtime" not in result
+
+
+def test_oldest_windows_find_critical_prefix_previously_lost_by_tail(watchdog, monkeypatch):
+    # 3001 lines exceed the old whole-interval tail, but each minute fits.
+    rows = [(100 + i / 10, f"{i} INFO ordinary") for i in range(3001)]
+    rows[1] = (100.1, "100.1 CRITICAL private-first-alert")
+    calls = []
+
+    def logs(args, timeout, max_output_bytes):
+        low, high = window_bounds(args)
+        calls.append((low, high))
+        assert max_output_bytes == 262144 and 0 < timeout <= 10
+        selected = [line for at, line in rows if low <= at <= high]
+        return subprocess.CompletedProcess(args, 0, "\n".join(selected[-1000:]), "")
+
+    monkeypatch.setattr(watchdog, "command", logs)
+    result = watchdog._scan_for_test(scan_prior(100), 400)
+    assert result["new_events"] == result["pending_events"] == 1
+    assert result["scan_status"] == "complete" and not result["backlog"]
+    assert calls == [(100, 160), (160, 220), (220, 280), (280, 340), (340, 400)]
+    assert "private" not in json.dumps(result)
+
+
+def test_truncated_window_splits_without_acknowledging_unread_prefix(watchdog, monkeypatch):
+    calls = []
+
+    def logs(args, **kwargs):
+        low, high = window_bounds(args)
+        calls.append((low, high))
+        if high - low > 15:
+            return subprocess.CompletedProcess(args, 0, "INFO omitted-prefix\n" * 1000, "")
+        events = [f"{at} CRITICAL actual-event" for at in (105, 120, 135, 150) if low <= at <= high]
+        return subprocess.CompletedProcess(args, 0, "\n".join(events), "")
+
+    monkeypatch.setattr(watchdog, "command", logs)
+    result = watchdog._scan_for_test(scan_prior(100), 160)
+    assert calls[:3] == [(100, 160), (100, 130), (100, 115)]
+    assert result["scanned_at"] == datetime.fromtimestamp(160, timezone.utc).isoformat()
+    assert result["new_events"] == 4 and result["scan_status"] == "complete"
+    assert not result["truncated"]
+
+
+def test_minimum_window_truncation_retains_cursor_and_retries(watchdog, monkeypatch):
+    calls = []
+
+    def saturated(args, **kwargs):
+        calls.append(window_bounds(args))
+        return subprocess.CompletedProcess(args, 0, "CRITICAL unseen-prefix\n" * 1000, "")
+
+    monkeypatch.setattr(watchdog, "command", saturated)
+    prior = scan_prior(100)
+    first = watchdog._scan_for_test(prior, 160)
+    assert first["scanned_at"] == prior["critical_monitor"]["scanned_at"]
+    assert first["truncated"] and first["backlog"] and first["new_events"] == 0
+    assert first["retry_window_seconds"] == 1
+    calls.clear()
+    watchdog._scan_for_test({"critical_monitor": first}, 170)
+    assert calls == [(100, 101)]
+    monkeypatch.setattr(watchdog, "command", lambda args, **kwargs: subprocess.CompletedProcess(args, 0, "CRITICAL retained\n", ""))
+    recovered = watchdog._scan_for_test({"critical_monitor": first}, 170)
+    assert recovered["scan_status"] == "complete" and recovered["new_events"] == 1
+
+
+def test_delayed_boundary_events_and_inclusive_window_duplicates(watchdog, monkeypatch):
+    rows = [(160, "160 CRITICAL first")]
+
+    def logs(args, **kwargs):
+        low, high = window_bounds(args)
+        return subprocess.CompletedProcess(args, 0, "\n".join(line for at, line in rows if low <= at <= high), "")
+
+    monkeypatch.setattr(watchdog, "command", logs)
+    first = watchdog._scan_for_test(scan_prior(100), 160)
+    rows.append((160, "160 CRITICAL delayed-same-timestamp"))
+    second = watchdog._scan_for_test({"critical_monitor": first}, 220)
+    assert first["new_events"] == 1
+    assert second["new_events"] == 1 and second["pending_events"] == 2
+    third = watchdog._scan_for_test({"critical_monitor": second}, 280)
+    assert third["new_events"] == 0 and third["pending_events"] == 2
+
+
+def test_completed_prefix_survives_later_window_failure(watchdog, monkeypatch):
+    calls = []
+
+    def logs(args, **kwargs):
+        bounds = window_bounds(args)
+        calls.append(bounds)
+        return subprocess.CompletedProcess(args, 0 if len(calls) == 1 else 1, "CRITICAL prefix\n", "")
+
+    monkeypatch.setattr(watchdog, "command", logs)
+    result = watchdog._scan_for_test(scan_prior(100), 280)
+    assert not result["available"] and result["scan_status"] == "unavailable"
+    assert result["scanned_at"] == datetime.fromtimestamp(160, timezone.utc).isoformat()
+    assert result["pending_events"] == 1 and result["backlog"]
+    monkeypatch.setattr(watchdog, "command", lambda args, **kwargs: subprocess.CompletedProcess(args, 0, "CRITICAL prefix\n", ""))
+    recovered = watchdog._scan_for_test({"critical_monitor": result}, 280)
+    assert recovered["scan_status"] == "complete" and recovered["pending_events"] == 1
+
+
+def test_finite_query_budget_reports_backlog_and_resumes_oldest_cursor(watchdog, monkeypatch):
+    calls = []
+    monkeypatch.setattr(watchdog, "command", lambda args, **kwargs: calls.append(window_bounds(args)) or subprocess.CompletedProcess(args, 0, "", ""))
+    first = watchdog._scan_for_test(scan_prior(100), 1000)
+    assert len(calls) == 12 and first["backlog"] and first["available"]
+    assert first["scan_status"] == "backlog"
+    assert first["scanned_at"] == datetime.fromtimestamp(820, timezone.utc).isoformat()
+    calls.clear()
+    second = watchdog._scan_for_test({"critical_monitor": first}, 1000)
+    assert calls[0] == (820, 880)
+    assert second["scan_status"] == "complete"
+
+
+@pytest.mark.parametrize("cursor", [None, "not-a-date-private-token", "2026-09-24T15:00:00"])
+def test_invalid_saved_cursor_is_not_silently_replaced_next_run(watchdog, monkeypatch, cursor):
+    monkeypatch.setattr(watchdog, "command", lambda *a, **k: pytest.fail("invalid cursor must not query"))
+    first = watchdog._scan_for_test({"critical_monitor": {"scanned_at": cursor}}, 1800000000)
+    second = watchdog._scan_for_test({"critical_monitor": first}, 1800000300)
+    assert first["scan_status"] == second["scan_status"] == "invalid_cursor"
+    assert "private" not in json.dumps(second)
+
+
+def test_bounded_log_reader_reaps_own_child_on_overflow_timeout_and_cancellation(watchdog, monkeypatch):
+    class Pipe:
+        closed = False
+        def fileno(self): return 99
+        def close(self): self.closed = True
+
+    class Process:
+        def __init__(self):
+            self.stdout = Pipe()
+            self.killed = False
+            self.waits = []
+            self.code = None
+        def poll(self): return self.code
+        def kill(self): self.killed = True; self.code = -9
+        def wait(self, timeout): self.waits.append(timeout); self.code = self.code or 0; return self.code
+
+    class Selector:
+        mode = "ready"
+        def __enter__(self): return self
+        def __exit__(self, *_): pass
+        def register(self, *args): pass
+        def select(self, timeout):
+            if self.mode == "cancel": raise KeyboardInterrupt()
+            return [] if self.mode == "timeout" else [1]
+
+    processes = []
+    def popen(args, **kwargs):
+        assert args == ["docker", "logs", "offline-fixture"]
+        assert kwargs["stderr"] == subprocess.STDOUT
+        process = Process(); processes.append(process); return process
+
+    monkeypatch.setattr(watchdog.subprocess, "Popen", popen)
+    monkeypatch.setattr(watchdog.selectors, "DefaultSelector", Selector)
+    reads = []
+    monkeypatch.setattr(watchdog.os, "read", lambda fd, count: reads.append(count) or b"x" * count)
+    result = watchdog._bounded_command(["docker", "logs", "offline-fixture"], 1, 32)
+    assert result.output_truncated and len(result.stdout) == 32 and reads == [33]
+    Selector.mode = "timeout"
+    with pytest.raises(subprocess.TimeoutExpired):
+        watchdog._bounded_command(["docker", "logs", "offline-fixture"], 1, 32)
+    Selector.mode = "cancel"
+    with pytest.raises(KeyboardInterrupt):
+        watchdog._bounded_command(["docker", "logs", "offline-fixture"], 1, 32)
+    assert all(p.killed and p.stdout.closed and p.waits for p in processes)
+
+
+def test_byte_truncation_does_not_count_returned_suffix(watchdog, monkeypatch):
+    def logs(args, **kwargs):
+        result = subprocess.CompletedProcess(args, 0, "CRITICAL misleading-suffix\n", "")
+        result.output_truncated = True
+        return result
+
+    monkeypatch.setattr(watchdog, "command", logs)
+    result = watchdog._scan_for_test(scan_prior(100, pending_events=3, retry_window_seconds=1), 110)
+    assert result["scan_status"] == "truncated" and result["truncated"]
+    assert result["queries"] == 1 and result["pending_events"] == 3
+    assert result["new_events"] == 0 and result["seen"] == []
+    assert result["scanned_at"] == scan_prior(100)["critical_monitor"]["scanned_at"]
+
+
+def test_total_log_scan_deadline_keeps_completed_prefix_only(watchdog, monkeypatch):
+    current = [1.0]
+    monkeypatch.setattr(watchdog, "time", SimpleNamespace(monotonic=lambda: current[0]))
+
+    def logs(args, timeout, **kwargs):
+        assert timeout == 10
+        current[0] += 10
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(watchdog, "command", logs)
+    result = watchdog._scan_for_test(scan_prior(100), 1000)
+    assert result["queries"] == 1 and result["scan_status"] == "backlog"
+    assert result["scanned_at"] == scan_prior(160)["critical_monitor"]["scanned_at"]
+
+
+def test_log_read_timeout_retains_pending_and_exact_unread_cursor(watchdog, monkeypatch):
+    def logs(args, **kwargs):
+        raise subprocess.TimeoutExpired(args, kwargs["timeout"])
+
+    monkeypatch.setattr(watchdog, "command", logs)
+    prior = scan_prior(100, pending_events=2)
+    result = watchdog._scan_for_test(prior, 200)
+    assert not result["available"] and result["scan_status"] == "unavailable"
+    assert result["scanned_at"] == prior["critical_monitor"]["scanned_at"]
+    assert result["pending_events"] == 2 and result["new_events"] == 0
+
+
+def test_critical_backlog_is_attention_without_service_action(watchdog, monkeypatch, tmp_path):
+    monkeypatch.setattr(watchdog, "observe", lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog, "scan_critical_events", lambda previous, now: {
+        "available": True, "new_events": 0, "pending_events": 0, "seen": [],
+        "truncated": False, "backlog": True, "scan_status": "backlog"})
+    monkeypatch.setattr(watchdog, "command", lambda *a, **k: pytest.fail("no service action for backlog"))
+    monkeypatch.setattr(watchdog, "notify_local", lambda *a, **k: pytest.fail("notifications disabled"))
+    result = watchdog.run_watchdog(tmp_path, recover=True)
+    assert not result["healthy"] and result["actions"] == []
+    assert result["problems"] == ["critical_alert_log_backlog"]
+
+
+@pytest.mark.parametrize("monitor", [None, [], ["corrupt"], "corrupt-private-token", False, 0, {}, {"pending_events": 2}])
+def test_present_malformed_monitor_never_bootstraps_over_unread_history(watchdog, monkeypatch, monitor):
+    monkeypatch.setattr(watchdog, "command", lambda *a, **k: pytest.fail("malformed monitor must not query"))
+    first = watchdog._scan_for_test({"critical_monitor": monitor}, 1800000000)
+    second = watchdog._scan_for_test({"critical_monitor": first}, 1800000300)
+    for result in (first, second):
+        assert result["scan_status"] == "invalid_cursor" and result["backlog"]
+        assert result["scanned_at"] is None and result["queries"] == 0
+        assert not result["available"]
+        assert "private" not in json.dumps(result)
+        assert result["pending_events"] == (2 if monitor == {"pending_events": 2} else 0)

@@ -4,11 +4,69 @@
 
 ---
 
-## Candidate scanner and streaming pipeline repair (2026-09-23)
+## Candidate subscription and readiness repair (2026-09-24)
 
-This candidate fixes provider-contract and streaming-state defects found during
-the September 22 paper session. It is **not a deployed release** and does not
-replace that session's active freeze, binding, history or measurement cutoff.
+This is candidate implementation evidence. The September 24 session ran PR28
+source `3acb796`, under the active September 23 cutoff. This candidate does not
+activate a replacement cutoff; an approved paper release must bind the exact
+new image and establish its forward boundary at activation.
+
+After scanner discovery and the existing fresh broker-position query, the engine
+synchronizes streaming subscriptions to the union of constructor base symbols,
+SPY/QQQ benchmarks, current feature universe and held-position symbols. The
+operation has a **5-second** deadline and retries next tick on incomplete/failed
+subscription. Failed changes retain provider state and block new entries;
+protective exits still execute. New subscriptions do not seed REST bars or claim
+freshness. The existing global 120-second any-stale-symbol gate is rechecked
+before entry dispatch, and earlier same-tick blocks remain sticky. A newly
+subscribed sparse symbol can therefore increase global stand-down time. This
+repair changes integration, not that policy, the alpha 20-second receipt-age
+rule, final 120-second feature-bar admission, feed, strategy or risk settings.
+
+`paper_pipeline_diagnostics_v1` records nonoverlapping wall-time segments and
+mutually exclusive terminal reasons within the alpha candidate-build phase.
+Candidate-built means eligible for later combined ranking/sizing, not an order.
+Unaccounted candidates remain explicit after incomplete processing. Diagnostics
+expose actual fetch path separately from receipt age and feature-bar age. Wall
+timings never enter `LiveTickResult` or replay decision hashes.
+
+The profiled ML-cache prototype is excluded from this release. Investigation
+exposed an existing scalar-division defect that silently replaces all seven
+composite indicators with zeros. Caching those fallback results could suppress
+retries. The defect evidence and unaccepted prototype are retained separately;
+correcting decision inputs requires explicit additional approval and replay.
+No performance-speedup claim or composite-formula change is included here.
+
+Readiness retains database **100ms**, Redis **200ms**, and dependency-cache
+**2-second** limits. Legacy `broker` means Redis; typed outcomes distinguish
+deadline expiration, exception and false returns without exception text.
+Scheduler readiness is read from the actual app scheduler on every request;
+dependencies alone are cached. Loop/tick recency budget is
+`max(60 seconds, configured tick interval + 60 seconds)`. An initialized,
+loaded, advancing scheduler may report bounded first-tick warmup. Closed-market
+ticks are exempt from tick recency, but the scheduler loop must stay responsive.
+Absent explicitly disabled schedulers report disabled; enabled/missing or
+stopped schedulers fail readiness. These diagnostics never authorize watchdog
+restarts beyond the existing service-health/reachability recovery rules.
+
+The watchdog advances its alert cursor only through fully inspected oldest-first
+log windows. Queries start at 60 seconds, halve overflowing windows to one second,
+and stop after 12 queries or 10 seconds (with up to one additional second for its
+own read-only log-process cleanup). Responses are capped at 262,144 bytes and
+fewer than 1,000 lines. Truncation, failed reads and malformed saved cursors retain
+explicit backlog; they cannot certify or skip unread history.
+
+The candidate freeze additionally covers subscription synchronization, its
+timeout, constructor universe initialization and the diagnostics module.
+Runtime snapshots read the actual synchronization deadline and distinguish
+checked-out candidate policy from an observed deployed process. Full source and
+test evidence is in `artifacts/streaming_readiness_repair/`.
+
+## Scanner and streaming pipeline repair (deployed 2026-09-23)
+
+PR28 fixed provider-contract and streaming-state defects found during the
+September 22 paper session. Source `3acb796` was deployed September 23 with the
+approved active cutoff `2026-09-23T15:29:47.287731+00:00`; prior history was retained.
 See `docs/engineering/SESSION_PIPELINE_REPAIR.md` for the acceptance and rollout
 gates.
 
@@ -42,7 +100,7 @@ must never be installed as if its build timestamp were the activation time.
 
 Candidate references are separate from active cutoff authority. The canonical
 `artifacts/phase2/param_freeze.json` and readiness reference retain the approved
-installed September 22 artifact. Generation writes only
+installed September 23 artifact. Generation writes only
 `artifacts/phase2/candidate_param_freeze.json`, using `VALIDATED_AT` and explicit
 unapproved candidate flags, with no `FROZEN_AT`. `--verify --candidate` checks
 that surface without promotion. Active gate, attribution, reconciliation, daily

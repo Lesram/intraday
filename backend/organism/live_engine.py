@@ -103,6 +103,10 @@ from backend.organism.background_trainer import BackgroundTrainer
 from backend.organism.market_scanner import MarketScanner, SCAN_INTERVAL_TICKS
 from backend.strategies.types import TradingSignal
 from backend.utils.logger import get_logger
+from backend.organism.pipeline_diagnostics import (
+    PipelineDiagnostics, finite_age, entry_frame_age, subscription_state,
+)
+import json
 
 logger = get_logger(__name__)
 
@@ -601,6 +605,8 @@ class OrganismLiveEngine(
     that can be called by a scheduler (every bar interval).
     """
 
+    _STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S = 5.0
+
     def __init__(
         self,
         *,
@@ -624,6 +630,9 @@ class OrganismLiveEngine(
             for s in LIVE_UNIVERSE_CSV.split(",")
             if s.strip()
         ]
+
+        # Retain original subscription dependencies across discovery/rotation.
+        self._streaming_base_symbols = frozenset(self._universe) | {"SPY", "QQQ"}
 
         # ── Timeframe-aware config ───────────────────────────────
         self._timeframe = timeframe or LIVE_TIMEFRAME
@@ -2359,6 +2368,24 @@ class OrganismLiveEngine(
                     ],
                 )
 
+            finally:
+                diagnostics = getattr(self, "_pipeline_diagnostics", None)
+                if diagnostics is not None:
+                    try:
+                        diagnostics.finish()
+                        self._last_pipeline_diagnostics = diagnostics.snapshot()
+                        self._last_pipeline_diagnostics.update(
+                            tick=self._tick_count,
+                            universe_size=len(self._universe),
+                            entries_blocked_reason=getattr(self, "_last_entries_blocked_reason", ""),
+                            combined_candidates_pre_sizing=getattr(self, "_last_live_candidates_pre_sizing", 0),
+                            no_order_reason=getattr(self, "_last_no_order_reason", ""),
+                        )
+                        logger.info("Pipeline diagnostics: %s", json.dumps(
+                            self._last_pipeline_diagnostics, sort_keys=True, allow_nan=False))
+                    except Exception:
+                        logger.warning("Pipeline diagnostics unavailable")
+
     # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted helper.
     # The full pipeline-split of `_live_tick_inner` is multi-day
     # work; this wave extracts the simplest bounded block (cooldown
@@ -2670,12 +2697,50 @@ class OrganismLiveEngine(
                         [(s, round(a, 1)) for s, a in stale_syms[:5]],
                     )
             elif not self._data_stale and _was_stale:
-                logger.info("Data stream fresh again — stale-data entry block cleared")
+                logger.info("Data stream fresh again — freshness check passed")
         except Exception as _stale_err:
             self._data_stale = True
             logger.warning(
                 "Stale-data check failed — entries blocked: %s", _stale_err,
             )
+
+    async def _sync_streaming_subscriptions(self, current_positions: dict) -> None:
+        """Align live subscriptions after discovery, before any entry dispatch.
+
+        Retry every tick using the already-fetched position snapshot. Existing
+        blocks remain sticky for this tick; successful transport submission does
+        not manufacture a fresh bar or clear a prior safety gate.
+        """
+        provider = self._streaming_provider
+        if provider is None:
+            return
+        try:
+            desired = sorted(
+                set(self._streaming_base_symbols)
+                | set(self._universe)
+                | set(current_positions)
+            )
+            synchronized = await asyncio.wait_for(
+                provider.update_subscriptions(desired), timeout=self._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S,
+            )
+            if synchronized is not True:
+                raise RuntimeError("subscription_update_incomplete")
+            self._stage_update_data_staleness()
+            if self._data_stale:
+                self._entries_blocked = True
+                if not self._last_entries_blocked_reason:
+                    self._last_entries_blocked_reason = "stale_data"
+            self._stream_subscription_sync_failed = False
+        except Exception as error:
+            self._entries_blocked = True
+            if not self._last_entries_blocked_reason:
+                self._last_entries_blocked_reason = "stream_subscription_sync"
+            if not getattr(self, "_stream_subscription_sync_failed", False):
+                logger.warning(
+                    "Streaming subscription synchronization incomplete — "
+                    "entries blocked (%s)", type(error).__name__,
+                )
+            self._stream_subscription_sync_failed = True
 
     def _get_strategy_selector(self):
         """Lazily build + cache the momentum-only live StrategySelector.
@@ -2898,6 +2963,7 @@ class OrganismLiveEngine(
             timestamp=self._now_fn().isoformat(),
         )
         self._tick_count += 1
+        self._pipeline_diagnostics = PipelineDiagnostics()
         # Gate-level rejection telemetry (reset each tick)
         self._last_gate_rejections: dict[str, int] = {}
         self._last_entries_blocked_reason: str = ""
@@ -2921,6 +2987,7 @@ class OrganismLiveEngine(
             # Run every 30 ticks (~5 min) to avoid hammering reconnect.
             await self._stage_check_stream_health(result, now_iso)
 
+            self._pipeline_diagnostics.stage("freshness_and_entry_blockers")
             # 0.5 STALE DATA GATE — check streaming provider freshness.
             # V9 PP-6 / Wave-45 (2026-05-03): also check PER-SYMBOL
             # staleness via stale_symbols(). The aggregate
@@ -2983,6 +3050,7 @@ class OrganismLiveEngine(
                         "(EOD flatten disabled this tick)", exc,
                     )
 
+            self._pipeline_diagnostics.stage("scanner")
             # 1.5 MARKET SCAN (Phase 5) — discover new stocks
             # A2 away-mode fix: scanner MUST run even when entries are blocked
             # so that tension_lookup stays populated (prevents death spiral
@@ -3060,6 +3128,7 @@ class OrganismLiveEngine(
                                 _alert_err,
                             )
 
+            self._pipeline_diagnostics.stage("features")
             # 2. FETCH LATEST DATA
             features_by_symbol = await self._fetch_and_compute_features()
             features_by_symbol = trim_feature_frames_asof(features_by_symbol, now_iso)
@@ -3082,6 +3151,7 @@ class OrganismLiveEngine(
                     len(features_by_symbol),
                 )
 
+            self._pipeline_diagnostics.stage("regime_and_shadow")
             # 3. DETECT REGIME (Phase 4.3: cross-asset conditioning)
             # Skip regime detection when features are insufficient — it
             # requires meaningful price data to function.
@@ -3260,8 +3330,10 @@ class OrganismLiveEngine(
                     features_by_symbol, regime=regime, now_iso=now_iso,
                 )
 
+            self._pipeline_diagnostics.stage("position_management_and_entry_prechecks")
             # 4. GET CURRENT POSITIONS from broker
             current_positions = await self._positions_service.get_all_positions()
+            await self._sync_streaming_subscriptions(current_positions)
             open_symbols = set(current_positions.keys())
             equity = await self._get_equity()
 
@@ -4225,6 +4297,7 @@ class OrganismLiveEngine(
                                     sym, action.new_stop, old_stop,
                                 )
 
+                self._pipeline_diagnostics.stage("entry_pipeline")
                 # 7. SCAN FOR NEW ENTRIES
                 # Breakout scan
                 data_for_scanner = {
@@ -4321,6 +4394,8 @@ class OrganismLiveEngine(
                     or getattr(self, "_alpha_breakout_late_blocked", False)
                 )
                 _candidates_iter = [] if _ab_disabled else candidates
+                self._pipeline_diagnostics.alpha_scanned = len(candidates)
+                self._pipeline_diagnostics.alpha_considered = len(_candidates_iter)
                 for c in _candidates_iter:
                     # Shared entry gates (alpha + breakout use same helper)
                     _gate_ok, _gate_reason = self._passes_entry_gates(
@@ -4331,6 +4406,7 @@ class OrganismLiveEngine(
                     )
                     if not _gate_ok:
                         _rej_counts[_gate_reason] = _rej_counts.get(_gate_reason, 0) + 1
+                        self._pipeline_diagnostics.alpha_terminal["shared_gate:" + _gate_reason] += 1
                         if _gate_reason == "sector_gate":
                             logger.info(
                                 "Sector gate blocked %s (sector=%s, planned=%s)",
@@ -4351,6 +4427,7 @@ class OrganismLiveEngine(
 
                     # B3 (improve8): Data-source provenance — determine freshness
                     _data_source = "rest_fallback"
+                    _bar_age = None
                     if self._streaming_provider is not None:
                         _bar_age = self._streaming_provider.get_bar_age(c.symbol)
                         if _bar_age < 20.0:
@@ -4489,18 +4566,23 @@ class OrganismLiveEngine(
                         _eff_conf = confidence
 
                     _route_exploration = False
+                    _routing_reason = "accepted"
                     if _is_heuristic:
                         _route_exploration = True
+                        _routing_reason = "heuristic"
                     elif _trending_down_block or _regime_cooldown_active:
                         # A5: Route to exploration during trending-down / regime cooldown
                         _route_exploration = True
+                        _routing_reason = "trending_down" if _trending_down_block else "regime_cooldown"
                     elif _data_source != "streaming" and self._streaming_provider is not None:
                         # B3: Main-book requires streaming data; rest/stale → exploration
                         _route_exploration = True
+                        _routing_reason = "streaming_receipt_age"
                     elif self._conf_gates_on() and _eff_conf < _EXPL_CONF_GATE:
                         # Below exploration gate → reject outright
                         _rej_counts["confidence_gate"] += 1
                         _rej_counts["below_expl_conf"] += 1
+                        self._pipeline_diagnostics.alpha_terminal["below_exploration_confidence"] += 1
                         logger.info(
                             "Confidence reject: %s (eff_conf=%.2f < %.2f)",
                             c.symbol, _eff_conf, _EXPL_CONF_GATE,
@@ -4508,8 +4590,10 @@ class OrganismLiveEngine(
                         continue
                     elif self._conf_gates_on() and _eff_conf < _MIN_MAIN_CONF:
                         _route_exploration = True
+                        _routing_reason = "below_main_confidence"
 
                     if _route_exploration:
+                        self._pipeline_diagnostics.alpha_terminal[_routing_reason] += 1
                         _rej_counts["confidence_gate"] += 1
                         _rej_counts["below_main_conf"] += 1
                         # improve9 A7: Log exploration-eligible candidates
@@ -4517,8 +4601,13 @@ class OrganismLiveEngine(
                         # queue was dead code — no executor ever processed it.
                         logger.info(
                             "Entry below main-book threshold: %s "
-                            "(eff_conf=%.2f, heuristic=%s, regime=%s)",
-                            c.symbol, _eff_conf, _is_heuristic, regime,
+                            "(eff_conf=%.2f, heuristic=%s, regime=%s, reason=%s, "
+                            "receipt_age_s=%s, frame_age_s=%s, subscribed=%s, fetch_source=%s)",
+                            c.symbol, _eff_conf, _is_heuristic, regime, _routing_reason,
+                            finite_age(_bar_age),
+                            entry_frame_age(self, c.symbol, c.direction),
+                            subscription_state(self._streaming_provider, c.symbol),
+                            getattr(self, "_last_bar_fetch_sources", {}).get(c.symbol, "unobserved"),
                         )
                         continue
                     _cand_dict = {
@@ -4559,6 +4648,7 @@ class OrganismLiveEngine(
                     if self._record_defensive_filtered_candidate(
                         _cand_dict, regime, _defensive_filtered_cand_dicts,
                     ):
+                        self._pipeline_diagnostics.alpha_terminal["defensive_filter"] += 1
                         _rej_counts["defensive_filter"] += 1
                         _rej_counts["confidence_gate"] += 1
                         continue
@@ -4566,7 +4656,9 @@ class OrganismLiveEngine(
                         _cand_dict, _defensive_filtered_cand_dicts,
                     ):
                         _rej_counts["direction_zero"] += 1
+                        self._pipeline_diagnostics.alpha_terminal["direction_zero"] += 1
                         continue
+                    self._pipeline_diagnostics.alpha_terminal["candidate_built"] += 1
                     cand_dicts.append(_cand_dict)
                     _planned_entries.add(c.symbol)
 
@@ -5472,6 +5564,7 @@ class OrganismLiveEngine(
                 # execution" invariant. Exploration-eligible candidates are
                 # now logged only (see improve9 A7 above) and never executed.
 
+            self._pipeline_diagnostics.stage("accounting_and_persistence")
             # 10. RECORD TRADE OUTCOMES from closed positions
             await self._reconcile_fills(features_by_symbol)
 
@@ -7955,6 +8048,7 @@ class OrganismLiveEngine(
 
         trading_phase = self._trading_phase
         return {
+            "pipeline_diagnostics": getattr(self, "_last_pipeline_diagnostics", None),
             "initialized": self._initialized,
             "tick_count": self._tick_count,
             "total_trades": total_trades,

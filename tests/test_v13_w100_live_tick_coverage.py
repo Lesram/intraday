@@ -63,7 +63,10 @@ LIVE_ENGINE_PATH = REPO_ROOT / "backend" / "organism" / "live_engine.py"
 # PR27 approved final freshness rejection handling adds 18 lines to the
 # previous 2805 ceiling. This candidate adds one scanner-error pool-clear line.
 # Both deltas are explicitly reviewed; there is no spare growth tolerance.
-LIVE_TICK_INNER_LOC_CEILING = 2_805 + 18 + 1
+# September24 repair:28 additional lines for explicit rejection causes,
+# non-decision timing/counters and the one subscription synchronization call.
+# This is a scoped reviewed addition; the parked decomposition is unchanged.
+LIVE_TICK_INNER_LOC_CEILING = 2_805 + 18 + 1 + 28
 
 
 def _find_live_tick_inner_loc() -> int:

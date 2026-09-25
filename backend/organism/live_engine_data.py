@@ -44,6 +44,7 @@ class _DataFeederMixin:
         from backend.organism.ml_features import compute_ml_features
         from backend.organism.multi_timeframe import add_multi_timeframe_features
 
+        self._last_bar_fetch_sources = {}
         features_by_symbol: dict[str, pd.DataFrame] = {}
         spy_df = None
         _concurrency = asyncio.Semaphore(10)  # Max 10 parallel bar fetches
@@ -162,11 +163,15 @@ class _DataFeederMixin:
         """
         from backend.organism.live_engine import LIVE_LOOKBACK, LIVE_TIMEFRAME, MIN_BARS
 
+        if not hasattr(self, "_last_bar_fetch_sources"):
+            self._last_bar_fetch_sources = {}
+        self._last_bar_fetch_sources[symbol] = "unavailable"
         # ── Streaming fast-path ──────────────────────────────────
         if self._streaming_provider is not None:
             try:
                 df = self._streaming_provider.get_bars(symbol, LIVE_LOOKBACK)
                 if df is not None and not df.empty and len(df) >= MIN_BARS:
+                    self._last_bar_fetch_sources[symbol] = "stream_buffer"
                     return df
                 # Fall through to REST if streaming buffer insufficient
             except Exception as e:
@@ -218,6 +223,7 @@ class _DataFeederMixin:
                 "Volume": "volume",
             }
             df = df.rename(columns=col_map)
+            self._last_bar_fetch_sources[symbol] = "rest"
             return df
 
         except Exception as e:
