@@ -1,0 +1,22 @@
+{
+  "label": "watchdog_02",
+  "exit_code": 0,
+  "seconds": 3.56,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/watchdog_02.xml",
+    "tests/test_readiness_contract.py",
+    "tests/test_paper_watchdog.py",
+    "tests/test_health_endpoints.py",
+    "tests/unit/generated/test_auto_health.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

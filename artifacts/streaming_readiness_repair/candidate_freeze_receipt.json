@@ -1,0 +1,48 @@
+{
+  "candidate_only": true,
+  "deployment_approved": false,
+  "active_forward_cutoff_unchanged": "2026-09-23T15:29:47.287731+00:00",
+  "active_freeze_sha256_unchanged": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+  "candidate_sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d",
+  "changed_paths": [
+    "surface.data_pipeline_sources.live_engine_data",
+    "surface.data_pipeline_sources.pipeline_diagnostics",
+    "surface.data_pipeline_sources.staleness_admission",
+    "surface.data_pipeline_sources.streaming_data_provider",
+    "surface.data_pipeline_sources.streaming_subscription_sync",
+    "surface.data_pipeline_sources.streaming_subscription_timeout",
+    "surface.data_pipeline_sources.streaming_universe_initialization",
+    "surface.research_policy_sources.scheduler",
+    "surface.source_hashes.entry_gates_dispatch"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python",
+        "scripts/phase2_freeze.py"
+      ],
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "python",
+        "scripts/phase2_freeze.py",
+        "--verify",
+        "--candidate"
+      ],
+      "exit_code": 0,
+      "log": "candidate_verify.log"
+    },
+    {
+      "command": [
+        "python",
+        "scripts/phase2_freeze.py",
+        "--verify"
+      ],
+      "exit_code": 1,
+      "log": "prior_active_drift.log"
+    }
+  ],
+  "note": "Expected prior-active mismatch documents approved candidate changes; candidate verification passes. Production active verification was separately run against installed source and passed. No active clock reset."
+}

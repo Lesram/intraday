@@ -1,0 +1,35 @@
+{
+  "status": "ARCHIVED_UNACCEPTED_REMOVED_FROM_OPERATIONAL_SOURCE",
+  "captured_at": "2026-09-25T05:05:37.101599+00:00",
+  "base_head": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "prototype_source_sha256": "aa7ae4b9ae7f6eadf585ed73c0dec367641a288b3cb061a899f370d9916fbff5",
+  "prototype_test_sha256": "740e3fa21518e01749e4871194a45c828a439041f6d4fc4643ab8a7eb97054f0",
+  "restored_source_sha256": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+  "preserved_root_behavior": "Six added lines reset/record per-symbol stream_buffer/rest/unavailable fetch origin. No cache code retained.",
+  "why_unaccepted": "Finished compute_ml_features output includes a swallowed composite calculation exception; reusing it could suppress retry. Correcting the scalar arithmetic changes strategy inputs and awaits explicit user approval. Cache tests do not constitute acceptance of that retry boundary.",
+  "decision_source_changed": false,
+  "prototype_tests_collectable": false,
+  "no_runtime_changes": true,
+  "files": {
+    "live_engine_data.pre_cache.py.txt": {
+      "sha256": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+      "bytes": 9875
+    },
+    "removal_plan.json": {
+      "sha256": "f7ab27b0badf2b6e277da19bc87818ab018653bfc1e36e4a7cce6bfec0528474",
+      "bytes": 389
+    },
+    "live_engine_data.prototype.py.txt": {
+      "sha256": "aa7ae4b9ae7f6eadf585ed73c0dec367641a288b3cb061a899f370d9916fbff5",
+      "bytes": 19817
+    },
+    "pipeline_feature_cache_tests.py.txt": {
+      "sha256": "740e3fa21518e01749e4871194a45c828a439041f6d4fc4643ab8a7eb97054f0",
+      "bytes": 13347
+    },
+    "feature_cache.patch": {
+      "sha256": "a30f81fcbbf12aa47a7cdf48b9e0bc58fba5c1824bfaa27ed48d074d47bb9fab",
+      "bytes": 13067
+    }
+  }
+}

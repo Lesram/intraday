@@ -1,0 +1,9 @@
+{"universe": 20, "pass_kind": "timed", "iteration": 0, "elapsed_seconds": 3.588}
+{"universe": 20, "pass_kind": "timed", "iteration": 1, "elapsed_seconds": 3.585}
+{"universe": 20, "pass_kind": "timed", "iteration": 2, "elapsed_seconds": 3.639}
+{"universe": 20, "pass_kind": "profiled", "iteration": 3, "elapsed_seconds": 11.258}
+{"universe": 69, "pass_kind": "timed", "iteration": 0, "elapsed_seconds": 12.951}
+{"universe": 69, "pass_kind": "timed", "iteration": 1, "elapsed_seconds": 13.001}
+{"universe": 69, "pass_kind": "timed", "iteration": 2, "elapsed_seconds": 12.945}
+{"universe": 69, "pass_kind": "profiled", "iteration": 3, "elapsed_seconds": 40.126}
+{"output": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/profile_results.json", "loads": [20, 69], "median_seconds": [3.5881461660028435, 12.951112792012282]}

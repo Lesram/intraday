@@ -1,0 +1,38 @@
+{
+  "task_id": "readiness_diagnostics_20260924",
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "owned_files": [
+    "backend/api/routes/health.py",
+    "backend/organism/scheduler.py",
+    "scripts/ops/paper_watchdog.py",
+    "tests/test_readiness_contract.py",
+    "tests/test_paper_watchdog.py"
+  ],
+  "scope": [
+    "Typed dependency outcome classification without elapsed-time inference",
+    "Explicit Redis identity preserving legacy broker key",
+    "Actual application scheduler liveness with bounded market-aware warmup",
+    "Dependency-only monotonic microcache, fresh runtime observation",
+    "Monotonic scheduler observation clocks only",
+    "Watchdog typed fields allowlist; oldest-complete log paging with retained unread cursor"
+  ],
+  "preserved": [
+    "100ms database and 200ms Redis timeout budgets",
+    "2s dependency cache TTL",
+    "Watchdog recovery authority",
+    "Trading decisions, exits, configuration, history and active freeze"
+  ],
+  "coordination": "Root owns any scheduler diagnostic timestamp fields and docs/snapshot changes; no organism edits by this implementer.",
+  "validation": "Actual factory-registered ASGI route with isolated fake dependencies/scheduler; timeout/exception/false/cancellation/cache and missing/stopped/closed/warmup/stale cases, plus unchanged watchdog regressions.",
+  "execution": "Only parent-provided isolated_test_runner.py; no runtime, broker, authentication, deployment or commit actions.",
+  "paging_bounds": {
+    "initial_window_seconds": 60,
+    "minimum_window_seconds": 1,
+    "maximum_queries": 12,
+    "total_query_budget_seconds": 10,
+    "owned_child_cleanup_timeout_seconds": 1,
+    "maximum_bytes_per_query": 262144,
+    "maximum_complete_window_lines_exclusive": 1000,
+    "docker_tail_used": false
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "label": "profile_04",
+  "exit_code": 1,
+  "seconds": 105.42,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/profile_04.xml",
+    "artifacts/streaming_readiness_repair/profile_experiment.py",
+    "--timeout=1300"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

@@ -1,0 +1,140 @@
+{
+  "task_id": "streaming_subscription_readiness",
+  "status": "scoped_implementation_and_tests_complete",
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "candidate_only": true,
+  "files_sha256": {
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "tests/test_scanner_streaming_integration.py": "b5190963ff671ebd1766f5a2675715aa92228f53b3ce00e1c9c25f11f7c1f3aa",
+    "tests/test_entry_freshness.py": "0460f5478dfd7570e2aa378726ab5fdecd4a81d1d5ddcb98ec89eb84a5a5a970",
+    "tests/test_pipeline_diagnostics.py": "d3e5257dbf23949cf3e4c6246f144165bb6239ad1d4d863c88f44ed8f95855a1"
+  },
+  "ownership": "Subscription helper/base-universe field/call in live_engine; provider update result; new subscription integration tests; one entry-freshness mock contract field; six actual-alpha diagnostic tests. Other live_engine changes authored by root.",
+  "behavior": [
+    "Synchronize immutable constructor base, SPY/QQQ, feature universe and fresh held positions each tick using existing positions query",
+    "Strict successful transport result and bounded 5s wait; exceptions/incomplete sync block new entries",
+    "Recheck global freshness before entry processing; new symbols have no streaming provenance until real advancing fresh bar; no REST prefill",
+    "Earlier entry block remains sticky this tick; protective exits/EOD paths retained"
+  ],
+  "tests": {
+    "subscription_01": {
+      "tests": 13,
+      "failures": 13,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "dfa5da7dcee49dccde2ac08d7036ceb89b4647c35fa1a91e42e0214b5013eee2",
+      "receipt_sha256": "f26fcacf711edbfb6d95a925584cee1a7b9a29220891a79fc9dcff16ce5ce8ce"
+    },
+    "subscription_02": {
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "02ebbcc365a731ea8c340ec89e809fb54b37c1aad8e84c9899b8aa30993899ca",
+      "receipt_sha256": "5dc9e645dda1bc5a29c0a172df7aafbc14a0e1c7dfa2463a66507d1cf042af72"
+    },
+    "subscription_03": {
+      "tests": 161,
+      "failures": 7,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "6f01be33c0d23055e5cdc05dc853983f621d78bf992baf0c3f820b16bb70b8eb",
+      "receipt_sha256": "1deeddbf44be7e3342236722bf589484792a4689ea82591eb0cca150dd402174"
+    },
+    "subscription_04": {
+      "tests": 62,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "3d65ec9f66011707a128101a2c882877e2179732f12c65a97c37d7b681582d4f",
+      "receipt_sha256": "900adada9068ba353939963553593a2a9e1e26bd57ac33db8a8ac875df1522e7"
+    },
+    "diagnostic_routes_01": {
+      "tests": 28,
+      "failures": 6,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "e8ec625ffe95d45de224c10030114da539a2da7bb024091494b154eba42ba416",
+      "receipt_sha256": "560d09c6101aa8b8afc06a2f3b21a8f808edb1fb11f0b723980f1b29d3b67e01"
+    },
+    "diagnostic_routes_02": {
+      "tests": 15,
+      "failures": 6,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "08048a8113ba3aba8296e1586f9efe3220183259aff33500b77763874cc97bd7",
+      "receipt_sha256": "3c8e09472112bb6619c4eecb7368ff7946ae3777f443d89939ff8cdd62e9ff10"
+    },
+    "diagnostic_routes_03": {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "c0d3c7996e420326fb65c7941d0be8b3a0192b35b5de88877ac09dcf9b80557b",
+      "receipt_sha256": "921c2495d2492eb8f1c0e4cc30af0af3bb2c99d96808b664849616a17e764b00"
+    },
+    "subscription_final": {
+      "tests": 176,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "b1e5a28885d6f88c3521034738a0c8f5bbc53f7372931806c0f70d94548cf359",
+      "receipt_sha256": "d9dd85b9bf6511ef958e1563b30e91fb00e1ed157144d7d126c84dc6755ce43d"
+    },
+    "diagnostic_routes_final": {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "eef84babeb535153aeac677c22d443f434de9a3aae7acb74b9b1f8e2ddec0c68",
+      "receipt_sha256": "3f9515d410c4591de484a95849c99bc470068452f0e7f7f8a230fb5215aed2e0"
+    }
+  },
+  "red_test_dispositions": {
+    "subscription_01": "Candidate helper absent because initial source edit was applied in wrong working directory; immediately restored as recorded below. Not a candidate product regression.",
+    "subscription_03": "Six old mock-provider fixtures lacked awaitable successful subscription API; fixture updated without assertion changes. One LOC pin reflected 28 explicitly approved combined diagnostic/sync lines; root updated exact pin.",
+    "diagnostic_routes_01": "Six new test cases compared integer orders_submitted to list; test corrected to zero.",
+    "diagnostic_routes_02": "Six new test fake stale_symbols functions lacked actual keyword signature; test contract corrected, production fail-closed behavior unchanged."
+  },
+  "measured_coverage": {
+    "new_subscription_cases": 13,
+    "actual_recovery_entry_replays": 3,
+    "actual_msft_entries_per_replay": 1,
+    "wait_from_scanner_injection_to_first_live_bar_seconds": 180,
+    "sparse_newcomer_globalblock_seconds_explicit_unit": 131,
+    "actual_held_eod_exit_replays": 2,
+    "actual_eod_closes_per_replay": 1,
+    "new_alpha_reason_cases": 6,
+    "final_combined": {
+      "tests": 176,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "junit_sha256": "b1e5a28885d6f88c3521034738a0c8f5bbc53f7372931806c0f70d94548cf359",
+      "receipt_sha256": "d9dd85b9bf6511ef958e1563b30e91fb00e1ed157144d7d126c84dc6755ce43d"
+    }
+  },
+  "risks_and_limits": [
+    "Expanding subscriptions to all desired symbols can INCREASE global PP-6 blocking when any sparse newcomer lacks bars; this policy is preserved, not resolved by admission tests.",
+    "Fake transport and simulated broker exercise actual provider/engine/receipt paths with causal cached features; same-bar optimistic simulated fills are mechanical correctness evidence, not expectancy/profitability evidence.",
+    "Healthy small-universe simulation does not establish real 69-symbol feed availability or quote freshness; 20s receipt route and 120s actual feature-bar final guard remain unchanged.",
+    "Candidate source changes require frozen-surface review and explicit release cutoff; no active freeze/reset/deployment by this agent.",
+    "Root owns required full regression/artifact pack, independent review and PR completion."
+  ],
+  "process_incident": {
+    "description": "First edit command omitted candidate workdir and changed two installed host source files. Work stopped and exact own spans restored before further work.",
+    "paths": [
+      "backend/organism/live_engine.py",
+      "backend/organism/streaming_data_provider.py"
+    ],
+    "restoration_receipt": "/private/tmp/intra-sept24-session-analysis/accidental_source_edit_restoration.json",
+    "restored_sha256": {
+      "backend/organism/live_engine.py": "fad1469f4f37f524a0bbe67d1d8c4358cc93f4d81c5dc2dbbf98cbf7516cb083",
+      "backend/organism/streaming_data_provider.py": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838"
+    },
+    "root_independently_verified": "Installed bytes equal HEAD; active freeze exit0; container identity/start/restarts unchanged; mounts only data/logs/brain and no host source. Root authorized candidate-only resumption.",
+    "mitigation": "All subsequent commands specify candidate workdir and edits use absolute candidate paths."
+  },
+  "final_fixture_note": "After 176 green, corrected diagnostic fixture scanner attribute to public market_scanner so tension is sourced from the actual scanner interface; full diagnostics15 rerun green. Production source unchanged; original176 result retained."
+}

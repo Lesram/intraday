@@ -1,0 +1,13 @@
+{
+  "task_id": "unchanged_input_ml_feature_cache_20260924",
+  "authorization": "Root explicitly authorized a bounded production optimization after synthetic profiling; paper-only, no strategy tuning or active deployment changes.",
+  "owned_source": ["backend/organism/live_engine_data.py", "tests/test_pipeline_feature_cache.py"],
+  "diagnostic_owned_followup": ["scripts/diagnostics/profile_paper_pipeline.py", "tests/test_pipeline_profile.py", "artifacts/streaming_readiness_repair/profile_*"],
+  "design": "Cache only compute_ml_features outputs. Preserve feature-store computation, QA, snapshot timestamps, performance logging, merges, multi-timeframe features and actual data/freshness fetches every tick.",
+  "identity": ["All raw rows, columns, dtypes, index and timestamps", "SPY reference exact content", "bars_per_day and effective timeframe", "Known feature-store and engineer configuration", "Loaded computation function/module identity"],
+  "guards": ["Unknown mutable data/store/dependencies disable cache", "Hash plus exact frame equality; copied inputs and copied cached outputs", "One entry per symbol, bounded entries and bytes", "Prune departed symbols only after held-position feature coverage", "Never cache decisions or bypass stale/REST fetch behavior"],
+  "tests": ["Baseline/cached feature equality", "Unchanged reuse with feature-store side effects retained", "Same-timestamp OHLCV correction and prior-row change", "SPY changes, bar advance, index/dtype/column changes, bars_per_day/timeframe/config/source changes", "Consumer mutation isolation", "Unknown mutable dependencies bypass", "Bounded memory and pruning with held symbols", "Stale inputs re-fetch; failures cannot return cached features", "Real streaming/replay parity with actual gates/exits", "20/69-symbol unchanged-input benchmark before/after"],
+  "profile_correction": "Prior profile_06 timed wall/process/thread CPU and exact hashes remain valid; negative cross-thread cProfile feature-store self-times are explicitly unusable. Follow-up fine-grained diagnostic pass runs functions inline on one thread; timed passes remain threaded.",
+  "scope_excluded": ["No changes to live_engine.py or strategy methods", "No fresh broker/API/credential calls", "No active cutoff, env, brain or model writes", "No commit or deployment by this agent"],
+  "combined_validation_owner": "Root runs required organism/replay/full-pack/freeze integration after scoped tests and independent review."
+}

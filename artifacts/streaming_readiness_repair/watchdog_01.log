@@ -1,0 +1,28 @@
+........................................................................ [ 37%]
+........................................................................ [ 74%]
+........................................F........                        [100%]
+=================================== FAILURES ===================================
+_______ test_truncated_window_splits_without_acknowledging_unread_prefix _______
+tests/test_paper_watchdog.py:928: in test_truncated_window_splits_without_acknowledging_unread_prefix
+    assert result["new_events"] == 4 and result["scan_status"] == "complete"
+E   assert (5 == 4)
+=============================== warnings summary ===============================
+<string>:15
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+0.80s call     tests/test_readiness_contract.py::test_actual_scheduler_start_resets_old_session_clocks
+0.20s call     tests/test_readiness_contract.py::test_actual_probe_deadline_and_cleanup[True-1-broker]
+0.20s call     tests/test_readiness_contract.py::test_actual_probe_deadline_and_cleanup[False-1-broker]
+0.10s call     tests/test_readiness_contract.py::test_actual_probe_deadline_and_cleanup[True-0-database]
+0.10s call     tests/test_readiness_contract.py::test_actual_probe_deadline_and_cleanup[False-0-database]
+0.03s call     tests/test_readiness_contract.py::test_parent_cancellation_propagates_without_cached_ready
+0.02s call     tests/test_paper_watchdog.py::test_policy_attention_retries_without_service_recovery_or_private_payloads
+0.01s setup    tests/test_paper_watchdog.py::test_policy_probe_checks_actual_shared_identity_and_startup_contract
+0.01s setup    tests/test_paper_watchdog.py::test_policy_probe_rejects_healthy_api_with_wrong_runtime[changed_params]
+
+(1 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/test_paper_watchdog.py::test_truncated_window_splits_without_acknowledging_unread_prefix
+1 failed, 192 passed, 1 warning in 3.07s

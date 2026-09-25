@@ -1,0 +1,36 @@
+{
+  "status": "REVIEW_PENDING_PREFIX_EXTRACTION_DECISION",
+  "production_runtime_changed": false,
+  "finding": "Complete ML output includes graceful composite fallback. Caching that output would suppress a later retry. Scalar100 passed to _safe_div hits a.abs() and produces AttributeError on actual synthetic80/500bar calls; allseven composites observedzero.",
+  "source_refs": {
+    "backend/organism/composite_indicators.py": {
+      "sha256": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+      "lines": [
+        43,
+        159
+      ]
+    },
+    "backend/organism/ml_features.py": {
+      "sha256": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+      "lines": [
+        441,
+        449
+      ]
+    }
+  },
+  "reproduction_scope": "Cleanenv, networkdenied Python; synthetic bars only; direct function calls, noengine/model/runtime/credentials.",
+  "observed": [
+    {
+      "rows": 80,
+      "nonzero_composite_cells": 0,
+      "exception_type": "AttributeError"
+    },
+    {
+      "rows": 500,
+      "nonzero_composite_cells": 0,
+      "exception_type": "AttributeError"
+    }
+  ],
+  "accepted_baseline": "profile_baseline_assessment.json timedspans/hashes valid; no cache latency or trading improvement certified yet.",
+  "proposal": "Cache pure expensive ML prefix before composites, preserving composite retry and cleanup eachcall; needsrootowned scope amendment. Do not repair composite arithmetic as an unreviewed cache sideeffect."
+}

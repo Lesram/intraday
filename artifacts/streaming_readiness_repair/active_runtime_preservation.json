@@ -1,0 +1,21 @@
+{
+  "active_container_unchanged": {
+    "id": "9433e8ebd6248e51ce7c66a99350057e777023064a43be6f5f9613d6de6fd21e",
+    "image_digest": "sha256:16805a19dcbe943003213305cedb6585bec374b8346b88df47fe251d5dfd1e8a",
+    "started_at": "2026-09-23T15:45:16.945454877Z",
+    "restart_count": 0,
+    "status": "running",
+    "health": "healthy"
+  },
+  "installed_source_sha256": {
+    "backend/organism/live_engine.py": "fad1469f4f37f524a0bbe67d1d8c4358cc93f4d81c5dc2dbbf98cbf7516cb083",
+    "backend/organism/streaming_data_provider.py": "0681999f142e9cfbf0a2217d35fdd5bdd522a45b7675a2ba08e81d3c36b1a838"
+  },
+  "active_freeze_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+  "active_cutoff": "2026-09-23T15:29:47.287731+00:00",
+  "active_verification_exit": 0,
+  "verification_method": "Installed script and module source against exact canonical freeze copy in private scratch cwd; imported logger writes confined to scratch. Actual frozen environment from earlier same immutable container ID.",
+  "deployment_performed": false,
+  "process_incident": "Two installed source files were briefly edited by a command without explicit workdir. Exact original bytes restored; runtime source is image-contained, not bind-mounted. No restart, image change or boundary change.",
+  "prior_check_failure": "A stricter read-only verification invocation was refused because installed logger tried to open its relative audit_trail.log. Retained failure log; rerun uses scratch cwd, not relaxed production write permissions."
+}

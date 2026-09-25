@@ -1,0 +1,24 @@
+{
+  "label": "required_broker_config_01",
+  "exit_code": 0,
+  "seconds": 7.53,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/required_broker_config_01.xml",
+    "tests/test_order_integrity_comprehensive.py",
+    "tests/test_position_reconciliation.py",
+    "tests/test_position_reconciliation_comprehensive.py",
+    "tests/test_settings_comprehensive.py",
+    "tests/test_config_coordinator_comprehensive.py",
+    "tests/test_system_integration.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

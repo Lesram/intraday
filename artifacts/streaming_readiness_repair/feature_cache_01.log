@@ -1,0 +1,26 @@
+....................                                                     [100%]
+=============================== warnings summary ===============================
+tests/test_pipeline_feature_cache.py::test_unchanged_inputs_reuse_only_ml_and_preserve_feature_store_side_effects
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_pipeline_feature_cache.py: 73 warnings
+  /Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/multi_timeframe.py:155: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+    df[col] = 0.0
+
+tests/test_pipeline_feature_cache.py::test_returned_frame_mutation_cannot_poison_cache
+  /Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/tests/test_pipeline_feature_cache.py:74: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+    received["SYN001"]["consumer_only"] = 1
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+2.30s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+1.88s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]
+0.53s call     tests/test_pipeline_feature_cache.py::test_advanced_bar_and_earlier_row_change_invalidate
+0.38s call     tests/test_pipeline_feature_cache.py::test_configuration_changes_never_reuse_old_ml_output[store_config]
+0.36s call     tests/test_pipeline_feature_cache.py::test_same_bar_correction_and_spy_dependency_miss_with_exact_cold_parity[SPY-close]
+0.35s call     tests/test_pipeline_feature_cache.py::test_configuration_changes_never_reuse_old_ml_output[engineer_config]
+0.35s call     tests/test_pipeline_feature_cache.py::test_configuration_changes_never_reuse_old_ml_output[timeframe]
+0.35s call     tests/test_pipeline_feature_cache.py::test_configuration_changes_never_reuse_old_ml_output[bars_per_day]
+0.34s call     tests/test_pipeline_feature_cache.py::test_unknown_mutable_computation_wrapper_bypasses_cache
+0.32s call     tests/test_pipeline_feature_cache.py::test_same_bar_correction_and_spy_dependency_miss_with_exact_cold_parity[SYN001-volume]
+20 passed, 75 warnings in 9.71s

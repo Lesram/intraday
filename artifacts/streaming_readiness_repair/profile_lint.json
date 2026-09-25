@@ -1,0 +1,19 @@
+{
+  "command": "ruff check scripts/diagnostics/profile_paper_pipeline.py tests/test_pipeline_profile.py artifacts/streaming_readiness_repair/profile_experiment.py",
+  "exit_code": 0,
+  "checked_files": {
+    "scripts/diagnostics/profile_paper_pipeline.py": {
+      "sha256": "d0ff45ff8ef5732fe7b6b3c3c0f10b8f9ade313e91227b650badf6213761992c",
+      "bytes": 16392
+    },
+    "tests/test_pipeline_profile.py": {
+      "sha256": "fe50479a6c054fe4a2f43f3f1f8877af5e65d04c7f84d53c1ac53a9f90afd9bc",
+      "bytes": 4595
+    },
+    "artifacts/streaming_readiness_repair/profile_experiment.py": {
+      "sha256": "1d90b291db47e08fc9ca7a88c4858d7a5d0e2da39a7d5ef9d3b855344d527c1e",
+      "bytes": 1800
+    }
+  },
+  "scope": "Only owned profiler source/test/harness; does not attest unrelated source"
+}

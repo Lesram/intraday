@@ -1,0 +1,272 @@
+[
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 91
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/api/routes/health.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 91
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 91,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 183
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/api/routes/health.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 183
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 183,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "S110",
+    "end_location": {
+      "column": 25,
+      "row": 207
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/api/routes/health.py",
+    "fix": null,
+    "location": {
+      "column": 17,
+      "row": 206
+    },
+    "message": "`try`-`except`-`pass` detected, consider logging the exception",
+    "noqa_row": 206,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/try-except-pass"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 33,
+      "row": 206
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/api/routes/health.py",
+    "fix": null,
+    "location": {
+      "column": 24,
+      "row": 206
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 206,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 29,
+      "row": 172
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 20,
+      "row": 172
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 172,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "S110",
+    "end_location": {
+      "column": 21,
+      "row": 224
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 223
+    },
+    "message": "`try`-`except`-`pass` detected, consider logging the exception",
+    "noqa_row": 223,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/try-except-pass"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 29,
+      "row": 223
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 20,
+      "row": 223
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 223,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 29,
+      "row": 231
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 20,
+      "row": 231
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 231,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 29,
+      "row": 275
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 20,
+      "row": 275
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 275,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "S110",
+    "end_location": {
+      "column": 17,
+      "row": 299
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 298
+    },
+    "message": "`try`-`except`-`pass` detected, consider logging the exception",
+    "noqa_row": 298,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/try-except-pass"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 25,
+      "row": 298
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 16,
+      "row": 298
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 298,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "S110",
+    "end_location": {
+      "column": 17,
+      "row": 314
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 313
+    },
+    "message": "`try`-`except`-`pass` detected, consider logging the exception",
+    "noqa_row": 313,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/try-except-pass"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 25,
+      "row": 313
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 16,
+      "row": 313
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 313,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 29,
+      "row": 326
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 20,
+      "row": 326
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 326,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "TRY401",
+    "end_location": {
+      "column": 22,
+      "row": 378
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/scheduler.py",
+    "fix": null,
+    "location": {
+      "column": 21,
+      "row": 378
+    },
+    "message": "Redundant exception object included in `logging.exception` call",
+    "noqa_row": 378,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/verbose-log-message"
+  }
+]

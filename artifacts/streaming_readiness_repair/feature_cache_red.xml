@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.397" timestamp="2026-09-24T21:51:33.299317-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_pipeline_feature_cache" name="test_unchanged_inputs_reuse_only_ml_and_preserve_feature_store_side_effects" time="0.244"><failure message="AttributeError: '_DataFeederMixin' object has no attribute '_last_feature_cache_stats'">tests/test_pipeline_feature_cache.py:59: in test_unchanged_inputs_reuse_only_ml_and_preserve_feature_store_side_effects
+    assert feeder.engine._last_feature_cache_stats["hits"] == 2
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: '_DataFeederMixin' object has no attribute '_last_feature_cache_stats'</failure></testcase></testsuite></testsuites>

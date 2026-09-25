@@ -1,0 +1,336 @@
+{
+  "task_id": "final_local_operational_validation_addendum_20260924",
+  "status": "ACCEPTED_LOCAL_VALIDATION_NOT_DEPLOYED",
+  "reviewer": "combined_acceptance_review",
+  "recorded_at_utc": "2026-09-25T05:16:28.369041+00:00",
+  "source_commit": "7e63a494b9dfa6af4f419f8ecca218b6ec2a6d59",
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "local_acceptance": {
+    "path": "artifacts/streaming_readiness_repair/local_acceptance.json",
+    "sha256": "e7bee0e7f05b15c28aa38b903869e510407b53a1e87bc17f81209aba258f8661"
+  },
+  "parent_source_review": {
+    "path": "artifacts/streaming_readiness_repair/operational_source_acceptance_review.json",
+    "sha256": "47477042c3dde7a5a1576bc3355f44386ba81e4bea084c60341642fb7d337643"
+  },
+  "source_files_sha256": {
+    ".github/workflows/paper-readiness.yml": "a41e565d4df9b0050e2bb93565efeb437d53fee962453addc1815bb8b962a994",
+    "backend/api/routes/health.py": "8abd26fbff3bd51f2af5c574ad5f67b446ad4976121d6b8db08f946948092dae",
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "backend/organism/pipeline_diagnostics.py": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
+    "backend/organism/scheduler.py": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "scripts/diagnostics/profile_paper_pipeline.py": "4d3717ecc32b4d3c7e62e80d699f8db418a56a99726b27f387f65442b0ae8ed4",
+    "scripts/ops/paper_watchdog.py": "a0aafaff0aac81aa18ca9a9b6797cac8fec23b428b588a511fe5071c55599526",
+    "scripts/phase2_freeze.py": "274ae89a29f46c28d68db106294c3008cf5517ef95039ff54282267c84a61357",
+    "scripts/runtime/write_runtime_snapshot.py": "273f441a1d093ea3735ebcc7b7e7757eae2610280b3d95f887f01afbf9843552",
+    "tests/test_entry_freshness.py": "0460f5478dfd7570e2aa378726ab5fdecd4a81d1d5ddcb98ec89eb84a5a5a970",
+    "tests/test_paper_watchdog.py": "b00ff805878f0a382ecd08bd5b482c7070ebfa1723e0fd20e5464f8eae670157",
+    "tests/test_phase2_freeze.py": "940bb6f36645cb10d83fc91ab5c7102d49f14465ad68fda947d3ec4333f8483c",
+    "tests/test_pipeline_diagnostics.py": "d3e5257dbf23949cf3e4c6246f144165bb6239ad1d4d863c88f44ed8f95855a1",
+    "tests/test_pipeline_freshness_recovery.py": "04679c4b555de2802cfce132c1803d41cdbed4695f54fa4e520bd2aed0397caa",
+    "tests/test_pipeline_profile.py": "fe50479a6c054fe4a2f43f3f1f8877af5e65d04c7f84d53c1ac53a9f90afd9bc",
+    "tests/test_pipeline_snapshot.py": "9f165bbfb1613c07c4b09294795192cd7fa6976fa7bd86bfbd473fb63a477c47",
+    "tests/test_readiness_contract.py": "26c07d92579662ca5f2f75e01ffc1755548a64a3ddb250b225bf363c11dbe824",
+    "tests/test_scanner_streaming_integration.py": "b5190963ff671ebd1766f5a2675715aa92228f53b3ce00e1c9c25f11f7c1f3aa",
+    "tests/test_v13_w100_live_tick_coverage.py": "74df07b9fac6c709be4347e5a6a32066ec523534adba1dd0ec28ea2a6ad5e045",
+    "tests/test_v12_baseline_invariants.py": "1bf44e897f135f68f27c8e7f4a475e7e1b1474295a18b7b735cadd91646a81f8"
+  },
+  "source_verification": {
+    "all22_reported_file_hashes_match": true,
+    "only_reviewed_uncommitted_test_delta": [
+      "tests/test_v12_baseline_invariants.py"
+    ],
+    "all_runtime_source_equal_commit": true,
+    "v12_exact2852_guard_passed_in_final_operational_selection": true,
+    "final_evidence_commit_equivalence_still_required": true
+  },
+  "operational": {
+    "artifact": {
+      "path": "artifacts/streaming_readiness_repair/operational_final_01.xml",
+      "sha256": "35298237402d33055b5186e3973e7cc51f7fce36379ca66bdb55ac362f79fc59"
+    },
+    "total": 1901,
+    "passed": 1900,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "duplicate_case_ids": 0,
+    "suite_timestamps": [
+      "2026-09-24T22:11:48.543647-07:00"
+    ],
+    "runner_receipt": {
+      "path": "artifacts/streaming_readiness_repair/operational_final_01.json",
+      "sha256": "07acb37eb13743a87625339b44999bb2cfaefe55d288a467f2c768b6c0d1d262"
+    },
+    "intentional_skips": [
+      {
+        "name": "test_installed_history_has_not_shrunk_from_committed_baseline",
+        "reason": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim"
+      }
+    ]
+  },
+  "full_pack": {
+    "runner_receipt": {
+      "path": "artifacts/streaming_readiness_repair/full_final_01.json",
+      "sha256": "2c3bcc303241bf57ab02ed361ce2027f8907151eab458ac305679fb1204d3136"
+    },
+    "process_exit": 0,
+    "elapsed_seconds": 211.83,
+    "core_cases": 168,
+    "replay_cases": 28,
+    "semantic_cases": 20,
+    "unique_cases_within_pack": 216,
+    "suites": {
+      "organism_live_engine": {
+        "artifact": {
+          "path": "artifacts/organism_live_engine.junit.xml",
+          "sha256": "6cc0d2e799f499b9fb5bba3f1d8469f5a5393e90387faf34b47fb360bd82b632"
+        },
+        "total": 26,
+        "passed": 26,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "suite_timestamps": [
+          "2026-09-24T22:07:07.817461-07:00"
+        ]
+      },
+      "organism_engine_scenarios": {
+        "artifact": {
+          "path": "artifacts/organism_engine_scenarios.junit.xml",
+          "sha256": "e58867811672ee9bf41413e47f76a0877e765c43e2a758940aac9a35edd1e5a0"
+        },
+        "total": 31,
+        "passed": 31,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "suite_timestamps": [
+          "2026-09-24T22:07:23.286347-07:00"
+        ]
+      },
+      "multi_tick_state": {
+        "artifact": {
+          "path": "artifacts/multi_tick_state.junit.xml",
+          "sha256": "f74bdbe5f654bff7f9b2be68293b12f31ed78be313f469ee6da2edd8edaf75ea"
+        },
+        "total": 9,
+        "passed": 9,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "suite_timestamps": [
+          "2026-09-24T22:08:01.396491-07:00"
+        ]
+      },
+      "safety_invariants": {
+        "artifact": {
+          "path": "artifacts/safety_invariants.junit.xml",
+          "sha256": "c950f8a1c0004df88645884c0aadda291d37b80d10e0dd27eaa093b936f85034"
+        },
+        "total": 29,
+        "passed": 29,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "suite_timestamps": [
+          "2026-09-24T22:08:03.040244-07:00"
+        ]
+      },
+      "self_evolution": {
+        "artifact": {
+          "path": "artifacts/self_evolution.junit.xml",
+          "sha256": "f96e4d62fd123fde1153d688f4e01de44d6c92a25d8e82f1e809257d5a1e16fc"
+        },
+        "total": 15,
+        "passed": 15,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "suite_timestamps": [
+          "2026-09-24T22:08:04.711746-07:00"
+        ]
+      },
+      "algorithm_improvements": {
+        "artifact": {
+          "path": "artifacts/algorithm_improvements.junit.xml",
+          "sha256": "30b56d08c807c48b65f5475e30b63a4acebea2b5d4534b9b6e75368d37316691"
+        },
+        "total": 58,
+        "passed": 58,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "suite_timestamps": [
+          "2026-09-24T22:08:05.896900-07:00"
+        ]
+      },
+      "replay_simulator": {
+        "artifact": {
+          "path": "artifacts/replay_simulator.junit.xml",
+          "sha256": "eeae80a90346060c94d2652ea2eca215842983e5caaac321c3ea7c39a30f166e"
+        },
+        "total": 28,
+        "passed": 28,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "suite_timestamps": [
+          "2026-09-24T22:08:07.378296-07:00"
+        ]
+      },
+      "semantic_invariants": {
+        "artifact": {
+          "path": "artifacts/semantic_invariants.junit.xml",
+          "sha256": "4cfaed0ae0373f0148b5fd377a7ccda77072e473feaf7d25e12a6ad108b8fef3"
+        },
+        "total": 20,
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "suite_timestamps": [
+          "2026-09-24T22:10:36.521890-07:00"
+        ]
+      }
+    },
+    "internal_case_sets_disjoint": true
+  },
+  "counting_rule": "Operational1900pass/1skip and full216pass are separate selections. Their overlap is not added into a claimed unique total. Author/intermediate/cache prototype runs excluded.",
+  "pack_status": {
+    "test_summary.json": {
+      "artifact": {
+        "path": "artifacts/test_summary.json",
+        "sha256": "1987b1cd7e38c80b420217ccb8a102e37578b85d2ef6ed1270b4286528d2baa6"
+      },
+      "status": "pass"
+    },
+    "replay_summary.json": {
+      "artifact": {
+        "path": "artifacts/replay_summary.json",
+        "sha256": "c21a1052c012afa559b4b14219ec6a7535d78c4d10f93bbad567967966a5747a"
+      },
+      "status": "pass"
+    },
+    "semantic_invariants_summary.json": {
+      "artifact": {
+        "path": "artifacts/semantic_invariants_summary.json",
+        "sha256": "e46985891420e8cffd176d5ddf4859e86562c7b089fd07a43c5a4e8005fc2386"
+      },
+      "status": "pass"
+    },
+    "grep_assertions.json": {
+      "artifact": {
+        "path": "artifacts/grep_assertions.json",
+        "sha256": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b"
+      },
+      "status": "pass"
+    },
+    "spec_drift_summary.json": {
+      "artifact": {
+        "path": "artifacts/spec_drift_summary.json",
+        "sha256": "38d2b02a53d4465629421e2f874eebbef0c185692bdc5709913c26d34feef362"
+      },
+      "status": "pass"
+    },
+    "runtime_snapshot_summary.json": {
+      "artifact": {
+        "path": "artifacts/runtime_snapshot_summary.json",
+        "sha256": "81354eb2f20fe9465f77a618c682397919b9661bc6528f902f96accb0a2d9d0a"
+      },
+      "status": "pass"
+    }
+  },
+  "snapshots": {
+    "runtime_defaults_snapshot.json": {
+      "path": "artifacts/runtime_defaults_snapshot.json",
+      "sha256": "432e3148c16f22b9825c758c60b8c8a9ded86601dee4219d652d216468ec6861"
+    },
+    "resolved_config_snapshot.json": {
+      "path": "artifacts/resolved_config_snapshot.json",
+      "sha256": "4f41c61e7bbf0c6cfb0c032fee233e5e8c4fd8c95e9469cd7828a630a5d48658"
+    },
+    "live_process_runtime_snapshot.json": {
+      "path": "artifacts/live_process_runtime_snapshot.json",
+      "sha256": "320727810ed3a71b5c4c257e703eeb58d19c57ddfd03d80659bb735cb33e0239"
+    },
+    "runtime_config_snapshot.json": {
+      "path": "artifacts/runtime_config_snapshot.json",
+      "sha256": "bfa12ce8f19eb05e0ba48dd5680da8de2604faeedc471029348095199dd8e404"
+    }
+  },
+  "snapshot_scope": {
+    "engine_observed": false,
+    "live_process_reachable": false,
+    "config_truth_status": "unverified",
+    "cache_policy_absent": true,
+    "note": "Snapshot generation/spec agreement passed in isolated candidate environment; not installed-process configuration acceptance."
+  },
+  "freeze": {
+    "candidate": {
+      "path": "artifacts/phase2/candidate_param_freeze.json",
+      "sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d"
+    },
+    "active": {
+      "path": "artifacts/phase2/param_freeze.json",
+      "sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+    },
+    "active_reference": {
+      "path": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+    },
+    "FROZEN_AT": "2026-09-23T15:29:47.287731+00:00",
+    "candidate_has_no_active_cutoff": true,
+    "candidate_verification": {
+      "path": "artifacts/streaming_readiness_repair/candidate_freeze_receipt.json",
+      "sha256": "edfbae2fd04e25a9b60bcf5ae5b1662a1bd854eb8a0c9d24a1555d76a6856c36"
+    },
+    "installed_preservation_receipt": {
+      "path": "artifacts/streaming_readiness_repair/active_runtime_preservation.json",
+      "sha256": "dbef47ed5f986fe369b8b20599a3c5d112c22c9c5b94acac06f66b8d0ef18120"
+    },
+    "preservation_limit": "Root-provided read-only receipt inspected, not independently rerun. It transparently records two accidental host source edits restored to original bytes and prior logger-cwd verification refusal; image-contained runtime was not restarted/changed."
+  },
+  "security": {
+    "source_scan": {
+      "path": "artifacts/streaming_readiness_repair/source_security/scan_receipt.json",
+      "sha256": "9a55984b7014b7a1a691789568edeba789debccf3081a7c359ad4a6294b9b43c"
+    },
+    "disposition": {
+      "path": "artifacts/streaming_readiness_repair/source_security/disposition.json",
+      "sha256": "a25e266277274f73c117afd28a33e38f440bc5aa56dea231ca6d981aa776dfab"
+    },
+    "source_scope_findings": 0,
+    "limitation": "23-file source scan predates the v12 test-only delta. Final public artifact/report/commit-diff scan remains pending; this is not whole-repository secret certification."
+  },
+  "closed_gates": [
+    "Final operational1900pass and explicit unavailable-history skip verified directly from JUnit",
+    "All eight full-pack suites verified from fresh same-run JUnits;216 disjoint case identities",
+    "Reviewed v12 exact allowance passed",
+    "Grep/spec/snapshot summaries passed; candidate/active authorities remain distinct"
+  ],
+  "remaining_gates": [
+    "Final evidence/test-only commit and exact runtime-source equivalence",
+    "Final public artifact and commit-diff secret scan",
+    "Neutral exact-head hosted PR gates and review",
+    "Immutable final candidate image and any separately approved paper activation/new measurement boundary",
+    "Natural forward paper execution; unresolved composite correction under separate approval"
+  ],
+  "limitations": [
+    "No test reruns or runtime/API/auth/Docker/broker calls by reviewer.",
+    "No strategy profitability, continuous readiness, live provider capacity, full history preservation via skipped test, or cache/composite correction claim.",
+    "Prior cache snapshot addendum remains superseded by parent operational source review; historical receipt bytes retained.",
+    "Active identity is the preserved September23 deployment, not this candidate."
+  ],
+  "blockers": []
+}

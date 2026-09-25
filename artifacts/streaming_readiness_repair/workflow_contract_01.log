@@ -1,0 +1,13 @@
+..............................................................           [100%]
+============================= slowest 10 durations =============================
+0.42s call     tests/test_monday_ci_workflows.py::test_provenance_program_validates_full_sha_and_clears_stale_evidence[paper-postclose-audit.yml-collect-and-audit]
+0.22s call     tests/test_monday_ci_workflows.py::test_nightly_harness_workflow_pipeline_retains_pytest_exit_and_log[0]
+0.22s call     tests/test_monday_ci_workflows.py::test_provenance_program_validates_full_sha_and_clears_stale_evidence[nightly.yml-deep-tests]
+0.20s call     tests/test_monday_ci_workflows.py::test_nightly_harness_workflow_pipeline_retains_pytest_exit_and_log[7]
+0.11s call     tests/test_artifact_change_scope.py::test_working_tree_scope_includes_dirty_and_untracked_paths
+0.10s call     tests/test_artifact_change_scope.py::test_local_default_reports_last_commit_only
+0.10s call     tests/test_artifact_change_scope.py::test_github_default_reports_pr_range
+0.10s call     tests/test_artifact_change_scope.py::test_explicit_diff_range_overrides_ci_pr_scope
+0.05s call     tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[True-failure-False-True-paper-postclose-audit.yml-collect-and-audit]
+0.05s call     tests/test_monday_ci_workflows.py::test_notification_program_is_opt_in_and_retains_delivery_failures[False-failure-False-False-paper-postclose-audit.yml-collect-and-audit]
+62 passed in 2.31s

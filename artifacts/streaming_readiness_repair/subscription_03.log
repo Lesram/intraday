@@ -1,0 +1,116 @@
+........................................................................ [ 44%]
+......................................FFFFFF.F.......................... [ 89%]
+.................                                                        [100%]
+=================================== FAILURES ===================================
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-alpha] _
+tests/test_entry_freshness.py:255: in test_real_tick_callers_share_gate_and_stale_is_normal_skip
+    assert len(entries) == 1 and result.orders_submitted == 1
+E   assert (0 == 1)
+E    +  where 0 = len([])
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:2737 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (TypeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-25T04:37:04.243040Z"}
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-breakout] _
+tests/test_entry_freshness.py:255: in test_real_tick_callers_share_gate_and_stale_is_normal_skip
+    assert len(entries) == 1 and result.orders_submitted == 1
+E   assert (0 == 1)
+E    +  where 0 = len([])
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:2737 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (TypeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-25T04:37:04.323437Z"}
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-pyramid] _
+tests/test_entry_freshness.py:255: in test_real_tick_callers_share_gate_and_stale_is_normal_skip
+    assert len(entries) == 1 and result.orders_submitted == 1
+E   assert (0 == 1)
+E    +  where 0 = len([])
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:2737 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (TypeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-25T04:37:04.334681Z"}
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-alpha] _
+tests/test_entry_freshness.py:259: in test_real_tick_callers_share_gate_and_stale_is_normal_skip
+    assert len(skipped) == 1 and skipped[0].details["bar_age_seconds"] == 121
+E   assert (0 == 1)
+E    +  where 0 = len([])
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:2737 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (TypeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-25T04:37:04.346286Z"}
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-breakout] _
+tests/test_entry_freshness.py:259: in test_real_tick_callers_share_gate_and_stale_is_normal_skip
+    assert len(skipped) == 1 and skipped[0].details["bar_age_seconds"] == 121
+E   assert (0 == 1)
+E    +  where 0 = len([])
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:2737 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (TypeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-25T04:37:04.357586Z"}
+_ test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-pyramid] _
+tests/test_entry_freshness.py:259: in test_real_tick_callers_share_gate_and_stale_is_normal_skip
+    assert len(skipped) == 1 and skipped[0].details["bar_age_seconds"] == 121
+E   assert (0 == 1)
+E    +  where 0 = len([])
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:2737 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (TypeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-25T04:37:04.368754Z"}
+_____________________ test_w100_live_tick_inner_loc_pinned _____________________
+tests/test_v13_w100_live_tick_coverage.py:85: in test_w100_live_tick_inner_loc_pinned
+    assert loc <= LIVE_TICK_INNER_LOC_CEILING, (
+E   AssertionError: _live_tick_inner LOC regressed: 2852 > ceiling 2824.  Either reduce LOC or, if the increase is unavoidable, raise the ceiling explicitly via PR.
+E   assert 2852 <= 2824
+=============================== warnings summary ===============================
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+  tests/test_scanner_streaming_integration.py:262: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+  tests/test_scanner_streaming_integration.py:289: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_pipeline_freshness_recovery.py::test_stale_stream_blocks_new_entries_but_real_eod_exit_still_flattens
+  tests/test_pipeline_freshness_recovery.py:365: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend
+  tests/test_v13_w100_live_tick_coverage.py:192: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn
+  tests/test_v13_w100_live_tick_coverage.py:219: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_eod_flattens_real_entered_position
+  tests/test_v13_w100_live_tick_coverage.py:260: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover]
+  tests/test_scanner_pipeline_integration.py:11: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+2.02s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend
+1.99s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn
+1.51s call     tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+1.50s call     tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+1.36s call     tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+1.28s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_signals_generated_on_uptrend
+1.25s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_timeout]
+1.25s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_http]
+1.24s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[snapshot_http]
+1.16s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_eod_flattens_real_entered_position
+=========================== short test summary info ============================
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-alpha]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-breakout]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-pyramid]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-alpha]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-breakout]
+FAILED tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-pyramid]
+FAILED tests/test_v13_w100_live_tick_coverage.py::test_w100_live_tick_inner_loc_pinned
+7 failed, 154 passed, 14 warnings in 25.82s

@@ -1,0 +1,122 @@
+[
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 65,
+    "EndLine": 65,
+    "StartColumn": 5,
+    "EndColumn": 98,
+    "Entropy": 3.827973,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/streaming_readiness_repair/local_acceptance.json:generic-api-key:65",
+    "File": "artifacts/streaming_readiness_repair/local_acceptance.json",
+    "source_sha256": "e7bee0e7f05b15c28aa38b903869e510407b53a1e87bc17f81209aba258f8661"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 208,
+    "EndLine": 208,
+    "StartColumn": 9,
+    "EndColumn": 95,
+    "Entropy": 3.750156,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/phase2/candidate_param_freeze.json:generic-api-key:208",
+    "File": "artifacts/phase2/candidate_param_freeze.json",
+    "source_sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 220,
+    "EndLine": 220,
+    "StartColumn": 9,
+    "EndColumn": 89,
+    "Entropy": 3.8249943,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/phase2/candidate_param_freeze.json:generic-api-key:220",
+    "File": "artifacts/phase2/candidate_param_freeze.json",
+    "source_sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 227,
+    "EndLine": 227,
+    "StartColumn": 9,
+    "EndColumn": 89,
+    "Entropy": 3.8387105,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/phase2/candidate_param_freeze.json:generic-api-key:227",
+    "File": "artifacts/phase2/candidate_param_freeze.json",
+    "source_sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 221,
+    "EndLine": 221,
+    "StartColumn": 9,
+    "EndColumn": 95,
+    "Entropy": 3.750156,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/monday_readiness/frozen_surface_reference.json:generic-api-key:221",
+    "File": "artifacts/monday_readiness/frozen_surface_reference.json",
+    "source_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 233,
+    "EndLine": 233,
+    "StartColumn": 9,
+    "EndColumn": 89,
+    "Entropy": 3.8249943,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/monday_readiness/frozen_surface_reference.json:generic-api-key:233",
+    "File": "artifacts/monday_readiness/frozen_surface_reference.json",
+    "source_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 240,
+    "EndLine": 240,
+    "StartColumn": 9,
+    "EndColumn": 89,
+    "Entropy": 3.8387105,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/monday_readiness/frozen_surface_reference.json:generic-api-key:240",
+    "File": "artifacts/monday_readiness/frozen_surface_reference.json",
+    "source_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 221,
+    "EndLine": 221,
+    "StartColumn": 9,
+    "EndColumn": 95,
+    "Entropy": 3.750156,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/phase2/param_freeze.json:generic-api-key:221",
+    "File": "artifacts/phase2/param_freeze.json",
+    "source_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 233,
+    "EndLine": 233,
+    "StartColumn": 9,
+    "EndColumn": 89,
+    "Entropy": 3.8249943,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/phase2/param_freeze.json:generic-api-key:233",
+    "File": "artifacts/phase2/param_freeze.json",
+    "source_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "StartLine": 240,
+    "EndLine": 240,
+    "StartColumn": 9,
+    "EndColumn": 89,
+    "Entropy": 3.8387105,
+    "Fingerprint": "/private/tmp/intra-public-secret-scan-_bia2kue/source/artifacts/phase2/param_freeze.json:generic-api-key:240",
+    "File": "artifacts/phase2/param_freeze.json",
+    "source_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+  }
+]

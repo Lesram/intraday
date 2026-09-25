@@ -1,0 +1,70 @@
+....FF.                                                                  [100%]
+=================================== FAILURES ===================================
+__ test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True] __
+tests/test_pipeline_profile.py:55: in test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol
+    assert process.returncode == 0, process.stdout[-3000:] + process.stderr[-3000:]
+E   AssertionError: {"event": "Failed to fetch/compute SYN001: Another profiling tool is already active", "logger": "backend.organism.live_engine_data", "level": "warning", "timestamp": "2026-09-25T04:35:49.745477Z"}
+E     Traceback (most recent call last):
+E       File "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/scripts/diagnostics/profile_paper_pipeline.py", line 300, in <module>
+E         raise SystemExit(main())
+E                          ^^^^^^
+E       File "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/scripts/diagnostics/profile_paper_pipeline.py", line 290, in main
+E         report = asyncio.run(experiment(args))
+E                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
+E         return runner.run(main)
+E                ^^^^^^^^^^^^^^^^
+E       File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+E         return self._loop.run_until_complete(task)
+E                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+E         return future.result()
+E                ^^^^^^^^^^^^^^^
+E       File "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/scripts/diagnostics/profile_paper_pipeline.py", line 247, in experiment
+E         runs = [await measure_load(count, args.rows, args.repeats, profiles=args.profile,
+E                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/scripts/diagnostics/profile_paper_pipeline.py", line 219, in measure_load
+E         raise AssertionError("Missing feature outputs or forbidden fallback; timings are not qualified")
+E     AssertionError: Missing feature outputs or forbidden fallback; timings are not qualified
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/Users/marselkei/VS/intra/venv/bin/python', '-B', '/Users/marselkei/.codex/worktrees/intra-str...mings are not qualified")\nAssertionError: Missing feature outputs or forbidden fallback; timings are not qualified\n').returncode
+_ test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False] __
+tests/test_pipeline_profile.py:55: in test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol
+    assert process.returncode == 0, process.stdout[-3000:] + process.stderr[-3000:]
+E   AssertionError: {"event": "Failed to fetch/compute SYN001: Another profiling tool is already active", "logger": "backend.organism.live_engine_data", "level": "warning", "timestamp": "2026-09-25T04:35:51.487780Z"}
+E     Traceback (most recent call last):
+E       File "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/scripts/diagnostics/profile_paper_pipeline.py", line 300, in <module>
+E         raise SystemExit(main())
+E                          ^^^^^^
+E       File "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/scripts/diagnostics/profile_paper_pipeline.py", line 290, in main
+E         report = asyncio.run(experiment(args))
+E                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
+E         return runner.run(main)
+E                ^^^^^^^^^^^^^^^^
+E       File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+E         return self._loop.run_until_complete(task)
+E                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+E         return future.result()
+E                ^^^^^^^^^^^^^^^
+E       File "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/scripts/diagnostics/profile_paper_pipeline.py", line 247, in experiment
+E         runs = [await measure_load(count, args.rows, args.repeats, profiles=args.profile,
+E                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/scripts/diagnostics/profile_paper_pipeline.py", line 219, in measure_load
+E         raise AssertionError("Missing feature outputs or forbidden fallback; timings are not qualified")
+E     AssertionError: Missing feature outputs or forbidden fallback; timings are not qualified
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/Users/marselkei/VS/intra/venv/bin/python', '-B', '/Users/marselkei/.codex/worktrees/intra-str...mings are not qualified")\nAssertionError: Missing feature outputs or forbidden fallback; timings are not qualified\n').returncode
+============================= slowest 10 durations =============================
+2.01s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+1.66s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]
+0.20s call     tests/test_pipeline_profile.py::test_cli_refuses_wrong_timeframe_before_platform_import
+
+(7 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+FAILED tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]
+2 failed, 5 passed in 4.10s

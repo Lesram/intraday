@@ -1,0 +1,19 @@
+{
+  "label": "composite_defect_01",
+  "exit_code": 1,
+  "seconds": 1.24,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/composite_defect_01.xml",
+    "artifacts/streaming_readiness_repair/composite_defect/diagnostic.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

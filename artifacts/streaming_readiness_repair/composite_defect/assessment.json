@@ -1,0 +1,241 @@
+{
+  "status": "CONFIRMED_SOURCE_DEFECT; CORRECTION_NOT_APPLIED_OR_ACCEPTED",
+  "reviewed_at_utc": "2026-09-25T05:09:59.094246+00:00",
+  "candidate_head_at_report": "7e63a494b9dfa6af4f419f8ecca218b6ec2a6d59",
+  "evidence_scope": "Synthetic feature/alpha computation only, source-identical installed files; no live-process observation or historical-session counterfactual",
+  "finding": "_safe_div requires a Series numerator but three composite computations supply scalar100. The first failure aborts the master composite call; compute_ml_features catches it and replaces all seven composite fields with0.",
+  "source_sha256": {
+    "backend/organism/composite_indicators.py": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+    "backend/organism/ml_features.py": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "backend/organism/alpha_scanner.py": "8bed20281f02ad3fd95953aa7c981a2e8c0393e4b29c38f808d3a570b6c19490",
+    "backend/organism/strategies/momentum.py": "45048a6c031bccfef12ed14154816665e5947cb587e747584573e18bdb54081b",
+    "backend/organism/confidence_lab.py": "bbae6864140b4d5601929fed67d784969879010a7f42efc3e7dc892bd1c3dce9"
+  },
+  "installed_source_identical": true,
+  "all_three_scalar_callers_independently_reproduced": [
+    {
+      "function": "volume_price_divergence",
+      "source_line": 159,
+      "original": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'"
+      },
+      "proposal_finite_rows": 80
+    },
+    {
+      "function": "mean_reversion_extremity",
+      "source_line": 341,
+      "original": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'"
+      },
+      "proposal_finite_rows": 80
+    },
+    {
+      "function": "momentum_quality_score",
+      "source_line": 484,
+      "original": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'"
+      },
+      "proposal_finite_rows": 80
+    }
+  ],
+  "direct_reproduction_denominator": {
+    "synthetic_symbols": 3,
+    "row_lengths": [
+      80,
+      500
+    ],
+    "complete_ML_frames": 6,
+    "original_all_seven_zero_frames": 6,
+    "other_features_exactly_equal_after_proposal": 6
+  },
+  "proposal": {
+    "original_expression": "a_zero = a.abs() < 1e-12",
+    "evaluation_only_expression": "a_zero = abs(a) < 1e-12",
+    "original_function_source_sha256": "11d91ad0845cd8b274718efe2edb5c9233a5531b63b2b64899536e0cef02b6b0",
+    "proposed_function_source_sha256": "39c4bac88c8feab9d445220f02e90e059da49ad8d991e58abfa97ad5a7525fd7",
+    "series_parity_and_zero_over_zero_nan_preserved": true,
+    "production_patch_applied": false
+  },
+  "synthetic_alpha_results": [
+    {
+      "rows": 80,
+      "regime": "unknown",
+      "original_qualified": 1,
+      "proposal_qualified": 3,
+      "denominator_symbols": 3
+    },
+    {
+      "rows": 80,
+      "regime": "trending",
+      "original_qualified": 1,
+      "proposal_qualified": 3,
+      "denominator_symbols": 3
+    },
+    {
+      "rows": 80,
+      "regime": "high_vol",
+      "original_qualified": 0,
+      "proposal_qualified": 2,
+      "denominator_symbols": 3
+    },
+    {
+      "rows": 80,
+      "regime": "stress",
+      "original_qualified": 0,
+      "proposal_qualified": 0,
+      "denominator_symbols": 3
+    },
+    {
+      "rows": 500,
+      "regime": "unknown",
+      "original_qualified": 1,
+      "proposal_qualified": 2,
+      "denominator_symbols": 3
+    },
+    {
+      "rows": 500,
+      "regime": "trending",
+      "original_qualified": 1,
+      "proposal_qualified": 2,
+      "denominator_symbols": 3
+    },
+    {
+      "rows": 500,
+      "regime": "high_vol",
+      "original_qualified": 0,
+      "proposal_qualified": 2,
+      "denominator_symbols": 3
+    },
+    {
+      "rows": 500,
+      "regime": "stress",
+      "original_qualified": 0,
+      "proposal_qualified": 0,
+      "denominator_symbols": 3
+    }
+  ],
+  "consumer_inventory": [
+    {
+      "path": "backend/organism/alpha_scanner.py",
+      "lines": [
+        176,
+        177,
+        181,
+        187,
+        190,
+        344,
+        347
+      ],
+      "role": "Candidate scores and observable-direction signals consume composites; other momentum/regime/volume contributions remain, so all-zero composites do not imply zero candidates."
+    },
+    {
+      "path": "backend/organism/strategies/momentum.py",
+      "lines": [
+        41,
+        71,
+        72,
+        109
+      ],
+      "role": "Registry momentum required features, breakout direction and confidence; source consumer, runtime route activation not asserted."
+    },
+    {
+      "path": "backend/organism/ml_features.py",
+      "lines": [
+        441,
+        449,
+        516,
+        517,
+        518,
+        519
+      ],
+      "role": "Graceful fallback and feature schema. Model schema inclusion does not imply active ML influence in locked paper mode."
+    },
+    {
+      "path": "backend/organism/confidence_lab.py",
+      "lines": [
+        43,
+        44,
+        92,
+        119
+      ],
+      "role": "Research confidence-model feature list; no model loaded or active runtime use asserted."
+    }
+  ],
+  "validation": {
+    "distinct_passed_cases": 2,
+    "failed_attempts_retained": 1,
+    "first_failure_reason": "Diagnostic initially compared raw-OHLCV-only composites against full-ML-context composites. The latter has precomputed ADX/other indicators, so equality was an invalid diagnostic expectation; corrected to finite-output checks and exact non-composite original/proposal parity. No production change to pass."
+  },
+  "operational_cache_status": "Prototype archived and removed; root fetch-origin telemetry preserved. No cache speedup or parity certification.",
+  "limits": [
+    "This tests the feature and alpha scoring path, not full replay or order/exit execution.",
+    "Changing these computed fields changes possible strategy inputs; no strategy acceptance or profitability claim.",
+    "No actual Sept24 input frames or saved model state are evaluated; this cannot attribute that day's zero trades.",
+    "Synthetic candidate eligibility is upstream of admission, timing, risk, liquidity and execution gates.",
+    "Installed file equality is a source observation, not a fresh live-process/image attestation.",
+    "Three symbols and two synthetic lengths are not representative live portfolio returns or proof of a deployable strategy.",
+    "The original symptom is masked with zeros, so absent errors in a daily log would not disprove the defect. No assertion made about the actual decision inputs on Sept24.",
+    "User approval for changing computed strategy inputs remains a separate root-owned gate."
+  ],
+  "artifacts": {
+    "artifacts/streaming_readiness_repair/composite_defect/plan.json": {
+      "sha256": "706c78565f2922c1abdb2c11a4a187460a539f2eebe52ac4278d70ca71db524c",
+      "bytes": 1359
+    },
+    "artifacts/streaming_readiness_repair/composite_defect/diagnostic.py": {
+      "sha256": "d9c12fe6ca37812e8aeb727a16ac07e0ff92956db6d174a82f5acca1b1bcee4c",
+      "bytes": 10735
+    },
+    "artifacts/streaming_readiness_repair/composite_defect/results.json": {
+      "sha256": "ec3f137726d4761cc2f9f9ee48fd8989e7185f60b08bb2fa5f23fa91249d8ec7",
+      "bytes": 49352
+    },
+    "artifacts/streaming_readiness_repair/composite_defect/call_site_results.json": {
+      "sha256": "31d62a4177f0b924408e99eb81bfe9f86f2b9f1f9fafe7b53322669b41b51d8a",
+      "bytes": 891
+    },
+    "artifacts/streaming_readiness_repair/isolated_test_runner.py": {
+      "sha256": "a33f5d7b398b8de7b93b603665e321d76ed93c79c99384d48a2ef9cd8d16bd96",
+      "bytes": 2994
+    },
+    "artifacts/streaming_readiness_repair/composite_defect_01.json": {
+      "sha256": "11ca90dd55a78a8529361f71608df4ca1993a197b3f0f25340dd31d565162d21",
+      "bytes": 558
+    },
+    "artifacts/streaming_readiness_repair/composite_defect_01.xml": {
+      "sha256": "dca22d35d1b1f59af33d473e3a01c36b768ed5f4d7c3a1be89ec5bff53bc92f5",
+      "bytes": 8453
+    },
+    "artifacts/streaming_readiness_repair/composite_defect_01.log": {
+      "sha256": "8f95bbd659468baa50c5fa2eded460366fb8f4ca47de571d6fc117f1dd3dfe69",
+      "bytes": 4944
+    },
+    "artifacts/streaming_readiness_repair/composite_defect_02.json": {
+      "sha256": "7d7e352d2c05be06b734aab888c481b1b74be960045d27cc5156288800686e55",
+      "bytes": 558
+    },
+    "artifacts/streaming_readiness_repair/composite_defect_02.xml": {
+      "sha256": "b2045f3b070dbee5833b4fb96d24dd5c63362282885216a328f23b60fa0c864e",
+      "bytes": 416
+    },
+    "artifacts/streaming_readiness_repair/composite_defect_02.log": {
+      "sha256": "f573737e31ebda527c5937555dfcfa3867c80807b8d9345ce523cb9c90d21bc7",
+      "bytes": 375
+    },
+    "artifacts/streaming_readiness_repair/composite_call_sites_01.json": {
+      "sha256": "a1be63caf1fceb1d6930a89d9b6a228896837c6bd51d0436ad13cc35fb135334",
+      "bytes": 600
+    },
+    "artifacts/streaming_readiness_repair/composite_call_sites_01.xml": {
+      "sha256": "951048b64ed2542443fd75f5a3713269c2d98aee1e090e5a3b95a4d37174210d",
+      "bytes": 403
+    },
+    "artifacts/streaming_readiness_repair/composite_call_sites_01.log": {
+      "sha256": "a17229c307c307643f56880c27ca0f17955f5a55196c195a5b767242b65effe5",
+      "bytes": 362
+    }
+  }
+}

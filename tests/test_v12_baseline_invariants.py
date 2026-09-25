@@ -361,11 +361,14 @@ def test_baseline_live_tick_inner_loc_present():
     # See docs/engineering/FINAL_ENTRY_FRESHNESS_RELEASE.md. Decomposition is
     # parked. The September 23 scanner repair adds one explicit exception-path
     # candidate-cache clear; moving the success assignment adds no lines.
-    # This exact 2824-line candidate ceiling grants no other growth tolerance.
+    # September 24 adds 28 lines for explicit rejection causes, observational
+    # timing/counters and one subscription synchronization call. This matches
+    # W100's exact 2852-line ceiling and grants no other growth tolerance.
     approved_final_entry_freshness_growth = 21
     approved_scanner_cache_clear_growth = 1
+    approved_streaming_diagnostics_growth = 28
     assert base_loc == 2802
-    assert loc <= base_loc + approved_final_entry_freshness_growth + approved_scanner_cache_clear_growth, (
+    assert loc <= base_loc + approved_final_entry_freshness_growth + approved_scanner_cache_clear_growth + approved_streaming_diagnostics_growth, (
         f"_live_tick_inner regressed from baseline {base_loc} to {loc}; "
-        "growth beyond the approved final-entry freshness ceiling is not allowed."
+        "growth beyond the reviewed streaming/diagnostics ceiling is not allowed."
     )

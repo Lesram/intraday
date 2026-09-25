@@ -1,0 +1,97 @@
+{
+  "task_id": "subscription_freeze_independent_review_20260924",
+  "status": "ACCEPTED_SCOPED_SOURCE_PENDING_FINAL_COMBINED_RELEASE_VALIDATION",
+  "reviewer": "combined_acceptance_review",
+  "recorded_at_utc": "2026-09-25T04:57:37.909259+00:00",
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "source_uncommitted": true,
+  "scope": "Subscription initialization/helper/dispatch call, provider boolean result contract, eight-member freeze extension and honest checked-out snapshot policy. Cache implementation/performance and unrelated telemetry control flow are outside this bounded review.",
+  "files_sha256": {
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "tests/test_scanner_streaming_integration.py": "b5190963ff671ebd1766f5a2675715aa92228f53b3ce00e1c9c25f11f7c1f3aa",
+    "scripts/phase2_freeze.py": "274ae89a29f46c28d68db106294c3008cf5517ef95039ff54282267c84a61357",
+    "scripts/runtime/write_runtime_snapshot.py": "503ab10da6a15cf22940afa440d7cb8ccfa8a22e31eb6de26b65a9ebd40465c4",
+    "tests/test_phase2_freeze.py": "940bb6f36645cb10d83fc91ab5c7102d49f14465ad68fda947d3ec4333f8483c",
+    "tests/test_pipeline_snapshot.py": "2da081d750d74536cdec392c1d398c2ca88cfd7a608d3d1c8d65ba9203aa8f71",
+    "docs/architecture/mapss.md": "db489b3f8be30617038989603dbf641cc48347d95e962be94a1838c1a811f5ed",
+    "docs/engineering/STREAMING_READINESS_REPAIR.md": "5b8355c2c9632c58e8337a6b54100359b0834ea0269034c0a51e509fe85b9ec1"
+  },
+  "evidence": {
+    "subscription_final": {
+      "passed": 176,
+      "failed": 0,
+      "skipped": 0,
+      "junit_sha256": "b1e5a28885d6f88c3521034738a0c8f5bbc53f7372931806c0f70d94548cf359",
+      "runner_receipt_sha256": "d9dd85b9bf6511ef958e1563b30e91fb00e1ed157144d7d126c84dc6755ce43d"
+    },
+    "freeze_snapshot_01": {
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "junit_sha256": "2b3620def509e8820d69b489ee27f134e5cf6b9e513638f3fb17d0a073d03c26",
+      "runner_receipt_sha256": "fc59606a74836a1f5b3910e58b43535882723ceb86cc54238841490724ed651f"
+    },
+    "deadline_drift_01": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "junit_sha256": "f78e543f5eeda5c46adeecbc74baa66f032dd29b64605414cc7b41ffee91c13e",
+      "runner_receipt_sha256": "2986d6a94a56bff08154c7d02d3d85316e68d7dcc6fed4c4f61eaef571be4ccb"
+    }
+  },
+  "author_report": {
+    "path": "artifacts/streaming_readiness_repair/subscription_implementation.json",
+    "sha256": "15dedcfa379118076dfc0c9e1550e8948cf975b3560f3bb0f5a86f5f207035a6"
+  },
+  "verified": [
+    "Constructor base + SPY/QQQ are preserved separately from later universe changes. Desired subscriptions also include current feature universe and already-fetched broker-held symbols.",
+    "Synchronization executes once per real tick after current positions and before position/entry processing; no new position query. Five-second wait, strictTrue result, exceptions/timeouts block entries and retry following tick.",
+    "Successful sync rechecks existing global stale policy without clearing earlier sticky same-tick entry blocks. Newly subscribed symbols do not gain bars/provenance through REST seeding.",
+    "Provider acknowledges only successful local transport operations and retains partial state for retry. Existing session-generation checks reject continuations from retired transports. No quote/bar freshness fabricated.",
+    "Actual fake-transport/real-provider+engine replays establish three distinct first-bar/retry paths with one admitted MSFT entry each, and two held/stale-or-sync-failed paths with actual EOD accounting and no pending closes.",
+    "Eight data_pipeline_sources keys hash scanner/provider/feeder/staleness plus constructor, synchronization helper, actualtimeoutvalue and diagnosticmodule. Deadline mutation7.5 invalidates verification without writing/reclocking artifact.",
+    "Original direction/exit/regime/Kelly/selector hashes remain unchanged in candidate artifact; entry dispatch is the deliberate reviewed source change. Parameter/feed/researchpolicy/effectivebaseline groups equal active artifact.",
+    "Canonical active artifact and readiness reference remain byte-identical2a3f6052\u2026 with approvedSept23cutoff. Candidate uses VALIDATED_AT and unapprovedflags withoutFROZEN_AT; no promotion or clock reset.",
+    "Snapshot reads actual class timeout and carries candidate-only source identities, engine_observedfalse and unverified truth status without an observed process. Legacy snapshot inherits resolved policy map."
+  ],
+  "active_authority": {
+    "path": "artifacts/phase2/param_freeze.json",
+    "sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+    "FROZEN_AT": "2026-09-23T15:29:47.287731+00:00",
+    "reference_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+    "unchanged_parameter_groups": [
+      "effective_policy_baseline",
+      "exit_env",
+      "regime_policy",
+      "research_policy",
+      "research_policy_enforcement_env",
+      "routing_data_env",
+      "strategy_config",
+      "strategy_config_hash"
+    ]
+  },
+  "intermediate_candidate_reference": {
+    "path": "artifacts/phase2/candidate_param_freeze.json",
+    "sha256": "f8505fa6e2ba39962069477d5262d2ba9191962b22ccbf2a19428ecc9d4b8d20",
+    "VALIDATED_AT": "2026-09-25T04:42:37.175855+00:00",
+    "original_six_changed": [
+      "entry_gates_dispatch"
+    ],
+    "note": "Intermediate receipt only; final cache/source work requires fresh candidate generation/verification and final source binding."
+  },
+  "findings_closed": [
+    {
+      "finding": "Deadline source value was hashed but lacked direct drift/no-write regression.",
+      "resolution": "Root added test_subscription_deadline_drift_invalidates_freeze_without_reset;1isolatedpass bound above."
+    }
+  ],
+  "blockers": [],
+  "limitations": [
+    "No independent duplicate test run; existing fresh JUnits/source bindings inspected. Selections overlap and must not be summed into one unique case count.",
+    "Same-bar simulated fills and causal replay collaborators establish mechanics, not market expectancy, actual network acknowledgments, feed capacity or profitable edge.",
+    "Any sparse subscribed symbol can block all entries under preserved PP-6. Adding symbols can increase stand-down; unchanged20s receipt rule and120s actualbar finalguard remain.",
+    "Five-second sync await can delay subsequent protective processing by that bounded operation; exits/EOD remain active and are exercised in supplied replay.",
+    "Final cache changes, regenerated candidate freeze, full pack/snapshot/index, exact-source CI/image and explicit release activation boundary remain parent-owned gates. No deployment/merge/active-state action performed."
+  ]
+}

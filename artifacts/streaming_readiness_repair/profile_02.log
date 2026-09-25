@@ -1,0 +1,18 @@
+....F..                                                                  [100%]
+=================================== FAILURES ===================================
+__ test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True] __
+tests/test_pipeline_profile.py:69: in test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol
+    assert min(iteration["output_rows"].values()) == 80
+E   AssertionError: assert 61 == 80
+E    +  where 61 = min(dict_values([61, 61, 61]))
+E    +    where dict_values([61, 61, 61]) = <built-in method values of dict object at 0x10b067c80>()
+E    +      where <built-in method values of dict object at 0x10b067c80> = {'HELD': 61, 'SPY': 61, 'SYN001': 61}.values
+============================= slowest 10 durations =============================
+2.27s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+1.85s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]
+0.20s call     tests/test_pipeline_profile.py::test_cli_refuses_wrong_timeframe_before_platform_import
+
+(7 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+1 failed, 6 passed in 4.54s

@@ -1,0 +1,21 @@
+{
+  "label": "workflow_contract_01",
+  "exit_code": 0,
+  "seconds": 2.64,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/workflow_contract_01.xml",
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_artifact_workflow_contract.py",
+    "tests/test_artifact_change_scope.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

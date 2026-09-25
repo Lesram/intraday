@@ -1,0 +1,132 @@
+{
+  "task_id": "readiness_watchdog_repair_20260924",
+  "status": "IMPLEMENTED_TARGETED_TESTS_PASSED_PENDING_FULL_RELEASE_VALIDATION",
+  "recorded_at_utc": "2026-09-25T04:52:25.449685+00:00",
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "branch": "codex/session-streaming-readiness",
+  "source_uncommitted": true,
+  "runtime_mutated": false,
+  "deployed": false,
+  "files_sha256": {
+    "backend/api/routes/health.py": "8abd26fbff3bd51f2af5c574ad5f67b446ad4976121d6b8db08f946948092dae",
+    "backend/organism/scheduler.py": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
+    "scripts/ops/paper_watchdog.py": "a0aafaff0aac81aa18ca9a9b6797cac8fec23b428b588a511fe5071c55599526",
+    "tests/test_readiness_contract.py": "26c07d92579662ca5f2f75e01ffc1755548a64a3ddb250b225bf363c11dbe824",
+    "tests/test_paper_watchdog.py": "b00ff805878f0a382ecd08bd5b482c7070ebfa1723e0fd20e5464f8eae670157"
+  },
+  "summary": [
+    "Real factory /readyz observes app.state.organism_scheduler; removes dead global-engine reference and raw exception exposure.",
+    "PostgreSQL100ms and Redis200ms outcomes distinguish actual expired budget, dependency exception, false return and success; historical broker key preserved with explicit Redis component.",
+    "Dependency observations cached2s with stable measured_at/monotonic cache age; runtime rechecked each request. Scheduler observational clocks do not influence scheduling or trading.",
+    "Enabled missing/stopped/uninitialized/brain-unloaded or stale runtime returns503. Market-closed exempts tick recency only; loop must stay fresh. Bounded first-tick grace explicitly warming_up.",
+    "Watchdog preserves typed allowlisted dependency/runtime diagnostics and legacy response support without adding restart authority.",
+    "Read-only critical log scans page oldest time windows without suffix-tail, advance cursor only across complete windows, split truncated intervals, preserve pending fingerprints/counts and expose backlog. Owned CLI is byte/time bounded and reaped."
+  ],
+  "constants": {
+    "database_budget_ms": 100,
+    "redis_budget_ms": 200,
+    "dependency_cache_seconds": 2,
+    "runtime_recency_formula": "max(60, configured_tick_interval_seconds + existing60s tick_execution_budget)",
+    "log_window_initial_seconds": 60,
+    "log_window_minimum_seconds": 1,
+    "log_queries_maximum": 12,
+    "log_query_budget_seconds": 10,
+    "log_owned_child_cleanup_seconds": 1,
+    "log_bytes_per_query_maximum": 262144,
+    "complete_log_window_lines_must_be_less_than": 1000
+  },
+  "tests": {
+    "receipt": "artifacts/streaming_readiness_repair/watchdog_05.json",
+    "junit": "artifacts/streaming_readiness_repair/watchdog_05.xml",
+    "passed": 222,
+    "failed": 0,
+    "skipped": [
+      {
+        "class": "tests.unit.generated.test_auto_health.TestHealth",
+        "name": "test_health_check_exists",
+        "reason": "Async function not available: cannot import name 'health_check' from 'backend.api.routes.health' (/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/api/routes/health.py)"
+      },
+      {
+        "class": "tests.unit.generated.test_auto_health.TestHealth",
+        "name": "test_liveness_check_exists",
+        "reason": "Async function not available: cannot import name 'liveness_check' from 'backend.api.routes.health' (/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/api/routes/health.py)"
+      }
+    ],
+    "passed_by_class": {
+      "tests.test_readiness_contract": 44,
+      "tests.test_paper_watchdog": 161,
+      "tests.test_health_endpoints.TestHealthEndpoints": 6,
+      "tests.test_health_endpoints.TestHealthCheckDetail": 2,
+      "tests.test_health_endpoints.TestSetupHealthChecks": 1,
+      "tests.unit.generated.test_auto_health.TestHealth": 8
+    },
+    "network_denied": true,
+    "installed_credentials_and_brain_reads_denied": true,
+    "production_writes_denied": true,
+    "no_real_docker_or_notifications": true
+  },
+  "historical_attempts": [
+    {
+      "label": "readiness_01",
+      "passed": 43,
+      "failed": 1,
+      "reason": "New test called choose_recovery without required flag/real observation shape; fixture corrected."
+    },
+    {
+      "label": "readiness_02",
+      "passed": 188,
+      "skipped": 2,
+      "scope": "Core plus existing watchdog/health; predates new watchdog source."
+    },
+    {
+      "label": "watchdog_01",
+      "passed": 192,
+      "failed": 1,
+      "reason": "Split-window test generated synthetic events per query rather than fixed timestamp inventory; fixture corrected."
+    },
+    {
+      "label": "watchdog_02",
+      "passed": 214,
+      "skipped": 2,
+      "scope": "Before final removal of Docker tail and numeric-bound reorder; final03 rerun covers final bytes."
+    },
+    {
+      "label": "watchdog_03",
+      "passed": 214,
+      "skipped": 2,
+      "scope": "Pre-review malformed-monitor guard; retained."
+    },
+    {
+      "label": "watchdog_04",
+      "passed": 220,
+      "skipped": 2,
+      "scope": "Refused present non-dict monitor; final05 additionally refuses present dict missing cursor."
+    }
+  ],
+  "evidence_sha256": {
+    "artifacts/streaming_readiness_repair/readiness_plan.json": "6c90f45ace173dcee3bf0d7f43d4d84cdc94ea5bc37fd7a81965f280f3dec0b7",
+    "artifacts/streaming_readiness_repair/readiness_watchdog_lint_comparison.json": "76333923710d6959a881e289a54ab2d2e5f73d9b359657bf33eade3e82f5f7c9",
+    "artifacts/streaming_readiness_repair/watchdog_05.json": "4d5653c99dd92bc77d401f2784228b90ce7a5074b9724d1e1f3902a0d9e64194",
+    "artifacts/streaming_readiness_repair/watchdog_05.xml": "e56bebda81b5da10da0ca166ac7c19256540ab58c56a8353f6b8a6dae9bc1245",
+    "artifacts/streaming_readiness_repair/watchdog_05.log": "c173c27349eb5d57390f974da1754138803623899cef4c255efd7f9a69f8cd60",
+    "artifacts/streaming_readiness_repair/readiness_watchdog_lint.json": "9965942d0221bc89780c797faea32143349fdfd9a8123a1f08d07bc4d3656ba5"
+  },
+  "independent_core_review": {
+    "path": "/private/tmp/intra-streaming-readiness-independent-review.json",
+    "sha256": "e43819a90f61dcf3272bd71bbe78b54277d3fc0901e0528c149def47b06d7be6"
+  },
+  "risks_and_limits": [
+    "Readiness progress is not trading quality: returned ticks with errors still advance completion clock.",
+    "Async timeouts are cooperative; synchronous blocking or cleanup can exceed budget. elapsed_ms includes setup/query/cleanup, not isolated dependency-server latency; historical Sept23 causes remain unproven.",
+    "The existing tick-window calendar remains authoritative, including its current early-close behavior. No schedule or market-hours policy is changed.",
+    "Initial900s/backlogged or saturated1s log windows may require later invocations or operator review. No truncated prefix is acknowledged; cursor/backlog remains visible.",
+    "Docker log rotation/deletion before observation cannot be recovered by this scanner; complete means the requested retained Docker log window was returned without truncation.",
+    "No live readiness, market behavior, deployment, profitability or complete-platform claim. Full organism/replay/config pack, candidate freeze/snapshots/docs and hosted checks are root-owned outstanding gates."
+  ],
+  "follow_ups": [
+    "Root completes docs/runtime snapshot and expanded candidate hash coverage for diagnostic sources/constants.",
+    "Independent watchdog review pending.",
+    "Root commits and runs required full release validation and PR checks."
+  ],
+  "review_repair": "Only absent critical_monitor key bootstraps; present malformed state/cursor remains invalid_cursor/backlog, zero reads, preserving any valid pending counts."
+}

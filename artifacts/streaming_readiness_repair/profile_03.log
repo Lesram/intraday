@@ -1,0 +1,8 @@
+.......                                                                  [100%]
+============================= slowest 10 durations =============================
+2.32s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+1.87s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]
+0.20s call     tests/test_pipeline_profile.py::test_cli_refuses_wrong_timeframe_before_platform_import
+
+(7 durations < 0.005s hidden.  Use -vv to show these durations.)
+7 passed in 4.58s

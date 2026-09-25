@@ -1,0 +1,178 @@
+{
+  "task_id": "composite_scalar_feature_defect_20260924",
+  "status": "CONFIRMED_SOURCE_DEFECT_PENDING_SCOPED_CORRECTION_APPROVAL",
+  "scope": "Read-only source/test coverage review; direct offline reproduction is owned by daily_evidence_contract. No implementation or runtime activity by reviewer.",
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "files_sha256": {
+    "backend/organism/composite_indicators.py": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+    "backend/organism/ml_features.py": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "backend/organism/alpha_scanner.py": "8bed20281f02ad3fd95953aa7c981a2e8c0393e4b29c38f808d3a570b6c19490",
+    "backend/organism/strategies/momentum.py": "45048a6c031bccfef12ed14154816665e5947cb587e747584573e18bdb54081b",
+    "backend/organism/ml_signal.py": "4f1a87c67b7d112bbdff1c865d6fae34c9ab2a153d385eb3fbe12faf52173ada",
+    "backend/organism/confidence_lab.py": "bbae6864140b4d5601929fed67d784969879010a7f42efc3e7dc892bd1c3dce9",
+    "tests/test_reachability_v8.py": "c90280f77d703bd5685e54b248c208a960615bbef29bc06b81baa5f074500a16",
+    "tests/test_system_integration.py": "86bebf46ef63f1297a661c668952a6a9d0ba275a3f25d6307543e7ceb2db1cea",
+    "tests/test_algorithm_improvements.py": "607e16a14e20d13d80e00f57a8a4ebc2a09affe50f311935c7ac30a4594ec958",
+    "tests/test_momentum_parity.py": "05facf2914be9264ed422b911e27a444c0d522c993a23de14c3f234efebcc311",
+    "tests/test_seam_parity.py": "73a05258fcc7d48f000beedc90ed2c4dd3c618a1ae5d134f20d43a1153507249",
+    "tests/test_no_trade_diagnostics.py": "13e5e995145d2781e511167738b628c29a40e16e8361270f641523af78962339",
+    "tests/test_v13_w100_live_tick_coverage.py": "74df07b9fac6c709be4347e5a6a32066ec523534adba1dd0ec28ea2a6ad5e045"
+  },
+  "producer_unchanged_from_base": {
+    "backend/organism/composite_indicators.py": true,
+    "backend/organism/ml_features.py": true
+  },
+  "failure_chain": [
+    {
+      "path": "backend/organism/composite_indicators.py",
+      "line": 30,
+      "fact": "_safe_div advertises Series inputs and unconditionally calls a.abs() at43."
+    },
+    {
+      "path": "backend/organism/composite_indicators.py",
+      "line": 159,
+      "fact": "volume_price_divergence calls _safe_div(100,...), so scalar int100 raises AttributeError at a.abs()."
+    },
+    {
+      "path": "backend/organism/composite_indicators.py",
+      "line": 341,
+      "fact": "mean_reversion_extremity has a second scalar100 caller."
+    },
+    {
+      "path": "backend/organism/composite_indicators.py",
+      "line": 484,
+      "fact": "momentum_quality_score has a third scalar100 caller."
+    },
+    {
+      "path": "backend/organism/composite_indicators.py",
+      "line": 527,
+      "fact": "compute_composite_indicators invokes volume_price_divergence second on frames>=20rows; the failure prevents returning the full composite output."
+    },
+    {
+      "path": "backend/organism/ml_features.py",
+      "line": 449,
+      "fact": "compute_ml_features catches Exception and explicitly assigns all7 comp_* columns0.0; no failure is raised and no log/status describes this fallback."
+    }
+  ],
+  "direct_consumers": [
+    {
+      "path": "backend/organism/alpha_scanner.py",
+      "lines": [
+        176,
+        181,
+        187,
+        190
+      ],
+      "meaning": "Composite readiness+squeeze form alpha breakout score; institutional accumulation, momentum quality and volume divergence contribute alpha scoring. Explicit zeros suppress neutral get defaults0.5."
+    },
+    {
+      "path": "backend/organism/alpha_scanner.py",
+      "lines": [
+        344,
+        347,
+        351
+      ],
+      "meaning": "Observable direction uses readiness/squeeze breakout thresholds even when ML is isolated."
+    },
+    {
+      "path": "backend/organism/strategies/momentum.py",
+      "lines": [
+        41,
+        71,
+        72,
+        75,
+        109
+      ],
+      "meaning": "Registered momentum strategy requires these features, consumes them for breakout direction and uses readiness for confidence. Flat ranking does not make direction inputs inert."
+    },
+    {
+      "path": "backend/organism/ml_features.py",
+      "line": 516,
+      "meaning": "All7 composite names belong to canonical FEATURE_COLUMNS."
+    },
+    {
+      "path": "backend/organism/ml_signal.py",
+      "line": 693,
+      "meaning": "ML feature selection starts from FEATURE_COLUMNS; trained-model path can consume them, while current research isolation is an important live-policy limitation."
+    },
+    {
+      "path": "backend/organism/confidence_lab.py",
+      "line": 44,
+      "meaning": "Research confidence candidates use readiness/squeeze/quality; this is research context, not proof of current live sizing influence."
+    }
+  ],
+  "coverage_gaps": [
+    {
+      "path": "tests/test_reachability_v8.py",
+      "node": "test_dd_1_safe_div_returns_nan_on_double_zero",
+      "line": 177,
+      "covers": "Series/Series0/0\u2192NaN,0/1\u21920,1/0\u2192large epsilon value",
+      "missing": "No scalar numerator test; prose says scalar0/0 but actual inputs are Series."
+    },
+    {
+      "path": "tests/test_system_integration.py",
+      "nodes": [
+        "TestFeatureComputation::test_all_feature_columns_present",
+        "TestFeatureComputation::test_no_nan_in_features"
+      ],
+      "lines": [
+        277,
+        286
+      ],
+      "covers": "Presence and finite/non-NaN output",
+      "missing": "Fallback zeros satisfy these assertions; successful composite computation and expected nonconstant outputs are not tested."
+    },
+    {
+      "path": "tests/test_algorithm_improvements.py",
+      "line": 251,
+      "covers": "Autocorrelation/Hurst feature existence and range",
+      "missing": "Does not check composite calculation health."
+    },
+    {
+      "path": "tests/test_momentum_parity.py",
+      "line": 29,
+      "covers": "Direction parity on injected readiness/squeeze threshold grids",
+      "missing": "Does not exercise OHLCV\u2192composite production."
+    },
+    {
+      "paths": [
+        "tests/test_seam_parity.py",
+        "tests/test_no_trade_diagnostics.py"
+      ],
+      "lines": [
+        38,
+        16
+      ],
+      "covers": "Injected realistic comp_* fixture values exercise downstream gates",
+      "missing": "Feature producer is bypassed."
+    },
+    {
+      "path": "tests/test_v13_w100_live_tick_coverage.py",
+      "line": 110,
+      "covers": "Real causal feature prefixes, no future shock leakage, actual engine orders/exits",
+      "missing": "Both compared frames use the same fallback-capable compute function; no assertion requires successful nonzero composite output."
+    },
+    {
+      "path": "tests/unit/test_ml_feature_engineering_comprehensive.py",
+      "line": 1,
+      "covers": "Separate backend/ml/feature_engineering module",
+      "missing": "Its comprehensive name does not imply coverage of backend/organism/composite_indicators."
+    }
+  ],
+  "why_green_was_insufficient": "Existing tests meaningfully cover trading gates, causality and Series zero-division safety, but they do not establish the complete producer succeeds. Silent zero fallback converts this deterministic arithmetic exception into valid-looking feature shape, allowing those tests and equality benchmarks to pass. This is a source-backed explanation of the coverage gap, not a claim to reconstruct every historical reviewer decision.",
+  "required_acceptance_if_authorized": [
+    "Support scalar numerator semantics while preserving Series alignment and0/0\u2192NaN/no synthetic signal; cover all3 direct scalar100 callers.",
+    "Execute compute_composite_indicators directly on deterministic sufficiently long varied/flat OHLCV inputs; validate expected values/ranges and no exception, not just column presence.",
+    "Execute full compute_ml_features and independently compare actual composite output, proving fallback was not used on healthy fixture; explicitly test graceful failure and subsequent retry.",
+    "Replay before/after on same causal inputs through actual alpha/framework gates, sizing, final120s admission, exits and accounting; report candidate/entry/exit changes without imposing desired trade count.",
+    "Record changed decision-feature source and candidate/runtime snapshots; require approved new forward boundary before deployment.",
+    "Keep QA every tick and avoid caching a transient fallback; cache proof must include corrected/source-bound computation and exact uncached parity."
+  ],
+  "limits": [
+    "No quantified September24 missed trades, opportunity count, PnL or profitability inference is supported by this source map.",
+    "Seven zero composites can affect selection/direction, but other momentum signals and pure breakout paths can still produce entries; this is not proof it solely caused a no-trade session.",
+    "Historical raw bars/logs remain useful subject to their existing quality checks; decisions/features from this source must retain their original identity and must not be relabeled as corrected."
+  ],
+  "runtime_mutated": false,
+  "source_changed_by_reviewer": false
+}

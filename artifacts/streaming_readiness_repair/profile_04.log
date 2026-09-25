@@ -1,0 +1,15 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________________ test_offline_20_69_profile __________________________
+artifacts/streaming_readiness_repair/profile_experiment.py:26: in test_offline_20_69_profile
+    assert result.returncode == 0, "See the retained synthetic-only profile_experiment.log"
+E   AssertionError: See the retained synthetic-only profile_experiment.log
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/Users/marselkei/VS/intra/venv/bin/python', '-B', '/Users/marselkei/.codex/worktrees/intra-str...trees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/profile_results.json'], returncode=1).returncode
+============================= slowest 10 durations =============================
+105.25s call     artifacts/streaming_readiness_repair/profile_experiment.py::test_offline_20_69_profile
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED artifacts/streaming_readiness_repair/profile_experiment.py::test_offline_20_69_profile
+1 failed in 105.28s (0:01:45)

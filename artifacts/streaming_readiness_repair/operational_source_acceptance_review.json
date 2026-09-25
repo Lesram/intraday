@@ -1,0 +1,225 @@
+{
+  "task_id": "final_operational_source_review_cache_excluded_20260924",
+  "status": "ACCEPTED_SCOPED_OPERATIONAL_SOURCE_PENDING_FINAL_VALIDATION",
+  "recorded_at_utc": "2026-09-25T05:12:19.554018+00:00",
+  "reviewer": "combined_acceptance_review",
+  "authorship_disclosure": "Reviewer authored health/scheduler/watchdog. Independent acceptance for those files is provided by the bound daily_evidence_contract and session_contract_explorer reviews. Reviewer independently inspected integration, diagnostics, freeze/snapshot/docs and cache removal.",
+  "source_commit": "7e63a494b9dfa6af4f419f8ecca218b6ec2a6d59",
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "files_sha256": {
+    "backend/api/routes/health.py": "8abd26fbff3bd51f2af5c574ad5f67b446ad4976121d6b8db08f946948092dae",
+    "backend/organism/scheduler.py": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
+    "scripts/ops/paper_watchdog.py": "a0aafaff0aac81aa18ca9a9b6797cac8fec23b428b588a511fe5071c55599526",
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "backend/organism/pipeline_diagnostics.py": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
+    "scripts/phase2_freeze.py": "274ae89a29f46c28d68db106294c3008cf5517ef95039ff54282267c84a61357",
+    "scripts/runtime/write_runtime_snapshot.py": "273f441a1d093ea3735ebcc7b7e7757eae2610280b3d95f887f01afbf9843552",
+    "tests/test_readiness_contract.py": "26c07d92579662ca5f2f75e01ffc1755548a64a3ddb250b225bf363c11dbe824",
+    "tests/test_paper_watchdog.py": "b00ff805878f0a382ecd08bd5b482c7070ebfa1723e0fd20e5464f8eae670157",
+    "tests/test_scanner_streaming_integration.py": "b5190963ff671ebd1766f5a2675715aa92228f53b3ce00e1c9c25f11f7c1f3aa",
+    "tests/test_pipeline_diagnostics.py": "d3e5257dbf23949cf3e4c6246f144165bb6239ad1d4d863c88f44ed8f95855a1",
+    "tests/test_phase2_freeze.py": "940bb6f36645cb10d83fc91ab5c7102d49f14465ad68fda947d3ec4333f8483c",
+    "tests/test_pipeline_snapshot.py": "9f165bbfb1613c07c4b09294795192cd7fa6976fa7bd86bfbd473fb63a477c47",
+    "tests/test_v13_w100_live_tick_coverage.py": "74df07b9fac6c709be4347e5a6a32066ec523534adba1dd0ec28ea2a6ad5e045",
+    "tests/test_v12_baseline_invariants.py": "1bf44e897f135f68f27c8e7f4a475e7e1b1474295a18b7b735cadd91646a81f8",
+    "tests/test_entry_freshness.py": "0460f5478dfd7570e2aa378726ab5fdecd4a81d1d5ddcb98ec89eb84a5a5a970",
+    "tests/test_pipeline_freshness_recovery.py": "04679c4b555de2802cfce132c1803d41cdbed4695f54fa4e520bd2aed0397caa",
+    ".github/workflows/paper-readiness.yml": "a41e565d4df9b0050e2bb93565efeb437d53fee962453addc1815bb8b962a994",
+    "docs/architecture/mapss.md": "4696d79fd3ca38e8f7ccad9903727d3f7d108fd10540c42875ff3422dc97b5a0",
+    "docs/engineering/STREAMING_READINESS_REPAIR.md": "9c57b75d465e38c705c11bafe40bdc68c15ad475c47c3674c1b71c7f6ff5bf05"
+  },
+  "uncommitted_reviewed_paths": [
+    "tests/test_v12_baseline_invariants.py"
+  ],
+  "source_binding": "All listed files match source commit except the explicit v12 test-only LOC correction, pending final commit and targeted receipt.",
+  "supersedes": [
+    {
+      "receipt": {
+        "path": "artifacts/streaming_readiness_repair/snapshot_docs_independent_addendum.json",
+        "sha256": "c1f7768cddefd0cf9f80996de520fe39e96eebd1cdaf0941f0083004e64b8651"
+      },
+      "reason": "Cache policy/test/docs withdrawn with unaccepted prototype. Earlier15-case snapshot acceptance is historical, not final cache-free snapshot certification. Preserve prior bytes."
+    }
+  ],
+  "supporting_reviews": [
+    {
+      "path": "artifacts/streaming_readiness_repair/subscription_freeze_independent_review.json",
+      "sha256": "847ad1a3451b68d93a037eac16120a76668ce24fee100a441dcb4434b42add9a"
+    },
+    {
+      "path": "artifacts/streaming_readiness_repair/pipeline_diagnostics_independent_review.json",
+      "sha256": "0b73bccd6f58820ad3b104eff86552ea0b49dc0c1a5457dbb98dabb0f06701fa"
+    },
+    {
+      "path": "artifacts/streaming_readiness_repair/watchdog_independent_review.json",
+      "sha256": "047acec4a68a465494d933b426a1b5eb95f2c32a1c719c4066590a955e939570"
+    },
+    {
+      "path": "/private/tmp/intra-streaming-readiness-independent-review.json",
+      "sha256": "e43819a90f61dcf3272bd71bbe78b54277d3fc0901e0528c149def47b06d7be6"
+    }
+  ],
+  "cache_removal": {
+    "archive_manifest": {
+      "path": "artifacts/streaming_readiness_repair/unaccepted_cache_prototype/archive_manifest.json",
+      "sha256": "e8d83858d16e83305f84553acbf3fe94e96739aa023dfb1c54150080bc4b210b"
+    },
+    "runtime_cache_absent": true,
+    "collectable_cache_test_absent": true,
+    "snapshot_and_workflow_cache_entries_absent": true,
+    "live_engine_data_delta": "Exactly six observational fetch-origin additions; computation/QA/snapshot/MTF unchanged.",
+    "composite_correction_applied": false,
+    "performance_speedup_claim": false
+  },
+  "verified": [
+    "Subscription union retains base/benchmarks/current universe/held positions. Strict local transport success does not certify bar freshness. Failure retries and blocks entries while protective exits remain.",
+    "Earlier same-tick blocks stay sticky; global any-stale policy,20-second receipt routing and0..120-second final bar admission remain unchanged.",
+    "Readiness retains100ms PostgreSQL/200ms Redis/2s dependency cache; scheduler state rechecked each request. Closed-market/warmup/disabled are explicit. Completion with errors means liveness, not quality.",
+    "Watchdog recovery/observation/notification/main ASTs equal base. Allowlisted diagnostics and bounded oldest-complete log windows retain unread cursor/backlog on truncation/unavailable/malformed state.",
+    "Diagnostic routing precedence remains equivalent. Counters/timers do not affect ranking/sizing/admission or replay decision hashes; fetch origin remains distinct from freshness evidence.",
+    "Submission/shared gates/authorizer/close_position/trading_phase ASTs equal base. No ML/Kelly learning influence, live exploration or new dead submission branch.",
+    "Eight data_pipeline_sources cover all reviewed data helpers; scheduler source covered under research_policy_sources. Snapshot reads actual deadline and remains engine_observedfalse.",
+    "Docs accurately disclose limits and cache/composite exclusion; no strategy/profitability/speedup acceptance."
+  ],
+  "loc_guard": {
+    "finding": "Stale v12 ceiling2824 versus reviewed current2852.",
+    "resolution": "Named+28 diagnostic/sync allowance preserves historical2802 and earlier21/1; exact2852 ceiling without spare tolerance.",
+    "measured_loc": 2852,
+    "targeted_receipt_pending": true
+  },
+  "active_authority": {
+    "artifact": {
+      "path": "artifacts/phase2/param_freeze.json",
+      "sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+    },
+    "readiness_reference": {
+      "path": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+    },
+    "FROZEN_AT": "2026-09-23T15:29:47.287731+00:00",
+    "unchanged_from_prior_review": true
+  },
+  "candidate": {
+    "artifact": {
+      "path": "artifacts/phase2/candidate_param_freeze.json",
+      "sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d"
+    },
+    "VALIDATED_AT": "2026-09-25T05:06:00.803082+00:00",
+    "candidate_only": true,
+    "deployment_approved": false,
+    "FROZEN_AT_absent": true,
+    "surface_equal_committed_candidate": true,
+    "original_six_changed": [
+      "entry_gates_dispatch"
+    ],
+    "changed_surface_groups": [
+      "data_pipeline_sources",
+      "research_policy_sources",
+      "source_hashes"
+    ],
+    "unchanged_parameter_groups": [
+      "effective_policy_baseline",
+      "exit_env",
+      "regime_policy",
+      "research_policy",
+      "research_policy_enforcement_env",
+      "routing_data_env",
+      "strategy_config",
+      "strategy_config_hash"
+    ],
+    "generator_and_verify_receipt": {
+      "path": "artifacts/streaming_readiness_repair/candidate_freeze_receipt.json",
+      "sha256": "edfbae2fd04e25a9b60bcf5ae5b1662a1bd854eb8a0c9d24a1555d76a6856c36"
+    },
+    "verify_semantics": "Candidate verifies per receipt; preserved active reference intentionally detects candidate source drift, without resetting active authority."
+  },
+  "targeted_evidence": {
+    "watchdog_05": {
+      "junit": {
+        "path": "artifacts/streaming_readiness_repair/watchdog_05.xml",
+        "sha256": "e56bebda81b5da10da0ca166ac7c19256540ab58c56a8353f6b8a6dae9bc1245"
+      },
+      "runner_receipt": {
+        "path": "artifacts/streaming_readiness_repair/watchdog_05.json",
+        "sha256": "4d5653c99dd92bc77d401f2784228b90ce7a5074b9724d1e1f3902a0d9e64194"
+      },
+      "passed": 222,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 2
+    },
+    "subscription_final": {
+      "junit": {
+        "path": "artifacts/streaming_readiness_repair/subscription_final.xml",
+        "sha256": "b1e5a28885d6f88c3521034738a0c8f5bbc53f7372931806c0f70d94548cf359"
+      },
+      "runner_receipt": {
+        "path": "artifacts/streaming_readiness_repair/subscription_final.json",
+        "sha256": "d9dd85b9bf6511ef958e1563b30e91fb00e1ed157144d7d126c84dc6755ce43d"
+      },
+      "passed": 176,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "diagnostic_routes_final": {
+      "junit": {
+        "path": "artifacts/streaming_readiness_repair/diagnostic_routes_final.xml",
+        "sha256": "eef84babeb535153aeac677c22d443f434de9a3aae7acb74b9b1f8e2ddec0c68"
+      },
+      "runner_receipt": {
+        "path": "artifacts/streaming_readiness_repair/diagnostic_routes_final.json",
+        "sha256": "3f9515d410c4591de484a95849c99bc470068452f0e7f7f8a230fb5215aed2e0"
+      },
+      "passed": 15,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "freeze_snapshot_01": {
+      "junit": {
+        "path": "artifacts/streaming_readiness_repair/freeze_snapshot_01.xml",
+        "sha256": "2b3620def509e8820d69b489ee27f134e5cf6b9e513638f3fb17d0a073d03c26"
+      },
+      "runner_receipt": {
+        "path": "artifacts/streaming_readiness_repair/freeze_snapshot_01.json",
+        "sha256": "fc59606a74836a1f5b3910e58b43535882723ceb86cc54238841490724ed651f"
+      },
+      "passed": 40,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "deadline_drift_01": {
+      "junit": {
+        "path": "artifacts/streaming_readiness_repair/deadline_drift_01.xml",
+        "sha256": "f78e543f5eeda5c46adeecbc74baa66f032dd29b64605414cc7b41ffee91c13e"
+      },
+      "runner_receipt": {
+        "path": "artifacts/streaming_readiness_repair/deadline_drift_01.json",
+        "sha256": "2986d6a94a56bff08154c7d02d3d85316e68d7dcc6fed4c4f61eaef571be4ccb"
+      },
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "counting_rule": "Prior selections cover unchanged corresponding source, overlap and are not summed. Final full pack and cache-free snapshot are pending. Prototype cache results excluded.",
+  "remaining_release_gates": [
+    "Fresh v12 and final operational/snapshot selection receipts",
+    "Complete required safety/replay/config/reconciliation full pack and audit index",
+    "Final source equivalence, hosted gates, secret scan and immutable candidate image",
+    "Explicit approved activation/config/image/new-boundary transition if deployment requested"
+  ],
+  "limitations": [
+    "No duplicate tests or runtime/API/auth/Docker/broker actions.",
+    "Five-second synchronization can delay following protective processing. Actual feed capacity and network acknowledgment unproven; sparse symbols can increase PP-6 standdown.",
+    "Typed readiness does not fix latency or certify continuous uptime. Logs already deleted by retention cannot be reconstructed.",
+    "Existing composite scalar defect remains separate pending approval. No profitable edge or feature-speedup claim.",
+    "In-progress full-pack artifacts are deliberately not bound."
+  ],
+  "blockers": []
+}

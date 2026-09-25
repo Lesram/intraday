@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="13" skipped="0" tests="13" time="8.232" timestamp="2026-09-24T21:33:31.994232-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_scanner_streaming_integration" name="test_desired_subscriptions_retain_base_benchmarks_and_held_until_flat" time="0.001"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'">tests/test_scanner_streaming_integration.py:98: in test_desired_subscriptions_retain_base_benchmarks_and_held_until_flat
+    await engine._sync_streaming_subscriptions({"HELD": {"qty": 2}})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_failed_unsubscribe_blocks_then_retries_without_discarding_prior_state" time="0.000"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'">tests/test_scanner_streaming_integration.py:122: in test_failed_unsubscribe_blocks_then_retries_without_discarding_prior_state
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_successful_sync_does_not_clear_existing_entry_halt" time="0.000"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'">tests/test_scanner_streaming_integration.py:144: in test_successful_sync_does_not_clear_existing_entry_halt
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_no_streaming_provider_leaves_historical_replay_unchanged" time="0.000"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'">tests/test_scanner_streaming_integration.py:154: in test_no_streaming_provider_leaves_historical_replay_unchanged
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_incomplete_subscription_result_cannot_admit_entries[False]" time="0.000"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'">tests/test_scanner_streaming_integration.py:164: in test_incomplete_subscription_result_cannot_admit_entries
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_incomplete_subscription_result_cannot_admit_entries[None]" time="0.000"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'">tests/test_scanner_streaming_integration.py:164: in test_incomplete_subscription_result_cannot_admit_entries
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_incomplete_subscription_result_cannot_admit_entries[true]" time="0.000"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'">tests/test_scanner_streaming_integration.py:164: in test_incomplete_subscription_result_cannot_admit_entries
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_subscription_wait_has_bounded_deadline_and_fails_closed" time="0.000"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'">tests/test_scanner_streaming_integration.py:179: in test_subscription_wait_has_bounded_deadline_and_fails_closed
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]" time="1.475"><failure message="assert (False)">tests/test_scanner_streaming_integration.py:258: in test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order
+    assert added_tick["blocked"] and added_tick["orders"] == 0
+E   assert (False)</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]" time="1.193"><failure message="assert (False)">tests/test_scanner_streaming_integration.py:258: in test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order
+    assert added_tick["blocked"] and added_tick["orders"] == 0
+E   assert (False)</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]" time="1.251"><failure message="assert (False)">tests/test_scanner_streaming_integration.py:258: in test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order
+    assert added_tick["blocked"] and added_tick["orders"] == 0
+E   assert (False)</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]" time="1.615"><failure message="assert None is not None">tests/test_scanner_streaming_integration.py:283: in test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit
+    assert first_bar is not None
+E   assert None is not None</failure></testcase><testcase classname="tests.test_scanner_streaming_integration" name="test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]" time="1.610"><failure message="assert None is not None">tests/test_scanner_streaming_integration.py:283: in test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit
+    assert first_bar is not None
+E   assert None is not None</failure></testcase></testsuite></testsuites>

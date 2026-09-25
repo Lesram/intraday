@@ -1,0 +1,7 @@
+{
+  "scope": "Archive unaccepted complete ML-output cache and restore pre-cache feeder retaining root fetch-origin telemetry",
+  "source_path": "backend/organism/live_engine_data.py",
+  "test_path": "tests/test_pipeline_feature_cache.py",
+  "root_direction": "Separate operational PR from pending user approval for composite decision-input correction",
+  "no_other_source_changes": true
+}

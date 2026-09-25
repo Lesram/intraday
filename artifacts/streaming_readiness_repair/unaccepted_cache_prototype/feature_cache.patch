@@ -1,0 +1,280 @@
+--- a/backend/organism/live_engine_data.py
++++ b/backend/organism/live_engine_data.py
+@@ -19,13 +19,195 @@
+ """
+ from __future__ import annotations
+ 
++import __future__
+ import asyncio
++from collections import OrderedDict
++import hashlib
++import json
++import os
++import threading
++from types import FunctionType, ModuleType
++from typing import Any
+ 
+ import pandas as pd
+ 
+ from backend.utils.logger import get_structured_logger
+ 
+ logger = get_structured_logger(__name__)
++
++
++def _frame_identity(frame):
++    """Content key for supported immutable scalar cells; unknown data bypasses.
++
++    Equality against retained input copies additionally guards hash collisions.
++    Pandas deep copies do not clone arbitrary Python objects, so those are never
++    admitted. Index type/names/dtype/frequency and column order are part of the
++    identity, not merely the newest timestamp or number of rows.
++    """
++    if frame is None:
++        return "none"
++    if type(frame) is not pd.DataFrame or frame.attrs or frame.empty:
++        return None
++    if len(frame) > 2000 or len(frame.columns) > 512 or isinstance(frame.index, pd.MultiIndex):
++        return None
++    if type(frame.index) not in (pd.Index, pd.RangeIndex, pd.DatetimeIndex):
++        return None
++    if not frame.columns.is_unique or not all(type(name) is str for name in frame.columns):
++        return None
++    try:
++        index_dtype = frame.index.dtype
++        if pd.api.types.is_object_dtype(index_dtype) or pd.api.types.is_string_dtype(index_dtype):
++            if not all(type(value) is str for value in frame.index):
++                return None
++        elif not (pd.api.types.is_numeric_dtype(index_dtype) or pd.api.types.is_datetime64_any_dtype(index_dtype)):
++            return None
++        for name, dtype in frame.dtypes.items():
++            if pd.api.types.is_object_dtype(dtype) or pd.api.types.is_string_dtype(dtype):
++                if not all(type(value) is str for value in frame[name]):
++                    return None
++            elif not (pd.api.types.is_numeric_dtype(dtype) or pd.api.types.is_datetime64_any_dtype(dtype)):
++                return None
++        metadata = json.dumps({
++            "columns": list(frame.columns), "column_names": list(frame.columns.names),
++            "dtypes": [str(dtype) for dtype in frame.dtypes],
++            "index_type": type(frame.index).__name__, "index_dtype": str(frame.index.dtype),
++            "index_names": list(frame.index.names), "index_frequency": str(getattr(frame.index, "freq", None)),
++        }, sort_keys=True, allow_nan=False).encode()
++        values = pd.util.hash_pandas_object(frame, index=True).values.tobytes()
++        return hashlib.sha256(metadata + values).digest()
++    except (TypeError, ValueError, ArithmeticError, RecursionError):
++        return None
++
++
++def _module_identity(module):
++    """Loaded source identity, including known scalar/container constants.
++
++    This cache is process-local, never persisted across deployments. Replaced
++    functions, changed code objects, defaults or constants invalidate it;
++    closures/foreign wrappers are unknown mutable computation and bypass it.
++    """
++    functions, constants, libraries = [], {}, []
++    for name, value in sorted(vars(module).items()):
++        if name.startswith("__"):
++            continue
++        if isinstance(value, FunctionType):
++            if value.__module__ != module.__name__ or value.__closure__:
++                return None
++            defaults = json.dumps((value.__defaults__, value.__kwdefaults__), sort_keys=True, allow_nan=False)
++            functions.append((name, value, value.__code__, defaults))
++        elif value is None or type(value) in (str, int, float, bool, list, tuple, dict):
++            constants[name] = value
++        elif isinstance(value, ModuleType):
++            libraries.append((name, id(value), getattr(value, "__version__", None)))
++        elif name == "Any" and value is Any:
++            libraries.append((name, id(value), None))
++        elif name == "annotations" and value is __future__.annotations:
++            continue  # Compiler metadata, never a feature computation input.
++        else:
++            return None  # Unknown mutable module state is not a cache input.
++    return tuple(functions), tuple(libraries), json.dumps(constants, sort_keys=True, allow_nan=False)
++
++
++def _ml_cache_context(engine, compute):
++    try:
++        from backend.features.feature_engineering import FeatureEngineer
++        from backend.organism import composite_indicators, ml_features, multi_timeframe
++        from backend.organism.feature_store import VersionedFeatureStore
++
++        if compute is not ml_features.compute_ml_features or type(compute) is not FunctionType:
++            return None
++        if type(engine._bars_per_day) is not int or engine._bars_per_day <= 0:
++            return None
++        modules = tuple(_module_identity(module) for module in (ml_features, composite_indicators, multi_timeframe))
++        if any(identity is None for identity in modules):
++            return None
++        store = engine._feature_store
++        config, store_identity = None, None
++        if store is not None:
++            if type(store) is not VersionedFeatureStore or type(store._engineer) is not FeatureEngineer:
++                return None
++            if set(vars(store)) != {"_config", "_sessionmaker", "_config_hash", "_engineer"}:
++                return None
++            if set(vars(store._engineer)) != {"logger", "settings", "config"}:
++                return None
++            config = [store._config, store._engineer.config]
++            store_identity = (id(store), id(store._engineer), type(store).compute_features,
++                              type(store._engineer).compute_technical_indicators)
++        settings = json.dumps({"bars_per_day": engine._bars_per_day,
++                               "timeframe": os.getenv("ORGANISM_LIVE_TIMEFRAME", "1Day"),
++                               "engine_timeframe": getattr(engine, "_timeframe", None),
++                               "feature_store": config}, sort_keys=True, allow_nan=False)
++        return modules, store_identity, settings
++    except (AttributeError, TypeError, ValueError, ArithmeticError, RecursionError):
++        return None
++
++
++class _MLFeatureCache:
++    """One owned ML frame per symbol; no decisions, source data or QA cached."""
++
++    DEFAULT_MAX_ENTRIES = 128
++    DEFAULT_MAX_BYTES = 64 * 1024 * 1024
++
++    def __init__(self, max_entries=None, max_bytes=None):
++        self.max_entries = self.DEFAULT_MAX_ENTRIES if max_entries is None else max_entries
++        self.max_bytes = self.DEFAULT_MAX_BYTES if max_bytes is None else max_bytes
++        self._entries = OrderedDict()
++        self._bytes = 0
++        self._lock = threading.Lock()
++        self.reset_counts()
++
++    def reset_counts(self):
++        with self._lock:
++            self._counts = {"hits": 0, "misses": 0, "bypasses": 0}
++
++    def get(self, symbol, key, raw, spy):
++        with self._lock:
++            if key is None:
++                self._counts["bypasses"] += 1
++                return None
++            item = self._entries.get(symbol)
++            if item is not None and item[0] == key and item[1].equals(raw) and (
++                (spy is None and item[2] is None) or (spy is not None and item[2] is not None and item[2].equals(spy))
++            ):
++                self._entries.move_to_end(symbol)
++                self._counts["hits"] += 1
++                return item[3].copy(deep=True)
++            self._counts["misses"] += 1
++            return None
++
++    def put(self, symbol, key, raw, spy, features):
++        if key is None or _frame_identity(features) is None:
++            return
++        size = sum(int(frame.memory_usage(index=True, deep=True).sum())
++                   for frame in (raw, spy, features) if frame is not None)
++        with self._lock:
++            prior = self._entries.pop(symbol, None)
++            if prior is not None:
++                self._bytes -= prior[4]
++            if size > self.max_bytes or self.max_entries <= 0:
++                return
++            while self._entries and (len(self._entries) >= self.max_entries or self._bytes + size > self.max_bytes):
++                _, removed = self._entries.popitem(last=False)
++                self._bytes -= removed[4]
++            self._entries[symbol] = (key, raw.copy(deep=True), None if spy is None else spy.copy(deep=True),
++                                     features.copy(deep=True), size)
++            self._bytes += size
++
++    def prune(self, retained):
++        with self._lock:
++            for symbol in set(self._entries) - set(retained):
++                self._bytes -= self._entries.pop(symbol)[4]
++
++    def clear(self):
++        self.prune(set())
++
++    def symbols(self):
++        with self._lock:
++            return set(self._entries)
++
++    def snapshot(self):
++        with self._lock:
++            return {**self._counts, "entries": len(self._entries), "dataframe_bytes": self._bytes}
+ 
+ 
+ class _DataFeederMixin:
+@@ -45,6 +227,11 @@
+         from backend.organism.multi_timeframe import add_multi_timeframe_features
+ 
+         self._last_bar_fetch_sources = {}
++        if not isinstance(getattr(self, "_ml_feature_cache", None), _MLFeatureCache):
++            self._ml_feature_cache = _MLFeatureCache()
++        cache = self._ml_feature_cache
++        cache.reset_counts()
++        retained_symbols = set(self._universe)
+         features_by_symbol: dict[str, pd.DataFrame] = {}
+         spy_df = None
+         _concurrency = asyncio.Semaphore(10)  # Max 10 parallel bar fetches
+@@ -53,6 +240,21 @@
+         # Fetch SPY first (needed for cross-asset features)
+         # When streaming, SPY is already buffered so this is instant
+         spy_df = await self._fetch_bars("SPY")
++
++        def _ml_features(raw_df, sym, spy_ref):
++            # Actual streaming/REST fetch and minimum-bar checks happen before
++            # this point on every tick. Freshness is never inferred from cache.
++            reference = spy_ref if sym != "SPY" else None
++            context = _ml_cache_context(self, compute_ml_features)
++            raw_key, spy_key = _frame_identity(raw_df), _frame_identity(reference)
++            key = (context, raw_key, spy_key) if context is not None and raw_key is not None and spy_key is not None else None
++            result = cache.get(sym, key, raw_df, reference)
++            if result is None:
++                result = compute_ml_features(raw_df, spy_df=reference, bars_per_day=self._bars_per_day)
++                # Do not admit a result if a known dependency changed in flight.
++                if context == _ml_cache_context(self, compute_ml_features):
++                    cache.put(sym, key, raw_df, reference, result)
++            return result
+ 
+         def _compute_features_sync(
+             raw_df: pd.DataFrame, sym: str, spy_ref: pd.DataFrame | None,
+@@ -62,11 +264,7 @@
+                 feats, _snapshot = self._feature_store.compute_features(
+                     raw_df, symbol=sym,
+                 )
+-                feats_ml = compute_ml_features(
+-                    raw_df,
+-                    spy_df=spy_ref if sym != "SPY" else None,
+-                    bars_per_day=self._bars_per_day,
+-                )
++                feats_ml = _ml_features(raw_df, sym, spy_ref)
+                 feats = feats.reset_index(drop=True)
+                 feats_ml = feats_ml.reset_index(drop=True)
+                 n_min = min(len(feats), len(feats_ml))
+@@ -77,11 +275,7 @@
+                         feats_ml[col] = feats[col].values
+                 feats = feats_ml
+             else:
+-                feats = compute_ml_features(
+-                    raw_df,
+-                    spy_df=spy_ref if sym != "SPY" else None,
+-                    bars_per_day=self._bars_per_day,
+-                )
++                feats = _ml_features(raw_df, sym, spy_ref)
+                 feats = feats.reset_index(drop=True)
+ 
+             # Preserve OHLCV columns
+@@ -131,6 +325,7 @@
+         # for positions whose symbols rotated out of the universe.
+         try:
+             current_positions = await self._positions_service.get_all_positions()
++            retained_symbols.update(current_positions)
+             position_syms_missing = [
+                 sym for sym in current_positions
+                 if sym not in features_by_symbol
+@@ -148,7 +343,12 @@
+                 )
+         except Exception as e:
+             logger.warning("Failed to fetch position symbol features: %s", e)
+-
++            # Unknown held inventory must not evict a still-held frame. Cache
++            # bounds still apply, and no frame is served without a fresh fetch.
++            retained_symbols.update(cache.symbols())
++
++        cache.prune(retained_symbols)
++        self._last_feature_cache_stats = cache.snapshot()
+         return features_by_symbol
+ 
+     async def _fetch_bars(self, symbol: str) -> pd.DataFrame | None:
