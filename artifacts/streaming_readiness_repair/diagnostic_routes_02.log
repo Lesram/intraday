@@ -1,0 +1,67 @@
+.........FFFFFF                                                          [100%]
+=================================== FAILURES ===================================
+_ test_actual_alpha_route_reports_first_terminal_reason[streaming_receipt_age-21.0-0.5-chop-False-False] _
+tests/test_pipeline_diagnostics.py:164: in test_actual_alpha_route_reports_first_terminal_reason
+    assert engine._data_stale is False
+E   assert True is False
+E    +  where True = <backend.organism.live_engine.OrganismLiveEngine object at 0x109d151f0>._data_stale
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_actual_alpha_route_reports_first_terminal_reason[below_main_confidence-0.0-0.5-chop-False-False] _
+tests/test_pipeline_diagnostics.py:164: in test_actual_alpha_route_reports_first_terminal_reason
+    assert engine._data_stale is False
+E   assert True is False
+E    +  where True = <backend.organism.live_engine.OrganismLiveEngine object at 0x114420d40>._data_stale
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_actual_alpha_route_reports_first_terminal_reason[below_exploration_confidence-0.0-0.1-chop-False-False] _
+tests/test_pipeline_diagnostics.py:164: in test_actual_alpha_route_reports_first_terminal_reason
+    assert engine._data_stale is False
+E   assert True is False
+E    +  where True = <backend.organism.live_engine.OrganismLiveEngine object at 0x1145b7b30>._data_stale
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_actual_alpha_route_reports_first_terminal_reason[heuristic-21.0-0.5-trending_down-True-True] _
+tests/test_pipeline_diagnostics.py:164: in test_actual_alpha_route_reports_first_terminal_reason
+    assert engine._data_stale is False
+E   assert True is False
+E    +  where True = <backend.organism.live_engine.OrganismLiveEngine object at 0x1145cda60>._data_stale
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_actual_alpha_route_reports_first_terminal_reason[regime_cooldown-21.0-0.5-chop-True-False] _
+tests/test_pipeline_diagnostics.py:164: in test_actual_alpha_route_reports_first_terminal_reason
+    assert engine._data_stale is False
+E   assert True is False
+E    +  where True = <backend.organism.live_engine.OrganismLiveEngine object at 0x1144c2c30>._data_stale
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_actual_alpha_route_reports_first_terminal_reason[trending_down-21.0-0.5-trending_down-True-False] _
+tests/test_pipeline_diagnostics.py:164: in test_actual_alpha_route_reports_first_terminal_reason
+    assert engine._data_stale is False
+E   assert True is False
+E    +  where True = <backend.organism.live_engine.OrganismLiveEngine object at 0x1145415e0>._data_stale
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+=============================== warnings summary ===============================
+tests/test_pipeline_diagnostics.py::test_real_tick_alpha_counts_reconcile_without_entering_replay_hash
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+1.78s call     tests/test_pipeline_diagnostics.py::test_real_tick_alpha_counts_reconcile_without_entering_replay_hash
+0.03s call     tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[streaming_receipt_age-21.0-0.5-chop-False-False]
+0.01s call     tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[below_exploration_confidence-0.0-0.1-chop-False-False]
+0.01s call     tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[below_main_confidence-0.0-0.5-chop-False-False]
+0.01s call     tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[heuristic-21.0-0.5-trending_down-True-True]
+0.01s call     tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[trending_down-21.0-0.5-trending_down-True-False]
+0.01s call     tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[regime_cooldown-21.0-0.5-chop-True-False]
+
+(3 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[streaming_receipt_age-21.0-0.5-chop-False-False]
+FAILED tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[below_main_confidence-0.0-0.5-chop-False-False]
+FAILED tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[below_exploration_confidence-0.0-0.1-chop-False-False]
+FAILED tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[heuristic-21.0-0.5-trending_down-True-True]
+FAILED tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[regime_cooldown-21.0-0.5-chop-True-False]
+FAILED tests/test_pipeline_diagnostics.py::test_actual_alpha_route_reports_first_terminal_reason[trending_down-21.0-0.5-trending_down-True-False]
+6 failed, 9 passed, 1 warning in 1.97s

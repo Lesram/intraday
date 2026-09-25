@@ -1,0 +1,31 @@
+{
+  "label": "nightly",
+  "exit_code": 0,
+  "seconds": 44.91,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/composite_indicator_repair/nightly.xml",
+    "tests/test_wave37_fixes.py",
+    "tests/test_wave48_fixes.py",
+    "tests/test_wave55_fixes.py",
+    "tests/test_wave61_fixes.py",
+    "tests/test_reachability_v8.py",
+    "tests/test_v12_w75_lint_ratchet.py",
+    "tests/test_v12_w77_findings_ledger.py",
+    "tests/test_v12_w81_ci_cleanup.py",
+    "tests/unit/test_auth_security_phase4.py",
+    "tests/test_strategy_engine_comprehensive.py",
+    "tests/test_organism_integration_smoke.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_v12_w84_governance_docs.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

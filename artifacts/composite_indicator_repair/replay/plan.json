@@ -1,0 +1,16 @@
+{
+  "task_id": "composite-correction-paired-replay-20260925",
+  "scope": "Deterministic synthetic counterfactual through the actual ReplayEngine and live_tick; no production runtime changes",
+  "owned_files": ["scripts/diagnostics/replay_composite_correction.py", "tests/test_composite_correction_replay.py"],
+  "baseline_commit": "ab899be855675d4437279a701b778a18c3c2c9f1",
+  "baseline_method": "Extract the exact prior _safe_div function from git-show; temporarily replace only that helper in a finally-restored context. All other source/settings/data are identical between arms.",
+  "scenarios": ["up", "down", "chop", "crash_after_40_ticks", "eod"],
+  "data": "Existing seed42 W100 synthetic OHLCV: AAPL/MSFT/SPY, 280 one-minute bars, initial history200; 60 ticks per daytime scenario,35 ticks for EOD",
+  "execution": "Realistic ReplayEngine profile: existing synchronous next-open simulated fills, auto class half-spread,5bp slippage,0 commission; initial cash1000000 and entry throttle20 match existing W100 mechanism fixture",
+  "isolation": "Root isolated runner denies network, installed writes, installed credential/brain reads; each arm/repeat uses an empty temporary brain and no saved models",
+  "acceleration": "Real causal feature prefixes only, after both arms pass direct visible-prefix equality and adversarial future-tail invariance; no decisions, scores, gates, sizing or exits mocked",
+  "acceptance": ["nonzero corrected composites versus exact old zero fallback", "actual admitted entries and reconciled protective/EOD exits", "no tick errors or unresolved accounting", "research policy lock, ML isolation and fixed ATR-dollar risk retained", "entry evidence binds passed shared/final freshness gates", "identical normalized repeat decisions, quantities, prices, equity/cashflow, risk and exits"],
+  "metrics": ["per-tick candidate-build terminal counters", "signals and actual entries", "ordered orders and exit mix", "accounted closes", "cashflow, equity delta and max drawdown", "remaining exposure", "deterministic repeat hashes"],
+  "limitations": ["synthetic mechanism evidence only; no profitability or historical lost-opportunity attribution", "next-open simulator is synchronous and does not model exchange queues, latency or partial-market execution", "historical provider has no streaming loss/staleness transport; separate streaming tests cover those contracts", "initial cash/history/throttle are fixed pre-existing test fixture settings, not a reproduction of the deployed account"],
+  "validation": "Targeted new test module through artifacts/composite_indicator_repair/isolated_test_runner.py; root coordinates full safety pack and permits heavy replay timing"
+}

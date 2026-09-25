@@ -1,0 +1,10 @@
+{
+  "status": "CLEAR_FOR_SCANNED_SOURCE_SCOPE",
+  "findings": [],
+  "scan_exit_code": 0,
+  "receipt_sha256": "0d046387b50ea09c0f8eb5874d5a46392d49ffa4e13d6072aee61d745fb8cf60",
+  "limits": [
+    "Generated public artifacts/reports and final committed diff require separate scan.",
+    "Scanner output is a bounded automated check, not a guarantee no possible secret exists."
+  ]
+}

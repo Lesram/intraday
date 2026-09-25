@@ -1,0 +1,18 @@
+{
+  "reason": "Pre-refinement green matrix retained; final matrix adds receipt joins and initial-cash drawdown",
+  "suite": "artifacts/composite_indicator_repair/paired_01.xml",
+  "files": {
+    "artifacts/composite_indicator_repair/replay/paired_summary.json": {
+      "archive": "artifacts/composite_indicator_repair/replay/superseded_first/paired_summary.json",
+      "sha256": "53b19b3159e6264d3f47a110fd9d76a89692dbb62e515b93ad24b55ca6f55058"
+    },
+    "scripts/diagnostics/replay_composite_correction.py": {
+      "archive": "artifacts/composite_indicator_repair/replay/superseded_first/replay_composite_correction.py.txt",
+      "sha256": "f97ec5b53efa89bc4b3d32191833cc1943533b0baa0ec45ff0699f590cf54f6c"
+    },
+    "tests/test_composite_correction_replay.py": {
+      "archive": "artifacts/composite_indicator_repair/replay/superseded_first/test_composite_correction_replay.py.txt",
+      "sha256": "0c12c9b0a1fced4c4981ae397dd8d0011975495b8636ebf2a134d18c77843752"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "label": "required_organism_01",
+  "exit_code": 0,
+  "seconds": 204.71,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/required_organism_01.xml",
+    "tests/test_organism_live_engine.py",
+    "tests/test_organism_engine_scenarios.py",
+    "tests/test_multi_tick_state.py",
+    "tests/test_safety_invariants.py",
+    "tests/test_replay_simulator.py",
+    "tests/test_self_evolution.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

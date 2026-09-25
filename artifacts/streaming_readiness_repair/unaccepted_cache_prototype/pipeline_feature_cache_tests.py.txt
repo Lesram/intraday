@@ -1,0 +1,304 @@
+"""Exact feature parity and freshness boundaries for the ML-only cache."""
+
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pandas as pd
+import pytest
+
+from backend.organism import live_engine, live_engine_data, ml_features
+from backend.organism.feature_store import VersionedFeatureStore
+from backend.organism.streaming_data_provider import StreamingDataProvider
+from scripts.diagnostics.profile_paper_pipeline import MemoryTransport, SyntheticHistory, synthetic_bars
+
+
+@pytest.fixture
+async def feeder(monkeypatch):
+    monkeypatch.setenv("ORGANISM_LIVE_TIMEFRAME", "1Min")
+    monkeypatch.setenv("ORGANISM_LIVE_LOOKBACK", "80")
+    monkeypatch.setattr(live_engine, "LIVE_TIMEFRAME", "1Min")
+    monkeypatch.setattr(live_engine, "LIVE_LOOKBACK", 80)
+    monkeypatch.setattr(live_engine, "MIN_BARS", 50)
+    frames = {s: synthetic_bars(i, 80) for i, s in enumerate(("SPY", "SYN001", "HELD"))}
+    clock = [frames["SPY"].timestamp.iloc[-1].timestamp() + 15]
+    data = StreamingDataProvider(time_fn=lambda: clock[0])
+    monkeypatch.setattr("backend.organism.streaming_data_provider.AlpacaMarketDataStream", MemoryTransport)
+    await data.start(list(frames), "synthetic-only", "synthetic-only", feed="iex", data_client=SyntheticHistory(frames))
+    engine = live_engine_data._DataFeederMixin()
+    engine._streaming_provider = data
+    engine._feature_store = VersionedFeatureStore()
+    engine._bars_per_day = 390
+    engine._universe = ["SPY", "SYN001"]
+    positions = {}
+    engine._positions_service = SimpleNamespace(get_all_positions=AsyncMock(side_effect=lambda: positions.copy()))
+    engine._data_client = SimpleNamespace(get_historical_bars_df=AsyncMock(return_value=None))
+    yield SimpleNamespace(engine=engine, data=data, frames=frames, clock=clock, positions=positions)
+    await data.stop()
+
+
+def same(left, right):
+    assert left.keys() == right.keys()
+    for symbol in left:
+        pd.testing.assert_frame_equal(left[symbol], right[symbol], check_exact=True)
+
+
+@pytest.mark.asyncio
+async def test_unchanged_inputs_reuse_only_ml_and_preserve_feature_store_side_effects(feeder, monkeypatch):
+    calls = []
+    original = VersionedFeatureStore.compute_features
+
+    def observed(store, *args, **kwargs):
+        result = original(store, *args, **kwargs)
+        calls.append(result[1])
+        return result
+
+    monkeypatch.setattr(VersionedFeatureStore, "compute_features", observed)
+    first = await feeder.engine._fetch_and_compute_features()
+    second = await feeder.engine._fetch_and_compute_features()
+    same(first, second)
+    assert feeder.engine._last_feature_cache_stats["hits"] == 2
+    assert feeder.engine._last_feature_cache_stats["misses"] == 0
+    assert len(calls) == 4 and len({id(snapshot) for snapshot in calls}) == 4
+    assert all(snapshot.qa.row_count > 0 for snapshot in calls)
+    feeder.engine._ml_feature_cache.clear()
+    cold = await feeder.engine._fetch_and_compute_features()
+    same(second, cold)
+    assert feeder.engine._last_feature_cache_stats["hits"] == 0
+
+
+@pytest.mark.asyncio
+async def test_returned_frame_mutation_cannot_poison_cache(feeder):
+    expected = await feeder.engine._fetch_and_compute_features()
+    received = await feeder.engine._fetch_and_compute_features()
+    received["SYN001"].iloc[-1, received["SYN001"].columns.get_loc("close")] = -999
+    received["SYN001"]["consumer_only"] = 1
+    received["SYN001"].attrs["consumer"] = ["mutable"]
+    current = await feeder.engine._fetch_and_compute_features()
+    same(expected, current)
+    assert feeder.engine._last_feature_cache_stats["hits"] == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("symbol,field", [("SYN001", "close"), ("SYN001", "volume"), ("SPY", "close")])
+async def test_same_bar_correction_and_spy_dependency_miss_with_exact_cold_parity(feeder, symbol, field):
+    await feeder.engine._fetch_and_compute_features()
+    old_receipt = feeder.data._last_bar_ts[symbol]
+    corrected = dict(feeder.data._bars[symbol][-1])
+    corrected[field] += 0.23 if field == "close" else 1234
+    await feeder.data._stream.on_bar(symbol, corrected)
+    assert feeder.data._last_bar_ts[symbol] == old_receipt
+    changed = await feeder.engine._fetch_and_compute_features()
+    stats = feeder.engine._last_feature_cache_stats
+    assert stats["misses"] == (2 if symbol == "SPY" else 1)
+    feeder.engine._ml_feature_cache.clear()
+    same(changed, await feeder.engine._fetch_and_compute_features())
+
+
+@pytest.mark.asyncio
+async def test_advanced_bar_and_earlier_row_change_invalidate(feeder):
+    await feeder.engine._fetch_and_compute_features()
+    feeder.data._bars["SYN001"][3]["high"] += 0.13
+    changed = await feeder.engine._fetch_and_compute_features()
+    assert feeder.engine._last_feature_cache_stats["misses"] == 1
+    feeder.engine._ml_feature_cache.clear()
+    same(changed, await feeder.engine._fetch_and_compute_features())
+    latest = dict(feeder.data._bars["SYN001"][-1])
+    stamp = pd.Timestamp(latest["timestamp"]) + pd.Timedelta(minutes=1)
+    latest["timestamp"] = stamp.isoformat()
+    latest["close"] += 0.25
+    feeder.clock[0] = stamp.timestamp() + 15
+    await feeder.data._stream.on_bar("SYN001", latest)
+    changed = await feeder.engine._fetch_and_compute_features()
+    assert feeder.engine._last_feature_cache_stats["misses"] == 1
+    feeder.engine._ml_feature_cache.clear()
+    same(changed, await feeder.engine._fetch_and_compute_features())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["bars_per_day", "timeframe", "store_config", "engineer_config"])
+async def test_configuration_changes_never_reuse_old_ml_output(feeder, monkeypatch, change):
+    await feeder.engine._fetch_and_compute_features()
+    if change == "bars_per_day":
+        feeder.engine._bars_per_day = 78
+    elif change == "timeframe":
+        monkeypatch.setenv("ORGANISM_LIVE_TIMEFRAME", "5Min")
+    elif change == "store_config":
+        feeder.engine._feature_store._config["feature_mode"] = "alternate"
+    else:
+        feeder.engine._feature_store._engineer.config["rsi_period"] = 9
+    changed = await feeder.engine._fetch_and_compute_features()
+    assert feeder.engine._last_feature_cache_stats["hits"] == 0
+    feeder.engine._ml_feature_cache.clear()
+    same(changed, await feeder.engine._fetch_and_compute_features())
+
+
+@pytest.mark.asyncio
+async def test_stale_buffers_force_real_fetch_and_cannot_serve_cached_features(feeder):
+    await feeder.engine._fetch_and_compute_features()
+    feeder.clock[0] += 121
+    result = await feeder.engine._fetch_and_compute_features()
+    assert result == {}
+    assert feeder.engine._last_feature_cache_stats["hits"] == 0
+    assert feeder.engine._data_client.get_historical_bars_df.await_count == 3  # SPY first and fallback per universe.
+    assert set(feeder.engine._last_bar_fetch_sources.values()) == {"unavailable"}
+
+
+@pytest.mark.asyncio
+async def test_departed_universe_pruned_held_symbol_retained(feeder):
+    await feeder.engine._fetch_and_compute_features()
+    feeder.engine._universe = ["SPY"]
+    feeder.positions["SYN001"] = {"qty": 1}
+    held = await feeder.engine._fetch_and_compute_features()
+    assert set(held) == {"SPY", "SYN001"}
+    assert feeder.engine._last_feature_cache_stats["hits"] == 2
+    feeder.positions.clear()
+    await feeder.engine._fetch_and_compute_features()
+    assert feeder.engine._ml_feature_cache.symbols() == {"SPY"}
+
+
+@pytest.mark.asyncio
+async def test_unknown_mutable_computation_wrapper_bypasses_cache(feeder, monkeypatch):
+    await feeder.engine._fetch_and_compute_features()
+    original = ml_features.compute_ml_features
+    state = [0]
+
+    def wrapped(*args, **kwargs):
+        result = original(*args, **kwargs)
+        state[0] += 1
+        result["mutable_test_feature"] = state[0]
+        return result
+
+    monkeypatch.setattr(ml_features, "compute_ml_features", wrapped)
+    one = await feeder.engine._fetch_and_compute_features()
+    two = await feeder.engine._fetch_and_compute_features()
+    assert state[0] == 4
+    assert feeder.engine._last_feature_cache_stats["hits"] == 0
+    assert not one["SYN001"]["mutable_test_feature"].equals(two["SYN001"]["mutable_test_feature"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["dtype", "column_order", "column_name", "index", "index_name"])
+async def test_complete_frame_schema_is_in_cache_identity(feeder, monkeypatch, change):
+    await feeder.engine._fetch_and_compute_features()
+    original = feeder.data.get_bars
+
+    def changed(symbol, lookback):
+        frame = original(symbol, lookback)
+        if symbol != "SYN001":
+            return frame
+        if change == "dtype":
+            frame["close"] = frame.close.astype("float32")
+        elif change == "column_order":
+            frame = frame[list(reversed(frame.columns))]
+        elif change == "column_name":
+            frame["additional_input"] = 0.25
+        elif change == "index":
+            frame.index = pd.Index(range(10, 10 + len(frame)), dtype="int64")
+        else:
+            frame.index.name = "causal_bar_index"
+        return frame
+
+    monkeypatch.setattr(feeder.data, "get_bars", changed)
+    result = await feeder.engine._fetch_and_compute_features()
+    assert feeder.engine._last_feature_cache_stats["misses"] == 1
+    feeder.engine._ml_feature_cache.clear()
+    same(result, await feeder.engine._fetch_and_compute_features())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("unknown", ["store_state", "engineer_state", "config_object", "module_state"])
+async def test_unknown_mutable_dependencies_bypass(feeder, monkeypatch, unknown):
+    await feeder.engine._fetch_and_compute_features()
+    if unknown == "store_state":
+        feeder.engine._feature_store.unrecognized = object()
+    elif unknown == "engineer_state":
+        feeder.engine._feature_store._engineer.unrecognized = object()
+    elif unknown == "config_object":
+        feeder.engine._feature_store._config["unused_opaque"] = object()
+    else:
+        monkeypatch.setattr(ml_features, "unknown_state", object(), raising=False)
+    first = await feeder.engine._fetch_and_compute_features()
+    second = await feeder.engine._fetch_and_compute_features()
+    same(first, second)
+    assert feeder.engine._last_feature_cache_stats["hits"] == 0
+    assert feeder.engine._last_feature_cache_stats["bypasses"] == 2
+
+
+def test_mutable_object_cells_indices_and_attrs_are_not_cacheable():
+    class Mutable:
+        def __init__(self):
+            self.value = 1
+
+        def __hash__(self):
+            return 1
+
+        def __str__(self):
+            return str(self.value)
+
+    frame = synthetic_bars(1, 80)
+    frame.index = pd.Index([Mutable() for _ in range(80)], dtype=object)
+    assert live_engine_data._frame_identity(frame) is None
+    frame = synthetic_bars(1, 80)
+    frame["opaque"] = [Mutable() for _ in range(80)]
+    assert live_engine_data._frame_identity(frame) is None
+    frame = synthetic_bars(1, 80)
+    frame.attrs["opaque"] = Mutable()
+    assert live_engine_data._frame_identity(frame) is None
+
+
+def test_bounded_cache_lru_memory_and_exact_equality_even_with_colliding_key():
+    raw = synthetic_bars(1, 80)
+    features = raw.copy(deep=True)
+    key = ("deliberately-colliding-key",)
+    size = int(raw.memory_usage(index=True, deep=True).sum()) * 2
+    cache = live_engine_data._MLFeatureCache(max_entries=2, max_bytes=size * 2)
+    for symbol in ("A", "B"):
+        cache.put(symbol, key, raw, None, features)
+    assert cache.symbols() == {"A", "B"}
+    assert cache.get("A", key, raw, None) is not None
+    cache.put("C", key, raw, None, features)
+    assert cache.symbols() == {"A", "C"}  # Actual LRU, bounded count.
+    changed = raw.copy(deep=True)
+    changed.loc[0, "volume"] += 1
+    assert cache.get("A", key, changed, None) is None  # Hash collision is not equality.
+    cache.max_bytes = size - 1
+    cache.clear()
+    cache.put("LARGE", key, raw, None, features)
+    assert cache.symbols() == set() and cache.snapshot()["dataframe_bytes"] == 0
+    cache.max_bytes = size * 2 - 1
+    cache.put("A", key, raw, None, features)
+    cache.put("B", key, raw, None, features)
+    assert cache.symbols() == {"B"}
+    assert cache.snapshot()["dataframe_bytes"] <= cache.max_bytes
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("as_class", [False, True])
+async def test_stateful_callable_helper_is_unknown_and_never_reused(feeder, monkeypatch, as_class):
+    from backend.organism import composite_indicators
+
+    class Stateful:
+        calls = 0
+
+        def __call__(self, frame):
+            self.calls += 1
+            frame = frame.copy(deep=True)
+            frame["stateful_probe"] = self.calls
+            return frame
+
+    class StatefulClass:
+        calls = 0
+
+        def __new__(cls, frame):
+            cls.calls += 1
+            frame = frame.copy(deep=True)
+            frame["stateful_probe"] = cls.calls
+            return frame
+
+    helper = StatefulClass if as_class else Stateful()
+    monkeypatch.setattr(composite_indicators, "compute_composite_indicators", helper)
+    first = await feeder.engine._fetch_and_compute_features()
+    second = await feeder.engine._fetch_and_compute_features()
+    assert helper.calls == 4
+    assert feeder.engine._last_feature_cache_stats["bypasses"] == 2
+    assert not first["SYN001"]["stateful_probe"].equals(second["SYN001"]["stateful_probe"])

@@ -1,0 +1,37 @@
+{
+  "task_id": "subscription_readiness_snapshot_docs_addendum_20260924",
+  "status": "ACCEPTED_SCOPED_SOURCE_AND_15_PASS_EVIDENCE",
+  "reviewer": "combined_acceptance_review",
+  "recorded_at_utc": "2026-09-25T04:59:40.098405+00:00",
+  "parent_review": {
+    "path": "artifacts/streaming_readiness_repair/subscription_freeze_independent_review.json",
+    "sha256": "847ad1a3451b68d93a037eac16120a76668ce24fee100a441dcb4434b42add9a"
+  },
+  "files_sha256": {
+    "scripts/runtime/write_runtime_snapshot.py": "503ab10da6a15cf22940afa440d7cb8ccfa8a22e31eb6de26b65a9ebd40465c4",
+    "tests/test_pipeline_snapshot.py": "2da081d750d74536cdec392c1d398c2ca88cfd7a608d3d1c8d65ba9203aa8f71",
+    "docs/architecture/mapss.md": "bced2fb11f969f7e1363415452a53b07f393b61ea319c0c30a797f0a4dd2065e",
+    "docs/engineering/STREAMING_READINESS_REPAIR.md": "f6d164b071184eee81a2f3b34be973e03fd49b28d9232152776d896d10913b58"
+  },
+  "junit": {
+    "path": "artifacts/streaming_readiness_repair/snapshots_final_01.xml",
+    "sha256": "d95660b7691bc86ff4bc58df5c82b785e9bbe7c8a2544b2bf4a0b9a9135a908a",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "runner_receipt_sha256": "e3802c0c7307d7cf63a07a63ddd633d94ced7428dd39fa93ca0e0c5123b89dc2"
+  },
+  "reviewed": [
+    "Cache snapshot reads actual class defaults and mutated7/8192 fixture also instantiates cache to prove constructor/config agreement. 128entries and64MiB are accounted DataFrame capacity, not claimed process memory cap.",
+    "Defaults/resolved/legacy carry candidate policy without claiming deployed engine observation. Subscription5s deadline remains read from actual class; activefreeze/measurement clock unchanged.",
+    "Docs now match readiness100/200ms dependency budgets,2s cache,loop/tick configuredinterval+60s recency,explicit bounded warmup/closed/disabled states and unchanged recovery authority.",
+    "Docs match watchdog60s\u21921s windows,12queries/10s+1s cleanup,262144-byte cap and<1000lines,oldest-complete cursor semantics and persistent malformed/backlog failure.",
+    "Cache scope disclosures preserve actual data fetch/freshness, feature-store QA/snapshots and MTF, exact supported input/dependency match, no persistence. Semantic cache implementation remains independently reviewed by another agent."
+  ],
+  "limitations": [
+    "No duplicate tests, runtime/auth/Docker actions or deployment.",
+    "Benchmark numbers and cache implementation are outside this addendum; later performance claims require their separate source-bound evidence.",
+    "Final cache/source freeze regeneration, full artifact/hosted checks and activation approval remain parent release gates."
+  ],
+  "blockers": []
+}

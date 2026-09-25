@@ -292,15 +292,20 @@ class StreamingDataProvider:
 
     # ── Subscription Management ───────────────────────────────────
 
-    async def update_subscriptions(self, symbols: list[str]) -> None:
-        """Add/remove symbol subscriptions dynamically for universe rotation."""
-        async with self._lifecycle_lock:
-            await self._update_subscriptions(symbols)
+    async def update_subscriptions(self, symbols: list[str]) -> bool:
+        """Synchronize requested bar/quote subscriptions; True means complete.
 
-    async def _update_subscriptions(self, symbols: list[str]) -> None:
+        A successful transport update is not bar freshness. New symbols remain
+        stale until an advancing, timely streaming bar arrives. No REST seed
+        is performed here. Partial failures retain state for the next retry.
+        """
+        async with self._lifecycle_lock:
+            return await self._update_subscriptions(symbols)
+
+    async def _update_subscriptions(self, symbols: list[str]) -> bool:
         if not self._stream or not self._stream.is_authenticated:
             logger.warning("Cannot update subscriptions — not connected")
-            return
+            return False
         stream, generation = self._stream, self._session_generation
 
         new_set = {s.upper() for s in symbols}
@@ -319,29 +324,29 @@ class StreamingDataProvider:
         if bars_to_add:
             added = await stream.subscribe_bars(bars_to_add)
             if not self._is_current_session(stream, generation):
-                return
+                return False
             if added is not True:
                 logger.warning("Streaming bar subscription failed: %d symbols", len(bars_to_add))
-                return
+                return False
             self._subscribed_symbols.update(bars_to_add)
             self._retired_symbols.difference_update(bars_to_add)
         if quotes_to_add:
             added = await stream.subscribe_quotes(quotes_to_add)
             if not self._is_current_session(stream, generation):
-                return
+                return False
             if added is not True:
                 logger.warning("Streaming quote subscription failed: %d symbols", len(quotes_to_add))
-                return
+                return False
         if bars_to_add or quotes_to_add:
             logger.info("Streaming subscribed: +%d symbols", len(set(bars_to_add) | set(quotes_to_add)))
 
         if to_remove:
             removed = await stream.unsubscribe(to_remove)
             if not self._is_current_session(stream, generation):
-                return
+                return False
             if removed is not True:
                 logger.warning("Streaming unsubscribe failed: %d symbols retained", len(to_remove))
-                return
+                return False
             self._subscribed_symbols.difference_update(to_remove)
             self._retired_symbols.update(to_remove)
             for symbol in to_remove:
@@ -350,6 +355,8 @@ class StreamingDataProvider:
                 self._last_bar_ts.pop(symbol, None)
             self.last_update_time = max(self._last_bar_ts.values(), default=None)
             logger.info("Streaming unsubscribed: -%d symbols", len(to_remove))
+
+        return True
 
     # ── Pre-fill ──────────────────────────────────────────────────
 

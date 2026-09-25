@@ -1,0 +1,33 @@
+{
+  "task_id": "streaming_subscription_readiness",
+  "owner": "session_contract_explorer",
+  "parent_plan": "artifacts/streaming_readiness_repair/plan.json",
+  "affected_files": [
+    "backend/organism/live_engine.py",
+    "backend/organism/streaming_data_provider.py",
+    "tests/test_scanner_streaming_integration.py",
+    "tests/test_entry_freshness.py",
+    "tests/test_pipeline_diagnostics.py"
+  ],
+  "helper": "_sync_streaming_subscriptions",
+  "behavior": [
+    "Synchronize constructor base plus SPY/QQQ benchmarks, feature universe and fresh held positions on each tick using existing position query",
+    "Strict bool update result, fail-closed subscription errors and bounded 5-second wait",
+    "Same-tick global freshness recheck after sync, earlier block sticky",
+    "No REST prefill for discovered subscriptions and no threshold/routing/final gate change"
+  ],
+  "tests": [
+    "Real scanner discovery + real provider callbacks + fake transport + actual replay admission",
+    "Subscription bar/quote failure then retry and actual first fresh bar before entry",
+    "Held symbol retention and actual EOD exit with stale/subscription failure",
+    "Unseen symbols, absent provider, previous halt and partial/unsubscribe failures"
+  ],
+  "constraints": [
+    "No runtime/network/credentials",
+    "No commit/deploy",
+    "Preserve concurrent root diagnostic edits",
+    "Root owns candidate freeze and full artifact validation"
+  ],
+  "fixture_scope_extension": "Root approved one async-success subscription fixture field; all admission assertions retained.",
+  "diagnostic_test_scope_extension": "Root authorized six actual live-tick alpha routing reason cases; test-only supported legacy production-mode selection, no gate/threshold changes."
+}

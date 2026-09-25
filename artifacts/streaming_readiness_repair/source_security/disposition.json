@@ -1,0 +1,14 @@
+{
+  "status": "CLEAR_FOR_SCANNED_SOURCE_SCOPE",
+  "findings": [],
+  "scan_exit_code": 0,
+  "receipt_sha256": "9a55984b7014b7a1a691789568edeba789debccf3081a7c359ad4a6294b9b43c",
+  "limits": [
+    "Generated public artifacts/reports and final committed diff require separate scan.",
+    "Scanner output is a bounded automated check, not a guarantee no possible secret exists."
+  ],
+  "scan_script_sha256": "e498bfb7f6070ab669fc3c1e0495ba7063d87ea881670863a556783e69ae5285",
+  "scanner_version_verified": "8.30.1",
+  "files_scanned": 23,
+  "public_empty_redacted_report_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+}

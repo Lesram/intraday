@@ -1,0 +1,368 @@
+"""Offline paired mechanism replay for the approved scalar composite repair.
+
+Run via the network-denied isolated test runner, never against a saved brain.
+The counterfactual replaces only the exact prior helper, restores it on every
+exit, and runs the same current engine in both arms. No decision is mocked.
+"""
+from __future__ import annotations
+
+import argparse
+import ast
+import asyncio
+from collections import Counter
+from contextlib import contextmanager
+from copy import deepcopy
+import hashlib
+import json
+import os
+from pathlib import Path
+import random
+import subprocess
+import tempfile
+from unittest.mock import patch
+
+import numpy as np
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[2]
+BASELINE = "ab899be855675d4437279a701b778a18c3c2c9f1"
+COMPOSITE_PATH = "backend/organism/composite_indicators.py"
+BASELINE_MODULE_SHA256 = "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c"
+SYMBOLS = ("AAPL", "MSFT", "SPY")
+SCENARIOS = ("up", "down", "chop", "crash", "eod")
+COMPOSITES = (
+    "comp_squeeze_momentum", "comp_vol_price_div", "comp_trend_alignment",
+    "comp_institutional_acc", "comp_mean_rev_extreme",
+    "comp_breakout_readiness", "comp_momentum_quality",
+)
+CONFIG = {
+    "seed": 42, "rows": 280, "lookback": 200, "timeframe": "1Min",
+    "initial_cash": 1_000_000, "max_entries_per_hour": 20,
+    "cost_profile": "realistic", "slippage_bps": 5,
+    "half_spread_bps": "auto", "commission_per_share": 0,
+}
+SOURCE_FILES = (
+    COMPOSITE_PATH, "backend/organism/ml_features.py",
+    "backend/organism/live_engine.py", "backend/organism/live_engine_data.py",
+    "backend/organism/replay_simulator.py", "backend/organism/alpha_scanner.py",
+    "backend/organism/entry_freshness.py", "backend/organism/entry_evidence.py",
+    "backend/organism/adaptive_exits.py", "backend/organism/research_policy.py",
+    "scripts/diagnostics/replay_composite_correction.py",
+)
+
+
+def digest(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def encoded(value) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+
+
+def frame_hash(frame: pd.DataFrame) -> str:
+    schema = [(str(c), str(t)) for c, t in zip(frame.columns, frame.dtypes)]
+    return digest(encoded(schema) + pd.util.hash_pandas_object(frame, index=True).values.tobytes())
+
+
+def source_hashes() -> dict[str, str]:
+    return {name: digest((ROOT / name).read_bytes()) for name in SOURCE_FILES}
+
+
+def require_offline() -> None:
+    for key in ("TESTING", "USE_MOCK_DATA", "USE_MOCK_BROKER"):
+        if os.environ.get(key, "").lower() != "true":
+            raise ValueError("Paired replay requires explicit isolated testing configuration")
+    credential_names = ("ALPACA_API_KEY_ID", "ALPACA_API_KEY", "ALPACA_SECRET_KEY",
+                        "ALPACA_API_SECRET_KEY", "APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+    if any(os.environ.get(key) for key in credential_names):
+        raise ValueError("Paired replay refuses broker credentials")
+
+
+def baseline_source() -> tuple[bytes, str]:
+    result = subprocess.run(
+        ["git", "show", f"{BASELINE}:{COMPOSITE_PATH}"], cwd=ROOT,
+        capture_output=True, check=True,
+    )
+    if digest(result.stdout) != BASELINE_MODULE_SHA256:
+        raise ValueError("Unexpected baseline module bytes")
+    text = result.stdout.decode()
+    node = next(n for n in ast.parse(text).body
+                if isinstance(n, ast.FunctionDef) and n.name == "_safe_div")
+    helper = "\n".join(text.splitlines()[node.lineno - 1:node.end_lineno]) + "\n"
+    return result.stdout, helper
+
+
+@contextmanager
+def computation_arm(arm: str):
+    """Only prior helper behavior differs; patch restores even after failure."""
+    from backend.organism import composite_indicators
+
+    if arm not in ("baseline", "corrected"):
+        raise ValueError("Unknown replay arm")
+    if arm == "baseline":
+        _, helper = baseline_source()
+        namespace = {"pd": pd}
+        exec(compile(helper, f"{BASELINE}:{COMPOSITE_PATH}:_safe_div", "exec"), namespace)
+        with patch.object(composite_indicators, "_safe_div", namespace["_safe_div"]):
+            yield
+    else:
+        yield
+
+
+def scenario_bars(scenario: str) -> dict[str, pd.DataFrame]:
+    if scenario not in SCENARIOS:
+        raise ValueError("Unknown fixed scenario")
+    require_offline()
+    from backend.organism.replay_simulator import make_features_dict
+
+    trend = scenario if scenario in ("up", "down", "chop") else "up"
+    bars = make_features_dict(list(SYMBOLS), n=CONFIG["rows"], seed=CONFIG["seed"], trend=trend)
+    start = "2026-09-22T16:16:00Z" if scenario == "eod" else "2026-09-22T10:40:00Z"
+    for frame in bars.values():
+        frame["timestamp"] = pd.date_range(start, periods=len(frame), freq="min")
+        if scenario == "crash":
+            frame.loc[240:, ["open", "high", "low", "close"]] *= .75
+    return bars
+
+
+def prepare_features(bars, arm: str, *, prove_causality: bool = True):
+    """Exact causal acceleration, confined to known prefixes below500rows.
+
+    This fixture does not enter production. Direct recomputation and unknown-
+    history rejection are essential: a producer fix invalidates earlier proofs.
+    """
+    from backend.organism.ml_features import compute_ml_features
+
+    with computation_arm(arm):
+        computed = {
+            symbol: compute_ml_features(frame, spy_df=bars["SPY"] if symbol != "SPY" else None,
+                                        bars_per_day=390)
+            for symbol, frame in bars.items()
+        }
+        checks = []
+        if prove_causality:
+            for count in (201, 230, 260):
+                for symbol in SYMBOLS:
+                    direct = compute_ml_features(
+                        bars[symbol].iloc[:count],
+                        spy_df=bars["SPY"].iloc[:count] if symbol != "SPY" else None,
+                        bars_per_day=390,
+                    )
+                    pd.testing.assert_frame_equal(computed[symbol].iloc[:count], direct)
+                    checks.append({"symbol": symbol, "visible_rows": count,
+                                   "direct_prefix_sha256": frame_hash(direct)})
+            shocked = {symbol: frame.copy() for symbol, frame in bars.items()}
+            for frame in shocked.values():
+                frame.loc[230:, ["open", "high", "low", "close", "volume"]] *= 10
+            for symbol in SYMBOLS:
+                future = compute_ml_features(
+                    shocked[symbol], spy_df=shocked["SPY"] if symbol != "SPY" else None,
+                    bars_per_day=390,
+                )
+                pd.testing.assert_frame_equal(computed[symbol].iloc[:230], future.iloc[:230])
+        counts = {
+            symbol: {name: int((frame[name].iloc[200:260] != 0).sum()) for name in COMPOSITES}
+            for symbol, frame in computed.items()
+        }
+        proof = {"direct_prefix_checks": checks, "future_tail_invariant": prove_causality,
+                 "nonzero_composite_cells_rows_200_259": counts,
+                 "nonzero_count_scope": "Fixed diagnostic60-row window; EOD executes its first35 rows only",
+                 "computed_feature_sha256": {s: frame_hash(f) for s, f in computed.items()}}
+    return computed, proof
+
+
+def prefix_compute(bars, computed, calls):
+    def compute(frame, spy_df=None, bars_per_day=1):
+        if bars_per_day != 390 or not 200 <= len(frame) <= 280:
+            raise ValueError("Unsupported replay prefix")
+        matches = [s for s, raw in bars.items()
+                   if frame.equals(raw.iloc[:len(frame)].reset_index(drop=True))]
+        if len(matches) != 1:
+            raise ValueError("Unknown, mutated or sliding replay history")
+        symbol = matches[0]
+        if spy_df is not None:
+            pd.testing.assert_frame_equal(spy_df, bars["SPY"].iloc[:len(frame)])
+        calls.append((symbol, len(frame)))
+        return computed[symbol].iloc[:len(frame)].copy()
+    return compute
+
+
+async def run_arm(scenario, arm, bars, computed):
+    """Observe actual engine seams without changing their return values."""
+    require_offline()
+    from backend.organism import ml_features, research_policy
+    from backend.organism.live_engine import OrganismLiveEngine
+    from backend.organism.replay_simulator import ReplayEngine
+
+    random.seed(CONFIG["seed"])
+    np.random.seed(CONFIG["seed"])
+    engines, ticks, calls, gates = [], [], [], []
+    initialize = OrganismLiveEngine.initialize
+    live_tick = OrganismLiveEngine.live_tick
+    shared_gate = OrganismLiveEngine._passes_entry_gates
+
+    async def observed_initialize(engine):
+        assert not engine.brain.exists
+        result = await initialize(engine)
+        assert not result
+        assert not engine.signal_gen.is_trained
+        assert engine._ml_isolation_mode and engine._fixed_risk_sizing_mode
+        assert research_policy.RESEARCH_POLICY_LOCKED
+        engines.append(engine)
+        return result
+
+    def observed_gate(engine, *args, **kwargs):
+        result = shared_gate(engine, *args, **kwargs)
+        gates.append({"tick": engine._tick_count, "symbol": args[0] if args else kwargs["symbol"],
+                      "passed": result[0], "reason": result[1]})
+        return result
+
+    async def observed_tick(engine):
+        result = await live_tick(engine)
+        positions = deepcopy(await engine._positions_service.get_all_positions())
+        diagnostic = dict(getattr(engine, "_last_pipeline_diagnostics", {}))
+        diagnostic.pop("stage_seconds", None)
+        ticks.append({"tick": engine._tick_count, "timestamp": result.timestamp,
+                      "diagnostics": diagnostic,
+                      "cash": engine._order_service.cash,
+                      "positions": positions,
+                      "daily_loss_halt": bool(getattr(engine, "_daily_loss_halt", False)),
+                      "entries_blocked": bool(engine._entries_blocked)})
+        return result
+
+    with tempfile.TemporaryDirectory(prefix="composite-paired-replay-") as temp:
+        brain = Path(temp) / "isolated-brain"
+        with computation_arm(arm), \
+                patch.object(ml_features, "compute_ml_features", prefix_compute(bars, computed, calls)), \
+                patch.object(OrganismLiveEngine, "initialize", observed_initialize), \
+                patch.object(OrganismLiveEngine, "live_tick", observed_tick), \
+                patch.object(OrganismLiveEngine, "_passes_entry_gates", observed_gate):
+            replay = ReplayEngine(
+                bars, initial_cash=CONFIG["initial_cash"], slippage_bps=CONFIG["slippage_bps"],
+                timeframe=CONFIG["timeframe"], lookback=CONFIG["lookback"], brain_dir=str(brain),
+                max_entries_per_hour=CONFIG["max_entries_per_hour"],
+                cost_profile=CONFIG["cost_profile"], half_spread_bps=CONFIG["half_spread_bps"],
+                commission_per_share=CONFIG["commission_per_share"],
+            )
+            result = await replay.run(max_ticks=35 if scenario == "eod" else 60)
+        evidence_path = brain / "entry_evidence.jsonl"
+        receipts = [json.loads(line) for line in evidence_path.read_text().splitlines()] \
+            if evidence_path.exists() else []
+        engine = engines[0]
+        broker = engine._order_service
+        final_positions = await broker.get_all_positions()
+
+    assert len(result.tick_results) == result.ticks == len(ticks)
+    assert all(not t.get("errors") and "error" not in t for t in result.tick_results)
+    assert not result.accounting_pending
+    assert len({o["idempotency_key"] for o in result.orders if o["side"] == "buy"}) == sum(
+        o["side"] == "buy" for o in result.orders)
+    assert all(t["price_source"] == "simulated_position_fills" and not t["is_reconciliation_artifact"]
+               for t in result.accounted_trades)
+    assert engine.learner.state.total_trades == len(result.accounted_trades)
+    assert abs(engine.learner.state.cumulative_pnl - sum(t["pnl"] for t in result.accounted_trades)) < 1e-6
+    buys = [o for o in result.orders if o["side"] == "buy"]
+    assert len(receipts) == len(buys)
+    assert all(r["gate_passed"] and r["timestamp_complete"] and r["timestamp_ordered"]
+               and 0 <= r["bar_age_seconds"] <= 120 for r in receipts)
+    order_map = {o["order_id"]: i for i, o in enumerate(result.orders)}
+    orders = [{k: v for k, v in o.items()
+               if k not in {"id", "order_id", "broker_order_id", "idempotency_key"}}
+              for o in result.orders]
+    trades = [{**t, "entry_order_id": order_map[t["entry_order_id"]]}
+              for t in result.accounted_trades]
+    entry_receipts = [{k: r[k] for k in (
+        "symbol", "direction", "tick", "captured_at", "submitted_at", "shares", "entry_source",
+        "strategy_id", "last_bar_at", "frame_hash", "frame_rows", "bar_age_seconds", "gate_passed",
+        "timestamp_complete", "timestamp_ordered", "status", "reasons",
+    )} for r in receipts]
+    normalized = {"orders": orders, "accounted_trades": trades, "exit_legs": result.trades,
+                  "equity_curve": result.equity_curve, "regimes": result.regime_history,
+                  "signals": result.signals_log, "ticks": ticks, "gates": gates,
+                  "entry_receipts": entry_receipts, "final_cash": broker.cash,
+                  "final_positions": final_positions, "commission": broker.total_commission}
+    alpha = Counter()
+    for tick in ticks:
+        alpha.update(tick["diagnostics"].get("alpha_terminal", {}))
+    metrics = {
+        "ticks": result.ticks, "signals": sum(t["signals_generated"] for t in result.tick_results),
+        "alpha_scanned": sum(t["diagnostics"].get("alpha_scanned", 0) for t in ticks),
+        "alpha_considered": sum(t["diagnostics"].get("alpha_considered", 0) for t in ticks),
+        "alpha_terminal": dict(sorted(alpha.items())),
+        "shared_gate_evaluations": len(gates), "shared_gate_passes": sum(g["passed"] for g in gates),
+        "shared_gate_rejections": dict(Counter(g["reason"] for g in gates if not g["passed"])),
+        "combined_candidates_pre_sizing": sum(t["diagnostics"].get("combined_candidates_pre_sizing", 0) for t in ticks),
+        "entry_orders": len(buys), "exit_orders": len(orders) - len(buys),
+        "accounted_closes": len(trades), "exit_legs": len(result.trades),
+        "exit_mix": dict(Counter(t["exit_reason"] for t in trades)),
+        "accounting_pending": len(result.accounting_pending), "tick_errors": 0,
+        "exit_leg_realized_pnl_before_commission": result.total_pnl,
+        "accounted_position_pnl": sum(t["pnl"] for t in trades),
+        "final_equity": result.equity_curve[-1],
+        "equity_delta_including_open_mark_and_commission": result.equity_curve[-1] - CONFIG["initial_cash"],
+        "maximum_equity_drawdown_fraction": result.max_drawdown,
+        "maximum_gross_exposure": max(sum(p["market_value"] for p in t["positions"].values()) for t in ticks),
+        "final_open_positions": len(final_positions), "final_cash": broker.cash,
+        "daily_loss_halted_ticks": sum(t["daily_loss_halt"] for t in ticks),
+        "freshness_receipts": len(entry_receipts), "commission": broker.total_commission,
+    }
+    return {"arm": arm, "scenario": scenario, "metrics": metrics,
+            "deterministic_outcome_sha256": digest(encoded(normalized)),
+            "normalized_outcome": normalized,
+            "feature_prefix_calls": len(calls),
+            "safety": {"research_policy_locked": True, "ml_isolated": True, "fixed_atr_risk": True,
+                       "empty_initial_brain": True, "no_saved_models": True,
+                       "shared_and_final_entry_gates_observed": True},
+            "entry_evidence_limitation": "Synthetic receipts retain UNVERIFIED missing real runtime/feed identity; not forward-qualified paper trades"}
+
+
+async def evaluate(scenarios=SCENARIOS):
+    require_offline()
+    before = source_hashes()
+    baseline, helper = baseline_source()
+    reports = {}
+    for scenario in scenarios:
+        bars = scenario_bars(scenario)
+        branches = {}
+        for arm in ("baseline", "corrected"):
+            features, proof = prepare_features(bars, arm)
+            first = await run_arm(scenario, arm, bars, features)
+            repeat = await run_arm(scenario, arm, bars, features)
+            if first["deterministic_outcome_sha256"] != repeat["deterministic_outcome_sha256"]:
+                raise AssertionError(f"Nondeterministic replay: {scenario}/{arm}")
+            first.update(feature_proof=proof, repeat_outcome_sha256=repeat["deterministic_outcome_sha256"],
+                         repeat_equal=True)
+            branches[arm] = first
+        reports[scenario] = {"input_sha256": {s: frame_hash(f) for s, f in bars.items()}, **branches}
+    after = source_hashes()
+    if before != after:
+        raise AssertionError("Source changed during paired replay")
+    return {
+        "schema": "composite_correction_paired_replay_v1", "config": CONFIG,
+        "baseline_commit": BASELINE, "baseline_module_sha256": digest(baseline),
+        "baseline_helper_source": helper, "baseline_helper_sha256": digest(helper.encode()),
+        "source_hashes": before, "source_unchanged_during_run": True, "scenarios": reports,
+        "limitations": [
+            "Synthetic mechanics and causal counterfactual only; no profitability/edge or September24 lost-trade claim.",
+            "Existing synchronous next-open fills with class spread and5bp slippage; no exchange queue, latency or partial fill model.",
+            "Same fixed pre-existing W100 capital/history/throttle fixture, not the deployed account.",
+            "Historical bars only; live subscription/sparse-feed behavior belongs to separate integration tests.",
+            "Candidate/gate counts are repeated per-tick evaluations, not unique opportunities or ordered exclusive funnels.",
+            "Repeat equality excludes random order/lifetime/client IDs and wall performance telemetry; preserves ordered decisions, quantities, fills, simulated timestamps, position ledger, equity and risk.",
+        ],
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    result = asyncio.run(evaluate())
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open("x") as target:
+        json.dump(result, target, indent=2, sort_keys=True, allow_nan=False)
+        target.write("\n")
+
+
+if __name__ == "__main__":
+    main()

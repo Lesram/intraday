@@ -1,0 +1,19 @@
+{
+  "label": "composite_call_sites_01",
+  "exit_code": 0,
+  "seconds": 0.39,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/composite_call_sites_01.xml",
+    "artifacts/streaming_readiness_repair/composite_defect/diagnostic.py::test_all_three_scalar_call_sites"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

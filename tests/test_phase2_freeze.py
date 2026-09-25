@@ -66,6 +66,9 @@ def test_freeze_covers_full_decision_surface(freeze):
     assert set(freeze["surface"]["data_pipeline_sources"]) == {
         "market_scanner", "streaming_data_provider", "live_engine_data",
         "staleness_admission",
+        "streaming_universe_initialization", "streaming_subscription_sync",
+        "streaming_subscription_timeout", "pipeline_diagnostics",
+        "ml_features", "composite_indicators",
     }
     assert freeze["surface"]["research_policy"]["locked"] is True
     assert freeze["surface"]["research_policy"]["qualified_trade_count"] is None
@@ -206,14 +209,20 @@ def test_verify_detects_freshness_dependency_drift(tmp_path, monkeypatch, module
 
 @pytest.mark.parametrize("module_name", [
     "market_scanner", "streaming_data_provider", "live_engine_data", "staleness_admission",
+    "pipeline_diagnostics", "streaming_universe_initialization", "streaming_subscription_sync",
+    "ml_features", "composite_indicators",
 ])
 def test_pipeline_source_drift_invalidates_freeze_without_reset(tmp_path, monkeypatch, module_name):
     """Discovery/data changes must not evade the original six-function guard."""
     import importlib
 
-    if module_name == "staleness_admission":
+    if module_name in {"staleness_admission", "streaming_universe_initialization", "streaming_subscription_sync"}:
         from backend.organism.live_engine import OrganismLiveEngine
-        module = OrganismLiveEngine._stage_update_data_staleness
+        module = getattr(OrganismLiveEngine, {
+            "staleness_admission": "_stage_update_data_staleness",
+            "streaming_universe_initialization": "__init__",
+            "streaming_subscription_sync": "_sync_streaming_subscriptions",
+        }[module_name])
     else:
         module = importlib.import_module("backend.organism." + module_name)
     artifact = tmp_path / "param_freeze.json"
@@ -233,6 +242,23 @@ def test_pipeline_source_drift_invalidates_freeze_without_reset(tmp_path, monkey
     changed = compute_surface()
     assert changed["source_hashes"] == surface["source_hashes"]
     assert changed["data_pipeline_sources"][module_name] != surface["data_pipeline_sources"][module_name]
+    assert artifact.read_bytes() == before
+
+
+def test_subscription_deadline_drift_invalidates_freeze_without_reset(tmp_path, monkeypatch):
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    artifact = tmp_path / "param_freeze.json"
+    surface = compute_surface()
+    artifact.write_text(json.dumps({"FROZEN_AT": "2026-09-23T15:29:47Z", "surface": surface}))
+    before = artifact.read_bytes()
+    monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", artifact)
+    assert verify() == 0
+    monkeypatch.setattr(OrganismLiveEngine, "_STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S", 7.5)
+    assert verify() == 1
+    changed = compute_surface()
+    assert changed["source_hashes"] == surface["source_hashes"]
+    assert changed["data_pipeline_sources"]["streaming_subscription_timeout"] != surface["data_pipeline_sources"]["streaming_subscription_timeout"]
     assert artifact.read_bytes() == before
 
 

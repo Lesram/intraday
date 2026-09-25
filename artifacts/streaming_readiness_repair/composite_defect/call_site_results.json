@@ -1,0 +1,34 @@
+{
+  "source_sha256": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+  "source_unchanged": true,
+  "production_correction_applied": false,
+  "findings": [
+    {
+      "function": "volume_price_divergence",
+      "source_line": 159,
+      "original": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'"
+      },
+      "proposal_finite_rows": 80
+    },
+    {
+      "function": "mean_reversion_extremity",
+      "source_line": 341,
+      "original": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'"
+      },
+      "proposal_finite_rows": 80
+    },
+    {
+      "function": "momentum_quality_score",
+      "source_line": 484,
+      "original": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'"
+      },
+      "proposal_finite_rows": 80
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+........................................................................ [ 54%]
+............................................................             [100%]
+============================= slowest 10 durations =============================
+0.90s call     tests/test_phase2_freeze.py::test_decision_surface_unchanged
+0.12s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[staleness_admission]
+0.10s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[composite_indicators]
+0.10s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[ml_features]
+0.10s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[streaming_universe_initialization]
+0.10s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[streaming_data_provider]
+0.10s call     tests/test_phase2_freeze.py::test_verify_detects_model_fingerprint_source_drift
+0.10s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[streaming_subscription_sync]
+0.10s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[live_engine_data]
+0.10s call     tests/test_phase2_freeze.py::test_pipeline_source_drift_invalidates_freeze_without_reset[market_scanner]
+132 passed in 2.90s

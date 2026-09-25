@@ -1,0 +1,17 @@
+{
+  "status": "CACHE_REMOVED_RETAINED_PROFILER_VERIFIED",
+  "tests_passed": 7,
+  "tests_failed": 0,
+  "runtime_changed": false,
+  "composite_source_corrected": false,
+  "prototype_accepted": false,
+  "bound_files": {
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "scripts/diagnostics/profile_paper_pipeline.py": "4d3717ecc32b4d3c7e62e80d699f8db418a56a99726b27f387f65442b0ae8ed4",
+    "tests/test_pipeline_profile.py": "fe50479a6c054fe4a2f43f3f1f8877af5e65d04c7f84d53c1ac53a9f90afd9bc",
+    "artifacts/streaming_readiness_repair/unaccepted_cache_prototype/archive_manifest.json": "e8d83858d16e83305f84553acbf3fe94e96739aa023dfb1c54150080bc4b210b",
+    "artifacts/streaming_readiness_repair/profile_cache_removal_01.xml": "c636063456ad26270e3fb742d28a73562e8bee1c335a93ce771a8667bed2eb95",
+    "artifacts/streaming_readiness_repair/profile_cache_removal_01.log": "c86eabe8133b03f032ec2a667d990d8b904426b04cf2ec34c5696f85488e6063",
+    "artifacts/streaming_readiness_repair/profile_cache_removal_01.json": "dd080439d53afcf9a8e3abfe046ba0792118c4d32f0b1c807cab4081c52b6c3b"
+  }
+}

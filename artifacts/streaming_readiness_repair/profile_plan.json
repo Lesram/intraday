@@ -1,0 +1,11 @@
+{
+  "task_id": "offline_feature_pipeline_profile_20260924",
+  "scope": "Measure actual feature feeder and real in-memory streaming provider at 20 and 69 symbols; synthetic causal 1Min OHLCV only.",
+  "owned_files": ["scripts/diagnostics/profile_paper_pipeline.py", "tests/test_pipeline_profile.py", "artifacts/streaming_readiness_repair/profile_*"],
+  "production_edits": false,
+  "method": ["Clean isolated subprocess with explicit 1Min, 500-bar lookback and synthetic provider transport", "Real _fetch_and_compute_features, compute_ml_features, VersionedFeatureStore and multi-timeframe features; no full engine construction", "Separate uninstrumented wall/process CPU repeats from worker-thread cProfile runs", "Exact unchanged input and output hashes, recomputation call counts, held-symbol coverage and forbidden REST fallback", "Record source bytes before/after and package/config identity; results invalid if source changes during experiment"],
+  "tests": ["Reject non-test invocation before backend imports", "Deterministic causal inputs and output hashing includes same-timestamp corrections", "Real streaming feeder computes all requested and held-only symbols on repeated unchanged bars", "Thread profiles contain real ML/pandas work, with no broker/network/model construction"],
+  "runner": "artifacts/streaming_readiness_repair/isolated_test_runner.py profile_01 tests/test_pipeline_profile.py",
+  "constraints": ["No installed env/brain/private application reads or installed writes", "No network/auth/broker calls", "No strategy, risk, feed, freshness threshold or active cutoff changes", "No production optimization; root decides after evidence", "Synthetic workload is not a live-latency or profitability forecast"],
+  "root_owned_validation": "Root owns full organism/replay safety pack, freeze and audit index for combined candidate; this diagnostic does not alter production behavior."
+}

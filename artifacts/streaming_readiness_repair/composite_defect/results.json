@@ -1,0 +1,1402 @@
+{
+  "status": "DEFECT_REPRODUCED_COUNTERFACTUAL_EVALUATED_ONLY",
+  "source_sha256": {
+    "backend/organism/composite_indicators.py": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+    "backend/organism/ml_features.py": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "backend/organism/alpha_scanner.py": "8bed20281f02ad3fd95953aa7c981a2e8c0393e4b29c38f808d3a570b6c19490",
+    "backend/organism/strategies/momentum.py": "45048a6c031bccfef12ed14154816665e5947cb587e747584573e18bdb54081b",
+    "backend/organism/confidence_lab.py": "bbae6864140b4d5601929fed67d784969879010a7f42efc3e7dc892bd1c3dce9"
+  },
+  "installed_source_sha256": {
+    "backend/organism/composite_indicators.py": "dbd3c59ef7aa9ac90e915831312e5777836084f2887996383d70db189d5bec3c",
+    "backend/organism/ml_features.py": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "backend/organism/alpha_scanner.py": "8bed20281f02ad3fd95953aa7c981a2e8c0393e4b29c38f808d3a570b6c19490",
+    "backend/organism/strategies/momentum.py": "45048a6c031bccfef12ed14154816665e5947cb587e747584573e18bdb54081b",
+    "backend/organism/confidence_lab.py": "bbae6864140b4d5601929fed67d784969879010a7f42efc3e7dc892bd1c3dce9"
+  },
+  "installed_source_identical": true,
+  "source_unchanged": true,
+  "python": "3.12.12 (main, Oct  9 2025, 11:07:00) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "pandas": "3.0.1",
+  "numpy": "2.4.2",
+  "proposal": {
+    "original_expression": "a_zero = a.abs() < 1e-12",
+    "evaluation_only_expression": "a_zero = abs(a) < 1e-12",
+    "original_function_source_sha256": "11d91ad0845cd8b274718efe2edb5c9233a5531b63b2b64899536e0cef02b6b0",
+    "proposed_function_source_sha256": "39c4bac88c8feab9d445220f02e90e059da49ad8d991e58abfa97ad5a7525fd7",
+    "series_parity_and_zero_over_zero_nan_preserved": true,
+    "production_patch_applied": false
+  },
+  "scalar_call_sites": [
+    {
+      "function": "volume_price_divergence",
+      "line": 159
+    },
+    {
+      "function": "mean_reversion_extremity",
+      "line": 341
+    },
+    {
+      "function": "momentum_quality_score",
+      "line": 484
+    }
+  ],
+  "observations": [
+    {
+      "rows": 80,
+      "symbol": "SYN001",
+      "input_sha256": "cead4ba68a509fdf5c98ff3c9221fd0c2ebe23841ff09c01963e6f8f67a104ff",
+      "original_direct_exception": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'",
+        "frames": [
+          {
+            "file": "diagnostic.py",
+            "line": 75,
+            "function": "test_original_and_proposed_composite_contract"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 527,
+            "function": "compute_composite_indicators"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 159,
+            "function": "volume_price_divergence"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 43,
+            "function": "_safe_div"
+          }
+        ]
+      },
+      "original_feature_sha256": "68fa8486e9c112fe6178250b8ac1ff586390b938881f15a11f650af41b4b67ec",
+      "proposed_feature_sha256": "92ec432e2c4070ca1eedd7f88d987d0124a3f7456f1ec910f0b19e2414098ded",
+      "original_all_seven_zero": true,
+      "proposed_nonzero_cells_by_column": {
+        "comp_squeeze_momentum": 52,
+        "comp_vol_price_div": 80,
+        "comp_trend_alignment": 80,
+        "comp_institutional_acc": 72,
+        "comp_mean_rev_extreme": 79,
+        "comp_breakout_readiness": 76,
+        "comp_momentum_quality": 74
+      },
+      "original_last_composites": {
+        "comp_squeeze_momentum": 0.0,
+        "comp_vol_price_div": 0.0,
+        "comp_trend_alignment": 0.0,
+        "comp_institutional_acc": 0.0,
+        "comp_mean_rev_extreme": 0.0,
+        "comp_breakout_readiness": 0.0,
+        "comp_momentum_quality": 0.0
+      },
+      "proposed_last_composites": {
+        "comp_squeeze_momentum": 0.4364352240437754,
+        "comp_vol_price_div": 0.5306130112233365,
+        "comp_trend_alignment": 0.9019297395862524,
+        "comp_institutional_acc": 0.25,
+        "comp_mean_rev_extreme": 0.8387606972389763,
+        "comp_breakout_readiness": 0.28939897941687354,
+        "comp_momentum_quality": 0.8200000000000001
+      },
+      "original_nan_missingness": 0.0,
+      "proposed_nan_missingness": 0.0,
+      "other_features_exactly_equal": true
+    },
+    {
+      "rows": 80,
+      "symbol": "SYN002",
+      "input_sha256": "90004f4a8fcab636a67748e6a93d5709fb4e66e7f698d1b33209822df2e56953",
+      "original_direct_exception": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'",
+        "frames": [
+          {
+            "file": "diagnostic.py",
+            "line": 75,
+            "function": "test_original_and_proposed_composite_contract"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 527,
+            "function": "compute_composite_indicators"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 159,
+            "function": "volume_price_divergence"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 43,
+            "function": "_safe_div"
+          }
+        ]
+      },
+      "original_feature_sha256": "9cf70e97f3c9ee862d7b21d3dbe671960c351a7343334acd48d5dccdb3ec4a15",
+      "proposed_feature_sha256": "149299d96a2eaf54349a4d1add15a5016ebe3ba7081a168ac470408422a539bb",
+      "original_all_seven_zero": true,
+      "proposed_nonzero_cells_by_column": {
+        "comp_squeeze_momentum": 52,
+        "comp_vol_price_div": 80,
+        "comp_trend_alignment": 80,
+        "comp_institutional_acc": 79,
+        "comp_mean_rev_extreme": 79,
+        "comp_breakout_readiness": 76,
+        "comp_momentum_quality": 73
+      },
+      "original_last_composites": {
+        "comp_squeeze_momentum": 0.0,
+        "comp_vol_price_div": 0.0,
+        "comp_trend_alignment": 0.0,
+        "comp_institutional_acc": 0.0,
+        "comp_mean_rev_extreme": 0.0,
+        "comp_breakout_readiness": 0.0,
+        "comp_momentum_quality": 0.0
+      },
+      "proposed_last_composites": {
+        "comp_squeeze_momentum": 0.21258811833505484,
+        "comp_vol_price_div": 0.5194714492547176,
+        "comp_trend_alignment": 0.9543604464003972,
+        "comp_institutional_acc": 0.25,
+        "comp_mean_rev_extreme": 0.7944964379552059,
+        "comp_breakout_readiness": 0.2893904337189367,
+        "comp_momentum_quality": 0.8200000000000001
+      },
+      "original_nan_missingness": 0.0,
+      "proposed_nan_missingness": 0.0,
+      "other_features_exactly_equal": true
+    },
+    {
+      "rows": 80,
+      "symbol": "SYN003",
+      "input_sha256": "005e91485f09bd6a73e1d47996fe7ee9675348bbcea2daf4e2f137ab18775a92",
+      "original_direct_exception": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'",
+        "frames": [
+          {
+            "file": "diagnostic.py",
+            "line": 75,
+            "function": "test_original_and_proposed_composite_contract"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 527,
+            "function": "compute_composite_indicators"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 159,
+            "function": "volume_price_divergence"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 43,
+            "function": "_safe_div"
+          }
+        ]
+      },
+      "original_feature_sha256": "b15c8de8a985ad7bbf38528182e2eaa761eaa599f1b0ef6724c7e64c40fa408d",
+      "proposed_feature_sha256": "c13693498c4003b68926cfb1312d50cf22e43f96165986cc27f45eb1235237cf",
+      "original_all_seven_zero": true,
+      "proposed_nonzero_cells_by_column": {
+        "comp_squeeze_momentum": 52,
+        "comp_vol_price_div": 80,
+        "comp_trend_alignment": 80,
+        "comp_institutional_acc": 79,
+        "comp_mean_rev_extreme": 79,
+        "comp_breakout_readiness": 76,
+        "comp_momentum_quality": 75
+      },
+      "original_last_composites": {
+        "comp_squeeze_momentum": 0.0,
+        "comp_vol_price_div": 0.0,
+        "comp_trend_alignment": 0.0,
+        "comp_institutional_acc": 0.0,
+        "comp_mean_rev_extreme": 0.0,
+        "comp_breakout_readiness": 0.0,
+        "comp_momentum_quality": 0.0
+      },
+      "proposed_last_composites": {
+        "comp_squeeze_momentum": 0.28536114607989144,
+        "comp_vol_price_div": 0.5344355298037459,
+        "comp_trend_alignment": 0.9795237913328112,
+        "comp_institutional_acc": 0.5,
+        "comp_mean_rev_extreme": 0.6976332465348185,
+        "comp_breakout_readiness": 0.2893820424188456,
+        "comp_momentum_quality": 0.6950000000000001
+      },
+      "original_nan_missingness": 0.0,
+      "proposed_nan_missingness": 0.0,
+      "other_features_exactly_equal": true
+    },
+    {
+      "rows": 500,
+      "symbol": "SYN001",
+      "input_sha256": "af5c372a657b83ee2bfeafc7ae2cd117ac4761b7921b01042b17da0f034380e4",
+      "original_direct_exception": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'",
+        "frames": [
+          {
+            "file": "diagnostic.py",
+            "line": 75,
+            "function": "test_original_and_proposed_composite_contract"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 527,
+            "function": "compute_composite_indicators"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 159,
+            "function": "volume_price_divergence"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 43,
+            "function": "_safe_div"
+          }
+        ]
+      },
+      "original_feature_sha256": "767f35a1e61466d0ec3629c42d8cfd3b3d7910e2cd28b493fc44ae685ed3390a",
+      "proposed_feature_sha256": "c835d08bbd3f11e225ece75e4228053d32cb56f58c48d93238574dffc8b23cb6",
+      "original_all_seven_zero": true,
+      "proposed_nonzero_cells_by_column": {
+        "comp_squeeze_momentum": 472,
+        "comp_vol_price_div": 500,
+        "comp_trend_alignment": 500,
+        "comp_institutional_acc": 492,
+        "comp_mean_rev_extreme": 499,
+        "comp_breakout_readiness": 496,
+        "comp_momentum_quality": 467
+      },
+      "original_last_composites": {
+        "comp_squeeze_momentum": 0.0,
+        "comp_vol_price_div": 0.0,
+        "comp_trend_alignment": 0.0,
+        "comp_institutional_acc": 0.0,
+        "comp_mean_rev_extreme": 0.0,
+        "comp_breakout_readiness": 0.0,
+        "comp_momentum_quality": 0.0
+      },
+      "proposed_last_composites": {
+        "comp_squeeze_momentum": 0.5960760570345205,
+        "comp_vol_price_div": 0.3831098100549129,
+        "comp_trend_alignment": 0.3097855633254436,
+        "comp_institutional_acc": 0.09230769230769399,
+        "comp_mean_rev_extreme": -0.27835557846781345,
+        "comp_breakout_readiness": 0.22680398214558012,
+        "comp_momentum_quality": 0.3848112465591821
+      },
+      "original_nan_missingness": 0.0,
+      "proposed_nan_missingness": 0.0,
+      "other_features_exactly_equal": true
+    },
+    {
+      "rows": 500,
+      "symbol": "SYN002",
+      "input_sha256": "85fc116f844696efa2e5dc6de1684cde62052db49ead6c3c4c57fb969f5c07e4",
+      "original_direct_exception": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'",
+        "frames": [
+          {
+            "file": "diagnostic.py",
+            "line": 75,
+            "function": "test_original_and_proposed_composite_contract"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 527,
+            "function": "compute_composite_indicators"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 159,
+            "function": "volume_price_divergence"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 43,
+            "function": "_safe_div"
+          }
+        ]
+      },
+      "original_feature_sha256": "0b32f10adf5be2c637e49bb2359baa053e8df0801d9137f2e7833db5a5eda860",
+      "proposed_feature_sha256": "98f8c1a254007e4d0836b236bba1073759a972655833df103918e8d59330c854",
+      "original_all_seven_zero": true,
+      "proposed_nonzero_cells_by_column": {
+        "comp_squeeze_momentum": 472,
+        "comp_vol_price_div": 500,
+        "comp_trend_alignment": 500,
+        "comp_institutional_acc": 499,
+        "comp_mean_rev_extreme": 499,
+        "comp_breakout_readiness": 496,
+        "comp_momentum_quality": 464
+      },
+      "original_last_composites": {
+        "comp_squeeze_momentum": 0.0,
+        "comp_vol_price_div": 0.0,
+        "comp_trend_alignment": 0.0,
+        "comp_institutional_acc": 0.0,
+        "comp_mean_rev_extreme": 0.0,
+        "comp_breakout_readiness": 0.0,
+        "comp_momentum_quality": 0.0
+      },
+      "proposed_last_composites": {
+        "comp_squeeze_momentum": 0.5332918729515488,
+        "comp_vol_price_div": 0.36300520457764285,
+        "comp_trend_alignment": 0.22691980292610353,
+        "comp_institutional_acc": 0.3653846153846175,
+        "comp_mean_rev_extreme": -0.7100449582708354,
+        "comp_breakout_readiness": 0.11818617846487606,
+        "comp_momentum_quality": 0.0
+      },
+      "original_nan_missingness": 0.0,
+      "proposed_nan_missingness": 0.0,
+      "other_features_exactly_equal": true
+    },
+    {
+      "rows": 500,
+      "symbol": "SYN003",
+      "input_sha256": "0a49c8e6752f71557c3901484b3ea77ef72ad615453f81b8a85f2a29c286cebc",
+      "original_direct_exception": {
+        "type": "AttributeError",
+        "message": "'int' object has no attribute 'abs'",
+        "frames": [
+          {
+            "file": "diagnostic.py",
+            "line": 75,
+            "function": "test_original_and_proposed_composite_contract"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 527,
+            "function": "compute_composite_indicators"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 159,
+            "function": "volume_price_divergence"
+          },
+          {
+            "file": "composite_indicators.py",
+            "line": 43,
+            "function": "_safe_div"
+          }
+        ]
+      },
+      "original_feature_sha256": "4fbf3474e9432be7453b08503e2c0b9eb97918a2ce6211cc4e83d67b07644a99",
+      "proposed_feature_sha256": "627c9da2e98215931f5fde503b18cae3d60721d0362281c99a5ba7821f0f99e7",
+      "original_all_seven_zero": true,
+      "proposed_nonzero_cells_by_column": {
+        "comp_squeeze_momentum": 472,
+        "comp_vol_price_div": 500,
+        "comp_trend_alignment": 500,
+        "comp_institutional_acc": 499,
+        "comp_mean_rev_extreme": 499,
+        "comp_breakout_readiness": 496,
+        "comp_momentum_quality": 465
+      },
+      "original_last_composites": {
+        "comp_squeeze_momentum": 0.0,
+        "comp_vol_price_div": 0.0,
+        "comp_trend_alignment": 0.0,
+        "comp_institutional_acc": 0.0,
+        "comp_mean_rev_extreme": 0.0,
+        "comp_breakout_readiness": 0.0,
+        "comp_momentum_quality": 0.0
+      },
+      "proposed_last_composites": {
+        "comp_squeeze_momentum": 0.573755087334068,
+        "comp_vol_price_div": 0.521173352553058,
+        "comp_trend_alignment": 0.5672044032875061,
+        "comp_institutional_acc": 0.296153846153847,
+        "comp_mean_rev_extreme": 0.10735823841100314,
+        "comp_breakout_readiness": 0.1615729339925296,
+        "comp_momentum_quality": 0.6052797119206288
+      },
+      "original_nan_missingness": 0.0,
+      "proposed_nan_missingness": 0.0,
+      "other_features_exactly_equal": true
+    }
+  ],
+  "alpha_comparisons": [
+    {
+      "rows": 80,
+      "regime": "unknown",
+      "ml_signals": 0,
+      "learning_mode": true,
+      "derive_direction_from_observables": true,
+      "original": {
+        "qualified_count": 1,
+        "qualified": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.15769285682416453,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027550974880649615,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.15769285682416453,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027550974880649615,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.08769461077844312,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027801539777587703,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.017696396928529236,
+            "breakout_score": 0.0,
+            "volume_score": 0.002805670407560523,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      },
+      "proposal": {
+        "qualified_count": 3,
+        "qualified": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.3581247318546096,
+            "breakout_score": 0.28777368388326396,
+            "volume_score": 0.2699728623899379,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.5,
+            "momentum_quality_score": 0.6950000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.26195357362066574,
+            "breakout_score": 0.2586695075653839,
+            "volume_score": 0.26251587860511755,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.21741762595628367,
+            "breakout_score": 0.3482134772676343,
+            "volume_score": 0.26811217601922877,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.3581247318546096,
+            "breakout_score": 0.28777368388326396,
+            "volume_score": 0.2699728623899379,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.5,
+            "momentum_quality_score": 0.6950000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.26195357362066574,
+            "breakout_score": 0.2586695075653839,
+            "volume_score": 0.26251587860511755,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.21741762595628367,
+            "breakout_score": 0.3482134772676343,
+            "volume_score": 0.26811217601922877,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      }
+    },
+    {
+      "rows": 80,
+      "regime": "trending",
+      "ml_signals": 0,
+      "learning_mode": true,
+      "derive_direction_from_observables": true,
+      "original": {
+        "qualified_count": 1,
+        "qualified": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.15769285682416453,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027550974880649615,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.15769285682416453,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027550974880649615,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.08769461077844312,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027801539777587703,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.017696396928529236,
+            "breakout_score": 0.0,
+            "volume_score": 0.002805670407560523,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      },
+      "proposal": {
+        "qualified_count": 3,
+        "qualified": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.3581247318546096,
+            "breakout_score": 0.28777368388326396,
+            "volume_score": 0.2699728623899379,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.5,
+            "momentum_quality_score": 0.6950000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.26195357362066574,
+            "breakout_score": 0.2586695075653839,
+            "volume_score": 0.26251587860511755,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.21741762595628367,
+            "breakout_score": 0.3482134772676343,
+            "volume_score": 0.26811217601922877,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.3581247318546096,
+            "breakout_score": 0.28777368388326396,
+            "volume_score": 0.2699728623899379,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.5,
+            "momentum_quality_score": 0.6950000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.26195357362066574,
+            "breakout_score": 0.2586695075653839,
+            "volume_score": 0.26251587860511755,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.21741762595628367,
+            "breakout_score": 0.3482134772676343,
+            "volume_score": 0.26811217601922877,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      }
+    },
+    {
+      "rows": 80,
+      "regime": "high_vol",
+      "ml_signals": 0,
+      "learning_mode": true,
+      "derive_direction_from_observables": true,
+      "original": {
+        "qualified_count": 0,
+        "qualified": [],
+        "all_scored": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.15769285682416453,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027550974880649615,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.08769461077844312,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027801539777587703,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.017696396928529236,
+            "breakout_score": 0.0,
+            "volume_score": 0.002805670407560523,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      },
+      "proposal": {
+        "qualified_count": 2,
+        "qualified": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.3581247318546096,
+            "breakout_score": 0.28777368388326396,
+            "volume_score": 0.2699728623899379,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.5,
+            "momentum_quality_score": 0.6950000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.26195357362066574,
+            "breakout_score": 0.2586695075653839,
+            "volume_score": 0.26251587860511755,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.3581247318546096,
+            "breakout_score": 0.28777368388326396,
+            "volume_score": 0.2699728623899379,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.5,
+            "momentum_quality_score": 0.6950000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.26195357362066574,
+            "breakout_score": 0.2586695075653839,
+            "volume_score": 0.26251587860511755,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.21741762595628367,
+            "breakout_score": 0.3482134772676343,
+            "volume_score": 0.26811217601922877,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      }
+    },
+    {
+      "rows": 80,
+      "regime": "stress",
+      "ml_signals": 0,
+      "learning_mode": true,
+      "derive_direction_from_observables": true,
+      "original": {
+        "qualified_count": 0,
+        "qualified": [],
+        "all_scored": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.14719285682416455,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027550974880649615,
+            "momentum_score": 1.0,
+            "regime_score": 0.2,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.07719461077844311,
+            "breakout_score": 0.0,
+            "volume_score": 0.0027801539777587703,
+            "momentum_score": 0.5,
+            "regime_score": 0.2,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.007196396928529237,
+            "breakout_score": 0.0,
+            "volume_score": 0.002805670407560523,
+            "momentum_score": 0.0,
+            "regime_score": 0.2,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      },
+      "proposal": {
+        "qualified_count": 0,
+        "qualified": [],
+        "all_scored": [
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.34762473185460957,
+            "breakout_score": 0.28777368388326396,
+            "volume_score": 0.2699728623899379,
+            "momentum_score": 1.0,
+            "regime_score": 0.2,
+            "institutional_score": 0.5,
+            "momentum_quality_score": 0.6950000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.2514535736206657,
+            "breakout_score": 0.2586695075653839,
+            "volume_score": 0.26251587860511755,
+            "momentum_score": 0.5,
+            "regime_score": 0.2,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.20691762595628366,
+            "breakout_score": 0.3482134772676343,
+            "volume_score": 0.26811217601922877,
+            "momentum_score": 0.0,
+            "regime_score": 0.2,
+            "institutional_score": 0.25,
+            "momentum_quality_score": 0.8200000000000001,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      }
+    },
+    {
+      "rows": 500,
+      "regime": "unknown",
+      "ml_signals": 0,
+      "learning_mode": true,
+      "derive_direction_from_observables": true,
+      "original": {
+        "qualified_count": 1,
+        "qualified": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.15763126727200946,
+            "breakout_score": 0.0,
+            "volume_score": 0.001875246742992498,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.15763126727200946,
+            "breakout_score": 0.0,
+            "volume_score": 0.001875246742992498,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.08762967629676296,
+            "breakout_score": 0.0,
+            "volume_score": 0.0018525185251852538,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.01763046693429115,
+            "breakout_score": 0.0,
+            "volume_score": 0.0018638133470164076,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      },
+      "proposal": {
+        "qualified_count": 2,
+        "qualified": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.31253279296370584,
+            "breakout_score": 0.3745128121011563,
+            "volume_score": 0.19343015177044895,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.09230769230769399,
+            "momentum_quality_score": 0.3848112465591821,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.2707413000088785,
+            "breakout_score": 0.32644579532914497,
+            "volume_score": 0.26243919480171424,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.296153846153847,
+            "momentum_quality_score": 0.6052797119206288,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.31253279296370584,
+            "breakout_score": 0.3745128121011563,
+            "volume_score": 0.19343015177044895,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.09230769230769399,
+            "momentum_quality_score": 0.3848112465591821,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.2707413000088785,
+            "breakout_score": 0.32644579532914497,
+            "volume_score": 0.26243919480171424,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.296153846153847,
+            "momentum_quality_score": 0.6052797119206288,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.14828500146256612,
+            "breakout_score": 0.2842284562595452,
+            "volume_score": 0.18336641563583783,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.3653846153846175,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      }
+    },
+    {
+      "rows": 500,
+      "regime": "trending",
+      "ml_signals": 0,
+      "learning_mode": true,
+      "derive_direction_from_observables": true,
+      "original": {
+        "qualified_count": 1,
+        "qualified": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.15763126727200946,
+            "breakout_score": 0.0,
+            "volume_score": 0.001875246742992498,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.15763126727200946,
+            "breakout_score": 0.0,
+            "volume_score": 0.001875246742992498,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.08762967629676296,
+            "breakout_score": 0.0,
+            "volume_score": 0.0018525185251852538,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.01763046693429115,
+            "breakout_score": 0.0,
+            "volume_score": 0.0018638133470164076,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      },
+      "proposal": {
+        "qualified_count": 2,
+        "qualified": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.31253279296370584,
+            "breakout_score": 0.3745128121011563,
+            "volume_score": 0.19343015177044895,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.09230769230769399,
+            "momentum_quality_score": 0.3848112465591821,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.2707413000088785,
+            "breakout_score": 0.32644579532914497,
+            "volume_score": 0.26243919480171424,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.296153846153847,
+            "momentum_quality_score": 0.6052797119206288,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.31253279296370584,
+            "breakout_score": 0.3745128121011563,
+            "volume_score": 0.19343015177044895,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.09230769230769399,
+            "momentum_quality_score": 0.3848112465591821,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.2707413000088785,
+            "breakout_score": 0.32644579532914497,
+            "volume_score": 0.26243919480171424,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.296153846153847,
+            "momentum_quality_score": 0.6052797119206288,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.14828500146256612,
+            "breakout_score": 0.2842284562595452,
+            "volume_score": 0.18336641563583783,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.3653846153846175,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      }
+    },
+    {
+      "rows": 500,
+      "regime": "high_vol",
+      "ml_signals": 0,
+      "learning_mode": true,
+      "derive_direction_from_observables": true,
+      "original": {
+        "qualified_count": 0,
+        "qualified": [],
+        "all_scored": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.15763126727200946,
+            "breakout_score": 0.0,
+            "volume_score": 0.001875246742992498,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.08762967629676296,
+            "breakout_score": 0.0,
+            "volume_score": 0.0018525185251852538,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.01763046693429115,
+            "breakout_score": 0.0,
+            "volume_score": 0.0018638133470164076,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      },
+      "proposal": {
+        "qualified_count": 2,
+        "qualified": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.31253279296370584,
+            "breakout_score": 0.3745128121011563,
+            "volume_score": 0.19343015177044895,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.09230769230769399,
+            "momentum_quality_score": 0.3848112465591821,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.2707413000088785,
+            "breakout_score": 0.32644579532914497,
+            "volume_score": 0.26243919480171424,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.296153846153847,
+            "momentum_quality_score": 0.6052797119206288,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ],
+        "all_scored": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.31253279296370584,
+            "breakout_score": 0.3745128121011563,
+            "volume_score": 0.19343015177044895,
+            "momentum_score": 1.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.09230769230769399,
+            "momentum_quality_score": 0.3848112465591821,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.2707413000088785,
+            "breakout_score": 0.32644579532914497,
+            "volume_score": 0.26243919480171424,
+            "momentum_score": 0.5,
+            "regime_score": 0.5,
+            "institutional_score": 0.296153846153847,
+            "momentum_quality_score": 0.6052797119206288,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.14828500146256612,
+            "breakout_score": 0.2842284562595452,
+            "volume_score": 0.18336641563583783,
+            "momentum_score": 0.0,
+            "regime_score": 0.5,
+            "institutional_score": 0.3653846153846175,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      }
+    },
+    {
+      "rows": 500,
+      "regime": "stress",
+      "ml_signals": 0,
+      "learning_mode": true,
+      "derive_direction_from_observables": true,
+      "original": {
+        "qualified_count": 0,
+        "qualified": [],
+        "all_scored": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.14713126727200948,
+            "breakout_score": 0.0,
+            "volume_score": 0.001875246742992498,
+            "momentum_score": 1.0,
+            "regime_score": 0.2,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.07712967629676297,
+            "breakout_score": 0.0,
+            "volume_score": 0.0018525185251852538,
+            "momentum_score": 0.5,
+            "regime_score": 0.2,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.007130466934291149,
+            "breakout_score": 0.0,
+            "volume_score": 0.0018638133470164076,
+            "momentum_score": 0.0,
+            "regime_score": 0.2,
+            "institutional_score": 0.0,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      },
+      "proposal": {
+        "qualified_count": 0,
+        "qualified": [],
+        "all_scored": [
+          {
+            "symbol": "SYN001",
+            "composite_score": 0.30203279296370583,
+            "breakout_score": 0.3745128121011563,
+            "volume_score": 0.19343015177044895,
+            "momentum_score": 1.0,
+            "regime_score": 0.2,
+            "institutional_score": 0.09230769230769399,
+            "momentum_quality_score": 0.3848112465591821,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN003",
+            "composite_score": 0.2602413000088785,
+            "breakout_score": 0.32644579532914497,
+            "volume_score": 0.26243919480171424,
+            "momentum_score": 0.5,
+            "regime_score": 0.2,
+            "institutional_score": 0.296153846153847,
+            "momentum_quality_score": 0.6052797119206288,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          },
+          {
+            "symbol": "SYN002",
+            "composite_score": 0.13778500146256611,
+            "breakout_score": 0.2842284562595452,
+            "volume_score": 0.18336641563583783,
+            "momentum_score": 0.0,
+            "regime_score": 0.2,
+            "institutional_score": 0.3653846153846175,
+            "momentum_quality_score": 0.0,
+            "direction": 0.0,
+            "expected_return_source": "heuristic"
+          }
+        ]
+      }
+    }
+  ],
+  "scope": {
+    "synthetic_ohlcv_only": true,
+    "bars_per_day": 390,
+    "timeframe": "1Min",
+    "engine_imported": false,
+    "models_loaded": false,
+    "broker_or_runtime_calls": false,
+    "cache_used": false
+  },
+  "limits": [
+    "This tests the feature and alpha scoring path, not full replay or order/exit execution.",
+    "Changing these computed fields changes possible strategy inputs; no strategy acceptance or profitability claim.",
+    "No actual Sept24 input frames or saved model state are evaluated; this cannot attribute that day's zero trades.",
+    "Synthetic candidate eligibility is upstream of admission, timing, risk, liquidity and execution gates.",
+    "Installed file equality is a source observation, not a fresh live-process/image attestation."
+  ]
+}

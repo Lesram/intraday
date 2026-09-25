@@ -1,0 +1,158 @@
+{
+  "status": "NO_CREDENTIAL_FINDING_IN_SCANNED_PUBLIC_EVIDENCE; TEN_EXACT_FILE_DIGEST_FALSE_POSITIVES",
+  "safe_to_publish_scanned_bytes": true,
+  "raw_scanner_exit_code": 1,
+  "findings_total": 10,
+  "verified_digest_false_positives": 10,
+  "unresolved_findings": 0,
+  "scanner_binary_sha256": "ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f",
+  "scanner_version": "8.30.1",
+  "files_scanned": 219,
+  "total_bytes": 1467322,
+  "file_manifest_and_receipt": "artifacts/streaming_readiness_repair/public_security/scan_receipt.json",
+  "scan_receipt_sha256": "9e6e1c29072ffa410f6209c400c1fb589a2c36bc3382998068c85c34183b5fa6",
+  "redacted_report_sha256": "db6e2b9667835f351a928c3525668444e5d038e602f7c293b90744ced33c4569",
+  "private_raw_report_sha256": "4e16874d65797f9471b9b5b6a3b0f5a808fb374a7a1031db401f6605cf86acda",
+  "analysis_script_sha256": "68ead91bdbac54aec75003e4a377cbb2606984a83ec4c6b667611c5dee3e495c",
+  "generator_source": "scripts/phase2_freeze.py",
+  "generator_source_sha256": "274ae89a29f46c28d68db106294c3008cf5517ef95039ff54282267c84a61357",
+  "generator_lines": {
+    "sha256_helper": 64,
+    "settings_api": 155,
+    "operator_api": 166,
+    "emergency_stop_api": 167
+  },
+  "findings": [
+    {
+      "file": "artifacts/streaming_readiness_repair/local_acceptance.json",
+      "line": 65,
+      "rule": "generic-api-key",
+      "field": "source_secret_scan_sha256",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "e7bee0e7f05b15c28aa38b903869e510407b53a1e87bc17f81209aba258f8661",
+      "digest_target": "artifacts/streaming_readiness_repair/source_security/scan_receipt.json",
+      "digest_target_sha256": "9a55984b7014b7a1a691789568edeba789debccf3081a7c359ad4a6294b9b43c",
+      "exact_file_digest_match": true,
+      "reason": "Acceptance metadata references the SHA-256 of the prior successful source-scan receipt; exact digest equals that receipt, not an authentication credential."
+    },
+    {
+      "file": "artifacts/phase2/candidate_param_freeze.json",
+      "line": 208,
+      "rule": "generic-api-key",
+      "field": "emergency_stop_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d",
+      "digest_target": "backend/api/routes/risk.py",
+      "digest_target_sha256": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    },
+    {
+      "file": "artifacts/phase2/candidate_param_freeze.json",
+      "line": 220,
+      "rule": "generic-api-key",
+      "field": "operator_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d",
+      "digest_target": "backend/organism/routes.py",
+      "digest_target_sha256": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    },
+    {
+      "file": "artifacts/phase2/candidate_param_freeze.json",
+      "line": 227,
+      "rule": "generic-api-key",
+      "field": "settings_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d",
+      "digest_target": "backend/api/routes/settings.py",
+      "digest_target_sha256": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    },
+    {
+      "file": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "line": 221,
+      "rule": "generic-api-key",
+      "field": "emergency_stop_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+      "digest_target": "backend/api/routes/risk.py",
+      "digest_target_sha256": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    },
+    {
+      "file": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "line": 233,
+      "rule": "generic-api-key",
+      "field": "operator_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+      "digest_target": "backend/organism/routes.py",
+      "digest_target_sha256": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    },
+    {
+      "file": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "line": 240,
+      "rule": "generic-api-key",
+      "field": "settings_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+      "digest_target": "backend/api/routes/settings.py",
+      "digest_target_sha256": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    },
+    {
+      "file": "artifacts/phase2/param_freeze.json",
+      "line": 221,
+      "rule": "generic-api-key",
+      "field": "emergency_stop_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+      "digest_target": "backend/api/routes/risk.py",
+      "digest_target_sha256": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    },
+    {
+      "file": "artifacts/phase2/param_freeze.json",
+      "line": 233,
+      "rule": "generic-api-key",
+      "field": "operator_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+      "digest_target": "backend/organism/routes.py",
+      "digest_target_sha256": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    },
+    {
+      "file": "artifacts/phase2/param_freeze.json",
+      "line": 240,
+      "rule": "generic-api-key",
+      "field": "settings_api",
+      "classification": "VERIFIED_FILE_DIGEST_FALSE_POSITIVE",
+      "scanned_file_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+      "digest_target": "backend/api/routes/settings.py",
+      "digest_target_sha256": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
+      "exact_file_digest_match": true,
+      "reason": "Freeze generator stores SHA-256 of public API source text under a field ending in api; this exact digest equals the cited source file, not an authentication credential."
+    }
+  ],
+  "no_allowlists_or_suppressions_changed": true,
+  "public_addendum_included": {
+    "path": "artifacts/streaming_readiness_repair/final_local_validation_addendum.json",
+    "sha256": "de776d5dcdb5e1e9cc93237379b51e0aaa0551b94206d0305cc8c2394d3d4894"
+  },
+  "limits": [
+    "This assessment classifies the exact219-file snapshot; later changed bytes/final committed diff need verification.",
+    "Source operational files were separately scanned in source_security with exit0; this scan includes final baseline-test delta and audit index plus public evidence.",
+    "Raw exit1 is retained honestly; manual digest verification is distinct from a green scanner exit.",
+    "No runtime credentials/private captures were read or copied, and no source/config/allowlist edits were made."
+  ]
+}

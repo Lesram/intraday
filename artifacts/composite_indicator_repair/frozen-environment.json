@@ -1,0 +1,8 @@
+{
+  "ALPACA_DATA_FEED": "iex",
+  "ORGANISM_APPROVED_POLICY_BASELINE": "/app/artifacts/phase2/research_policy_baseline.json",
+  "ORGANISM_FRAMEWORK_ROUTING_V2": "true",
+  "ORGANISM_MIN_AVG_DOLLAR_VOLUME": "50000",
+  "ORGANISM_OPERATOR_CONTROL_STATE": "/app/data/operator_control_state.json",
+  "ORGANISM_ROUTING_RANK_POLICY": "flat_policy"
+}

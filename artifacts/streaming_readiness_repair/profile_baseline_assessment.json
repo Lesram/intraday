@@ -1,0 +1,143 @@
+{
+  "status": "TIMED_RESULTS_VALID_FINE_GRAINED_PROFILE_WITHHELD",
+  "raw_results_sha256": "034c6fc405d66e9c0e06c62eea3551877229984ffcc95e3527e16d82771213cf",
+  "source_unchanged_during_run": true,
+  "source_files_sha256": {
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "backend/organism/ml_features.py": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "backend/organism/multi_timeframe.py": "fe57f630c261d9dfd2c6d52812eb934ca11e53a7b6f2c1ed58698fc043d14373",
+    "backend/organism/feature_store.py": "4bc58044d72f56eeb914724cd5b1ea9335ebd625285995d7c53459e3cbd7956a",
+    "backend/organism/pipeline_diagnostics.py": "e72129d54ccb570f84126ee891c5bf14fba2a4311a114c578c951ee9bb09f7cf",
+    "backend/features/feature_engineering.py": "81072874f373e72b7f59082cfc7b3b98842a21fd0df0d9d5a5a009cd8cc07464",
+    "scripts/diagnostics/profile_paper_pipeline.py": "d0ff45ff8ef5732fe7b6b3c3c0f10b8f9ade313e91227b650badf6213761992c"
+  },
+  "environment": {
+    "python": "3.12.12",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "logical_cpus": 16,
+    "numpy": "2.4.2",
+    "pandas": "3.0.1",
+    "scikit_learn": "1.8.0"
+  },
+  "configuration": {
+    "loads": [
+      20,
+      69
+    ],
+    "rows": 500,
+    "timeframe": "1Min",
+    "bars_per_day": 390,
+    "repeats": 3,
+    "profiled_extra_pass": true,
+    "feed_argument_to_fake_transport": "iex",
+    "max_concurrent_symbols": 10,
+    "minimum_bars": 50,
+    "synthetic_clock": "15 seconds after each last bar; fixed throughout measurement",
+    "thread_pool": "asyncio default executor; not replaced",
+    "profile_clock": "time.thread_time (CPU of actual worker thread)"
+  },
+  "measurements": [
+    {
+      "symbols": 20,
+      "wall_seconds": [
+        3.5881461660028435,
+        3.5851914159720764,
+        3.6389895000029355
+      ],
+      "median_wall_seconds": 3.5881461660028435,
+      "median_process_cpu_seconds": 3.929773999999999,
+      "median_stage_thread_cpu_seconds": {
+        "feature_store": 0.524845002,
+        "ml_features": 3.28323375,
+        "multi_timeframe": 0.0178987099999999
+      },
+      "ml_share_of_named_stage_cpu": 0.8581424701555129,
+      "every_timed_pass_calls_per_stage": {
+        "feature_store": [
+          20,
+          20,
+          20
+        ],
+        "ml_features": [
+          20,
+          20,
+          20
+        ],
+        "multi_timeframe": [
+          20,
+          20,
+          20
+        ]
+      },
+      "identical_outputs": true,
+      "input_unchanged": true,
+      "rest_fallback_calls": 0
+    },
+    {
+      "symbols": 69,
+      "wall_seconds": [
+        12.951112792012282,
+        13.000775167020038,
+        12.944779417011887
+      ],
+      "median_wall_seconds": 12.951112792012282,
+      "median_process_cpu_seconds": 14.199425999999999,
+      "median_stage_thread_cpu_seconds": {
+        "feature_store": 2.057426836,
+        "ml_features": 11.619796123999999,
+        "multi_timeframe": 0.06530895400000103
+      },
+      "ml_share_of_named_stage_cpu": 0.8455353203264171,
+      "every_timed_pass_calls_per_stage": {
+        "feature_store": [
+          69,
+          69,
+          69
+        ],
+        "ml_features": [
+          69,
+          69,
+          69
+        ],
+        "multi_timeframe": [
+          69,
+          69,
+          69
+        ]
+      },
+      "identical_outputs": true,
+      "input_unchanged": true,
+      "rest_fallback_calls": 0
+    }
+  ],
+  "median_wall_ratio_69_to_20": 3.609416170032918,
+  "unusable_subsection": "Cross-thread cProfile produced impossible negative self-times in feature_store. No fine-grained profiler timing is used for optimization estimates; raw data retained. Follow-up profiler will run inline on one thread, timed workload stays unchanged.",
+  "reliable_basis": "perf_counter elapsed pipeline wall; process_time whole-process CPU; thread_time stage spans on their own worker; wrapper call counts; input/output hashes and zero fallback",
+  "feature_store_side_effect_review": "Real feature engineer logs latency; feature store performs QA and creates timestamped snapshot. Proposed optimization preserves all of these and caches only ML output.",
+  "next_step": "Root authorized bounded ML feature cache with exact dependencies/deep copy/bounds; no deployment or profitability claim.",
+  "test_evidence": {
+    "focused_unique_passes": 7,
+    "final_receipt": "profile_05.xml",
+    "separate_benchmark_case_passed": 1,
+    "benchmark_receipt": "profile_06.xml",
+    "prior_attempts_retained": [
+      "profile_01.xml",
+      "profile_02.xml",
+      "profile_03.xml",
+      "profile_04.xml"
+    ],
+    "prior_attempt_note": "Development harness problems and concurrent-source refusal; no aggregate sum across repeated tests."
+  },
+  "limitations": [
+    "Synthetic 500-row continuous-minute data does not reproduce exchange sessions, sparse IEX delivery or live symbol distributions.",
+    "Measures feature acquisition/computation only; no decision, ranking, sizing, model inference, entry/exit, broker, database or persistence workload.",
+    "No engine/brain instance or model deserialization; VersionedFeatureStore computes real features without a DB session.",
+    "Timed passes include small stage counter/clock overhead. Profiled passes have substantial cProfile overhead and are not latency estimates.",
+    "The extra profile pass serializes measured functions because Python 3.12 cProfile reserves an interpreter-wide monitoring ID; timed passes retain original concurrency.",
+    "Summed overlapping call wall times are not elapsed pipeline time; cumulative function CPU rows overlap and must not be added.",
+    "Fixed fresh synthetic clock excludes aging while CPU is busy; this cannot qualify live freshness or safe entry admission.",
+    "Concurrent machine load and local Python/library versions affect results; no live equivalence or profit claim."
+  ]
+}

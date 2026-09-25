@@ -1,0 +1,19 @@
+{
+  "label": "contract_final",
+  "exit_code": 0,
+  "seconds": 1.8,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/composite_indicator_repair/contract_final.xml",
+    "tests/test_composite_indicator_contract.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

@@ -1,0 +1,100 @@
+{
+  "task_id": "composite-indicator-repair-20260925",
+  "status": "LOCAL_GATES_PASSED_HOSTED_CHECKS_PENDING",
+  "source_commit": "029f1c37f71f03ff1acff46fd0fa6be92a99c9c0",
+  "pr": "https://github.com/Lesram/intraday/pull/30",
+  "tests": {
+    "contract_final": {
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0
+    },
+    "contract_existing": {
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0
+    },
+    "paired_02": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "operational": {
+      "passed": 1902,
+      "failed": 0,
+      "skipped": 1
+    },
+    "nightly": {
+      "passed": 207,
+      "failed": 0,
+      "skipped": 0
+    },
+    "freeze_snapshot": {
+      "passed": 132,
+      "failed": 0,
+      "skipped": 0
+    },
+    "workflow_contract": {
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "counts_overlap_do_not_sum": true,
+  "full_pack": {
+    "exit_code": 0,
+    "seconds": 269.08,
+    "safety_passed": 168,
+    "replay_passed": 28,
+    "semantic_passed": 20,
+    "failed": 0,
+    "skipped": 0,
+    "grep_assertions": "pass",
+    "spec_drift": "pass",
+    "runtime_snapshot_generation": "pass"
+  },
+  "frozen_surface": {
+    "candidate_verify": 0,
+    "candidate_against_prior_active": 1,
+    "prior_active_mismatch": "Expected acknowledged candidate source drift; no authority reset.",
+    "installed_active_verify": 0,
+    "active_cutoff": "2026-09-23T15:29:47.287731+00:00",
+    "active_freeze_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+  },
+  "evidence_sha256": {
+    "artifacts/test_summary.json": "c5d99587777144088c5a4766e3edfed5b2ae79124e30f7bce0ccfacca00420e4",
+    "artifacts/replay_summary.json": "69adf7c3dae62c43b22c138f1f58116fc042322dbf602ebde6093f95d4e55d99",
+    "artifacts/semantic_invariants_summary.json": "c143059014918297b530104fb62f0d86e79be7ea7b5ce228029db7232af122fa",
+    "artifacts/spec_drift_summary.json": "9a799db6f9764771b138e1338f7932d67e877a3eda81965210d0bf8faca81579",
+    "artifacts/grep_assertions.json": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b",
+    "artifacts/runtime_snapshot_summary.json": "81354eb2f20fe9465f77a618c682397919b9661bc6528f902f96accb0a2d9d0a",
+    "artifacts/runtime_defaults_snapshot.json": "ae94f3677f7e4983892b0d974cf347cbfbae9503fa987b216f41d157230078a7",
+    "artifacts/resolved_config_snapshot.json": "36266d45aa28a126b07d795cd0cf31dfbc13ef0d4cdb5f5b6f91034ad4f881b5",
+    "artifacts/runtime_config_snapshot.json": "31f921f662ba842f236362569a6f5f2b366cc309d9457d4a3c8aa195e4ff92bc",
+    "artifacts/phase2/candidate_param_freeze.json": "b8f0da011e034b6dae749ebbdbeceebb0432e26571dfe283c0b6bcad4daa5c0a",
+    "artifacts/composite_indicator_repair/implementation.json": "bf9e575fb828a9f9e7479b264798fecc013d1c057ec2dcfa9a6e798673ce6652",
+    "artifacts/composite_indicator_repair/replay/implementation_report.json": "cb2e7cdd92fba2c260b582ec74532a07c809c9e6941c127e3557b586dffccb4e",
+    "artifacts/composite_indicator_repair/active_runtime_preservation.json": "eb62e255401b86b33bc6caca162bd10888255ff0881c4511414843cefca7c4aa",
+    "artifacts/composite_indicator_repair/candidate_freeze_receipt.json": "34356f5f24cff528de469986f1f709c52f2d1faf28f55353e1813a55c47ddb1d"
+  },
+  "runtime_behavior_changed": true,
+  "deployed_runtime_changed": false,
+  "risks": [
+    "Corrected inputs change selection and trading outcomes; synthetic falling-market performance deteriorated and crash drawdown increased. No demonstrated profitable edge.",
+    "Legacy composite exception-to-zero fallback remains for other failures; no cache or performance improvement is included.",
+    "Global sparse-feed admission policy remains; real-session streaming capacity and behavior require controlled paper observation.",
+    "Paired replay uses synthetic data, a fresh brain and a fixed $1m test fixture; it does not reconstruct deployed account outcomes or qualify as forward trades.",
+    "Local isolated runtime snapshots describe test/source configuration, not an observed production process. Candidate freeze separately uses the allowlisted deployed frozen environment."
+  ],
+  "follow_ups": [
+    "Require final PR-head GitHub checks before release.",
+    "A later approved paper deployment must bind the exact image/configuration, verify broker/state readiness and explicitly establish a new forward-test boundary.",
+    "Review historical composite-dependent features, model and shadow evidence provenance before reuse; raw market data and broker fills are not automatically invalidated."
+  ],
+  "source_security": {
+    "files": 29,
+    "findings": 0,
+    "receipt": "source_security/scan_receipt.json"
+  },
+  "publication_security": "Separate final public scan and independent disposition required before push."
+}

@@ -1,0 +1,50 @@
+{
+  "task_id": "composite-indicator-repair-20260925",
+  "summary": "Apply explicitly approved scalar numerator correction, verify real composite computation, evaluate paired trading replay and update PR30; preserve installed paper deployment until a separate validated release.",
+  "authorization": {
+    "user_message": "approved",
+    "antecedent": "Please approve including the indicator correction and its replay validation in this work.",
+    "scope": "Correct frozen strategy inputs deliberately; no strategy parameter/feed/risk tuning, no cache, no active clock reset in candidate generation.",
+    "pr": "https://github.com/Lesram/intraday/pull/30"
+  },
+  "worktree": "/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra",
+  "branch": "codex/session-streaming-readiness",
+  "base_before_correction": "ab899be855675d4437279a701b778a18c3c2c9f1",
+  "files": [
+    "backend/organism/composite_indicators.py",
+    "tests/test_composite_indicator_contract.py",
+    "scripts/diagnostics/replay_composite_correction.py",
+    "tests/test_composite_correction_replay.py",
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_pipeline_snapshot.py",
+    ".github/workflows/paper-readiness.yml",
+    "docs/architecture/mapss.md",
+    "docs/engineering/STREAMING_READINESS_REPAIR.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
+    "artifacts/"
+  ],
+  "acceptance": [
+    "All three scalar callers work; direct master and complete ML feature pipelines compute actual composites on varied data.",
+    "Series behavior, zero/zero NaN and epsilon semantics unchanged. No threshold/weight/model/feed/risk changes.",
+    "Baseline/corrected paired deterministic ReplayEngine comparison with actual admitted orders and exits, plus explicit limits and noncausal/noneconomic claims.",
+    "Full mandatory safety/replay pack, operational suite, candidate freeze, runtime snapshot and documented source alignment.",
+    "Independent source/method/evidence review, reviewed secret scan, committed feature branch and updated PR30 with hosted checks."
+  ],
+  "frozen_surface_extension": [
+    "ml_features module source",
+    "composite_indicators module source"
+  ],
+  "active_reference": {
+    "cutoff": "2026-09-23T15:29:47.287731+00:00",
+    "sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010"
+  },
+  "constraints": [
+    "No orders or running-platform writes from tests.",
+    "No installed checkout source changes.",
+    "No automatic activation from candidate VALIDATED_AT.",
+    "No cache prototype promotion.",
+    "Preserve prior evidence and counterfactual failure records."
+  ]
+}

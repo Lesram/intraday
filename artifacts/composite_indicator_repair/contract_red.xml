@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="35" skipped="0" tests="40" time="0.821" timestamp="2026-09-25T09:48:59.811984-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_composite_indicator_contract" name="test_scalar_numerator_signed_zero_epsilon_and_nan[100-expected0]" time="0.001"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:58: in test_scalar_numerator_signed_zero_epsilon_and_nan
+    result = indicators._safe_div(numerator, denominator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_scalar_numerator_signed_zero_epsilon_and_nan[100.0-expected1]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:58: in test_scalar_numerator_signed_zero_epsilon_and_nan
+    result = indicators._safe_div(numerator, denominator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_scalar_numerator_signed_zero_epsilon_and_nan[-2.5-expected2]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:58: in test_scalar_numerator_signed_zero_epsilon_and_nan
+    result = indicators._safe_div(numerator, denominator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_scalar_numerator_signed_zero_epsilon_and_nan[0-expected3]" time="0.000"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:58: in test_scalar_numerator_signed_zero_epsilon_and_nan
+    result = indicators._safe_div(numerator, denominator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_scalar_numerator_signed_zero_epsilon_and_nan[0.0-expected4]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:58: in test_scalar_numerator_signed_zero_epsilon_and_nan
+    result = indicators._safe_div(numerator, denominator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_scalar_numerator_signed_zero_epsilon_and_nan[1e-13-expected5]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:58: in test_scalar_numerator_signed_zero_epsilon_and_nan
+    result = indicators._safe_div(numerator, denominator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_scalar_numerator_signed_zero_epsilon_and_nan[1e-12-expected6]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:58: in test_scalar_numerator_signed_zero_epsilon_and_nan
+    result = indicators._safe_div(numerator, denominator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_scalar_numerator_signed_zero_epsilon_and_nan[-1e-12-expected7]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:58: in test_scalar_numerator_signed_zero_epsilon_and_nan
+    result = indicators._safe_div(numerator, denominator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_series_alignment_missing_values_and_inputs_are_preserved" time="0.002" /><testcase classname="tests.test_composite_indicator_contract" name="test_series_near_zero_boundary_matches_original_arithmetic_exactly" time="0.001" /><testcase classname="tests.test_composite_indicator_contract" name="test_nonfinite_scalar_is_not_silently_coerced_to_zero[nan]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:87: in test_nonfinite_scalar_is_not_silently_coerced_to_zero
+    result = indicators._safe_div(numerator, pd.Series([2.]))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_nonfinite_scalar_is_not_silently_coerced_to_zero[inf]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:87: in test_nonfinite_scalar_is_not_silently_coerced_to_zero
+    result = indicators._safe_div(numerator, pd.Series([2.]))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_nonfinite_scalar_is_not_silently_coerced_to_zero[-inf]" time="0.000"><failure message="AttributeError: 'float' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:87: in test_nonfinite_scalar_is_not_silently_coerced_to_zero
+    result = indicators._safe_div(numerator, pd.Series([2.]))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'float' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_unsupported_numerator_is_rejected[100]" time="0.000"><failure message="AttributeError: 'str' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:97: in test_unsupported_numerator_is_rejected
+    indicators._safe_div(numerator, pd.Series([2.]))
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'str' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_unsupported_numerator_is_rejected[numerator1]" time="0.000"><failure message="AttributeError: 'list' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:97: in test_unsupported_numerator_is_rejected
+    indicators._safe_div(numerator, pd.Series([2.]))
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'list' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_unsupported_numerator_is_rejected[numerator2]" time="0.000"><failure message="AttributeError: 'object' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:97: in test_unsupported_numerator_is_rejected
+    indicators._safe_div(numerator, pd.Series([2.]))
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'object' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[volume_price_divergence-0.0-rising]" time="0.002"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:159: in volume_price_divergence
+    mfi = 100 - _safe_div(100, 1 + _safe_div(pos_mf, neg_mf))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[volume_price_divergence-0.0-falling]" time="0.002"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:159: in volume_price_divergence
+    mfi = 100 - _safe_div(100, 1 + _safe_div(pos_mf, neg_mf))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[volume_price_divergence-0.0-oscillating]" time="0.002"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:159: in volume_price_divergence
+    mfi = 100 - _safe_div(100, 1 + _safe_div(pos_mf, neg_mf))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[mean_reversion_extremity--1.0-rising]" time="0.001"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:341: in mean_reversion_extremity
+    rsi = 100 - _safe_div(100, 1 + rs)
+                ^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[mean_reversion_extremity--1.0-falling]" time="0.001"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:341: in mean_reversion_extremity
+    rsi = 100 - _safe_div(100, 1 + rs)
+                ^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[mean_reversion_extremity--1.0-oscillating]" time="0.001"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:341: in mean_reversion_extremity
+    rsi = 100 - _safe_div(100, 1 + rs)
+                ^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[momentum_quality_score-0.0-rising]" time="0.002"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:484: in momentum_quality_score
+    rsi = 100 - _safe_div(100, 1 + _safe_div(gain, loss))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[momentum_quality_score-0.0-falling]" time="0.002"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:484: in momentum_quality_score
+    rsi = 100 - _safe_div(100, 1 + _safe_div(gain, loss))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_all_three_real_scalar_callers_finish_with_finite_scores[momentum_quality_score-0.0-oscillating]" time="0.002"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:109: in test_all_three_real_scalar_callers_finish_with_finite_scores
+    result = function(bars)
+             ^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:484: in momentum_quality_score
+    rsi = 100 - _safe_div(100, 1 + _safe_div(gain, loss))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_master_computes_all_seven_and_preserves_input[rising]" time="0.004"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:129: in test_master_computes_all_seven_and_preserves_input
+    result = indicators.compute_composite_indicators(bars)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:527: in compute_composite_indicators
+    out["comp_vol_price_div"] = volume_price_divergence(df)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:159: in volume_price_divergence
+    mfi = 100 - _safe_div(100, 1 + _safe_div(pos_mf, neg_mf))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_master_computes_all_seven_and_preserves_input[falling]" time="0.004"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:129: in test_master_computes_all_seven_and_preserves_input
+    result = indicators.compute_composite_indicators(bars)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:527: in compute_composite_indicators
+    out["comp_vol_price_div"] = volume_price_divergence(df)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:159: in volume_price_divergence
+    mfi = 100 - _safe_div(100, 1 + _safe_div(pos_mf, neg_mf))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_master_computes_all_seven_and_preserves_input[oscillating]" time="0.004"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:129: in test_master_computes_all_seven_and_preserves_input
+    result = indicators.compute_composite_indicators(bars)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:527: in compute_composite_indicators
+    out["comp_vol_price_div"] = volume_price_divergence(df)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:159: in volume_price_divergence
+    mfi = 100 - _safe_div(100, 1 + _safe_div(pos_mf, neg_mf))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_master_computes_all_seven_and_preserves_input[flat]" time="0.004"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:129: in test_master_computes_all_seven_and_preserves_input
+    result = indicators.compute_composite_indicators(bars)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:527: in compute_composite_indicators
+    out["comp_vol_price_div"] = volume_price_divergence(df)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:159: in volume_price_divergence
+    mfi = 100 - _safe_div(100, 1 + _safe_div(pos_mf, neg_mf))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_master_computes_all_seven_and_preserves_input[zero_volume]" time="0.004"><failure message="AttributeError: 'int' object has no attribute 'abs'">tests/test_composite_indicator_contract.py:129: in test_master_computes_all_seven_and_preserves_input
+    result = indicators.compute_composite_indicators(bars)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:527: in compute_composite_indicators
+    out["comp_vol_price_div"] = volume_price_divergence(df)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:159: in volume_price_divergence
+    mfi = 100 - _safe_div(100, 1 + _safe_div(pos_mf, neg_mf))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/organism/composite_indicators.py:43: in _safe_div
+    a_zero = a.abs() &lt; 1e-12
+             ^^^^^
+E   AttributeError: 'int' object has no attribute 'abs'</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_short_input_retains_explicit_zero_warmup_contract[0]" time="0.002" /><testcase classname="tests.test_composite_indicator_contract" name="test_short_input_retains_explicit_zero_warmup_contract[1]" time="0.001" /><testcase classname="tests.test_composite_indicator_contract" name="test_short_input_retains_explicit_zero_warmup_contract[19]" time="0.001" /><testcase classname="tests.test_composite_indicator_contract" name="test_actual_ml_path_completes_composites_without_changing_other_features[rising-20]" time="0.020"><failure message="AssertionError: The composite computation must return; seven fallback zeros do not qualify&#10;assert 0 == 1&#10; +  where 0 = len([])">tests/test_composite_indicator_contract.py:173: in test_actual_ml_path_completes_composites_without_changing_other_features
+    assert len(completed) == 1, "The composite computation must return; seven fallback zeros do not qualify"
+E   AssertionError: The composite computation must return; seven fallback zeros do not qualify
+E   assert 0 == 1
+E    +  where 0 = len([])</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_actual_ml_path_completes_composites_without_changing_other_features[rising-80]" time="0.034"><failure message="AssertionError: The composite computation must return; seven fallback zeros do not qualify&#10;assert 0 == 1&#10; +  where 0 = len([])">tests/test_composite_indicator_contract.py:173: in test_actual_ml_path_completes_composites_without_changing_other_features
+    assert len(completed) == 1, "The composite computation must return; seven fallback zeros do not qualify"
+E   AssertionError: The composite computation must return; seven fallback zeros do not qualify
+E   assert 0 == 1
+E    +  where 0 = len([])</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_actual_ml_path_completes_composites_without_changing_other_features[falling-80]" time="0.034"><failure message="AssertionError: The composite computation must return; seven fallback zeros do not qualify&#10;assert 0 == 1&#10; +  where 0 = len([])">tests/test_composite_indicator_contract.py:173: in test_actual_ml_path_completes_composites_without_changing_other_features
+    assert len(completed) == 1, "The composite computation must return; seven fallback zeros do not qualify"
+E   AssertionError: The composite computation must return; seven fallback zeros do not qualify
+E   assert 0 == 1
+E    +  where 0 = len([])</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_actual_ml_path_completes_composites_without_changing_other_features[oscillating-120]" time="0.044"><failure message="AssertionError: The composite computation must return; seven fallback zeros do not qualify&#10;assert 0 == 1&#10; +  where 0 = len([])">tests/test_composite_indicator_contract.py:173: in test_actual_ml_path_completes_composites_without_changing_other_features
+    assert len(completed) == 1, "The composite computation must return; seven fallback zeros do not qualify"
+E   AssertionError: The composite computation must return; seven fallback zeros do not qualify
+E   assert 0 == 1
+E    +  where 0 = len([])</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_actual_ml_path_completes_composites_without_changing_other_features[flat-80]" time="0.033"><failure message="AssertionError: The composite computation must return; seven fallback zeros do not qualify&#10;assert 0 == 1&#10; +  where 0 = len([])">tests/test_composite_indicator_contract.py:173: in test_actual_ml_path_completes_composites_without_changing_other_features
+    assert len(completed) == 1, "The composite computation must return; seven fallback zeros do not qualify"
+E   AssertionError: The composite computation must return; seven fallback zeros do not qualify
+E   assert 0 == 1
+E    +  where 0 = len([])</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_actual_ml_path_completes_composites_without_changing_other_features[zero_volume-80]" time="0.034"><failure message="AssertionError: The composite computation must return; seven fallback zeros do not qualify&#10;assert 0 == 1&#10; +  where 0 = len([])">tests/test_composite_indicator_contract.py:173: in test_actual_ml_path_completes_composites_without_changing_other_features
+    assert len(completed) == 1, "The composite computation must return; seven fallback zeros do not qualify"
+E   AssertionError: The composite computation must return; seven fallback zeros do not qualify
+E   assert 0 == 1
+E    +  where 0 = len([])</failure></testcase><testcase classname="tests.test_composite_indicator_contract" name="test_actual_ml_path_completes_composites_without_changing_other_features[rising-500]" time="0.139"><failure message="AssertionError: The composite computation must return; seven fallback zeros do not qualify&#10;assert 0 == 1&#10; +  where 0 = len([])">tests/test_composite_indicator_contract.py:173: in test_actual_ml_path_completes_composites_without_changing_other_features
+    assert len(completed) == 1, "The composite computation must return; seven fallback zeros do not qualify"
+E   AssertionError: The composite computation must return; seven fallback zeros do not qualify
+E   assert 0 == 1
+E    +  where 0 = len([])</failure></testcase></testsuite></testsuites>

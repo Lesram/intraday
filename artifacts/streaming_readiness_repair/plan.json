@@ -1,0 +1,108 @@
+{
+  "task_id": "streaming_readiness_repair_20260924",
+  "summary": "Audit the September 24 paper session and repair verified discovery-to-streaming integration and readiness diagnostics, with measurable candidate and processing evidence.",
+  "authorization": {
+    "request": "what happened today, and can we use this improvement plan to apply it and update our system",
+    "scope": "Implement the previously proposed repair plan in an isolated branch; validate and review before deployment. Frozen-surface changes are deliberate candidate changes; active cutoff is retained until an explicitly recorded release transition.",
+    "paper_only": true,
+    "strategy_tuning": false,
+    "feed_change": false
+  },
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "base_branch": "intra-2.0-phase1",
+  "workstreams": [
+    {
+      "id": "session_review",
+      "files": [
+        "reports/session_review_2026-09-24/"
+      ],
+      "acceptance": "Reconcile immutable session logs, daily evidence and current read-only broker observation; distinguish evidence readiness from strategy success."
+    },
+    {
+      "id": "discovery_streaming",
+      "files": [
+        "backend/organism/live_engine.py",
+        "backend/organism/streaming_data_provider.py",
+        "backend/organism/scheduler.py",
+        "tests/test_scanner_streaming_integration.py"
+      ],
+      "acceptance": "Synchronize discovered, base, benchmark and held symbols; retry failures; fresh-data waiting is fail-closed; offline live-provider integration exercises exact entry admission and protective exits."
+    },
+    {
+      "id": "diagnostics",
+      "files": [
+        "backend/organism/live_engine.py",
+        "backend/organism/live_engine_data.py",
+        "tests/test_pipeline_diagnostics.py"
+      ],
+      "acceptance": "Bounded distinct candidate routing causes and stage timings; no threshold, strategy or sizing change."
+    },
+    {
+      "id": "readiness",
+      "files": [
+        "backend/api/routes/health.py",
+        "backend/api/factory.py",
+        "tests/test_readiness_contract.py"
+      ],
+      "acceptance": "Typed dependency outcomes and actual scheduler observation; existing dependency deadlines and watchdog restart authority retained; closed-market and warmup states handled explicitly."
+    },
+    {
+      "id": "validation",
+      "files": [
+        "scripts/phase2_freeze.py",
+        "artifacts/streaming_readiness_repair/",
+        "docs/architecture/mapss.md",
+        "docs/engineering/LIVE_AUDIT_INDEX.md"
+      ],
+      "acceptance": "Required targeted and safety suites, replay, candidate/runtime snapshots, invariant checks, independent review and PR. Any additional optimization requires reproducible profiling evidence first."
+    },
+    {
+      "id": "unchanged_features",
+      "files": [
+        "backend/organism/live_engine_data.py",
+        "tests/test_pipeline_feature_cache.py",
+        "scripts/diagnostics/profile_paper_pipeline.py",
+        "tests/test_pipeline_profile.py"
+      ],
+      "evidence": "Unchanged-input feature work repeated at20/69symbols; baseline medians3.588/12.951seconds. Fine-grained cProfile feature-store counters have a measurement defect and are withheld.",
+      "acceptance": "Reuse only ML calculation with exact input/dependency match; preserve feature-store QA/snapshot sideeffects, actualdatafetch/freshness, multi-timeframe processing and decisions. Boundedmemory/deepcopies; test every invalidation, before/after parity and benchmark.",
+      "status": "PROTOTYPE_WITHDRAWN_NOT_IN_RUNTIME",
+      "reason": "Reproduced existing scalar/composite failure produces all-zero fallback; caching could suppress recovery retries. Prototype archived; separate indicator correction awaits explicit user scope approval."
+    },
+    {
+      "id": "watchdog_evidence",
+      "files": [
+        "scripts/ops/paper_watchdog.py",
+        "tests/test_paper_watchdog.py"
+      ],
+      "evidence": "41/77Sept24checks truncated; old cursor advances past unread prefix.",
+      "acceptance": "Bounded oldest-first log windows, retain unread cursor on errors/truncation, explicit backlog, no rawprivatepayloads or changed service/recovery authority. Parseallowlistedtypedreadiness outcomes."
+    }
+  ],
+  "required_commands": [
+    "pytest -q tests/test_organism_live_engine.py tests/test_organism_engine_scenarios.py tests/test_multi_tick_state.py tests/test_safety_invariants.py tests/test_replay_simulator.py tests/test_self_evolution.py",
+    "pytest -q tests/test_order_integrity_comprehensive.py tests/test_position_reconciliation.py tests/test_position_reconciliation_comprehensive.py",
+    "pytest -q tests/test_settings_comprehensive.py tests/test_config_coordinator_comprehensive.py tests/test_system_integration.py",
+    "python scripts/ci/generate_artifacts.py full",
+    "python scripts/ci/generate_audit_index.py",
+    "python scripts/phase2_freeze.py --verify"
+  ],
+  "constraints": [
+    "No orders from tests or diagnostics",
+    "No active-workspace or brain mutation",
+    "No global freshness-policy loosening",
+    "No live exploration",
+    "Preserve fixed risk sizing and EOD protection",
+    "Retain all historical measurement epochs"
+  ],
+  "new_findings": [
+    {
+      "id": "composite_scalar_failure",
+      "status": "explicit_scope_approval_pending",
+      "change_applied": false,
+      "evidence": "composite_feature_defect_review.json",
+      "effect": "Seven composite features fall back to zero; downstream consumers exist; September24 missed-trade effect not measured."
+    }
+  ],
+  "release_status": "Candidate operational repairs only; no deployment or active clock reset"
+}

@@ -2,7 +2,7 @@
   "overall": "pass",
   "core_keys_checked": 9,
   "sources": {
-    "runtime_defaults": 51,
+    "runtime_defaults": 53,
     "mapss_constants": 7,
     "manifest_constants": 11
   },

@@ -1,0 +1,10 @@
+{
+  "task_id": "composite_scalar_division_diagnostic",
+  "scope": "Synthetic diagnostic and proposed one-expression counterfactual only; no production correction pending explicit user approval",
+  "owned_files": ["artifacts/streaming_readiness_repair/composite_defect/diagnostic.py", "artifacts/streaming_readiness_repair/composite_defect/results.json"],
+  "tests": ["Original direct composite computation raises at scalar numerator", "Original complete ML features contain seven all-zero composite columns", "In-process abs(a) proposal preserves Series behavior and zero-over-zero NaN", "Synthetic original/proposed feature and alpha-score comparison with unchanged raw inputs"],
+  "source_reads": ["Candidate and installed composite_indicators.py, ml_features.py, alpha_scanner.py, strategies/momentum.py, confidence_lab.py; hashes only for installed source"],
+  "isolation": "Existing clean-environment sandbox runner; deny network, installed writes and private credentials/brain reads; temporary working directory before backend import",
+  "excluded": ["No models, broker, runtime, historical input replay, orders, source edits, freeze changes, cache admission or profitability claims"],
+  "proposal": "Replace only a.abs() with abs(a) inside _safe_div in an isolated evaluation function. Preserve denominator replacement and zero-over-zero NaN guard."
+}

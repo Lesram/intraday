@@ -1,0 +1,22 @@
+{
+  "label": "diagnostics_03",
+  "exit_code": 0,
+  "seconds": 11.27,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/diagnostics_03.xml",
+    "tests/test_pipeline_diagnostics.py",
+    "tests/test_scanner_pipeline_integration.py",
+    "tests/test_entry_freshness.py",
+    "tests/test_pipeline_freshness_recovery.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

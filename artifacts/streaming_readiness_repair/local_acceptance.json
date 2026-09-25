@@ -1,0 +1,76 @@
+{
+  "status": "LOCAL_OPERATIONAL_ACCEPTANCE_PASSED_NOT_DEPLOYED",
+  "source_commit": "7e63a494b9dfa6af4f419f8ecca218b6ec2a6d59",
+  "source_files_sha256": {
+    ".github/workflows/paper-readiness.yml": "a41e565d4df9b0050e2bb93565efeb437d53fee962453addc1815bb8b962a994",
+    "backend/api/routes/health.py": "8abd26fbff3bd51f2af5c574ad5f67b446ad4976121d6b8db08f946948092dae",
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "backend/organism/pipeline_diagnostics.py": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
+    "backend/organism/scheduler.py": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "scripts/diagnostics/profile_paper_pipeline.py": "4d3717ecc32b4d3c7e62e80d699f8db418a56a99726b27f387f65442b0ae8ed4",
+    "scripts/ops/paper_watchdog.py": "a0aafaff0aac81aa18ca9a9b6797cac8fec23b428b588a511fe5071c55599526",
+    "scripts/phase2_freeze.py": "274ae89a29f46c28d68db106294c3008cf5517ef95039ff54282267c84a61357",
+    "scripts/runtime/write_runtime_snapshot.py": "273f441a1d093ea3735ebcc7b7e7757eae2610280b3d95f887f01afbf9843552",
+    "tests/test_entry_freshness.py": "0460f5478dfd7570e2aa378726ab5fdecd4a81d1d5ddcb98ec89eb84a5a5a970",
+    "tests/test_paper_watchdog.py": "b00ff805878f0a382ecd08bd5b482c7070ebfa1723e0fd20e5464f8eae670157",
+    "tests/test_phase2_freeze.py": "940bb6f36645cb10d83fc91ab5c7102d49f14465ad68fda947d3ec4333f8483c",
+    "tests/test_pipeline_diagnostics.py": "d3e5257dbf23949cf3e4c6246f144165bb6239ad1d4d863c88f44ed8f95855a1",
+    "tests/test_pipeline_freshness_recovery.py": "04679c4b555de2802cfce132c1803d41cdbed4695f54fa4e520bd2aed0397caa",
+    "tests/test_pipeline_profile.py": "fe50479a6c054fe4a2f43f3f1f8877af5e65d04c7f84d53c1ac53a9f90afd9bc",
+    "tests/test_pipeline_snapshot.py": "9f165bbfb1613c07c4b09294795192cd7fa6976fa7bd86bfbd473fb63a477c47",
+    "tests/test_readiness_contract.py": "26c07d92579662ca5f2f75e01ffc1755548a64a3ddb250b225bf363c11dbe824",
+    "tests/test_scanner_streaming_integration.py": "b5190963ff671ebd1766f5a2675715aa92228f53b3ce00e1c9c25f11f7c1f3aa",
+    "tests/test_v13_w100_live_tick_coverage.py": "74df07b9fac6c709be4347e5a6a32066ec523534adba1dd0ec28ea2a6ad5e045",
+    "tests/test_v12_baseline_invariants.py": "1bf44e897f135f68f27c8e7f4a475e7e1b1474295a18b7b735cadd91646a81f8"
+  },
+  "uncommitted_source_note": "Only the second existing LOC guard test gains the same exact+28 allowance; runtime code matches source commit. No spare growth tolerance.",
+  "operational": {
+    "passed": 1900,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "junit_sha256": "35298237402d33055b5186e3973e7cc51f7fce36379ca66bdb55ac362f79fc59",
+    "skip": [
+      {
+        "case": "test_installed_history_has_not_shrunk_from_committed_baseline",
+        "reason": "Installed-history CSV intentionally not provided to isolated tests; no deployed-history certification from this test."
+      }
+    ]
+  },
+  "full_pack": {
+    "passed_suites": [
+      "organism_live_engine",
+      "organism_engine_scenarios",
+      "multi_tick_state",
+      "safety_invariants",
+      "self_evolution",
+      "algorithm_improvements",
+      "semantic_invariants",
+      "replay_simulator"
+    ],
+    "test_cases": 168,
+    "replay_cases": 28,
+    "semantic_cases": 20,
+    "failures": 0,
+    "process_exit": 0,
+    "receipt_sha256": "2c3bcc303241bf57ab02ed361ce2027f8907151eab458ac305679fb1204d3136"
+  },
+  "counts_note": "Do not add overlapping author, operational, standalone or full-pack runs into a unique test count.",
+  "candidate_freeze_sha256": "bcb888908c6818cde6a050776590bb184220a20c1ab18d147676f5d509b57e5d",
+  "active_freeze_sha256_unchanged": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+  "active_preservation_receipt_sha256": "dbef47ed5f986fe369b8b20599a3c5d112c22c9c5b94acac06f66b8d0ef18120",
+  "independent_review_sha256": "47477042c3dde7a5a1576bc3355f44386ba81e4bea084c60341642fb7d337643",
+  "source_secret_scan_sha256": "9a55984b7014b7a1a691789568edeba789debccf3081a7c359ad4a6294b9b43c",
+  "unaccepted": [
+    "Composite-indicator correction awaits explicit scope approval and full trading replay.",
+    "Cache prototype is archived and absent from runtime; no speedup claimed."
+  ],
+  "remaining": [
+    "Final public artifact scan and hosted PR checks.",
+    "Explicit approved paper release and forward-boundary activation.",
+    "Natural forward paper execution and strategy evidence."
+  ],
+  "deployment_performed": false
+}

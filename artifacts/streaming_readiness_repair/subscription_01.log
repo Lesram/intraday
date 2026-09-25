@@ -1,0 +1,134 @@
+FFFFFFFFFFFFF                                                            [100%]
+=================================== FAILURES ===================================
+____ test_desired_subscriptions_retain_base_benchmarks_and_held_until_flat _____
+tests/test_scanner_streaming_integration.py:98: in test_desired_subscriptions_retain_base_benchmarks_and_held_until_flat
+    await engine._sync_streaming_subscriptions({"HELD": {"qty": 2}})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'
+__ test_failed_unsubscribe_blocks_then_retries_without_discarding_prior_state __
+tests/test_scanner_streaming_integration.py:122: in test_failed_unsubscribe_blocks_then_retries_without_discarding_prior_state
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'
+___________ test_successful_sync_does_not_clear_existing_entry_halt ____________
+tests/test_scanner_streaming_integration.py:144: in test_successful_sync_does_not_clear_existing_entry_halt
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'
+________ test_no_streaming_provider_leaves_historical_replay_unchanged _________
+tests/test_scanner_streaming_integration.py:154: in test_no_streaming_provider_leaves_historical_replay_unchanged
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'
+_______ test_incomplete_subscription_result_cannot_admit_entries[False] ________
+tests/test_scanner_streaming_integration.py:164: in test_incomplete_subscription_result_cannot_admit_entries
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'
+________ test_incomplete_subscription_result_cannot_admit_entries[None] ________
+tests/test_scanner_streaming_integration.py:164: in test_incomplete_subscription_result_cannot_admit_entries
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'
+________ test_incomplete_subscription_result_cannot_admit_entries[true] ________
+tests/test_scanner_streaming_integration.py:164: in test_incomplete_subscription_result_cannot_admit_entries
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'
+_________ test_subscription_wait_has_bounded_deadline_and_fails_closed _________
+tests/test_scanner_streaming_integration.py:179: in test_subscription_wait_has_bounded_deadline_and_fails_closed
+    await engine._sync_streaming_subscriptions({})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'OrganismLiveEngine' object has no attribute '_sync_streaming_subscriptions'
+_ test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None] _
+tests/test_scanner_streaming_integration.py:258: in test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order
+    assert added_tick["blocked"] and added_tick["orders"] == 0
+E   assert (False)
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-25T04:33:33.381967Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars] _
+tests/test_scanner_streaming_integration.py:258: in test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order
+    assert added_tick["blocked"] and added_tick["orders"] == 0
+E   assert (False)
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-25T04:33:34.836811Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes] _
+tests/test_scanner_streaming_integration.py:258: in test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order
+    assert added_tick["blocked"] and added_tick["orders"] == 0
+E   assert (False)
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+  💾 Brain saved: generation 0, 1 trades, equity $999,519
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-25T04:33:36.040329Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_____ test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale] _____
+tests/test_scanner_streaming_integration.py:283: in test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit
+    assert first_bar is not None
+E   assert None is not None
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-25T04:33:37.297165Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+_ test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure] _
+tests/test_scanner_streaming_integration.py:283: in test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit
+    assert first_bar is not None
+E   assert None is not None
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,000
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-25T04:33:38.907610Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+=============================== warnings summary ===============================
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+  tests/test_scanner_streaming_integration.py:252: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+  tests/test_scanner_streaming_integration.py:278: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+1.61s call     tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+1.61s call     tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+1.47s call     tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+1.25s call     tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+1.19s call     tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+
+(5 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/test_scanner_streaming_integration.py::test_desired_subscriptions_retain_base_benchmarks_and_held_until_flat
+FAILED tests/test_scanner_streaming_integration.py::test_failed_unsubscribe_blocks_then_retries_without_discarding_prior_state
+FAILED tests/test_scanner_streaming_integration.py::test_successful_sync_does_not_clear_existing_entry_halt
+FAILED tests/test_scanner_streaming_integration.py::test_no_streaming_provider_leaves_historical_replay_unchanged
+FAILED tests/test_scanner_streaming_integration.py::test_incomplete_subscription_result_cannot_admit_entries[False]
+FAILED tests/test_scanner_streaming_integration.py::test_incomplete_subscription_result_cannot_admit_entries[None]
+FAILED tests/test_scanner_streaming_integration.py::test_incomplete_subscription_result_cannot_admit_entries[true]
+FAILED tests/test_scanner_streaming_integration.py::test_subscription_wait_has_bounded_deadline_and_fails_closed
+FAILED tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+FAILED tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+FAILED tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+FAILED tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+FAILED tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+13 failed, 6 warnings in 8.23s

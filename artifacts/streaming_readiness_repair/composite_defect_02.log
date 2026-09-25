@@ -1,0 +1,6 @@
+.                                                                        [100%]
+============================= slowest 10 durations =============================
+1.71s call     artifacts/streaming_readiness_repair/composite_defect/diagnostic.py::test_original_and_proposed_composite_contract
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+1 passed in 1.88s

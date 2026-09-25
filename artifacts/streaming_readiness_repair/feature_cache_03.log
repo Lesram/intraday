@@ -1,0 +1,53 @@
+........................F.......                                         [100%]
+=================================== FAILURES ===================================
+__________ test_stateful_callable_helper_is_unknown_and_never_reused ___________
+../../../../VS/intra/venv/lib/python3.12/site-packages/pandas/core/indexes/base.py:3641: in get_loc
+    return self._engine.get_loc(casted_key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pandas/_libs/index.pyx:168: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/index.pyx:197: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/hashtable_class_helper.pxi:7668: in pandas._libs.hashtable.PyObjectHashTable.get_item
+    ???
+pandas/_libs/hashtable_class_helper.pxi:7676: in pandas._libs.hashtable.PyObjectHashTable.get_item
+    ???
+E   KeyError: 'stateful_probe'
+
+The above exception was the direct cause of the following exception:
+tests/test_pipeline_feature_cache.py:296: in test_stateful_callable_helper_is_unknown_and_never_reused
+    assert not first["SYN001"]["stateful_probe"].equals(second["SYN001"]["stateful_probe"])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/pandas/core/frame.py:4378: in __getitem__
+    indexer = self.columns.get_loc(key)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/pandas/core/indexes/base.py:3648: in get_loc
+    raise KeyError(key) from err
+E   KeyError: 'stateful_probe'
+=============================== warnings summary ===============================
+tests/test_pipeline_feature_cache.py::test_unchanged_inputs_reuse_only_ml_and_preserve_feature_store_side_effects
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_pipeline_feature_cache.py: 117 warnings
+  /Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/organism/multi_timeframe.py:155: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+    df[col] = 0.0
+
+tests/test_pipeline_feature_cache.py::test_returned_frame_mutation_cannot_poison_cache
+  /Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/tests/test_pipeline_feature_cache.py:74: PerformanceWarning: DataFrame is highly fragmented.  This is usually the result of calling `frame.insert` many times, which has poor performance.  Consider joining all columns at once using pd.concat(axis=1) instead. To get a de-fragmented frame, use `newframe = frame.copy()`
+    received["SYN001"]["consumer_only"] = 1
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+2.29s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+1.88s call     tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]
+0.52s call     tests/test_pipeline_feature_cache.py::test_advanced_bar_and_earlier_row_change_invalidate
+0.38s call     tests/test_pipeline_feature_cache.py::test_configuration_changes_never_reuse_old_ml_output[timeframe]
+0.37s call     tests/test_pipeline_feature_cache.py::test_configuration_changes_never_reuse_old_ml_output[bars_per_day]
+0.35s call     tests/test_pipeline_feature_cache.py::test_configuration_changes_never_reuse_old_ml_output[store_config]
+0.35s call     tests/test_pipeline_feature_cache.py::test_same_bar_correction_and_spy_dependency_miss_with_exact_cold_parity[SPY-close]
+0.35s call     tests/test_pipeline_feature_cache.py::test_configuration_changes_never_reuse_old_ml_output[engineer_config]
+0.35s call     tests/test_pipeline_feature_cache.py::test_complete_frame_schema_is_in_cache_identity[index]
+0.35s call     tests/test_pipeline_feature_cache.py::test_unknown_mutable_dependencies_bypass[engineer_state]
+=========================== short test summary info ============================
+FAILED tests/test_pipeline_feature_cache.py::test_stateful_callable_helper_is_unknown_and_never_reused
+1 failed, 31 passed, 119 warnings in 13.13s

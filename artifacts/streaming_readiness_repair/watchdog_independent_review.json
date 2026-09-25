@@ -1,0 +1,77 @@
+{
+  "task_id": "watchdog_paging_independent_review_20260924",
+  "status": "ACCEPTED_SCOPED_SOURCE_AND_EXISTING_TEST_EVIDENCE",
+  "reviewer": "session_contract_explorer",
+  "source_author": "combined_acceptance_review",
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "files_sha256": {
+    "scripts/ops/paper_watchdog.py": "a0aafaff0aac81aa18ca9a9b6797cac8fec23b428b588a511fe5071c55599526",
+    "tests/test_paper_watchdog.py": "b00ff805878f0a382ecd08bd5b482c7070ebfa1723e0fd20e5464f8eae670157"
+  },
+  "implementation_report": {
+    "path": "artifacts/streaming_readiness_repair/readiness_watchdog_implementation.json",
+    "sha256": "dd9f967ccc160cc3039ed07f94196335b54b17fa114d6410f5da0bcf7f3a7bc6"
+  },
+  "evidence": {
+    "junit": "artifacts/streaming_readiness_repair/watchdog_05.xml",
+    "junit_sha256": "e56bebda81b5da10da0ca166ac7c19256540ab58c56a8353f6b8a6dae9bc1245",
+    "runner_receipt_sha256": "4d5653c99dd92bc77d401f2784228b90ce7a5074b9724d1e1f3902a0d9e64194",
+    "passed": 222,
+    "failures": 0,
+    "errors": 0,
+    "skips": [
+      {
+        "nodeid": "tests.unit.generated.test_auto_health.TestHealth::test_health_check_exists",
+        "reason": "Async function not available: cannot import name 'health_check' from 'backend.api.routes.health' (/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/api/routes/health.py)"
+      },
+      {
+        "nodeid": "tests.unit.generated.test_auto_health.TestHealth::test_liveness_check_exists",
+        "reason": "Async function not available: cannot import name 'liveness_check' from 'backend.api.routes.health' (/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/backend/api/routes/health.py)"
+      }
+    ],
+    "reviewer_reran_tests": false,
+    "reason": "Owner final isolated222-pass selection reviewed; no duplicate execution or runtime probe needed."
+  },
+  "verified": {
+    "existing_recovery_and_notification_function_asts_unchanged": {
+      "choose_recovery": true,
+      "notify_local": true,
+      "observe": true,
+      "observe_policy": true,
+      "main": true
+    },
+    "recovery_decision_precedes_log_backlog_attention": true,
+    "no_service_action_or_new_notification_opt_in_from_paging": true,
+    "oldest_since_until_windows_no_tail": true,
+    "cursor_advances_only_for_complete_untruncated_successful_window": true,
+    "later_failure_preserves_completed_prefix_and_pending_alerts": true,
+    "invalid_cursor_or_present_malformed_monitor_never_reboots_scan_clock": true,
+    "only_absent_monitor_key_bootstraps": true,
+    "bounded_queries": 12,
+    "total_log_query_budget_seconds": 10,
+    "owned_child_cleanup_seconds": 1,
+    "per_query_byte_cap": 262144,
+    "complete_window_line_count_less_than": 1000,
+    "window_initial_seconds": 60,
+    "minimum_split_window_seconds": 1,
+    "inclusive_boundary_fingerprint_dedup_and_delayed_same_timestamp_case": true,
+    "overflow_timeout_cancel_reaps_only_owned_readonly_cli_child": true,
+    "typed_dependency_and_runtime_outputs_allowlisted_and_no_raw_prose": true,
+    "raw_alert_lines_not_persisted": true
+  },
+  "review_findings_closed": [
+    {
+      "finding": "Present malformed monitor (including missing cursor dict) silently became a first-run900s bootstrap, potentially acknowledging an unread older prefix.",
+      "repair": "Distinguish absent whole key from present malformed monitor; persist invalid_cursor/backlog with zero queries, retaining valid pending count.",
+      "regression": "test_present_malformed_monitor_never_bootstraps_over_unread_history: null/list/string/bool/int/emptydict/missingcursor variants, second-run refusal, no private data."
+    }
+  ],
+  "limits": [
+    "Complete means retained Docker log window returned without truncation; rotated/deleted history or prior lost state cannot be reconstructed.",
+    "Initial900s backlog, finite budget and minimum1s saturation can require additional invocations/operator review; no guarantee of zero backlog at arbitrary log throughput.",
+    "Cursor validation concerns persisted observation state; severity recognition intentionally retains existing text/structured-level matching, not a new generic JSON-schema validator.",
+    "Readiness core/source independently reviewed by another agent; this review binds watchdog parsing/paging/recovery authority only.",
+    "No runtime/prod mutation, credential read, Docker invocation, notification, deployment or source edit by reviewer."
+  ],
+  "blockers": []
+}

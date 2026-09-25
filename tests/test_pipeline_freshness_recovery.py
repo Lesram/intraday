@@ -108,7 +108,7 @@ async def test_active_sparse_symbol_blocks_despite_aggregate_and_quotes_then_rec
     engine._stage_update_data_staleness()
     assert engine._data_stale is False
     assert log.info.call_count == 1
-    assert "stale-data entry block cleared" in log.info.call_args.args[0]
+    assert "freshness check passed" in log.info.call_args.args[0]
     engine._stage_update_data_staleness()
     assert log.info.call_count == 1
 

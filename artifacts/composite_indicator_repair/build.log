@@ -1,0 +1,4 @@
+candidate decision surface -> artifacts/phase2/candidate_param_freeze.json
+  VALIDATED_AT=2026-09-25T16:52:18.768688+00:00  (candidate surface unchanged; validation boundary preserved)
+  git_sha=029f1c37f71f03ff1acff46fd0fa6be92a99c9c0  n_target=60
+  source_hashes=['entry_direction', 'entry_gates_dispatch', 'exit_engine', 'kelly_sizer', 'regime_detector', 'selector_routing']

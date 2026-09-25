@@ -1,0 +1,121 @@
+{
+  "base_sha": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "working_head": "a69949a216fdcb6a7f210933f885b3cabafd1ae0",
+  "scope": "Full current contents of changed/new backend/tests/scripts/docs/.github files; public artifacts/reports excluded for separate final pack scan",
+  "scanner_sha256": "ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f",
+  "scanner_version": "8.30.1",
+  "command": [
+    "/tmp/intra-gitleaks/gitleaks",
+    "dir",
+    "--redact=100",
+    "--no-banner",
+    "--no-color",
+    "--ignore-gitleaks-allow",
+    "--report-format=json",
+    "--timeout=120",
+    "<private copied sources>"
+  ],
+  "exit_code": 0,
+  "findings_count": 0,
+  "files": {
+    ".github/workflows/paper-readiness.yml": {
+      "sha256": "a41e565d4df9b0050e2bb93565efeb437d53fee962453addc1815bb8b962a994",
+      "bytes": 10272
+    },
+    "backend/api/routes/health.py": {
+      "sha256": "8abd26fbff3bd51f2af5c574ad5f67b446ad4976121d6b8db08f946948092dae",
+      "bytes": 10295
+    },
+    "backend/organism/live_engine.py": {
+      "sha256": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+      "bytes": 425458
+    },
+    "backend/organism/live_engine_data.py": {
+      "sha256": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+      "bytes": 9875
+    },
+    "backend/organism/pipeline_diagnostics.py": {
+      "sha256": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
+      "bytes": 3018
+    },
+    "backend/organism/scheduler.py": {
+      "sha256": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
+      "bytes": 15669
+    },
+    "backend/organism/streaming_data_provider.py": {
+      "sha256": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+      "bytes": 25844
+    },
+    "docs/architecture/mapss.md": {
+      "sha256": "4696d79fd3ca38e8f7ccad9903727d3f7d108fd10540c42875ff3422dc97b5a0",
+      "bytes": 240512
+    },
+    "docs/engineering/STREAMING_READINESS_REPAIR.md": {
+      "sha256": "9c57b75d465e38c705c11bafe40bdc68c15ad475c47c3674c1b71c7f6ff5bf05",
+      "bytes": 4064
+    },
+    "scripts/diagnostics/profile_paper_pipeline.py": {
+      "sha256": "4d3717ecc32b4d3c7e62e80d699f8db418a56a99726b27f387f65442b0ae8ed4",
+      "bytes": 16814
+    },
+    "scripts/ops/paper_watchdog.py": {
+      "sha256": "a0aafaff0aac81aa18ca9a9b6797cac8fec23b428b588a511fe5071c55599526",
+      "bytes": 38165
+    },
+    "scripts/phase2_freeze.py": {
+      "sha256": "274ae89a29f46c28d68db106294c3008cf5517ef95039ff54282267c84a61357",
+      "bytes": 16011
+    },
+    "scripts/runtime/write_runtime_snapshot.py": {
+      "sha256": "273f441a1d093ea3735ebcc7b7e7757eae2610280b3d95f887f01afbf9843552",
+      "bytes": 41061
+    },
+    "tests/test_entry_freshness.py": {
+      "sha256": "0460f5478dfd7570e2aa378726ab5fdecd4a81d1d5ddcb98ec89eb84a5a5a970",
+      "bytes": 14894
+    },
+    "tests/test_paper_watchdog.py": {
+      "sha256": "b00ff805878f0a382ecd08bd5b482c7070ebfa1723e0fd20e5464f8eae670157",
+      "bytes": 58262
+    },
+    "tests/test_phase2_freeze.py": {
+      "sha256": "940bb6f36645cb10d83fc91ab5c7102d49f14465ad68fda947d3ec4333f8483c",
+      "bytes": 16280
+    },
+    "tests/test_pipeline_diagnostics.py": {
+      "sha256": "d3e5257dbf23949cf3e4c6246f144165bb6239ad1d4d863c88f44ed8f95855a1",
+      "bytes": 8606
+    },
+    "tests/test_pipeline_freshness_recovery.py": {
+      "sha256": "04679c4b555de2802cfce132c1803d41cdbed4695f54fa4e520bd2aed0397caa",
+      "bytes": 16555
+    },
+    "tests/test_pipeline_profile.py": {
+      "sha256": "fe50479a6c054fe4a2f43f3f1f8877af5e65d04c7f84d53c1ac53a9f90afd9bc",
+      "bytes": 4595
+    },
+    "tests/test_pipeline_snapshot.py": {
+      "sha256": "9f165bbfb1613c07c4b09294795192cd7fa6976fa7bd86bfbd473fb63a477c47",
+      "bytes": 1972
+    },
+    "tests/test_readiness_contract.py": {
+      "sha256": "26c07d92579662ca5f2f75e01ffc1755548a64a3ddb250b225bf363c11dbe824",
+      "bytes": 14489
+    },
+    "tests/test_scanner_streaming_integration.py": {
+      "sha256": "b5190963ff671ebd1766f5a2675715aa92228f53b3ce00e1c9c25f11f7c1f3aa",
+      "bytes": 15140
+    },
+    "tests/test_v13_w100_live_tick_coverage.py": {
+      "sha256": "74df07b9fac6c709be4347e5a6a32066ec523534adba1dd0ec28ea2a6ad5e045",
+      "bytes": 21431
+    }
+  },
+  "copied_source_sha256_verified_before_and_after": true,
+  "seconds": 0.278,
+  "no_repository_allowlist_or_config_changes": true,
+  "scanner_config": "Built-in default; clean environment and copied tree contain no .gitleaks.toml/.gitleaksignore; inline allow comments ignored",
+  "private_evidence_directory": "/private/tmp/intra-source-secret-scan-e5ekj5ig",
+  "private_report_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "private_log_sha256": "a5e752c4cf81c3537f090a457117825ca0701f279106bf4fc97dd5bf9288afa4"
+}

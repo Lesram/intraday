@@ -11,7 +11,7 @@ permissions:
 jobs:
   operational-safety:
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 110
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       PYTHONPATH: .
@@ -98,6 +98,11 @@ jobs:
             tests/test_market_scanner.py \
             tests/test_market_scanner_provider_contract.py \
             tests/test_pipeline_freshness_recovery.py \
+            tests/test_scanner_streaming_integration.py \
+            tests/test_pipeline_diagnostics.py \
+            tests/test_pipeline_profile.py \
+            tests/test_composite_indicator_contract.py \
+            tests/test_readiness_contract.py \
             tests/test_streaming_provider_lifecycle.py \
             tests/test_active_freeze_contract.py \
             tests/test_artifact_change_scope.py \
@@ -134,6 +139,17 @@ jobs:
             tests/test_phase3_attribution_report.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
             2>&1 | tee artifacts/monday_readiness/github_operational.log
+      - name: Paired composite-input trading replay
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/composite_indicator_repair/replay
+          rm -f artifacts/composite_indicator_repair/replay/github_replay.xml artifacts/composite_indicator_repair/replay/paired_summary.json
+          python -m pytest -q --timeout=30 --tb=short --durations=10 \
+            tests/test_composite_correction_replay.py \
+            --junitxml=artifacts/composite_indicator_repair/replay/github_replay.xml \
+            2>&1 | tee artifacts/composite_indicator_repair/replay/github_replay.log
       - name: Verify nightly test harness repairs
         if: always()
         timeout-minutes: 10

@@ -1,0 +1,8 @@
+{
+  "prior_source_files": 23,
+  "public_files": 219,
+  "union_files": 242,
+  "changed_after_scan": [],
+  "current_changed_or_untracked_files_without_scan": [],
+  "scan_output_excluded": "artifacts/streaming_readiness_repair/public_security/"
+}

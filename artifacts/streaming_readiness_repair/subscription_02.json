@@ -1,0 +1,19 @@
+{
+  "label": "subscription_02",
+  "exit_code": 0,
+  "seconds": 7.92,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "--durations=10",
+    "--junitxml=/Users/marselkei/.codex/worktrees/intra-streaming-readiness-repair/intra/artifacts/streaming_readiness_repair/subscription_02.xml",
+    "tests/test_scanner_streaming_integration.py"
+  ],
+  "network_denied": true,
+  "production_writes_denied": true,
+  "installed_credentials_and_brain_reads_denied": true,
+  "candidate_only": true
+}

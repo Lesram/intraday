@@ -1,0 +1,6 @@
+.                                                                        [100%]
+============================= slowest 10 durations =============================
+104.74s call     artifacts/streaming_readiness_repair/profile_experiment.py::test_offline_20_69_profile
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+1 passed in 104.76s (0:01:44)

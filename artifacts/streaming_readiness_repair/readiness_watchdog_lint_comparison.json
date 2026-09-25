@@ -1,0 +1,58 @@
+{
+  "baseline": [
+    {
+      "path": "backend/api/routes/health.py",
+      "code": "BLE001",
+      "count": 5
+    },
+    {
+      "path": "backend/api/routes/health.py",
+      "code": "S110",
+      "count": 2
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "code": "BLE001",
+      "count": 7
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "code": "S110",
+      "count": 3
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "code": "TRY401",
+      "count": 1
+    }
+  ],
+  "current": [
+    {
+      "path": "backend/api/routes/health.py",
+      "code": "BLE001",
+      "count": 3
+    },
+    {
+      "path": "backend/api/routes/health.py",
+      "code": "S110",
+      "count": 1
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "code": "BLE001",
+      "count": 7
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "code": "S110",
+      "count": 3
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "code": "TRY401",
+      "count": 1
+    }
+  ],
+  "new_count_increases": [],
+  "notes": "Existing broad exception isolation/metrics guards retained; no new lint count increases. New watchdog and tests lint clean."
+}

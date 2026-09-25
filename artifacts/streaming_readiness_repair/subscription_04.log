@@ -1,0 +1,29 @@
+..............................................................           [100%]
+=============================== warnings summary ===============================
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+  tests/test_scanner_streaming_integration.py:262: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+  tests/test_scanner_streaming_integration.py:289: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+1.81s call     tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+1.76s call     tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+1.63s call     tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+1.31s call     tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+1.28s call     tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+0.05s call     tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-alpha]
+0.04s call     tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-breakout]
+0.03s call     tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[rest-60-breakout]
+0.03s call     tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-60-pyramid]
+0.03s call     tests/test_entry_freshness.py::test_real_tick_callers_share_gate_and_stale_is_normal_skip[streaming-121-pyramid]
+62 passed, 6 warnings in 10.30s

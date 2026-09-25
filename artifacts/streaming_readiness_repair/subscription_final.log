@@ -1,0 +1,54 @@
+........................................................................ [ 40%]
+........................................................................ [ 81%]
+................................                                         [100%]
+=============================== warnings summary ===============================
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+  tests/test_scanner_streaming_integration.py:262: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+  <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
+
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+  tests/test_scanner_streaming_integration.py:290: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_pipeline_freshness_recovery.py::test_stale_stream_blocks_new_entries_but_real_eod_exit_still_flattens
+  tests/test_pipeline_freshness_recovery.py:365: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend
+  tests/test_v13_w100_live_tick_coverage.py:195: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn
+  tests/test_v13_w100_live_tick_coverage.py:222: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_eod_flattens_real_entered_position
+  tests/test_v13_w100_live_tick_coverage.py:263: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-most_actives]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[empty-mover]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-most_actives]
+tests/test_scanner_pipeline_integration.py::test_scanner_discovery_admits_entry_and_invalidates_pool[exception-mover]
+  tests/test_scanner_pipeline_integration.py:11: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 10 durations =============================
+2.16s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn
+2.13s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend
+1.62s call     tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+1.58s call     tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+1.45s call     tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+1.39s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_signals_generated_on_uptrend
+1.35s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_timeout]
+1.30s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[discovery_http]
+1.30s call     tests/test_scanner_pipeline_integration.py::test_successful_empty_scan_resets_failure_streak_in_real_ticks[snapshot_http]
+1.22s call     tests/test_v13_w100_live_tick_coverage.py::test_w100_eod_flattens_real_entered_position
+176 passed, 14 warnings in 28.43s
