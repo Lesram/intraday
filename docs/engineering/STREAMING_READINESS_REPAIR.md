@@ -1,5 +1,27 @@
 # September 24 streaming and readiness repair
 
+## Approved September 25 extension
+
+Marsel approved including the composite-indicator correction and its replay
+validation. The helper now supports its three existing scalar-numerator callers
+using `abs(a)`, retaining Series alignment and zero/zero/epsilon behavior. This
+restores computed strategy inputs; it is deliberately recorded as a frozen
+surface change, not a strategy-weight or threshold adjustment. The feature and
+composite modules now participate in the candidate source freeze, and runtime
+snapshots expose the actual canonical composite column list.
+
+New tests must fail against the defective helper and verify all three callers,
+the complete composite master and the actual ML feature path. Paired deterministic
+trading replay compares the defective and corrected helper on identical synthetic
+data, including admitted orders and exits. It does not reconstruct September 24
+or establish a profitable strategy. Current acceptance receipts are under
+`artifacts/composite_indicator_repair/`; earlier defect/prototype evidence under
+`artifacts/streaming_readiness_repair/` remains unchanged as historical evidence.
+
+The running paper deployment and active cutoff are unchanged by this candidate.
+The legacy fallback policy is retained. The ML cache remains excluded, and no
+feature-speedup claim is made.
+
 The September 24 session ran without restart but submitted no orders. Scanner
 discovery worked, while its expanding feature universe was never synchronized
 with streaming subscriptions. The alpha routing path requires recent streaming
@@ -26,10 +48,9 @@ the review exposed an existing scalar-division defect that makes the feature
 pipeline silently substitute zeros for all seven composite indicators. Retaining
 those fallback results could suppress retries. Its source-bound reproduction,
 test-coverage analysis and unaccepted prototype are retained in the evidence
-directory. Correcting the indicator inputs needs explicit additional scope
-approval and replay; this release includes no composite correction or claimed
-feature-speedup. Feature-store QA, snapshot generation and computation remain
-unchanged.
+directory. The indicator correction was subsequently approved September 25 and
+is covered by the extension above. Feature-store QA, snapshot generation, cache
+exclusion and all unchanged computation paths remain explicit acceptance limits.
 
 Readiness now observes the real scheduler and returns typed, bounded PostgreSQL
 and Redis outcomes. Existing deadlines, trading gates and recovery authority are

@@ -66,9 +66,10 @@ def _h(s: str) -> str:
 
 
 def compute_data_pipeline_sources() -> dict[str, str]:
-    """Pin discovery and data-admission helpers outside the original six hashes."""
+    """Pin discovery, computed strategy inputs and data-admission dependencies."""
     from backend.organism import market_scanner, streaming_data_provider, live_engine_data
     from backend.organism import pipeline_diagnostics
+    from backend.organism import ml_features, composite_indicators
     from backend.organism.live_engine import OrganismLiveEngine
 
     return {
@@ -80,6 +81,8 @@ def compute_data_pipeline_sources() -> dict[str, str]:
         "streaming_subscription_sync": _h(inspect.getsource(OrganismLiveEngine._sync_streaming_subscriptions)),
         "streaming_subscription_timeout": _h(repr(OrganismLiveEngine._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S)),
         "pipeline_diagnostics": _h(inspect.getsource(pipeline_diagnostics)),
+        "ml_features": _h(inspect.getsource(ml_features)),
+        "composite_indicators": _h(inspect.getsource(composite_indicators)),
     }
 
 

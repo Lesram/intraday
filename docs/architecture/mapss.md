@@ -4,6 +4,37 @@
 
 ---
 
+## Approved composite-input correction (candidate 2026-09-25)
+
+Marsel explicitly approved adding the indicator correction and replay validation
+to PR30 on September 25. The correction changes computed decision inputs: the
+division helper accepts scalar as well as Series numerators using `abs(a)`.
+Its Series denominator, epsilon replacement, aligned zero-over-zero NaN mask,
+indicator formulas, weights and thresholds remain unchanged. Three existing
+scalar-100 callers previously raised; the enclosing feature pipeline silently
+replaced all seven composite columns with zeros. Direct regression checks now
+require successful computation of those callers and of the complete feature
+pipeline on varied synthetic frames, not just present/non-null columns.
+
+`data_pipeline_sources` additionally hashes the complete `ml_features` and
+`composite_indicators` modules. Runtime snapshots read the canonical composite
+column list and identify these checked-out source hashes. They do not certify an
+installed process. The legacy exception fallback is unchanged; correcting this
+defect does not establish that every possible feature error is detectable.
+
+Paired trading replay must compare the old and corrected helper on identical
+synthetic inputs/configuration, exercise real admitted orders and exits, and
+report candidate/decision/risk differences without a profitability or actual
+September 24 attribution claim. Feature-only comparisons in the earlier evidence
+remain historical, not a substitute for this acceptance.
+
+This is candidate scope approval, not an activation record. The installed
+September 23 freeze and measurement boundary remain unchanged. A later approved
+release must bind the validated image/configuration and explicitly establish a
+new forward-test boundary while retaining earlier evidence. Strategy parameter,
+feed, sizing and frozen risk-policy tuning are outside scope. The cache prototype
+remains excluded.
+
 ## Candidate subscription and readiness repair (2026-09-24)
 
 This is candidate implementation evidence. The September 24 session ran PR28
@@ -34,8 +65,8 @@ The profiled ML-cache prototype is excluded from this release. Investigation
 exposed an existing scalar-division defect that silently replaces all seven
 composite indicators with zeros. Caching those fallback results could suppress
 retries. The defect evidence and unaccepted prototype are retained separately;
-correcting decision inputs requires explicit additional approval and replay.
-No performance-speedup claim or composite-formula change is included here.
+correction scope was subsequently approved September 25, as recorded above;
+the cache itself remains excluded. No performance-speedup claim is included.
 
 Readiness retains database **100ms**, Redis **200ms**, and dependency-cache
 **2-second** limits. Legacy `broker` means Redis; typed outcomes distinguish

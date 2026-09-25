@@ -30,6 +30,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.adaptive_exits import AdaptiveExitEngine
         from backend.organism.alpha_scanner import AlphaScanner
         from backend.organism.close_accounting import ACCOUNTING_POLICY
+        from backend.organism.composite_indicators import COMPOSITE_COLUMNS
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
         from scripts.phase2_freeze import compute_data_pipeline_sources
         from backend.organism.research_policy import policy_status
@@ -76,6 +77,7 @@ def _build_defaults_snapshot() -> dict:
             # Checked-out source identity only. A running process must be
             # bound to this candidate before these hashes describe deployment.
             "candidate_data_pipeline_sources": compute_data_pipeline_sources(),
+            "composite_feature_columns": list(COMPOSITE_COLUMNS),
             "streaming_subscription_sync": {
                 "timeout_seconds": OrganismLiveEngine._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S,
                 "universe": "constructor_base_plus_SPY_QQQ_current_universe_and_held_positions",
@@ -401,6 +403,7 @@ def _build_resolved_config_snapshot() -> dict:
         # establishes which accounting policy the installed process runs.
         "close_accounting_policy": defaults.get("close_accounting_policy"),
         "candidate_data_pipeline_sources": defaults.get("candidate_data_pipeline_sources"),
+        "composite_feature_columns": defaults.get("composite_feature_columns"),
         "streaming_subscription_sync": defaults.get("streaming_subscription_sync"),
         "entry_freshness": defaults.get("entry_freshness"),
         "drawdown_kill_pct": _resolve_float(
