@@ -1077,7 +1077,9 @@ class TestAlpacaStreamProcessTradeUpdateBroadcast:
             mock_ctx.__aexit__.return_value = None
             mock_db.return_value = mock_ctx
 
-            with patch("backend.integrations.alpaca_stream.OrdersRepo", return_value=mock_orders_repo):
+            with patch("backend.integrations.alpaca_stream.OrdersRepo", return_value=mock_orders_repo), \
+                 patch("backend.integrations.alpaca_stream.apply_order_fill_snapshot",
+                       new_callable=AsyncMock, return_value={"applied": True, "status": "filled"}) as snapshot:
                 from backend.integrations.alpaca_stream import AlpacaStreamClient
 
                 client = AlpacaStreamClient()
@@ -1095,8 +1097,10 @@ class TestAlpacaStreamProcessTradeUpdateBroadcast:
 
                 await client._process_trade_update(update)
 
-                # Should have broadcast to user
-                mock_broadcast.assert_called_once()
+                snapshot.assert_awaited_once()
+                mock_session.commit.assert_awaited_once()
+                mock_broadcast.assert_awaited_once()
+                assert mock_broadcast.await_args.args[0] == "test_user"
 
     @pytest.mark.asyncio
     async def test_process_trade_update_broadcast_failure_doesnt_break(self, mock_env_vars):
@@ -1126,7 +1130,9 @@ class TestAlpacaStreamProcessTradeUpdateBroadcast:
             mock_ctx.__aexit__.return_value = None
             mock_db.return_value = mock_ctx
 
-            with patch("backend.integrations.alpaca_stream.OrdersRepo", return_value=mock_orders_repo):
+            with patch("backend.integrations.alpaca_stream.OrdersRepo", return_value=mock_orders_repo), \
+                 patch("backend.integrations.alpaca_stream.apply_order_fill_snapshot",
+                       new_callable=AsyncMock, return_value={"applied": True, "status": "filled"}) as snapshot:
                 from backend.integrations.alpaca_stream import AlpacaStreamClient
 
                 client = AlpacaStreamClient()
@@ -1141,8 +1147,10 @@ class TestAlpacaStreamProcessTradeUpdateBroadcast:
                     }
                 }
 
-                # Should not raise even if broadcast fails
+                # Committed accounting survives an optional broadcast failure.
                 await client._process_trade_update(update)
+                snapshot.assert_awaited_once()
+                mock_session.commit.assert_awaited_once()
 
 
 class TestAlpacaStreamStartWithReconnectLoop:
@@ -1581,14 +1589,15 @@ class TestAlpacaStreamProcessTradeUpdateComplete:
 
             with patch("backend.integrations.alpaca_stream.get_session_context", return_value=MockAsyncContextManager()):
                 with patch("backend.integrations.alpaca_stream.OrdersRepo", return_value=mock_orders_repo):
-                    with patch("backend.api.socketio_server.broadcast_order_update", new_callable=AsyncMock):
+                    with patch("backend.api.socketio_server.broadcast_order_update", new_callable=AsyncMock), \
+                         patch("backend.integrations.alpaca_stream.apply_order_fill_snapshot",
+                               new_callable=AsyncMock, return_value={"applied": True, "status": "filled"}) as snapshot:
                         await client._process_trade_update(update)
 
-                        # Verify attach_broker_result was called with avg_fill_price
-                        mock_orders_repo.attach_broker_result.assert_called_once()
-                        call_kwargs = mock_orders_repo.attach_broker_result.call_args
-                        from decimal import Decimal
-                        assert call_kwargs.kwargs["avg_fill_price"] == Decimal("150.50")
+                        # Preserve the exact provider value through the atomic boundary.
+                        snapshot.assert_awaited_once()
+                        assert snapshot.await_args.kwargs["avg_fill_price"] == "150.50"
+                        mock_session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_filled_trade_update_syncs_local_positions(self, mock_env_vars):
@@ -1645,12 +1654,13 @@ class TestAlpacaStreamProcessTradeUpdateComplete:
                     return_value=mock_orders_repo,
                 ):
                     with patch(
-                        "backend.integrations.alpaca_stream.apply_incremental_fill_accounting",
+                        "backend.integrations.alpaca_stream.apply_order_fill_snapshot",
                         new_callable=AsyncMock,
                     ) as mock_accounting:
                         mock_accounting.return_value = {
                             "applied": False,
                             "reason": "duplicate_or_no_incremental_fill",
+                            "status": "filled",
                         }
                         with patch(
                             "backend.integrations.alpaca_stream.AlpacaStreamClient."
