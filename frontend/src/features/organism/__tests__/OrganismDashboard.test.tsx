@@ -167,6 +167,69 @@ describe('OrganismDashboard', () => {
     warning.mockRestore();
   });
 
+  it('replaces a previously healthy status with unavailable on poll failure and recovers', async () => {
+    render(<OrganismDashboard />, { wrapper: createWrapper() });
+    expect(await screen.findByRole('button', { name: 'Halt Entries' })).toBeEnabled();
+    vi.mocked(organismApi.getStatus).mockRejectedValueOnce(new Error('synthetic offline'));
+    await userEvent.click(screen.getByRole('button', { name: /Refresh/ }));
+    expect(await screen.findByText(/Current organism status is unavailable/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Halt Entries' })).not.toBeInTheDocument();
+    expect(screen.queryByText('ACTIVE')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Retry/ }));
+    expect(await screen.findByRole('button', { name: 'Halt Entries' })).toBeEnabled();
+  });
+
+  it('does not certify a malformed primary status', async () => {
+    vi.mocked(organismApi.getStatus).mockResolvedValueOnce({} as never);
+    render(<OrganismDashboard />, { wrapper: createWrapper() });
+    expect(await screen.findByText(/Current organism status is unavailable/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Halt Entries' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a good primary status available when a secondary panel fails', async () => {
+    vi.mocked(organismApi.getScanner).mockRejectedValueOnce(new Error('synthetic secondary'));
+    render(<OrganismDashboard />, { wrapper: createWrapper() });
+    expect(await screen.findByRole('button', { name: 'Halt Entries' })).toBeEnabled();
+    expect(screen.queryByText(/Current organism status is unavailable/)).not.toBeInTheDocument();
+  });
+
+  it('accepts a slow primary without overlapping polls and expires a later hung request', async () => {
+    vi.useFakeTimers();
+    const good = { enabled: true, governance: { halted: false }, live_engine: { running: true, engine: { initialized: true } } };
+    let resolvePrimary!: (value: typeof good) => void;
+    vi.mocked(organismApi.getStatus).mockImplementationOnce(() => new Promise((resolve) => { resolvePrimary = resolve; }));
+    const view = render(<OrganismDashboard />, { wrapper: createWrapper() });
+    try {
+      await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+      expect(organismApi.getStatus).toHaveBeenCalledTimes(1);
+      await act(async () => { resolvePrimary(good); });
+      expect(screen.getByRole('button', { name: 'Halt Entries' })).toBeEnabled();
+      let resolveHung!: (value: typeof good) => void;
+      vi.mocked(organismApi.getStatus).mockImplementationOnce(() => new Promise((resolve) => { resolveHung = resolve; }));
+      await act(async () => { await vi.advanceTimersByTimeAsync(16000); });
+      expect(screen.getByText(/Current organism status is unavailable/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Halt Entries' })).not.toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(20000); resolveHung(good); });
+      expect(screen.getByText(/Current organism status is unavailable/)).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+      expect(screen.getByRole('button', { name: 'Halt Entries' })).toBeEnabled();
+    } finally { view.unmount(); vi.useRealTimers(); }
+  });
+
+  it('optional hung panel cannot delay primary failure or restore obsolete healthy state', async () => {
+    let resolveScanner!: (value: unknown) => void;
+    vi.mocked(organismApi.getScanner).mockImplementationOnce(() => new Promise((resolve) => { resolveScanner = resolve; }));
+    render(<OrganismDashboard />, { wrapper: createWrapper() });
+    expect(await screen.findByRole('button', { name: 'Halt Entries' })).toBeEnabled();
+    vi.mocked(organismApi.getStatus).mockRejectedValueOnce(new Error('offline'));
+    await userEvent.click(screen.getByRole('button', { name: /Refresh/ }));
+    expect(await screen.findByText(/Current organism status is unavailable/)).toBeInTheDocument();
+    await act(async () => { resolveScanner({ enabled: true, candidates: [] }); });
+    expect(screen.getByText(/Current organism status is unavailable/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Retry/ }));
+    expect(await screen.findByRole('button', { name: 'Halt Entries' })).toBeEnabled();
+  });
+
   it('renders the dashboard title', async () => {
     render(<OrganismDashboard />, { wrapper: createWrapper() });
     await waitFor(() => {

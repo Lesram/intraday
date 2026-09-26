@@ -43,7 +43,14 @@ const normalizeLoginResponse = (raw: unknown): AuthResponse => {
       typeof obj === 'object' &&
       'access_token' in obj &&
       'user' in obj &&
-      'refresh_token' in obj
+      'refresh_token' in obj &&
+      typeof (obj as AuthResponse).access_token === 'string' &&
+      typeof (obj as AuthResponse).user?.id === 'string' &&
+      !!(obj as AuthResponse).user.id &&
+      typeof (obj as AuthResponse).user.email === 'string' &&
+      typeof (obj as AuthResponse).user.name === 'string' &&
+      typeof (obj as AuthResponse).user.is_active === 'boolean' &&
+      ['admin', 'trader', 'viewer', 'risk_manager'].includes((obj as AuthResponse).user.role)
     );
   };
 
@@ -53,12 +60,15 @@ const normalizeLoginResponse = (raw: unknown): AuthResponse => {
   }
 
   const data = raw as BackendLoginResponse;
-  const username =
-    data?.user?.username ||
-    data?.user_id ||
-    'unknown@example.com';
+  const username = data?.user?.username ?? data?.user_id;
+  const roles = data?.user?.roles;
+  if (typeof data?.access_token !== 'string' || !data.access_token
+      || typeof username !== 'string' || !username.trim()
+      || (data.user?.username && data.user_id && data.user.username !== data.user_id)
+      || !Array.isArray(roles) || roles.some((role) => typeof role !== 'string')) {
+    throw new Error('Invalid authenticated user response');
+  }
 
-  const roles = data?.user?.roles ?? [];
   const role = derivePrimaryRole(roles);
   const name = username.includes('@') ? username.split('@')[0] : username;
 

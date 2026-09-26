@@ -110,8 +110,8 @@ class TestGetUserPortfolio:
             assert result == cached_data
             
     @pytest.mark.asyncio
-    async def test_get_portfolio_error_returns_default(self, portfolio_service):
-        """Test default portfolio returned on error"""
+    async def test_get_portfolio_error_is_unavailable(self, portfolio_service):
+        """Dependency failure must not manufacture a flat demo portfolio."""
         with patch("backend.services.portfolio_service.get_hot_data_cache") as mock_get_cache:
             mock_cache = AsyncMock()
             mock_cache.get = AsyncMock(return_value=None)
@@ -123,12 +123,9 @@ class TestGetUserPortfolio:
                 side_effect=Exception("API Error")
             )
             
-            result = await portfolio_service.get_user_portfolio("test-user")
-            
-            # Should return default portfolio
-            assert result["totalEquity"] == 100000.00
-            assert result["cash"] == 100000.00
-            assert result["positions"] == []
+            from backend.services.portfolio_service import PortfolioUnavailableError
+            with pytest.raises(PortfolioUnavailableError):
+                await portfolio_service.get_user_portfolio("test-user")
 
 
 # ============================================================================

@@ -4,6 +4,7 @@
  */
 
 import { io, Socket } from 'socket.io-client';
+import { useAuthStore } from '@/store/authStore';
 import { logger } from '@/utils/logger';
 import type {
   WebSocketMessage,
@@ -30,6 +31,16 @@ interface ConnectionStats {
 
 class WebSocketManager {
   private socket: Socket | null = null;
+  private token: string | null = null;
+
+  constructor() {
+    // Tear down even when logout unmounts all hooks before their effects run.
+    useAuthStore.subscribe((state, previous) => {
+      if (state.accessToken !== previous.accessToken || state.isAuthenticated !== previous.isAuthenticated || state.user?.id !== previous.user?.id) {
+        this.disconnect();
+      }
+    });
+  }
   private subscriptions: Map<string, Set<MessageHandler>> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
@@ -53,10 +64,14 @@ class WebSocketManager {
    * Connect to WebSocket server with exponential backoff
    */
   connect(token: string) {
-    if (this.socket?.connected) {
-      logger.debug('[WebSocket] Already connected');
+    const auth = useAuthStore.getState();
+    if (!auth.isAuthenticated || !token || token !== auth.accessToken) {
+      this.disconnect();
       return;
     }
+    if (this.socket && this.token === token) return;
+    if (this.socket) this.disconnect();
+    this.token = token;
 
     // Calculate reconnect delay with exponential backoff
     const reconnectDelay = Math.min(
@@ -171,8 +186,10 @@ class WebSocketManager {
   disconnect() {
     logger.debug('[WebSocket] Disconnecting...');
     this.stopHeartbeat();
+    this.socket?.removeAllListeners();
     this.socket?.disconnect();
     this.socket = null;
+    this.token = null;
     this.subscriptions.clear();
     this.notifyConnectionState(false);
   }

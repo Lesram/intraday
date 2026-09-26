@@ -9,7 +9,7 @@
  * This component is always visible in the header regardless of the current page.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Space, Tooltip, Tag } from 'antd';
 import {
   CheckCircleFilled,
@@ -25,10 +25,14 @@ import { getMarketStatus, type MarketHours } from '@/utils/marketHours';
 import { websocketManager } from '@/services/websocketManager';
 import { apiClient } from '@/services/api';
 import { colors } from '@/styles/theme';
+import { isCurrentPortfolio, PORTFOLIO_MAX_AGE_MS } from '@/utils/portfolioSnapshot';
 import { useAuthStore } from '@/store/authStore';
 
 interface BrokerStatus {
   connected: boolean;
+  observedAt?: number;
+  userId?: string;
+  token?: string;
   lastCheck: Date | null;
   error?: string;
   notAuthenticated?: boolean;
@@ -37,6 +41,9 @@ interface BrokerStatus {
 export const GlobalStatusBar: React.FC = () => {
   // Auth status
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userId = useAuthStore((state) => state.user?.id);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const sequence = useRef(0);
   
   // Market status
   const [marketStatus, setMarketStatus] = useState<MarketHours>(() => getMarketStatus());
@@ -70,8 +77,13 @@ export const GlobalStatusBar: React.FC = () => {
   // Check broker connection - only if authenticated with valid token
   const checkBrokerConnection = useCallback(async () => {
     // Skip check if not authenticated or token is expired/missing
+    const request = ++sequence.current;
     const authState = useAuthStore.getState();
-    if (!isAuthenticated || !authState.accessToken || authState.isTokenExpired()) {
+    const stillCurrent = () => request === sequence.current
+      && useAuthStore.getState().accessToken === authState.accessToken
+      && useAuthStore.getState().user?.id === authState.user?.id
+      && useAuthStore.getState().isAuthenticated;
+    if (!isAuthenticated || !accessToken || !userId || authState.isTokenExpired()) {
       setBrokerStatus({
         connected: false,
         lastCheck: new Date(),
@@ -82,29 +94,35 @@ export const GlobalStatusBar: React.FC = () => {
     
     setCheckingBroker(true);
     try {
-      // Call a lightweight endpoint to verify broker connectivity
-      // Use /portfolio/ (not /portfolio/summary) as that's the actual endpoint
+      // This is a potentially cached portfolio observation, not a connectivity
+      // probe. A successful HTTP response alone must not certify current data.
       const response = await apiClient.get('/portfolio/');
-      if (response.status === 200) {
-        setBrokerStatus({
-          connected: true,
-          lastCheck: new Date(),
-        });
-      }
+      if (!stillCurrent()) return;
+      const valid = response.status === 200 && !!authState.user?.id
+        && isCurrentPortfolio(response.data, authState.user.id);
+      setBrokerStatus({
+        connected: valid,
+        userId: authState.user?.id,
+        token: authState.accessToken ?? undefined,
+        observedAt: valid ? Date.parse(response.data.lastUpdate) : undefined,
+        lastCheck: new Date(),
+        ...(valid ? {} : { error: 'Current portfolio data is unavailable or stale' }),
+      });
     } catch (error) {
+      if (!stillCurrent()) return;
       const axiosError = error as { response?: { status?: number } };
       setBrokerStatus({
         connected: false,
         lastCheck: new Date(),
         error: axiosError?.response?.status === 401 
           ? 'Not authenticated' 
-          : (error instanceof Error ? error.message : 'Unknown error'),
+          : 'Current portfolio could not be verified',
         notAuthenticated: axiosError?.response?.status === 401,
       });
     } finally {
-      setCheckingBroker(false);
+      if (request === sequence.current) setCheckingBroker(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userId, accessToken]);
 
   // Update time every second
   useEffect(() => {
@@ -141,6 +159,9 @@ export const GlobalStatusBar: React.FC = () => {
     
     return () => clearInterval(interval);
   }, [checkBrokerConnection]);
+
+  const portfolioCurrent = isAuthenticated && brokerStatus.userId === userId && brokerStatus.token === accessToken && brokerStatus.connected && brokerStatus.observedAt !== undefined
+    && Date.now() - brokerStatus.observedAt >= 0 && Date.now() - brokerStatus.observedAt <= PORTFOLIO_MAX_AGE_MS;
 
   const getMarketIcon = () => {
     if (marketStatus.isOpen) return <CheckCircleFilled />;
@@ -229,10 +250,10 @@ export const GlobalStatusBar: React.FC = () => {
         title={
           <div>
             {brokerStatus.notAuthenticated ? (
-              <div>Please log in to check broker connection</div>
+              <div>Please log in to check current portfolio data</div>
             ) : (
               <>
-                <div>Alpaca Broker: {brokerStatus.connected ? 'Connected' : 'Disconnected'}</div>
+                <div>Portfolio observation: {portfolioCurrent ? 'Current (may be cached up to 10 seconds)' : 'Unavailable'}</div>
                 {brokerStatus.error && !brokerStatus.notAuthenticated && (
                   <div style={{ color: colors.semantic.error, marginTop: 4 }}>
                     Error: {brokerStatus.error}
@@ -250,10 +271,10 @@ export const GlobalStatusBar: React.FC = () => {
       >
         <Tag 
           icon={checkingBroker ? <SyncOutlined spin /> : brokerStatus.notAuthenticated ? <LoginOutlined /> : <ApiOutlined />}
-          color={brokerStatus.connected ? 'success' : brokerStatus.notAuthenticated ? 'warning' : 'error'}
+          color={portfolioCurrent ? 'success' : brokerStatus.notAuthenticated ? 'warning' : 'error'}
           style={{ margin: 0 }}
         >
-          ALPACA: {brokerStatus.connected ? 'OK' : brokerStatus.notAuthenticated ? 'LOGIN' : 'ERROR'}
+          PORTFOLIO: {portfolioCurrent ? 'CURRENT' : brokerStatus.notAuthenticated ? 'LOGIN' : 'UNAVAILABLE'}
         </Tag>
       </Tooltip>
     </Space>
