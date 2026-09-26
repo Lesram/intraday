@@ -28,7 +28,7 @@ Nightly collects the `tests/` corpus through `scripts/ci/nightly_test_contract.p
 
 [Run36211294000](https://github.com/Lesram/intraday/actions/runs/36211294000), testing deployed source `87c1addb39321e4f3a628041d8fb68a6e848255d`, completed core with9167 passed,11 failed and6 setup errors. Two failures were obsolete readiness tests: a model fixture omitted required diagnostic fields, and a test asserted a comment marker rather than readiness behavior. Nine expensive cases and the six consumers of the paired replay fixture exceeded their instrumented deadlines. The original seven-case uninstrumented lane passed.
 
-The repair updates the two test contracts and expands the exact required replay inventory from7 to22 cases. All assertions and existing case deadlines remain; fast tests in the same files remain in core. The paired replay fixture is executed without coverage along with the other expensive cases. Local results and a hosted run against the repaired source are required before treating this change as a resolved nightly failure. The old failure remains part of the audit record.
+The repair updates the two test contracts and expands the exact required replay inventory from7 to22 cases. All assertions and explicit timeout markers remain; moved unmarked cases inherit the existing replay default120s rather than core30s, while paired cases retain300s. Fast tests in the same files remain in core. The paired replay fixture is executed without coverage along with the other expensive cases. Local results and a hosted run against the repaired source are required before treating this change as a resolved nightly failure. The old failure remains part of the audit record.
 
 ## Hosted environment and time budgets
 

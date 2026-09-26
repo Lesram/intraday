@@ -1,0 +1,36 @@
+{
+  "all_four_gates_at_capture": "INSUFFICIENT",
+  "application_source": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+  "last_verified_active_cutoff": "2026-09-25T21:11:46.270521+00:00",
+  "natural_session_acceptance": "pending",
+  "new_forward_trade_count_at_saved_capture": 0,
+  "note_sha256": "051522ac82f27fbcf0c4cc3f228a0726db49f4e7ccfcd92e2959158da7fbac86",
+  "recorded_at_utc": "2026-09-26T22:43:32.676125+00:00",
+  "scope": "Read-only strategy evidence and research readiness notes; no dataset executable/model/runtime access",
+  "source_files": {
+    "/Users/marselkei/Library/Application Support/Intra/paper-evidence/2026-09-25/3659ef14f641a270004f9f07004c11f93b84b6d555cc93102a770de7347e8fe6/report.json": "b8feefc7ae5f6146c2bb34d9d0649c74034e37613205354203a2ac2e9b42d16b",
+    "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-25/pr30-release/final-deployment-review.json": "409101ece5203566cfc8ce1f9d74e10f37afdecb3589bec4079eead4b670adc4",
+    "artifacts/composite_indicator_repair/replay/implementation_report.json": "cb2e7cdd92fba2c260b582ec74532a07c809c9e6941c127e3557b586dffccb4e",
+    "artifacts/phase2/phase5b_confidence_verdict.txt": "2267ed08879b222858b08ca0f92c8935392b85bc03a166603f155a714dd95ce0",
+    "backend/organism/evidence/portfolio_construction.py": "df332a73929749dd658f8e17f1f9f5f470f31a2d851300b1a1a6d1e021d02dc6",
+    "backend/organism/evidence/strategy_league.py": "9c18ff210b18422de58828bdd5cbd2e48a17d14dae8f000b65c8995ae14345ee",
+    "backend/organism/phase2_gate.py": "791eb00c834630e958e3d085f1a7bb62d8626120b5c6890bdcccd8a0bd32f2f9",
+    "backend/organism/research_policy.py": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
+    "backend/organism/strategies/registry.py": "f6d89c2912821b3bc6c4c34cfbd7ffa8344fdb2c00a79e0ccdf672e7635de9a7",
+    "backend/organism/strategies/strategy_config.py": "53245646ed5ecd159587bed0968efa36eec84428bdcc8fb93d7c10d5ed0cb938",
+    "backend/organism/strategy_governor.py": "65ff47bd6a5a7cbdd08f2416d844a637b1065c8a59b71efdc99bd5c849446978",
+    "docs/engineering/PHASE3_ORB_SHADOW_OUTCOME_REPORT.md": "460d07723944575b9a28a224f72b8d847b2c10e4281667bdae3a00fdc9c62b68",
+    "docs/engineering/PHASE5_SHADOW_EVIDENCE_LOOP_REPORT.md": "d512577261dc59f2eef1aefccb24cf29f107c02e26d2d926e7e23dd27b488c00",
+    "docs/engineering/PHASE9D_PORTFOLIO_CONSTRUCTION_IMPLEMENTATION.md": "af028825ad47935ffc5d14f9518847bff2dfd3897af43fde131a1e2e45076d84",
+    "reports/session_review_2026-09-24/SESSION_REVIEW.md": "b30bc592c34857f35a48a04300f557f1be9cc75909e24636453a192aa065806b",
+    "scripts/ops/paper_daily_evidence.py": "f0123ce3ece2127f31969006ad075ef63f5971042a3ad818510026765b532549"
+  },
+  "source_merge": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "strategy_profitability_established": false,
+  "unknowns": [
+    "Current shadow sample/outcome inventory not accessed",
+    "Referenced historical raw corpora absent from audit worktree",
+    "Old feature results are not equivalent to corrected current strategy inputs",
+    "No current-release natural trading session qualified in saved release evidence"
+  ]
+}
