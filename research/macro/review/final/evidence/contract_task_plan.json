@@ -1,0 +1,10 @@
+{
+  "task_id": "MACRO_FINAL_004_CONTRACT",
+  "objective": "Reconcile the final research indicator inventory and specify a future monitoring process without implementing it.",
+  "ownership": ["final/INDICATOR_CONTRACT.csv", "final/MONITORING_AND_DECISION_SPEC.md", "final/evidence/contract*"],
+  "inputs": ["consolidation/INDICATOR_CONTRACT.csv", "consolidation/REVIEW_OF_REVIEW.md", "consolidation/evidence/R8_implementation_audit.md", "phase_b_events/preregistration.json", "phase_b_events/indicator_event_metrics.csv", "PHASE_B_event_validation.md", "PHASE_D_indicator_spec.md", "pipeline/build_spec.py", "pipeline/score_archive.py"],
+  "preserve": ["historical thresholds and outcome records", "sealed Phase A/B", "existing pipeline and dashboard", "other agents' final outputs", "trading platform"],
+  "steps": ["copy the 21-row 42-field contract into final with explicit prospective semantics", "correct unsupported assertions and data-quality classification", "define versioning, scoring, evidence and review policies", "validate schema, inventory, unchanged empirical fields, outcome joins and calendar dependency examples", "peer-review final research report when available"],
+  "validation": ["21 unique indicator IDs and 42 source schema fields", "2 review flags, 5 watch, 6 context, 5 retired, 2 candidates, 1 engineering control", "historical numeric fields and thresholds unchanged for the existing financial rows", "24 primary/alternative/holdout count joins match sealed metrics", "calendar endpoint and path examples remain distinct", "no writes outside assigned final outputs"],
+  "implementation_status": "Research specification only; software, UI, scheduling and monitoring deployment deferred by the user."
+}

@@ -1,0 +1,17 @@
+event,date,value,series
+Brent_above_90,2026-03-06,95.74,brent
+Brent_above_90,2026-03-11,90.98,brent
+Brent_above_90,2026-07-21,93.85,brent
+Brent_above_90,2026-07-29,91.95,brent
+Brent_above_90,2026-08-10,92.74,brent
+Brent_above_90,2026-08-27,90.18,brent
+Brent_above_90,2026-09-01,96.02,brent
+Brent_above_100,2026-03-12,102.38,brent
+Brent_above_100,2026-04-20,103.4,brent
+Brent_above_100,2026-06-03,101.69,brent
+Brent_above_100,2026-07-23,105.32,brent
+Brent_above_100,2026-09-03,100.52,brent
+Brent_below_80,2026-01-02,61.98,brent
+Brent_below_80,2026-06-18,79.35,brent
+Brent_below_80,2026-06-22,76.49,brent
+VIX_above_30,2026-03-27,31.05,VIXCLS

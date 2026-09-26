@@ -1,0 +1,15 @@
+finding,verdict,reason
+Original screen arithmetic,AGREE,Scores reproduce to rounding; 2007/2021 remain important under several expanding definitions.
+Exact analog hierarchy and four-month uniqueness,PARTIALLY AGREE,Dates/order depend on dimensions and normalization; expanding conjunction gives five months in the same two clusters.
+"Thirteen independent, mature, automatically selected episodes",DISAGREE,"Twelve screen starts plus a manually added 2000 anchor; at most seven disjoint five-year intervals, six mature."
+Gold+56% and energy+57% five-year medians,DISAGREE,Removing the incompletely observed November 2021 row changes medians to +25.2% and +36.0%.
+Gold 45 pp excess relative to a suitable base rate,DISAGREE,The comparator includes non-investable/fixed-price history; changing the base era materially reduces the excess.
+CAPE 41.3 versus 42.0 means conflicting splices,DISAGREE,"Same proxy, different dates: partial September versus August; the screen mixes September CAPE with August features."
+Extreme equity valuation,PARTIALLY AGREE,"Tested proxy variants remain elevated, but aggregate NIPA profits are not observed S&P earnings."
+CAPE≥30 five-year−13%/72% baseline is current,DISAGREE,Return history stops June 2023; actual n=68. Updating the outcome series changes the inference materially.
+Tightening into calm credit precludes a crash,DISAGREE,Original 7/7 is reproducible but a reasonable first-crossing alternative includes the 2000 crash.
+Profit share should revert to an old 6% norm,DISAGREE,Within-era reversion coexists with shifted levels; the frozen old model loses badly to persistence after 2000.
+Concentration deserves separate monitoring,AGREE,A 100-year industry-capitalization proxy is available from the raw French file and is elevated today.
+Concentration identifies a future losing sector,CANNOT VERIFY,"Just two independent mature five-year threshold episodes; one favorable, one adverse."
+Energy's relative edge disappears by five years,DISAGREE,Difference of medians was substituted for median paired excess; the paired five-year excess remains positive in these data.
+Every model threshold is validated and implemented,DISAGREE,False positives and combined rules were not tested; advertised branches are absent from `score()`.

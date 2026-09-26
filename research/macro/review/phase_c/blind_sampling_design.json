@@ -1,0 +1,53 @@
+{
+  "seed": "review002:2026-09-19:blind-second-reader:v1",
+  "sampling": "Stable SHA256 ranks; 8 covered claims per input package. Package-balanced sample; not prevalence-proportional.",
+  "packages": [
+    {
+      "input_package": "V1_ai_bubble",
+      "eligible": 192,
+      "sampled": 8
+    },
+    {
+      "input_package": "V2_equity_valuation",
+      "eligible": 124,
+      "sampled": 8
+    },
+    {
+      "input_package": "V3_fiscal_fed_liquidity",
+      "eligible": 220,
+      "sampled": 8
+    },
+    {
+      "input_package": "V4_oil_geopolitics_tariffs",
+      "eligible": 165,
+      "sampled": 8
+    },
+    {
+      "input_package": "V5_dollar_china_gold",
+      "eligible": 210,
+      "sampled": 8
+    },
+    {
+      "input_package": "V6_japan_credit_crypto",
+      "eligible": 137,
+      "sampled": 8
+    },
+    {
+      "input_package": "V7_inflation_cycle_labor_housing",
+      "eligible": 150,
+      "sampled": 8
+    },
+    {
+      "input_package": "V8_other",
+      "eligible": 126,
+      "sampled": 8
+    },
+    {
+      "input_package": "V9_self_performance",
+      "eligible": 106,
+      "sampled": 8
+    }
+  ],
+  "n": 72,
+  "blind_columns": "No old verdict, measured value, note, or verification plan supplied to second reader."
+}

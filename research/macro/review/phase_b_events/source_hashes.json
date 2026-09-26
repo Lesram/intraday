@@ -1,0 +1,7 @@
+{
+  "scripts/factbase.py": "6130d47d327e325cf0948081fa0deea722d011143d3d97000d027ec533e8a9ce",
+  "data/raw/fred_bundle_2026-09-19.json": "2b088774e251d64a6632669ee75386a30a774607926414db0c5f26bf959fb011",
+  "data/raw/fred_bundle2_2026-09-19.json": "3b6f7aa4f3ced1c20515f6ed35b2768a2623181547c491213bc8cdee75ba682c",
+  "data/raw/s-and-p-500_main_data_data.csv": "ed6a0faf1864d60161806b594b45a2642f6149f59b26b3d7b32c2ce38758dc6f",
+  "preregistration_sha256": "b40417f161d2f7e48dc6904bc389659239abb3dfc1fb12a8d2898e7ca283e82e"
+}

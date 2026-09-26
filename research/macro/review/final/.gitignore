@@ -1,0 +1,6 @@
+!artifacts/
+!artifacts/**
+artifacts/delivery.gitindex*
+artifacts/pr_body.md
+__pycache__/
+*.pyc

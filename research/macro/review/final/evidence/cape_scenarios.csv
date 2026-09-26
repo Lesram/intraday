@@ -1,0 +1,5 @@
+scenario,month,cape,past_proxy_months_changed
+original_August_proxy,2026-08,42.00070823,0
+pre1990_mean_rewrites_all_postsplice_months,2026-08,50.29776577,38
+latest_month_only_scale_illustration,2026-08,42.22530433,1
+review002_September_pre2000_median_rewrite,2026-09,49.6590745,39

@@ -1,0 +1,32 @@
+{
+  "status": "Thresholds and evaluation design written before outcome computation; blind to Brief 001 and prior outputs",
+  "data_asof": "2026-09-19",
+  "indicators": {
+    "claims_rise_20pct": "4-week ICSA average / minimum of its last 52 weekly averages - 1 >= 0.20; sampled last weekly observation each month",
+    "sahm_050": "SAHMREALTIME >= 0.50 percentage points; one calendar month availability lag",
+    "curve_inverted": "monthly GS10 - TB3MS < 0 percentage points; one month availability lag",
+    "baa_level_300": "last BAA10Y observation in month >= 3.00 percentage points",
+    "baa_widening_100": "last BAA10Y observation in month minus value 3 calendar months earlier >= 1.00 percentage point",
+    "nfci_positive": "last NFCI observation in month > 0; one month conservative availability lag",
+    "inflation_surge": "calendar CPIAUCSL YoY >= 4.0% and YoY minus YoY 12 calendar months earlier >= 2.0 percentage points; one month availability lag",
+    "inflation_400": "calendar CPIAUCSL YoY >= 4.0%; one month availability lag; diagnostic/context"
+  },
+  "threshold_rationale": "Round economic levels and published Sahm 0.5 / NFCI 0 / curve inversion conventions; no threshold optimization. BAA thresholds are policy-design priors, not validated economic constants.",
+  "primary_horizon_months": 12,
+  "additional_horizon": "Curve inversion also evaluated at 24 months, preselected for long-cycle lead time",
+  "events": {
+    "recession_onset": "USREC rises from 0 to 1 in strictly next 1..h months; exclude signal months already in recession",
+    "recession_present_or_onset": "USREC is 1 in signal month or next 1..h months; explicitly diagnostic, not predictive",
+    "equity_entry_loss_20": "minimum next 1..h monthly-average Shiller SP500 / signal-month price - 1 <= -20%; price only, not total return",
+    "equity_peak_drawdown_20": "a running monthly-average Shiller SP500 peak since signal month loses >=20% before horizon; price only; peak reset at signal month",
+    "inflation_onset_400": "calendar CPI YoY first rises to >=4% in strictly next 1..h months; exclude already >=4% at signal date (underlying observation timeline)",
+    "credit_onset_300": "month-last BAA10Y first rises to >=3pp in strictly next 1..h months; exclude already >=3pp"
+  },
+  "alarm_episodes": "Threshold false->true crossings, with accepted crossings at least h months apart; first evaluable observation excluded if already alarmed. Event-ineligible crossings excluded before declustering. Leads measured to first outcome month.",
+  "false_alarm_fraction": "FP / (TP+FP) on eligible matured declustered alarm episodes; this is not classical FPR",
+  "classical_fpr": "Monthly threshold-positive nonevent observations / all eligible matured nonevent observations, FP/(FP+TN); overlapping months descriptive, not independent trials",
+  "split": "holdout signal dates >=2000-01-31; training only signal dates with outcome window ending <=1999-12-31; no fitting on either split",
+  "maturity": "Keep rows only if every horizon month exists for each outcome; current unresolved alarms never called false",
+  "publication": "Monthly data lagged one month for Sahm, curve, CPI and NFCI. Claims week-ending series and BAA use last monthly observation; exact within-month release dates unavailable. This is revised-data pseudo-out-of-sample, not a real-time vintage backtest.",
+  "uncertainty": "Report episode n, hits, false alarms, Wilson 95% interval, median/min/max lead; report monthly unconditional event rate and diagnostic redundancy. Low effective n precludes optimized triggers or trading recommendations."
+}

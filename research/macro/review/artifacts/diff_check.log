@@ -1,0 +1,19 @@
+Whitespace-only review: generated CSV/HTML and unchanged sealed input formats contain trailing spaces or CRLF. No functional failure. Sealed files were not normalized.
+{
+  "research/macro/review/artifacts/pipeline_review_scorecard.csv": 1,
+  "research/macro/review/dashboard.html": 6,
+  "research/macro/review/indicators.csv": 13,
+  "research/macro/review/inputs/12_Industry_Portfolios.csv": 5246,
+  "research/macro/review/inputs/F-F_Research_Data_Factors.csv": 1310,
+  "research/macro/review/phase_a/coverage_log.csv": 59,
+  "research/macro/review/phase_a/jikh_late_coverage.csv": 14,
+  "research/macro/review/phase_c/blind_claims.csv": 73,
+  "research/macro/review/phase_c/original_labels_DO_NOT_OPEN_BEFORE_JUDGING.csv": 73,
+  "research/macro/review/phase_c/second_reader_blind.csv": 73,
+  "research/macro/review/phase_c/second_reader_comparison.csv": 73,
+  "research/macro/review/phase_c/second_reader_package_comparison.csv": 10,
+  "research/macro/review/phase_c/second_reader_package_confusion.csv": 88,
+  "research/macro/review/phase_c/unverifiable_review.csv": 49,
+  "research/macro/review/phase_c/verdict_inventory.csv": 1431,
+  "research/macro/review/pipeline/output/prospective_scorecard.csv": 1
+}

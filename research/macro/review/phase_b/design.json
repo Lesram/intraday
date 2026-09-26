@@ -1,0 +1,31 @@
+{
+  "asof": "2026-09-18",
+  "training_start": "1954-07-31",
+  "minimum_history_months": 120,
+  "dimensions": [
+    "equity_gdp_pct",
+    "cpi_yoy_pct",
+    "ip_yoy_pct",
+    "baa_aaa_pp",
+    "curve_10y_3m_pp",
+    "real_bill_expost_pct"
+  ],
+  "primary": "equal-weight RMS difference in strictly prior expanding percentiles",
+  "fixed_scale_sensitivity": {
+    "equity_gdp_pct": 100.0,
+    "cpi_yoy_pct": 3.0,
+    "ip_yoy_pct": 5.0,
+    "baa_aaa_pp": 0.5,
+    "curve_10y_3m_pp": 1.5,
+    "real_bill_expost_pct": 3.0
+  },
+  "selected_episodes": 8,
+  "minimum_spacing_months": 60,
+  "outcome_horizons_years": [
+    1,
+    3,
+    5
+  ],
+  "selection_cutoff": "latest complete month with 60 months to asof; no outcomes enter ranking",
+  "lags": "monthly reference+1m+15d; quarterly reference+5m+15d; approximate, not vintage data"
+}

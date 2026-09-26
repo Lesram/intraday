@@ -1,0 +1,1726 @@
+{
+  "captured_utc": "2026-09-20T04:28:16.160093+00:00",
+  "note": "Byte hashes only for blinded paths; no semantic access before seal. Existing source files may be concurrently modified; compare after review.",
+  "files": [
+    {
+      "path": "research/macro/AGENT_BRIEF_002_adversarial_review.md",
+      "bytes": 19923,
+      "sha256": "57b9986626f8a896ce084e871bca31265ee904dd7a08df364df6d5cb3b0efebd"
+    },
+    {
+      "path": "research/macro/MACRO_BRIEF_001_2026-09-19.md",
+      "bytes": 23717,
+      "sha256": "435e721d58b0c7dbfc2d812ebaab81edeb8e99fa4c4dba906aa03b7ebae5bb3b"
+    },
+    {
+      "path": "research/macro/README.md",
+      "bytes": 2045,
+      "sha256": "ca15f2f13b2d8f896d00707a4c70bc48a166a0b66eb823dd4f6a5d892b78a5e4"
+    },
+    {
+      "path": "research/macro/STATE.md",
+      "bytes": 16876,
+      "sha256": "68887273a8d52020186c2739190ecdbd205f272d2d87a295ceb745a4be391b1e"
+    },
+    {
+      "path": "research/macro/_incoming_final.tgz",
+      "bytes": 1470883,
+      "sha256": "2dfec236e096da36b86fe72313814a6f9a82a699e8c614f0f87032250ed7fdc0"
+    },
+    {
+      "path": "research/macro/analogs/ANALOGS.md",
+      "bytes": 42099,
+      "sha256": "96ff76c8c4e0f2bca4d1fb3e6d646fcd01b65ef7b8df280cd8ea4e8fa425bd40"
+    },
+    {
+      "path": "research/macro/analogs/analog_scripts.py",
+      "bytes": 13198,
+      "sha256": "d5276d4a066a8b6e6f37e7716a31b81305f179906720e6d0e478e123d55fd92a"
+    },
+    {
+      "path": "research/macro/analogs/base_rates.csv",
+      "bytes": 6088,
+      "sha256": "dcaea4d0432d9d1c0b2277aaf3e63016e4cb94b50a4a1bfec472141884373d6a"
+    },
+    {
+      "path": "research/macro/analogs/cape_base_rates.csv",
+      "bytes": 2823,
+      "sha256": "aad5120c566885d669d857cfb4a3b686056571fd9f8222d29d9137c186a8e29d"
+    },
+    {
+      "path": "research/macro/analogs/episode_returns.csv",
+      "bytes": 234261,
+      "sha256": "4e93eaeef813104970ac61388d5cc537c91ff7ed4d05a7acb380bff828537391"
+    },
+    {
+      "path": "research/macro/analogs/regime_screen.py",
+      "bytes": 16110,
+      "sha256": "2fa08bc684308a80f6e0320a93afc207827f89408e1e4d0669115f303c003882"
+    },
+    {
+      "path": "research/macro/analogs/report_out.txt",
+      "bytes": 47659,
+      "sha256": "1b7c2dfcd0c87032086fe97922d7d7167be05ff26ae02b1c4bf97be882b29303"
+    },
+    {
+      "path": "research/macro/analogs/report_tables.py",
+      "bytes": 6822,
+      "sha256": "67341e1a01037d5c0f31f576061be454d8abad7a83129991cf997b77b1625df5"
+    },
+    {
+      "path": "research/macro/analogs/rich_and_calm.csv",
+      "bytes": 67608,
+      "sha256": "c645eab4b0ba7750bcb0989e97585eb5861e95da070721f9067df9dc94515c36"
+    },
+    {
+      "path": "research/macro/analogs/screen_run.txt",
+      "bytes": 15209,
+      "sha256": "caf793766b640928f96771ab1d0b1ae3673416b9f059d893910982e2d834486c"
+    },
+    {
+      "path": "research/macro/analogs/screen_top.csv",
+      "bytes": 1407,
+      "sha256": "5345211582fc5fa5865f7bc7e750ab074e9917695a7a6219706228eeca08d434"
+    },
+    {
+      "path": "research/macro/analogs/similarity_scores.csv",
+      "bytes": 425850,
+      "sha256": "59c996746e2dac6010c4d003408fac78969bd7ec9bfacdec50b74a440081f6c9"
+    },
+    {
+      "path": "research/macro/analogs/step5_credit.py",
+      "bytes": 9911,
+      "sha256": "df4a841b8b4b8c6fc86ffa1ad47cc5fa04449802da01d6c793f9be40ab5be4e7"
+    },
+    {
+      "path": "research/macro/analogs/step5_out.txt",
+      "bytes": 14758,
+      "sha256": "634451cf3e808032581bd49d1aab2ab829068b6df0affc6ffd27847495a723ac"
+    },
+    {
+      "path": "research/macro/analogs/tight_spread_study.csv",
+      "bytes": 3185,
+      "sha256": "88635b5c1cce2ef699d43aa195b0c347db86ee0ca3cba42317bb402e90b61e5a"
+    },
+    {
+      "path": "research/macro/claims/INDEX_by_video.md",
+      "bytes": 49429,
+      "sha256": "bbdbb2ad37d84dca9f62b4c69c2e9b4b9a7e6b412de956991aec30334e08b298"
+    },
+    {
+      "path": "research/macro/claims/PROTOCOL.md",
+      "bytes": 5059,
+      "sha256": "23695c861572c5547657115076f8af733e216feefaa5764ccdb56c21e1054189"
+    },
+    {
+      "path": "research/macro/claims/PROTOCOL_AUDIT.md",
+      "bytes": 1775,
+      "sha256": "7d031c860ee82f37ec539c5cdb01dbaf1a857c7beb6fdee661feeddc83039b06"
+    },
+    {
+      "path": "research/macro/claims/claim_ledger.csv",
+      "bytes": 1120594,
+      "sha256": "41cce59050d9592419fe7ac02851858feaab4b09a354cd7e2955b1aaf9767a78"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-03-20_Qwvqz6K1Dyc.claims.csv",
+      "bytes": 11006,
+      "sha256": "ae993d59eefd24711d089e90062c8d478652676e80300f8d4828846db2ba091e"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-03-26_d2xewVN_eDE.claims.csv",
+      "bytes": 13984,
+      "sha256": "7d8f96d0d746e57af79ceaaba4d64dfe9fb079e73d94fcc88757e146dab58247"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-04-02_XDDBhShILQA.claims.csv",
+      "bytes": 13570,
+      "sha256": "906d1723f78128eed2d8f2135f3034deeb84c167f1513b26858a8c956681891e"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-04-08_Nyb4yfSUlT4.claims.csv",
+      "bytes": 13252,
+      "sha256": "ef5329113d3fb7b87a768262e150be3df73e8320bb3295031d1bfa545f7f0dd4"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-04-20_qaxPhSP8jbg.claims.csv",
+      "bytes": 16584,
+      "sha256": "cbf9d8d3bf709f9658e6c01571548b3514c2c728fba66e1c760aa862f9ba08f5"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-04-23_iq599kyAjVA.claims.csv",
+      "bytes": 15372,
+      "sha256": "231e79a5430d8eb84475e9297fd2968e2b8cff0b5b25cee28781c4db667f0e22"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-04-27_PN8bHAr0f1M.claims.csv",
+      "bytes": 17977,
+      "sha256": "09c352b7d50c78b608b1b7fb57a7de33163d093d5eda7621cce6dcd1eb552205"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-05-01_YUwjueXzffE.claims.csv",
+      "bytes": 15998,
+      "sha256": "950535de37ed5b7e37e303d226a3c4757eb861d2422302334825516f87bba880"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-05-07_opuHyONlqjY.claims.csv",
+      "bytes": 13905,
+      "sha256": "3d8976eeeed6ba02d547f57caae388a826c51daf78d8716ade4699cdd1939502"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-05-11_ZyC3GRY5e1M.claims.csv",
+      "bytes": 16016,
+      "sha256": "d3d0c521444b8f9aa7140f4b31295b18615a8a725f008152e0b47c7962fb9953"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-05-13_HUSPFNHI6PY.claims.csv",
+      "bytes": 14855,
+      "sha256": "1a4615ae61542ed5f0b1105fcd6cce55e079be820ac24315a5370a4d4f58141b"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-05-15_7830S4NkFe8.claims.csv",
+      "bytes": 19231,
+      "sha256": "23a2e379594bd81cfa30b67ce9948dee5ee308a63ccd6bee9a5d4c47baf29a2d"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-05-29_eKomHGJgJEU.claims.csv",
+      "bytes": 14633,
+      "sha256": "5afbeb880a2f1a25c001a8847c90aaad6d1ed2feb948dad111121f857649e2c1"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-06-02_bgAmexfyVOI.claims.csv",
+      "bytes": 15183,
+      "sha256": "aa905c8200a0d4ed9ef5f493e168fd4a5a6d409dc7568305b9ad043fe773fcea"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-06-05_inUGgMv9Zq0.claims.csv",
+      "bytes": 14368,
+      "sha256": "4c14c65494c778598d52415c674aea47ac397794999308f9c82a8c25338a588b"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-06-11_zmIhCFYlBP0.claims.csv",
+      "bytes": 16797,
+      "sha256": "0ec6ed9fbcf40773bb8356fb90ca9c938808f2204b82038199d47f386fedf8f5"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-06-15_Ev6e1dJCelc.claims.csv",
+      "bytes": 14646,
+      "sha256": "646ee31c5270761f4158eb380d3c77eb0c2754dfefdcb468c5b8cccd82d63515"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-06-18_ArL4djz-76c.claims.csv",
+      "bytes": 11447,
+      "sha256": "dd08a98b152cb7d0f0bed2fb24ca851254017309a45b0dadf0a755365b29ff5d"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-06-29_OZhbi8m1Mw8.claims.csv",
+      "bytes": 15562,
+      "sha256": "54c2d0badc5003b66017417fdef569f27dc5107cef4d04ea4e1ff239f2214a8f"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-07-07_J0qxWVhXd4o.claims.csv",
+      "bytes": 15112,
+      "sha256": "0fc4def65234d35561777220bac0269975a12cbd313a6c6ad149f02e0bccfc5d"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-07-23_QNFLN6IvB88.claims.csv",
+      "bytes": 13274,
+      "sha256": "e5473779e844e20ebc53dfe32b96f64a2d86a8c137562411ab4eb59cd2c8f965"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-08-04_VygtuX3arJA.claims.csv",
+      "bytes": 14607,
+      "sha256": "686259a3e75f25ec3841ef56f431a0810cea04e172867bf992a59fc21e887972"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-08-09_rv4PIOsQq_g.claims.csv",
+      "bytes": 13617,
+      "sha256": "933e95f66352a0211048b47b92e837325e9d13a942c82527ea837a05b485ee35"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-08-11_ZZ7HyZu8FbE.claims.csv",
+      "bytes": 15236,
+      "sha256": "e41e4dcdb56752b3b9656179853e238e53615fd4a054a3239654b800eb29a488"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-08-13_4AkB4c0tTfU.claims.csv",
+      "bytes": 12179,
+      "sha256": "aa3d2c79daa152f6685079d992fd97f3d0ad68d0591da23782c97dc1b171d0fe"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-08-18_nB1eXWQlW58.claims.csv",
+      "bytes": 13252,
+      "sha256": "c091ea2e0b9efaa853b4b87ef2e2482c8cbf296817e95d8c44272eb178cfadda"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-08-21_Jw8ykhoOVBQ.claims.csv",
+      "bytes": 16201,
+      "sha256": "5b355a047c36cf111bebce46209895af97fe830dbf377916e288aa1e4f9f31fc"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-08-25_PWMhM2_dj3s.claims.csv",
+      "bytes": 22115,
+      "sha256": "d6ac491dac685b8e7f7e2873b23172937a73458c8807251ebe7617e05e0c97ef"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-08-27_cbknsJEshD8.claims.csv",
+      "bytes": 21779,
+      "sha256": "e7552028da31a067a496a2d56cf3451879a376ab143bec303b2d18ef1ac519cf"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-09-05__rwFYNlKtEc.claims.csv",
+      "bytes": 25610,
+      "sha256": "b4413647a54c0f62aa3a5aa80d29c02dced537d404b4c031440d20941db04709"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-09-09_1ZS5_txbOsc.claims.csv",
+      "bytes": 21521,
+      "sha256": "e369568a7eee50a1f1beef6dd95e4cee085b5b30e6ad40ca4fdef4ad634df6d8"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-09-12_RUH3BPQ5fTo.claims.csv",
+      "bytes": 21580,
+      "sha256": "74bf4ee7aa2c32c29a5db02e4cb391b36c45f3d92f590477d4616ed7e88a7224"
+    },
+    {
+      "path": "research/macro/claims/per_video/bravos_2026-09-16_jx3Ll-GJtMY.claims.csv",
+      "bytes": 23592,
+      "sha256": "9cd8467a9d7f4744e19dd48d54a7edf831b003efbb0f19f2439b3f162d1e33bb"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-03-16_jQUUAEemvSE.claims.csv",
+      "bytes": 21113,
+      "sha256": "57037c11478c851ca1077656a552494f3fd5b790327292de61939f7b7d84a896"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-03-31_Dt45p4wuNow.claims.csv",
+      "bytes": 21921,
+      "sha256": "a7fc715a6e4d3577bfd2b2f4165b506990672918270bc60b7621904a22f0755e"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-04-07_38qyqO44qrk.claims.csv",
+      "bytes": 20067,
+      "sha256": "c56e54cb3eecdca0d9e6ba2ccf1d459cdd38d25a2b189434ac1f7d9cad4aa9f4"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-04-20_f353QO5Dgus.claims.csv",
+      "bytes": 23744,
+      "sha256": "0ed8d0e71f1cd7062ecae0b9ecc7d8bfe4488f2fe5b17c709b37d9e5f51584cb"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-05-04_HcjbJvpKZIU.claims.csv",
+      "bytes": 22889,
+      "sha256": "b1d5b0aa0f2e1a863de829dbaa43c2c3b5053478aaaf26db3563f9d849424650"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-05-15_yNHYpCLBffw.claims.csv",
+      "bytes": 17147,
+      "sha256": "bfeb7649dc53fb0ae7c92dc6250ac3291459b3bc1f92842b30f7e536c8ef1979"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-05-20_3DYnQMmQk8k.claims.csv",
+      "bytes": 18612,
+      "sha256": "86016924c0e1d59c599973277f018911a9d105904680a12d5e6c22544ceec9d2"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-05-26_w8yTmTdF1Kw.claims.csv",
+      "bytes": 20077,
+      "sha256": "3ed6ab80304c2d242ba20f280bfc8bb22efa28b0c00dbaca04bf08d0e101ad00"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-06-05_yhRjvX_t4hc.claims.csv",
+      "bytes": 23415,
+      "sha256": "0ce45d76958dd09aa12bb0cb594a2edd0bec0c81f111f01ed03d205bf6d87119"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-06-12_dg9Ezg_RS6E.claims.csv",
+      "bytes": 21917,
+      "sha256": "969565c09ac6b2f92e1f49ee47307270a69c935a2a2b7080e1253f7ac661f408"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-06-15_HIBozcOlQPY.claims.csv",
+      "bytes": 20698,
+      "sha256": "9c394f33615e6696bd52920b0a770880bd60da217e1df2c2c276fbd5a6feb8b6"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-06-22_nHy5u06we_s.claims.csv",
+      "bytes": 24340,
+      "sha256": "298a14dddcc693b8f713a32f2d1161c8c1335bf5fcdbce1fcb7fc99d17c8e8f0"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-06-24_r4xoOQ32KNM.claims.csv",
+      "bytes": 22849,
+      "sha256": "10d16506263ab39c1d633c970ce8559b7aee3add831c8d6269a4b07e6d9fee76"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-06-30_Z_xvkbGWauU.claims.csv",
+      "bytes": 24448,
+      "sha256": "854151221cb5462367858c5702d2d979dde085ff548c159ab2c64320fef27d8f"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-07-07_siazPdsZHuI.claims.csv",
+      "bytes": 29813,
+      "sha256": "b019e74d65a3903dba946303a44adaf1485a8aa149138b76a375837db2407e69"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-07-15_dFjvcY9Tth0.claims.csv",
+      "bytes": 24614,
+      "sha256": "fd25bfc6357bbc52b39c5eb3448d735aa333ccbf028de9abb3a1225deaad07e8"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-07-20_hy90LdpEUvQ.claims.csv",
+      "bytes": 22898,
+      "sha256": "361638cbef894354aa1a73bea385d8e15eb875416d68317765c75190deb843b0"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-07-28_YBhwK-VWsxY.claims.csv",
+      "bytes": 24685,
+      "sha256": "ae2ed1926c1a776641fc79af0149b1cb2a80480b759945e7fdda5392776eb3ea"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-08-05_dlaVKt9-Tfg.claims.csv",
+      "bytes": 21627,
+      "sha256": "ce4fe3d02750dbd139d8244e2a7189821a11286e793c00b1c768316f1de50258"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-08-10_Uw84lTiD5C8.claims.csv",
+      "bytes": 19254,
+      "sha256": "1964605765dccbd3757913551a093d57a61383b7d5cdb8ae2661ffa2c89d6178"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-08-19__YXDHskRP6Y.claims.csv",
+      "bytes": 20989,
+      "sha256": "12336b3d649947b905fe1d4c2bb86357d6703cc62f52e6ab2dc0754f78371762"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-08-25_gVksaXViB4E.claims.csv",
+      "bytes": 27633,
+      "sha256": "36b6a40453b78ae4363b8db928eed4a0af2376d8dcb259e09f9eba415e88ac37"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-09-02_NZpobX6MQVA.claims.csv",
+      "bytes": 25254,
+      "sha256": "2f07a8d9e132f42c6e1951b8f8813fb4df6770e8780a726423d621964e44f1d2"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-09-10_iBxWsP8k9XM.claims.csv",
+      "bytes": 32600,
+      "sha256": "c5cf5f04efcb4bf3012a346787592dfd5cd0c87fffc1d79762a1059c0707779c"
+    },
+    {
+      "path": "research/macro/claims/per_video/jikh_2026-09-16_xSXNSt0m-go.claims.csv",
+      "bytes": 24868,
+      "sha256": "1f852873457e96a64395502c20e64d6c77691f65c0f5705080ec34573b55d043"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-03-20_Qwvqz6K1Dyc.predictions.md",
+      "bytes": 1637,
+      "sha256": "adfeb5b6fdf1beceb05bcd40f496e8e4e10a364100321acf84be18bcb1bb6ef5"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md",
+      "bytes": 3933,
+      "sha256": "ec51a5feac202ca234b8d3cbffaf37d4f5aa34e3700aadf7fc988ecb14892014"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md",
+      "bytes": 4382,
+      "sha256": "5fb514c85bcd4c05b8080fd12141e08aee12e2eb204abe818b53a87e6b348c77"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-04-08_Nyb4yfSUlT4.predictions.md",
+      "bytes": 2877,
+      "sha256": "11f82742ea80397053046a07f69f5a024c0e9bc6400041493034f667d6ee00e5"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md",
+      "bytes": 3889,
+      "sha256": "19fd6ec6aa996ba83200db09ab79fad8cfef77be4694bc2044ffe176bc8a2886"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md",
+      "bytes": 3521,
+      "sha256": "ef361539305d1d07a95812336435d3c8cd00dd6c451f1a37755b9fcef7ef7c11"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md",
+      "bytes": 3945,
+      "sha256": "712493845291e9671a764eb1c01b1529b8e6fb34594f871230669709382e126f"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md",
+      "bytes": 3188,
+      "sha256": "00d73ff8813c66166abcfe6266c0600550faed143cf8023e8b48272f62304aac"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md",
+      "bytes": 3699,
+      "sha256": "f4a4fe8e25da369df81fab4ee208bf95f1fabd6e0ce93bc4da2130b11278b0c8"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md",
+      "bytes": 3801,
+      "sha256": "d07a2511cfc5979f857ef30e988c0e7c145574e7ca93fb0170bc36ef45a929ec"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md",
+      "bytes": 3819,
+      "sha256": "dc56e07900c2dc1c42de19ee4100168ac2916040167c2960a3d3b87bc7ac56ed"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md",
+      "bytes": 4777,
+      "sha256": "0da48baa019af5cb158c0128ad6f9323037e5e20b8e9aab6ffc423df6e46fdfe"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-05-29_eKomHGJgJEU.predictions.md",
+      "bytes": 2828,
+      "sha256": "33b00d15bf5840ff4743ee0d85321c302fa195726f0f484e83797f82b21d1a68"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-06-02_bgAmexfyVOI.predictions.md",
+      "bytes": 2896,
+      "sha256": "1e802456db7f0c5a8f28d1f3c88355710c873482074abd1f9a04945815bffa0c"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-06-05_inUGgMv9Zq0.predictions.md",
+      "bytes": 2794,
+      "sha256": "59ddd7a6d4d76a397c553a8fdaf05eb0fbb23e72c479a00e01edbdd9ab47cc2b"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md",
+      "bytes": 3637,
+      "sha256": "38b2ba5a6aca28b61b71d371ece2a49da6a37b5cf35d3bc063ad759f9d7a76f6"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-06-15_Ev6e1dJCelc.predictions.md",
+      "bytes": 3068,
+      "sha256": "4e89f7db68ae32ae65b395ada7dc9bb78bb7a4af3821622c9d5ea1756375c419"
+    },
+    {
+      "path": "research/macro/claims/predictions/bravos_2026-06-18_ArL4djz-76c.predictions.md",
+      "bytes": 2363,
+      "sha256": "c4b6339acc41d60fb741f2413fffb62bb622f3e9f266e48475cff26104730bbd"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md",
+      "bytes": 4504,
+      "sha256": "801acd7aa4471f43a6abe1fe573750c98a15738b9df147a3a7ddbe2ed68c452e"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md",
+      "bytes": 5919,
+      "sha256": "0e5afe0ca48fd0672fbdc60bc2651bf325df57a7aadab3ab02d86c9db3646b81"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md",
+      "bytes": 7339,
+      "sha256": "d7533b443e07afaa55ca7cdfbd69a913fd95080422a51ec727733c9b06a9cee3"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md",
+      "bytes": 5987,
+      "sha256": "d312335fcf9b03af8a5e46f7aadc6adb97cbcde403784f43f61e498a5b3b5afb"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md",
+      "bytes": 4590,
+      "sha256": "86aff75e62419b57c4132d57ec6dd6bc6388ef25865796a56eee73d302407b0d"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-05-15_yNHYpCLBffw.predictions.md",
+      "bytes": 3176,
+      "sha256": "6432a98f0949cd928575ed2c4dc82e747433fc5ced87e87334c0de7496aea48e"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md",
+      "bytes": 4116,
+      "sha256": "fda798fe3ae5632a27327535ab9e627e2e9fca2b3aa72c2ca5c9dfe1aa2e7e87"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md",
+      "bytes": 4324,
+      "sha256": "09a1d399c96328586f98f1432288c2e9e53cac3e6d6b746df4eca82092772f6a"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md",
+      "bytes": 4771,
+      "sha256": "c02acf7527a6a9fa964dad33809f6cc860aa0382492bfd5f56a9429c163d4b96"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md",
+      "bytes": 3474,
+      "sha256": "d7fd04e21f5e7a6f3b20e5582313cdef89303e017859e2322f747c33daffd94c"
+    },
+    {
+      "path": "research/macro/claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md",
+      "bytes": 5359,
+      "sha256": "f4e4745c4dc9241879efddde81e1fe44d071fa3f630269f90600e621cc24ce80"
+    },
+    {
+      "path": "research/macro/claims/predictions_register.md",
+      "bytes": 114669,
+      "sha256": "f9c83e954f3f94e4afcba0c1b40c539bc4037a4c6aacf942160c61cf9da9ebff"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-03-20_Qwvqz6K1Dyc.summary.md",
+      "bytes": 5065,
+      "sha256": "5880458a68e0fe0290fd60b99c0719bdeeb4c145b0ec345986ca69d92156143f"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-03-26_d2xewVN_eDE.summary.md",
+      "bytes": 5715,
+      "sha256": "db63961a005ffd0b0d619838240ce7281ef0e119962fd01024ccfba6c303aa4b"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-04-02_XDDBhShILQA.summary.md",
+      "bytes": 5758,
+      "sha256": "9ee255cb9215728c63c4176c11032bd29a94f2905ef55859e6327d0caae47b97"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-04-08_Nyb4yfSUlT4.summary.md",
+      "bytes": 5170,
+      "sha256": "ddd78f20cdf593b199da741ee65281e54ca9e36ab5e536e7ebc1ce35807013af"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-04-20_qaxPhSP8jbg.summary.md",
+      "bytes": 5607,
+      "sha256": "57df86239a44a108bc3630ebbb4441565c7db3cc520b7507549e4ece0d75644d"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-04-23_iq599kyAjVA.summary.md",
+      "bytes": 5764,
+      "sha256": "e589953f691bbbea628c04ec0a17ed031ab9af4df64a9fa10c42df2b402c023c"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-04-27_PN8bHAr0f1M.summary.md",
+      "bytes": 6730,
+      "sha256": "eade80bf3005b50118961197458648268a8d04e5161ea4a5db3926e553028af8"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-05-01_YUwjueXzffE.summary.md",
+      "bytes": 6350,
+      "sha256": "170fd4eaeec198f55d3e93efbc782f6887f5e05d981112ff5c10cff57055aaec"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-05-07_opuHyONlqjY.summary.md",
+      "bytes": 6151,
+      "sha256": "ed4aa9f5fd563fe8aeb8c9fa5541b6282be618d97ddb7c5fd0d66b19e89a2a73"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-05-11_ZyC3GRY5e1M.summary.md",
+      "bytes": 6821,
+      "sha256": "917b2e867a3a2bb6580f626e22485e7c1fdb8320856b7e7e938a32061d8104a8"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-05-13_HUSPFNHI6PY.summary.md",
+      "bytes": 6091,
+      "sha256": "6341f0bf82046fbe31c4434cdc11ebddedd88ff4062997f58c64f8480428b5e4"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-05-15_7830S4NkFe8.summary.md",
+      "bytes": 6684,
+      "sha256": "ec054834e1ead715f0fa15b46570d40dd6aeaa8489aef4d526b0a3ca80f4b3da"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-05-29_eKomHGJgJEU.summary.md",
+      "bytes": 5840,
+      "sha256": "ed56370eee595c98c9ebfd3869d1c5a9e97d99d80268507d9abe51a94a4e828b"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-06-02_bgAmexfyVOI.summary.md",
+      "bytes": 6064,
+      "sha256": "f2c6e7b4ca30a1c3fab1ba0e791742775f5e39e80eb690754c7763efe299173d"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-06-05_inUGgMv9Zq0.summary.md",
+      "bytes": 5923,
+      "sha256": "4e034ef66a0e4122b5335a045368499ee85d0f023b45dce697017b238b3cf62c"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-06-11_zmIhCFYlBP0.summary.md",
+      "bytes": 6030,
+      "sha256": "d7013e68601cf70f3ec1a8267ae47c8d5fa282ee334de5f446fa59b961952f69"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-06-15_Ev6e1dJCelc.summary.md",
+      "bytes": 5793,
+      "sha256": "9d3866979464d03210b1f7c87be2077c9aeef36c88ad9785e7efcd1f4551455f"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-06-18_ArL4djz-76c.summary.md",
+      "bytes": 5904,
+      "sha256": "929f516bcf943af328c07449b6929b59c21955e786d5223f7e2c9972fe81c5d8"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-06-29_OZhbi8m1Mw8.summary.md",
+      "bytes": 5621,
+      "sha256": "46ceba9f9ddd10879e803e1b7d9a07694bbf31efa6782b37ba79dfcc891cfceb"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-07-07_J0qxWVhXd4o.summary.md",
+      "bytes": 5416,
+      "sha256": "ce887cface708ca5fff3ef8c62fcba2b7e69e4cec1c5c961e49be7491acac1ad"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-07-23_QNFLN6IvB88.summary.md",
+      "bytes": 5151,
+      "sha256": "b59650360b78a38d91c71eb48a50c5088c447be930c441b8a464156cea43d7a6"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-08-04_VygtuX3arJA.summary.md",
+      "bytes": 5188,
+      "sha256": "f9243482d19cc251d332b900cecc6ce293378bd97a36fcab277212ffd8261561"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-08-09_rv4PIOsQq_g.summary.md",
+      "bytes": 5213,
+      "sha256": "f485ad41cd83baa220464197098fa89c112dab2cee4f47ab28d752db429e7293"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-08-11_ZZ7HyZu8FbE.summary.md",
+      "bytes": 5776,
+      "sha256": "8cd880e7ffa8e29b706574ef6f8a7792d648ad2971f628d4bbafbc62c687851b"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-08-13_4AkB4c0tTfU.summary.md",
+      "bytes": 4746,
+      "sha256": "86fab3d9a9a2866aae9a20705bf81592e96966b01eea035488f98cca0c6bfcc5"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-08-18_nB1eXWQlW58.summary.md",
+      "bytes": 5201,
+      "sha256": "8bc35c112b530df68b2bfd9932c83888a928f1487ac2e45d786ba9a6c48bd519"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-08-21_Jw8ykhoOVBQ.summary.md",
+      "bytes": 5455,
+      "sha256": "d22e6c1bd312cf4760a9f6059f74656835faf146e4c07e6fdf38344dab6ce1f0"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-08-25_PWMhM2_dj3s.summary.md",
+      "bytes": 6766,
+      "sha256": "0824a569da2f33d6285b4c3d372a11dd07d4535e4e4e0f1f4c962e54e0254fe9"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-08-27_cbknsJEshD8.summary.md",
+      "bytes": 6069,
+      "sha256": "ef9424518d381325ad2cd7ad3b4cb3818e38c2d93f5d7ad7ea08a9054ebca47e"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-09-05__rwFYNlKtEc.summary.md",
+      "bytes": 6242,
+      "sha256": "b1d413792eae537c0e67d8e68eee6731c25502e5459c07a733c4903504ac639a"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-09-09_1ZS5_txbOsc.summary.md",
+      "bytes": 5687,
+      "sha256": "52af1d4f98c3ca5fbed09eb8fad5be2bcb079542822e7683a90e9fa6b3591edc"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-09-12_RUH3BPQ5fTo.summary.md",
+      "bytes": 5277,
+      "sha256": "f74296ca787b5c060a8ffe21a571899aafd1b6279784a017d5947e6117fa04b7"
+    },
+    {
+      "path": "research/macro/claims/summaries/bravos_2026-09-16_jx3Ll-GJtMY.summary.md",
+      "bytes": 5844,
+      "sha256": "1e1d7ac7123178c3add0836bc121699989c9338d0cee29e30ffa0f4e0c0ea459"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-03-16_jQUUAEemvSE.summary.md",
+      "bytes": 6896,
+      "sha256": "96411a2557909d77476ef9f21445dedc65f3ec7d3880b964ba8ee01524c673ba"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-03-31_Dt45p4wuNow.summary.md",
+      "bytes": 8782,
+      "sha256": "9c9a5857a7c3f54a6a207eda66eaac88a8fd8e5eb8352bae5a8f79ecc4f506f3"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-04-07_38qyqO44qrk.summary.md",
+      "bytes": 8486,
+      "sha256": "7578ba1739ed664a825ee386968070e78bd7f89b5a93e08cca244489d4508a8c"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-04-20_f353QO5Dgus.summary.md",
+      "bytes": 8401,
+      "sha256": "dc5c00839193a67e33679316612eebbc8fd69d19d5dc5ec500ed5806ee4ea463"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-05-04_HcjbJvpKZIU.summary.md",
+      "bytes": 9317,
+      "sha256": "b2ab145a26917b564cfee77f13e37ac9e40c84d8d413a987af8d6d515c05626e"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-05-15_yNHYpCLBffw.summary.md",
+      "bytes": 5830,
+      "sha256": "f2e1b567eba792a45ccf953cb93d43ee08794889786ddfe2ef3a22f826724eb9"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-05-20_3DYnQMmQk8k.summary.md",
+      "bytes": 6222,
+      "sha256": "b55042163d9be38a3ec4ec906eb4895902cbceecba018224bf69902d46b4c85c"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-05-26_w8yTmTdF1Kw.summary.md",
+      "bytes": 6957,
+      "sha256": "a7bda6a2aa7b8d682d9a5e8196c7fd12d4d7396cdb457ac57f6a6f595ee824dc"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-06-05_yhRjvX_t4hc.summary.md",
+      "bytes": 6735,
+      "sha256": "cc698be81e3e5798aeba79f726359743612cb766919f0a80ee45261a80f072bd"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-06-12_dg9Ezg_RS6E.summary.md",
+      "bytes": 6228,
+      "sha256": "166354ab584071efb4901f52688d4475ea4dd63c342540de46a91ce92804cf05"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-06-15_HIBozcOlQPY.summary.md",
+      "bytes": 6551,
+      "sha256": "6ff3c884ed6ea7cd0244d4ac4b6a7cef84fead55ed17cdada7972aa79af48c1c"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-06-22_nHy5u06we_s.summary.md",
+      "bytes": 7057,
+      "sha256": "cd9e2c707b19d119ce4299214a7fdd3866ce0a052eded5aca842ba137635da04"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-06-24_r4xoOQ32KNM.summary.md",
+      "bytes": 6322,
+      "sha256": "8868fdabb62cbd6be402e6886e51d5beab0a77476886455ff635fca705b2dd17"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-06-30_Z_xvkbGWauU.summary.md",
+      "bytes": 7091,
+      "sha256": "77203f7465f4ca8f42bfe02e803f50397e2670348954cc542cf4c20a52bc224f"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-07-07_siazPdsZHuI.summary.md",
+      "bytes": 7075,
+      "sha256": "f24713d4377498a5fc5df2b886d19dd42f2f9e90dcf58ab5e0753fe0dd152817"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-07-15_dFjvcY9Tth0.summary.md",
+      "bytes": 6744,
+      "sha256": "ae240e055f44244ca403c7e74f7157f23e8180c09bc728c5b7e809208dc4706e"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-07-20_hy90LdpEUvQ.summary.md",
+      "bytes": 5725,
+      "sha256": "b54b861980ec16620e48e6e594afb39bb0f0c3f518692403be6ca466311c37f5"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-07-28_YBhwK-VWsxY.summary.md",
+      "bytes": 6127,
+      "sha256": "e27ac583dd987e2d7f2f68d2fbacf0162af47723aee3d25bfaffd4e67cd10e7b"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-08-05_dlaVKt9-Tfg.summary.md",
+      "bytes": 5782,
+      "sha256": "db047e1c53f755663b313d862b6dc132b5a94b5aa129293694a4bbda72cf7985"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-08-10_Uw84lTiD5C8.summary.md",
+      "bytes": 4831,
+      "sha256": "c1658deb5c4c54112869d289e1b48ff3f464e5d50a08c9b1624ff2e6422c5203"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-08-19__YXDHskRP6Y.summary.md",
+      "bytes": 6972,
+      "sha256": "5b0f0517ccb5c083451c4ff85f8009a90924ed473c0436c31c37b2e672486f9c"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-08-25_gVksaXViB4E.summary.md",
+      "bytes": 7513,
+      "sha256": "3372ef2ef43fee2976f31738e40e21e95fd07647a7c615e69415301e608ad5ef"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-09-02_NZpobX6MQVA.summary.md",
+      "bytes": 7241,
+      "sha256": "6dfd359b2d99fd8d9e29fc967e0db9d32d5b451b743fbeb64c15f13e02a9b73c"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-09-10_iBxWsP8k9XM.summary.md",
+      "bytes": 7567,
+      "sha256": "50445607f5a20465e7af5caf2065d6c75fa8ee00949da478cb538e5ea17224fa"
+    },
+    {
+      "path": "research/macro/claims/summaries/jikh_2026-09-16_xSXNSt0m-go.summary.md",
+      "bytes": 6181,
+      "sha256": "b5c18006d238f6db67d9fcfd062b5cfe5f61d409ce32451e96650b7b73b9d636"
+    },
+    {
+      "path": "research/macro/corpus/build_corpus.py",
+      "bytes": 4515,
+      "sha256": "858c4ea835e98197662f90f9984e71eea74330740310113fb53aa51776535ab4"
+    },
+    {
+      "path": "research/macro/corpus/listing_raw.py",
+      "bytes": 14029,
+      "sha256": "64b36d1b55b00df087f135330437bb0f254f6d040930ea1f3432e73c1790b0e5"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-03-20_Qwvqz6K1Dyc.txt",
+      "bytes": 8417,
+      "sha256": "8a4dde8aa3371e127459b409acfab3198d50d253333032e5085199422b99f1b2"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-03-26_d2xewVN_eDE.txt",
+      "bytes": 26611,
+      "sha256": "bf8ec939b32ca262378c906c61fdacee91e4bd5b18034d37dd43a8894f7be002"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-04-02_XDDBhShILQA.txt",
+      "bytes": 26626,
+      "sha256": "e8f01de9907c4480f7fb984302645bb914e3769a01219fa2c082f5aac2ba536c"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-04-08_Nyb4yfSUlT4.txt",
+      "bytes": 22539,
+      "sha256": "97f7408c43112c351fd6c7bedcf484a6be31c992d4335532ae49b5e24313e1f3"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-04-20_qaxPhSP8jbg.txt",
+      "bytes": 35466,
+      "sha256": "6b36b78644f1fa8d71d69ffda14b3cc2f9d5bbf9647f8e69f069af66d3d84750"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-04-23_iq599kyAjVA.txt",
+      "bytes": 11379,
+      "sha256": "a81b08d1b0ba11bb6b6711c18ccf84c655e9c829ec651ba8660022d1d583b08f"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-04-27_PN8bHAr0f1M.txt",
+      "bytes": 28133,
+      "sha256": "a5719ee9f543e5b6fc6868ce9d690f8cc097e8af1ad423d4d651063b0811f4ce"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-05-01_YUwjueXzffE.txt",
+      "bytes": 23784,
+      "sha256": "f720033690377fd3c4c196e9a63b69e4c24a1b4cbbda342ea8c08753e28a45e3"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-05-07_opuHyONlqjY.txt",
+      "bytes": 18649,
+      "sha256": "deaadf27621703727bf9923ca300c537bf9da67a186214df9d7d335cc68bbc94"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-05-11_ZyC3GRY5e1M.txt",
+      "bytes": 23896,
+      "sha256": "a0ab9c8f1ce596eeab22d2530414ea7b372c3c49aca0029f28a07952968a42d4"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-05-13_HUSPFNHI6PY.txt",
+      "bytes": 18991,
+      "sha256": "7dbe95896348192380a348a2178a5a5d5d9da51a2c08712265ff0408a94ca73f"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-05-15_7830S4NkFe8.txt",
+      "bytes": 26916,
+      "sha256": "a4ad354c84c76e3da5016bd0e06f6081a0bf5df756c1304b8b2133d09586539e"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-05-29_eKomHGJgJEU.txt",
+      "bytes": 12150,
+      "sha256": "5a72f8b6e625a4ea808c95d4d985ca52dd848ed718a0cab9a0cf3dc11a86c3a9"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-06-02_bgAmexfyVOI.txt",
+      "bytes": 28118,
+      "sha256": "c6d5b72084b68e59134293ec9b8bc2767c49a7a9ece9b7b1bf6b34989df42c44"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-06-05_inUGgMv9Zq0.txt",
+      "bytes": 10358,
+      "sha256": "e73c52884cb2f0cebbdb807714e3face9e65507c4447a92b60655254f88fb693"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-06-11_zmIhCFYlBP0.txt",
+      "bytes": 26081,
+      "sha256": "1ebce123fa0e077c5b3c581a6a357b6658c59d6ab53aa235f0c4de5e1eeb7c69"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-06-15_Ev6e1dJCelc.txt",
+      "bytes": 22453,
+      "sha256": "dd220172494714e9a83f6240479e1f7fe6d69b18cd1145d53a927267b86725bd"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-06-18_ArL4djz-76c.txt",
+      "bytes": 17636,
+      "sha256": "919d39802a1d9db07b8053313c9eca2ed22239b4073002921333cbd6a9c51fa6"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-06-29_OZhbi8m1Mw8.txt",
+      "bytes": 19898,
+      "sha256": "c6ee38cdeb12f0af84556894e63a4238680a2525650bb4a566aa23d0e1169b46"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-07-07_J0qxWVhXd4o.txt",
+      "bytes": 22995,
+      "sha256": "b5bd29bb5235719467cf1304d937c5d78db6b146b22066ec42fab0981725945b"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-07-23_QNFLN6IvB88.txt",
+      "bytes": 20566,
+      "sha256": "f4091ad32000ac4a4801cd59e63683616c3c28b11d4850b18028d553f2d1cc90"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-08-04_VygtuX3arJA.txt",
+      "bytes": 20332,
+      "sha256": "2e5e610ec23f9a13663a7473e7292bb990f80532122f59ce67b63992e2da3768"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-08-09_rv4PIOsQq_g.txt",
+      "bytes": 20429,
+      "sha256": "ba26f652010f64f3d978c439e6667a73eeac09f4dc059231657e77a1a22267d2"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-08-11_ZZ7HyZu8FbE.txt",
+      "bytes": 11964,
+      "sha256": "4fcaf0ecfee3329168067139473b0651a72f591df8c0e9821fe1070f3b3e4357"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-08-13_4AkB4c0tTfU.txt",
+      "bytes": 25378,
+      "sha256": "40c1da88b6844405a1c13628bb379d4f6881ff74971853a0e4700e2c5cb0106b"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-08-18_nB1eXWQlW58.txt",
+      "bytes": 25895,
+      "sha256": "274473d4ddcce0ca01068e51f06c374130ca93b0ccaed35deb4853ab1aeec655"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-08-21_Jw8ykhoOVBQ.txt",
+      "bytes": 34943,
+      "sha256": "1b4b676004cbc749a8b8f9ac53e9ca9e31ad2a2f50f2c23c98c13b83d9073231"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-08-25_PWMhM2_dj3s.txt",
+      "bytes": 44711,
+      "sha256": "0edd3a237b5c26a160b3052bfccc6f53cc597af67541dac7a366fc017348ffd0"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-08-27_cbknsJEshD8.txt",
+      "bytes": 43162,
+      "sha256": "8609b721b31459c04f5f2c9b5f8c38ed643703eb030b7b1a69e18947694cf8c7"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-09-05__rwFYNlKtEc.txt",
+      "bytes": 23332,
+      "sha256": "8a29071af7577ac685ceeef20839c0ca95447d5dc94b889d9af197b0fedabb35"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-09-09_1ZS5_txbOsc.txt",
+      "bytes": 21638,
+      "sha256": "d8fa72e172072d4673c1c687d184dd7414a7d383c0eb95f95b2ecb674b9ff074"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-09-12_RUH3BPQ5fTo.txt",
+      "bytes": 23888,
+      "sha256": "334fbf9df8ff002f63c4db8d29d524be7c87cf1a25a058d070570f580118a632"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/bravos_2026-09-16_jx3Ll-GJtMY.txt",
+      "bytes": 24920,
+      "sha256": "0472724caec825860183f5d41ece5154d8d02c812b71ccc8962ec56883c62326"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-03-16_jQUUAEemvSE.txt",
+      "bytes": 56039,
+      "sha256": "573f9494fa7d2e228083f3f21951c038edcdf5e3633744421fb5523ad7bc8aa1"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-03-31_Dt45p4wuNow.txt",
+      "bytes": 59491,
+      "sha256": "57f6a3b7a1ada7e1daf701136327a6213fd21321974bdace2cd5e512628d2dc7"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-04-07_38qyqO44qrk.txt",
+      "bytes": 25665,
+      "sha256": "0084b5149e024d04d4b57feb6961e01947d9b32d86721e1921f3ae272e4382f1"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-04-20_f353QO5Dgus.txt",
+      "bytes": 24781,
+      "sha256": "e7b2de12bd4db11f1effeeafcc8697892f282e38c47df4dd969c9b712d2f383e"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-05-04_HcjbJvpKZIU.txt",
+      "bytes": 56062,
+      "sha256": "ac6110615378174fe354bfbe9969b0e9c49cd6bd2de85adef1ae30127fb874f5"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-05-15_yNHYpCLBffw.txt",
+      "bytes": 29986,
+      "sha256": "e47b92e3c7ac902dec9cc4984a92e31133fafbbf3c167571432fe7f3a80228ca"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-05-20_3DYnQMmQk8k.txt",
+      "bytes": 24963,
+      "sha256": "47ffc44efd97caefb122705dacf590cac51bedd367d5666fc424a24723714958"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-05-26_w8yTmTdF1Kw.txt",
+      "bytes": 31540,
+      "sha256": "25f7649a097f7673235b020a32ce7e43709a67feb5fa65a743f5feb2d244a78a"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-06-05_yhRjvX_t4hc.txt",
+      "bytes": 33726,
+      "sha256": "0d58e302ef89718810c606cbf1649872dbc5c9a1e08cc48278df611318776a66"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-06-12_dg9Ezg_RS6E.txt",
+      "bytes": 30959,
+      "sha256": "b03aa887cc09ee469c548a690ef7d3562285d01f11126f57257ede52a35c0c3b"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-06-15_HIBozcOlQPY.txt",
+      "bytes": 23790,
+      "sha256": "73eb6f0bbff70ec75597b02af80cb3e354bbae34452b5c3e2a4d55ab52083ae7"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-06-22_nHy5u06we_s.txt",
+      "bytes": 25690,
+      "sha256": "b42415e0521730af0fc7619ce24f9173e038675523faf933c1196f883d6874c3"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-06-24_r4xoOQ32KNM.txt",
+      "bytes": 26671,
+      "sha256": "ec6b04faa0b1ee3a25ccedb54c7a4e79222a4f7a5d461972efaccc3e3d2b03de"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-06-30_Z_xvkbGWauU.txt",
+      "bytes": 53346,
+      "sha256": "131739f8d45817e7bb9811ea68f48f0752beda45470b4249f3e400758ec51537"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-07-07_siazPdsZHuI.txt",
+      "bytes": 32222,
+      "sha256": "65803ed37fa11582c3ae8264b9316b15bb52cea3841e4185972276f03e608dd6"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-07-15_dFjvcY9Tth0.txt",
+      "bytes": 30070,
+      "sha256": "6016a24483be07edea5bed5a9375c8b339492b1425f3982187a0505b2fb3bb7e"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-07-20_hy90LdpEUvQ.txt",
+      "bytes": 25485,
+      "sha256": "86e44e2b488d082f5ad30e23c2dbced0d2e67bb6146e6e8d37e337fba1851955"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-07-28_YBhwK-VWsxY.txt",
+      "bytes": 30851,
+      "sha256": "fa0833c0a08913d453b5c74f3e6dae1c375a0d02e8b849481cef3c19f71dd9e9"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-08-05_dlaVKt9-Tfg.txt",
+      "bytes": 25842,
+      "sha256": "38acee8194b968307b8465641abb9b39f67759caf501ef6474d3ed5ef3620a90"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-08-10_Uw84lTiD5C8.txt",
+      "bytes": 24227,
+      "sha256": "28a11fb1b31c6e1c1f60d7a757b6e60d3fcdbe2665a3c53af8bff43b60b0cada"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-08-19__YXDHskRP6Y.txt",
+      "bytes": 27663,
+      "sha256": "18566ddd4ca4bd9ad9a2568b6ad809e228f627c8b9c4c92de388c39c44c73af8"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-08-25_gVksaXViB4E.txt",
+      "bytes": 30711,
+      "sha256": "079214c879698b989bba59d9949b053f3bcf2b5aa6258859bc1ccc577cdf7369"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-09-02_NZpobX6MQVA.txt",
+      "bytes": 27729,
+      "sha256": "cf961a3720b45feeae76f3443e5e55d5331e4c09f5d5e61764f887ea4915df2a"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-09-10_iBxWsP8k9XM.txt",
+      "bytes": 32200,
+      "sha256": "626b76cce339202ab5eeb97fb39620c925f53b11a13172c9bf95380d7bda3537"
+    },
+    {
+      "path": "research/macro/corpus/transcripts/jikh_2026-09-16_xSXNSt0m-go.txt",
+      "bytes": 29162,
+      "sha256": "11516ab0d1f6a462d685e1677d291226e5eea2037393786c62f9a5bb9387afe2"
+    },
+    {
+      "path": "research/macro/corpus/videos.csv",
+      "bytes": 20707,
+      "sha256": "0cdf9bbc378d6cdc71bc3da53ecac67427202476a9ec2f4b6911157e1036cbc4"
+    },
+    {
+      "path": "research/macro/data/SOURCES.md",
+      "bytes": 3033,
+      "sha256": "77812c51677b50e9d0fe80349d702b2a92bf6398f00c5153856eae8e1133cf2b"
+    },
+    {
+      "path": "research/macro/data/processed/cape_recomputed.csv",
+      "bytes": 51701,
+      "sha256": "8af3e9cccad902138a8bb423cc3e79dcd929eaf3b87e88be9f6aa1ba02b687d3"
+    },
+    {
+      "path": "research/macro/data/processed/dashboard_2026-09-19.csv",
+      "bytes": 10748,
+      "sha256": "3dc3652040a70c666da179848fea07e27244fbe23b32282936a23dcc62b9165e"
+    },
+    {
+      "path": "research/macro/data/processed/dashboard_2026-09-19.md",
+      "bytes": 27256,
+      "sha256": "0d304bc8403366b72b2c0f5724ed50f5be74855b662f81f838818c21125d4273"
+    },
+    {
+      "path": "research/macro/data/processed/regime_indicators_2026-09-19.csv",
+      "bytes": 3399,
+      "sha256": "51738eba12ecb40ec9cfbdf0b045945287798fa462971ba0ff0da7f54fd12c9f"
+    },
+    {
+      "path": "research/macro/data/processed/regime_score_2026-09-19.json",
+      "bytes": 2051,
+      "sha256": "8d2f756d3049b2d25a70dfd0697334c55d311a073e605a7b8e2f53cd921a9764"
+    },
+    {
+      "path": "research/macro/data/raw/12_Industry_Portfolios_CSV.zip",
+      "bytes": 138954,
+      "sha256": "c7316c6ae07bc2028632b57ad757dfef8303a62a6956946d7aabe926aadfdeb4"
+    },
+    {
+      "path": "research/macro/data/raw/F-F_Research_Data_Factors_CSV.zip",
+      "bytes": 13067,
+      "sha256": "b840dba55d319f4818fc7300e65c52eff5f64870c8d495fa58ff5d4cd749f5eb"
+    },
+    {
+      "path": "research/macro/data/raw/bond-yields-us-10y_main_data_monthly.csv",
+      "bytes": 15043,
+      "sha256": "2ce54ee178023699587e2c01a1bbe8878aed45a22b738c8e2ec71d63b6b51b46"
+    },
+    {
+      "path": "research/macro/data/raw/cpi-us_main_data_cpiai.csv",
+      "bytes": 29403,
+      "sha256": "57a5e25c2f51356dfad1568871e82bdb92b12d2b9d25cac295cc5486ac6aafd6"
+    },
+    {
+      "path": "research/macro/data/raw/cpi_main_data_cpi.csv",
+      "bytes": 448661,
+      "sha256": "182baa44c536079bea07bb8700c37c85441c3d7d5f8e6dd68fb92fcb4a7815e8"
+    },
+    {
+      "path": "research/macro/data/raw/exchange-rates_main_data_daily.csv",
+      "bytes": 7629975,
+      "sha256": "480ce31805befecb1bf6315de3ed7de3882f8da84b4240aa4084616399ca1bf2"
+    },
+    {
+      "path": "research/macro/data/raw/exchange-rates_main_data_monthly.csv",
+      "bytes": 485959,
+      "sha256": "a36241729c8665fc8ea2d828ae4bd657d4543b5d980d933d50c05126fc3e9376"
+    },
+    {
+      "path": "research/macro/data/raw/finance-vix_main_data_vix-daily.csv",
+      "bytes": 482096,
+      "sha256": "50fd00ef48a9e51067407a92f6839307d601b644d8ac08ba711ee1ef77e71367"
+    },
+    {
+      "path": "research/macro/data/raw/fred_bundle2_2026-09-19.json",
+      "bytes": 3358979,
+      "sha256": "3b6f7aa4f3ced1c20515f6ed35b2768a2623181547c491213bc8cdee75ba682c"
+    },
+    {
+      "path": "research/macro/data/raw/fred_bundle2_2026-09-19.json.gz",
+      "bytes": 851864,
+      "sha256": "dc44fd7565426c089c44c04d823530e5547f20d6f70b0c7b5590d6eb40b00018"
+    },
+    {
+      "path": "research/macro/data/raw/fred_bundle_2026-09-19.json",
+      "bytes": 5496602,
+      "sha256": "2b088774e251d64a6632669ee75386a30a774607926414db0c5f26bf959fb011"
+    },
+    {
+      "path": "research/macro/data/raw/fred_bundle_2026-09-19.json.gz",
+      "bytes": 1391636,
+      "sha256": "3368a5f3e941e207b3c71062213f85f0ad660c6f461ab7aeb643f2abb9ef130c"
+    },
+    {
+      "path": "research/macro/data/raw/gdp-us_main_data_quarter.csv",
+      "bytes": 10709,
+      "sha256": "f74793bf16e26d7f46846563ad810f21da9e33e0633942f918c24706991201db"
+    },
+    {
+      "path": "research/macro/data/raw/gdp-us_main_data_year.csv",
+      "bytes": 2695,
+      "sha256": "7020456cc13986c3001eba740732acd4415e1180d2c3b194dfcb864e501c5a9f"
+    },
+    {
+      "path": "research/macro/data/raw/gdp_main_data_gdp.csv",
+      "bytes": 562767,
+      "sha256": "8d84ef6bcaccf740c01c5ed7566aae8f7b149d0e2c20001e441efd3cb5b2fa86"
+    },
+    {
+      "path": "research/macro/data/raw/gold-prices_main_data_annual.csv",
+      "bytes": 2383,
+      "sha256": "9d4687185ca14851f4ec36a55810583193b935b726ec72aa35a758c53a25d4af"
+    },
+    {
+      "path": "research/macro/data/raw/gold-prices_main_data_monthly.csv",
+      "bytes": 35713,
+      "sha256": "6821c07f866d91cddc8beacd942d9548912216f816183565e47cef2c7add0b47"
+    },
+    {
+      "path": "research/macro/data/raw/gold-prices_master_data_monthly.csv",
+      "bytes": 35713,
+      "sha256": "6821c07f866d91cddc8beacd942d9548912216f816183565e47cef2c7add0b47"
+    },
+    {
+      "path": "research/macro/data/raw/imf_pcps_External_Data.xls",
+      "bytes": 480101,
+      "sha256": "2ea73e32a7ed96ba989717a5b061d80946b6ffe800bbee323972e92866ed7f31"
+    },
+    {
+      "path": "research/macro/data/raw/inflation_main_data_inflation-consumer.csv",
+      "bytes": 556356,
+      "sha256": "b47dbd6a5d44c4ea0e4eb9e9cd18548d5d2031ca250a21dd5355be952b034344"
+    },
+    {
+      "path": "research/macro/data/raw/investor-flow-of-funds-us_main_data_monthly.csv",
+      "bytes": 99,
+      "sha256": "9b3456cfc7b8439c1f861db931122fd6e9d82d403817efa956ed98bc8a798cd6"
+    },
+    {
+      "path": "research/macro/data/raw/nasdaq-listings_main_data_nasdaq-listed.csv",
+      "bytes": 266547,
+      "sha256": "37fe8e12a111be86d600ba54e76519d50d03476241dc833ff8115752c53c7fca"
+    },
+    {
+      "path": "research/macro/data/raw/natural-gas_main_data_monthly.csv",
+      "bytes": 4974,
+      "sha256": "7a8b165c1788cc019375cb82f72c0acbf307353a83a6981bd7823a4c44722171"
+    },
+    {
+      "path": "research/macro/data/raw/oil-prices_main_data_brent-daily.csv",
+      "bytes": 163227,
+      "sha256": "f74e3fb2bc2af60e469b61362ae85574613f47885ad2486b39a81fe4dabd6c8f"
+    },
+    {
+      "path": "research/macro/data/raw/oil-prices_main_data_wti-monthly.csv",
+      "bytes": 8768,
+      "sha256": "3fd154f0c6cb70c2293c7e25ca59416b74538a8182062d271f35ffd7b24835ab"
+    },
+    {
+      "path": "research/macro/data/raw/s-and-p-500_main_data_data.csv",
+      "bytes": 123800,
+      "sha256": "ed6a0faf1864d60161806b594b45a2642f6149f59b26b3d7b32c2ce38758dc6f"
+    },
+    {
+      "path": "research/macro/data/raw/s-and-p-500_master_data_data.csv",
+      "bytes": 123800,
+      "sha256": "ed6a0faf1864d60161806b594b45a2642f6149f59b26b3d7b32c2ce38758dc6f"
+    },
+    {
+      "path": "research/macro/scripts/dashboard.py",
+      "bytes": 9480,
+      "sha256": "9c5e56e544126f1c1d030318f91b2f059db341c72d74c821a7d81754326f9f05"
+    },
+    {
+      "path": "research/macro/scripts/factbase.py",
+      "bytes": 6123,
+      "sha256": "6130d47d327e325cf0948081fa0deea722d011143d3d97000d027ec533e8a9ce"
+    },
+    {
+      "path": "research/macro/scripts/regime_model.py",
+      "bytes": 14153,
+      "sha256": "fd6ab0d150a56db3665af64f4ea279dec45f572938992a2002468b40440f2bd0"
+    },
+    {
+      "path": "research/macro/verify/EVENTS_2026.md",
+      "bytes": 10223,
+      "sha256": "1658c61bdffe72c656336962acfc503d413f130bf147ad1a0d5e15e920eba21d"
+    },
+    {
+      "path": "research/macro/verify/PROTOCOL_VERIFY.md",
+      "bytes": 4810,
+      "sha256": "60a7b0953aad72ecbef663aa3a446eab36c2c0dcb3d0f907617c1befa0e21322"
+    },
+    {
+      "path": "research/macro/verify/a2.py",
+      "bytes": 2833,
+      "sha256": "338c0682662dd507447ebcad6d00967e8e65aa1bf223c1c70c514469967c971d"
+    },
+    {
+      "path": "research/macro/verify/a_curve.py",
+      "bytes": 3345,
+      "sha256": "b296d1a75441dc2b5a60212a11f882f439f4a287d98db3c89ae00038a7c6368b"
+    },
+    {
+      "path": "research/macro/verify/b2.py",
+      "bytes": 869,
+      "sha256": "3609e4a2749b0db1cf79be5d3835b62282bbc7dae595cfc340aa7800cc5d409b"
+    },
+    {
+      "path": "research/macro/verify/b_c.py",
+      "bytes": 3483,
+      "sha256": "cdc5b9c41e6dd058773cb9b51cada73014180b58c14f74cfa3394b695a42a68c"
+    },
+    {
+      "path": "research/macro/verify/bravos_pitches.txt",
+      "bytes": 64785,
+      "sha256": "11d5f87c2de23b8a045f403a1a619c95d3f339710db168ecd9c98aa14a47ea13"
+    },
+    {
+      "path": "research/macro/verify/build.py",
+      "bytes": 99752,
+      "sha256": "4f156ac9378816531da42528460cd7860b20ed394da967e5ee9847f6976a6082"
+    },
+    {
+      "path": "research/macro/verify/build_v89.py",
+      "bytes": 54478,
+      "sha256": "278a503a9c8359a1864241f5eec75df5b748cbfe3f2f8d5684d91e27c959c9bc"
+    },
+    {
+      "path": "research/macro/verify/cape.py",
+      "bytes": 3884,
+      "sha256": "ed7c41f5d580895bd7f9b72892e97da944acdafd98e85c84983166c4eb53b1fe"
+    },
+    {
+      "path": "research/macro/verify/cape_computed.csv",
+      "bytes": 51736,
+      "sha256": "c5b7f9e145fa7969872d927c251de9eb6abaedcc60c859e3043a6f6c6026bec0"
+    },
+    {
+      "path": "research/macro/verify/claims_flat.txt",
+      "bytes": 52049,
+      "sha256": "51e2801170218987f2140831631f475c2033274b0c4c5ab7ccc59372e46f7bbd"
+    },
+    {
+      "path": "research/macro/verify/d1.py",
+      "bytes": 3080,
+      "sha256": "ca975a401d2d7244ab2034cc2caae9ddfd554733dfba5b999e5c690a7b79e6d7"
+    },
+    {
+      "path": "research/macro/verify/d2.py",
+      "bytes": 2823,
+      "sha256": "16679e9d51fe5a77f0357094f2a92c5f575d8e48c3ba78c5ec570791fccf5ed4"
+    },
+    {
+      "path": "research/macro/verify/d3.py",
+      "bytes": 1962,
+      "sha256": "1e9d5c8532212d15c17d27010962afaecc066c79c0278f93dac637048c1ae615"
+    },
+    {
+      "path": "research/macro/verify/d4.py",
+      "bytes": 4112,
+      "sha256": "bff76a61aada90e978c664f564c11ee32576f1bdec7cdd6f85d5d5c23f806ec6"
+    },
+    {
+      "path": "research/macro/verify/d5.py",
+      "bytes": 2565,
+      "sha256": "a9097ba4493e1853344369c35f8983f881d032980d8dded5185522b1216eb41a"
+    },
+    {
+      "path": "research/macro/verify/eps_spliced.csv",
+      "bytes": 34552,
+      "sha256": "c0bfd1bfd34a858b5e5d9eeab321a2e427584965b6a54127b0fd6865f38d31bd"
+    },
+    {
+      "path": "research/macro/verify/f1.py",
+      "bytes": 5677,
+      "sha256": "e5b2c9831eabdb78edc62abad65d7bfab0b5a9b8e8be801ee0255eea61c1bb2d"
+    },
+    {
+      "path": "research/macro/verify/f2.py",
+      "bytes": 5172,
+      "sha256": "1ebb3325034f93c504a7eaaaaae086432e140c29c21c60cf0701214c07b7e7a3"
+    },
+    {
+      "path": "research/macro/verify/f3.py",
+      "bytes": 4274,
+      "sha256": "15393cd453d57ae3e490bebc4c6b9b13e4f77ddaa44a0a178d35409c30ac1a90"
+    },
+    {
+      "path": "research/macro/verify/f4.py",
+      "bytes": 3921,
+      "sha256": "f7fcab0dbc97e631f4fdb14019b99da4f8b6554e1f6716a713b7e174fbf843c7"
+    },
+    {
+      "path": "research/macro/verify/f5.py",
+      "bytes": 3050,
+      "sha256": "338c032e0b9e3d4297897515afaaf4e80a5248a3a67e85858cef817d43cbc93a"
+    },
+    {
+      "path": "research/macro/verify/facts.json",
+      "bytes": 111299,
+      "sha256": "43c09ba3389471a136956edca04f1bec378df2c314fe2ad9b79bde1419535099"
+    },
+    {
+      "path": "research/macro/verify/in/V1_ai_bubble.csv",
+      "bytes": 86694,
+      "sha256": "aa28df07fa38b37c35ec03d42ef46039ce0d5c0f90cc5ab2f47de2ccfa9d170b"
+    },
+    {
+      "path": "research/macro/verify/in/V2_equity_valuation.csv",
+      "bytes": 52336,
+      "sha256": "f15d969dfb2964b18083f1e442d5538419e49b9af779d344409dab0992ea7e5a"
+    },
+    {
+      "path": "research/macro/verify/in/V3_fiscal_fed_liquidity.csv",
+      "bytes": 100154,
+      "sha256": "309d5a55f3d53e4551c48982f75bfb7618abfdd643e551ce3fa8dc36af750241"
+    },
+    {
+      "path": "research/macro/verify/in/V4_oil_geopolitics_tariffs.csv",
+      "bytes": 74988,
+      "sha256": "2f20634b0287bc6f1361cba00055fa762ddc2591cfae9e1b99aa7bf6f82c7524"
+    },
+    {
+      "path": "research/macro/verify/in/V5_dollar_china_gold.csv",
+      "bytes": 96985,
+      "sha256": "7173ec75f1d8381f57c068482c530dc1b5f3bcfadc03f61ef34c7f083ad31a22"
+    },
+    {
+      "path": "research/macro/verify/in/V6_japan_credit_crypto.csv",
+      "bytes": 60288,
+      "sha256": "7980595ad94b9c3fda2ca0692b89e27be5e7aa6ef9794b29f3bf7cd62eca903e"
+    },
+    {
+      "path": "research/macro/verify/in/V7_inflation_cycle_labor_housing.csv",
+      "bytes": 65771,
+      "sha256": "7ef10b2f465d7eff7d355bb62c11d809e08a755297a426bc0a34dd52f496fbcd"
+    },
+    {
+      "path": "research/macro/verify/in/V8_other.csv",
+      "bytes": 54517,
+      "sha256": "104f07dd36fab80baa1f824a8628b53689de38cfdc99e1b8bab733ac9dd63139"
+    },
+    {
+      "path": "research/macro/verify/in/V9_self_performance.csv",
+      "bytes": 45069,
+      "sha256": "a1603d696557c991fc42e91384c7aeff985fedd572dc6e99f4227131dffb3c73"
+    },
+    {
+      "path": "research/macro/verify/mkfacts.py",
+      "bytes": 14210,
+      "sha256": "3072fbc6110fd8b3ee8f5613397fa62ab5b44b6ed31f1aa57dd4059f11aefe45"
+    },
+    {
+      "path": "research/macro/verify/out/PREDICTIONS/SCORECARD.md",
+      "bytes": 29913,
+      "sha256": "a89082000930ee783b1ad3a32f674c1c3428c9ff621a3197661755d45cbafa24"
+    },
+    {
+      "path": "research/macro/verify/out/PREDICTIONS/predictions_scored.csv",
+      "bytes": 121086,
+      "sha256": "9e15e411f6995f592a1c08ad17636fd2dac9efb6abdfbee9fe0b1b57ef2b26f5"
+    },
+    {
+      "path": "research/macro/verify/out/PREDICTIONS/scoring.py",
+      "bytes": 137347,
+      "sha256": "bf87c14f744ea638a8cf58f83ce7067a26440c485d7c22f3d339566279c66c57"
+    },
+    {
+      "path": "research/macro/verify/out/V1/SUMMARY.md",
+      "bytes": 11776,
+      "sha256": "f68adeafafc31312ddbff47fe061c086d1af9dca63d5293d523a310b86f88537"
+    },
+    {
+      "path": "research/macro/verify/out/V1/_claims_part2.txt",
+      "bytes": 35876,
+      "sha256": "a0637f81d79b364504a97393303698f0096bb564876e352cf06dd4acd81759d4"
+    },
+    {
+      "path": "research/macro/verify/out/V1/_claims_part3.txt",
+      "bytes": 33848,
+      "sha256": "c734d91e74ca396e4c47ebaec11a74873990c0c4d90aaf687eeb9a593369fcae"
+    },
+    {
+      "path": "research/macro/verify/out/V1/build_facts.py",
+      "bytes": 5900,
+      "sha256": "7ed99cb0d7899cf9a1bdf2307d40b44a2430566147db4096192a40aaba3ecfad"
+    },
+    {
+      "path": "research/macro/verify/out/V1/build_verdicts.py",
+      "bytes": 76733,
+      "sha256": "90e1ae035d4f299c3c79c38fddb2660504ad73539f482d38bb54e9aca31251a3"
+    },
+    {
+      "path": "research/macro/verify/out/V1/facts.md",
+      "bytes": 109182,
+      "sha256": "113c10b1dc176da6fd46e00ca83df32163e29ad09ad42ee2714f433a65e77f30"
+    },
+    {
+      "path": "research/macro/verify/out/V1/verdicts.csv",
+      "bytes": 93473,
+      "sha256": "731b7ba6bb71dda6942b8023b35ae1b7a61e86bd6202cef28ab980c8eed81b10"
+    },
+    {
+      "path": "research/macro/verify/out/V2/SUMMARY.md",
+      "bytes": 13611,
+      "sha256": "190bd25d27c447bbfdb680fc8b54faa3190d27195f9f877b6cb4cec6ef83a4f8"
+    },
+    {
+      "path": "research/macro/verify/out/V2/facts.md",
+      "bytes": 50844,
+      "sha256": "3af488a07c04dac3d4f65b25205dc18de8853078d21b9fd1451ca714dcac741f"
+    },
+    {
+      "path": "research/macro/verify/out/V2/verdicts.csv",
+      "bytes": 46901,
+      "sha256": "a699f4fdcdc1c631e9a096c3148b220d7e73b526614d2d064d012675de192a78"
+    },
+    {
+      "path": "research/macro/verify/out/V3/SUMMARY.md",
+      "bytes": 16978,
+      "sha256": "0f8530f47d8df8d3ba603b9a0fddc01e965e8a7b81bdd427787a5dee363fec82"
+    },
+    {
+      "path": "research/macro/verify/out/V3/build_facts.py",
+      "bytes": 2973,
+      "sha256": "dd256b629dfb34e24ad05048bece14591caf85cf1263f67718216f4a73927922"
+    },
+    {
+      "path": "research/macro/verify/out/V3/build_verdicts.py",
+      "bytes": 79859,
+      "sha256": "971d0c941be9a15e68c461693aff6da3193d6a317f6e2d144469b8cdbfa7fc3c"
+    },
+    {
+      "path": "research/macro/verify/out/V3/facts.md",
+      "bytes": 140081,
+      "sha256": "d35be956103e07c224034904cb711430a91e45482216e82d37a42dd888011cb1"
+    },
+    {
+      "path": "research/macro/verify/out/V3/verdicts.csv",
+      "bytes": 82304,
+      "sha256": "e9f7d11d856b6502472839f94ddc9e5ecb2102612185e0a17a86e3e6dd2da81e"
+    },
+    {
+      "path": "research/macro/verify/out/V4/SUMMARY.md",
+      "bytes": 13506,
+      "sha256": "870c8aa2974d203b4f5181bf2459f80eefb2409960797d4f8e3a846bfef43b17"
+    },
+    {
+      "path": "research/macro/verify/out/V4/facts.md",
+      "bytes": 39644,
+      "sha256": "429372ccdd5e0e8fa090fe7588197667e8657cad17e0604c3bcb8eb0ad6d979b"
+    },
+    {
+      "path": "research/macro/verify/out/V4/verdicts.csv",
+      "bytes": 68255,
+      "sha256": "908d27377e1319859b7990f82663e56791eb8c16ead5eb9d8f79765231508852"
+    },
+    {
+      "path": "research/macro/verify/out/V5/SUMMARY.md",
+      "bytes": 15573,
+      "sha256": "1628fb3e539b22f948d0c15fec431440dd5c7e058e9ef48dda2f6f68baa9432b"
+    },
+    {
+      "path": "research/macro/verify/out/V5/build_verdicts.py",
+      "bytes": 65139,
+      "sha256": "6c7691bcf72a4b0efb331e3dff7c64e91e0b87ef88d99fa140b032a8ce494c01"
+    },
+    {
+      "path": "research/macro/verify/out/V5/facts.md",
+      "bytes": 91502,
+      "sha256": "0538fffbe6cc7aec9f4005305eb950e1b47268af57c9b2485aab61da161aca2a"
+    },
+    {
+      "path": "research/macro/verify/out/V5/verdicts.csv",
+      "bytes": 91542,
+      "sha256": "be25235c4b2300b930258a55c3e6e34f0d25b1fa1ea6c5c6040fae04f285cc95"
+    },
+    {
+      "path": "research/macro/verify/out/V6/SUMMARY.md",
+      "bytes": 13463,
+      "sha256": "edec62367cfd66264fd59377568e097ffcbdca63645219fb880ec902dc538e94"
+    },
+    {
+      "path": "research/macro/verify/out/V6/build_v6.py",
+      "bytes": 48339,
+      "sha256": "58f28a99117411242dd2fdb148947487e5219495297e5e7184b15a96b0c71bb3"
+    },
+    {
+      "path": "research/macro/verify/out/V6/facts.md",
+      "bytes": 98657,
+      "sha256": "4a8c33030d40076f5d5c53fb34bc2aeec62230f1a98c9039a12397c9085db439"
+    },
+    {
+      "path": "research/macro/verify/out/V6/verdicts.csv",
+      "bytes": 69497,
+      "sha256": "9f1c6163bd386f2346f40faaf0bdbaafcac51dd08d6d1c8635bc68a914352d03"
+    },
+    {
+      "path": "research/macro/verify/out/V7/SUMMARY.md",
+      "bytes": 11843,
+      "sha256": "db3f2b038732dd82bd1dc777b3a3de38079b62ac2e51be9366324165313f3a64"
+    },
+    {
+      "path": "research/macro/verify/out/V7/facts.md",
+      "bytes": 116075,
+      "sha256": "283b4ce1d50d067abdc18c316ddfd7ee10f015db5067e612ecbda9b770d0459c"
+    },
+    {
+      "path": "research/macro/verify/out/V7/verdicts.csv",
+      "bytes": 84402,
+      "sha256": "9da7dfcf17861f42d06ffa434efe1f05581ef13e61cc1dfa2e967b799a2b70e9"
+    },
+    {
+      "path": "research/macro/verify/out/V8_9/SUMMARY.md",
+      "bytes": 15038,
+      "sha256": "292905ebd568725515a95158576c78366b678511ad844d07a37b6873acc1b2d7"
+    },
+    {
+      "path": "research/macro/verify/out/V8_9/facts.md",
+      "bytes": 78995,
+      "sha256": "6064604deb0ca4e9f55d394da2423944b491ae1d4a32d9d3c42dfcd3f4a4666f"
+    },
+    {
+      "path": "research/macro/verify/out/V8_9/verdicts.csv",
+      "bytes": 78473,
+      "sha256": "89c8e0a44328d3984d2ba31fc172ec377e46c541e6bf89d197ff35cd897ec449"
+    },
+    {
+      "path": "research/macro/verify/tx.py",
+      "bytes": 2057,
+      "sha256": "b14f9852340488b8cbdadb2ea7115c18cb040e45f976e4a664c372d0199bc72e"
+    },
+    {
+      "path": "research/macro/verify/v3_claims_150_220.txt",
+      "bytes": 28017,
+      "sha256": "36d95e93d7d49b6170ab11796f702803a6adaa6640cf4a66e5d33cb4b3da5cf7"
+    },
+    {
+      "path": "research/macro/verify/v5_claims_140_210.txt",
+      "bytes": 31112,
+      "sha256": "35091e2f1df7a199b1a7b5e4c97d0b0c4955b2aa167c8011aeac48fdad1c5baf"
+    },
+    {
+      "path": "research/macro/verify/v7_dump.txt",
+      "bytes": 40679,
+      "sha256": "ad947554283034baedd6c1b59cedc73d199b7cc71576083b7cf81f30346ada77"
+    },
+    {
+      "path": "research/macro/verify/v9_dump.txt",
+      "bytes": 37971,
+      "sha256": "cfcab445d5d681d33839ddce01d9d90a57a775b8cc8f02ea13cd84d842628f46"
+    },
+    {
+      "path": "research/macro/verify/work/build_v4.py",
+      "bytes": 62853,
+      "sha256": "eee4b36dfc1fcc2f678d3150ee62951df85186d1da048de3facc79aed475fb3b"
+    },
+    {
+      "path": "research/macro/verify/work/v4_flat.txt",
+      "bytes": 51197,
+      "sha256": "0bce92004adc7ed492e35f48f9461b876f26429dd71ad8b4db7f002e9708d642"
+    },
+    {
+      "path": "research/macro/verify/work_v6_japan.txt",
+      "bytes": 17569,
+      "sha256": "0b3c278a76f889ae30070074f581dd4eca17864766153281af78c9de8109b06e"
+    }
+  ]
+}

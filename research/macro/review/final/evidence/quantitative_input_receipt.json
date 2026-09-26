@@ -1,0 +1,15 @@
+{
+  "scripts/factbase.py": "6130d47d327e325cf0948081fa0deea722d011143d3d97000d027ec533e8a9ce",
+  "analogs/regime_screen.py": "2fa08bc684308a80f6e0320a93afc207827f89408e1e4d0669115f303c003882",
+  "analogs/step5_credit.py": "df4a841b8b4b8c6fc86ffa1ad47cc5fa04449802da01d6c793f9be40ab5be4e7",
+  "data/raw/s-and-p-500_main_data_data.csv": "ed6a0faf1864d60161806b594b45a2642f6149f59b26b3d7b32c2ce38758dc6f",
+  "data/raw/fred_bundle_2026-09-19.json": "2b088774e251d64a6632669ee75386a30a774607926414db0c5f26bf959fb011",
+  "data/raw/fred_bundle2_2026-09-19.json": "3b6f7aa4f3ced1c20515f6ed35b2768a2623181547c491213bc8cdee75ba682c",
+  "review/inputs/F-F_Research_Data_Factors.csv": "347bdcabb60863073a120111b40cb21b1a0682d6a82e919df057bdbea15e3a73",
+  "review/inputs/12_Industry_Portfolios.csv": "979c74a2684ac4116b152729330577b2a328e11033dc4469fe4dea7f49881336",
+  "review/phase_b/features_history.csv": "6de1979e591b2f547c447549c12969a5d4d3c95d79c65a6107f3bb8c0652d24e",
+  "review/phase_b/all_candidate_distances.csv": "cc13a238b92e2c61062dbeabe6a8423ffb99bd8cfcb085d381c905b814a8fcb4",
+  "review/phase_c/quantitative_profit_forward_holdout.csv": "0621d47a5f96ad88314286ffba6f7deada0d798fe04ab5b2c37f792a3fc0140d",
+  "analogs/similarity_scores.csv": "59c996746e2dac6010c4d003408fac78969bd7ec9bfacdec50b74a440081f6c9",
+  "analogs/rich_and_calm.csv": "c645eab4b0ba7750bcb0989e97585eb5861e95da070721f9067df9dc94515c36"
+}

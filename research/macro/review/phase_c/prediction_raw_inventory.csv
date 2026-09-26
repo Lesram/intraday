@@ -1,0 +1,289 @@
+pred_id,channel,publish_date,timestamp,horizon,raw_file,sample_hash
+BR-20260320-01,bravos,2026-03-20,0:00,unspecified (title; INFERRED: months),claims/predictions/bravos_2026-03-20_Qwvqz6K1Dyc.predictions.md,8782af9522f8ca74e04db025c0f1ee95b03fa7e877c47ccb7f7a0a799dbe4929
+BR-20260320-15,bravos,2026-03-20,4:17,near term (INFERRED: 1-3 months),claims/predictions/bravos_2026-03-20_Qwvqz6K1Dyc.predictions.md,f5168b61078e7893ef2d2f5fce0602d63cc5dd4af9f50e2b02f1c111b16ff2c6
+BR-20260320-22,bravos,2026-03-20,5:49,unspecified (INFERRED: within months),claims/predictions/bravos_2026-03-20_Qwvqz6K1Dyc.predictions.md,de2252c77b9092496746a6f62418c97a79f32be485cc4a48d050e881150fe2f3
+BR-20260320-24,bravos,2026-03-20,6:14,unspecified (structural),claims/predictions/bravos_2026-03-20_Qwvqz6K1Dyc.predictions.md,8a4d58574a9e5ccabfb258a5b475f6a24c306be3630672fd1af5d9e36cbe02a3
+BR-20260326-01,bravos,2026-03-26,0:00,unspecified (title),claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,7d043940bf620d24a875f36c02f6235e28435075433b0b09a9c01514e51b6442
+BR-20260326-03,bravos,2026-03-26,0:09,coming weeks,claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,6c98c12c618fa11a42c852c76b883d5b437845a18ba41525324fb42892df7afe
+BR-20260326-08,bravos,2026-03-26,1:29,next print (released ~2026-04-10),claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,c85c8180b1f5e76fda74ada82b2ce7c1c31aa650f88e97fa882a8ed5169eeafa
+BR-20260326-09,bravos,2026-03-26,1:43,unspecified,claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,ae53ae1ce3075ef620099d586140a81caf0a1b8be3e868792febc9925b0ce35a
+BR-20260326-14,bravos,2026-03-26,3:49,quickly (INFERRED: within ~3 months),claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,c2ae5928d9caa07e69ad010c6f179b477de0f345fb5c8906429ff46cf4f8c348
+BR-20260326-20,bravos,2026-03-26,6:00,unspecified,claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,83fda4f8022927e96265493d3e7bfd7379add41f9aece438bf9e663c4c383608
+BR-20260326-26,bravos,2026-03-26,8:20,unspecified,claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,dffe987771613d946909e5c562167451557346e1d44d747af67bd483079c7fab
+BR-20260326-29,bravos,2026-03-26,9:04,coming years,claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,e613eaeb656e3a7ca532c32a0ede3cb8b5409507f666609c9eb1b56be84748d0
+BR-20260326-30,bravos,2026-03-26,9:21,unspecified,claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,2776487297c560c77ab5de94d616d486b35a5c82c8bf45f6760134b40e51d257
+BR-20260326-31,bravos,2026-03-26,9:33,unspecified,claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,eed5ce9daf89e7d43d728eae757f9406bd1ea3f5a9746740ffb95f8fb6ea8b38
+BR-20260326-33,bravos,2026-03-26,9:47,unspecified,claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,804bede69b99d05011e18c2f5c37c845f7c95621bad1752c98b12b7500ea9df0
+BR-20260326-34,bravos,2026-03-26,9:57,coming months (INFERRED: by ~Sep 2026),claims/predictions/bravos_2026-03-26_d2xewVN_eDE.predictions.md,6472802490972703770bb950f439f8e45cf9ddbbb3cdbd68a0c68d7dc5638b5b
+BR-20260402-01,bravos,2026-04-02,0:00,unspecified (title; INFERRED: months),claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,629976f23f645079dac10e3f802e4cf4db238796d88cd68ee9203ec5021fb7c4
+BR-20260402-03,bravos,2026-04-02,0:12,unspecified (INFERRED: weeks-months),claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,83a58cb072d7f018278ddc24b6e3055f09bb04b4bf3422bbe9dba42cbb9f3e5e
+BR-20260402-09,bravos,2026-04-02,2:19,unspecified,claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,53e2486f76c328951f05bf0302852e5671666efdc5a7e8a0eb5b8f3cf14b9438
+BR-20260402-12,bravos,2026-04-02,3:08,unspecified (INFERRED: next 2-3 FOMC meetings),claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,d0ccb7cf640c27bc967a009299412df487b1d052e73c0c2d2fc10d13047c33bb
+BR-20260402-19,bravos,2026-04-02,5:41,unspecified (INFERRED: months),claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,e6a9b2a69462a9181f20744ef659bbf65f75ab9c0a5163b75c3c541ddc495d19
+BR-20260402-20,bravos,2026-04-02,5:58,unspecified (INFERRED: months),claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,2da4b8e5d1a40aea2797db2cd78ebf8fb3796950014d5e8c3df7fd9874853672
+BR-20260402-21,bravos,2026-04-02,6:10,unspecified,claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,7747e0807a735183bc8fa01c20c199fa8edb80497939ed70d90a27776a680867
+BR-20260402-23,bravos,2026-04-02,6:56,unspecified,claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,f09548d143a3a3691ea95abe71309e52ba68f5b9a2d205c2babb27e68995f02f
+BR-20260402-26,bravos,2026-04-02,7:58,coming years,claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,5fb6a63a8990da2b71ba983f2c33c834cab4215fe5cb0aaf0ebbe94cb9b08cbf
+BR-20260402-28,bravos,2026-04-02,8:30,unspecified,claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,b661970d49349d8eaf07d8d433a77371fe4f5170fa46d9b6e8dfd9720a0360c7
+BR-20260402-30,bravos,2026-04-02,9:17,unspecified,claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,c9ee31c1518697a9b54a061a31c3cfb3fc8ce09e83e66711865b065719bd8646
+BR-20260402-31,bravos,2026-04-02,9:41,unspecified,claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,d7d19e173ac2c50961714a6a1e413b6637aa746e4254de760fa1cf93ef90d010
+BR-20260402-33,bravos,2026-04-02,10:08,unspecified (INFERRED: months),claims/predictions/bravos_2026-04-02_XDDBhShILQA.predictions.md,4eeffb522ee3a19f4725cf3389839c094ff19d423c3c0fd674a80cc225c6acc7
+BR-20260408-01,bravos,2026-04-08,0:00,unspecified (title; INFERRED: weeks),claims/predictions/bravos_2026-04-08_Nyb4yfSUlT4.predictions.md,19ce71eb30e15a34b5f234d8daaa7982208cdef8cca827ea4c2eaefd0f1d325d
+BR-20260408-15,bravos,2026-04-08,4:22,"unspecified (INFERRED: ~4 months, Jul-Aug 2026 per stated average lag)",claims/predictions/bravos_2026-04-08_Nyb4yfSUlT4.predictions.md,53bc93667efde63d1db90a780b75748e1c838e9f50ff5c5dabe9e3259ac2f127
+BR-20260408-19,bravos,2026-04-08,5:46,unspecified,claims/predictions/bravos_2026-04-08_Nyb4yfSUlT4.predictions.md,471f7f02d17f10c798da2268fed6d9fbcea666fb55a066a2be7b3b83136c36c1
+BR-20260408-20,bravos,2026-04-08,6:01,near term (INFERRED: 4-8 weeks),claims/predictions/bravos_2026-04-08_Nyb4yfSUlT4.predictions.md,915363318d8643e8c4d305362f96d1e696b75ec6e3bd90f9799171638915b913
+BR-20260408-22,bravos,2026-04-08,6:25,unspecified,claims/predictions/bravos_2026-04-08_Nyb4yfSUlT4.predictions.md,cbf5e811cf9780d4b7efee78f8d2ab763586eaa0a7a75678949cf86e3326e899
+BR-20260408-25,bravos,2026-04-08,7:10,multi-decade / unspecified,claims/predictions/bravos_2026-04-08_Nyb4yfSUlT4.predictions.md,8aeac9b7794c365aa84a7253543689a17aaae70d9b77cc67ed91bad9ea001ec5
+BR-20260408-29,bravos,2026-04-08,8:12,this decade,claims/predictions/bravos_2026-04-08_Nyb4yfSUlT4.predictions.md,3d1976820935c2da1e1b19a6722274efc81880fab041c270d6040763bfca48a1
+BR-20260420-01,bravos,2026-04-20,0:00,unspecified (title),claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,b2e0841c7fbbb1687deda2fba96f4eee2cdc5e896410eeed02cdac2745d2d5c7
+BR-20260420-07,bravos,2026-04-20,1:44,coming months (INFERRED),claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,4b32266d80d9702d268e4e8c16802e3f5d01a01c3e50245861e57fe94ab5f8c1
+BR-20260420-12,bravos,2026-04-20,4:09,unspecified (INFERRED: coming months),claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,72efc4e53060f97533dbf94259e29a7f5ce04e9a9ade10af10afaa2f02560e24
+BR-20260420-15,bravos,2026-04-20,5:11,unspecified,claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,0da68e255f22927e38c13cb7ae236976cc1916677853caa2438fffdf836f3bb8
+BR-20260420-17,bravos,2026-04-20,5:48,next few months,claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,9fece7d2318a756274b453f21506e38096b3f25c5f8fb122b5729b7126b90080
+BR-20260420-19,bravos,2026-04-20,6:28,coming months (INFERRED: by ~Aug 2026 print),claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,64c43a015884dabce5c35e8be816ff68068ba23d1d7428fd36c6476097bc4c4f
+BR-20260420-21,bravos,2026-04-20,7:10,6-12 months (by 2026-10-20 to 2027-04-20),claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,5a6f2ce6be170b79c70bf34319fe214e0e72afa5a02e7870bdc2d8009ac17944
+BR-20260420-25,bravos,2026-04-20,9:04,unspecified,claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,bd9bc4c8bcf7f482f4a6fab7af6febe1650688149c4c681cd1db01d2532ef1dc
+BR-20260420-28,bravos,2026-04-20,10:01,coming weeks and months (INFERRED: by ~Oct 2026),claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,6ad69e211fc046b1d7255b58729df9a3c2c54911dac3c2f27d007c6b4c709c8d
+BR-20260420-29,bravos,2026-04-20,10:11,unspecified,claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,5c92058da89196862f1a0844b34eb675f0392275a5782040b5d00b29000892cc
+BR-20260420-34,bravos,2026-04-20,11:22,unspecified,claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,de1b0b436dfa86152ad0545be99d363413385d364b38f206155181467bd5e457
+BR-20260420-35,bravos,2026-04-20,11:29,coming months,claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,5bcd7c4d3adca614e8bb4c91611c486c273a34fc6f90270504e463dc7de3328a
+BR-20260420-39,bravos,2026-04-20,13:27,any moment (INFERRED: weeks),claims/predictions/bravos_2026-04-20_qaxPhSP8jbg.predictions.md,8ff7aca8a14095c226961414dbad1fce04ba0db231505042eba459a369756863
+BR-20260423-01,bravos,2026-04-23,0:00,unspecified (INFERRED: weeks),claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,d66189a8c162145d132b5b42cdea0d7ace05a38c8990f2d8e401edfac980faa3
+BR-20260423-19,bravos,2026-04-23,5:23,next few months,claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,b3e618652699530759404660e96b65fd104465b77d09ee0a0ce69aa1a1ca462e
+BR-20260423-20,bravos,2026-04-23,5:55,unspecified,claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,1f61230ae233d077ff01993b4a01e699f3785f51e268e58d0a82b5177ca8beff
+BR-20260423-21,bravos,2026-04-23,6:04,possibly by end of 2026,claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,6b3c9c25cc7806171a6196d69e604cdeb63c96d7f8ae83fea5c6e7250614e870
+BR-20260423-23,bravos,2026-04-23,6:50,unspecified (INFERRED: 2026 H2),claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,a1912190e0ec1601a136e93857dee4e2255af738dd66714e5c90cd52f1612548
+BR-20260423-25,bravos,2026-04-23,7:20,late 2026 - early 2027,claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,6e573444cb748c69fa0405d2a691e2ae252604a7e67efc67c820eb3bf295e05a
+BR-20260423-27,bravos,2026-04-23,7:40,unspecified,claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,ab7afcd6b119bdb7d0e70d65f1c6c6a5da2618f01fb952d047d0fa8be78c35e9
+BR-20260423-30,bravos,2026-04-23,8:20,unspecified,claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,a086e26e405200bff95b42e22c43124e2e30cedaedb1d052944f833867a03fdc
+BR-20260423-31,bravos,2026-04-23,8:27,a few months,claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,0af3b86b6d2b6874a1500b24e0bc83a8e517254b1285cf9071af932b9bbb00d6
+BR-20260423-35,bravos,2026-04-23,9:00,unspecified,claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,b63d9a531a8c8d7ada88b9ec0ff61b5cd94ac3d14fce5be1949c15e168fc08da
+BR-20260423-36,bravos,2026-04-23,9:07,any day now (INFERRED: within weeks),claims/predictions/bravos_2026-04-23_iq599kyAjVA.predictions.md,4e97864e9113dee55ce53a5b9c4b4da10fa4fdaf01a03b577cd8198527d4a1c2
+BR-20260427-01,bravos,2026-04-27,0:00,INFERRED: 2027,claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,ac0e7b7fe3112f87208eb55da230512dbaf2f0e5b0467ed9e9ee8ce7f1168c03
+BR-20260427-18,bravos,2026-04-27,4:37,next 18 months (to ~2027-10),claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,9e7fb29e9688a6372e6a9de1afac2bb4caf4986c3277c63a46d9b91cabeb5569
+BR-20260427-23,bravos,2026-04-27,6:58,next few months (INFERRED: to ~2026-10),claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,67dfae6f27edebf37ebfc837695b16ff1c1c1b1f40aa74768828eab2baa94f12
+BR-20260427-24,bravos,2026-04-27,7:14,INFERRED: 2026H2,claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,f8bfbee9a4f15982b77ddd830b5deb68e57474a60c7dc1163fc5f19eba5398c9
+BR-20260427-27,bravos,2026-04-27,8:30,INFERRED: 12+ months,claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,32bd0a56ce153dad023d1d79a568b0a1c9cd8a3ed8beaa3d17956d788d35c1be
+BR-20260427-28,bravos,2026-04-27,8:36,unspecified ('eventually'); 05-01 and 05-11 videos date the hike to end-2026,claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,1c1fd34f37d4669a652d5b4d66052279e889a5af9ed546297a97d97e5f3bd487
+BR-20260427-29,bravos,2026-04-27,8:54,next few months (INFERRED: to ~2026-10),claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,68c3ab0c85f1531817199c97bdbea49cecb0c0b5ea340de481470f069326b8d6
+BR-20260427-30,bravos,2026-04-27,9:04,INFERRED: 2027,claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,7c6979396e6f62c054c41970c1135a8fb3ba4db4b074c72c88b9bb0108256068
+BR-20260427-32,bravos,2026-04-27,9:27,INFERRED: next 12 months,claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,7562dfccb83a64286ee170879d006ce3772bc98bcc5a9970cc2edd4967694846
+BR-20260427-35,bravos,2026-04-27,10:20,INFERRED: weeks-months,claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,923e8696e1dbeb7abda98ec397e51e587247bc8b97c775b737cc39f0695dbece
+BR-20260427-36,bravos,2026-04-27,10:28,INFERRED: weeks-months,claims/predictions/bravos_2026-04-27_PN8bHAr0f1M.predictions.md,a4e53726b5174e5c675d817b901bc25e695976af61abe676021c4db229a676be
+BR-20260501-01,bravos,2026-05-01,0:00,INFERRED: 2026H2-2027,claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,690fd411c1226a958cba702d6830705d7d201bccfefb116493649a91d88dbc59
+BR-20260501-07,bravos,2026-05-01,0:37,INFERRED: 12-24 months,claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,2c5538cce9566bd6a174ec73c04938008bd1b1a04cd23065befcfd0503a0cb8d
+BR-20260501-16,bravos,2026-05-01,2:56,unspecified (INFERRED: 1-2 years),claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,5cf644ac942ab502d6fa807ce6f2dbc6e565ddc908178d3b8f78c8e19dcc3b6d
+BR-20260501-26,bravos,2026-05-01,7:03,unspecified (INFERRED: 2026H2),claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,85830a2717291424596a6f1b1d02390ace5c92e0b7e4f41ec3989926b461bb5e
+BR-20260501-27,bravos,2026-05-01,7:17,coming months (INFERRED: to ~2026-11),claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,2376393f75a87722255fd4b7d5b492c0cd86de1d7655a0952760439c8555c17e
+BR-20260501-28,bravos,2026-05-01,7:25,by 2026-12-31,claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,f44188821761e38b55cf7c7fe10322ebe202eab1a11777bb4c3fcb2f46ea498d
+BR-20260501-31,bravos,2026-05-01,7:46,coming years (2026-2028),claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,de7d3188a6d6cd1297af6d9aafd79f3e8812ed28d645740d74d31b3f524c3d0b
+BR-20260501-33,bravos,2026-05-01,8:18,INFERRED: 6-12 months,claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,2fb5ecd6ce65decee5a4416035cbc203a91274b5c72c83e61f6e4b97e90b6686
+BR-20260501-35,bravos,2026-05-01,8:52,INFERRED: 12-24 months,claims/predictions/bravos_2026-05-01_YUwjueXzffE.predictions.md,58ac487dd8f6c3c2737b2e96385f28536751cdaa972ad635d5f6d34190ed0405
+BR-20260507-01,bravos,2026-05-07,0:00,INFERRED: unspecified,claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,9d42f3cb003fcccb2ed3a6802711fdba32744f58314319218613c922740f182f
+BR-20260507-11,bravos,2026-05-07,2:37,unspecified,claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,ff23e881645c72aac09530b9e7f94d88d001cf86aebecb61d998e2640b47480a
+BR-20260507-16,bravos,2026-05-07,4:27,to ~2027-05,claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,747500325c2aeee6fb57fa10689c18582fe59d37a4db603b9a4cfec52535d1ba
+BR-20260507-19,bravos,2026-05-07,5:16,INFERRED: ~12 months,claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,894d927248f98c70d05608329b0664cbddba8d6b9d480447e6325000dc5f56f4
+BR-20260507-22,bravos,2026-05-07,5:42,INFERRED: 6-12 months,claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,cdeb9aa4534572d7595279d83c75dc54213b8e0b532fc35eef776b5d4c639a1c
+BR-20260507-23,bravos,2026-05-07,6:00,unspecified (multi-year),claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,adea2000665c1f2f13e0f75c2dd9e8a443bf5d6f0ad66d008ad7643b7dd7bc59
+BR-20260507-25,bravos,2026-05-07,6:29,INFERRED: 6-12 months,claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,99b08001c967d0c812ac38ebd879960ba7840e56caa212ea28158e36b622f349
+BR-20260507-26,bravos,2026-05-07,6:31,"unspecified (multi-year, INFERRED 3-5 yrs)",claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,775c28d571b832ade1010ac9e8ed38511e2f140e239fe011cfd6c7109fc88ae0
+BR-20260507-27,bravos,2026-05-07,6:46,unspecified (INFERRED: 6-12 months),claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,505a17484716cb514936450f657581bb35564f4419ec6fee45646f25c97bc854
+BR-20260507-28,bravos,2026-05-07,7:05,coming months (INFERRED: by ~2026-11),claims/predictions/bravos_2026-05-07_opuHyONlqjY.predictions.md,db1eacd4b5cad36dd2e5a2f7ff9679242963a26e64137b7248752d55b63a80da
+BR-20260511-01,bravos,2026-05-11,0:00,by ~2026-11-11 (6 months),claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,5ec671be961700ac17c8968562d5d5dc7ffd0eebb3950a9abb6cdc80181cede4
+BR-20260511-03,bravos,2026-05-11,0:29,unspecified,claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,b989b987180a6c3a45ec445a5b1efd49b506d4a45c16110403cfc5a78577e24f
+BR-20260511-05,bravos,2026-05-11,0:56,next few years,claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,0eac807468669fe9c591c56e2b3c53fb2bd351d4494c2f35018f81ef1aa44edd
+BR-20260511-17,bravos,2026-05-11,4:50,INFERRED: by end-2026,claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,62e68ff2870d0eec05a348d7fd6575aefaf9da7e9efe71335b0410750966e27c
+BR-20260511-19,bravos,2026-05-11,5:19,INFERRED: next 3-6 months,claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,e6cc3ee00d252710cc3afad2cb5f3434af6f8af20817e21d7be7b58236ed36e9
+BR-20260511-21,bravos,2026-05-11,5:44,by 2026-12-31,claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,feb369c3c3227db6b11a5cbcaacc1b5c6ac99b599ef89cf834dfcc2b58acadb7
+BR-20260511-22,bravos,2026-05-11,5:52,INFERRED: 2026H2-2027,claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,e60bd11ac6f7655590226d4ca3fda317a84dd398c2f7e777bec319caa979144b
+BR-20260511-23,bravos,2026-05-11,6:03,unspecified (INFERRED: 2027),claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,a0e47a45175e19bb4fb63b9d8e564eb483c8e24b6b9a0a37ab943977fb4b4403
+BR-20260511-28,bravos,2026-05-11,7:28,June 2027 / September 2027,claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,816e2b5cf95576c6234dba08ac55dc6cdbffcfffcb38b5d22f5464f4eb4efc98
+BR-20260511-29,bravos,2026-05-11,7:48,INFERRED: 2026-05 to ~2027-06,claims/predictions/bravos_2026-05-11_ZyC3GRY5e1M.predictions.md,25b5b4c8342df0ebd74342cd7df8643c1b30b4d1ee5e2e78f1ce900eb62a5efb
+BR-20260513-01,bravos,2026-05-13,0:00,INFERRED: unspecified; body defers to after 2028,claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,e077847a069244f6fb201b23ab14c02bb1ea3ac17e6045492d150c92e561ba2a
+BR-20260513-07,bravos,2026-05-13,1:10,unspecified ('eventually'),claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,b71fcd0ccfecaba5934d58196c4e557fdf53c79f660e373546060364392252fe
+BR-20260513-13,bravos,2026-05-13,3:05,unspecified,claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,dcf4de64ef96e8481415aa02d735dfa66f1f845bd526bcaba1cf3cbfb5af14d4
+BR-20260513-16,bravos,2026-05-13,4:08,unspecified,claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,6f3ee25e5467f930706a4c35b63c6cb2ef595b3a36fd775a43c54edfd232f12a
+BR-20260513-21,bravos,2026-05-13,5:18,unspecified,claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,90e49a01f5aba6a57250b37d79db39d5f57335d947b75b5fc826b86f9aa2b8bf
+BR-20260513-23,bravos,2026-05-13,5:44,unspecified; implied after 2028,claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,056c6587345ba54d844366c198686e673e582011c9beb45020ea30f872a4f9a0
+BR-20260513-25,bravos,2026-05-13,6:17,until 2028,claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,2e6ca19ee8eb60f2a01d0e55524307f118cf9ca774b1789bafe947e379f86f92
+BR-20260513-26,bravos,2026-05-13,6:26,unspecified (multi-year),claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,231e27fcca86ff99754e9ef02cae074e14709c5191c697c1b71f17b1da5f8c42
+BR-20260513-27,bravos,2026-05-13,6:47,INFERRED: 2026-2028,claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,4b5736cceb0dd99edcc74529d7fce7e149db79a437c8a9e0297fd03058d6eaf9
+BR-20260513-30,bravos,2026-05-13,7:19,coming years (12-36 months),claims/predictions/bravos_2026-05-13_HUSPFNHI6PY.predictions.md,3f4251f6b2d1ade537af5d95983d9d18456a70df4faa3144d01445eea9d1763a
+BR-20260515-01,bravos,2026-05-15,0:00,INFERRED: weeks-months,claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,2bc9fe75247b794c6819f02247470c72fa3f1c6533a48b4598f5d3bbdd0c7b5d
+BR-20260515-13,bravos,2026-05-15,4:14,coming months (INFERRED: by ~2026-11),claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,3baac2c79c6fe414edd4e2a594d7d549fbc4227f74feb7b7394db43d3ef1f712
+BR-20260515-14,bravos,2026-05-15,4:21,INFERRED: coming months (2026H2),claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,e4bddb66ca42cac4cc34f14fb19514c8ced1f0fadc89d87020d16924fd2bf2d9
+BR-20260515-15,bravos,2026-05-15,4:30,unspecified,claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,f67e2a2b52fdf2216a0d630eeebdb21ec0c830464812cf07d53a4794c1766c1a
+BR-20260515-22,bravos,2026-05-15,6:18,unspecified,claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,f2fa46eb31754144cd3e8de55063e27766aa3437d27b7d7321d6db81507cde9f
+BR-20260515-24,bravos,2026-05-15,6:48,unspecified,claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,4c4c2d196481c1f02ed97eba6caa7739ad0754044c02b539b92329aea54f2ef0
+BR-20260515-25,bravos,2026-05-15,7:05,coming years (2026-2028),claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,578cda59db406dabdfabb5b71dbdf1f132dbd138bc679f0458a7f1a320fee26f
+BR-20260515-26,bravos,2026-05-15,7:19,coming months and years (6-24 months),claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,23ccabe021317374be27a4ec9715200b8309a527b4fcf2c5d985ccc6a6afe251
+BR-20260515-28,bravos,2026-05-15,7:41,coming months (INFERRED: by ~2026-11),claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,58d5ae240aa694f9dfc7ec46fd0493afe4313b4c080c79535f3817b3c925e759
+BR-20260515-29,bravos,2026-05-15,7:53,INFERRED: 6-24 months,claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,df109c6a629060d023fdc4e38e50f1b1c1a79bb5b81524edc6426818caba8263
+BR-20260515-30,bravos,2026-05-15,8:06,coming months (INFERRED: by ~2026-11),claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,e705371b44cb25f81bd1b0b56f7c3deb7f115a64dc70449ab7411ec98a351904
+BR-20260515-40,bravos,2026-05-15,10:41,INFERRED: weeks-months,claims/predictions/bravos_2026-05-15_7830S4NkFe8.predictions.md,5d782828ba525b09e5c7b8bba3ba71b398c28165cc701b36ede806ff8d765a62
+BR-20260529-01,bravos,2026-05-29,0:00,INFERRED (unspecified),claims/predictions/bravos_2026-05-29_eKomHGJgJEU.predictions.md,82df49509b5d85308bbe9c64c30aa7b77d548611ba0c4e4d7e77ab9f8266574c
+BR-20260529-10,bravos,2026-05-29,2:12,2026Q2 (stated; BEA advance ~30 Jul 2026),claims/predictions/bravos_2026-05-29_eKomHGJgJEU.predictions.md,ecd8da13634dd7b79c365110bceed361ac72fbf554938c730711adbd7dcc9048
+BR-20260529-22,bravos,2026-05-29,6:39,unspecified,claims/predictions/bravos_2026-05-29_eKomHGJgJEU.predictions.md,623e6eb46162dda6fddab60b13456637cc12e377325822c96cc76f28985bf382
+BR-20260529-25,bravos,2026-05-29,7:43,second half of 2027 (stated),claims/predictions/bravos_2026-05-29_eKomHGJgJEU.predictions.md,e371545eae9729886df12e17d7ba343adbf4c41d8d7b1b731fbc7ded3536c519
+BR-20260529-27,bravos,2026-05-29,8:16,INFERRED through end-2026,claims/predictions/bravos_2026-05-29_eKomHGJgJEU.predictions.md,14163b064f118fd3fded2c170a037b385e68f879f8790a9328f212985dfcd41b
+BR-20260529-28,bravos,2026-05-29,8:31,INFERRED 6-12 months,claims/predictions/bravos_2026-05-29_eKomHGJgJEU.predictions.md,3a864629898c517e1a99e3e78eadd20036b458a664072e2aa912ac0a4ff45169
+BR-20260602-01,bravos,2026-06-02,0:00,INFERRED (unspecified),claims/predictions/bravos_2026-06-02_bgAmexfyVOI.predictions.md,82daaaf0ad4de6e1922f901763819c25a70d99a37fa4b94c8c3f3b103161b258
+BR-20260602-19,bravos,2026-06-02,7:57,until December 2026 (stated),claims/predictions/bravos_2026-06-02_bgAmexfyVOI.predictions.md,95be5b4e2b175f466ce5e5664f56b8c45c64901e5911e4d2e0be11e7c5256610
+BR-20260602-20,bravos,2026-06-02,8:04,through end-2026 (stated),claims/predictions/bravos_2026-06-02_bgAmexfyVOI.predictions.md,ad63adcb1987047b01e492e9cd3ee41e68679109167f433026eb438bb5011590
+BR-20260602-21,bravos,2026-06-02,8:13,INFERRED 2027 onward,claims/predictions/bravos_2026-06-02_bgAmexfyVOI.predictions.md,7b003125cba828bdb721afe7e75c484c3b63818292326b553f3bbd4b4ae21045
+BR-20260602-25,bravos,2026-06-02,9:35,unspecified,claims/predictions/bravos_2026-06-02_bgAmexfyVOI.predictions.md,cf9f1147d8947a104b8c596647b2ab396e6024a334bb679adda2c8888acb40b0
+BR-20260602-29,bravos,2026-06-02,10:55,unspecified,claims/predictions/bravos_2026-06-02_bgAmexfyVOI.predictions.md,b38c666f99d9ed0641e8a50aaa73fc80dce8cc9db54f7ab94fabdea5e0b258bf
+BR-20260602-30,bravos,2026-06-02,11:12,INFERRED next 3-6 months,claims/predictions/bravos_2026-06-02_bgAmexfyVOI.predictions.md,97a6c397edf7eb2e615a3235e7c4d623dbc489628eb05e81e0e0622cec0729a8
+BR-20260605-01,bravos,2026-06-05,0:00,INFERRED (unspecified),claims/predictions/bravos_2026-06-05_inUGgMv9Zq0.predictions.md,e23c516192aa2725ce5cf1fbc5b4dc8827e1fac95e188afa5719d0a383f05372
+BR-20260605-07,bravos,2026-06-05,1:08,unspecified,claims/predictions/bravos_2026-06-05_inUGgMv9Zq0.predictions.md,c7f966fdf321c7bb1bb7eae0afb774da5053ad0271a086814332ed410e366185
+BR-20260605-20,bravos,2026-06-05,6:05,unspecified,claims/predictions/bravos_2026-06-05_inUGgMv9Zq0.predictions.md,1fa4b226d5d86daa73490d19a5eb49e839b543ba44b15f99822fb19daa5a3bf0
+BR-20260605-22,bravos,2026-06-05,7:10,foreseeable future (INFERRED 6-12 months),claims/predictions/bravos_2026-06-05_inUGgMv9Zq0.predictions.md,a1e1f1dfea2f2483b6aaf012d27eed673adb7021fbb8f021f09882a8e04e48f8
+BR-20260605-23,bravos,2026-06-05,7:27,unspecified,claims/predictions/bravos_2026-06-05_inUGgMv9Zq0.predictions.md,46d4b24a9626d2b3e66cacaf8263900db0071076dd152629205885fd1b59d122
+BR-20260605-25,bravos,2026-06-05,7:57,coming months to years (stated),claims/predictions/bravos_2026-06-05_inUGgMv9Zq0.predictions.md,38764c92e05b0121512163f4bba2027a1c11451105e13dd5929692185a17de6f
+BR-20260611-01,bravos,2026-06-11,0:00,INFERRED (unspecified),claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md,8ee39b84811d1852e3d2a1b4b8030da3fe5656f81363c8ae0d510970bd9c55cb
+BR-20260611-10,bravos,2026-06-11,2:17,calendar 2026 (stated),claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md,92c48fec3ef3c00301d1072fb557bfae751398dba3e3b1211bcdc1a84d18a99e
+BR-20260611-15,bravos,2026-06-11,4:50,unspecified,claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md,af2d1384f85093db06fd5b92ef47c5de8ca107e052797c3ec4896f41a5d676c3
+BR-20260611-17,bravos,2026-06-11,5:46,INFERRED calendar 2026,claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md,7934f3008f45872b53b619e5b352deb7e33e18c4b623dc5c04824012239d6667
+BR-20260611-24,bravos,2026-06-11,7:46,by end-2026 (stated),claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md,1a145e6472375b45ea2024a95afbf54e3660a3186eb8ca4f052689b29478c61f
+BR-20260611-25,bravos,2026-06-11,7:55,INFERRED mid-2027 to mid-2028,claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md,6d72e7c83e49fcb14301f1bc378d7b476773f6f12dcbab1ad83d03f293eba5b7
+BR-20260611-26,bravos,2026-06-11,8:25,INFERRED 1-2 years,claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md,1d0d1f30f2dec5b18a7f9795fdadcc2a77740fa0caae09b178bdd7a9445ba842
+BR-20260611-28,bravos,2026-06-11,9:14,coming months and years (stated),claims/predictions/bravos_2026-06-11_zmIhCFYlBP0.predictions.md,b1a8086931d9bd8c58c1bf527da1c9291b09e06606d54dfd5655ce41af807d17
+BR-20260615-01,bravos,2026-06-15,0:00,INFERRED (unspecified),claims/predictions/bravos_2026-06-15_Ev6e1dJCelc.predictions.md,b994d3f55e6983f583066b6c8cc2c4236a1e99464550bc274f012ea5d1ed40c5
+BR-20260615-16,bravos,2026-06-15,4:16,by September 2026 (stated),claims/predictions/bravos_2026-06-15_Ev6e1dJCelc.predictions.md,34809ba2fe308d44e0ec89be99e2a5fab15c13c915c0a649d3c2ee9b8ccf1145
+BR-20260615-23,bravos,2026-06-15,6:27,through September 2026 (stated),claims/predictions/bravos_2026-06-15_Ev6e1dJCelc.predictions.md,accd3f5d3e5aa57d78cc67812c969c8b01ed0925375345b453cf54d81f4b8d5b
+BR-20260615-25,bravos,2026-06-15,7:00,until mid-2027 (stated),claims/predictions/bravos_2026-06-15_Ev6e1dJCelc.predictions.md,e374ab881202220e002e7172b768cb6891225d4bb7634f94aae92de1342a5724
+BR-20260615-26,bravos,2026-06-15,7:10,unspecified,claims/predictions/bravos_2026-06-15_Ev6e1dJCelc.predictions.md,4d15e947b86e890d0548548f9b5095f8519154e505a7a1956525e3c9fa31cec7
+BR-20260615-27,bravos,2026-06-15,7:30,INFERRED through mid-2027,claims/predictions/bravos_2026-06-15_Ev6e1dJCelc.predictions.md,6dd60306f8515fbfe9227486a3e5680a08d8206601765ba1233999c0c7049f5f
+BR-20260615-29,bravos,2026-06-15,7:52,coming months (INFERRED Q3-Q4 2026),claims/predictions/bravos_2026-06-15_Ev6e1dJCelc.predictions.md,08ae0fe9c843168c2db14855b2fdbae35d6f14d8da7c0fc09987a8a17e35414b
+BR-20260618-01,bravos,2026-06-18,0:00,INFERRED (unspecified),claims/predictions/bravos_2026-06-18_ArL4djz-76c.predictions.md,418280be5d360a0f4b7ad103d3192a856ae36cb46de8422d30f57a065b5b1a46
+BR-20260618-16,bravos,2026-06-18,4:50,unspecified,claims/predictions/bravos_2026-06-18_ArL4djz-76c.predictions.md,c68fdb07b2f7ff0368f416922f067e81808f34634b245e3ec9c00042c114f993
+BR-20260618-17,bravos,2026-06-18,5:04,unspecified (coming months),claims/predictions/bravos_2026-06-18_ArL4djz-76c.predictions.md,fab59590213f82ff26721ca8d20da9c4fb68757bb23eecaadf3dfeeec1264a84
+BR-20260618-18,bravos,2026-06-18,5:15,unspecified,claims/predictions/bravos_2026-06-18_ArL4djz-76c.predictions.md,8965b3d51f5d380a7762a5d44d8d53ea3d081843b7db862ef00004caf343b1cf
+BR-20260618-21,bravos,2026-06-18,6:21,coming months (INFERRED Q3-Q4 2026),claims/predictions/bravos_2026-06-18_ArL4djz-76c.predictions.md,4cbb02231ca70ae8c059421785b6d0e192a14dacb3825592cf5a9ce6befd3dab
+BR-20260618-22,bravos,2026-06-18,6:29,unspecified (coming months),claims/predictions/bravos_2026-06-18_ArL4djz-76c.predictions.md,398f591eafc9779d3d3ef088708e7028fe7a6da6c25e20335366d1619e946aa6
+AJ-20260316-01,jikh,2026-03-16,0:00,"unspecified (INFERRED: near term, 'on the verge')",claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,a6505ae48f69993068f3699f2ba3f3a7e20c15e5e84d11a96cf0e2be808c4b30
+AJ-20260316-13,jikh,2026-03-16,4:34,eventually (unspecified),claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,56104dc1a22b19b00f6fee0f6d60467583692043030bbff1b10e41707d78280b
+AJ-20260316-15,jikh,2026-03-16,6:45,unspecified,claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,c3918c470256fa89879b57a675af84bfe38c7f3e824982a79bfa33d4756843ee
+AJ-20260316-28,jikh,2026-03-16,14:04,unspecified (INFERRED: weeks),claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,5fa833971cc933bde219182c8f59002fc4f7d3306179bab7a2b9e0a514048e40
+AJ-20260316-29,jikh,2026-03-16,14:34,> ~2026-05-16 (INFERRED),claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,8f1aa81eb5623c940b8f3dcd7704da25eca3ea3454939e4acf216d4f24bcb7fe
+AJ-20260316-30,jikh,2026-03-16,14:43,by ~2026-04-11 (stated),claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,463491f9df5adc5ddbb47f87fdbf3707b4a0382d8ef5d60cd6aac4861557f593
+AJ-20260316-37,jikh,2026-03-16,17:46,unspecified,claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,fcda461a7fe960e09d355b873ec249b8ba8dfe7041fb6a33cf11a052ba673c43
+AJ-20260316-39,jikh,2026-03-16,18:58,someday (unspecified),claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,0cb45d77f24a2a0d2d6b153a6b9a24415d64064722a0c6e3633ca4bd45b491f4
+AJ-20260316-41,jikh,2026-03-16,19:35,unspecified,claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,ae490e8a6f3bf889497cebc576a176e93da54f4d46ebb7c327cb80c15dd5932d
+AJ-20260316-50,jikh,2026-03-16,23:41,unspecified,claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,ff0024c76cf7aa88e12ac8c08a7279375a504704abd2a02ec072c40aa05511cf
+AJ-20260316-52,jikh,2026-03-16,25:54,unspecified,claims/predictions/jikh_2026-03-16_jQUUAEemvSE.predictions.md,e68fd9e9e690cc72e231ca23da580226556444a6c8acf0de0d11e9d46af0d5e4
+AJ-20260331-02,jikh,2026-03-31,0:14,2026 (stated),claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,46cdf26828b56a66f6d7822ac5eaa91c6ef2a617c56eb4e2da3c2df319f74a06
+AJ-20260331-09,jikh,2026-03-31,2:47,unspecified,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,d0bb28b690e0abc8b22578c79e42e06e2a4dede54f86a6d7a0581861f2032d66
+AJ-20260331-14,jikh,2026-03-31,6:25,while transits depressed,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,ee5579a4ccf0d1fcedfe40b3a26077da7d25f8a1a86ff77bdb19687d07e236f2
+AJ-20260331-25,jikh,2026-03-31,11:45,long term (unspecified),claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,0019c93d0bf8760f1dd1672e1d1d567a6b7aef25799e03e485405de27ff59979
+AJ-20260331-32,jikh,2026-03-31,16:06,unspecified,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,fb8d40e11e43f98a6b37e9d3d7a823d1fcef614438bf1c6a100384d2eda31216
+AJ-20260331-36,jikh,2026-03-31,18:33,at some point (unspecified),claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,e661937f78025a651a9ae4ac653e373912bc32984a180efa0c0bad9c517b8a29
+AJ-20260331-37,jikh,2026-03-31,19:09,unspecified (INFERRED: 6–12 months),claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,4a0a083b1808c87423c1b8f7bff18ee1c014487a8897bf039573b67ff01d80cb
+AJ-20260331-39,jikh,2026-03-31,20:27,next few weeks,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,25167decd06994d25cfc870f41cefeabbf0636f8453c300c6bd80521937936f6
+AJ-20260331-40,jikh,2026-03-31,21:05,unspecified,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,cf10292fd8a08e9ee98d0acd4ae682f3eb39a5da2fe7f25d1eaf41d9cf7832d1
+AJ-20260331-41,jikh,2026-03-31,21:33,trigger by ~2026-04-28; crisis over following months,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,756fb9edb37c81c2085ef334f1f784b46a571942579b5fa7b865d7e72710c08d
+AJ-20260331-42,jikh,2026-03-31,22:31,unspecified,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,417b2847e8793c3cd1d6dc970ac0324d9af9b9878082b971848b63f06c3650b3
+AJ-20260331-44,jikh,2026-03-31,24:00,unspecified,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,24a129f699f9956f457e43b15213b699e709e6b1e37fc0da316709886c8f0695
+AJ-20260331-46,jikh,2026-03-31,24:52,unspecified,claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,3c47bc5b6bb0d00cad7050d565724e46e5d0c33a305978fcfd126dc6a20af7d9
+AJ-20260331-47,jikh,2026-03-31,25:09,next 5–10 years (2031–2036),claims/predictions/jikh_2026-03-31_Dt45p4wuNow.predictions.md,f6b3095f9962ec8fb2801fa0e6e904f55bb33ef240101d7d34e7b084be351a28
+AJ-20260407-04,jikh,2026-04-07,1:01,2–3 weeks (to late April 2026),claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,27f3cb05ea143f577a0f1cec7b9c346904120d278fd8e06820c0734dd3372234
+AJ-20260407-14,jikh,2026-04-07,6:47,unspecified (INFERRED: months),claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,dfcba4a21747b27b0df17b57fd2ec3817c3c87f4953faeb36021b47d9d77a9ca
+AJ-20260407-16,jikh,2026-04-07,7:23,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,5f3df1ffb22a8a47435dc5282a1d6a66d75d06e6ed50549243ebaf8e2efa276c
+AJ-20260407-18,jikh,2026-04-07,8:18,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,03ef15f0d8864b0c6f0f4ae5633c650d09a4108918045034a9b323c6339eb3dd
+AJ-20260407-19,jikh,2026-04-07,9:12,unspecified (12–18 months after QE),claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,208047a570e75bb4f185899fafd1d64572e3c4a924786e14ac04a775b108f671
+AJ-20260407-20,jikh,2026-04-07,9:46,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,690516e01e381ddca9d7015622e5fd21f464cdc374c6d6793e7d6d6bbd6f7598
+AJ-20260407-21,jikh,2026-04-07,11:24,unspecified (INFERRED: 6–18 months),claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,5d073f6b09d2cd80666dce68745e4301a081e0b921fa49783a46a1d0f6535974
+AJ-20260407-22,jikh,2026-04-07,11:32,"unspecified (INFERRED: within months, ""into a crisis"")",claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,08ea08a6829defb8a8b588a04f6511315d1071d6b05594619c23cd8a20e0ad1e
+AJ-20260407-26,jikh,2026-04-07,15:04,12–18 months after QE restart,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,760df2f275cc905e8c92f36a364bf2a3fe213225913345a05f7fe69c38d878ab
+AJ-20260407-28,jikh,2026-04-07,16:24,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,b535264e0f73e48ed33dccbc94918d63615682685fb88ceaa4b7caff5997a462
+AJ-20260407-30,jikh,2026-04-07,17:53,unspecified (INFERRED: multi-year),claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,b93997aac888d3a0efb13c9671e45a6d843323fe6102f2414104467d68702f0c
+AJ-20260407-31,jikh,2026-04-07,18:41,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,f38b991f0d474424117ea5bf6f2086d218dac8d31678b1c3211cba3f80daf18a
+AJ-20260407-36,jikh,2026-04-07,22:05,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,a139fcf2e27631f7561f2374413a738dc623560f0bc33121f8848dba9587e718
+AJ-20260407-37,jikh,2026-04-07,22:29,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,be989a2313fee964f2bad8cbdc5702999bbba75af2d13b4a75342cb4f4f92837
+AJ-20260407-38,jikh,2026-04-07,23:15,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,4e92ab3585883cd17b30e40046828b7bad457dbf65b7970198ef6f30f769bd61
+AJ-20260407-41,jikh,2026-04-07,24:17,unspecified,claims/predictions/jikh_2026-04-07_38qyqO44qrk.predictions.md,3af7315ce1cd28fa18c4ad2566bf00a6fd4f79c1a6b87bfca3b2040b4d3f4326
+AJ-20260420-06,jikh,2026-04-20,1:29,unspecified,claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,da786066f0ac1727331dc123b48744b4e0b06275043c25767a37f55365a4b139
+AJ-20260420-13,jikh,2026-04-20,5:03,coming weeks (INFERRED),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,de8e719d44632df5733e5ced7b90a5ad806415eb8c2edcb4a1e198818a71d84c
+AJ-20260420-18,jikh,2026-04-20,8:08,eventually (INFERRED: weeks),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,c28ded8f614db88907aa517967966b937ad58bcc3f309774d558bbe27aa4e6c2
+AJ-20260420-19,jikh,2026-04-20,8:47,mid–late April 2026 (stated),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,f60018e07e74c680fa11e95e294280576b87b585ba4fdb672ca05723ed084462
+AJ-20260420-28,jikh,2026-04-20,11:25,from ~2026-04-20 (INFERRED: weeks),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,05c6711c675dab65dbe0595eef802cd473df61793d091ea3594a171c30cc0401
+AJ-20260420-31,jikh,2026-04-20,12:46,~by 2026-04-27 (stated),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,478bf19e97f0cc2485dd7083bf12f050606b3acbe46dccf2ba223686da223ef6
+AJ-20260420-32,jikh,2026-04-20,13:26,at contract expiry (INFERRED: May–June 2026),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,fcc63c51878203f2c8670dc36c5b96de53da377bcdf842305257f2789ce54957
+AJ-20260420-36,jikh,2026-04-20,16:19,unspecified (INFERRED: 6–12 months),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,68f7b04590277f18eebd9e7c2b4a384402e6647945ae6467a91aeffbfb81bf92
+AJ-20260420-38,jikh,2026-04-20,17:13,at some point (unspecified),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,0c8e3908ec5baf7b45056814f43ce2109598461608187203cbd449614aa20ae2
+AJ-20260420-40,jikh,2026-04-20,18:39,H2 2026 / by Apr 2027,claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,6e37a654c96f8ec1df9e0abc488601cac45f8da4061d24230caf11dad02386f0
+AJ-20260420-44,jikh,2026-04-20,20:59,unspecified,claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,d08febd5fe99ce4c69fc1b9f88c957b83ad42059e4546476a600fd92cd81f198
+AJ-20260420-45,jikh,2026-04-20,21:24,unspecified (INFERRED: rest of 2026),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,08473874d6b5aa85530df8844a85a5e72e0f16872063cd111031221fdc752613
+AJ-20260420-50,jikh,2026-04-20,23:20,this week or next (by ~2026-05-04),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,e4d93669c5ff9363a2a3107c1737c1d9ec57d60d231bb7f237db17c189eb61f9
+AJ-20260420-51,jikh,2026-04-20,23:44,really soon (INFERRED: weeks–2 months),claims/predictions/jikh_2026-04-20_f353QO5Dgus.predictions.md,9a80265875eaec0dae37db28039107f703df6720c1eae84d36c3bde65ed3659e
+AJ-20260504-05,jikh,2026-05-04,2:19,near term (INFERRED: weeks),claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,50013e7c74f3753cb00cebc07c3b6e714eaa9f100ca561f2f6fe676cd1e2074f
+AJ-20260504-12,jikh,2026-05-04,7:17,unspecified,claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,5cbbf94f7b38426d98ddfbbbdc3ef3f4838bf6a1ce7d2c94c663e77e6cdb10b3
+AJ-20260504-28,jikh,2026-05-04,16:14,5–6 years (stated),claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,00655d84bb06dd9aca2bd408ec69c609decff0051cfac9e1b18cfcc6c521e72b
+AJ-20260504-30,jikh,2026-05-04,17:19,unspecified,claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,cafe39205065b5f9ce38800ebeb21f1a626bcff7f3b3611f15947a59d835b357
+AJ-20260504-40,jikh,2026-05-04,21:13,unspecified (INFERRED: months),claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,d83d607ca4053a466aa5b7b475acb675857bf6ce0770a0039dd79775baa72078
+AJ-20260504-41,jikh,2026-05-04,22:05,unspecified,claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,a436ac2fcdcbea60d663a07144966f616c6848b59cf47e8a36d3ede6b84fad82
+AJ-20260504-43,jikh,2026-05-04,22:52,while Hormuz closed (INFERRED: months),claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,11b43702071cb1e408f6279408a054de59187774278d277ac94622e49230a775
+AJ-20260504-45,jikh,2026-05-04,23:21,~6 months (to ~Nov 2026),claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,2e8c6427b2a8d78d4e9ad504f0c564691cf6857c03fd8264e5f8a21cea1f51ae
+AJ-20260504-47,jikh,2026-05-04,24:21,unspecified (INFERRED: 1–3 years),claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,e91bea7d45d9ef4d53ec0029b3ef7c06e101b12e5a409bb48187b9f5113ba115
+AJ-20260504-48,jikh,2026-05-04,25:01,unspecified,claims/predictions/jikh_2026-05-04_HcjbJvpKZIU.predictions.md,2405654a5652abc4d6d615093491762dc64414a020c19e1dbeb19a6b2711931c
+AJ-20260515-01,jikh,2026-05-15,0:00,"multi-year, INFERRED",claims/predictions/jikh_2026-05-15_yNHYpCLBffw.predictions.md,2b80a5bc8325d9bf3a797f591e02297a1916b1b8c7f900bb3999594e096f5706
+AJ-20260515-16,jikh,2026-05-15,15:19,unspecified,claims/predictions/jikh_2026-05-15_yNHYpCLBffw.predictions.md,89e0f1c18b4c9c6d0d8074aa12b335bdabfbd4d413e49d7f81cedd1bf49c6395
+AJ-20260515-17,jikh,2026-05-15,16:10,"""eventually""",claims/predictions/jikh_2026-05-15_yNHYpCLBffw.predictions.md,fd8eb309f119a14dc9a07b7e8d836e7f91fa165d54b3aebf24c300bd61983db7
+AJ-20260515-20,jikh,2026-05-15,19:29,2027–2028,claims/predictions/jikh_2026-05-15_yNHYpCLBffw.predictions.md,bff2b6b4e6ebedc4dee834e65509299ff7b985d6d454df56f360008dc8f9ac41
+AJ-20260515-31,jikh,2026-05-15,28:20,"6–18 months, INFERRED",claims/predictions/jikh_2026-05-15_yNHYpCLBffw.predictions.md,062bc9ac3b7ad5177c604800548540cf2a96e346eaa71d3f780925a17264fa36
+AJ-20260515-32,jikh,2026-05-15,28:33,unspecified,claims/predictions/jikh_2026-05-15_yNHYpCLBffw.predictions.md,eaea25030e7d70af2df4cd6097f267c2d5fd1923c22d580ab54412d36f60d22b
+AJ-20260520-06,jikh,2026-05-20,3:59,unspecified,claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,7962f8b560fe6bbef177da7578c3f2e0a2eb3faf1118fff42d414f5280b4c83d
+AJ-20260520-09,jikh,2026-05-20,6:59,June 2026 / Sept 2026,claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,73f0f57b5e91f1fc3eb8a09dd489566585bdc6bac7ede4d57c0b45bdee54e890
+AJ-20260520-10,jikh,2026-05-20,7:20,~2026-07-04,claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,7f10cdf2cf846d0c2aedf3cb0a240fb1a7ecc51daea4b8b13300c482d128a395
+AJ-20260520-21,jikh,2026-05-20,14:15,unspecified,claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,11367db3a4077a0173a12b4e48227d10a07a40cda3afb23c8d41b03f7649eb10
+AJ-20260520-26,jikh,2026-05-20,16:56,"unspecified (deal); ~5 years (cars, by ~2031)",claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,a7b2d6ca46c74463f59ea26fffe38e9b35158fa669636602ac0cbb86bb9320c1
+AJ-20260520-29,jikh,2026-05-20,19:44,unspecified,claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,4a8e577e67be17c689683efe76c2b9384cd2184a93e1c93918a87a89717b4730
+AJ-20260520-31,jikh,2026-05-20,21:27,unspecified,claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,b34a9472f1e015d6d5f45c5768a277beac1d7eece4cc49079dc2a24b55af4bb0
+AJ-20260520-32,jikh,2026-05-20,23:31,"1–3 years, INFERRED",claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,6f656eb59af54c97d13f65026a2b1af5a7214afb693112d308bf885268328514
+AJ-20260520-35,jikh,2026-05-20,24:22,"1–4 months, INFERRED",claims/predictions/jikh_2026-05-20_3DYnQMmQk8k.predictions.md,4c2ec27bc21c3991c68d220dcf3792c3d6aed6b707275e04e84f8904f8fea9db
+AJ-20260526-01,jikh,2026-05-26,0:00,"3–6 months, INFERRED",claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,f05a1d515bf9b226e9f5ce1d1a8000e84c21f8227ea5d1c49483ce9b7b66224b
+AJ-20260526-05,jikh,2026-05-26,1:54,by 2027-01,claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,b02f56f767cc7f03de2212b42b5c6a935023af1862beec5fc3b22889735c6d41
+AJ-20260526-16,jikh,2026-05-26,8:29,2026–2036,claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,863df78a31bc2e9334b5c6dcd3b3df306315f318be1d8106df88d3a01f379c21
+AJ-20260526-19,jikh,2026-05-26,11:36,Aug–Nov 2026,claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,71ecd230091169b3e4de0a1ea7fa507b3269069a9985f15413ae2d3e0ec9e8b1
+AJ-20260526-25,jikh,2026-05-26,15:50,June 2026,claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,e8fe181195064ba795e7dd86a49930ea9d5f245e9ca5490ae110ebed47646d8a
+AJ-20260526-28,jikh,2026-05-26,17:21,unspecified,claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,cb96be88957ac446bc2d89eef159268ddb86c7aa408233c875fa460be5763f7b
+AJ-20260526-29,jikh,2026-05-26,18:20,"unspecified (""eventually"")",claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,57d50fa3f28d0f7095539140deb1ed2656fa8958f3f2c09f114abcf3b1d53cd4
+AJ-20260526-33,jikh,2026-05-26,22:20,unspecified,claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,88835ff2bcce4d481079c81a5cc9685379aacf386502fd3260d9543980bb9293
+AJ-20260526-36,jikh,2026-05-26,26:28,"unspecified, INFERRED 3–6 months",claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,6c5a3325cd0b498a183463e261f8ab02f50d8ab06c2bae426989265e4405a623
+AJ-20260526-37,jikh,2026-05-26,27:40,unspecified,claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,62c46ef29ba94673e7cdccd5140de94763d2eb34cb7b00954c12db7c46c2e6d9
+AJ-20260526-39,jikh,2026-05-26,28:30,"3–6 months, INFERRED",claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,b7428cf055f02955b015d0d3654a39a07db6faee658fd42075d78de12272a43d
+AJ-20260526-43,jikh,2026-05-26,29:57,unspecified,claims/predictions/jikh_2026-05-26_w8yTmTdF1Kw.predictions.md,959dada7d6e269f85efcae24f3ac80061b9d06c61fd1e9d89014977872f1adad
+AJ-20260605-01,jikh,2026-06-05,0:00,"unspecified, INFERRED 6–24 months",claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,2e6fe1257bf35c2482c9fb5be771b26e99004f199953ad84dd79601c72e79468
+AJ-20260605-02,jikh,2026-06-05,0:00,by ~2026-07-15,claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,b7355408dd11f14a06d11d3ebfb87d7c0a59998bb46608ccc9eac77ab99414ae
+AJ-20260605-12,jikh,2026-06-05,6:56,"by ~Sept 2026, INFERRED",claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,8b15bbf65f30adc450428008b4201c6a20ca0d988e87ae8ca9564b25386aecf9
+AJ-20260605-22,jikh,2026-06-05,15:46,FY2027,claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,601feaf7e478e4cdb6bef4d4212e7244d0b95336f41c59a98465bfc6b518c98c
+AJ-20260605-25,jikh,2026-06-05,17:14,unspecified,claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,648eac9334ff46449e2484dde09e0cb470324ed03e0b72033cb63c7254af5ba9
+AJ-20260605-27,jikh,2026-06-05,19:20,at completion of the three IPOs,claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,778885ecf2dc04288201a902ef5a494126ef0baf1eccec3da1d72ad8ac2f9214
+AJ-20260605-30,jikh,2026-06-05,21:44,"6–18 months, INFERRED",claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,422733fd3b0850c74f7ba626d3fa70112a0d80388b0dbc5eb633a5b9bfdd3275
+AJ-20260605-37,jikh,2026-06-05,26:15,by ~2026-06-26,claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,d3271821183edbf75325b8851f1e10e37defd8f27e67cd7b270164a020a61533
+AJ-20260605-39,jikh,2026-06-05,27:27,weeks,claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,a2852562ee391a986d3b2741948b2a517a785e0a5e34c596599b3586eab08bd7
+AJ-20260605-42,jikh,2026-06-05,28:28,"3–6 months, INFERRED",claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,475046b9ec34df2e3b5e7f0550243cfee7948f0e7d90d527f360ffbed03540c3
+AJ-20260605-45,jikh,2026-06-05,31:32,"1–3 years, INFERRED",claims/predictions/jikh_2026-06-05_yhRjvX_t4hc.predictions.md,e20191261a4b20aacf5df99b3f8df6ee95c8187dcef296287f193578a41ce122
+AJ-20260612-01,jikh,2026-06-12,0:00,"unspecified, INFERRED 12–24 months",claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md,a4ede5bce69bb21c3711f87b007bfbb37672dba6ad4a4a9cc450201b1393eaa4
+AJ-20260612-25,jikh,2026-06-12,17:26,unspecified,claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md,b3f00f213ca6a408bcce9d327d155e898c8e7ea5748cefe5fe8d3f6265919956
+AJ-20260612-28,jikh,2026-06-12,18:45,unspecified,claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md,54f048d5ded1a9cb597463a9b9267846af6090250773ff49c17d64a6b10d520b
+AJ-20260612-30,jikh,2026-06-12,20:00,unspecified,claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md,d0aec9356dfe081a40bffee6fef957b8795f5f07b3a1503f4fb466b249a642df
+AJ-20260612-37,jikh,2026-06-12,25:38,unspecified,claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md,0f43b8cf1a5bfe65c8c6294ff4d03a59defb9c506ec003158f5a4a95b7b2c2de
+AJ-20260612-41,jikh,2026-06-12,29:05,unspecified,claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md,3233cfe76dad8e62b4c973695fedf3898005e1cdf33f38cf608cf1a371e42f42
+AJ-20260612-43,jikh,2026-06-12,29:44,"""any month now"" → by ~Sept 2026, INFERRED",claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md,a7e01800c2e8e9d2126f3c6cf6ae741d8dd3c86b76b7c895d257c4d482c87c52
+AJ-20260612-45,jikh,2026-06-12,30:38,1–3 years (by 2027-06 to 2029-06),claims/predictions/jikh_2026-06-12_dg9Ezg_RS6E.predictions.md,9b87168db139ace985c29b42db845d6fd5581a160fb128d05feaa8c58a2a2abd
+AJ-20260615-01,jikh,2026-06-15,0:00,"multi-year, INFERRED (14–22 yr cycle from ~2020)",claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,a51de71ddc36907ff1ef96ba5a635759c1c3303f7f1385e17881d0cfe5cc887a
+AJ-20260615-08,jikh,2026-06-15,1:56,"multi-year, INFERRED",claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,f6c908257763608fea5930dafa45aeff516edb31686e5be2572599237396e042
+AJ-20260615-11,jikh,2026-06-15,3:46,unspecified (Warsh tenure),claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,96f37372f842ceb31cfa97aa9045c315b92e5fa89ea3c23a85fca93fc0e3256a
+AJ-20260615-14,jikh,2026-06-15,5:59,unspecified,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,c9b2bfcb9bc8923a03c918a6b5b419f9b954055f42194a82f51ee4fc304b7d63
+AJ-20260615-23,jikh,2026-06-15,12:39,days after 2026-06-17,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,b2d276dd1e6639de50ce7f93e9ffbb6024974ac4326298f2e8ef985f6d80e3cb
+AJ-20260615-25,jikh,2026-06-15,14:14,days–weeks after 2026-06-17,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,592770d810f66cf82d1a86279eca4afff1cc72ffd9cf2f9cd229062e916739d4
+AJ-20260615-26,jikh,2026-06-15,14:42,2026-06-17,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,fc25b9b2845fb7f9b08f35e386905389633dd278c9ee8904c8c1c172f0dd532a
+AJ-20260615-30,jikh,2026-06-15,16:07,"by ~2026-09-03 (stated ""<80 days"")",claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,ff85a8a509446a184e4e71adbe7a758a5e36c3b25016186472fbed9ca046cdc5
+AJ-20260615-32,jikh,2026-06-15,16:54,unspecified,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,ddc5330c7adc88584db6e6a0e1654efcba4a7b6325873700ad3ca4b128ca92b3
+AJ-20260615-34,jikh,2026-06-15,18:06,unspecified,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,34b58034dcb9097cb68c29fa08bcec294ff2c713ee38257a30eea9c45ffb82e7
+AJ-20260615-36,jikh,2026-06-15,19:39,2026-06-17/18,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,856f14ea64bbd407decb67817783b725fbacbc4d059bc8532143b8e7eede8a98
+AJ-20260615-37,jikh,2026-06-15,20:11,days after 2026-06-17,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,24774ef686bf0335289365b8d93f4fdd82bff940d8bbbe6d869432a4d4d6731d
+AJ-20260615-38,jikh,2026-06-15,20:41,weeks after 2026-06-17,claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,5194f7030f52a4ed98da3f5ce11c5d1cb49c718c274bcd548cc469686cb5964d
+AJ-20260615-41,jikh,2026-06-15,21:38,"2034–2042, INFERRED",claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,de956773a79fe54e686ca5961ce0a494315e258d9e4a5ab167322f1b079f66a5
+AJ-20260615-43,jikh,2026-06-15,23:04,"multi-year, INFERRED",claims/predictions/jikh_2026-06-15_HIBozcOlQPY.predictions.md,3660277d90b3d6f5dcb7cbb2427248da6cf296e6268e6a50005cd1f89faae984

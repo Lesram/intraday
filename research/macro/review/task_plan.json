@@ -1,0 +1,18 @@
+{
+  "task_id": "macro-adversarial-review-002-2026-09-19",
+  "scope": "Execute attached work order Phases A-E; independent blind replication, adjudication, indicator specification and local monitoring prototype",
+  "write_boundary": "research/macro/review/ only; no platform, source-package or existing artifact changes",
+  "source_cutoff": "2026-09-19; measurements as of 2026-09-18 unless documented",
+  "blind_policy": "Do not open Brief 001, claims, verify/out, analogs, regime_model.py or processed/regime_* until ALL Phase A/B files have SHA-256 entries in LOG.md. README/STATE content deferred until Phase C; README readability verified without reading.",
+  "phases": [
+    {"phase":"A", "owner":"transcript reviewer", "outputs":["PHASE_A_transcript_analysis.md","phase_a/"], "method":"Read all 58 transcripts; corpus narrative, lexical measures, sources, pitch, reversals, timing"},
+    {"phase":"B", "owner":"regime reviewer", "outputs":["PHASE_B_independent_regime_analysis.md","phase_b/"], "method":"Independent screen, expanding history, forward real/nominal returns, baseline, event lead/false-positive measures"},
+    {"phase":"preflight", "owner":"root", "outputs":["artifacts/source_manifest.json","artifacts/environment.json"], "method":"Read-only input inventory; source provenance and availability; preserve dirty working tree"},
+    {"phase":"C", "outputs":["PHASE_C_adjudication.md","phase_c/"], "method":"Only after blind hash seal; re-adjudicate >=60 verdicts with originals hidden, prediction sample, all 12 attacks"},
+    {"phase":"D", "outputs":["PHASE_D_indicator_spec.md","indicators.csv"], "method":"Pre-stated economic thresholds, denominators, false-positive records, chronological holdout, missing evidence explicit"},
+    {"phase":"E", "outputs":["PHASE_E_dashboard_spec.md","pipeline/","dashboard.html"], "method":"Read-only refresh pipeline; stale-data failures, archived readings, local self-contained responsive dashboard and recurring-report generator"}
+  ],
+  "tests_before_delivery": ["freeze verification before/after with correct runtime", "targeted pipeline and mathematical boundary tests", "blind hashes unchanged", "input manifest unchanged", "dashboard browser desktop/mobile checks", "repository safety/regression tests where dependencies available; all logs under review"],
+  "workflow_resolution": "The specific attached write-only-inside-review instruction controls over generic generators writing root artifacts/docs. Generate equivalent review/artifacts receipts and record any unavailable platform tests. Commit only review outputs on a feature branch and open a PR if authenticated GitHub access permits. Never merge or deploy.",
+  "risks": ["Untracked source package may differ from brief inventory", "historical data are revised snapshots rather than point-in-time vintages", "blind phases must be immutable after sealing", "paper trading frozen decision surface must not change"]
+}

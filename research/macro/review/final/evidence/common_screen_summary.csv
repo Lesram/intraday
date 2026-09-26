@@ -1,0 +1,625 @@
+specification,horizon_years,return_basis,asset,n,median,mean,minimum,maximum,negative_pct
+original_expanding_recomputed,1,nominal,MKT,8,1.70905511,0.1983629902,-35.95250516,22.20337507,50
+original_expanding_recomputed,1,nominal,CASH,8,4.187528994,4.144035909,0,9.881018659,0
+original_expanding_recomputed,1,nominal,NoDur,8,8.308218846,5.445540618,-20.84337607,27.48072808,25
+original_expanding_recomputed,1,nominal,Durbl,8,6.508812738,-4.116719089,-59.64930058,16.15149477,25
+original_expanding_recomputed,1,nominal,Manuf,8,2.978255441,-0.4520269673,-44.23261958,27.12551882,37.5
+original_expanding_recomputed,1,nominal,Enrgy,8,13.13338967,16.44239352,-28.87939287,73.43571974,37.5
+original_expanding_recomputed,1,nominal,Chems,8,5.304264093,1.897640477,-22.71537645,26.07035842,37.5
+original_expanding_recomputed,1,nominal,BusEq,8,-6.968773475,-6.268257335,-40.32596001,21.42923025,62.5
+original_expanding_recomputed,1,nominal,Telcm,8,1.897277222,-7.565109639,-39.78255613,10.60901449,50
+original_expanding_recomputed,1,nominal,Utils,8,6.54921448,0.4395084722,-27.51122621,16.94055596,37.5
+original_expanding_recomputed,1,nominal,Shops,8,8.444786018,2.826217404,-24.55552442,27.72019167,37.5
+original_expanding_recomputed,1,nominal,Hlth,8,2.10380514,3.392900396,-19.76024138,28.04459852,50
+original_expanding_recomputed,1,nominal,Money,8,7.805072558,8.207784799,-48.11829485,53.28953396,50
+original_expanding_recomputed,1,nominal,Other,8,-0.7661060331,-1.92382489,-40.69494974,23.74000386,50
+original_expanding_recomputed,1,nominal,BusEq minus MKT,8,-5.104194648,-6.466620325,-16.3499743,4.612505376,87.5
+original_expanding_recomputed,1,nominal,Chems minus MKT,8,1.253027314,1.699277487,-7.790225135,16.61216475,50
+original_expanding_recomputed,1,nominal,Durbl minus MKT,8,-6.550102575,-4.315082079,-23.69679542,17.09904273,75
+original_expanding_recomputed,1,nominal,Enrgy minus MKT,8,8.253370093,16.24403053,-30.36962531,81.95721993,12.5
+original_expanding_recomputed,1,nominal,Hlth minus MKT,8,0.1424241131,3.194537405,-4.041587845,16.19226378,50
+original_expanding_recomputed,1,nominal,Manuf minus MKT,8,-2.5020782,-0.6503899575,-8.280114416,10.38401503,62.5
+original_expanding_recomputed,1,nominal,Money minus MKT,8,4.707962453,8.009421808,-12.16578969,39.15444862,12.5
+original_expanding_recomputed,1,nominal,NoDur minus MKT,8,7.772856541,5.247177628,-8.925142381,15.15891404,37.5
+original_expanding_recomputed,1,nominal,Other minus MKT,8,-2.964477811,-2.12218788,-13.11529956,9.125553287,75
+original_expanding_recomputed,1,nominal,Shops minus MKT,8,3.633672719,2.627854414,-11.2488154,15.17047602,50
+original_expanding_recomputed,1,nominal,Telcm minus MKT,8,-9.161430188,-7.76347263,-19.155208,16.60175289,87.5
+original_expanding_recomputed,1,nominal,Utils minus MKT,8,-1.790163146,0.241145482,-14.56775292,25.46205615,62.5
+original_expanding_recomputed,1,real,MKT,8,-1.728446066,-4.800573228,-38.25620201,18.60690755,50
+original_expanding_recomputed,1,real,CASH,8,-0.7645421052,-1.118817314,-7.636246486,2.124208919,62.5
+original_expanding_recomputed,1,real,NoDur,8,1.783953209,0.3601322918,-25.87432397,23.7289471,50
+original_expanding_recomputed,1,real,Durbl,8,-0.01485714063,-8.901050887,-61.10065756,12.73313519,50
+original_expanding_recomputed,1,real,Manuf,8,1.613901796,-5.406207012,-46.23849254,23.38419172,37.5
+original_expanding_recomputed,1,real,Enrgy,8,7.70992916,9.871504143,-31.43749945,59.90374281,50
+original_expanding_recomputed,1,real,Chems,8,0.6552206631,-3.081239955,-25.4951939,22.36008488,50
+original_expanding_recomputed,1,real,BusEq,8,-12.58780681,-10.90756846,-42.47234993,17.85554595,62.5
+original_expanding_recomputed,1,real,Telcm,8,-8.204553072,-12.22974811,-41.94849152,8.907786193,62.5
+original_expanding_recomputed,1,real,Utils,8,0.4973777182,-4.670743921,-30.11854379,7.816501772,50
+original_expanding_recomputed,1,real,Shops,8,1.906368084,-2.037036874,-30.77149362,21.97995833,50
+original_expanding_recomputed,1,real,Hlth,8,-1.208187034,-1.589249285,-24.21946857,27.99975609,50
+original_expanding_recomputed,1,real,Money,8,2.554802549,2.866835329,-49.98440563,46.4001167,50
+original_expanding_recomputed,1,real,Other,8,-1.878403292,-6.887497321,-42.82806763,17.72083464,50
+original_expanding_recomputed,1,real,BusEq minus MKT,8,-4.635021749,-6.106995232,-16.16626672,4.610890032,87.5
+original_expanding_recomputed,1,real,Chems minus MKT,8,1.15941881,1.719333274,-7.673254235,16.42551121,50
+original_expanding_recomputed,1,real,Durbl minus MKT,8,-6.369093651,-4.100477659,-22.84445556,15.76492394,75
+original_expanding_recomputed,1,real,Enrgy minus MKT,8,8.003484234,14.67207737,-30.35898958,75.56267093,12.5
+original_expanding_recomputed,1,real,Hlth minus MKT,8,0.1595199145,3.211323943,-3.703994774,16.09934799,50
+original_expanding_recomputed,1,real,Manuf minus MKT,8,-2.350074719,-0.6056337832,-7.982290535,10.26734071,62.5
+original_expanding_recomputed,1,real,Money minus MKT,8,4.492609643,7.667408558,-11.72820362,37.39469812,12.5
+original_expanding_recomputed,1,real,NoDur minus MKT,8,7.464450148,5.16070552,-7.963790609,14.98858916,37.5
+original_expanding_recomputed,1,real,Other minus MKT,8,-2.825256014,-2.086924093,-12.72931391,8.71541606,75
+original_expanding_recomputed,1,real,Shops minus MKT,8,3.698556613,2.763536355,-10.22619582,15.00002123,50
+original_expanding_recomputed,1,real,Telcm minus MKT,8,-8.52716315,-7.42917488,-17.89351016,15.09250262,87.5
+original_expanding_recomputed,1,real,Utils minus MKT,8,-1.730339644,0.1298293071,-14.1390213,23.47542988,62.5
+original_expanding_recomputed,3,nominal,MKT,8,13.81558882,24.88896243,-15.46580282,89.16011346,25
+original_expanding_recomputed,3,nominal,CASH,8,12.86050838,14.51755267,0.4408971234,40.24480283,0
+original_expanding_recomputed,3,nominal,NoDur,8,20.00004958,26.9263053,-1.840834734,63.98852632,12.5
+original_expanding_recomputed,3,nominal,Durbl,8,9.091338451,15.02340873,-14.12207951,85.25553561,37.5
+original_expanding_recomputed,3,nominal,Manuf,8,19.97605563,19.9389678,-14.57754983,58.22648199,25
+original_expanding_recomputed,3,nominal,Enrgy,8,13.3902538,34.19406489,-27.22075553,130.9645953,25
+original_expanding_recomputed,3,nominal,Chems,8,18.76578503,21.62491754,2.866744005,51.79326133,0
+original_expanding_recomputed,3,nominal,BusEq,8,17.3847785,28.20121992,-19.01965432,141.3284298,50
+original_expanding_recomputed,3,nominal,Telcm,8,18.20593314,20.76715602,-34.66068884,122.6070091,37.5
+original_expanding_recomputed,3,nominal,Utils,8,18.3171817,16.60384856,-12.19146251,41.00924579,25
+original_expanding_recomputed,3,nominal,Shops,8,25.01240807,33.68828102,-9.693159638,112.0368525,12.5
+original_expanding_recomputed,3,nominal,Hlth,8,18.81937784,27.55095437,-25.79551725,113.0188799,37.5
+original_expanding_recomputed,3,nominal,Money,8,29.56765106,30.26395747,-46.51509159,103.3212287,25
+original_expanding_recomputed,3,nominal,Other,8,8.587190677,16.69364877,-24.79921969,97.30795799,50
+original_expanding_recomputed,3,nominal,BusEq minus MKT,8,0.7080606325,3.312257493,-24.00890589,52.16831632,50
+original_expanding_recomputed,3,nominal,Chems minus MKT,8,-5.409539974,-3.264044891,-37.36685213,28.2614718,50
+original_expanding_recomputed,3,nominal,Durbl minus MKT,8,-2.051602533,-9.865553703,-45.62433513,17.18099315,62.5
+original_expanding_recomputed,3,nominal,Enrgy minus MKT,8,8.340902929,9.305102458,-60.23684808,89.55575078,37.5
+original_expanding_recomputed,3,nominal,Hlth minus MKT,8,2.78359636,2.66199194,-24.15234272,25.15477594,50
+original_expanding_recomputed,3,nominal,Manuf minus MKT,8,-3.954116294,-4.949994628,-30.93363147,16.73256866,62.5
+original_expanding_recomputed,3,nominal,Money minus MKT,8,9.163242482,5.374995044,-31.04928878,29.14663361,25
+original_expanding_recomputed,3,nominal,NoDur minus MKT,8,3.282716369,2.037342874,-33.64978346,25.33549079,50
+original_expanding_recomputed,3,nominal,Other minus MKT,8,-5.307265311,-8.195313666,-52.5220537,32.61858595,87.5
+original_expanding_recomputed,3,nominal,Shops minus MKT,8,9.533117785,8.799318593,-8.049985112,26.68356632,37.5
+original_expanding_recomputed,3,nominal,Telcm minus MKT,8,-0.4122241097,-4.121806409,-48.36056274,33.44689562,50
+original_expanding_recomputed,3,nominal,Utils minus MKT,8,-1.571206796,-8.285113868,-51.66926537,9.941942554,50
+original_expanding_recomputed,3,real,MKT,8,2.545805678,9.234165408,-24.34090348,78.01953604,50
+original_expanding_recomputed,3,real,CASH,8,-1.256776857,-0.4921747823,-6.043960231,9.132401356,62.5
+original_expanding_recomputed,3,real,NoDur,8,10.17590431,11.23895257,-24.4929498,46.35155525,25
+original_expanding_recomputed,3,real,Durbl,8,-12.09980045,1.398661685,-24.49369365,74.34491815,62.5
+original_expanding_recomputed,3,real,Manuf,8,5.55822784,5.003675015,-21.81012929,48.90773958,37.5
+original_expanding_recomputed,3,real,Enrgy,8,1.161733748,14.7942261,-29.33430173,86.59789775,50
+original_expanding_recomputed,3,real,Chems,8,1.219926829,6.551844518,-12.12388703,42.85340319,50
+original_expanding_recomputed,3,real,BusEq,8,-4.536465116,13.37179008,-30.60149764,127.1154014,50
+original_expanding_recomputed,3,real,Telcm,8,-3.992173952,5.562781767,-38.4053628,109.4965781,62.5
+original_expanding_recomputed,3,real,Utils,8,-1.651917473,1.788240325,-18.92382332,29.39333002,50
+original_expanding_recomputed,3,real,Shops,8,8.264101249,17.67540888,-30.53319972,99.54895041,25
+original_expanding_recomputed,3,real,Hlth,8,2.21573457,11.97028981,-42.91962865,100.4731414,50
+original_expanding_recomputed,3,real,Money,8,15.21184553,13.94421173,-48.91908604,91.34663298,25
+original_expanding_recomputed,3,real,Other,8,-2.211326963,0.8951888604,-28.17928079,41.74907902,50
+original_expanding_recomputed,3,real,BusEq minus MKT,8,1.432417115,4.137624673,-19.81033039,49.09586539,50
+original_expanding_recomputed,3,real,Chems minus MKT,8,-5.319121124,-2.682320889,-35.16613285,26.6417731,50
+original_expanding_recomputed,3,real,Durbl minus MKT,8,-1.913704029,-7.835503722,-32.77722578,16.19632991,62.5
+original_expanding_recomputed,3,real,Enrgy minus MKT,8,6.654733331,5.560060691,-58.48753944,77.65588214,37.5
+original_expanding_recomputed,3,real,Hlth minus MKT,8,1.922236539,2.736124405,-18.57872517,22.45360534,50
+original_expanding_recomputed,3,real,Manuf minus MKT,8,-3.610243156,-4.230490393,-29.11179647,15.77360516,62.5
+original_expanding_recomputed,3,real,Money minus MKT,8,7.582507086,4.710046325,-29.65371159,24.89913424,25
+original_expanding_recomputed,3,real,NoDur minus MKT,8,3.207321491,2.00478716,-31.66798079,24.19673257,50
+original_expanding_recomputed,3,real,Other minus MKT,8,-5.069535921,-8.338976547,-49.42876942,23.43369505,87.5
+original_expanding_recomputed,3,real,Shops minus MKT,8,9.09607122,8.441243477,-6.19229624,22.7950064,37.5
+original_expanding_recomputed,3,real,Telcm minus MKT,8,-0.4436471747,-3.67138364,-41.9345729,31.47704202,50
+original_expanding_recomputed,3,real,Utils minus MKT,8,-1.576252585,-7.445925083,-48.62620602,8.493116754,50
+original_expanding_recomputed,5,nominal,MKT,8,48.10414663,54.55885335,-0.07251224713,144.6170361,12.5
+original_expanding_recomputed,5,nominal,CASH,8,24.03092444,24.91724289,2.488234819,69.50889788,0
+original_expanding_recomputed,5,nominal,NoDur,8,40.63012362,57.10915632,0.7833865328,184.1010217,0
+original_expanding_recomputed,5,nominal,Durbl,8,16.63641053,33.59723382,-15.67243092,150.3550857,37.5
+original_expanding_recomputed,5,nominal,Manuf,8,52.75618879,52.32292338,-7.803655267,106.1483247,25
+original_expanding_recomputed,5,nominal,Enrgy,8,72.03637308,74.59291455,-28.91740345,185.6190104,12.5
+original_expanding_recomputed,5,nominal,Chems,8,41.69569513,39.74457264,-11.95268633,109.0000368,25
+original_expanding_recomputed,5,nominal,BusEq,8,57.35917543,61.42999531,-12.7849974,142.6959183,25
+original_expanding_recomputed,5,nominal,Telcm,8,37.53808373,36.21996557,-29.38604539,95.88165422,25
+original_expanding_recomputed,5,nominal,Utils,8,42.29220829,55.59938091,16.22821357,123.3937234,0
+original_expanding_recomputed,5,nominal,Shops,8,71.07036217,78.92256385,-21.64564595,224.7593891,12.5
+original_expanding_recomputed,5,nominal,Hlth,8,48.20910729,63.25203873,-32.488557,156.309975,25
+original_expanding_recomputed,5,nominal,Money,8,72.95089526,67.00939796,-37.50879394,163.0242731,25
+original_expanding_recomputed,5,nominal,Other,8,25.80832891,38.55946952,-13.34866852,169.9039085,25
+original_expanding_recomputed,5,nominal,BusEq minus MKT,8,1.583343996,6.871141954,-33.57454537,47.41757436,50
+original_expanding_recomputed,5,nominal,Chems minus MKT,8,-18.15330883,-14.81428072,-74.67769582,34.15059733,62.5
+original_expanding_recomputed,5,nominal,Durbl minus MKT,8,-15.89516878,-20.96161953,-60.84775452,5.738049545,75
+original_expanding_recomputed,5,nominal,Enrgy minus MKT,8,10.37189084,20.03406119,-86.97144535,111.3400967,25
+original_expanding_recomputed,5,nominal,Hlth minus MKT,8,5.727142737,8.693185378,-35.67608757,63.36992711,50
+original_expanding_recomputed,5,nominal,Manuf minus MKT,8,-6.411918019,-2.235929976,-38.46871145,40.9492273,62.5
+original_expanding_recomputed,5,nominal,Money minus MKT,8,16.2568184,12.4505446,-41.66772269,42.65355545,37.5
+original_expanding_recomputed,5,nominal,NoDur minus MKT,8,7.100129405,2.55030296,-46.26156956,41.90806892,37.5
+original_expanding_recomputed,5,nominal,Other minus MKT,8,-13.80872555,-15.99938384,-63.28325873,25.28687238,87.5
+original_expanding_recomputed,5,nominal,Shops minus MKT,8,21.78951062,24.36371049,-21.5731337,80.14235295,25
+original_expanding_recomputed,5,nominal,Telcm minus MKT,8,-19.81353436,-18.33888778,-88.22328526,58.25314718,75
+original_expanding_recomputed,5,nominal,Utils minus MKT,8,-5.429463442,1.040527557,-21.22331275,35.23472786,62.5
+original_expanding_recomputed,5,real,MKT,8,26.45326977,25.54347893,-31.79552423,73.04571588,25
+original_expanding_recomputed,5,real,CASH,8,-2.381351946,0.783761043,-7.77403644,13.45069564,62.5
+original_expanding_recomputed,5,real,NoDur,8,25.43810842,26.87314068,-31.21133935,89.11883486,12.5
+original_expanding_recomputed,5,real,Durbl,8,-1.136777112,6.943680786,-33.59728975,66.65502232,50
+original_expanding_recomputed,5,real,Manuf,8,35.32573618,24.72436819,-37.07233613,78.02828874,25
+original_expanding_recomputed,5,real,Enrgy,8,39.19313055,40.89643735,-34.03442823,133.3462508,37.5
+original_expanding_recomputed,5,real,Chems,8,25.52757092,14.05451031,-39.90421448,39.12601658,25
+original_expanding_recomputed,5,real,BusEq,8,30.10808042,32.1191131,-38.17671008,102.7770282,50
+original_expanding_recomputed,5,real,Telcm,8,12.23344594,9.921266265,-37.67273816,55.10145959,25
+original_expanding_recomputed,5,real,Utils,8,28.86607456,26.25762818,-7.746424267,65.20964431,12.5
+original_expanding_recomputed,5,real,Shops,8,43.88686331,45.22517191,-46.52004406,116.1840775,12.5
+original_expanding_recomputed,5,real,Hlth,8,32.66296534,33.40298543,-53.92076113,123.9753419,25
+original_expanding_recomputed,5,real,Money,8,43.29510091,35.69453594,-43.56480632,110.5087913,25
+original_expanding_recomputed,5,real,Other,8,10.91351162,11.20915415,-31.84646646,79.6681772,37.5
+original_expanding_recomputed,5,real,BusEq minus MKT,8,1.657954033,6.575634166,-29.63450343,44.00412416,50
+original_expanding_recomputed,5,real,Chems minus MKT,8,-15.38837339,-11.48896862,-61.01050598,30.14295451,62.5
+original_expanding_recomputed,5,real,Durbl minus MKT,8,-14.23253658,-18.59979815,-56.46750558,3.819673854,75
+original_expanding_recomputed,5,real,Enrgy minus MKT,8,8.619004011,15.35295842,-80.71062958,90.96311238,25
+original_expanding_recomputed,5,real,Hlth minus MKT,8,3.781109496,7.859506502,-29.14680388,50.92962603,50
+original_expanding_recomputed,5,real,Manuf minus MKT,8,-4.937986444,-0.8191107461,-25.60764423,36.14375128,62.5
+original_expanding_recomputed,5,real,Money minus MKT,8,12.67207611,10.15105701,-37.62971062,37.46307537,37.5
+original_expanding_recomputed,5,real,NoDur minus MKT,8,6.181278412,1.329661743,-37.7949766,37.84676494,37.5
+original_expanding_recomputed,5,real,Other minus MKT,8,-12.59650722,-14.33432478,-55.73241535,16.83282874,87.5
+original_expanding_recomputed,5,real,Shops minus MKT,8,19.79628963,19.68169298,-14.72451983,53.348729,25
+original_expanding_recomputed,5,real,Telcm minus MKT,8,-17.905021,-15.62221267,-72.07704006,39.76008458,75
+original_expanding_recomputed,5,real,Utils minus MKT,8,-4.719168153,0.7141492495,-14.12782029,24.04909997,62.5
+review_expanding_recomputed,1,nominal,MKT,8,6.723863793,3.231954352,-25.74785023,29.26251291,25
+review_expanding_recomputed,1,nominal,CASH,8,3.711566325,4.318476695,0.020001,8.396589727,0
+review_expanding_recomputed,1,nominal,NoDur,8,6.832919572,9.38406567,-16.97948005,38.66388219,12.5
+review_expanding_recomputed,1,nominal,Durbl,8,-11.9938802,-7.44418022,-19.64496786,10.12728856,62.5
+review_expanding_recomputed,1,nominal,Manuf,8,0.09382237175,4.921213622,-7.760884019,23.88795374,50
+review_expanding_recomputed,1,nominal,Enrgy,8,4.437548466,7.178072919,-8.663898424,31.88102738,25
+review_expanding_recomputed,1,nominal,Chems,8,3.363991002,5.336757054,-8.485224224,32.50009466,37.5
+review_expanding_recomputed,1,nominal,BusEq,8,8.617061267,-1.700344028,-60.48707149,19.14767962,25
+review_expanding_recomputed,1,nominal,Telcm,8,1.99295708,4.405141461,-41.80587342,51.71439434,50
+review_expanding_recomputed,1,nominal,Utils,8,8.621571216,8.94773857,-21.04402492,39.45824456,25
+review_expanding_recomputed,1,nominal,Shops,8,12.61350856,7.488123309,-16.20830197,25.3045632,37.5
+review_expanding_recomputed,1,nominal,Hlth,8,9.560250498,13.16416647,-12.73380452,45.86580534,12.5
+review_expanding_recomputed,1,nominal,Money,8,2.535007264,6.595395738,-10.14292091,30.32134046,37.5
+review_expanding_recomputed,1,nominal,Other,8,2.656247629,2.309009263,-15.63968399,33.2014207,37.5
+review_expanding_recomputed,1,nominal,BusEq minus MKT,8,1.858272122,-4.932298379,-34.73922126,18.72417807,37.5
+review_expanding_recomputed,1,nominal,Chems minus MKT,8,0.8130243246,2.104802702,-12.36259497,23.90715286,50
+review_expanding_recomputed,1,nominal,Durbl minus MKT,8,-14.18505106,-10.67613457,-24.46669545,16.10046781,75
+review_expanding_recomputed,1,nominal,Enrgy minus MKT,8,3.215348619,3.946118567,-13.92639009,36.03949671,37.5
+review_expanding_recomputed,1,nominal,Hlth minus MKT,8,10.03624266,9.932212115,-5.005720269,33.11575493,12.5
+review_expanding_recomputed,1,nominal,Manuf minus MKT,8,3.14494894,1.689259271,-10.54297712,17.98696621,37.5
+review_expanding_recomputed,1,nominal,Money minus MKT,8,-0.09957529333,3.363441386,-8.651931921,38.04321288,50
+review_expanding_recomputed,1,nominal,NoDur minus MKT,8,2.363430543,6.152111318,-9.639501837,44.90417318,37.5
+review_expanding_recomputed,1,nominal,Other minus MKT,8,-1.197051215,-0.9229450885,-9.318134059,10.10816624,75
+review_expanding_recomputed,1,nominal,Shops minus MKT,8,2.26245352,4.256168957,-7.620237688,16.34896507,50
+review_expanding_recomputed,1,nominal,Telcm minus MKT,8,-1.247179982,1.173187109,-16.05802319,22.45188143,50
+review_expanding_recomputed,1,nominal,Utils minus MKT,8,-2.217726883,5.715784218,-10.47658026,65.20609479,75
+review_expanding_recomputed,1,real,MKT,8,4.571168222,-0.2872881585,-27.8982532,23.51294919,37.5
+review_expanding_recomputed,1,real,CASH,8,0.5822801555,0.631305039,-2.1823314,3.575136967,37.5
+review_expanding_recomputed,1,real,NoDur,8,4.13612657,5.72013182,-24.57387273,32.49614796,37.5
+review_expanding_recomputed,1,real,Durbl,8,-14.38869355,-10.6100156,-26.99553213,8.174429737,75
+review_expanding_recomputed,1,real,Manuf,8,-1.889907901,1.296298513,-15.86989087,19.7935096,50
+review_expanding_recomputed,1,real,Enrgy,8,1.843344656,3.468251352,-17.01896801,26.0149928,37.5
+review_expanding_recomputed,1,real,Chems,8,0.7495661974,1.712110853,-16.85663822,26.60652413,50
+review_expanding_recomputed,1,real,BusEq,8,6.893351899,-4.947860184,-61.63139821,16.12524182,37.5
+review_expanding_recomputed,1,real,Telcm,8,-0.6341928416,0.7829380646,-43.49122291,44.96617664,50
+review_expanding_recomputed,1,real,Utils,8,5.840151964,5.338913925,-28.26660892,35.41941976,37.5
+review_expanding_recomputed,1,real,Shops,8,9.754051766,3.9137999,-23.87323901,20.68348823,37.5
+review_expanding_recomputed,1,real,Hlth,8,6.775144748,9.366237532,-20.716575,39.37773139,12.5
+review_expanding_recomputed,1,real,Money,8,0.5640813777,2.924033093,-18.3626953,24.52468036,50
+review_expanding_recomputed,1,real,Other,8,0.6895674852,-1.193471388,-22.80996744,27.27665537,37.5
+review_expanding_recomputed,1,real,BusEq minus MKT,8,1.802695879,-4.660572026,-33.733145,18.24919892,37.5
+review_expanding_recomputed,1,real,Chems minus MKT,8,0.7553093685,1.999399012,-11.95401647,23.21478216,50
+review_expanding_recomputed,1,real,Durbl minus MKT,8,-13.77295231,-10.32272745,-24.12472471,15.63418509,75
+review_expanding_recomputed,1,real,Enrgy minus MKT,8,3.108761072,3.75553951,-13.73174108,34.99576341,37.5
+review_expanding_recomputed,1,real,Hlth minus MKT,8,9.845581127,9.653525691,-4.840283345,32.15669559,12.5
+review_expanding_recomputed,1,real,Manuf minus MKT,8,3.080601156,1.583586672,-10.28663094,17.46604896,37.5
+review_expanding_recomputed,1,real,Money minus MKT,8,-0.1071678196,3.211321252,-8.498509442,36.94145033,50
+review_expanding_recomputed,1,real,NoDur minus MKT,8,2.313414102,6.007419979,-9.320920404,43.60371161,37.5
+review_expanding_recomputed,1,real,Other minus MKT,8,-1.106108471,-0.9061832295,-9.081759497,9.815425482,75
+review_expanding_recomputed,1,real,Shops minus MKT,8,2.235999234,4.201088058,-7.426933928,15.95144976,50
+review_expanding_recomputed,1,real,Telcm minus MKT,8,-1.213222729,1.070226223,-15.59296971,21.45322745,50
+review_expanding_recomputed,1,real,Utils minus MKT,8,-2.134690577,5.626202084,-10.21081922,63.31767297,75
+review_expanding_recomputed,3,nominal,MKT,8,34.83270399,29.1586178,-42.31665497,70.86027007,12.5
+review_expanding_recomputed,3,nominal,CASH,8,13.04696638,12.77559645,0.0700210035,23.72003824,0
+review_expanding_recomputed,3,nominal,NoDur,8,34.32222712,37.74590811,4.753925526,87.48943458,0
+review_expanding_recomputed,3,nominal,Durbl,8,17.44809812,17.9277779,-32.21651008,78.12686692,37.5
+review_expanding_recomputed,3,nominal,Manuf,8,40.58868397,34.70190852,-22.54921464,78.96869097,12.5
+review_expanding_recomputed,3,nominal,Enrgy,8,27.63608898,24.98457767,-52.57651156,69.25999385,25
+review_expanding_recomputed,3,nominal,Chems,8,31.83255937,36.80104319,9.168643579,88.18815646,0
+review_expanding_recomputed,3,nominal,BusEq,8,38.45952051,41.16154156,-75.6364693,133.5428978,25
+review_expanding_recomputed,3,nominal,Telcm,8,27.35181049,18.56813206,-69.18357248,85.56783331,25
+review_expanding_recomputed,3,nominal,Utils,8,20.169261,25.27464075,-1.425086347,56.52081323,12.5
+review_expanding_recomputed,3,nominal,Shops,8,25.63995385,31.07247257,-24.93904259,80.66273047,12.5
+review_expanding_recomputed,3,nominal,Hlth,8,51.99592726,53.07658021,-20.57499113,141.5461218,25
+review_expanding_recomputed,3,nominal,Money,8,12.16072499,26.91745635,-7.506967559,102.8785013,37.5
+review_expanding_recomputed,3,nominal,Other,8,25.9835698,25.34241885,-38.52257592,75.49084826,12.5
+review_expanding_recomputed,3,nominal,BusEq minus MKT,8,-0.9943195453,12.00292376,-33.31981433,64.78990813,50
+review_expanding_recomputed,3,nominal,Chems minus MKT,8,9.161885861,7.642425389,-22.02936887,51.48529855,37.5
+review_expanding_recomputed,3,nominal,Durbl minus MKT,8,-6.077559198,-11.2308399,-60.91599551,41.66807568,62.5
+review_expanding_recomputed,3,nominal,Enrgy minus MKT,8,-4.222145931,-4.174040135,-89.0353028,49.44226599,62.5
+review_expanding_recomputed,3,nominal,Hlth minus MKT,8,32.39044069,23.91796241,-26.85692781,91.67581923,37.5
+review_expanding_recomputed,3,nominal,Manuf minus MKT,8,7.773789108,5.543290719,-27.40180783,29.70061284,37.5
+review_expanding_recomputed,3,nominal,Money minus MKT,8,-13.10125654,-2.24116145,-32.93034916,41.3694056,62.5
+review_expanding_recomputed,3,nominal,NoDur minus MKT,8,3.115245633,8.587290311,-29.24530405,53.94677286,37.5
+review_expanding_recomputed,3,nominal,Other minus MKT,8,-4.589192656,-3.816198953,-34.73704087,42.28423151,62.5
+review_expanding_recomputed,3,nominal,Shops minus MKT,8,0.2192547577,1.913854768,-42.12740355,44.20393923,50
+review_expanding_recomputed,3,nominal,Telcm minus MKT,8,-9.092129374,-10.59048574,-43.99215268,26.47788107,75
+review_expanding_recomputed,3,nominal,Utils minus MKT,8,-3.914558242,-3.883977054,-44.55764328,40.89156863,50
+review_expanding_recomputed,3,real,MKT,8,26.49779571,17.10317421,-46.36295813,57.18714197,25
+review_expanding_recomputed,3,real,CASH,8,2.510569581,1.641483067,-5.029590211,8.008132076,37.5
+review_expanding_recomputed,3,real,NoDur,8,23.18540512,24.73090131,-18.40023983,63.67909274,12.5
+review_expanding_recomputed,3,real,Durbl,8,0.385018861,7.21139335,-36.97130627,68.75724277,50
+review_expanding_recomputed,3,real,Manuf,8,25.05293854,22.05536257,-27.98214086,64.64668483,25
+review_expanding_recomputed,3,real,Enrgy,8,19.87460781,12.63780694,-55.07102724,54.42443684,37.5
+review_expanding_recomputed,3,real,Chems,8,22.0102973,23.82776764,-7.920250782,73.1283607,12.5
+review_expanding_recomputed,3,real,BusEq,8,28.727541,28.67942565,-77.34549348,114.8535796,25
+review_expanding_recomputed,3,real,Telcm,8,12.20338744,6.989231728,-71.34524684,76.11121689,25
+review_expanding_recomputed,3,real,Utils,8,12.11637185,13.26036704,-13.82376856,39.4269991,37.5
+review_expanding_recomputed,3,real,Shops,8,16.12281987,19.01635874,-30.20432997,71.15971775,37.5
+review_expanding_recomputed,3,real,Hlth,8,42.4045078,39.24849405,-38.13060807,110.870816,25
+review_expanding_recomputed,3,real,Money,8,5.134180122,15.36752726,-27.95106029,86.64310765,50
+review_expanding_recomputed,3,real,Other,8,14.54238085,13.76885713,-42.83502165,62.98581177,25
+review_expanding_recomputed,3,real,BusEq minus MKT,8,-0.9615403264,11.57625143,-30.98253535,60.17314222,50
+review_expanding_recomputed,3,real,Chems minus MKT,8,7.437630211,6.724593424,-20.45961145,47.87376864,37.5
+review_expanding_recomputed,3,real,Durbl minus MKT,8,-5.659678509,-9.891780865,-53.17992931,39.47629959,62.5
+review_expanding_recomputed,3,real,Enrgy minus MKT,8,-3.75647843,-4.465367273,-84.35197042,44.72893427,62.5
+review_expanding_recomputed,3,real,Hlth minus MKT,8,30.44118178,22.14531983,-20.92063717,80.03338936,37.5
+review_expanding_recomputed,3,real,Manuf minus MKT,8,6.627197228,4.952188358,-25.96044952,27.58422187,37.5
+review_expanding_recomputed,3,real,Money minus MKT,8,-11.13506785,-1.735646959,-31.19818489,38.4674734,62.5
+review_expanding_recomputed,3,real,NoDur minus MKT,8,2.889551702,7.627727097,-27.70697628,50.16257835,37.5
+review_expanding_recomputed,3,real,Other minus MKT,8,-3.996576616,-3.334317083,-31.95720206,39.27116352,62.5
+review_expanding_recomputed,3,real,Shops minus MKT,8,0.4732914195,1.91318453,-38.75614946,41.87877457,50
+review_expanding_recomputed,3,real,Telcm minus MKT,8,-8.3350995,-10.11394249,-40.85738252,25.12855689,75
+review_expanding_recomputed,3,real,Utils minus MKT,8,-4.084729284,-3.842807172,-40.99190875,38.02315517,50
+review_expanding_recomputed,5,nominal,MKT,8,49.32596023,57.55724969,-14.310336,158.329233,12.5
+review_expanding_recomputed,5,nominal,CASH,8,19.84081153,19.13329238,0.1901670901,35.24281598,0
+review_expanding_recomputed,5,nominal,NoDur,8,54.0494895,71.87273652,20.94393392,149.3430927,0
+review_expanding_recomputed,5,nominal,Durbl,8,40.88153328,53.81905783,-5.950009315,162.3857542,12.5
+review_expanding_recomputed,5,nominal,Manuf,8,48.0274818,57.97333571,13.18954891,126.9394293,0
+review_expanding_recomputed,5,nominal,Enrgy,8,56.80302523,57.5916851,-3.013325092,102.6025668,12.5
+review_expanding_recomputed,5,nominal,Chems,8,48.27458912,57.26864995,4.091052037,146.0681463,0
+review_expanding_recomputed,5,nominal,BusEq,8,77.07929021,79.08752098,-64.95945657,289.4739579,12.5
+review_expanding_recomputed,5,nominal,Telcm,8,39.07182505,49.90911789,-58.36186582,142.7009513,25
+review_expanding_recomputed,5,nominal,Utils,8,54.87673513,53.43134393,2.472781765,97.86124855,0
+review_expanding_recomputed,5,nominal,Shops,8,69.49565526,67.17190037,3.46910102,130.4068621,0
+review_expanding_recomputed,5,nominal,Hlth,8,71.20408091,84.64705058,-19.34159509,264.8333413,12.5
+review_expanding_recomputed,5,nominal,Money,8,54.9692919,70.694551,-25.91135764,215.4950778,12.5
+review_expanding_recomputed,5,nominal,Other,8,47.69058938,42.00113698,-1.214173581,81.20025707,12.5
+review_expanding_recomputed,5,nominal,BusEq minus MKT,8,12.00482708,21.5302713,-50.64912056,131.1447249,37.5
+review_expanding_recomputed,5,nominal,Chems minus MKT,8,-13.6283011,-0.2885997395,-28.50934504,73.8198965,62.5
+review_expanding_recomputed,5,nominal,Durbl minus MKT,8,-19.2619825,-3.738191856,-67.10112426,100.8226187,62.5
+review_expanding_recomputed,5,nominal,Enrgy minus MKT,8,8.000034516,0.03443540926,-87.31909846,109.0869623,37.5
+review_expanding_recomputed,5,nominal,Hlth minus MKT,8,18.0830322,27.08980089,-38.4281627,106.5041084,25
+review_expanding_recomputed,5,nominal,Manuf minus MKT,8,-7.463457977,0.4160860203,-31.38980361,47.78964465,62.5
+review_expanding_recomputed,5,nominal,Money minus MKT,8,7.240397549,13.13730131,-40.63390949,62.63838866,25
+review_expanding_recomputed,5,nominal,NoDur minus MKT,8,12.74069791,14.31548683,-24.71399552,76.51130485,25
+review_expanding_recomputed,5,nominal,Other minus MKT,8,-12.6233959,-15.5561127,-95.55220958,21.37029813,62.5
+review_expanding_recomputed,5,nominal,Shops minus MKT,8,20.09475212,9.61465068,-44.69258699,31.49161995,25
+review_expanding_recomputed,5,nominal,Telcm minus MKT,8,-9.365696317,-7.648131799,-48.16990961,45.66385656,62.5
+review_expanding_recomputed,5,nominal,Utils minus MKT,8,-5.565830598,-4.125905759,-83.89593562,81.39526133,62.5
+review_expanding_recomputed,5,real,MKT,8,24.63203295,34.4858378,-24.11738714,129.8358806,25
+review_expanding_recomputed,5,real,CASH,8,0.9417565529,0.4145691011,-12.72330726,13.1715261,37.5
+review_expanding_recomputed,5,real,NoDur,8,33.48354578,47.25873894,-17.28873377,121.840899,12.5
+review_expanding_recomputed,5,real,Durbl,8,23.371581,30.39121581,-16.44443278,117.146406,50
+review_expanding_recomputed,5,real,Manuf,8,26.03653784,35.02863961,-22.59181084,101.9083284,12.5
+review_expanding_recomputed,5,real,Enrgy,8,33.19079624,33.48680062,-8.953683696,80.25578769,25
+review_expanding_recomputed,5,real,Chems,8,29.16148357,34.76736515,-28.81410056,118.9271747,25
+review_expanding_recomputed,5,real,BusEq,8,48.68475389,53.49171921,-68.96979323,246.5155262,25
+review_expanding_recomputed,5,real,Telcm,8,5.917126353,27.16775304,-63.12728667,115.9313766,50
+review_expanding_recomputed,5,real,Utils,8,31.72983258,30.50713805,-13.62212798,64.26744613,25
+review_expanding_recomputed,5,real,Shops,8,41.44028951,43.08363863,-29.23944109,102.5799704,25
+review_expanding_recomputed,5,real,Hlth,8,43.10098169,59.53850239,-44.83924422,224.5927351,25
+review_expanding_recomputed,5,real,Money,8,31.58538054,45.97469484,-34.17842478,180.6964129,25
+review_expanding_recomputed,5,real,Other,8,23.44264437,20.66081195,-15.14179659,62.33311353,37.5
+review_expanding_recomputed,5,real,BusEq minus MKT,8,10.79007053,19.00588141,-44.85240609,116.6796456,37.5
+review_expanding_recomputed,5,real,Chems minus MKT,8,-10.58192755,0.281527348,-24.03151856,65.37132212,62.5
+review_expanding_recomputed,5,real,Durbl minus MKT,8,-16.36502869,-4.094621993,-59.6999643,83.43924526,62.5
+review_expanding_recomputed,5,real,Enrgy minus MKT,8,6.623266923,-0.9990371759,-81.97087142,96.60212611,37.5
+review_expanding_recomputed,5,real,Hlth minus MKT,8,15.47841,25.05266459,-26.2802928,94.7568545,25
+review_expanding_recomputed,5,real,Manuf minus MKT,8,-5.736623683,0.5428018148,-27.92755227,42.32019283,62.5
+review_expanding_recomputed,5,real,Money minus MKT,8,5.946524707,11.48885704,-36.09983724,55.46952077,25
+review_expanding_recomputed,5,real,NoDur minus MKT,8,10.58150707,12.77290114,-20.45292178,67.75470289,25
+review_expanding_recomputed,5,real,Other minus MKT,8,-11.50126474,-13.82502584,-85.01293479,18.01376761,62.5
+review_expanding_recomputed,5,real,Shops minus MKT,8,16.80825656,8.597800829,-39.76305728,29.56278265,25
+review_expanding_recomputed,5,real,Telcm minus MKT,8,-8.330679605,-7.31808476,-39.86467475,31.22864682,62.5
+review_expanding_recomputed,5,real,Utils minus MKT,8,-5.120993934,-3.978699747,-74.64233151,72.07969802,62.5
+original_full_history_diagnostic,1,nominal,MKT,8,0.6464309577,-0.4100885255,-35.95250516,22.20337507,50
+original_full_history_diagnostic,1,nominal,CASH,8,3.936594864,4.081302377,0,9.881018659,0
+original_full_history_diagnostic,1,nominal,NoDur,8,8.308218846,4.942634749,-20.84337607,27.48072808,25
+original_full_history_diagnostic,1,nominal,Durbl,8,1.523868587,-5.818108759,-59.64930058,16.15149477,37.5
+original_full_history_diagnostic,1,nominal,Manuf,8,2.31846814,-0.4090637087,-44.23261958,27.12551882,37.5
+original_full_history_diagnostic,1,nominal,Enrgy,8,5.407236518,13.21337179,-28.87939287,73.43571974,37.5
+original_full_history_diagnostic,1,nominal,Chems,8,2.32296419,1.152315501,-22.71537645,26.07035842,37.5
+original_full_history_diagnostic,1,nominal,BusEq,8,-0.8047196287,-3.175984839,-40.32596001,28.96218806,50
+original_full_history_diagnostic,1,nominal,Telcm,8,1.897277222,-7.987363257,-39.78255613,8.711254293,50
+original_full_history_diagnostic,1,nominal,Utils,8,3.84559177,-0.7543193914,-27.51122621,16.94055596,37.5
+original_full_history_diagnostic,1,nominal,Shops,8,4.703959684,0.5164708917,-24.55552442,27.35002577,37.5
+original_full_history_diagnostic,1,nominal,Hlth,8,5.083671562,4.350614498,-19.76024138,29.7465785,50
+original_full_history_diagnostic,1,nominal,Money,8,5.215424193,3.338618693,-48.11829485,36.79764955,50
+original_full_history_diagnostic,1,nominal,Other,8,-0.6065886764,-3.060857125,-40.69494974,23.74000386,50
+original_full_history_diagnostic,1,nominal,BusEq minus MKT,8,-4.458932899,-2.765896313,-16.3499743,19.14782596,75
+original_full_history_diagnostic,1,nominal,Chems minus MKT,8,1.253027314,1.562404027,-8.329288821,16.61216475,50
+original_full_history_diagnostic,1,nominal,Durbl minus MKT,8,-8.788365283,-5.408020233,-23.69679542,17.09904273,75
+original_full_history_diagnostic,1,nominal,Enrgy minus MKT,8,7.127769122,13.62346032,-40.20260394,81.95721993,25
+original_full_history_diagnostic,1,nominal,Hlth minus MKT,8,1.83849869,4.760703023,-4.041587845,18.35385698,37.5
+original_full_history_diagnostic,1,nominal,Manuf minus MKT,8,0.4899237495,0.001024816827,-8.574629168,10.38401503,50
+original_full_history_diagnostic,1,nominal,Money minus MKT,8,4.50538502,3.748707219,-12.16578969,14.59427448,12.5
+original_full_history_diagnostic,1,nominal,NoDur minus MKT,8,6.695987397,5.352723275,-8.925142381,15.15891404,25
+original_full_history_diagnostic,1,nominal,Other minus MKT,8,-2.59244575,-2.6507686,-13.11529956,4.792166724,75
+original_full_history_diagnostic,1,nominal,Shops minus MKT,8,-4.094076297,0.9265594172,-11.2488154,15.95730425,62.5
+original_full_history_diagnostic,1,nominal,Telcm minus MKT,8,-9.209929781,-7.577274732,-19.155208,16.60175289,87.5
+original_full_history_diagnostic,1,nominal,Utils minus MKT,8,-3.634502008,-0.3442308658,-14.56775292,25.46205615,62.5
+original_full_history_diagnostic,1,real,MKT,8,-1.728446066,-5.10530019,-38.25620201,18.60690755,50
+original_full_history_diagnostic,1,real,CASH,8,-0.8596205885,-0.9107903478,-7.636246486,2.34622094,62.5
+original_full_history_diagnostic,1,real,NoDur,8,1.783953209,0.2078997371,-25.87432397,23.7289471,50
+original_full_history_diagnostic,1,real,Durbl,8,-0.6729742562,-10.30066545,-61.10065756,12.73313519,62.5
+original_full_history_diagnostic,1,real,Manuf,8,1.613901796,-5.081674477,-46.23849254,23.38419172,37.5
+original_full_history_diagnostic,1,real,Enrgy,8,1.534499225,7.013695987,-31.43749945,59.90374281,50
+original_full_history_diagnostic,1,real,Chems,8,-0.5346560167,-3.541033403,-25.4951939,22.36008488,62.5
+original_full_history_diagnostic,1,real,BusEq,8,-9.383514709,-7.64992775,-42.47234993,26.0400841,50
+original_full_history_diagnostic,1,real,Telcm,8,-8.204553072,-12.36398789,-41.94849152,7.223682395,62.5
+original_full_history_diagnostic,1,real,Utils,8,-1.027403508,-5.555143536,-30.11854379,7.816501772,50
+original_full_history_diagnostic,1,real,Shops,8,-0.5607531359,-3.950977286,-30.77149362,27.06326163,50
+original_full_history_diagnostic,1,real,Hlth,8,-1.208187034,-0.3721929171,-24.21946857,29.45441786,50
+original_full_history_diagnostic,1,real,Money,8,2.554802549,-1.485369428,-49.98440563,32.77166988,50
+original_full_history_diagnostic,1,real,Other,8,-1.878403292,-7.680042419,-42.82806763,11.26576869,50
+original_full_history_diagnostic,1,real,BusEq minus MKT,8,-4.202995128,-2.544627559,-16.16626672,18.71396283,75
+original_full_history_diagnostic,1,real,Chems minus MKT,8,1.15941881,1.564266787,-8.213330072,16.42551121,50
+original_full_history_diagnostic,1,real,Durbl minus MKT,8,-8.284574301,-5.195365263,-22.84445556,15.76492394,75
+original_full_history_diagnostic,1,real,Enrgy minus MKT,8,6.960213544,12.11899618,-40.11207656,75.56267093,25
+original_full_history_diagnostic,1,real,Hlth minus MKT,8,1.807279644,4.733107273,-3.674170768,18.31252815,37.5
+original_full_history_diagnostic,1,real,Manuf minus MKT,8,0.5450181903,0.02362571308,-8.555320996,10.26734071,50
+original_full_history_diagnostic,1,real,Money minus MKT,8,4.123452292,3.619930763,-11.72820362,14.16476233,12.5
+original_full_history_diagnostic,1,real,NoDur minus MKT,8,6.6091945,5.313199928,-7.963790609,14.98858916,25
+original_full_history_diagnostic,1,real,Other minus MKT,8,-2.534011695,-2.574742228,-12.72931391,4.275989191,75
+original_full_history_diagnostic,1,real,Shops minus MKT,8,-3.932198801,1.154322905,-10.22619582,15.92137193,62.5
+original_full_history_diagnostic,1,real,Telcm minus MKT,8,-8.640122048,-7.258687702,-17.89351016,15.09250262,87.5
+original_full_history_diagnostic,1,real,Utils minus MKT,8,-3.559141282,-0.4498433459,-14.1390213,23.47542988,62.5
+original_full_history_diagnostic,3,nominal,MKT,8,30.8474952,29.98887172,-15.46580282,89.16011346,25
+original_full_history_diagnostic,3,nominal,CASH,8,12.65279501,14.04707447,0.5715124748,40.24480283,0
+original_full_history_diagnostic,3,nominal,NoDur,8,32.568884,31.34124556,-1.840834734,63.98852632,12.5
+original_full_history_diagnostic,3,nominal,Durbl,8,17.15181084,17.03852682,-14.12207951,85.25553561,37.5
+original_full_history_diagnostic,3,nominal,Manuf,8,28.67320199,26.58751998,-14.57754983,58.22648199,12.5
+original_full_history_diagnostic,3,nominal,Enrgy,8,27.66295284,41.04655679,-26.13805284,130.9645953,25
+original_full_history_diagnostic,3,nominal,Chems,8,22.36246732,24.12065946,3.004167258,51.79326133,0
+original_full_history_diagnostic,3,nominal,BusEq,8,40.7218459,38.18627801,-19.01965432,141.3284298,37.5
+original_full_history_diagnostic,3,nominal,Telcm,8,22.72077399,21.89586623,-34.66068884,122.6070091,37.5
+original_full_history_diagnostic,3,nominal,Utils,8,20.92350921,17.25543044,-12.19146251,41.00924579,25
+original_full_history_diagnostic,3,nominal,Shops,8,30.54599731,37.77618998,-9.693159638,112.0368525,12.5
+original_full_history_diagnostic,3,nominal,Hlth,8,23.99473813,30.83384741,-25.79551725,113.0188799,37.5
+original_full_history_diagnostic,3,nominal,Money,8,39.45923204,39.36367814,-46.51509159,103.3212287,25
+original_full_history_diagnostic,3,nominal,Other,8,27.02755436,24.52639672,-24.79921969,97.30795799,37.5
+original_full_history_diagnostic,3,nominal,BusEq minus MKT,8,12.3409979,8.197406291,-24.00890589,52.16831632,37.5
+original_full_history_diagnostic,3,nominal,Chems minus MKT,8,-14.45129959,-5.868212262,-37.36685213,28.2614718,62.5
+original_full_history_diagnostic,3,nominal,Durbl minus MKT,8,-12.1512935,-12.9503449,-45.62433513,17.18099315,75
+original_full_history_diagnostic,3,nominal,Enrgy minus MKT,8,13.214314,11.05768506,-62.19691972,89.55575078,37.5
+original_full_history_diagnostic,3,nominal,Hlth minus MKT,8,3.675915174,0.8449756895,-24.15234272,23.85876644,37.5
+original_full_history_diagnostic,3,nominal,Manuf minus MKT,8,-1.23512632,-3.401351741,-30.93363147,16.73256866,50
+original_full_history_diagnostic,3,nominal,Money minus MKT,8,12.28610515,9.374806417,-31.04928878,54.46566472,25
+original_full_history_diagnostic,3,nominal,NoDur minus MKT,8,3.221875827,1.352373842,-33.64978346,25.33549079,50
+original_full_history_diagnostic,3,nominal,Other minus MKT,8,-4.381125332,-5.462475003,-52.5220537,32.61858595,75
+original_full_history_diagnostic,3,nominal,Shops minus MKT,8,7.374545914,7.78731826,-8.049985112,22.90470739,37.5
+original_full_history_diagnostic,3,nominal,Telcm minus MKT,8,-13.41992959,-8.093005488,-48.36056274,33.44689562,62.5
+original_full_history_diagnostic,3,nominal,Utils minus MKT,8,-6.89290344,-12.73344128,-51.66926537,7.042204207,62.5
+original_full_history_diagnostic,3,real,MKT,8,13.6286998,14.2603794,-24.34090348,78.01953604,37.5
+original_full_history_diagnostic,3,real,CASH,8,-1.25163525,-0.3764891696,-6.043960231,9.132401356,62.5
+original_full_history_diagnostic,3,real,NoDur,8,16.61616806,15.72457662,-24.4929498,46.35155525,25
+original_full_history_diagnostic,3,real,Durbl,8,-4.509857519,3.697614026,-24.49369365,74.34491815,50
+original_full_history_diagnostic,3,real,Manuf,8,8.961536343,11.4197271,-18.4170459,48.90773958,25
+original_full_history_diagnostic,3,real,Enrgy,8,20.23717938,21.37098311,-28.17781993,86.59789775,37.5
+original_full_history_diagnostic,3,real,Chems,8,2.967965557,9.309832336,-10.68268199,42.85340319,37.5
+original_full_history_diagnostic,3,real,BusEq,8,11.56304742,22.60109717,-30.60149764,127.1154014,37.5
+original_full_history_diagnostic,3,real,Telcm,8,1.697623567,7.065978256,-38.4053628,109.4965781,50
+original_full_history_diagnostic,3,real,Utils,8,1.2716675,2.901636914,-18.92382332,29.39333002,37.5
+original_full_history_diagnostic,3,real,Shops,8,10.33445018,21.87341437,-30.53319972,99.54895041,25
+original_full_history_diagnostic,3,real,Hlth,8,9.399371505,15.50857597,-42.91962865,100.4731414,50
+original_full_history_diagnostic,3,real,Money,8,22.20979995,22.7220199,-48.91908604,91.34663298,25
+original_full_history_diagnostic,3,real,Other,8,15.95380706,8.293075993,-28.17928079,41.74907902,37.5
+original_full_history_diagnostic,3,real,BusEq minus MKT,8,11.12124589,8.340717775,-19.81033039,49.09586539,37.5
+original_full_history_diagnostic,3,real,Chems minus MKT,8,-11.37395066,-4.95054706,-35.16613285,26.6417731,62.5
+original_full_history_diagnostic,3,real,Durbl minus MKT,8,-11.09689973,-10.56276537,-32.77722578,16.19632991,75
+original_full_history_diagnostic,3,real,Enrgy minus MKT,8,11.49697422,7.110603715,-60.47929333,77.65588214,37.5
+original_full_history_diagnostic,3,real,Hlth minus MKT,8,2.789475727,1.248196572,-18.57872517,22.45360534,37.5
+original_full_history_diagnostic,3,real,Manuf minus MKT,8,-1.0682486,-2.840652295,-29.11179647,15.77360516,50
+original_full_history_diagnostic,3,real,Money minus MKT,8,10.40329406,8.461640505,-29.65371159,48.40561137,25
+original_full_history_diagnostic,3,real,NoDur minus MKT,8,3.152978359,1.464197225,-31.66798079,24.19673257,50
+original_full_history_diagnostic,3,real,Other minus MKT,8,-3.592424178,-5.967303403,-49.42876942,23.43369505,75
+original_full_history_diagnostic,3,real,Shops minus MKT,8,7.00261839,7.613034978,-6.19229624,21.52941436,37.5
+original_full_history_diagnostic,3,real,Telcm minus MKT,8,-10.76422095,-7.19440114,-41.9345729,31.47704202,62.5
+original_full_history_diagnostic,3,real,Utils minus MKT,8,-6.618522772,-11.35874248,-48.62620602,5.417080159,62.5
+original_full_history_diagnostic,5,nominal,MKT,8,55.23674788,56.34200367,-0.07251224713,144.6170361,12.5
+original_full_history_diagnostic,5,nominal,CASH,8,24.03092444,25.03483021,2.488234819,69.50889788,0
+original_full_history_diagnostic,5,nominal,NoDur,8,47.46728655,60.19930854,0.7833865328,184.1010217,0
+original_full_history_diagnostic,5,nominal,Durbl,8,17.91888852,34.28185118,-15.67243092,150.3550857,25
+original_full_history_diagnostic,5,nominal,Manuf,8,61.50758789,54.90326541,-7.803655267,106.1483247,25
+original_full_history_diagnostic,5,nominal,Enrgy,8,73.70564075,75.50076724,-24.99311723,185.6190104,12.5
+original_full_history_diagnostic,5,nominal,Chems,8,41.16619414,39.13015988,-11.95268633,109.0000368,25
+original_full_history_diagnostic,5,nominal,BusEq,8,85.05067358,69.16604647,-12.7849974,142.6959183,25
+original_full_history_diagnostic,5,nominal,Telcm,8,36.67804576,33.86646854,-29.38604539,95.88165422,25
+original_full_history_diagnostic,5,nominal,Utils,8,45.15067149,54.58695871,11.69956805,123.3937234,0
+original_full_history_diagnostic,5,nominal,Shops,8,76.07502599,81.06039281,-21.64564595,224.7593891,12.5
+original_full_history_diagnostic,5,nominal,Hlth,8,49.74265146,61.43992221,-32.488557,156.309975,25
+original_full_history_diagnostic,5,nominal,Money,8,80.27454039,70.30050451,-37.50879394,163.0242731,25
+original_full_history_diagnostic,5,nominal,Other,8,31.20821303,42.85400407,-13.34866852,169.9039085,25
+original_full_history_diagnostic,5,nominal,BusEq minus MKT,8,9.179508945,12.8240428,-33.57454537,52.33317994,37.5
+original_full_history_diagnostic,5,nominal,Chems minus MKT,8,-13.91778182,-17.21184379,-74.67769582,34.15059733,75
+original_full_history_diagnostic,5,nominal,Durbl minus MKT,8,-15.89516878,-22.06015248,-59.51230969,5.738049545,87.5
+original_full_history_diagnostic,5,nominal,Enrgy minus MKT,8,10.37189084,19.15876357,-95.90095296,111.3400967,25
+original_full_history_diagnostic,5,nominal,Hlth minus MKT,8,0.8337899935,5.097918542,-35.67608757,57.82976891,50
+original_full_history_diagnostic,5,nominal,Manuf minus MKT,8,-6.411918019,-1.438738257,-38.46871145,40.9492273,62.5
+original_full_history_diagnostic,5,nominal,Money minus MKT,8,17.15356661,13.95850084,-41.66772269,52.92370894,37.5
+original_full_history_diagnostic,5,nominal,NoDur minus MKT,8,7.100129405,3.85730487,-46.26156956,41.90806892,37.5
+original_full_history_diagnostic,5,nominal,Other minus MKT,8,-10.57531898,-13.48799959,-63.28325873,25.28687238,87.5
+original_full_history_diagnostic,5,nominal,Shops minus MKT,8,23.73903062,24.71838914,-21.5731337,80.14235295,25
+original_full_history_diagnostic,5,nominal,Telcm minus MKT,8,-27.11265226,-22.47553512,-88.22328526,58.25314718,75
+original_full_history_diagnostic,5,nominal,Utils minus MKT,8,-5.429463442,-1.755044957,-27.86609198,35.23472786,62.5
+original_full_history_diagnostic,5,real,MKT,8,27.20830746,27.23252154,-31.79552423,73.04571588,25
+original_full_history_diagnostic,5,real,CASH,8,-2.381351946,0.9339728029,-7.77403644,13.45069564,62.5
+original_full_history_diagnostic,5,real,NoDur,8,33.31118408,29.62936405,-31.21133935,89.11883486,12.5
+original_full_history_diagnostic,5,real,Durbl,8,2.545973887,7.769574183,-33.59728975,66.65502232,37.5
+original_full_history_diagnostic,5,real,Manuf,8,39.99305083,27.1220989,-37.07233613,78.02828874,25
+original_full_history_diagnostic,5,real,Enrgy,8,40.72478201,41.73862118,-30.3602605,133.3462508,37.5
+original_full_history_diagnostic,5,real,Chems,8,22.0144527,13.95780476,-39.90421448,43.86477064,25
+original_full_history_diagnostic,5,real,BusEq,8,42.12158968,38.65648598,-38.17671008,107.2669281,37.5
+original_full_history_diagnostic,5,real,Telcm,8,11.70621383,8.191587044,-37.67273816,55.10145959,37.5
+original_full_history_diagnostic,5,real,Utils,8,31.55113647,25.58537415,-10.3354584,65.20964431,25
+original_full_history_diagnostic,5,real,Shops,8,44.29113487,47.28041161,-46.52004406,116.1840775,12.5
+original_full_history_diagnostic,5,real,Hlth,8,33.27072682,32.07381745,-53.92076113,123.9753419,25
+original_full_history_diagnostic,5,real,Money,8,48.23042839,38.63755746,-43.56480632,110.5087913,25
+original_full_history_diagnostic,5,real,Other,8,10.91351162,14.89223998,-31.84646646,79.6681772,25
+original_full_history_diagnostic,5,real,BusEq minus MKT,8,7.623970609,11.42396444,-29.63450343,48.58846127,37.5
+original_full_history_diagnostic,5,real,Chems minus MKT,8,-11.46119321,-13.27471678,-61.01050598,30.14295451,75
+original_full_history_diagnostic,5,real,Durbl minus MKT,8,-14.23253658,-19.46294736,-55.25388592,3.819673854,87.5
+original_full_history_diagnostic,5,real,Enrgy minus MKT,8,8.718381023,14.50609964,-89.03872732,90.96311238,25
+original_full_history_diagnostic,5,real,Hlth minus MKT,8,-0.7621492214,4.841295908,-29.14680388,50.92962603,50
+original_full_history_diagnostic,5,real,Manuf minus MKT,8,-4.937986444,-0.1104226412,-25.60764423,36.14375128,62.5
+original_full_history_diagnostic,5,real,Money minus MKT,8,13.50770194,11.40503591,-37.62971062,42.48342392,37.5
+original_full_history_diagnostic,5,real,NoDur minus MKT,8,6.181278412,2.396842509,-37.7949766,37.84676494,37.5
+original_full_history_diagnostic,5,real,Other minus MKT,8,-9.16760809,-12.34028156,-55.73241535,16.83282874,87.5
+original_full_history_diagnostic,5,real,Shops minus MKT,8,21.61184412,20.04789007,-14.72451983,53.348729,25
+original_full_history_diagnostic,5,real,Telcm minus MKT,8,-23.35996844,-19.0409345,-72.07704006,39.76008458,75
+original_full_history_diagnostic,5,real,Utils minus MKT,8,-4.719168153,-1.647147388,-22.36893488,24.04909997,62.5
+unconditional_same_eligible_months,1,nominal,MKT,684,13.52140648,11.79795087,-42.5673857,67.01839753,21.92982456
+unconditional_same_eligible_months,1,nominal,CASH,684,4.802511954,4.555306588,0,15.21787816,0
+unconditional_same_eligible_months,1,nominal,NoDur,684,13.27036108,13.23842876,-45.30344304,63.43355217,20.02923977
+unconditional_same_eligible_months,1,nominal,Durbl,684,8.524229331,13.1902035,-65.12117332,260.8320136,33.1871345
+unconditional_same_eligible_months,1,nominal,Manuf,684,13.64745552,12.44779951,-54.53872077,84.18216355,25.73099415
+unconditional_same_eligible_months,1,nominal,Enrgy,684,12.96013437,12.37850338,-54.39154299,97.83660381,26.9005848
+unconditional_same_eligible_months,1,nominal,Chems,684,11.36275164,11.34957907,-40.52363707,61.95261293,23.24561404
+unconditional_same_eligible_months,1,nominal,BusEq,684,13.25623893,13.87487376,-63.43139899,104.9627011,25.14619883
+unconditional_same_eligible_months,1,nominal,Telcm,684,10.21785098,10.97802035,-46.0556282,73.731335,25.58479532
+unconditional_same_eligible_months,1,nominal,Utils,684,11.38259611,10.40868624,-36.66088963,51.01052983,22.51461988
+unconditional_same_eligible_months,1,nominal,Shops,684,12.76247279,13.34284049,-47.88343746,106.5029189,24.12280702
+unconditional_same_eligible_months,1,nominal,Hlth,684,13.06299469,13.41659988,-43.6008658,63.45861692,23.68421053
+unconditional_same_eligible_months,1,nominal,Money,684,12.78934526,13.00791231,-61.82905708,79.86940217,26.60818713
+unconditional_same_eligible_months,1,nominal,Other,684,12.47837296,10.40624668,-53.13817421,83.5060222,27.33918129
+unconditional_same_eligible_months,1,nominal,BusEq minus MKT,684,1.599467041,2.07692289,-36.39905002,76.17029613,45.1754386
+unconditional_same_eligible_months,1,nominal,Chems minus MKT,684,-1.133053836,-0.4483718038,-39.20302102,32.45953928,55.40935673
+unconditional_same_eligible_months,1,nominal,Durbl minus MKT,684,-2.532019981,1.392252634,-37.23234276,196.0402079,56.87134503
+unconditional_same_eligible_months,1,nominal,Enrgy minus MKT,684,-0.1692831516,0.5805525116,-63.2836631,86.54618203,50.58479532
+unconditional_same_eligible_months,1,nominal,Hlth minus MKT,684,1.856120572,1.618649014,-33.87191117,46.9930867,44.59064327
+unconditional_same_eligible_months,1,nominal,Manuf minus MKT,684,-0.1117966218,0.6498486406,-20.63833768,30.94586897,50.87719298
+unconditional_same_eligible_months,1,nominal,Money minus MKT,684,1.113404614,1.209961438,-36.78983231,51.81571858,44.44444444
+unconditional_same_eligible_months,1,nominal,NoDur minus MKT,684,1.698394253,1.440477886,-41.15417823,50.21362541,41.8128655
+unconditional_same_eligible_months,1,nominal,Other minus MKT,684,-1.416739707,-1.391704191,-22.41668888,32.20122141,60.38011696
+unconditional_same_eligible_months,1,nominal,Shops minus MKT,684,0.4183304302,1.544889615,-27.41060715,46.44324249,48.97660819
+unconditional_same_eligible_months,1,nominal,Telcm minus MKT,684,-1.057458421,-0.8199305228,-35.79442888,41.0996584,52.77777778
+unconditional_same_eligible_months,1,nominal,Utils minus MKT,684,-2.001572135,-1.389264629,-42.23746645,65.20609479,57.45614035
+unconditional_same_eligible_months,1,real,MKT,684,9.919799504,7.645965978,-47.47162674,62.98576016,28.07017544
+unconditional_same_eligible_months,1,real,CASH,684,0.45494263,0.5759803147,-8.147720827,6.98738276,40.64327485
+unconditional_same_eligible_months,1,real,NoDur,684,8.745422151,9.033300383,-51.14062501,60.59512667,28.3625731
+unconditional_same_eligible_months,1,real,Durbl,684,4.639783445,9.069088601,-65.12412492,251.4558095,42.54385965
+unconditional_same_eligible_months,1,real,Manuf,684,9.489025901,8.283149709,-54.54256789,80.30323451,31.14035088
+unconditional_same_eligible_months,1,real,Enrgy,684,9.089816728,7.989651945,-55.06292091,85.28264056,32.60233918
+unconditional_same_eligible_months,1,real,Chems,684,6.85073617,7.221505917,-41.9381071,58.22023808,31.28654971
+unconditional_same_eligible_months,1,real,BusEq,684,9.051208868,9.725887998,-64.35536701,100.0139035,31.28654971
+unconditional_same_eligible_months,1,real,Telcm,684,6.255774718,6.858284609,-46.83482468,71.37202057,35.52631579
+unconditional_same_eligible_months,1,real,Utils,684,7.12934396,6.277440634,-43.42039943,47.77783259,33.1871345
+unconditional_same_eligible_months,1,real,Shops,684,8.913809906,9.188299401,-53.44528405,101.516933,30.26315789
+unconditional_same_eligible_months,1,real,Hlth,684,8.466999466,9.228942813,-49.61974573,58.72754263,32.30994152
+unconditional_same_eligible_months,1,real,Money,684,8.667466574,8.816131151,-61.83228726,76.08130112,31.87134503
+unconditional_same_eligible_months,1,real,Other,684,8.206146524,6.266012358,-53.14213986,79.07529329,34.50292398
+unconditional_same_eligible_months,1,real,BusEq minus MKT,684,1.549205341,2.079922021,-35.15817331,73.79557513,45.1754386
+unconditional_same_eligible_months,1,real,Chems minus MKT,684,-1.092363054,-0.4244600607,-37.93181709,31.59956276,55.40935673
+unconditional_same_eligible_months,1,real,Durbl minus MKT,684,-2.416162831,1.423122624,-36.07156972,190.9461116,56.87134503
+unconditional_same_eligible_months,1,real,Enrgy minus MKT,684,-0.1554131104,0.3436859677,-62.4154499,79.73801389,50.58479532
+unconditional_same_eligible_months,1,real,Hlth minus MKT,684,1.787561245,1.582976836,-32.41093553,45.43203342,44.59064327
+unconditional_same_eligible_months,1,real,Manuf minus MKT,684,-0.1072644211,0.6371837317,-20.30000428,30.25420596,50.87719298
+unconditional_same_eligible_months,1,real,Money minus MKT,684,1.083372632,1.170165174,-35.64285518,49.85757496,44.44444444
+unconditional_same_eligible_months,1,real,NoDur minus MKT,684,1.608508853,1.387334406,-39.8711362,48.50179727,41.8128655
+unconditional_same_eligible_months,1,real,Other minus MKT,684,-1.381745526,-1.37995362,-21.21073324,31.43547279,60.38011696
+unconditional_same_eligible_months,1,real,Shops minus MKT,684,0.4102707683,1.542333423,-26.55604117,44.45281781,48.97660819
+unconditional_same_eligible_months,1,real,Telcm minus MKT,684,-1.059397996,-0.7876813688,-31.78010041,37.50672451,52.77777778
+unconditional_same_eligible_months,1,real,Utils minus MKT,684,-1.959695773,-1.368525343,-41.34266631,63.31767297,57.45614035
+unconditional_same_eligible_months,3,nominal,MKT,684,39.48433469,38.5410661,-42.31665497,126.597462,13.15789474
+unconditional_same_eligible_months,3,nominal,CASH,684,15.29782265,14.50839503,0.01,42.83989872,0
+unconditional_same_eligible_months,3,nominal,NoDur,684,37.28914404,44.61384642,-43.42714181,193.0129613,5.994152047
+unconditional_same_eligible_months,3,nominal,Durbl,684,25.36542113,39.5097035,-65.55179403,391.5347988,17.98245614
+unconditional_same_eligible_months,3,nominal,Manuf,684,39.91961069,38.59996562,-43.43175826,154.8066943,11.84210526
+unconditional_same_eligible_months,3,nominal,Enrgy,684,35.6699378,41.39007788,-52.59565144,267.7794513,15.93567251
+unconditional_same_eligible_months,3,nominal,Chems,684,36.45023782,36.61806744,-22.12900228,169.6678906,9.356725146
+unconditional_same_eligible_months,3,nominal,BusEq,684,40.1570283,45.25330064,-75.6364693,337.9282079,17.54385965
+unconditional_same_eligible_months,3,nominal,Telcm,684,32.94647998,37.43600552,-69.18357248,192.3070982,19.29824561
+unconditional_same_eligible_months,3,nominal,Utils,684,31.99951572,34.02384463,-30.1306809,127.258236,13.4502924
+unconditional_same_eligible_months,3,nominal,Shops,684,41.48150503,44.22314894,-53.07399181,206.5626743,10.23391813
+unconditional_same_eligible_months,3,nominal,Hlth,684,40.00620183,45.24030681,-30.49357383,176.7715979,16.08187135
+unconditional_same_eligible_months,3,nominal,Money,684,42.17742357,43.14627194,-67.6774266,196.7068451,11.98830409
+unconditional_same_eligible_months,3,nominal,Other,684,34.61040679,31.46391323,-51.90118264,140.3372312,18.85964912
+unconditional_same_eligible_months,3,nominal,BusEq minus MKT,684,0.8130830916,6.712234533,-60.36825601,226.4664742,48.97660819
+unconditional_same_eligible_months,3,nominal,Chems minus MKT,684,-3.348080454,-1.922998659,-94.76915508,51.48529855,54.67836257
+unconditional_same_eligible_months,3,nominal,Durbl minus MKT,684,-9.004231118,0.9686373972,-67.90417762,290.8947867,61.11111111
+unconditional_same_eligible_months,3,nominal,Enrgy minus MKT,684,-1.200693664,2.849011781,-94.2610562,238.4810029,51.02339181
+unconditional_same_eligible_months,3,nominal,Hlth minus MKT,684,7.123714935,6.699240703,-64.85188623,113.5155627,40.35087719
+unconditional_same_eligible_months,3,nominal,Manuf minus MKT,684,-1.249760691,0.05889952053,-44.76657459,53.23950945,53.07017544
+unconditional_same_eligible_months,3,nominal,Money minus MKT,684,3.546550882,4.605205839,-62.28039719,87.81240531,43.42105263
+unconditional_same_eligible_months,3,nominal,NoDur minus MKT,684,5.173419889,6.072780316,-97.80740639,75.41754809,42.10526316
+unconditional_same_eligible_months,3,nominal,Other minus MKT,684,-6.667030338,-7.077152873,-72.15375037,52.51209002,72.07602339
+unconditional_same_eligible_months,3,nominal,Shops minus MKT,684,4.061693557,5.682082841,-49.48538271,116.4228705,41.37426901
+unconditional_same_eligible_months,3,nominal,Telcm minus MKT,684,-1.100616344,-1.105060586,-67.74581005,90.93367632,51.31578947
+unconditional_same_eligible_months,3,nominal,Utils minus MKT,684,-4.247591469,-4.517221471,-82.23927694,66.03994345,58.33333333
+unconditional_same_eligible_months,3,real,MKT,684,24.27560273,23.69920615,-47.26786205,111.4736903,21.19883041
+unconditional_same_eligible_months,3,real,CASH,684,1.633330473,1.655451714,-12.98238406,18.36368815,44.73684211
+unconditional_same_eligible_months,3,real,NoDur,684,21.44691675,29.04706636,-54.38394043,168.0373398,16.8128655
+unconditional_same_eligible_months,3,real,Durbl,684,12.15389267,24.71368632,-67.70657826,342.3926952,34.06432749
+unconditional_same_eligible_months,3,real,Manuf,684,25.24513627,23.91656687,-46.97018217,137.3708899,22.22222222
+unconditional_same_eligible_months,3,real,Enrgy,684,21.33952477,25.1364321,-55.20102071,211.1910921,27.33918129
+unconditional_same_eligible_months,3,real,Chems,684,22.39384043,22.13208379,-34.24390201,146.6821389,26.60818713
+unconditional_same_eligible_months,3,real,BusEq,684,22.54235801,30.22985308,-77.34549348,309.2451907,29.09356725
+unconditional_same_eligible_months,3,real,Telcm,684,19.51868092,22.70778817,-71.34524684,173.161838,33.62573099
+unconditional_same_eligible_months,3,real,Utils,684,18.03870424,19.53820494,-43.55400141,99.23747648,27.48538012
+unconditional_same_eligible_months,3,real,Shops,684,26.36193739,28.93916289,-62.83894149,151.0214611,20.1754386
+unconditional_same_eligible_months,3,real,Hlth,684,23.93203516,29.84411712,-46.40621719,151.563295,23.97660819
+unconditional_same_eligible_months,3,real,Money,684,23.61998445,27.83086961,-69.6992495,177.6824851,17.83625731
+unconditional_same_eligible_months,3,real,Other,684,20.37995722,16.94590047,-61.21676387,119.8515445,27.04678363
+unconditional_same_eligible_months,3,real,BusEq minus MKT,684,0.6917063535,6.530646933,-55.13560608,211.6335823,48.97660819
+unconditional_same_eligible_months,3,real,Chems minus MKT,684,-2.970060896,-1.567122357,-88.56205253,47.87376864,54.67836257
+unconditional_same_eligible_months,3,real,Durbl minus MKT,684,-8.156024471,1.014480174,-59.30560231,263.0039146,61.11111111
+unconditional_same_eligible_months,3,real,Enrgy minus MKT,684,-1.082513824,1.437225952,-89.13873965,201.7871402,51.02339181
+unconditional_same_eligible_months,3,real,Hlth minus MKT,684,5.964235187,6.144910977,-54.02588917,99.14130548,40.35087719
+unconditional_same_eligible_months,3,real,Manuf minus MKT,684,-1.184818591,0.2173607259,-42.05424684,49.59645887,53.07017544
+unconditional_same_eligible_months,3,real,Money minus MKT,684,3.24322174,4.131663461,-58.50693783,80.45449772,43.42105263
+unconditional_same_eligible_months,3,real,NoDur minus MKT,684,4.777604336,5.347860211,-91.40130726,68.52380512,42.10526316
+unconditional_same_eligible_months,3,real,Other minus MKT,684,-5.830244219,-6.753305682,-67.4278907,42.58506242,72.07602339
+unconditional_same_eligible_months,3,real,Shops minus MKT,684,3.825199867,5.239956741,-44.4877467,95.330063,41.37426901
+unconditional_same_eligible_months,3,real,Telcm minus MKT,684,-1.065999874,-0.9914179753,-59.47330373,85.69581016,51.31578947
+unconditional_same_eligible_months,3,real,Utils minus MKT,684,-3.762537973,-4.161001206,-77.51344171,53.48689634,58.33333333
+unconditional_same_eligible_months,5,nominal,MKT,684,74.16982251,73.0589045,-27.16814808,247.3718174,8.771929825
+unconditional_same_eligible_months,5,nominal,CASH,684,26.56900353,25.73788773,0.1100550165,69.54209212,0
+unconditional_same_eligible_months,5,nominal,NoDur,684,63.72178106,85.29722671,-29.85082203,382.3122987,4.239766082
+unconditional_same_eligible_months,5,nominal,Durbl,684,54.25277202,71.9246792,-68.54218629,418.654603,14.18128655
+unconditional_same_eligible_months,5,nominal,Manuf,684,69.63469273,71.90589116,-25.54331879,272.805233,5.116959064
+unconditional_same_eligible_months,5,nominal,Enrgy,684,64.46974668,74.90606534,-54.45604938,340.6432097,7.456140351
+unconditional_same_eligible_months,5,nominal,Chems,684,57.66595688,67.91699108,-12.09116202,308.8663135,4.093567251
+unconditional_same_eligible_months,5,nominal,BusEq,684,63.34783731,86.69871056,-64.95945657,605.2143517,14.76608187
+unconditional_same_eligible_months,5,nominal,Telcm,684,61.37274258,70.58962508,-58.36186582,297.5694761,14.32748538
+unconditional_same_eligible_months,5,nominal,Utils,684,58.54957347,63.84559522,-24.32675115,217.4857127,4.678362573
+unconditional_same_eligible_months,5,nominal,Shops,684,80.94520741,84.44026687,-33.58889013,326.3300507,6.432748538
+unconditional_same_eligible_months,5,nominal,Hlth,684,81.63440446,85.17965653,-32.72759685,329.3914556,7.602339181
+unconditional_same_eligible_months,5,nominal,Money,684,79.15089959,81.97856709,-61.40624491,264.2763284,15.35087719
+unconditional_same_eligible_months,5,nominal,Other,684,58.30786336,57.54893059,-50.45574178,243.9960313,18.56725146
+unconditional_same_eligible_months,5,nominal,BusEq minus MKT,684,1.412084479,13.63980605,-121.0865927,391.5923364,47.51461988
+unconditional_same_eligible_months,5,nominal,Chems minus MKT,684,-1.100377163,-5.141913423,-142.7367898,73.8198965,51.31578947
+unconditional_same_eligible_months,5,nominal,Durbl minus MKT,684,-10.04898591,-1.134225304,-125.0828115,273.6793388,66.52046784
+unconditional_same_eligible_months,5,nominal,Enrgy minus MKT,684,2.685138933,1.847160837,-145.3779738,222.1523819,47.95321637
+unconditional_same_eligible_months,5,nominal,Hlth minus MKT,684,8.397898144,12.12075203,-80.11259628,137.6113473,37.42690058
+unconditional_same_eligible_months,5,nominal,Manuf minus MKT,684,-4.745580307,-1.153013341,-73.10315485,80.99217691,57.60233918
+unconditional_same_eligible_months,5,nominal,Money minus MKT,684,8.528515662,8.919662587,-60.77317208,130.5241089,41.95906433
+unconditional_same_eligible_months,5,nominal,NoDur minus MKT,684,7.756522934,12.23832221,-139.9671059,163.3890302,41.37426901
+unconditional_same_eligible_months,5,nominal,Other minus MKT,684,-15.89707083,-15.50997391,-144.2507661,82.48761813,78.21637427
+unconditional_same_eligible_months,5,nominal,Shops minus MKT,684,10.37222246,11.38136237,-81.40646309,127.2231654,33.77192982
+unconditional_same_eligible_months,5,nominal,Telcm minus MKT,684,-6.923472697,-2.469279427,-106.9671545,144.2819575,55.84795322
+unconditional_same_eligible_months,5,nominal,Utils minus MKT,684,-9.282700721,-9.213309282,-167.8477189,90.45870263,58.91812865
+unconditional_same_eligible_months,5,real,MKT,684,42.88371099,43.51288277,-46.59957103,201.2730784,23.5380117
+unconditional_same_eligible_months,5,real,CASH,684,1.389359545,2.873833022,-13.00601621,30.91849884,47.22222222
+unconditional_same_eligible_months,5,real,NoDur,684,36.49702802,53.28007507,-48.5665118,313.2289027,12.71929825
+unconditional_same_eligible_months,5,real,Durbl,684,26.34097573,42.67186165,-72.38817226,360.1727259,31.87134503
+unconditional_same_eligible_months,5,real,Manuf,684,37.24201811,43.19610294,-45.45689231,236.6527151,17.83625731
+unconditional_same_eligible_months,5,real,Enrgy,684,34.50444839,42.98260395,-58.35614589,222.0521072,18.2748538
+unconditional_same_eligible_months,5,real,Chems,684,33.15276367,39.74196266,-39.90421448,250.3028609,19.29824561
+unconditional_same_eligible_months,5,real,BusEq,684,31.38488074,56.18911469,-68.96979323,525.9814451,27.48538012
+unconditional_same_eligible_months,5,real,Telcm,684,25.76502741,41.18262581,-63.12728667,253.5259381,30.40935673
+unconditional_same_eligible_months,5,real,Utils,684,33.1706563,35.45085506,-44.0412248,168.5203186,18.2748538
+unconditional_same_eligible_months,5,real,Shops,684,51.15502149,53.14964745,-52.48456939,265.2652016,19.15204678
+unconditional_same_eligible_months,5,real,Hlth,684,46.44486179,54.25608441,-53.92076113,283.2735626,19.44444444
+unconditional_same_eligible_months,5,real,Money,684,46.77544448,50.86756428,-66.12466056,216.5763011,20.1754386
+unconditional_same_eligible_months,5,real,Other,684,32.70979397,29.46928886,-63.67407154,194.724192,28.80116959
+unconditional_same_eligible_months,5,real,BusEq minus MKT,684,1.227927254,12.67623191,-101.245898,347.5957857,47.51461988
+unconditional_same_eligible_months,5,real,Chems minus MKT,684,-0.9424007997,-3.770920116,-126.2093721,65.37132212,51.31578947
+unconditional_same_eligible_months,5,real,Durbl minus MKT,684,-8.241446046,-0.8410211219,-111.2258887,239.2316653,66.52046784
+unconditional_same_eligible_months,5,real,Enrgy minus MKT,684,2.285609296,-0.5302788238,-129.487092,187.0483766,47.95321637
+unconditional_same_eligible_months,5,real,Hlth minus MKT,684,7.01569136,10.74320164,-55.72947161,122.8314878,37.42690058
+unconditional_same_eligible_months,5,real,Manuf minus MKT,684,-3.901504302,-0.3167798323,-64.88980039,72.63041842,57.60233918
+unconditional_same_eligible_months,5,real,Money minus MKT,684,6.194748919,7.354681509,-51.9775488,113.4326783,41.95906433
+unconditional_same_eligible_months,5,real,NoDur minus MKT,684,5.743477035,9.767192299,-123.7603884,135.1618577,41.37426901
+unconditional_same_eligible_months,5,real,Other minus MKT,684,-13.55194583,-14.04359391,-127.5480458,51.86512444,78.21637427
+unconditional_same_eligible_months,5,real,Shops minus MKT,684,8.65885036,9.636764672,-65.7058679,105.2440262,33.77192982
+unconditional_same_eligible_months,5,real,Telcm minus MKT,684,-5.254848999,-2.330256967,-87.20393543,120.7209588,55.84795322
+unconditional_same_eligible_months,5,real,Utils minus MKT,684,-7.251564397,-8.062027716,-149.2532145,77.87289776,58.91812865

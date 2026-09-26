@@ -1,0 +1,5 @@
+package,rows,unique_claim_ids,unique_fact_keys,sha256,columns,verdict_counts
+V1,192,192,138,731b7ba6bb71dda6942b8023b35ae1b7a61e86bd6202cef28ab980c8eed81b10,claim_id;fact_key;verdict;measured_value;as_of_date;source;note,"{""FALSE"": 10, ""MISLEADING"": 19, ""MOSTLY_TRUE"": 63, ""OPEN"": 1, ""TRUE"": 59, ""UNVERIFIABLE"": 40}"
+V3,220,220,181,e9f7d11d856b6502472839f94ddc9e5ecb2102612185e0a17a86e3e6dd2da81e,claim_id;fact_key;verdict;measured_value;as_of_date;source;note,"{""FALSE"": 12, ""MISLEADING"": 26, ""MOSTLY_TRUE"": 71, ""TRUE"": 94, ""UNVERIFIABLE"": 17}"
+V5,210,210,131,be25235c4b2300b930258a55c3e6e34f0d25b1fa1ea6c5c6040fae04f285cc95,claim_id;fact_key;verdict;measured_value;as_of_date;source;note,"{""FALSE"": 12, ""MISLEADING"": 26, ""MOSTLY_TRUE"": 58, ""TRENDING"": 2, ""TRUE"": 75, ""UNVERIFIABLE"": 37}"
+V8_9,232,232,116,89c8e0a44328d3984d2ba31fc172ec377e46c541e6bf89d197ff35cd897ec449,claim_id;fact_key;verdict;measured_value;as_of_date;source;note,"{""FALSE"": 9, ""MISLEADING"": 6, ""MOSTLY_TRUE"": 24, ""TRUE"": 38, ""UNVERIFIABLE"": 155}"

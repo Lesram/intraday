@@ -1,0 +1,30 @@
+[
+  {
+    "path": "verify/out/V2/facts.md",
+    "sha256": "3af488a07c04dac3d4f65b25205dc18de8853078d21b9fd1451ca714dcac741f",
+    "bytes": 50844,
+    "read_after_blind_seal": true
+  },
+  {
+    "path": "verify/out/V2/SUMMARY.md",
+    "sha256": "190bd25d27c447bbfdb680fc8b54faa3190d27195f9f877b6cb4cec6ef83a4f8",
+    "bytes": 13611,
+    "read_after_blind_seal": true
+  },
+  {
+    "path": "verify/out/V2/verdicts.csv",
+    "sha256": "a699f4fdcdc1c631e9a096c3148b220d7e73b526614d2d064d012675de192a78",
+    "bytes": 46901,
+    "read_after_blind_seal": true,
+    "rows": 124,
+    "columns": [
+      "claim_id",
+      "fact_key",
+      "verdict",
+      "measured_value",
+      "as_of_date",
+      "source",
+      "note"
+    ]
+  }
+]

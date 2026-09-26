@@ -1,0 +1,24 @@
+.macro-page { color:var(--text); padding-bottom:30px; }
+.macro-state { border-left:4px solid #34756b; padding:2px 0 2px 20px; }
+.macro-failed { border-color:#b84132; }
+.macro-dateline { font-size:13px; color:var(--secondary); }
+.macro-lead { font-size:23px; line-height:1.4; max-width:1050px; font-weight:550; margin:10px 0; }
+.macro-muted { font-size:12px; color:var(--secondary); line-height:1.65; }
+.macro-value { font-size:34px; letter-spacing:-1px; margin:14px 0 8px; }
+.macro-badge { display:inline-block; font-size:12px; padding:4px 9px; border-radius:20px; background:#e9f1ef; color:#246358; }
+.macro-crossed,.macro-unavailable { background:#fff0dc; color:#925715; }
+.macro-text-button { color:var(--text); cursor:pointer; background:none; border:0; padding:0; text-align:left; text-decoration:underline; text-underline-offset:4px; font:inherit; }
+.macro-control { display:flex; align-items:center; gap:10px; font-size:13px; margin-bottom:16px; }
+.macro-control select { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 12px; max-width:100%; }
+.macro-table-wrap { overflow-x:auto; max-width:100%; }
+.macro-table { width:100%; border-collapse:collapse; font-size:12px; min-width:760px; }
+.macro-table td,.macro-table th { padding:12px 10px; border-bottom:1px solid var(--border); text-align:right; vertical-align:top; }
+.macro-table th:first-child,.macro-table td:last-child,.macro-table th:last-child { text-align:left; }
+.macro-table thead { color:var(--secondary); }
+.macro-table small { display:block; color:var(--secondary); margin-top:5px; font-weight:400; }
+.macro-evidence { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; align-items:stretch; }
+.macro-evidence-text { font-size:12px; line-height:1.65; overflow-wrap:anywhere; }
+.macro-evidence-text details { margin-top:12px; }
+.macro-evidence-text summary { cursor:pointer; font-weight:600; }
+.macro-error { color:#b84132; font-size:12px; }
+@media(max-width:700px){.macro-lead{font-size:18px}.macro-value{font-size:28px}.macro-evidence{grid-template-columns:minmax(0,1fr)}.macro-control{flex-wrap:wrap}.macro-control select{width:100%}}

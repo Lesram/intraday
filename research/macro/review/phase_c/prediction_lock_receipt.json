@@ -1,0 +1,19 @@
+{
+  "lock_sha256": "daf8b62fba4024d835d054a692f9ca6d4c8ce5ff6c31a03a44f7a51f285dd842",
+  "preregistration_sha256": "ca14631bb054b6e4c655babd12fd35ba056667f04166cd2da1e9fc0679e7b807",
+  "old_outcomes_read_at_lock": false,
+  "source_inventory": 288,
+  "primary_sample": 32,
+  "supplement": 28,
+  "labels": {
+    "UNSCORABLE": 35,
+    "PENDING": 15,
+    "CANNOT_VERIFY": 8,
+    "MISS": 2
+  },
+  "source_hashes": {
+    "data/raw/fred_bundle_2026-09-19.json": "2b088774e251d64a6632669ee75386a30a774607926414db0c5f26bf959fb011",
+    "data/raw/fred_bundle2_2026-09-19.json": "3b6f7aa4f3ced1c20515f6ed35b2768a2623181547c491213bc8cdee75ba682c",
+    "data/raw/cpi-us_main_data_cpiai.csv": "57a5e25c2f51356dfad1568871e82bdb92b12d2b9d25cac295cc5486ac6aafd6"
+  }
+}

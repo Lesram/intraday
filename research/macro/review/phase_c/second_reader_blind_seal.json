@@ -1,0 +1,13 @@
+{
+  "sealed_at_utc": "2026-09-20T05:11:52.046513+00:00",
+  "original_labels_accessed": false,
+  "claims": 72,
+  "blind_input_sha256": "a77af75ee24d7b3076776fc03e07f791933b48d4e4678c7d3b3839d3102277e7",
+  "files": {
+    "second_reader_blind.csv": "f43fb3f5fded2f944c99b2d100814f79c10455580f65930ed12d08c791adb5fe",
+    "second_reader_write_judgments.py": "bfbacda291d5a8e14753633a5b07a54aa468bb97aa937385156acbb0e44ed934",
+    "second_reader_data_checks.py": "bea7ec1a06cd805041e5974fd96641258b41bd7624e22e58e31a6f48e2ed7ca3",
+    "second_reader_data_checks.json": "6cf970999545c7f10c2789cb653a873d4f6cae698b77e759f0730a9e4d668868",
+    "blind_review_notes.md": "80dc0f624b18eb5045b7abf91470e41c73d4ec5d7df12a4e37d25743afc855b2"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "pr": "https://github.com/Lesram/intraday/pull/21",
+  "branch": "codex/macro-review-002",
+  "status": "research_delivered_draft_hosted_checks_blocked",
+  "reviewed_research_commit": "65d242a7a6ea7d3a0f3b2c3cace19a61a8384443",
+  "checked_at_utc": "2026-09-20 17:56:43 UTC",
+  "is_draft": true,
+  "new_monitor_implementation": false,
+  "merge_approval": false,
+  "quality_gates": {
+    "run": "https://github.com/Lesram/intraday/actions/runs/35527338835",
+    "conclusion": "failure_during_setup",
+    "errors": [
+      "This request has been automatically failed because it uses a deprecated version of `actions/upload-artifact: v3`. Learn more: https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/",
+      "This request has been automatically failed because it uses a deprecated version of `actions/download-artifact: v3`. Learn more: https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/"
+    ]
+  },
+  "pr_verify": {
+    "run": "https://github.com/Lesram/intraday/actions/runs/35527338817",
+    "conclusion": "failure",
+    "path_detection": "success",
+    "platform_tests": "skipped_by_research_only_path_filter",
+    "secret_pattern_matches": [
+      ".github/workflows/pr-verify.yml",
+      "backend/api/routes/orders.py",
+      "backend/integrations/alpaca_broker.py",
+      "backend/integrations/alpaca_data.py",
+      "backend/organism/market_scanner.py",
+      "backend/services/symbol_validator.py",
+      "docs/INCIDENT_RESPONSE_RUNBOOK.md",
+      "docs/MARKET_SCANNER_EXECUTION_PLAN.md",
+      "tests/test_alpaca_broker_comprehensive.py",
+      "tests/test_market_scanner.py",
+      "tests/test_symbol_validator_comprehensive.py",
+      "tests/unit/test_alpaca_data_comprehensive.py"
+    ],
+    "new_final_research_matches": []
+  },
+  "scope_note": "This receipt covers the delivered research commit. A subsequent receipt-only commit does not change the sealed 32-file authored/evidence package. No green hosted-CI or merge-ready claim is made.",
+  "resolution": "Existing CI maintenance is parked and outside this research-only task. Keep PR draft.",
+  "local_validation": "23 research validation groups pass; all 3432 return-summary cells independently reaggregated; frozen surface unchanged."
+}

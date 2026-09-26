@@ -1,0 +1,15 @@
+{
+  "calendar_gap_test": "PASS",
+  "missing_denominator_test": "PASS",
+  "row_lag_mismatch_demonstrated": "PASS",
+  "independent_episode_spacing_test": "PASS",
+  "no_future_history_in_expanding_cdf": "construction: x.iloc[:j]",
+  "ff_latest_month": "2026-07-31",
+  "industry_latest_month": "2026-07-31",
+  "primary_complete_episode_counts": {
+    "1": 8,
+    "3": 8,
+    "5": 8
+  },
+  "missing_bond_total_return": "No suitable total-return series in allowed raw inputs; yield is not a bond return."
+}

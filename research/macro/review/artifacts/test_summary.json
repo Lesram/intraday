@@ -1,0 +1,76 @@
+{
+  "generated_at_utc": "2026-09-20T05:32:34.447564+00:00",
+  "research_unit_tests": {
+    "passed": 35,
+    "failed": 0,
+    "log": "pipeline_final_tests.log"
+  },
+  "formula_parity": {
+    "series": 8,
+    "status": "pass",
+    "receipt": "pipeline_formula_parity.json"
+  },
+  "prediction_audit": {
+    "locked_checks_passed": 8,
+    "post_verification_checks_passed": 6,
+    "failed": 0
+  },
+  "quantitative_checks": {
+    "status": "PASS with methodological limitations",
+    "checks": {
+      "original_scores_reproduce_within_csv_rounding": true,
+      "cape_source_function_reproduces_cached_values": true,
+      "original_set_is_twelve_screen_plus_one_manual": true,
+      "all_fifteen_original_analog_files_in_reading_receipt": true,
+      "mature_gold_nine_and_median_25_17": true,
+      "screen_returns_nonempty": true,
+      "tightening_all_episodes_nonempty": true,
+      "profit_mean_reversion_nonempty": true,
+      "industry_concentration_history_nonempty": true,
+      "cape_base_rate_freshness_nonempty": true,
+      "energy_tilt_sensitivity_nonempty": true
+    },
+    "all_checks_pass": true
+  },
+  "event_checks": {
+    "passed": [
+      "All alarm windows mature; cooldown at least horizon; episode denominators reconcile; leads in prescribed horizon.",
+      "Missing 2025-10 CPI remains missing; never bridged with positional year-on-year arithmetic.",
+      "All confusion-matrix denominators equal eligible monthly observations."
+    ],
+    "failed": []
+  },
+  "delivery_integrity_checks": {
+    "passed": 17,
+    "failed": 0
+  },
+  "browser": "desktop, mobile, filters, source inspection and standalone export verified",
+  "hosted_ci": {
+    "checked_at_utc": "2026-09-20T05:32:33.950565+00:00",
+    "reviewed_head_sha": "985620f2d200f3ef15ee2d97a465bc9bb5a1dab0",
+    "pr": "https://github.com/Lesram/intraday/pull/21",
+    "status": "blocked_by_existing_workflow_configuration",
+    "quality_gates": {
+      "url": "https://github.com/Lesram/intraday/actions/runs/35491875146",
+      "result": "failure before tests execute",
+      "cause": "Five jobs use retired upload-artifact or download-artifact v3 actions."
+    },
+    "pr_verify": {
+      "url": "https://github.com/Lesram/intraday/actions/runs/35491875186",
+      "detect": "passed",
+      "secret_scan": "failed",
+      "cause": "Broad repository grep flags existing API header names, test fixtures, documentation examples and the workflow pattern itself. Observed matching paths are all outside review; no new review credential finding.",
+      "research_only_path_gates": "organism-tests, config-tests, spec-drift and root artifact-pack skipped by path filter"
+    },
+    "resolution": "Keep draft; do not modify frozen/parked platform or CI surfaces under this review-only work order. Separate repository maintenance is required for green hosted checks.",
+    "local_review_secret_scan": "pass; artifacts/secret_scan.json",
+    "not_a_merge_approval": true
+  },
+  "platform_suites": {
+    "status": "unavailable",
+    "passed": null,
+    "failed": null,
+    "collection_errors": 1,
+    "reason": "FastAPI missing; no platform files changed"
+  }
+}

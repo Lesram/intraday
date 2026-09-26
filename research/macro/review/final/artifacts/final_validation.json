@@ -1,0 +1,223 @@
+{
+  "checked_at_utc": "2026-09-20T17:56:43.725865+00:00",
+  "status": "pass",
+  "checks": [
+    {
+      "name": "research_files_unchanged",
+      "status": "pass",
+      "details": {
+        "checked": 1200,
+        "changed": []
+      }
+    },
+    {
+      "name": "preexisting_modified_tracked_files_unchanged",
+      "status": "pass",
+      "details": {
+        "checked": 14,
+        "changed": []
+      }
+    },
+    {
+      "name": "75_file_blind_seal",
+      "status": "pass",
+      "details": {
+        "files": 75
+      }
+    },
+    {
+      "name": "five_file_second_reader_seal",
+      "status": "pass",
+      "details": {
+        "files": 5
+      }
+    },
+    {
+      "name": "17_file_consolidation_seal",
+      "status": "pass",
+      "details": {
+        "files": 17,
+        "mismatches": []
+      }
+    },
+    {
+      "name": "prediction_lock_and_design",
+      "status": "pass",
+      "details": "Locked judgments preserved; amendments remain separate."
+    },
+    {
+      "name": "final_authored_evidence_seal",
+      "status": "pass",
+      "details": {
+        "files": 32
+      }
+    },
+    {
+      "name": "required_documents",
+      "status": "pass",
+      "details": {
+        "missing": []
+      }
+    },
+    {
+      "name": "canonical_inventory",
+      "status": "pass",
+      "details": {
+        "review_flag": 2,
+        "watch": 5,
+        "context": 6,
+        "retired": 5,
+        "candidate": 2,
+        "engineering_control": 1
+      }
+    },
+    {
+      "name": "contract_receipt_matches_bytes",
+      "status": "pass",
+      "details": {
+        "joins": 24,
+        "join_failures": 0
+      }
+    },
+    {
+      "name": "contract_empirical_joins",
+      "status": "pass",
+      "details": "24 mappings against sealed historical metrics; no thresholds optimized."
+    },
+    {
+      "name": "all_historical_alarm_denominators",
+      "status": "pass",
+      "details": {
+        "rows": 162,
+        "failures": []
+      }
+    },
+    {
+      "name": "raw_calendar_CPIAUCSL",
+      "status": "pass",
+      "details": {
+        "calendar_yoy": 3.353016322755642,
+        "missing_october_preserved": true
+      }
+    },
+    {
+      "name": "raw_calendar_CPILFESL",
+      "status": "pass",
+      "details": {
+        "calendar_yoy": 2.4461631786472537,
+        "missing_october_preserved": true
+      }
+    },
+    {
+      "name": "raw_claims_current_reading",
+      "status": "pass",
+      "details": {
+        "four_week_mean": 203250.0,
+        "rise_pct": 2.1356783919598055,
+        "last_date": "2026-09-12"
+      }
+    },
+    {
+      "name": "prediction_final_counts",
+      "status": "pass",
+      "details": {
+        "UNSCORABLE": 35,
+        "PENDING": 11,
+        "HIT": 4,
+        "MISS": 3,
+        "CANNOT_VERIFY": 7
+      }
+    },
+    {
+      "name": "independent_return_summary_aggregation",
+      "status": "pass",
+      "details": {
+        "asset_horizon_summaries": 3432,
+        "failures": []
+      }
+    },
+    {
+      "name": "common_screen_episode_spacing",
+      "status": "pass",
+      "details": {
+        "original_expanding_recomputed": 8,
+        "review_expanding_recomputed": 8,
+        "original_full_history_diagnostic": 8
+      }
+    },
+    {
+      "name": "quantitative_reproduction_receipt",
+      "status": "pass",
+      "details": {
+        "original_full_score_max_error": 4.9995418940795844e-05,
+        "review_feature_max_error": 2.842170943040401e-14,
+        "review_score_max_error": 7.105427357601002e-15,
+        "original_joint_membership_exact": true,
+        "original_joint_months_before_maturity": 26,
+        "common_calendar_months": 685,
+        "common_eligible_months": 684,
+        "common_excluded_months": [
+          "2020-10"
+        ],
+        "original_2007oct_eligible": true,
+        "original_2007oct_expanding_similarity_rank": 1,
+        "models_recomputed": true,
+        "common_summary_cells_with_complete_raw_rows": 624,
+        "common_raw_return_rows": 29736,
+        "rich_calm_summary_cells_with_complete_raw_rows": 2808,
+        "rich_calm_raw_return_rows": 79240,
+        "profit_holdout_max_abs_error": 2.220446049250313e-16,
+        "cape_baseline_abs_error": 7.105427357601002e-15,
+        "cape_review002_abs_error": 0.0,
+        "cape_consolidation_scenario_abs_error": 0.0,
+        "profit_current_pct": 12.071159985945975,
+        "profit_pre1990_mean_pct": 6.094630143877905,
+        "profit_fixed_GDP_change_pct": -49.51081626808305,
+        "cape_rewritten_history_months": 38,
+        "cape_rewritten_history_range": [
+          "2023-07-01",
+          "2026-08-01"
+        ],
+        "cape_past_months_in_denominator_unchanged": 82,
+        "status": "PASS",
+        "limitations": [
+          "revised histories, not vintage data",
+          "current target chosen today",
+          "original feature availability remains original, without review release lags",
+          "selection spacing prevents overlapping return windows, not independent macro observations",
+          "no portfolio allocation or forecast inferred"
+        ]
+      }
+    },
+    {
+      "name": "all_41_change_dispositions",
+      "status": "pass",
+      "details": {
+        "expected": 41,
+        "rows_including_new_corrections": 59,
+        "missing": []
+      }
+    },
+    {
+      "name": "all_74_disputes_retained",
+      "status": "pass",
+      "details": {
+        "rows": 74
+      }
+    },
+    {
+      "name": "local_markdown_links",
+      "status": "pass",
+      "details": {
+        "missing": [],
+        "scope": "Local workspace; companion packages are deliberately not all published."
+      }
+    },
+    {
+      "name": "new_research_script_syntax",
+      "status": "pass",
+      "details": []
+    }
+  ],
+  "note": "Research integrity and arithmetic validation, not a financial-performance test or platform regression suite."
+}

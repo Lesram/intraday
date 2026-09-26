@@ -1,0 +1,186 @@
+{
+  "scope": "Phase A independent blind analysis; no prior claims, reports, verdicts or analogs read",
+  "semantic_coverage": {
+    "videos": 58,
+    "bravos": 33,
+    "jikh": 25,
+    "words": 187028,
+    "primary_reader": 39,
+    "middle_reader": 6,
+    "late_reader": 13
+  },
+  "validation": {
+    "dedup_exact_matching_files": 28,
+    "curated_adjudications": 19,
+    "detector_candidate_pairs": 13500,
+    "hash_selected_manual_pairs": 28
+  },
+  "outputs": [
+    {
+      "path": "research/macro/review/PHASE_A_transcript_analysis.md",
+      "bytes": 30215,
+      "sha256": "cbd726832cf230dc6f5c4580cc0f5caceb3e8a9dd0779eb08755916c7c60a5ed"
+    },
+    {
+      "path": "research/macro/review/phase_a/analyze_corpus.py",
+      "bytes": 18068,
+      "sha256": "3b2954a5d67f8c0d0d9659341fa59ddfbe5603e6cc079a01f9bd952156990314"
+    },
+    {
+      "path": "research/macro/review/phase_a/citation_like_sentences.csv",
+      "bytes": 19302,
+      "sha256": "e07a4daac3eabfdc0aec33bc59829f00026a9028e5ba83470548b3de216f8114"
+    },
+    {
+      "path": "research/macro/review/phase_a/contradiction_pair_sample.csv",
+      "bytes": 14188,
+      "sha256": "48e21ff231d958689912313b610dcc4bd1b83e819bc58a407e30d270b5214657"
+    },
+    {
+      "path": "research/macro/review/phase_a/contradiction_sample_adjudicated.csv",
+      "bytes": 17147,
+      "sha256": "7056d984de7f4d6e4f46bf542000ffcf33b914f4df8af16ff35113ffb5366f23"
+    },
+    {
+      "path": "research/macro/review/phase_a/coverage_log.csv",
+      "bytes": 15412,
+      "sha256": "0bef5a3becee94e124e19925c1742eb26f035bf0a58aa57b18cb82f2aa0ece8a"
+    },
+    {
+      "path": "research/macro/review/phase_a/cross_channel_first_observed.csv",
+      "bytes": 1592,
+      "sha256": "e38ccae96770b727cd46faf6b6d1b373c046e5f78b19dc389f0ecd0972995779"
+    },
+    {
+      "path": "research/macro/review/phase_a/cross_channel_phrase_overlap.csv",
+      "bytes": 84075,
+      "sha256": "d0cf6a5c3496def27e1176d23d2f81a2082163e4cb754e10e3b4242eb2594c7f"
+    },
+    {
+      "path": "research/macro/review/phase_a/curated_contradictions_and_revisions.csv",
+      "bytes": 13330,
+      "sha256": "2195442580d3a2778802a27bc4a696c3eebbe5140ecb2c6f3f396aa63275a2a2"
+    },
+    {
+      "path": "research/macro/review/phase_a/directional_predicates.csv",
+      "bytes": 182501,
+      "sha256": "966b27e7231dd596386edef1fb4ad0ed7034961163579a4a0d0ea046cd77250c"
+    },
+    {
+      "path": "research/macro/review/phase_a/extend_analysis.py",
+      "bytes": 5783,
+      "sha256": "363b210224132574d486203f2e920d3f9f294518af612d15353067aa311c4b56"
+    },
+    {
+      "path": "research/macro/review/phase_a/first_theme_price_context.csv",
+      "bytes": 6086,
+      "sha256": "261c04d55f96bb43a18c24a7155c754d511d4f37d47322c6a5e609c58248d39b"
+    },
+    {
+      "path": "research/macro/review/phase_a/jikh_late_coverage.csv",
+      "bytes": 3693,
+      "sha256": "468be355af59f3c319442f42d649812df67de8fb85ffc8d00e3f6200e5e32560"
+    },
+    {
+      "path": "research/macro/review/phase_a/jikh_late_reader.md",
+      "bytes": 25745,
+      "sha256": "c6fede223944b4ed2d36b9bd5fb150e28e4f5d287cb62cbbbc72661f05bbdfa5"
+    },
+    {
+      "path": "research/macro/review/phase_a/jikh_mid_reader.md",
+      "bytes": 20609,
+      "sha256": "8661faf5c02a10eb0539ef6a0f89bdbde5f5dc5eb9c7bff720661a020d123069"
+    },
+    {
+      "path": "research/macro/review/phase_a/manual_adjudication.py",
+      "bytes": 11721,
+      "sha256": "1da75a8824e87fe4937453edb6376a7c9ca94aaeefe19bb52d71b088b88fcbea"
+    },
+    {
+      "path": "research/macro/review/phase_a/methods.json",
+      "bytes": 7566,
+      "sha256": "521b2910389d25d2becdc8b81bee5d5b05afa34a4efdf21d064c0fa714318803"
+    },
+    {
+      "path": "research/macro/review/phase_a/minute_windows.csv",
+      "bytes": 105477,
+      "sha256": "c391316408bc901b1a178aea4ef0c4199e1fc99e685e3911c5b0200fea197f40"
+    },
+    {
+      "path": "research/macro/review/phase_a/monthly_rhetoric.csv",
+      "bytes": 1415,
+      "sha256": "df4b70b5b2f21fc3506e73344bc78935a5b3b44d02728f5ee1d6143e0ae74fa2"
+    },
+    {
+      "path": "research/macro/review/phase_a/monthly_themes.csv",
+      "bytes": 11241,
+      "sha256": "b34dd41c07768aa11d3632a1552f64afcae811448a5b4301bcb11a2c1f63eff1"
+    },
+    {
+      "path": "research/macro/review/phase_a/named_source_mentions.csv",
+      "bytes": 8484,
+      "sha256": "3e56ae4f78f832d9553fb6bb72d77a0abe97471e101e47a412ced14357680301"
+    },
+    {
+      "path": "research/macro/review/phase_a/opposite_direction_candidate_pairs.csv",
+      "bytes": 1346556,
+      "sha256": "74f12fc6f432b7ada489040931288a938d376f4a5068ca07f409c5448384b04c"
+    },
+    {
+      "path": "research/macro/review/phase_a/pitch_rhetoric_comparison.csv",
+      "bytes": 446,
+      "sha256": "81c7a9f9335ccf999b0ef3be8c85470f01aba0ed0b46c006b50cd4db5f6683a4"
+    },
+    {
+      "path": "research/macro/review/phase_a/pitch_sentences.csv",
+      "bytes": 33745,
+      "sha256": "8737abc18a9fa4cc2bade9ceb8879e80d0e54bc38e9299bf46c5d18e189f9ed9"
+    },
+    {
+      "path": "research/macro/review/phase_a/rhetoric_market_correlations.csv",
+      "bytes": 1436,
+      "sha256": "4cc3f62444d795b9bbefcc407f83c70dcc19592562bfe051d3f43e391ed805cd"
+    },
+    {
+      "path": "research/macro/review/phase_a/rhetoric_market_values.csv",
+      "bytes": 10632,
+      "sha256": "702a01b3cd58c0c577eedc0ccabd692927b0f02c67b32727ea33a59249ba14ff"
+    },
+    {
+      "path": "research/macro/review/phase_a/round_threshold_crossings_2026.csv",
+      "bytes": 640,
+      "sha256": "c44d01b3e06c06f853d0bae7a2a6678a3e006ab7ea2e4cd1c259155d4c3ba4fb"
+    },
+    {
+      "path": "research/macro/review/phase_a/selected_dated_scenario_price_paths.csv",
+      "bytes": 4272,
+      "sha256": "ce3aebb260d3d4bf0ef3f77f952edb8a2aeec4bf6ada0b18aebb12ad45a3ff75"
+    },
+    {
+      "path": "research/macro/review/phase_a/semantic_reading_notes.md",
+      "bytes": 9364,
+      "sha256": "7e78a90ee4d01dd91156cae6550e1449517f3da87ec90ec34fb85ad49fc451b7"
+    },
+    {
+      "path": "research/macro/review/phase_a/shared_10word_phrases.csv",
+      "bytes": 6808,
+      "sha256": "4214ca1734ba99c51343981df7813e3aa0c3b0970f215e5cbd7028c0cec46ba1"
+    },
+    {
+      "path": "research/macro/review/phase_a/theme_by_video.csv",
+      "bytes": 80514,
+      "sha256": "a6a37f91cdb052926cb2b47aa14a24aec81ff6c15bca160b0a28eed05f3a5750"
+    },
+    {
+      "path": "research/macro/review/phase_a/tracked_thesis_phrases.csv",
+      "bytes": 48778,
+      "sha256": "bcab2ae701b64b00013664f885195304207e242e4179231ed5fb312126426ac4"
+    },
+    {
+      "path": "research/macro/review/phase_a/video_metrics.csv",
+      "bytes": 15701,
+      "sha256": "61e07ff9357d5310ec56207c2fd5d54f0fcfa149bd622b1d8ef921c87da0be0a"
+    }
+  ],
+  "manifest_excludes_own_hash": true
+}

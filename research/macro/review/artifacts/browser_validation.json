@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "method": "Codex in-app browser through cua_repl; observed rendered DOM and screenshots",
+  "desktop": {"loaded": true, "readable": true, "all_indicator_rows": 12, "tier_filter_context_rows": 4},
+  "mobile": {"viewport_width": 390, "viewport_height": 844, "document_width": 390, "table_viewport_width": 358, "table_scroll_width": 760, "cards_stack": true, "evidence_readable": true, "viewport_reset_after_check": true},
+  "interactions": ["Tier filtering", "Indicator selection updates history", "False-alarm details expand", "Source dates and next expected deadline expand", "Card inspect control selects evidence and scrolls to it"],
+  "portable_html": {"loaded": true, "url": "http://127.0.0.1:4188/dashboard.html", "console_errors": [], "console_warnings": [], "format": "Self-contained exported HTML with embedded reviewed data and runtime"},
+  "limits": "No external site publication or background scheduler. Local preview depends on running server; portable HTML remains available without it."
+}

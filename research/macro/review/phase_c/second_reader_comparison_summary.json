@@ -1,0 +1,135 @@
+{
+  "compared_at_utc": "2026-09-20T05:15:36.045456+00:00",
+  "blind_seal_valid": true,
+  "blind_sealed_at_utc": "2026-09-20T05:11:52.046513+00:00",
+  "sampling_design": {
+    "seed": "review002:2026-09-19:blind-second-reader:v1",
+    "sampling": "Stable SHA256 ranks; 8 covered claims per input package. Package-balanced sample; not prevalence-proportional.",
+    "packages": [
+      {
+        "input_package": "V1_ai_bubble",
+        "eligible": 192,
+        "sampled": 8
+      },
+      {
+        "input_package": "V2_equity_valuation",
+        "eligible": 124,
+        "sampled": 8
+      },
+      {
+        "input_package": "V3_fiscal_fed_liquidity",
+        "eligible": 220,
+        "sampled": 8
+      },
+      {
+        "input_package": "V4_oil_geopolitics_tariffs",
+        "eligible": 165,
+        "sampled": 8
+      },
+      {
+        "input_package": "V5_dollar_china_gold",
+        "eligible": 210,
+        "sampled": 8
+      },
+      {
+        "input_package": "V6_japan_credit_crypto",
+        "eligible": 137,
+        "sampled": 8
+      },
+      {
+        "input_package": "V7_inflation_cycle_labor_housing",
+        "eligible": 150,
+        "sampled": 8
+      },
+      {
+        "input_package": "V8_other",
+        "eligible": 126,
+        "sampled": 8
+      },
+      {
+        "input_package": "V9_self_performance",
+        "eligible": 106,
+        "sampled": 8
+      }
+    ],
+    "n": 72,
+    "blind_columns": "No old verdict, measured value, note, or verification plan supplied to second reader."
+  },
+  "unweighted": {
+    "total": 72,
+    "old": {
+      "supported": 46,
+      "unresolved": 20,
+      "adverse": 6,
+      "resolved": 52,
+      "supported_among_resolved": 0.8846153846153846
+    },
+    "blind": {
+      "adverse": 16,
+      "supported": 32,
+      "unresolved": 24,
+      "resolved": 48,
+      "supported_among_resolved": 0.6666666666666666
+    },
+    "exact_disagreement_count": 39,
+    "exact_disagreement_fraction": 0.5416666666666666,
+    "collapsed_disagreement_count": 27,
+    "collapsed_disagreement_fraction": 0.375,
+    "became_eligible": 5,
+    "became_unresolved": 9,
+    "collapsed_confusion": {
+      "supported -> supported": 28,
+      "supported -> adverse": 13,
+      "supported -> unresolved": 5,
+      "adverse -> supported": 0,
+      "adverse -> adverse": 2,
+      "adverse -> unresolved": 4,
+      "unresolved -> supported": 4,
+      "unresolved -> adverse": 1,
+      "unresolved -> unresolved": 15
+    }
+  },
+  "package_population_weighted": {
+    "total": 1430.0,
+    "old": {
+      "supported": 971.0,
+      "unresolved": 331.875,
+      "adverse": 127.125,
+      "resolved": 1098.125,
+      "supported_among_resolved": 0.8842344906089926
+    },
+    "blind": {
+      "adverse": 348.375,
+      "supported": 684.5,
+      "unresolved": 397.125,
+      "resolved": 1032.875,
+      "supported_among_resolved": 0.662713300254145
+    },
+    "exact_disagreement_count": 810.625,
+    "exact_disagreement_fraction": 0.5668706293706294,
+    "collapsed_disagreement_count": 538.25,
+    "collapsed_disagreement_fraction": 0.3763986013986014,
+    "became_eligible": 99.5,
+    "became_unresolved": 164.75,
+    "collapsed_confusion": {
+      "supported -> supported": 605.625,
+      "supported -> adverse": 274.0,
+      "supported -> unresolved": 91.375,
+      "adverse -> supported": 0,
+      "adverse -> adverse": 53.75,
+      "adverse -> unresolved": 73.375,
+      "unresolved -> supported": 78.875,
+      "unresolved -> adverse": 20.625,
+      "unresolved -> unresolved": 232.375
+    }
+  },
+  "cautions": [
+    "Disagreement is not an error rate for the original analyst or a truth probability.",
+    "Weight N_h/n_h expands covered claim-row strata; equal package sampling is not prevalence proportional.",
+    "Stable hash ranking acts as pseudo-random selection, but no formal randomization or cluster-independent sampling claim is made.",
+    "Underlying facts repeat across rows and packages; effective independent sample size is below 72.",
+    "Resolved-label denominators change with source access, claim scope and interpretation.",
+    "Do not subtract this sample rate change from the published 82.1% or replace it with the weighted blind ratio.",
+    "Blind ratings are frozen even when post-unblinding evidence raises legitimate doubts; such differences are documented separately."
+  ]
+}

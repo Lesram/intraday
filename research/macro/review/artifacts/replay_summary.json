@@ -1,0 +1,16 @@
+{
+  "status": "research_historical_checks_pass; platform_replay_unavailable",
+  "research_evidence": [
+    "phase_b/validation.json",
+    "phase_b_events/validation_checks.json",
+    "phase_c/quantitative_validation.json",
+    "artifacts/pipeline_formula_parity.json"
+  ],
+  "platform_replay": {
+    "status": "not_run_due_to_collection_dependency",
+    "passed": null,
+    "failed": null,
+    "log": "platform_regression.log"
+  },
+  "scope": "Historical macro study and monitor; not an organism/trading replay; no live trading behavior changed."
+}

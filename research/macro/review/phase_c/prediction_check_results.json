@@ -1,0 +1,16 @@
+{
+  "checks_passed": 8,
+  "checks_failed": 0,
+  "independent_rows": 60,
+  "paired_null_n": 0,
+  "reason": "No eligible mature verified direction-only single-metric rows in declared sample and supplement. Undefined accuracy is not0%.",
+  "outcome_evidence": {
+    "CPI_March2026_SA_calendar_yoy": 3.2859577528651984,
+    "CPI_March2026_NSA_calendar_yoy": 3.2564204390883145,
+    "GDP_Q2_2026_SAAR": 1.4836587880023622,
+    "DCOILWTICO_Jun5_26_max": 95.0,
+    "DCOILWTICO_Jun26": 70.3,
+    "DCOILBRENTEU_Jun5_26_max": 97.46,
+    "DCOILBRENTEU_Jun26": 70.16
+  }
+}

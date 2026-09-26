@@ -1,0 +1,112 @@
+{
+  "screen": {
+    "prior_score_max_abs_difference": 4.9995418940795844e-05
+  },
+  "overlap": {
+    "original_n_episodes": 13,
+    "max_pairwise_nonoverlapping_5y_starts": 7,
+    "overlapping_pairs": 13,
+    "truncated_5y_episodes": [
+      "S 2021-11 post-COVID top"
+    ],
+    "screen_n_automatically_selected": 12,
+    "manually_added_anchor": "2000-02"
+  },
+  "cape": {
+    "model_vs_cached_max_error": 1.4210854715202004e-14,
+    "september_price_observations": 12,
+    "september_price_mean": 7643.184999999999,
+    "splice_scale": 0.06035823815378929,
+    "proxy_EPS": 236.69151121698624,
+    "replicated_1929sep": 32.38590218807806,
+    "published_41_3_is_partial_September_not_August": true
+  },
+  "analogs_inputs": [
+    {
+      "path": "analogs/ANALOGS.md",
+      "sha256": "96ff76c8c4e0f2bca4d1fb3e6d646fcd01b65ef7b8df280cd8ea4e8fa425bd40"
+    },
+    {
+      "path": "analogs/analog_scripts.py",
+      "sha256": "d5276d4a066a8b6e6f37e7716a31b81305f179906720e6d0e478e123d55fd92a"
+    },
+    {
+      "path": "analogs/base_rates.csv",
+      "sha256": "dcaea4d0432d9d1c0b2277aaf3e63016e4cb94b50a4a1bfec472141884373d6a"
+    },
+    {
+      "path": "analogs/cape_base_rates.csv",
+      "sha256": "aad5120c566885d669d857cfb4a3b686056571fd9f8222d29d9137c186a8e29d"
+    },
+    {
+      "path": "analogs/episode_returns.csv",
+      "sha256": "4e93eaeef813104970ac61388d5cc537c91ff7ed4d05a7acb380bff828537391"
+    },
+    {
+      "path": "analogs/regime_screen.py",
+      "sha256": "2fa08bc684308a80f6e0320a93afc207827f89408e1e4d0669115f303c003882"
+    },
+    {
+      "path": "analogs/report_out.txt",
+      "sha256": "1b7c2dfcd0c87032086fe97922d7d7167be05ff26ae02b1c4bf97be882b29303"
+    },
+    {
+      "path": "analogs/report_tables.py",
+      "sha256": "67341e1a01037d5c0f31f576061be454d8abad7a83129991cf997b77b1625df5"
+    },
+    {
+      "path": "analogs/rich_and_calm.csv",
+      "sha256": "c645eab4b0ba7750bcb0989e97585eb5861e95da070721f9067df9dc94515c36"
+    },
+    {
+      "path": "analogs/screen_run.txt",
+      "sha256": "caf793766b640928f96771ab1d0b1ae3673416b9f059d893910982e2d834486c"
+    },
+    {
+      "path": "analogs/screen_top.csv",
+      "sha256": "5345211582fc5fa5865f7bc7e750ab074e9917695a7a6219706228eeca08d434"
+    },
+    {
+      "path": "analogs/similarity_scores.csv",
+      "sha256": "59c996746e2dac6010c4d003408fac78969bd7ec9bfacdec50b74a440081f6c9"
+    },
+    {
+      "path": "analogs/step5_credit.py",
+      "sha256": "df4a841b8b4b8c6fc86ffa1ad47cc5fa04449802da01d6c793f9be40ab5be4e7"
+    },
+    {
+      "path": "analogs/step5_out.txt",
+      "sha256": "634451cf3e808032581bd49d1aab2ab829068b6df0affc6ffd27847495a723ac"
+    },
+    {
+      "path": "analogs/tight_spread_study.csv",
+      "sha256": "88635b5c1cce2ef699d43aa195b0c347db86ee0ca3cba42317bb402e90b61e5a"
+    }
+  ],
+  "validation": {
+    "status": "PASS with methodological limitations",
+    "checks": {
+      "original_scores_reproduce_within_csv_rounding": true,
+      "cape_source_function_reproduces_cached_values": true,
+      "original_set_is_twelve_screen_plus_one_manual": true,
+      "all_fifteen_original_analog_files_in_reading_receipt": true,
+      "mature_gold_nine_and_median_25_17": true,
+      "screen_returns_nonempty": true,
+      "tightening_all_episodes_nonempty": true,
+      "profit_mean_reversion_nonempty": true,
+      "industry_concentration_history_nonempty": true,
+      "cape_base_rate_freshness_nonempty": true,
+      "energy_tilt_sensitivity_nonempty": true
+    },
+    "all_checks_pass": true
+  },
+  "risks": [
+    "All macro histories are revised captures. Expanding ranks and frozen coefficients are pseudo-out-of-sample, not real-time vintage validation.",
+    "Historical 1/3/5-year rows overlap unless explicitly spaced; spaced starts need not be economically independent.",
+    "French total market and industries differ from S&P 500/GICS. Hybrid CAPE return extension is explicitly a universe substitution.",
+    "Gold is spot-price return; Treasury return is the original yield-based model, without an observed total-return index validation.",
+    "CAPE after June 2023 uses a NIPA aggregate-profit EPS proxy; buyback/forward-EPS alternatives cannot be reconstructed from supplied inputs.",
+    "Sensitivity choices are disclosed diagnostics rather than independent prospective tests. No operational portfolio recommendation is validated."
+  ],
+  "input_receipt_file": "quantitative_input_reading_receipts.json"
+}
