@@ -23,12 +23,22 @@ def prepare(tmp_path):
     for module, tests in modules.items():
         path = tmp_path / module
         path.parent.mkdir(parents=True, exist_ok=True)
-        text = ""
+        text = "import pytest\n"
+        groups = {}
         for parts in tests:
-            if len(parts) == 2:
-                text += f"class {parts[0]}:\n    def {parts[1]}(self):\n        assert True\n"
-            else:
-                text += f"def {parts[0]}():\n    assert True\n"
+            owner = parts[0] if len(parts) == 2 else None
+            name, _, parameter = parts[-1].partition("[")
+            groups.setdefault(owner, {}).setdefault(name, []).append(parameter.rstrip("]"))
+        for owner, methods in groups.items():
+            indent = "    " if owner else ""
+            if owner:
+                text += f"class {owner}:\n"
+            for name, parameters in methods.items():
+                args = "self" if owner else ""
+                if parameters != [""]:
+                    text += f"{indent}@pytest.mark.parametrize('scenario', {parameters!r})\n"
+                    args += ", scenario" if owner else "scenario"
+                text += f"{indent}def {name}({args}):\n{indent}    assert True\n"
         path.write_text(text)
     real = tmp_path / "tests/real_tests"
     real.mkdir()
@@ -67,7 +77,7 @@ def run(tmp_path, lane, *extra):
     return result, json.loads(manifest.read_text()) if manifest.exists() else None
 
 
-@pytest.mark.parametrize("lane,expected_count", [("core", 2), ("replay", 7)])
+@pytest.mark.parametrize("lane,expected_count", [("core", 2), ("replay", 22)])
 def test_real_collection_partitions_without_running_external_fixtures(tmp_path, lane, expected_count):
     prepare(tmp_path)
     result, manifest = run(tmp_path, lane)
@@ -211,7 +221,7 @@ def test_filtered_required_replay_fails_with_durable_actual_selection(tmp_path, 
     assert "Required replay selection changed after filtering" in result.stdout + result.stderr
     assert len(manifest["selected_after_marker_filter"]) == count
     assert manifest["required_replay_selection"]["status"] == "FAIL"
-    assert len(manifest["required_replay_selection"]["missing_nodes"]) == 7 - count
+    assert len(manifest["required_replay_selection"]["missing_nodes"]) == 22 - count
     assert manifest["required_replay_selection"]["unexpected_nodes"] == []
 
 
@@ -223,3 +233,20 @@ def test_core_filtering_is_still_allowed_and_reported(tmp_path):
         "tests/test_local.py::test_mock_remains_required"
     ]
     assert "required_replay_selection" not in manifest
+
+
+def test_paired_fixture_cases_are_mandatory_and_fast_guards_stay_core(tmp_path):
+    prepare(tmp_path)
+    module = tmp_path / "tests/test_composite_correction_replay.py"
+    with module.open("a") as output:
+        output.write("\ndef test_offline_guard():\n    assert True\n")
+    result, manifest = run(tmp_path, "core")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "tests/test_composite_correction_replay.py::test_offline_guard" in manifest["selected_after_marker_filter"]
+    paired = [node for node in manifest["required_replay_nodes"] if "composite_correction" in node]
+    assert len(paired) == 6
+    for scenario in ("chop", "eod", "up", "down", "crash"):
+        assert any(node.endswith(f"[{scenario}]") for node in paired)
+    result, manifest = run(tmp_path, "replay", "-k", "not eod")
+    assert result.returncode != 0
+    assert manifest["required_replay_selection"]["status"] == "FAIL"

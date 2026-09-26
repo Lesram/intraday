@@ -22,7 +22,13 @@ Issue delivery requires the caller's explicit boolean `notify_issues: true`. The
 
 A canceled workflow or GitHub runner/service outage can still prevent any job from executing. The independent status job covers worker failures/timeouts, not unavailable GitHub infrastructure. A local watchdog and an external alert destination remain necessary for paper-runtime supervision.
 
-The nightly test selection remains the existing full `tests/` corpus excluding `slow`. It runs once, retaining logs, JUnit and coverage instead of rerunning the entire corpus to generate coverage. Legacy baseline failures remain visible; the parked Bandit, frontend audit and Quality Summary work is untouched. Coverage is retained as an artifact; this audit workflow no longer publishes to Pages or needs repository-content write access.
+Nightly collects the `tests/` corpus through `scripts/ci/nightly_test_contract.py`. The isolated core lane excludes `slow` and retains coverage. An explicit inventory of expensive cases runs in a required replay lane without coverage instrumentation; missing cases or later marker/name filters fail that lane. External API/account diagnostics remain explicitly `UNAVAILABLE` in the durable selection manifests, rather than running against the installed paper account. Legacy baseline failures remain visible; the parked Bandit, frontend audit and Quality Summary work is untouched.
+
+### September 26 audit finding
+
+[Run36211294000](https://github.com/Lesram/intraday/actions/runs/36211294000), testing deployed source `87c1addb39321e4f3a628041d8fb68a6e848255d`, completed core with9167 passed,11 failed and6 setup errors. Two failures were obsolete readiness tests: a model fixture omitted required diagnostic fields, and a test asserted a comment marker rather than readiness behavior. Nine expensive cases and the six consumers of the paired replay fixture exceeded their instrumented deadlines. The original seven-case uninstrumented lane passed.
+
+The repair updates the two test contracts and expands the exact required replay inventory from7 to22 cases. All assertions and existing case deadlines remain; fast tests in the same files remain in core. The paired replay fixture is executed without coverage along with the other expensive cases. Local results and a hosted run against the repaired source are required before treating this change as a resolved nightly failure. The old failure remains part of the audit record.
 
 ## Hosted environment and time budgets
 

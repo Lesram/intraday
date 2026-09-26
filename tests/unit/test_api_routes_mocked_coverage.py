@@ -722,11 +722,20 @@ class TestHealthRoutesCoverage:
             checks={"database": True, "broker": True},
             problems={},
             timestamp="2024-01-01T00:00:00",
-            cached=False
+            cached=False,
+            dependencies={
+                "database": dict(component="postgresql", outcome="ok", elapsed_ms=1,
+                                 budget_ms=100, measured_at="2024-01-01T00:00:00"),
+                "broker": dict(component="redis", outcome="ok", elapsed_ms=2,
+                               budget_ms=200, measured_at="2024-01-01T00:00:00"),
+            },
+            runtime={"state": "market_closed", "tick_expected": False},
         )
         
         assert response.status == "ready"
         assert response.checks["database"] is True
+        assert response.dependencies["broker"].component == "redis"
+        assert response.runtime.state == "market_closed"
     
     def test_get_trivial_health_function(self):
         """Test get_trivial_health helper."""

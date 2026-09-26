@@ -265,6 +265,8 @@ def test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence():
     run = step["run"]
     expected = {
         "tests/test_wave37_fixes.py", "tests/test_wave48_fixes.py",
+        "tests/test_wave52_fixes.py", "tests/unit/test_api_routes_mocked_coverage.py",
+        "tests/test_nightly_test_contract.py",
         "tests/test_wave55_fixes.py", "tests/test_wave61_fixes.py",
         "tests/test_reachability_v8.py", "tests/test_v12_w75_lint_ratchet.py",
         "tests/test_v12_w77_findings_ledger.py", "tests/test_v12_w81_ci_cleanup.py",

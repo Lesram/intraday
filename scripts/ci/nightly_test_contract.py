@@ -14,11 +14,29 @@ import pytest
 
 
 REPLAY_NODES = frozenset({
+    # These exact cases exceeded the instrumented core lane's deadline in
+    # run36211294000. They remain mandatory, with their existing time limits,
+    # in the uninstrumented replay lane. Include every paired-fixture consumer.
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[chop]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[eod]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[up]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[down]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[crash]",
+    "tests/test_composite_correction_replay.py::test_corrected_actual_orders_protective_exit_and_eod_accounting",
+    "tests/test_organism_engine_scenarios.py::test_tick_count_and_state_survive_restart",
+    "tests/test_organism_engine_scenarios.py::test_entry_with_partial_fill_tracked_correctly",
+    "tests/test_organism_integration_smoke.py::TestFitnessGate::test_low_fitness_blocks_entry",
+    "tests/test_organism_integration_smoke.py::TestBrainRoundTrip::test_tick_count_survives_restart",
     "tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_10_tick_invariants",
     "tests/test_organism_live_engine.py::TestMultiRunRegression::test_brain_persistence_across_runs",
     "tests/test_replay_simulator.py::test_replay_with_crash_data",
     "tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops",
     "tests/test_replay_simulator.py::test_replay_no_throttle_blocking",
+    "tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops",
+    "tests/test_replay_simulator.py::test_replay_completes_100_ticks",
+    "tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit",
+    "tests/test_replay_simulator.py::test_replay_regime_history_populated",
+    "tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl",
     "tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_signals_generated_on_uptrend",
     "tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn",
 })
