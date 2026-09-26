@@ -5,7 +5,8 @@ INTRA_FILL_TEST_DATABASE_URL; DATABASE_URL never authorizes these tests.
 """
 
 import asyncio
-from datetime import UTC, datetime
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import os
 import uuid
@@ -16,8 +17,17 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.infra.schemas import AuditLog, Execution, Order, PositionLot, RealizedTrade
+from backend.infra.repositories.orders import OrdersRepo
+from backend.infra.schemas import (
+    AuditLog,
+    Execution,
+    Order,
+    OutboxEvent,
+    PositionLot,
+    RealizedTrade,
+)
 from backend.integrations.alpaca_stream import apply_order_fill_snapshot
+from backend.services.order_recovery_service import OrderRecoveryService
 
 
 def dedicated_url(value):
@@ -89,6 +99,7 @@ async def pg_sessions():
         async with engine.begin() as conn:
             for table in (
                 Order.__table__,
+                OutboxEvent.__table__,
                 Execution.__table__,
                 PositionLot.__table__,
                 RealizedTrade.__table__,
@@ -242,3 +253,204 @@ async def test_concurrent_duplicate_exit_closes_lots_and_audits_once(pg_sessions
         assert (lot.remaining_qty, lot.status) == (0, "closed")
         assert (realized.qty, realized.realized_pnl) == (10, 100)
         assert audit.action == "order.filled" and audit.entity_id == str(sell) and audit.hash_chain
+
+
+@pytest.mark.asyncio
+async def test_recovery_lineage_json_and_uuid_keyset_on_postgres(pg_sessions):
+    rows = [order() for _ in range(4)]
+    for number, item in enumerate(rows, 1):
+        item.id = uuid.UUID(f"a0000000-0000-4000-8000-{number:012x}")
+        item.created_at = item.updated_at = item.submitted_at = datetime.now(UTC) - timedelta(
+            days=10
+        )
+    rows[0].attributes = {"source": "organism"}
+    async with pg_sessions() as session:
+        session.add_all(rows)
+        session.add(
+            OutboxEvent(
+                topic="order.submitted",
+                status="sent",
+                payload={
+                    "order_id": str(rows[1].id),
+                    "client_key": rows[1].client_idempotency_key,
+                },
+            )
+        )
+        session.add(
+            OutboxEvent(
+                topic="order.submitted",
+                status="sent",
+                payload={
+                    "order_id": str(rows[2].id),
+                    "client_key": "wrong-key",
+                },
+            )
+        )
+        await session.commit()
+    async with pg_sessions() as session:
+        repo = OrdersRepo(session)
+        first = await repo.get_recovery_orders_page(limit=1)
+        second = await repo.get_recovery_orders_page(after_id=first[0].id, limit=1)
+        assert [row.id for row in first + second] == [rows[0].id, rows[1].id]
+        assert await repo.get_recovery_orders_page(after_id=second[0].id) == []
+        assert await repo.lock_recovery_order(rows[2].id) is None
+        assert await repo.lock_recovery_order(rows[3].id) is None
+
+
+@pytest.mark.asyncio
+async def test_recovery_waits_for_stream_fill_then_applies_only_increment_on_postgres(
+    pg_sessions, monkeypatch
+):
+    identity = await seed(pg_sessions)
+    async with pg_sessions() as session:
+        item = await session.get(Order, identity)
+        item.attributes = {"source": "organism"}
+        await session.commit()
+        broker_snapshot = {
+            "id": item.broker_order_id,
+            "client_order_id": item.client_idempotency_key,
+            "symbol": item.symbol,
+            "side": item.side,
+            "qty": "10",
+            "status": "filled",
+            "filled_qty": "10",
+            "filled_avg_price": "112",
+        }
+    waiting_pid = asyncio.Future()
+    original_lock = OrdersRepo.lock_recovery_order
+
+    async def observed_lock(repo, order_id):
+        waiting_pid.set_result(
+            (await repo.session.execute(text("SELECT pg_backend_pid()"))).scalar_one()
+        )
+        return await original_lock(repo, order_id)
+
+    monkeypatch.setattr(OrdersRepo, "lock_recovery_order", observed_lock)
+
+    async def fetch(broker_id):
+        assert broker_id == broker_snapshot["id"]
+        return broker_snapshot
+
+    async with pg_sessions() as stream_session:
+        first_pid = (await stream_session.execute(text("SELECT pg_backend_pid()"))).scalar_one()
+        await snapshot(
+            stream_session, await stream_session.get(Order, identity), 4, 100, "partially_filled"
+        )
+        task = asyncio.create_task(OrderRecoveryService().recover(pg_sessions, fetch))
+        try:
+            second_pid = await asyncio.wait_for(waiting_pid, timeout=2)
+            assert second_pid != first_pid
+            deadline = asyncio.get_running_loop().time() + 2
+            while (
+                first_pid
+                not in (
+                    await stream_session.execute(
+                        text("SELECT pg_blocking_pids(:pid)"), {"pid": second_pid}
+                    )
+                ).scalar_one()
+            ):
+                assert not task.done()
+                assert asyncio.get_running_loop().time() < deadline
+                await asyncio.sleep(0.01)
+            await stream_session.commit()
+            result = await asyncio.wait_for(task, timeout=5)
+            assert result["reconciled"] == result["applied"] == 1 and result["errors"] == 0
+        finally:
+            if not task.done():
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await stream_session.rollback()
+    async with pg_sessions() as session:
+        executions = list((await session.execute(select(Execution))).scalars())
+        lots = list((await session.execute(select(PositionLot))).scalars())
+        assert sorted((x.fill_qty, x.fill_price) for x in executions) == [(4, 100), (6, 120)]
+        assert sum(x.remaining_qty * x.cost_basis for x in lots) == 1120
+        saved = await session.get(Order, identity)
+        assert (saved.status, saved.filled_qty, saved.avg_fill_price) == ("filled", 10, 112)
+
+
+@pytest.mark.asyncio
+async def test_real_ack_waits_for_stream_fill_then_late_ack_preserves_terminal_on_postgres(
+    pg_sessions, monkeypatch
+):
+    from backend.infra.outbox_worker import OutboxWorker
+
+    identity = await seed(pg_sessions)
+    async with pg_sessions() as session:
+        item = await session.get(Order, identity)
+        broker_id = item.broker_order_id
+        details = {
+            "broker": "alpaca",
+            "status": "filled",
+            "broker_order_id": broker_id,
+            "alpaca_response": {
+                "id": broker_id,
+                "client_order_id": item.client_idempotency_key,
+                "symbol": item.symbol,
+                "side": item.side,
+                "qty": "10",
+                "status": "filled",
+                "filled_qty": "10",
+                "filled_avg_price": "112",
+            },
+        }
+    waiting_pid = asyncio.Future()
+
+    @asynccontextmanager
+    async def worker_session():
+        async with pg_sessions() as session:
+            pid = (await session.execute(text("SELECT pg_backend_pid()"))).scalar_one()
+            if not waiting_pid.done():
+                waiting_pid.set_result(pid)
+            yield session
+
+    monkeypatch.setattr("backend.infra.db.get_session_context", worker_session)
+    worker = OutboxWorker.__new__(OutboxWorker)
+    async with pg_sessions() as stream_session:
+        first_pid = (await stream_session.execute(text("SELECT pg_backend_pid()"))).scalar_one()
+        await snapshot(
+            stream_session, await stream_session.get(Order, identity), 4, 100, "partially_filled"
+        )
+        task = asyncio.create_task(
+            worker._update_order_status(str(identity), "filled", broker_id, details)
+        )
+        try:
+            second_pid = await asyncio.wait_for(waiting_pid, timeout=2)
+            assert second_pid != first_pid
+            deadline = asyncio.get_running_loop().time() + 2
+            while (
+                first_pid
+                not in (
+                    await stream_session.execute(
+                        text("SELECT pg_blocking_pids(:pid)"), {"pid": second_pid}
+                    )
+                ).scalar_one()
+            ):
+                assert not task.done(), "Acknowledgement bypassed active stream order lock"
+                assert asyncio.get_running_loop().time() < deadline
+                await asyncio.sleep(0.01)
+            await stream_session.commit()
+            await asyncio.wait_for(task, timeout=5)
+        finally:
+            if not task.done():
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await stream_session.rollback()
+    late = {
+        **details,
+        "status": "new",
+        "alpaca_response": {
+            **details["alpaca_response"],
+            "status": "new",
+            "filled_qty": "0",
+            "filled_avg_price": None,
+        },
+    }
+    await worker._update_order_status(str(identity), "new", broker_id, late)
+    async with pg_sessions() as session:
+        executions = list((await session.execute(select(Execution))).scalars())
+        lots = list((await session.execute(select(PositionLot))).scalars())
+        assert sorted((x.fill_qty, x.fill_price) for x in executions) == [(4, 100), (6, 120)]
+        assert sum(x.remaining_qty * x.cost_basis for x in lots) == 1120
+        saved = await session.get(Order, identity)
+        assert (saved.status, saved.filled_qty, saved.avg_fill_price) == ("filled", 10, 112)

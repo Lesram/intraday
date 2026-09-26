@@ -35,7 +35,7 @@ const derivePrimaryRole = (roles: string[] | undefined): User['role'] => {
   return 'viewer';
 };
 
-const normalizeLoginResponse = (raw: unknown): AuthResponse => {
+export const normalizeLoginResponse = (raw: unknown): AuthResponse => {
   // M-30 FIX: Use type guard to avoid 'as any' casts
   const isFullAuthResponse = (obj: unknown): obj is AuthResponse => {
     return (

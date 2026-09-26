@@ -14,7 +14,7 @@ import type {
   HeartbeatMessage,
 } from '@/types/websocket';
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'http://localhost:8000';
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || window.location.origin;
 
 type MessageHandler = (data: unknown) => void;
 type ConnectionStateHandler = (connected: boolean) => void;

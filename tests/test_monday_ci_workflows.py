@@ -243,6 +243,10 @@ def test_readiness_runs_latest_data_and_prefill_regressions():
                  "tests/unit/test_streaming_data_provider.py",
                  "tests/unit/test_paper_data_freshness.py",
                  "tests/test_live_engine_fill_accounting.py",
+                 "tests/test_order_recovery_service.py",
+                 "tests/test_outbox_fill_race.py",
+                 "tests/test_away_mode_wave_b.py",
+                 "tests/test_paper_frontend_deployment.py",
                  "tests/test_phase3_attribution_report.py"):
         assert path in step["run"]
     assert step["timeout-minutes"] == 5
@@ -265,7 +269,8 @@ def test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence():
     run = step["run"]
     expected = {
         "tests/test_wave37_fixes.py", "tests/test_wave48_fixes.py",
-        "tests/test_wave52_fixes.py", "tests/unit/test_api_routes_mocked_coverage.py",
+        "tests/test_wave51_fixes.py", "tests/test_wave52_fixes.py",
+        "tests/unit/test_api_routes_mocked_coverage.py",
         "tests/test_nightly_test_contract.py",
         "tests/test_wave55_fixes.py", "tests/test_wave61_fixes.py",
         "tests/test_reachability_v8.py", "tests/test_v12_w75_lint_ratchet.py",

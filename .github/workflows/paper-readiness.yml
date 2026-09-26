@@ -86,6 +86,7 @@ jobs:
             tests/test_order_pipeline_e2e.py \
             tests/test_audit_0_4_eod_flatten_escalation.py \
             tests/test_paper_runtime_config.py \
+            tests/test_paper_frontend_deployment.py \
             tests/test_admin_trading_execution_mode.py \
             tests/test_paper_watchdog.py \
             tests/test_session_logging_contract.py \
@@ -93,6 +94,9 @@ jobs:
             tests/test_paper_backup_recovery.py \
             tests/test_paper_fill_reconciliation.py \
             tests/test_fill_accounting_integrity.py \
+            tests/test_order_recovery_service.py \
+            tests/test_outbox_fill_race.py \
+            tests/test_away_mode_wave_b.py \
             tests/test_portfolio_availability_contract.py \
             tests/test_portfolio_service_comprehensive.py \
             tests/test_socketio_topic_authorization.py \
@@ -168,6 +172,7 @@ jobs:
           python -m pytest -q --timeout=30 --tb=short --durations=10 \
             tests/test_wave37_fixes.py \
             tests/test_wave48_fixes.py \
+            tests/test_wave51_fixes.py \
             tests/test_wave52_fixes.py \
             tests/unit/test_api_routes_mocked_coverage.py \
             tests/test_nightly_test_contract.py \
@@ -223,6 +228,7 @@ jobs:
           set -o pipefail
           npm ci --no-audit --no-fund
           npx --no-install vitest run \
+            src/components/auth/AuthBootstrap.test.tsx \
             src/features/organism/__tests__/OrganismDashboard.test.tsx \
             src/features/auth/LoginPage.test.tsx \
             src/hooks/useScannerWebSocket.test.tsx \
@@ -232,6 +238,7 @@ jobs:
             src/features/portfolio/PortfolioPage.test.tsx \
             src/hooks/usePortfolio.test.tsx \
             src/services/api.test.ts \
+            src/services/originRouting.test.ts \
             src/services/authService.test.tsx \
             src/services/websocketManager.test.tsx \
             src/utils/portfolioSnapshot.test.ts \
@@ -251,6 +258,26 @@ jobs:
           path: |
             artifacts/
             docs/engineering/LIVE_AUDIT_INDEX.md
+          if-no-files-found: error
+
+  frontend-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build immutable local operator UI
+        timeout-minutes: 12
+        run: docker build --file frontend/Dockerfile --build-arg VCS_REF="$GITHUB_SHA" --tag intra-operator-ui:ci .
+      - name: Verify proxy, websocket and API replacement behavior
+        timeout-minutes: 5
+        run: python3 scripts/ci/check_frontend_container.py --image intra-operator-ui:ci --output-dir artifacts/frontend_container
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-container-evidence
+          path: artifacts/frontend_container/
           if-no-files-found: error
 
   fill-accounting-postgres:
@@ -301,7 +328,7 @@ jobs:
           import xml.etree.ElementTree as ET
           path = Path('artifacts/platform_audit_20260926/execution_accounting/postgres_ci.xml')
           cases = list(ET.parse(path).getroot().iter('testcase'))
-          assert len(cases) >= 9, 'Required contention evidence missing'
+          assert len(cases) >= 12, 'Required contention, recovery and ACK evidence missing'
           assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in cases), 'All PostgreSQL cases must execute and pass'
           PY
       - uses: actions/upload-artifact@v4

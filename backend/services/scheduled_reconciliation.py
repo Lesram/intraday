@@ -48,6 +48,9 @@ async def run_scheduled_reconciliation() -> dict[str, Any]:
         
         # Create database session
         async_session_maker = get_sessionmaker()
+        from backend.services.order_recovery_service import recover_persisted_orders
+
+        recovery = await recover_persisted_orders(async_session_maker)
         async with async_session_maker() as session:
             # Create Alpaca client
             alpaca_client = AlpacaBrokerClient()
@@ -60,6 +63,7 @@ async def run_scheduled_reconciliation() -> dict[str, Any]:
             
             # Run reconciliation
             summary = await service.get_reconciliation_summary()
+            summary["order_recovery"] = recovery
             
             # Log results
             logger.info(

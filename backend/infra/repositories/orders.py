@@ -9,11 +9,11 @@ import logging
 from typing import Any
 import uuid
 
-from sqlalchemy import select, update
+from sqlalchemy import String, cast, exists, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..schemas import Order
+from ..schemas import Order, OutboxEvent
 
 logger = logging.getLogger(__name__)
 
@@ -371,6 +371,44 @@ class OrdersRepo:
             select(Order).where(Order.updated_at >= since).order_by(Order.updated_at.desc()).limit(100)
         )
         return list(result.scalars().all())
+
+    @staticmethod
+    def _recovery_scope():
+        """Positive submission lineage, never an unowned historical UNKNOWN."""
+        submitted = exists(
+            select(OutboxEvent.id).where(
+                OutboxEvent.topic == "order.submitted",
+                # SQLite stores UUID as 32 hex digits; PostgreSQL uses canonical UUID.
+                func.replace(OutboxEvent.payload["order_id"].as_string(), "-", "")
+                == func.replace(cast(Order.id, String), "-", ""),
+                OutboxEvent.payload["client_key"].as_string() == Order.client_idempotency_key,
+            )
+        )
+        return (
+            func.lower(Order.status).not_in(
+                ("filled", "canceled", "cancelled", "expired", "rejected", "replaced")
+            ),
+            Order.broker_order_id.is_not(None),
+            func.length(func.trim(Order.broker_order_id)) > 0,
+            func.length(func.trim(Order.client_idempotency_key)) > 0,
+            or_(Order.attributes["source"].as_string() == "organism", submitted),
+        )
+
+    async def get_recovery_orders_page(
+        self, *, after_id: uuid.UUID | None = None, limit: int = 21
+    ) -> list[Order]:
+        """Bounded keyset page independent of order age or local update time."""
+        stmt = select(Order).where(*self._recovery_scope()).order_by(Order.id).limit(limit)
+        if after_id is not None:
+            stmt = stmt.where(Order.id > after_id)
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def lock_recovery_order(self, order_id: uuid.UUID) -> Order | None:
+        """Recheck eligibility after network IO, serialized with fill ingestion."""
+        stmt = select(Order).where(Order.id == order_id, *self._recovery_scope())
+        return (
+            await self.session.execute(stmt.with_for_update().execution_options(populate_existing=True))
+        ).scalar_one_or_none()
 
     async def get_active_orders(self, limit: int = 100) -> list[Order]:
         """

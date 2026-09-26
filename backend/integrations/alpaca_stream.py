@@ -549,6 +549,7 @@ class AlpacaStreamClient:
 
         # B2: Track connection timestamps and reconnect count for gap-fill
         self._last_connected_at: float = 0.0
+        self._gap_recovery_anchor: float = 0.0
         self._reconnect_count: int = 0
 
         # Heartbeat configuration
@@ -584,6 +585,10 @@ class AlpacaStreamClient:
 
             self.is_connected = True
             self.reconnect_attempts = 0
+            # Retain the previous connection boundary until gap recovery has
+            # used it. A fresh connect must not erase a long outage's lookback.
+            if not getattr(self, "_gap_recovery_anchor", 0):
+                self._gap_recovery_anchor = self._last_connected_at
             self._last_connected_at = time.time()
 
             logger.info("Connected to Alpaca WebSocket stream")
@@ -1122,10 +1127,14 @@ class AlpacaStreamClient:
         """
         try:
             from datetime import timedelta
+            from backend.services.order_recovery_service import recover_persisted_orders
+
+            await recover_persisted_orders(get_session_context)
 
             # B2: Compute actual gap duration
-            if self._last_connected_at > 0:
-                gap_seconds = time.time() - self._last_connected_at
+            anchor = getattr(self, "_gap_recovery_anchor", 0) or self._last_connected_at
+            if anchor > 0:
+                gap_seconds = time.time() - anchor
             else:
                 gap_seconds = 300  # Default 5 minutes if no prior connection
 
@@ -1244,6 +1253,8 @@ class AlpacaStreamClient:
 
         except Exception as e:
             logger.error("EXEC-002 gap-fill failed (non-fatal): %s", e)
+        finally:
+            self._gap_recovery_anchor = 0.0
 
     def _map_alpaca_status(self, alpaca_status: str) -> str:
         """

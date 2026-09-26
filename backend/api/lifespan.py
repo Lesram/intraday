@@ -811,6 +811,10 @@ async def _sync_orders(app):
         logger.info("Starting initial order sync from Alpaca...")
         broker_client = get_alpaca_broker_client()
 
+        from backend.services.order_recovery_service import recover_persisted_orders
+
+        await recover_persisted_orders(app.state.sessionmaker, broker_client)
+
         url = f"{broker_client.base_url}/v2/orders"
         headers = broker_client._get_auth_headers()
         params = {"status": "all", "limit": 500, "direction": "desc"}

@@ -425,6 +425,13 @@ class OutboxWorker:
                 result = {"success": False, "error": f"Unknown topic: {topic}"}
 
             if result.get("success", False):
+                if result.get("broker") == "alpaca":
+                    # A known real acknowledgement remains lookup-only if
+                    # marking delivery sent fails after order persistence.
+                    lookup_only = True
+                    prior_error = BROKER_ACK_STATE_PREFIX + json.dumps({
+                        "version": 1, "client_order_id": client_key,
+                    }, separators=(",", ":"))
                 # Mark event as succeeded
                 await self._mark_event_succeeded(event_id, result)
                 logger.info("Event processed successfully",
@@ -550,6 +557,8 @@ class OutboxWorker:
             trading_execution_mode=None,
         )
 
+        real_acknowledged = False
+        acknowledged_broker_id = None
         try:
             from backend.services.trading_execution_mode import get_trading_execution_mode
 
@@ -597,6 +606,8 @@ class OutboxWorker:
 
             # Update order status in database
             if result.get("success", False):
+                real_acknowledged = result.get("broker") == "alpaca"
+                acknowledged_broker_id = result.get("broker_order_id")
                 final_status = result.get("status", "submitted")
                 logger.info("About to update order status",
                            order_id=order_id,
@@ -623,10 +634,19 @@ class OutboxWorker:
             return result
 
         except Exception as e:
-            logger.error("Order submission failed",
+            logger.error("Acknowledged order persistence failed" if real_acknowledged else "Order submission failed",
                         order_id=order_id,
                         error=str(e),
                         error_type=type(e).__name__)
+            if real_acknowledged:
+                return {
+                    "success": False, "submission_ambiguous": True,
+                    "status": "reconciliation_required",
+                    "client_order_id": payload.get("client_key"),
+                    "broker_order_id": acknowledged_broker_id,
+                    "error": "broker_acknowledgement_persistence_failed",
+                    "order_id": order_id,
+                }
             return {
                 "success": False,
                 "error": str(e),
@@ -757,7 +777,7 @@ class OutboxWorker:
         order_id: str,
         status: str,
         broker_order_id: str | None = None,
-        details: dict[str, Any] | None = None
+        details: dict[str, Any] | None = None,
     ):
         """
         Update order status using proper ORM repository pattern.
@@ -778,10 +798,12 @@ class OutboxWorker:
             from backend.infra.repositories import OrdersRepo
             from backend.infra.db import get_session_context
 
-            logger.info("Updating order status via ORM repository",
-                       order_id=order_id,
-                       status=status,
-                       broker_order_id=broker_order_id)
+            logger.info(
+                "Updating order status via ORM repository",
+                order_id=order_id,
+                status=status,
+                broker_order_id=broker_order_id,
+            )
 
             # Use proper async session and repository pattern
             async with get_session_context() as session:
@@ -789,7 +811,7 @@ class OutboxWorker:
 
                 # Parse order ID (handle both UUID formats)
                 try:
-                    if '-' in order_id:
+                    if "-" in order_id:
                         order_uuid = uuid.UUID(order_id)
                     else:
                         # Database format without hyphens
@@ -799,62 +821,157 @@ class OutboxWorker:
                     logger.error(f"Invalid order ID format: {order_id}", error=str(e))
                     raise ValueError(f"Invalid order ID format: {order_id}") from e
 
-                # Get existing order
-                order = await order_repo.get_by_id(order_uuid)
-                if not order:
-                    logger.warning("Order not found for status update",
-                                 order_id=order_id,
-                                 order_uuid=str(order_uuid))
+                # Serialize this acknowledgement with stream/recovery fill
+                # writers, then reread the row after acquiring its lock.
+                from sqlalchemy import select
+                from backend.infra.schemas import Order
+
+                order = (
+                    await session.execute(
+                        select(Order)
+                        .where(Order.id == order_uuid)
+                        .with_for_update()
+                        .execution_options(populate_existing=True)
+                    )
+                ).scalar_one_or_none()
+                if order is None:
                     raise ValueError(f"Order not found: {order_id}")
+                if (
+                    broker_order_id is not None
+                    and order.broker_order_id is not None
+                    and broker_order_id != order.broker_order_id
+                ):
+                    raise ValueError("Broker acknowledgement identity changed")
 
-                # Prepare attributes to update
-                update_attributes = {}
-                filled_qty_value = None
-                avg_fill_price_value = None
+                update_attributes = {
+                    key: str(value)
+                    for key, value in (details or {}).items()
+                    if key not in {"filled_qty", "avg_fill_price"}
+                }
+                if details and (details.get("broker") == "alpaca" or "alpaca_response" in details):
+                    from backend.integrations.alpaca_stream import apply_order_fill_snapshot
+                    from backend.services.order_recovery_service import (
+                        OrderIdentity,
+                        validate_order_snapshot,
+                    )
 
-                if details:
-                    # Extract fill details for dedicated columns
-                    if 'filled_qty' in details:
-                        try:
-                            filled_qty_value = Decimal(str(details['filled_qty']))
-                        except (ValueError, TypeError):
-                            logger.warning(f"Invalid filled_qty value: {details['filled_qty']}")
+                    # Real dispatcher fills are nested, not the mock response's
+                    # top-level fields. Never infer a fill from status alone.
+                    if (
+                        not isinstance(broker_order_id, str)
+                        or str(uuid.UUID(broker_order_id)) != broker_order_id
+                    ):
+                        raise ValueError("Invalid broker acknowledgement identity")
+                    snapshot = details.get("alpaca_response")
+                    identity = OrderIdentity(
+                        order.id,
+                        broker_order_id,
+                        order.client_idempotency_key,
+                        order.symbol,
+                        order.side,
+                        order.qty,
+                    )
+                    final_status, quantity, price = validate_order_snapshot(identity, snapshot)
+                    if status != snapshot["status"]:
+                        raise ValueError("Broker acknowledgement status mismatch")
+                    accounting = await apply_order_fill_snapshot(
+                        session,
+                        order,
+                        status=final_status,
+                        cumulative_filled_qty=quantity,
+                        avg_fill_price=price,
+                        broker_order_id=broker_order_id,
+                        broker_order_data=snapshot,
+                    )
+                    if accounting.get("reason") == "stale_snapshot":
+                        logger.info("Ignored stale broker acknowledgement", order_id=order_id)
+                        return
+                    status = accounting["status"]
+                    await order_repo.attach_broker_result(
+                        order_uuid,
+                        attributes=update_attributes or None,
+                    )
+                else:
+                    # Preserve mock/shadow attachment behavior, but no delayed
+                    # acknowledgement may roll back established fill evidence.
+                    def number(value):
+                        if isinstance(value, bool):
+                            raise ValueError("Invalid acknowledgement fill number")
+                        value = Decimal(str(value))
+                        if not value.is_finite():
+                            raise ValueError("Invalid acknowledgement fill number")
+                        return value
 
-                    if 'avg_fill_price' in details:
-                        try:
-                            avg_fill_price_value = Decimal(str(details['avg_fill_price']))
-                        except (ValueError, TypeError):
-                            logger.warning(f"Invalid avg_fill_price value: {details['avg_fill_price']}")
-
-                    # Store other details in attributes
-                    for key, value in details.items():
-                        if key not in ['filled_qty', 'avg_fill_price']:
-                            update_attributes[key] = str(value)
-
-                # Use attach_broker_result method with new parameters
-                await order_repo.attach_broker_result(
-                    order_id=order_uuid,
-                    broker_order_id=broker_order_id,
-                    status=status,
-                    filled_qty=filled_qty_value,
-                    avg_fill_price=avg_fill_price_value,
-                    attributes=update_attributes if update_attributes else None
-                )
+                    try:
+                        real_identity = (
+                            order.broker_order_id is not None
+                            and str(uuid.UUID(order.broker_order_id)) == order.broker_order_id
+                        )
+                    except (ValueError, TypeError, AttributeError):
+                        real_identity = False
+                    if (
+                        real_identity
+                        and details
+                        and (
+                            details.get("broker") in {"mock", "dry_run", "shadow", "none"}
+                            or details.get("shadow") is True
+                        )
+                    ):
+                        raise ValueError("Synthetic acknowledgement cannot change a real broker order")
+                    previous = number(order.filled_qty or 0)
+                    quantity = (
+                        number(details["filled_qty"]) if details and "filled_qty" in details else None
+                    )
+                    price = (
+                        number(details["avg_fill_price"])
+                        if details and "avg_fill_price" in details
+                        else None
+                    )
+                    if quantity is not None and (quantity < 0 or quantity > order.qty):
+                        raise ValueError("Invalid acknowledgement fill quantity")
+                    if price is not None and price <= 0:
+                        raise ValueError("Invalid acknowledgement fill price")
+                    if quantity is not None and quantity < previous:
+                        logger.info("Ignored stale broker acknowledgement", order_id=order_id)
+                        return
+                    terminal = {"filled", "canceled", "cancelled", "expired", "rejected", "replaced"}
+                    if order.status in terminal:
+                        if quantity is not None and quantity > previous:
+                            raise ValueError("Terminal fill change requires broker reconciliation")
+                        status = order.status
+                    if previous > 0 and (quantity is None or quantity == previous):
+                        # An acknowledgement without new fill evidence cannot
+                        # demote a partial fill to accepted/submitted/shadow.
+                        status = order.status
+                        if price is not None and price != order.avg_fill_price:
+                            raise ValueError("Fill cash correction requires broker reconciliation")
+                    await order_repo.attach_broker_result(
+                        order_id=order_uuid,
+                        broker_order_id=broker_order_id,
+                        status=status,
+                        filled_qty=quantity,
+                        avg_fill_price=price,
+                        attributes=update_attributes or None,
+                    )
 
                 await session.commit()
 
-                logger.info("Order status updated successfully via ORM",
-                           order_id=order_id,
-                           status=status,
-                           broker_order_id=broker_order_id)
+                logger.info(
+                    "Order status updated successfully via ORM",
+                    order_id=order_id,
+                    status=status,
+                    broker_order_id=broker_order_id,
+                )
 
         except Exception as e:
-            logger.error("Failed to update order status via ORM",
-                        order_id=order_id,
-                        status=status,
-                        error=str(e),
-                        error_type=type(e).__name__,
-                        exc_info=True)
+            logger.error(
+                "Failed to update order status via ORM",
+                order_id=order_id,
+                status=status,
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
             # Re-raise to ensure failure is propagated
             # This prevents marking events as "sent" when database update fails
             raise

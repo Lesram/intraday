@@ -35,6 +35,8 @@ const DEV_BYPASS_AUTH =
   import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
 const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps) => {
+  const sessionReady = useAuthStore((state) => state.sessionReady);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -72,6 +74,8 @@ const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps) => {
     autoLogin();
   }, [isAuthenticated, setAuth]);
 
+  if (!sessionReady) return <Spin tip="Restoring session..." />;
+
   // Wait for auto-login to finish before deciding to redirect
   if (bypassPending) {
     return (
@@ -83,7 +87,7 @@ const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps) => {
 
   // If not authenticated, redirect to login
   // Save the attempted location so we can redirect back after login
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !accessToken || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
