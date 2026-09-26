@@ -1,0 +1,23 @@
+Isolated test scratch: /private/tmp/intra-audit-test-4p12_gkl
+........................................................................ [ 65%]
+......................................                                   [100%]
+=============================== warnings summary ===============================
+tests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3023: RuntimeWarning: invalid value encountered in divide
+    c /= stddev[:, None]
+
+tests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3024: RuntimeWarning: invalid value encountered in divide
+    c /= stddev[None, :]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 8 durations ==============================
+11.13s call     tests/test_organism_engine_scenarios.py::test_brain_save_interval_20_ticks
+8.76s call     tests/test_organism_engine_scenarios.py::test_regime_stability_over_20_ticks
+5.92s call     tests/test_organism_live_engine.py::TestMultiRunRegression::test_brain_persistence_across_runs
+4.42s call     tests/test_organism_engine_scenarios.py::test_tick_count_and_state_survive_restart
+4.36s call     tests/test_organism_engine_scenarios.py::test_entry_with_partial_fill_tracked_correctly
+3.32s call     tests/test_organism_live_engine.py::TestEdgeCases::test_empty_universe
+2.91s call     tests/test_organism_live_engine.py::TestPaperAccountIntegration::test_full_cycle
+2.73s call     tests/test_organism_engine_scenarios.py::test_untrained_ml_doesnt_block_all_entries
+110 passed, 2 warnings in 59.91s

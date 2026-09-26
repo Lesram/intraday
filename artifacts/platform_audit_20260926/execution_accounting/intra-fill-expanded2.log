@@ -1,0 +1,59 @@
+Isolated test scratch: /private/tmp/intra-audit-test-zsb4otfd
+........................................................................ [ 34%]
+........................................................................ [ 68%]
+...................................F...............................      [100%]
+=================================== FAILURES ===================================
+________________ test_dd3_2_alpaca_stream_uses_incremental_qty _________________
+tests/test_wave43_fixes.py:35: in test_dd3_2_alpaca_stream_uses_incremental_qty
+    session = SimpleNamespace(execute=AsyncMock(side_effect=results), add=MagicMock(), flush=AsyncMock())
+                                                                          ^^^^^^^^^
+E   NameError: name 'MagicMock' is not defined
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamClientListenLoop::test_listen_handles_connection_closed
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py:706: RuntimeWarning: coroutine 'TestAlpacaStreamClientListenLoop.test_listen_handles_connection_closed.<locals>.mock_iter' was never awaited
+    async for message in self.websocket:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamListenWebSocketException::test_listen_handles_websocket_exception
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py:706: RuntimeWarning: coroutine 'TestAlpacaStreamListenWebSocketException.test_listen_handles_websocket_exception.<locals>.mock_iter' was never awaited
+    async for message in self.websocket:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamListenWebSocketException::test_listen_handles_unexpected_exception
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py:706: RuntimeWarning: coroutine 'TestAlpacaStreamListenWebSocketException.test_listen_handles_unexpected_exception.<locals>.mock_iter' was never awaited
+    async for message in self.websocket:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log1p
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_single_row_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: divide by zero encountered in log10
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_wave43_fixes.py::test_dd3_2_alpaca_stream_uses_incremental_qty
+1 failed, 210 passed, 11 warnings in 3.69s

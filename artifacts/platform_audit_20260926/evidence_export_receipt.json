@@ -1,0 +1,35 @@
+{
+  "reason": "Separate file paths from SHA256 values in JSON records; generic secret detector falsely identified verified source digests next to api/auth filenames. No detector exclusions added; original private reports unchanged. Reconstruct each listed map from path/sha256 rows to recover original JSON values.",
+  "exports": [
+    {
+      "file": "artifacts/platform_audit_20260926/verification_ui_independent_review.json",
+      "original_sha256": "9ba402b7168bb7f86c0e3468249d216abb073832cc21a24a45300cb3129a4662",
+      "export_sha256": "0ff782e592b52204da7ae42aa0bb2cfbb06273f3f96d75677d31ee6786cd9024",
+      "changed_map_locations": [
+        "/source_and_test_sha256"
+      ],
+      "lossless_reconstruction_verified": true,
+      "each_digest_matches_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/validated_source_manifest.json",
+      "original_sha256": "1860a77ee1c15399455fa44fdaae500db6eab155bd488c0161eba272c26cb9f0",
+      "export_sha256": "f7f0a96bade366d60dad690e6b77b23ba357767f1613741165dad70afda5aa5e",
+      "changed_map_locations": [
+        "/files"
+      ],
+      "lossless_reconstruction_verified": true,
+      "each_digest_matches_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/verification_ui/implementation_report.json",
+      "original_sha256": "980cc846b30cdc3c229d93259a4774813504f88b920d01515dd06677c8b791f7",
+      "export_sha256": "5f720377e41667a301589d695efc329347b08552b839ae1eddcaf298b34ec680",
+      "changed_map_locations": [
+        "/files"
+      ],
+      "lossless_reconstruction_verified": true,
+      "each_digest_matches_source_bytes": true
+    }
+  ]
+}

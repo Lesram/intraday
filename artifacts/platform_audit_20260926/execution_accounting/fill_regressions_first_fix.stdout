@@ -1,0 +1,10 @@
+F.............                                                           [100%]
+=================================== FAILURES ===================================
+___ test_partial_buy_cashflow_and_sell_realized_pnl_match_cumulative_average ___
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:58: in test_partial_buy_cashflow_and_sell_realized_pnl_match_cumulative_average
+    assert sell_cash == Decimal(1150)
+E   AssertionError: assert Decimal('1150.000002000000') == Decimal('1150')
+E    +  where Decimal('1150') = Decimal(1150)
+=========================== short test summary info ============================
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_partial_buy_cashflow_and_sell_realized_pnl_match_cumulative_average
+1 failed, 13 passed in 0.74s

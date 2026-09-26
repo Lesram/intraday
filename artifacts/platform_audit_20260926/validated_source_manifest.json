@@ -1,0 +1,187 @@
+{
+  "source_sha": "8ebbb1c126b59d111bc2b1be11f0a5592afd0142",
+  "generated_at": "2026-09-26T23:03:58.083048+00:00",
+  "files": [
+    {
+      "path": ".github/workflows/paper-readiness.yml",
+      "sha256": "975e1552ff2ec2fb0a14d73fec2a1386d1b92eebf7eca935dc87dffe75af900c"
+    },
+    {
+      "path": "backend/api/lifespan.py",
+      "sha256": "66264fc37295b295f28dc956bad23ac0a08f6c77c2a99853324961cde70a5208"
+    },
+    {
+      "path": "backend/api/portfolio.py",
+      "sha256": "8bf365f6edb4b4a861eaf810699400a1b3e202651434df796df6ee83cf3d5511"
+    },
+    {
+      "path": "backend/api/socketio_server.py",
+      "sha256": "044f6d4fd76a8d343773dd68ae025b8852136e8068904a1b118b4df45b28e81e"
+    },
+    {
+      "path": "backend/integrations/alpaca_stream.py",
+      "sha256": "fa46735e7848310c7bec651f20ed5939157dce1f193368117521e28bbb9b0373"
+    },
+    {
+      "path": "backend/services/portfolio_service.py",
+      "sha256": "52fdfb7b932fdf8714ff71f8863fc86081a50c76e122ba4ed5711bfdb01e549c"
+    },
+    {
+      "path": "docs/engineering/MONDAY_CI_READINESS.md",
+      "sha256": "81015ab0ea783a90303b9305e3237aaa95c6b1713754d237274fbcd8410afebc"
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.test.tsx",
+      "sha256": "a34e8d67191b9352ad991eadbd7651da382e249af5ec9e710dea980d76da85a7"
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.tsx",
+      "sha256": "da91aaa6b9237dce425093c0779bc7318664263f3b5c3baaa6ad36d386987a7f"
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.test.tsx",
+      "sha256": "bf43c0916ae94c14caa58492782bea3671ca949641ea98a53d66e919cabd97f6"
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.tsx",
+      "sha256": "8a4811897da33dd0660070953b8b44c5a90d521018ea6fd10aee52c1dae9c210"
+    },
+    {
+      "path": "frontend/src/features/organism/OrganismDashboard.tsx",
+      "sha256": "c3c2a7f2b9124028171a90d21a1a13ed64ce33b74edb2a8e3783ba4c67744877"
+    },
+    {
+      "path": "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx",
+      "sha256": "766e984e8d4fa4cc892d0545c45a71b8d651e0fd8992511439613edc32e41fa7"
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.test.tsx",
+      "sha256": "c7e8b151316fbcf7c65bc5ab0b1a1a754bf593754c04e6d5c59af143114265dc"
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.tsx",
+      "sha256": "d502ec12d4d5e5229185417a938137fe74bed2680f00a3472c3d7d09beff44f3"
+    },
+    {
+      "path": "frontend/src/hooks/useData.ts",
+      "sha256": "311330d3e48433cd61894bb1c359243e8a6857252e0fa2eb23f22d7e2418b7c7"
+    },
+    {
+      "path": "frontend/src/hooks/usePortfolio.test.tsx",
+      "sha256": "7c52ea39d3975a728e1c465b226f469d031b2ae1efe185c8cd367a48e92a9ee0"
+    },
+    {
+      "path": "frontend/src/hooks/useWebSocket.ts",
+      "sha256": "565c2620baba2e4fe448305b8a9e694f42a83d9db11fe0a63ac35b1fd7d060d3"
+    },
+    {
+      "path": "frontend/src/services/api.test.ts",
+      "sha256": "225409dcdf9616f6beb8690da28db1ccfb59f7dd0cd17389a32cbdff35951828"
+    },
+    {
+      "path": "frontend/src/services/api.ts",
+      "sha256": "8a1f9fea46a4919b774d974e42e5b56a06ffc1219220d4d64100e38ed0e32c06"
+    },
+    {
+      "path": "frontend/src/services/authService.test.tsx",
+      "sha256": "15f69a72df9a84347c2e4c80244f74ccb12a85b60b019cee9acaf88cea67eda4"
+    },
+    {
+      "path": "frontend/src/services/authService.ts",
+      "sha256": "fea1c9628e531996f45cac4f10bd336148fdf81ea42f518005ef4ddedbe69e59"
+    },
+    {
+      "path": "frontend/src/services/websocketManager.test.tsx",
+      "sha256": "f5f631ad91e9b6137811796452339d3e62b1d4d51dcc0ea673ce25bf257e1c1f"
+    },
+    {
+      "path": "frontend/src/services/websocketManager.ts",
+      "sha256": "47e8886c7f674b950432fa67442bd0776548c4103e79c9bb6192cb64c81da11a"
+    },
+    {
+      "path": "frontend/src/store/portfolioStore.ts",
+      "sha256": "04c866c5ba1dae9fd86d51b73a36ad254682a215d434bb51d97f10d104f71fb0"
+    },
+    {
+      "path": "frontend/src/test/portfolioFixture.ts",
+      "sha256": "6ffa08b6ae13fe3b327d0beef3f9ad06a62620a8068a99128d781caa50ca002d"
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.test.ts",
+      "sha256": "4c40604c777caa3da4b1785b5f23d96258b4517ac7fa04ea93ccb3f863de9db6"
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.ts",
+      "sha256": "48578b4a821294140afd4b23823315ea661fef0be4964f915072c9a4e640dcd0"
+    },
+    {
+      "path": "reports/PLATFORM_AUDIT_FROZEN_REPAIR_SCOPE_2026-09-26.md",
+      "sha256": "8cddd7d3e7e12606680193e4f8bcb327503f8fa922b9354568ccb0e63b4516e8"
+    },
+    {
+      "path": "reports/platform_audit_20260926/PLATFORM_REVIEW.md",
+      "sha256": "82247ef57ccc81e5403090d160ad12b5ed867b413fbd35174274c6d161552564"
+    },
+    {
+      "path": "reports/platform_audit_20260926/research_readiness.md",
+      "sha256": "051522ac82f27fbcf0c4cc3f228a0726db49f4e7ccfcd92e2959158da7fbac86"
+    },
+    {
+      "path": "reports/platform_audit_20260926/research_readiness_sources.json",
+      "sha256": "4b3ce8c9c3a3f133ce38ee73b766b4eda36c041bcb9d09abeecb144f25bf9797"
+    },
+    {
+      "path": "scripts/ci/nightly_test_contract.py",
+      "sha256": "ff7422fd9e767581c9c171170c4ead18c5fd913de96fa24d8442d6e088186ddc"
+    },
+    {
+      "path": "tests/test_adversarial_inputs_v7.py",
+      "sha256": "bccc615cf2c37126ee99eefec0ef55ddac79a4c96f576ea7a78f03d64c5ac74f"
+    },
+    {
+      "path": "tests/test_fill_accounting_integrity.py",
+      "sha256": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972"
+    },
+    {
+      "path": "tests/test_fill_accounting_postgres.py",
+      "sha256": "67d3774da1549e68070f9f0d2c105e8d8c9f950e8548ef07d811a88e933dcce8"
+    },
+    {
+      "path": "tests/test_monday_ci_workflows.py",
+      "sha256": "dd657c00bcc705190186ca5eda52e7a46445b9a859374aafaae8dc04d151500d"
+    },
+    {
+      "path": "tests/test_nightly_test_contract.py",
+      "sha256": "6592cfc0b628bba5febe707b256ee46e8371db0c208a798b6e8ad7b751853906"
+    },
+    {
+      "path": "tests/test_portfolio_availability_contract.py",
+      "sha256": "bb4078fda1dc654d160d87146f53a17f58fef5a8ceb53401b72ed20ae533878c"
+    },
+    {
+      "path": "tests/test_portfolio_service_comprehensive.py",
+      "sha256": "2a3537686ebee8f01132484ab8336ae51cb78c0d32e89c9b7a327371550d38a3"
+    },
+    {
+      "path": "tests/test_socketio_topic_authorization.py",
+      "sha256": "79af2b0af55f34a2c5031f3909a853431e0a115e344a8fcea825d45928aae179"
+    },
+    {
+      "path": "tests/test_wave43_fixes.py",
+      "sha256": "fee8b3e4873454983b6f58414a071a41a040d6a80f2f6cdc208729a79a56442a"
+    },
+    {
+      "path": "tests/test_wave52_fixes.py",
+      "sha256": "b2a7ddeca22f2db36016a813f1f5aadabe6619f4ba2ce6d10e59ba85656c9c2b"
+    },
+    {
+      "path": "tests/unit/test_alpaca_stream_comprehensive.py",
+      "sha256": "889ff4eca1865cc63a1e88e5f24a197d71d3e0857b881e2af346e149c978eed0"
+    },
+    {
+      "path": "tests/unit/test_api_routes_mocked_coverage.py",
+      "sha256": "7965ba0b9a5eeb10835f99f44492db1c00be42dcfcb328b8bd9a7e38b68b4810"
+    }
+  ],
+  "note": "Committed source/test/docs state; validation receipts separately bind each tested subset. Later evidence-only commit does not change these bytes."
+}

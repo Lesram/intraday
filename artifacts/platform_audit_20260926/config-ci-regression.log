@@ -1,0 +1,53 @@
+Isolated test scratch: /private/tmp/intra-audit-test-sxxr6o76
+........................................................................ [ 69%]
+.............F.................                                          [100%]
+=================================== FAILURES ===================================
+___ test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence ___
+
+    def test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence():
+        workflow = _load("paper-readiness.yml")
+        triggers = workflow.get("on", workflow.get(True))
+        assert "intra-2.0-phase1" in triggers["pull_request"]["branches"]
+        job = workflow["jobs"]["operational-safety"]
+        step = next(step for step in job["steps"]
+                    if step.get("name") == "Verify nightly test harness repairs")
+        assert step["if"] == "always()"
+        assert not step.get("continue-on-error", False)
+        assert 0 < step["timeout-minutes"] <= 10
+        assert step["env"]["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
+        assert "pytest_asyncio.plugin" in step["env"]["PYTEST_ADDOPTS"]
+        assert "pytest_timeout" in step["env"]["PYTEST_ADDOPTS"]
+        run = step["run"]
+        expected = {
+            "tests/test_wave37_fixes.py", "tests/test_wave48_fixes.py",
+            "tests/test_wave55_fixes.py", "tests/test_wave61_fixes.py",
+            "tests/test_reachability_v8.py", "tests/test_v12_w75_lint_ratchet.py",
+            "tests/test_v12_w77_findings_ledger.py", "tests/test_v12_w81_ci_cleanup.py",
+            "tests/unit/test_auth_security_phase4.py", "tests/test_strategy_engine_comprehensive.py",
+            "tests/test_organism_integration_smoke.py", "tests/test_phase2_freeze.py",
+            "tests/test_v12_w84_governance_docs.py",
+        }
+        import shlex
+>       assert {word for word in shlex.split(run) if word.startswith("tests/")} == expected
+E       AssertionError: assert {'tests/test_...chet.py', ...} == {'tests/test_...dger.py', ...}
+E         
+E         Extra items in the left set:
+E         'tests/test_nightly_test_contract.py'
+E         'tests/test_wave52_fixes.py'
+E         'tests/unit/test_api_routes_mocked_coverage.py'
+E         Use -v to get more diff
+
+tests/test_monday_ci_workflows.py:276: AssertionError
+=============================== warnings summary ===============================
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_config_coordinator_comprehensive.py:17: DeprecationWarning: backend.config.coordinator is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.coordinator import ConfigurationCoordinator
+
+tests/test_config_coordinator_comprehensive.py::TestConfigurationCoordinatorInit::test_coordinator_can_be_imported
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/config/coordinator.py:22: DeprecationWarning: backend.config.unified is deprecated. Use backend.config.settings.get_settings() instead.
+    from backend.config.unified import UnifiedSettings, get_unified_settings
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_monday_ci_workflows.py::test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence
+1 failed, 102 passed, 2 warnings in 9.68s

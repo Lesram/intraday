@@ -1,0 +1,194 @@
+{
+  "status": "ACCEPT_SCOPED_UI_PORTFOLIO_SOCKET_AUTH_DELTA",
+  "reviewer": "daily_evidence_contract",
+  "base_sha": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "scope": "read-only independent source/contract/test evidence review; no API, credentials, runtime, broker, browser or source changes",
+  "blockers": [],
+  "resolved_review_findings": [
+    {
+      "id": "UIR-1",
+      "issue": "old refresh completion could overwrite/logout replacement login",
+      "resolution": "bind captured principal and tokens, reject old response; recheck pinned retry Authorization at actual dispatch; raw refresh timeout30s; deferred success/failure and interceptor-race regressions"
+    },
+    {
+      "id": "UIR-2",
+      "issue": "failed sync could publish false flat account despite nonempty broker positions",
+      "resolution": "require complete nonzero local and broker symbol/quantity agreement and finite required broker valuation, else PortfolioUnavailable; actual service mismatch/error/success tests"
+    },
+    {
+      "id": "UIR-3",
+      "issue": "actual LoginResponse shape did not supply User.id, blocking new ownership guards",
+      "resolution": "normalize actual username/roles principal, refuse malformed/contradictory IDs; real authService->store->usePortfolio test"
+    }
+  ],
+  "accepted_contracts": [
+    "Socket.IO subscription batch rejects foreign private rooms before mutation; supported dashboard topics retained",
+    "Personal data delivery rechecks typed expiry/normal revocation and correct user; private events prohibited on public topic/all emit",
+    "Token/logout replacement removes old socket callbacks, retires connected/connecting transport, and resubscribes current hooks",
+    "Portfolio selector checks user, finite schema, aware observation timestamp, newest HTTP/WS data, max30s age; failed/hanging refresh hides obsolete balances",
+    "Dashboard, organism portfolio and PortfolioPage consume validated hook data rather than stale raw store",
+    "Global status labels current portfolio observation instead of claiming Alpaca connectivity from cachedHTTP200",
+    "Primary organism status failure/expiry cannot be hidden by slow optional panels",
+    "Day Equity Change uses equity minus last_equity; zero baseline percent is null; Open P&L label avoids closed-trade/lifetime claim"
+  ],
+  "evidence": {
+    "intra-verification-ui-backend-final.xml": {
+      "path": "/private/tmp/intra-verification-ui-backend-final.xml",
+      "sha256": "071d987e3b2c1062777fc81320f17ccf06ddf610d1f1ccc69b1b356c060c54e4",
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "performed_by": "implementation author; independent reviewer inspected artifacts, no duplicate rerun"
+    },
+    "intra-verification-ui-frontend-final-02.xml": {
+      "path": "/private/tmp/intra-verification-ui-frontend-final-02.xml",
+      "sha256": "01919274e6cfb5fb185c007e5386aa32d78b47d424d6bc1a8dc0614551ac9b97",
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "performed_by": "implementation author; independent reviewer inspected artifacts, no duplicate rerun"
+    },
+    "intra-verification-ui-build-stable.log": {
+      "path": "/private/tmp/intra-verification-ui-build-stable.log",
+      "sha256": "5a62c03f6971743cc348e4588a9a66205115391c6a34f802947b178b035cc80a",
+      "result": "production build completed; pre-existing chunk-size warning retained"
+    }
+  },
+  "source_and_test_sha256": [
+    {
+      "path": "backend/api/portfolio.py",
+      "sha256": "8bf365f6edb4b4a861eaf810699400a1b3e202651434df796df6ee83cf3d5511"
+    },
+    {
+      "path": "backend/api/routes/auth.py",
+      "sha256": "019c45dec412c54687ad787cdb1797683b9a9929dfec31d43d388941be1e75d9"
+    },
+    {
+      "path": "backend/api/socketio_server.py",
+      "sha256": "044f6d4fd76a8d343773dd68ae025b8852136e8068904a1b118b4df45b28e81e"
+    },
+    {
+      "path": "backend/infra/security.py",
+      "sha256": "0d46077570f04531a02ea188b658ca16a0b19b63ed78ee2f88468ef23cac5476"
+    },
+    {
+      "path": "backend/services/portfolio_service.py",
+      "sha256": "52fdfb7b932fdf8714ff71f8863fc86081a50c76e122ba4ed5711bfdb01e549c"
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.test.tsx",
+      "sha256": "a34e8d67191b9352ad991eadbd7651da382e249af5ec9e710dea980d76da85a7"
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.tsx",
+      "sha256": "da91aaa6b9237dce425093c0779bc7318664263f3b5c3baaa6ad36d386987a7f"
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.test.tsx",
+      "sha256": "bf43c0916ae94c14caa58492782bea3671ca949641ea98a53d66e919cabd97f6"
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.tsx",
+      "sha256": "8a4811897da33dd0660070953b8b44c5a90d521018ea6fd10aee52c1dae9c210"
+    },
+    {
+      "path": "frontend/src/features/organism/OrganismDashboard.tsx",
+      "sha256": "c3c2a7f2b9124028171a90d21a1a13ed64ce33b74edb2a8e3783ba4c67744877"
+    },
+    {
+      "path": "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx",
+      "sha256": "766e984e8d4fa4cc892d0545c45a71b8d651e0fd8992511439613edc32e41fa7"
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.test.tsx",
+      "sha256": "c7e8b151316fbcf7c65bc5ab0b1a1a754bf593754c04e6d5c59af143114265dc"
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.tsx",
+      "sha256": "d502ec12d4d5e5229185417a938137fe74bed2680f00a3472c3d7d09beff44f3"
+    },
+    {
+      "path": "frontend/src/hooks/useData.ts",
+      "sha256": "311330d3e48433cd61894bb1c359243e8a6857252e0fa2eb23f22d7e2418b7c7"
+    },
+    {
+      "path": "frontend/src/hooks/usePortfolio.test.tsx",
+      "sha256": "7c52ea39d3975a728e1c465b226f469d031b2ae1efe185c8cd367a48e92a9ee0"
+    },
+    {
+      "path": "frontend/src/hooks/useWebSocket.ts",
+      "sha256": "565c2620baba2e4fe448305b8a9e694f42a83d9db11fe0a63ac35b1fd7d060d3"
+    },
+    {
+      "path": "frontend/src/services/api.test.ts",
+      "sha256": "225409dcdf9616f6beb8690da28db1ccfb59f7dd0cd17389a32cbdff35951828"
+    },
+    {
+      "path": "frontend/src/services/api.ts",
+      "sha256": "8a1f9fea46a4919b774d974e42e5b56a06ffc1219220d4d64100e38ed0e32c06"
+    },
+    {
+      "path": "frontend/src/services/authService.test.tsx",
+      "sha256": "15f69a72df9a84347c2e4c80244f74ccb12a85b60b019cee9acaf88cea67eda4"
+    },
+    {
+      "path": "frontend/src/services/authService.ts",
+      "sha256": "fea1c9628e531996f45cac4f10bd336148fdf81ea42f518005ef4ddedbe69e59"
+    },
+    {
+      "path": "frontend/src/services/websocketManager.test.tsx",
+      "sha256": "f5f631ad91e9b6137811796452339d3e62b1d4d51dcc0ea673ce25bf257e1c1f"
+    },
+    {
+      "path": "frontend/src/services/websocketManager.ts",
+      "sha256": "47e8886c7f674b950432fa67442bd0776548c4103e79c9bb6192cb64c81da11a"
+    },
+    {
+      "path": "frontend/src/store/portfolioStore.ts",
+      "sha256": "04c866c5ba1dae9fd86d51b73a36ad254682a215d434bb51d97f10d104f71fb0"
+    },
+    {
+      "path": "frontend/src/test/portfolioFixture.ts",
+      "sha256": "6ffa08b6ae13fe3b327d0beef3f9ad06a62620a8068a99128d781caa50ca002d"
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.test.ts",
+      "sha256": "4c40604c777caa3da4b1785b5f23d96258b4517ac7fa04ea93ccb3f863de9db6"
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.ts",
+      "sha256": "48578b4a821294140afd4b23823315ea661fef0be4964f915072c9a4e640dcd0"
+    },
+    {
+      "path": "tests/test_portfolio_availability_contract.py",
+      "sha256": "bb4078fda1dc654d160d87146f53a17f58fef5a8ceb53401b72ed20ae533878c"
+    },
+    {
+      "path": "tests/test_socketio_topic_authorization.py",
+      "sha256": "79af2b0af55f34a2c5031f3909a853431e0a115e344a8fcea825d45928aae179"
+    },
+    {
+      "path": "tests/test_portfolio_service_comprehensive.py",
+      "sha256": "2a3537686ebee8f01132484ab8336ae51cb78c0d32e89c9b7a327371550d38a3"
+    }
+  ],
+  "residuals": [
+    {
+      "id": "INHERITED_REDIS_REVOCATION_AVAILABILITY",
+      "detail": "backend/infra/security.py is unchanged. is_token_blacklisted returns False on Redis unavailable/error when JTI absent in process memory. This review does not certify cross-process/restart revocation during Redis outage; mocked throwing-lookup test proves only caller refusal when an exception reaches it."
+    },
+    {
+      "id": "NO_ACTUAL_AUTHENTICATED_BROWSER_ACCEPTANCE",
+      "detail": "Mocked transport/component tests and production build are not an actual authenticated browser session or full Socket.IO network handshake."
+    },
+    {
+      "id": "BOUNDED_PORTFOLIO_OBSERVATION",
+      "detail": "Ten-second service cache and thirty-second UI age limit remain; current observation is not transactionally simultaneous broker+DB snapshot or evidence of strategy profitability."
+    }
+  ],
+  "author_report": {
+    "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/implementation_report.json",
+    "sha256": "980cc846b30cdc3c229d93259a4774813504f88b920d01515dd06677c8b791f7",
+    "all_27_owned_file_hashes_verified": true
+  }
+}

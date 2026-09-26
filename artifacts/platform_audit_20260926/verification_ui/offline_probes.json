@@ -1,0 +1,32 @@
+{
+  "mode": "pure stdlib extracted actual function bodies; no application imports/network",
+  "socket_private_room_bypass": {
+    "authenticated_principal": "synthetic-alice",
+    "requested_private_topic": "user_synthetic-bob",
+    "entered_rooms": [
+      [
+        "synthetic-session",
+        "user_synthetic-bob"
+      ]
+    ],
+    "other_user_portfolio_delivered": true
+  },
+  "dependency_failure_portfolio": {
+    "totalEquity": 100000.0,
+    "cash": 100000.0,
+    "buyingPower": 100000.0,
+    "marginUsed": 0.0,
+    "maintenanceMargin": 0.0,
+    "totalPnL": 0.0,
+    "totalPnLPercent": 0.0,
+    "dayPnL": 0.0,
+    "dayPnLPercent": 0.0,
+    "positions": [],
+    "userId": "synthetic-alice",
+    "lastUpdate": "2026-09-26T22:30:59.020270+00:00"
+  },
+  "source_hashes": {
+    "backend/api/socketio_server.py": "36a26fe1759dc317141d023306815424b73b347e93a427b147cfd3cb541fe476",
+    "backend/services/portfolio_service.py": "09c96ddfd399e05556009f86a67db78be7f8cbd63d8dc8228090f7f9fa9ec03d"
+  }
+}

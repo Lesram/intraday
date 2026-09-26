@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="6" failures="0" skipped="0" tests="22" time="201.423" timestamp="2026-09-26T15:40:25.912336-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_composite_correction_replay" name="test_equal_inputs_causal_features_and_deterministic_real_replays[up]" time="0.000"><error message="failed on setup with &quot;ValueError: Paired replay refuses broker credentials&quot;">@pytest.fixture(scope="module")
+    def paired_result():
+&gt;       result = asyncio.run(replay.evaluate())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_composite_correction_replay.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+scripts/diagnostics/replay_composite_correction.py:348: in evaluate
+    require_offline()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_offline() -&gt; None:
+        for key in ("TESTING", "USE_MOCK_DATA", "USE_MOCK_BROKER"):
+            if os.environ.get(key, "").lower() != "true":
+                raise ValueError("Paired replay requires explicit isolated testing configuration")
+        credential_names = ("ALPACA_API_KEY_ID", "ALPACA_API_KEY", "ALPACA_SECRET_KEY",
+                            "ALPACA_API_SECRET_KEY", "APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+        if any(os.environ.get(key) for key in credential_names):
+&gt;           raise ValueError("Paired replay refuses broker credentials")
+E           ValueError: Paired replay refuses broker credentials
+
+scripts/diagnostics/replay_composite_correction.py:78: ValueError</error></testcase><testcase classname="tests.test_composite_correction_replay" name="test_equal_inputs_causal_features_and_deterministic_real_replays[down]" time="0.000"><error message="failed on setup with &quot;ValueError: Paired replay refuses broker credentials&quot;">@pytest.fixture(scope="module")
+    def paired_result():
+&gt;       result = asyncio.run(replay.evaluate())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_composite_correction_replay.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+scripts/diagnostics/replay_composite_correction.py:348: in evaluate
+    require_offline()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_offline() -&gt; None:
+        for key in ("TESTING", "USE_MOCK_DATA", "USE_MOCK_BROKER"):
+            if os.environ.get(key, "").lower() != "true":
+                raise ValueError("Paired replay requires explicit isolated testing configuration")
+        credential_names = ("ALPACA_API_KEY_ID", "ALPACA_API_KEY", "ALPACA_SECRET_KEY",
+                            "ALPACA_API_SECRET_KEY", "APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+        if any(os.environ.get(key) for key in credential_names):
+&gt;           raise ValueError("Paired replay refuses broker credentials")
+E           ValueError: Paired replay refuses broker credentials
+
+scripts/diagnostics/replay_composite_correction.py:78: ValueError</error></testcase><testcase classname="tests.test_composite_correction_replay" name="test_equal_inputs_causal_features_and_deterministic_real_replays[chop]" time="0.000"><error message="failed on setup with &quot;ValueError: Paired replay refuses broker credentials&quot;">@pytest.fixture(scope="module")
+    def paired_result():
+&gt;       result = asyncio.run(replay.evaluate())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_composite_correction_replay.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+scripts/diagnostics/replay_composite_correction.py:348: in evaluate
+    require_offline()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_offline() -&gt; None:
+        for key in ("TESTING", "USE_MOCK_DATA", "USE_MOCK_BROKER"):
+            if os.environ.get(key, "").lower() != "true":
+                raise ValueError("Paired replay requires explicit isolated testing configuration")
+        credential_names = ("ALPACA_API_KEY_ID", "ALPACA_API_KEY", "ALPACA_SECRET_KEY",
+                            "ALPACA_API_SECRET_KEY", "APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+        if any(os.environ.get(key) for key in credential_names):
+&gt;           raise ValueError("Paired replay refuses broker credentials")
+E           ValueError: Paired replay refuses broker credentials
+
+scripts/diagnostics/replay_composite_correction.py:78: ValueError</error></testcase><testcase classname="tests.test_composite_correction_replay" name="test_equal_inputs_causal_features_and_deterministic_real_replays[crash]" time="0.000"><error message="failed on setup with &quot;ValueError: Paired replay refuses broker credentials&quot;">@pytest.fixture(scope="module")
+    def paired_result():
+&gt;       result = asyncio.run(replay.evaluate())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_composite_correction_replay.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+scripts/diagnostics/replay_composite_correction.py:348: in evaluate
+    require_offline()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_offline() -&gt; None:
+        for key in ("TESTING", "USE_MOCK_DATA", "USE_MOCK_BROKER"):
+            if os.environ.get(key, "").lower() != "true":
+                raise ValueError("Paired replay requires explicit isolated testing configuration")
+        credential_names = ("ALPACA_API_KEY_ID", "ALPACA_API_KEY", "ALPACA_SECRET_KEY",
+                            "ALPACA_API_SECRET_KEY", "APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+        if any(os.environ.get(key) for key in credential_names):
+&gt;           raise ValueError("Paired replay refuses broker credentials")
+E           ValueError: Paired replay refuses broker credentials
+
+scripts/diagnostics/replay_composite_correction.py:78: ValueError</error></testcase><testcase classname="tests.test_composite_correction_replay" name="test_equal_inputs_causal_features_and_deterministic_real_replays[eod]" time="0.000"><error message="failed on setup with &quot;ValueError: Paired replay refuses broker credentials&quot;">@pytest.fixture(scope="module")
+    def paired_result():
+&gt;       result = asyncio.run(replay.evaluate())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_composite_correction_replay.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+scripts/diagnostics/replay_composite_correction.py:348: in evaluate
+    require_offline()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_offline() -&gt; None:
+        for key in ("TESTING", "USE_MOCK_DATA", "USE_MOCK_BROKER"):
+            if os.environ.get(key, "").lower() != "true":
+                raise ValueError("Paired replay requires explicit isolated testing configuration")
+        credential_names = ("ALPACA_API_KEY_ID", "ALPACA_API_KEY", "ALPACA_SECRET_KEY",
+                            "ALPACA_API_SECRET_KEY", "APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+        if any(os.environ.get(key) for key in credential_names):
+&gt;           raise ValueError("Paired replay refuses broker credentials")
+E           ValueError: Paired replay refuses broker credentials
+
+scripts/diagnostics/replay_composite_correction.py:78: ValueError</error></testcase><testcase classname="tests.test_composite_correction_replay" name="test_corrected_actual_orders_protective_exit_and_eod_accounting" time="0.000"><error message="failed on setup with &quot;ValueError: Paired replay refuses broker credentials&quot;">@pytest.fixture(scope="module")
+    def paired_result():
+&gt;       result = asyncio.run(replay.evaluate())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_composite_correction_replay.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+scripts/diagnostics/replay_composite_correction.py:348: in evaluate
+    require_offline()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_offline() -&gt; None:
+        for key in ("TESTING", "USE_MOCK_DATA", "USE_MOCK_BROKER"):
+            if os.environ.get(key, "").lower() != "true":
+                raise ValueError("Paired replay requires explicit isolated testing configuration")
+        credential_names = ("ALPACA_API_KEY_ID", "ALPACA_API_KEY", "ALPACA_SECRET_KEY",
+                            "ALPACA_API_SECRET_KEY", "APCA_API_KEY_ID", "APCA_API_SECRET_KEY")
+        if any(os.environ.get(key) for key in credential_names):
+&gt;           raise ValueError("Paired replay refuses broker credentials")
+E           ValueError: Paired replay refuses broker credentials
+
+scripts/diagnostics/replay_composite_correction.py:78: ValueError</error></testcase><testcase classname="tests.test_organism_engine_scenarios" name="test_entry_with_partial_fill_tracked_correctly" time="4.428" /><testcase classname="tests.test_organism_engine_scenarios" name="test_tick_count_and_state_survive_restart" time="4.034" /><testcase classname="tests.test_organism_integration_smoke.TestBrainRoundTrip" name="test_tick_count_survives_restart" time="4.066" /><testcase classname="tests.test_organism_integration_smoke.TestFitnessGate" name="test_low_fitness_blocks_entry" time="4.083" /><testcase classname="tests.test_organism_integration_smoke.TestMultiTickLifecycleInvariants" name="test_10_tick_invariants" time="5.552" /><testcase classname="tests.test_organism_live_engine.TestMultiRunRegression" name="test_brain_persistence_across_runs" time="5.702" /><testcase classname="tests.test_replay_simulator" name="test_replay_completes_100_ticks" time="28.083" /><testcase classname="tests.test_replay_simulator" name="test_replay_trades_have_valid_pnl" time="28.964" /><testcase classname="tests.test_replay_simulator" name="test_replay_regime_history_populated" time="5.075" /><testcase classname="tests.test_replay_simulator" name="test_replay_with_crash_data" time="12.779" /><testcase classname="tests.test_replay_simulator" name="test_replay_no_throttle_blocking" time="26.871" /><testcase classname="tests.test_replay_simulator" name="test_replay_throttle_actually_blocks_at_low_limit" time="26.055" /><testcase classname="tests.test_replay_simulator" name="test_replay_daily_timeframe_uses_wider_stops" time="13.262" /><testcase classname="tests.test_replay_simulator" name="test_replay_intraday_timeframe_uses_tight_stops" time="27.334" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_entries_gate_signals_generated_on_uptrend" time="1.582" /><testcase classname="tests.test_v13_w100_live_tick_coverage" name="test_w100_position_management_loop_produces_exits_on_downturn" time="2.283"><properties><property name="protective_closes_after_shock" value="2" /><property name="actual_orders" value="11" /><property name="actual_accounted_closes" value="5" /><property name="exit_reasons" value="['horizon_timeout', 'pyramid_cut_full_at_-7.9R', 'pyramid_cut_full_at_-8.5R', 'trailing_stop']" /></properties></testcase></testsuite></testsuites>

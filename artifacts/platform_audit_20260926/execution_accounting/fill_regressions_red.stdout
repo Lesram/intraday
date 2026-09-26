@@ -1,0 +1,92 @@
+FFFFF.FFFFFFFF                                                           [100%]
+=================================== FAILURES ===================================
+___ test_partial_buy_cashflow_and_sell_realized_pnl_match_cumulative_average ___
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:57: in test_partial_buy_cashflow_and_sell_realized_pnl_match_cumulative_average
+    assert buy_cash == Decimal(1100)
+E   AssertionError: assert Decimal('1050.000000000000') == Decimal('1100')
+E    +  where Decimal('1100') = Decimal(1100)
+__________ test_precommitted_summary_does_not_hide_missing_execution ___________
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:69: in test_precommitted_summary_does_not_hide_missing_execution
+    assert outcome["applied"] is True
+E   assert False is True
+_____ test_terminal_partial_fill_recovers_missed_partial_event[cancelled] ______
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:80: in test_terminal_partial_fill_recovers_missed_partial_event
+    assert outcome["applied"] is True
+E   assert False is True
+______ test_terminal_partial_fill_recovers_missed_partial_event[canceled] ______
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:80: in test_terminal_partial_fill_recovers_missed_partial_event
+    assert outcome["applied"] is True
+E   assert False is True
+______ test_terminal_partial_fill_recovers_missed_partial_event[expired] _______
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:80: in test_terminal_partial_fill_recovers_missed_partial_event
+    assert outcome["applied"] is True
+E   assert False is True
+_ test_equal_quantity_cash_correction_requires_reconciliation_without_rewriting_lots _
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:101: in test_equal_quantity_cash_correction_requires_reconciliation_without_rewriting_lots
+    with pytest.raises(ValueError, match="cashflow"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_____ test_invalid_positive_fill_numbers_do_not_reach_accounting[True-100] _____
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:111: in test_invalid_positive_fill_numbers_do_not_reach_accounting
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_____ test_invalid_positive_fill_numbers_do_not_reach_accounting[NaN-100] ______
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:112: in test_invalid_positive_fill_numbers_do_not_reach_accounting
+    await fill(session, order, 0, quantity, price)
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:38: in fill
+    return await stream.apply_incremental_fill_accounting(
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py:241: in apply_incremental_fill_accounting
+    if cumulative is None or cumulative <= 0:
+                             ^^^^^^^^^^^^^^^
+E   decimal.InvalidOperation: [<class 'decimal.InvalidOperation'>]
+___ test_invalid_positive_fill_numbers_do_not_reach_accounting[Infinity-100] ___
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:111: in test_invalid_positive_fill_numbers_do_not_reach_accounting
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+______ test_invalid_positive_fill_numbers_do_not_reach_accounting[1-NaN] _______
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:112: in test_invalid_positive_fill_numbers_do_not_reach_accounting
+    await fill(session, order, 0, quantity, price)
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:38: in fill
+    return await stream.apply_incremental_fill_accounting(
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py:243: in apply_incremental_fill_accounting
+    if price is None or price <= 0:
+                        ^^^^^^^^^^
+E   decimal.InvalidOperation: [<class 'decimal.InvalidOperation'>]
+____ test_invalid_positive_fill_numbers_do_not_reach_accounting[1-Infinity] ____
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:111: in test_invalid_positive_fill_numbers_do_not_reach_accounting
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+______ test_invalid_positive_fill_numbers_do_not_reach_accounting[1-None] ______
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:111: in test_invalid_positive_fill_numbers_do_not_reach_accounting
+    with pytest.raises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+______ test_websocket_lot_failure_rolls_back_summary_and_raises_for_retry ______
+/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py:134: in test_websocket_lot_failure_rolls_back_summary_and_raises_for_retry
+    with pytest.raises(RuntimeError, match="synthetic lot failure"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'RuntimeError'>
+----------------------------- Captured stderr call -----------------------------
+Server initialized for asgi.
+------------------------------ Captured log call -------------------------------
+INFO     engineio.server:base_server.py:112 Server initialized for asgi.
+WARNING  backend.integrations.alpaca_stream:alpaca_stream.py:947 {"event": "BB-8: fill accounting failed for order 8559f244-10a8-45e1-a98d-abd0444e44be: synthetic lot failure", "logger": "backend.integrations.alpaca_stream", "level": "warning", "timestamp": "2026-09-26T22:35:38.629907Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py\", line 892, in _process_trade_update\n    accounting = await apply_incremental_fill_accounting(\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py\", line 300, in apply_incremental_fill_accounting\n    await lot_tracker.create_lot(\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 2291, in _execute_mock_call\n    raise effect\nRuntimeError: synthetic lot failure"}
+ERROR    backend.integrations.alpaca_stream:alpaca_stream.py:1039 {"update": {"data": {"event": "fill", "order": {"id": "6ea45439-a432-484b-9891-a9c73695c3a1", "client_order_id": "f42e78a6-5d4a-429e-931d-d923bb70ddff", "status": "filled", "filled_qty": "10", "filled_avg_price": "100"}}}, "error": "greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)", "error_type": "MissingGreenlet", "event": "Failed to process trade update", "logger": "backend.integrations.alpaca_stream", "level": "error", "timestamp": "2026-09-26T22:35:38.632064Z"}
+=========================== short test summary info ============================
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_partial_buy_cashflow_and_sell_realized_pnl_match_cumulative_average
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_precommitted_summary_does_not_hide_missing_execution
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_terminal_partial_fill_recovers_missed_partial_event[cancelled]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_terminal_partial_fill_recovers_missed_partial_event[canceled]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_terminal_partial_fill_recovers_missed_partial_event[expired]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_equal_quantity_cash_correction_requires_reconciliation_without_rewriting_lots
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_invalid_positive_fill_numbers_do_not_reach_accounting[True-100]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_invalid_positive_fill_numbers_do_not_reach_accounting[NaN-100]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_invalid_positive_fill_numbers_do_not_reach_accounting[Infinity-100]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_invalid_positive_fill_numbers_do_not_reach_accounting[1-NaN]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_invalid_positive_fill_numbers_do_not_reach_accounting[1-Infinity]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_invalid_positive_fill_numbers_do_not_reach_accounting[1-None]
+FAILED ../../../../../../../Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py::test_websocket_lot_failure_rolls_back_summary_and_raises_for_retry
+13 failed, 1 passed in 1.07s

@@ -1,0 +1,172 @@
+{
+  "scope": "Last accepted release native snapshot, Sep25; current observed deployment/config hash unchanged; separate from offline artifact defaults",
+  "file_sha256": "dc5cfa027396efeef62a62a2148b434b403efca587d0ec03227a3d4f7df08e68",
+  "snapshot": {
+    "close_accounting_policy": "exact_position_fills_or_pending_v1",
+    "candidate_data_pipeline_sources": {
+      "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
+      "streaming_data_provider": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+      "live_engine_data": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+      "staleness_admission": "6cbb82f794c6fd63edfa750e70b4116ce8b2117af4b05d23fff60fe3e56e5b0b",
+      "streaming_universe_initialization": "e3c0cc8f1d0c554138d4bdedc810474badfa0ed19f6681b6c69c774411c39f85",
+      "streaming_subscription_sync": "ce1d1d94393813783d8458c10b4c508b25f9b5a6329d9d6e04daffc0c75f3da0",
+      "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
+      "pipeline_diagnostics": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
+      "ml_features": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+      "composite_indicators": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85"
+    },
+    "composite_feature_columns": [
+      "comp_squeeze_momentum",
+      "comp_vol_price_div",
+      "comp_trend_alignment",
+      "comp_institutional_acc",
+      "comp_mean_rev_extreme",
+      "comp_breakout_readiness",
+      "comp_momentum_quality"
+    ],
+    "streaming_subscription_sync": {
+      "timeout_seconds": 5.0,
+      "universe": "constructor_base_plus_SPY_QQQ_current_universe_and_held_positions",
+      "checked_at": "after_fresh_position_query_before_entry_dispatch",
+      "failure": "block_entries_retry_next_tick_preserve_exits",
+      "new_symbols": "wait_for_actual_bars_no_REST_prefill",
+      "global_staleness_policy": "any_subscribed_symbol_stale_blocks_entries"
+    },
+    "entry_freshness": {
+      "required_timeframe": "1Min",
+      "max_bar_age_seconds": 120.0,
+      "minimum_bar_age_seconds": 0.0,
+      "timestamp_semantics": "provider_bar_start_utc",
+      "checked_at": "final_entry_submission",
+      "missing_or_invalid_timestamp": "reject_entry",
+      "protective_exits_exempt": true
+    },
+    "drawdown_kill_pct": 0.1,
+    "drawdown_cooldown_s": 300,
+    "max_changes_per_day": 500,
+    "max_positions": 8,
+    "max_daily_loss": 1100.0,
+    "max_notional_per_trade": 2000.0,
+    "alpha_top_n": 5,
+    "tick_interval_seconds": 10,
+    "exploration_enabled": false,
+    "alpha_breakout_bad_regime_filter_enabled": true,
+    "candidate_filter_shadow_telemetry_enabled": false,
+    "candidate_filter_shadow_telemetry_path": "organism_brain/candidate_filter_shadow_telemetry.jsonl",
+    "strategy_evidence_telemetry_enabled": true,
+    "strategy_evidence_telemetry_path": "organism_brain/strategy_evidence_events.jsonl",
+    "phase9_shadow_engines_enabled": false,
+    "timeframe": "1Min",
+    "timeframe_source": "container_env",
+    "learning_mode_threshold_trades": 200,
+    "evolution_freeze_until_trades": 300,
+    "production_promotion_gate": {
+      "min_total_pnl": 0.0,
+      "min_last_50_mean_pnl": 0.0,
+      "min_last_50_win_rate": 0.35,
+      "min_sharpe_per_trade": 0.0
+    },
+    "research_policy": {
+      "id": "paper_research_locked_v1",
+      "locked": true,
+      "reason": "reviewed_paper_baseline_requires_explicit_promotion",
+      "raw_strategy_trade_count": null,
+      "qualified_trade_count": null,
+      "qualification_status": "unverified",
+      "automatic_promotion_enabled": false,
+      "frozen_models": true,
+      "ml_reversal_exit_policy": "retained_saved_model_baseline",
+      "effective_policy_params": null,
+      "effective_policy_hash": null
+    },
+    "horizon_timeout_bars": 18,
+    "bar_boundary_entry_only": true,
+    "confidence_gate_baseline": 0.4,
+    "confidence_gate_defensive": 0.45,
+    "fitness_gate_production": 0.45,
+    "risk_budget_learning": 0.001,
+    "risk_budget_guarded": 0.001,
+    "risk_budget_production": 0.0025,
+    "inverse_etfs": [
+      "DOG",
+      "PSQ",
+      "RWM",
+      "SH"
+    ],
+    "universe_size": 20,
+    "confidence_weights_learning": {
+      "breakout": 0.65,
+      "tension": 0.35,
+      "ml": 0.0
+    },
+    "confidence_weights_guarded": {
+      "breakout": 0.65,
+      "tension": 0.35,
+      "ml": 0.0
+    },
+    "confidence_weights_production": {
+      "ml": 0.5,
+      "breakout": 0.3,
+      "tension": 0.2
+    },
+    "stop_atr_table": {
+      "trending_up": 3.5,
+      "trending_down": 2.5,
+      "chop": 2.5,
+      "high_vol": 4.0,
+      "low_vol": 3.0,
+      "stress": 2.5,
+      "unknown": 3.0
+    },
+    "source": "resolved_config",
+    "snapshot_source": "resolved_config_snapshot",
+    "evidence_scope": "container_configuration_resolution_not_engine_observation",
+    "engine_observed": false,
+    "container": "517f96ec73cd78141ea57542a5d49961866cb7153b178581cb959a43670ee747",
+    "app_environment": "development",
+    "alpaca_paper": "true",
+    "resolution_sources": {
+      "timeframe": "container_env",
+      "candidate_filter_shadow_telemetry_path": "container_env",
+      "strategy_evidence_telemetry_path": "container_env",
+      "drawdown_kill_pct": "container_env",
+      "drawdown_cooldown_s": "container_env",
+      "max_changes_per_day": "container_env",
+      "max_positions": "container_env",
+      "max_daily_loss": "container_env",
+      "max_notional_per_trade": "container_env",
+      "alpha_top_n": "container_env",
+      "tick_interval_seconds": "container_env",
+      "exploration_enabled": "container_env",
+      "alpha_breakout_bad_regime_filter_enabled": "code_default",
+      "candidate_filter_shadow_telemetry_enabled": "container_env",
+      "strategy_evidence_telemetry_enabled": "container_env",
+      "phase9_shadow_engines_enabled": "container_env"
+    },
+    "code_defaults": {
+      "drawdown_kill_pct": 0.05,
+      "drawdown_cooldown_s": 3600,
+      "max_changes_per_day": 100,
+      "max_positions": 8,
+      "max_daily_loss": 1100.0,
+      "max_notional_per_trade": 2000.0,
+      "production_promotion_gate": {
+        "min_total_pnl": 0.0,
+        "min_last_50_mean_pnl": 0.0,
+        "min_last_50_win_rate": 0.35,
+        "min_sharpe_per_trade": 0.0
+      },
+      "risk_budget_guarded": 0.001,
+      "confidence_weights_guarded": {
+        "breakout": 0.65,
+        "tension": 0.35,
+        "ml": 0.0
+      }
+    },
+    "live_process_reachable": true,
+    "config_truth_status": {
+      "status": "consistent",
+      "mismatches": []
+    }
+  }
+}

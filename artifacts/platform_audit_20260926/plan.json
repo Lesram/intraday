@@ -1,0 +1,36 @@
+{
+  "task_id": "platform-audit-20260926",
+  "requested_outcome": "Working, auditable paper platform; find and repair concrete integration/operational defects while keeping performance conclusions honest",
+  "base_sha": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "deployed_source": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+  "worktree": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra",
+  "created_at_utc": "2026-09-26T22:28:41.811827+00:00",
+  "phases": [
+    "Capture current actual runtime, broker/accounting and scheduled evidence",
+    "Independent data/decision, execution/accounting, verification/UI reviews",
+    "Reproduce concrete failures using isolated fixtures; rank severity and impact",
+    "Repair authorized non-frozen defects in smallest PR scope; prepare exact frozen repair proposal before approval",
+    "Targeted/regression/replay/full artifacts, freeze verification, independent review, PR",
+    "Publish evidence-based platform verdict and explicit remaining acceptance gates"
+  ],
+  "areas": [
+    "runtime/host/recovery",
+    "market data/subscriptions/freshness",
+    "features/signals/ranking/admission",
+    "execution/ACK/idempotency/fills",
+    "accounting/restart/history",
+    "risk/EOD",
+    "frontend/API/operator controls",
+    "CI/deployment/evidence",
+    "strategy/research validity"
+  ],
+  "constraints": [
+    "paper only; no broker mutations for audit",
+    "preserve dirty installed checkout and all history/model state",
+    "no frozen surface or strategy tuning changes without explicit scoped approval",
+    "parked decomposition/CI trio remain parked unless specifically approved",
+    "private raw operational evidence outside repo; no secrets"
+  ],
+  "files_before_edits": "To be assigned per reproduced finding before each edit",
+  "tests_before_edits": "Fixture regressions and affected path suites, mandatory artifact pack/audit index; no redundant reruns without cause"
+}

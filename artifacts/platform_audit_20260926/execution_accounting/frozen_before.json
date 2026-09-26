@@ -1,0 +1,13 @@
+{
+  "exit_code": 0,
+  "scratch_cwd": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-execution-audit-p78dol11",
+  "network_denied": true,
+  "installed_and_audit_source_writes_denied": true,
+  "private_runtime_reads_denied": true,
+  "command": [
+    "-c",
+    "import os,json,hashlib;from pathlib import Path;from scripts.phase2_freeze import compute_surface;r=Path(os.environ[\"AUDIT_SOURCE_ROOT\"]);f=json.loads((r/\"artifacts/phase2/candidate_param_freeze.json\").read_text());s=compute_surface();assert s==f[\"surface\"],\"surface mismatch\";print(json.dumps({\"surface_equal\":True,\"surface_sha256\":hashlib.sha256(json.dumps(s,sort_keys=True,separators=(\",\",\":\")).encode()).hexdigest(),\"candidate_sha256\":hashlib.sha256((r/\"artifacts/phase2/candidate_param_freeze.json\").read_bytes()).hexdigest(),\"canonical_sha256\":hashlib.sha256((r/\"artifacts/phase2/param_freeze.json\").read_bytes()).hexdigest()}))"
+  ],
+  "stdout_sha256": "9f97a412c6d51440d69ae905caa63adcf20bea399666d2143a5ac1e9a9dd9608",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

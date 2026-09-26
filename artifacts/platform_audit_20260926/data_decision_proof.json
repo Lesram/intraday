@@ -1,0 +1,84 @@
+{
+  "model_deserialization": false,
+  "network_calls": 0,
+  "observations": {
+    "clean_socket_close": {
+      "authenticated_still_true": true,
+      "connected_still_true": true,
+      "listener_returned": true,
+      "reconnect_calls": 0
+    },
+    "failed_send_negative_control": {
+      "failed_send_sync_returned": false,
+      "subsequent_send_count": 2,
+      "subsequent_send_sync_returned": true
+    },
+    "partial_server_subscription": {
+      "additional_send_count": 0,
+      "first_send_count": 2,
+      "first_sync_returned_complete": true,
+      "local_bar_symbols": [
+        "NEW",
+        "SPY"
+      ],
+      "provider_error_callback_wired": false,
+      "recovery_attempted_while_spy_fresh": false,
+      "retry_sync_returned_complete": true,
+      "unseen_new_symbol_blocks_global_freshness": true
+    },
+    "server_error": {
+      "additional_send_count": 0,
+      "first_send_count": 2,
+      "first_sync_returned_complete": true,
+      "local_bar_symbols": [
+        "NEW",
+        "SPY"
+      ],
+      "provider_error_callback_wired": false,
+      "recovery_attempted_while_spy_fresh": false,
+      "retry_sync_returned_complete": true,
+      "unseen_new_symbol_blocks_global_freshness": true
+    },
+    "spy_alignment": {
+      "actual_live_input_index_type": "RangeIndex",
+      "all_non_cross_asset_columns_equal": true,
+      "correct_spy_time": "2026-09-24 15:29:00+00:00",
+      "incorrect_spy_time_selected_by_range_index": "2026-09-24 14:49:00+00:00",
+      "last_stock_bar_time": "2026-09-24 15:29:00+00:00",
+      "latest_feature_values": {
+        "beta_20d": {
+          "range_index": -0.4083180628208294,
+          "timestamp_index": 6.811539868930299
+        },
+        "corr_to_market": {
+          "range_index": -0.12915567442181713,
+          "timestamp_index": 0.8697679314813102
+        },
+        "idio_vol": {
+          "range_index": 0.49174773419498186,
+          "timestamp_index": 0.07353934880504867
+        },
+        "rel_strength_spy": {
+          "range_index": -0.10677735660194188,
+          "timestamp_index": -0.1366438530992098
+        }
+      },
+      "oracle_relative_strength": -0.1366438530992098,
+      "proof_limit": "Timestamp-index arm is an alignment oracle only, not a patched trading replay or profitability claim.",
+      "same_latest_timestamp": true,
+      "spy_rows": 120,
+      "stock_rows": 80
+    }
+  },
+  "source_hashes": {
+    "backend/integrations/alpaca_market_data_stream.py": "95a3331ca9cb5df5df5116abd07fc0c7113a943f5c780fc7461b8a9bf9be59ad",
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "backend/organism/ml_features.py": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "backend/organism/scheduler.py": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "scripts/phase2_freeze.py": "ae2502fe6d1be049cfca3023fe0fbd5d4573b70c53f18714d94b4a9210363fa6"
+  },
+  "source_sha": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "synthetic_only": true
+}

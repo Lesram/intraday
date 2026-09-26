@@ -1,0 +1,73 @@
+{
+  "synthetic_only": true,
+  "network_calls": 0,
+  "model_loads": 0,
+  "cases": [
+    {
+      "failure": "connect",
+      "start_returned_normally": true,
+      "running": false,
+      "stream_cleared": true,
+      "later_attempts": [
+        {
+          "sync": false,
+          "recover": false
+        },
+        {
+          "sync": false,
+          "recover": false
+        },
+        {
+          "sync": false,
+          "recover": false
+        }
+      ],
+      "connect_call_count": 1,
+      "cleanup_call_count": 1
+    },
+    {
+      "failure": "bars",
+      "start_returned_normally": true,
+      "running": false,
+      "stream_cleared": true,
+      "later_attempts": [
+        {
+          "sync": false,
+          "recover": false
+        },
+        {
+          "sync": false,
+          "recover": false
+        },
+        {
+          "sync": false,
+          "recover": false
+        }
+      ],
+      "connect_call_count": 1,
+      "cleanup_call_count": 1
+    },
+    {
+      "failure": "quotes",
+      "start_returned_normally": true,
+      "running": false,
+      "stream_cleared": true,
+      "later_attempts": [
+        {
+          "sync": false,
+          "recover": false
+        },
+        {
+          "sync": false,
+          "recover": false
+        },
+        {
+          "sync": false,
+          "recover": false
+        }
+      ],
+      "connect_call_count": 1,
+      "cleanup_call_count": 1
+    }
+  ]
+}

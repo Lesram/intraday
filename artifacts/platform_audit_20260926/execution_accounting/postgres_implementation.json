@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-09-26T22:55:26.639413+00:00",
+  "conclusion": "POSTGRESQL_CONTENTION_PROOF_PASSED",
+  "production_source_changed": false,
+  "files_changed": [
+    "tests/test_fill_accounting_postgres.py"
+  ],
+  "results": {
+    "passed": 9,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "database_concurrency_cases": 4,
+    "url_refusal_cases": 5,
+    "junit_seconds": 0.857,
+    "default_without_explicit_url": {
+      "passed": 5,
+      "skipped": 4,
+      "failed": 0
+    }
+  },
+  "proof": [
+    "Each real PostgreSQL scenario observes first backend PID in pg_blocking_pids(second PID), proving actual waiting on the transaction lock.",
+    "Second writer preloads old ORM summary before first commit; populate_existing and execution watermark then refresh under the acquired lock.",
+    "Duplicate entry: exactly one execution and lot; summary10shares at100.",
+    "Overlapping cumulative fills:4shares at100 then cumulative10at112 produces6at120; total execution/lot cash1120.",
+    "First transaction rollback: waiting cumulative10at112 creates one10-share execution and lot, without phantom4-share watermark.",
+    "Duplicate exit: one sell execution, one realized trade (PnL100), one durable ORDER_FILLED audit, original lot closed once."
+  ],
+  "isolation": {
+    "test_image": "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+    "postgres_image": "sha256:97ff59a4e30e08d1c11bdcd9455e7832368c0572b576c9092cde2df4ae5552a3",
+    "network_internal": true,
+    "host_port_bindings": null,
+    "database_tmpfs": {
+      "/tmp": "rw",
+      "/var/lib/postgresql/data": "rw",
+      "/var/run/postgresql": "rw"
+    },
+    "candidate_worktree_readonly": true,
+    "installed_state_mounts": false,
+    "source_stable_during_test": true,
+    "cleanup_exit_codes": {
+      "intra-fill-proof-c493e29ea8ab-test": 0,
+      "intra-fill-proof-c493e29ea8ab-db": 0,
+      "intra-fill-proof-c493e29ea8ab": 0
+    }
+  },
+  "source_sha256": {
+    "backend/integrations/alpaca_stream.py": "fa46735e7848310c7bec651f20ed5939157dce1f193368117521e28bbb9b0373",
+    "backend/api/lifespan.py": "66264fc37295b295f28dc956bad23ac0a08f6c77c2a99853324961cde70a5208",
+    "tests/test_fill_accounting_postgres.py": "67d3774da1549e68070f9f0d2c105e8d8c9f950e8548ef07d811a88e933dcce8"
+  },
+  "first_attempt": "Initial9tests also passed; tmpfs JUnit could not be copied after container exit. Retained first raw receipt/log. Final attempt exports JUnit before container teardown and binds final formatted source.",
+  "limits": [
+    "Four deterministic real database contention cases, not a general stress or chaos certification.",
+    "Fresh ORM-created PostgreSQL schema; no certification of every historical production migration.",
+    "Finite startup/reconnect inventory and deliberate historical cash-correction refusal remain unchanged.",
+    "No broker, installed runtime, live credentials, models or production data accessed."
+  ],
+  "artifact_sha256": {
+    "postgres_container.log": "9933dfe2652cb72b278fa8efbfc97b95a7a180628ed54016e1d83586e9546ecf",
+    "postgres_default_tests.xml": "929c73c34b18f172f07e7a09d8a13bebb55aad6176d5a5960f630939bafcd50f",
+    "postgres_first_container.log": "e6f89f40290a2e5fe34e1216f7a4777227b5c4b0ab7e3d4aea5fea3ea9a3b8fa",
+    "postgres_first_run_receipt.json": "2a1d2c42a1b7364f838a628dea0ff80f1ea84f2353c241f07782e9052b212232",
+    "postgres_plan.json": "a0c51e838411b6b917c3aa96b841c5602e87ec08369e6849542ed27486b59c98",
+    "postgres_run_receipt.json": "c9d95d34f5c9e732a7f9a60910c5c34e01281146d5ef260357194ff4e8fec28b",
+    "postgres_test_executed.py.txt": "b83959a8c25b4720bfcc90aa458ff8930d75b627991771f1e9fd44bd39f44982",
+    "postgres_tests.xml": "e57ed5278617be99a37f5602277c5e30007856f67c640b276a5776fc16196770"
+  }
+}

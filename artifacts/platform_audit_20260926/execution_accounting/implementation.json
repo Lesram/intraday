@@ -1,0 +1,47 @@
+{
+  "task_id": "atomic_fill_accounting_integrity",
+  "base_sha": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "status": "targeted_accepted_pending_independent_review_and_root_full_pack",
+  "files": {
+    "backend/integrations/alpaca_stream.py": "fa46735e7848310c7bec651f20ed5939157dce1f193368117521e28bbb9b0373",
+    "backend/api/lifespan.py": "66264fc37295b295f28dc956bad23ac0a08f6c77c2a99853324961cde70a5208",
+    "tests/test_fill_accounting_integrity.py": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972",
+    "tests/test_wave43_fixes.py": "fee8b3e4873454983b6f58414a071a41a040d6a80f2f6cdc208729a79a56442a",
+    "tests/test_adversarial_inputs_v7.py": "bccc615cf2c37126ee99eefec0ef55ddac79a4c96f576ea7a78f03d64c5ac74f",
+    "tests/unit/test_alpaca_stream_comprehensive.py": "889ff4eca1865cc63a1e88e5f24a197d71d3e0857b881e2af346e149c978eed0"
+  },
+  "behavior": [
+    "delta cashflow = cumulative broker quantity*VWAP minus persisted execution cashflow, divided by new quantity",
+    "persisted order lock serializes summary/execution/lot/audit transaction across WS,reconnect,startup",
+    "unchanged broker summary repairs missing Execution/PositionLot state",
+    "canceled/expired partial executions accounted",
+    "failed accounting propagates WS retry and rolls back complete transaction; recovery errors roll back individual orders",
+    "ORDER_FILLED sell audit durable in the same transaction and duplicate-safe"
+  ],
+  "tests": {
+    "selected_passed": 211,
+    "selected_failed": 0,
+    "new_transactional_cases": 23,
+    "junit": "intra-fill-expanded3.xml",
+    "raw_attempts_retained": true,
+    "network_denied": true,
+    "synthetic_sqlite_and_mock_transports": true
+  },
+  "freeze": {
+    "before_and_after_surface_equal": true,
+    "before_and_after_candidate_bytes_equal": true,
+    "before_and_after_canonical_bytes_equal": true,
+    "installed_runtime_not_touched": true
+  },
+  "lint_new_findings": 0,
+  "limits": [
+    "SQLite regressions do not empirically prove PostgreSQL concurrency; production SELECT FOR UPDATE on same Order serializes ingestion, lots also row-locked",
+    "stored six-decimal execution prices introduce bounded sub-cent cashflow rounding; precision envelope tested",
+    "same-quantity material price correction requires reconciliation and deliberately does not rewrite realized history",
+    "pre-existing wrong execution/lot cost basis is not automatically rewritten",
+    "reconnect still selects recent100 updated rows with <=1h lookback; startup requests latest500 broker rows; recovery is not a complete broker inventory",
+    "Positions table remains a separately broker-refreshed mirror after terminal fill, not part of the execution/lot transaction",
+    "no live orders or broker/DB/runtime calls performed",
+    "EOD and admin cleanup defects remain frozen report-only pending approval"
+  ]
+}

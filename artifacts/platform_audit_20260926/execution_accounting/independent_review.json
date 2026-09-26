@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-09-26T22:48:37.221685+00:00",
+  "reviewer": "session_contract_explorer",
+  "scope": "Independent source and behavioral review of atomic fill accounting and startup/reconnect ingestion; no runtime, broker, source edits or live data.",
+  "conclusion": "ACCEPT_SCOPED_DELTA_WITH_DOCUMENTED_LIMITS",
+  "blockers": [],
+  "source_sha256": {
+    "backend/integrations/alpaca_stream.py": "fa46735e7848310c7bec651f20ed5939157dce1f193368117521e28bbb9b0373",
+    "backend/api/lifespan.py": "66264fc37295b295f28dc956bad23ac0a08f6c77c2a99853324961cde70a5208",
+    "tests/test_fill_accounting_integrity.py": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972",
+    "backend/infra/repositories/orders.py": "c89f63c2a0c2e80f34fa77964b8f138438a9fd2a9b44cff66539ebb5f7a65f84",
+    "backend/services/audit_service.py": "9c40ac5797c6be0014bcfd5b7da0946ca7e2b40968e239ff29633dae0fa6c4ac",
+    "backend/services/lot_tracker_service.py": "97292aa7eb3d4ed5d75b20b21a122cd4bdc0008184fbb3c3162e3cb9cd889968",
+    "scripts/phase2_freeze.py": "ae2502fe6d1be049cfca3023fe0fbd5d4573b70c53f18714d94b4a9210363fa6"
+  },
+  "author_report": {
+    "path": "artifacts/platform_audit_20260926/execution_accounting/implementation.json",
+    "sha256": "5cf66c35e5f8679824cf0449ba2ed49a05d0a5b9057fd2c3bf4ce805e3211530"
+  },
+  "independent_test": {
+    "command": "/Users/marselkei/VS/intra/venv/bin/python /private/tmp/intra-audit-isolated.py -q tests/test_fill_accounting_integrity.py --timeout=30 --junitxml=/private/tmp/intra-fill-independent.xml",
+    "passed": 23,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "duration_reported_seconds": 0.94,
+    "junit": "artifacts/platform_audit_20260926/execution_accounting/independent_fill_tests.xml",
+    "junit_sha256": "85d58c820a398ba7b597dc92e9f46f79fc26ff861112dd35b2e65b53c6c019eb",
+    "isolation": "Fresh synthetic SQLite database; denied network and installed-tree writes; denied live credentials/data/brain reads; no model deserialization."
+  },
+  "reviewed_contracts": [
+    "Cumulative quantity and cumulative VWAP produce incremental execution cashflow, rather than incorrectly pricing each partial leg at cumulative average.",
+    "Same-order FOR UPDATE precedes fresh persisted summary and execution-watermark reads. Summary, execution, lot/realized-trade and sell-fill audit remain one caller-owned commit.",
+    "Duplicate/lower snapshots do not create executions; already committed order summary alone does not suppress repair of missing execution/lot accounting.",
+    "Canceled/cancelled/expired terminal partial fills reconcile positive quantity. Unsupported replacement/rejection fill lineage and material equal-quantity cash corrections refuse rather than rewrite history.",
+    "Failed lot or audit persistence rolls back complete order; WebSocket failure propagates to bounded queue retry. Reconnect keeps immutable order identities so rollback-expired ORM objects do not prevent processing the next order.",
+    "Old terminal state cannot be reopened by equal-quantity nonterminal acknowledgement."
+  ],
+  "limits": [
+    {
+      "id": "POSTGRES_CONCURRENCY_NOT_EXECUTED",
+      "description": "SQLite proves transactional rollback/idempotency and the actual ingestion paths, not PostgreSQL concurrent row/advisory lock behavior. Source locks were reviewed; no PostgreSQL server or production database was queried."
+    },
+    {
+      "id": "BOUNDED_RECOVERY_INVENTORY",
+      "description": "Pre-existing reconnect inventory selects at most100 local rows whose updated_at is within a5-minute to1-hour window. An older unchanged accepted order that fills during disconnect may not be selected. Startup polls only the newest500 broker orders. Acceptance does not claim universal missed-fill recovery.",
+      "paths": [
+        "backend/integrations/alpaca_stream.py:1133",
+        "backend/integrations/alpaca_stream.py:1145",
+        "backend/infra/repositories/orders.py:368",
+        "backend/api/lifespan.py:816"
+      ]
+    },
+    {
+      "id": "HISTORICAL_CORRECTIONS_REQUIRE_RECONCILIATION",
+      "description": "Existing wrong execution/lot cashflow is not automatically rewritten; material same-quantity broker cashflow changes are explicit errors. No historical production state was inspected or repaired."
+    },
+    {
+      "id": "ADDITIONAL_PATHS_NOT_REDESIGNED",
+      "description": "Out-of-order entry/exit messages can still exhaust bounded retries before an earlier fill arrives; DLQ and finite recovery remain existing mechanisms. Fill timestamp convention and separate portfolio sync were not redesigned."
+    }
+  ],
+  "frozen_impact": {
+    "changed_decision_sources": false,
+    "basis": "Reviewed delta changes broker/accounting ingestion plus lifespan._sync_orders; it does not edit the freeze-declared decision functions, scheduler, provider, feature computation, risk sizing or gates. Author before/after freeze evidence is retained separately in implementation report. No active artifact or forward cutoff changed by reviewer."
+  }
+}

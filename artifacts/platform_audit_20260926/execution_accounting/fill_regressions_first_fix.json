@@ -1,0 +1,17 @@
+{
+  "exit_code": 1,
+  "scratch_cwd": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-execution-audit-klvvimw4",
+  "network_denied": true,
+  "installed_and_audit_source_writes_denied": true,
+  "private_runtime_reads_denied": true,
+  "command": [
+    "-m",
+    "pytest",
+    "-q",
+    "--timeout=30",
+    "--tb=short",
+    "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/tests/test_fill_accounting_integrity.py"
+  ],
+  "stdout_sha256": "2be87a5db65e65e8930f2b37f91585435a20a43d82119409280c7b0b95c41aed",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

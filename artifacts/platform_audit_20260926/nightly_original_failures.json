@@ -1,0 +1,108 @@
+{
+  "run_url": "https://github.com/Lesram/intraday/actions/runs/36211294000",
+  "source_sha": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+  "failed_or_error_cases": [
+    {
+      "class": "tests.unit.test_api_routes_mocked_coverage.TestHealthRoutesCoverage",
+      "case": "test_readiness_response_model",
+      "seconds": "0.002",
+      "reason": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for ReadinessResponse"
+    },
+    {
+      "class": "tests.test_composite_correction_replay",
+      "case": "test_equal_inputs_causal_features_and_deterministic_real_replays[chop]",
+      "seconds": "300.059",
+      "reason": "failed on setup with \"Failed: Timeout (>300.0s) from pytest-timeout.\""
+    },
+    {
+      "class": "tests.test_composite_correction_replay",
+      "case": "test_equal_inputs_causal_features_and_deterministic_real_replays[eod]",
+      "seconds": "0.001",
+      "reason": "failed on setup with \"Failed: Timeout (>300.0s) from pytest-timeout.\""
+    },
+    {
+      "class": "tests.test_composite_correction_replay",
+      "case": "test_equal_inputs_causal_features_and_deterministic_real_replays[up]",
+      "seconds": "0.001",
+      "reason": "failed on setup with \"Failed: Timeout (>300.0s) from pytest-timeout.\""
+    },
+    {
+      "class": "tests.test_composite_correction_replay",
+      "case": "test_corrected_actual_orders_protective_exit_and_eod_accounting",
+      "seconds": "0.001",
+      "reason": "failed on setup with \"Failed: Timeout (>300.0s) from pytest-timeout.\""
+    },
+    {
+      "class": "tests.test_composite_correction_replay",
+      "case": "test_equal_inputs_causal_features_and_deterministic_real_replays[down]",
+      "seconds": "0.001",
+      "reason": "failed on setup with \"Failed: Timeout (>300.0s) from pytest-timeout.\""
+    },
+    {
+      "class": "tests.test_composite_correction_replay",
+      "case": "test_equal_inputs_causal_features_and_deterministic_real_replays[crash]",
+      "seconds": "0.001",
+      "reason": "failed on setup with \"Failed: Timeout (>300.0s) from pytest-timeout.\""
+    },
+    {
+      "class": "tests.test_replay_simulator",
+      "case": "test_replay_intraday_timeframe_uses_tight_stops",
+      "seconds": "180.006",
+      "reason": "Failed: Timeout (>180.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_replay_simulator",
+      "case": "test_replay_completes_100_ticks",
+      "seconds": "180.711",
+      "reason": "Failed: Timeout (>180.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_replay_simulator",
+      "case": "test_replay_throttle_actually_blocks_at_low_limit",
+      "seconds": "181.427",
+      "reason": "Failed: Timeout (>180.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_replay_simulator",
+      "case": "test_replay_regime_history_populated",
+      "seconds": "31.134",
+      "reason": "Failed: Timeout (>30.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_replay_simulator",
+      "case": "test_replay_trades_have_valid_pnl",
+      "seconds": "180.004",
+      "reason": "Failed: Timeout (>180.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_organism_integration_smoke.TestFitnessGate",
+      "case": "test_low_fitness_blocks_entry",
+      "seconds": "30.003",
+      "reason": "Failed: Timeout (>30.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_organism_integration_smoke.TestBrainRoundTrip",
+      "case": "test_tick_count_survives_restart",
+      "seconds": "30.004",
+      "reason": "Failed: Timeout (>30.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_organism_engine_scenarios",
+      "case": "test_tick_count_and_state_survive_restart",
+      "seconds": "30.014",
+      "reason": "Failed: Timeout (>30.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_organism_engine_scenarios",
+      "case": "test_entry_with_partial_fill_tracked_correctly",
+      "seconds": "30.006",
+      "reason": "Failed: Timeout (>30.0s) from pytest-timeout."
+    },
+    {
+      "class": "tests.test_wave52_fixes",
+      "case": "test_yy_5_readyz_checks_brain_and_tick",
+      "seconds": "0.002",
+      "reason": "AssertionError: YY-5 marker missing in health.py"
+    }
+  ]
+}

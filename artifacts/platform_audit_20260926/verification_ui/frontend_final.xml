@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="63" failures="0" errors="0" time="9.566280294">
+    <testsuite name="src/hooks/usePortfolio.test.tsx" timestamp="2026-09-26T22:58:40.584Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="1.110337458">
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; refresh replaces existing store and failure hides balances until verified recovery" time="1.049670292">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; does not overwrite a newer WebSocket observation with older HTTP cache data" time="0.055486666">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; expires an observation even if the refresh is hanging" time="0.002598666">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; polls again after ten seconds and never shows a previous user portfolio" time="0.001991709">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/api.test.ts" timestamp="2026-09-26T22:58:40.585Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.11324375">
+        <testcase classname="src/services/api.test.ts" name="concurrent 401 without refresh settle, and later login can refresh and retry" time="0.004741625">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh success cannot overwrite or clear replacement login" time="0.053491542">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh failure cannot overwrite or clear replacement login" time="0.052914">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="queued retry cannot dispatch old work as a replacement principal" time="0.001283166">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/authService.test.tsx" timestamp="2026-09-26T22:58:40.585Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.064090125">
+        <testcase classname="src/services/authService.test.tsx" name="actual backend LoginResponse normalizes principal through auth store and portfolio query" time="0.062768042">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000595958">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000118208">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.0001115">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/websocketManager.test.tsx" timestamp="2026-09-26T22:58:40.585Z" hostname="Marsels-MacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.012439709">
+        <testcase classname="src/services/websocketManager.test.tsx" name="logout closes connected session and removes private-delivery callbacks" time="0.008904917">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 2)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/websocketManager.test.tsx" name="token rotation while connected or connecting retires old transport and resubscribes once" time="0.002125958">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 8)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/websocketManager.test.tsx" name="an obsolete caller cannot open a socket using a retired token" time="0.000246542">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/utils/portfolioSnapshot.test.ts" timestamp="2026-09-26T22:58:40.586Z" hostname="Marsels-MacBook-Pro.local" tests="11" failures="0" errors="0" skipped="0" time="0.002274292">
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; accepts a genuine current empty account without inventing positions" time="0.000580375">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;totalEquity&quot;:null}" time="0.000125875">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;cash&quot;:null}" time="0.000064167">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;lastUpdate&quot;:&quot;2026-09-26T10:00:00&quot;}" time="0.000048459">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;lastUpdate&quot;:&quot;2026-09-26T22:58:04.387Z&quot;}" time="0.000042167">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;lastUpdate&quot;:&quot;2026-09-26T22:59:35.388Z&quot;}" time="0.000208416">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;userId&quot;:&quot;bob&quot;}" time="0.000147042">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;positions&quot;:[{&quot;symbol&quot;:&quot;AAPL&quot;}]}" time="0.000136208">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;buyingPower&quot;:&quot;2000&quot;}" time="0.000061291">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {}" time="0.000052209">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; chooses by observation timestamp, not arrival order" time="0.000087875">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/layout/GlobalStatusBar.test.tsx" timestamp="2026-09-26T22:58:40.586Z" hostname="Marsels-MacBook-Pro.local" tests="7" failures="0" errors="0" skipped="0" time="0.19626275">
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; labels a genuine current portfolio without claiming broker connectivity" time="0.091576833">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark stale portfolio data current" time="0.018150958">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark future portfolio data current" time="0.018719458">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark missing portfolio data current" time="0.017972875">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark nan portfolio data current" time="0.015720208">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark error portfolio data current" time="0.014797083">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="ignores old user response after identity changes during request" time="0.018616125">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/auth/LoginPage.test.tsx" timestamp="2026-09-26T22:58:40.587Z" hostname="Marsels-MacBook-Pro.local" tests="10" failures="0" errors="0" skipped="0" time="2.936656209">
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in production even with the bypass flag enabled" time="1.388999083">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in development without explicit opt-in" time="0.035304875">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; retains the explicit development opt-in and only attempts once under StrictMode" time="0.0305405">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed plain username without changing the password" time="0.238191167">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed email without changing the password" time="0.20740825">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;&quot;)" time="0.248506917">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;   &quot;)" time="0.235753167">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;&quot;)" time="0.232443709">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;short&quot;)" time="0.232510167">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; provides honest recovery guidance without a dead recovery link" time="0.086237417">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/dashboard/Dashboard.test.tsx" timestamp="2026-09-26T22:58:40.587Z" hostname="Marsels-MacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="1.103163459">
+        <testcase classname="src/features/dashboard/Dashboard.test.tsx" name="actual manager direct payload updates displayed equity, rejects wrong user and malformed data" time="1.075181375">
+            <system-out>
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/features/dashboard/Dashboard.test.tsx" name="failed API refresh hides old store rather than rendering flat or current account" time="0.027443459">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/portfolio/PortfolioPage.test.tsx" timestamp="2026-09-26T22:58:40.588Z" hostname="Marsels-MacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.06819475">
+        <testcase classname="src/features/portfolio/PortfolioPage.test.tsx" name="an unavailable hook cannot be overridden by a previously healthy store" time="0.067632458">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/organism/__tests__/OrganismDashboard.test.tsx" timestamp="2026-09-26T22:58:40.588Z" hostname="Marsels-MacBook-Pro.local" tests="17" failures="0" errors="0" skipped="0" time="3.959617792">
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the research lock and disables training without blocking the entry halt" time="0.462883667">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; does not display active operation for an uninitialized engine" time="0.114236625">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; does not claim entries resumed when another risk block remains" time="0.345947125">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; reports a retained halt from a structured incomplete response" time="0.31044925">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; replaces a previously healthy status with unavailable on poll failure and recovers" time="0.633907666">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; does not certify a malformed primary status" time="0.048796833">
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; keeps a good primary status available when a secondary panel fails" time="0.224714834">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; accepts a slow primary without overlapping polls and expires a later hung request" time="0.484330834">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; optional hung panel cannot delay primary failure or restore obsolete healthy state" time="0.625069417">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; renders the dashboard title" time="0.100106584">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; displays engine performance stats" time="0.098979875">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows regime tag" time="0.091136125">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; renders the tabs" time="0.090010708">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the position heatmap" time="0.08546125">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows position symbols in heatmap" time="0.0761595">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the P&amp;L waterfall" time="0.089733834">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the regime timeline" time="0.07689525">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+    </testsuite>
+</testsuites>

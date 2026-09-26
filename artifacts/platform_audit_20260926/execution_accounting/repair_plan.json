@@ -1,0 +1,42 @@
+{
+  "task": "repair_confirmed_fill_accounting_integrity",
+  "scope": [
+    "cumulative quantity+cashflow execution delta",
+    "atomic summary+execution+lot/realized transaction",
+    "idempotent same-snapshot recovery even unchanged DB summary",
+    "terminal canceled/expired partial fills",
+    "reject unsupported corrections rather than rewriting history"
+  ],
+  "files": [
+    "backend/integrations/alpaca_stream.py",
+    "tests/test_fill_accounting_integrity.py",
+    "backend/api/lifespan.py::_sync_orders"
+  ],
+  "integration_file_pending_root_assignment": null,
+  "tests": [
+    "baseline synthetic SQLite regressions",
+    "production WS snapshot failure/retry",
+    "reconnect identical-snapshot repair",
+    "startup identical-snapshot repair if assigned",
+    "duplicate/out-of-order/corrected average",
+    "existing accounting/reconciliation/integration suites",
+    "durable ORDER_FILLED audit atomic failure/retry"
+  ],
+  "frozen_surface_before": {
+    "matches_candidate": true,
+    "sha256": "e99448e5b5daf7186f956fb7c1f9d5c30a165f2758cc087cfe72f88fe75c2a48"
+  },
+  "constraints": [
+    "no change to frozen functions/parameters/cutoff",
+    "no model loading",
+    "no production API/broker/DB/state mutations",
+    "no commit/push"
+  ],
+  "acknowledged_limit": "Previously wrong lot basis cannot be silently rewritten; equal-quantity cash corrections require explicit reconciliation.",
+  "root_scope_approved": "shared atomic helper across stream/reconnect/startup; EOD and cleanup report-only",
+  "affected_fixture_updates_authorized": [
+    "tests/unit/test_alpaca_stream_comprehensive.py",
+    "tests/test_wave43_fixes.py",
+    "tests/test_adversarial_inputs_v7.py"
+  ]
+}

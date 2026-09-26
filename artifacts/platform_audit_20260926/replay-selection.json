@@ -1,0 +1,426 @@
+{
+  "schema_version": 1,
+  "lane": "replay",
+  "scope": "isolated software validation; not runtime or broker certification",
+  "selected_before_marker_filter": [
+    "tests/test_composite_correction_replay.py::test_corrected_actual_orders_protective_exit_and_eod_accounting",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[chop]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[crash]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[down]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[eod]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[up]",
+    "tests/test_organism_engine_scenarios.py::test_entry_with_partial_fill_tracked_correctly",
+    "tests/test_organism_engine_scenarios.py::test_tick_count_and_state_survive_restart",
+    "tests/test_organism_integration_smoke.py::TestBrainRoundTrip::test_tick_count_survives_restart",
+    "tests/test_organism_integration_smoke.py::TestFitnessGate::test_low_fitness_blocks_entry",
+    "tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_10_tick_invariants",
+    "tests/test_organism_live_engine.py::TestMultiRunRegression::test_brain_persistence_across_runs",
+    "tests/test_replay_simulator.py::test_replay_completes_100_ticks",
+    "tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops",
+    "tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops",
+    "tests/test_replay_simulator.py::test_replay_no_throttle_blocking",
+    "tests/test_replay_simulator.py::test_replay_regime_history_populated",
+    "tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit",
+    "tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl",
+    "tests/test_replay_simulator.py::test_replay_with_crash_data",
+    "tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_signals_generated_on_uptrend",
+    "tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn"
+  ],
+  "required_replay_nodes": [
+    "tests/test_composite_correction_replay.py::test_corrected_actual_orders_protective_exit_and_eod_accounting",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[chop]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[crash]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[down]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[eod]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[up]",
+    "tests/test_organism_engine_scenarios.py::test_entry_with_partial_fill_tracked_correctly",
+    "tests/test_organism_engine_scenarios.py::test_tick_count_and_state_survive_restart",
+    "tests/test_organism_integration_smoke.py::TestBrainRoundTrip::test_tick_count_survives_restart",
+    "tests/test_organism_integration_smoke.py::TestFitnessGate::test_low_fitness_blocks_entry",
+    "tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_10_tick_invariants",
+    "tests/test_organism_live_engine.py::TestMultiRunRegression::test_brain_persistence_across_runs",
+    "tests/test_replay_simulator.py::test_replay_completes_100_ticks",
+    "tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops",
+    "tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops",
+    "tests/test_replay_simulator.py::test_replay_no_throttle_blocking",
+    "tests/test_replay_simulator.py::test_replay_regime_history_populated",
+    "tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit",
+    "tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl",
+    "tests/test_replay_simulator.py::test_replay_with_crash_data",
+    "tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_signals_generated_on_uptrend",
+    "tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn"
+  ],
+  "external_verification": "UNAVAILABLE",
+  "external_reason": "Dedicated API and disposable broker/data credentials not provisioned",
+  "external_modules_withheld_before_import": [
+    "tests/test_analytics_api_full.py",
+    "tests/test_analytics_endpoint.py",
+    "tests/test_api_endpoint_validation.py",
+    "tests/test_order_lifecycle.py",
+    "tests/test_order_validation.py",
+    "tests/test_portfolio_api.py",
+    "tests/test_position_management.py",
+    "tests/test_pretrade_validation.py",
+    "tests/test_trades_api.py",
+    "tests/test_websocket_integration.py"
+  ],
+  "external_tests": [
+    {
+      "nodeid": "tests/test_analytics_api_full.py::test_analytics_api",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Hardcoded application PostgreSQL DSN; diagnostic returns booleans rather than asserting failures"
+    },
+    {
+      "nodeid": "tests/test_analytics_endpoint.py::test_analytics",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Hardcoded application PostgreSQL DSN; diagnostic returns booleans rather than asserting failures"
+    },
+    {
+      "nodeid": "tests/test_api_endpoint_validation.py::test_api_endpoint",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Hardcoded application PostgreSQL DSN; diagnostic returns booleans rather than asserting failures"
+    },
+    {
+      "nodeid": "tests/test_order_lifecycle.py::TestOrderLifecycle::test_order_idempotency",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000; order submissions; import-time health and authentication probes"
+    },
+    {
+      "nodeid": "tests/test_order_lifecycle.py::TestOrderLifecycle::test_order_lifecycle_with_paper_trading",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000; order submissions; import-time health and authentication probes"
+    },
+    {
+      "nodeid": "tests/test_order_lifecycle.py::TestOrderLifecycle::test_order_via_orders_endpoint",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000; order submissions; import-time health and authentication probes"
+    },
+    {
+      "nodeid": "tests/test_order_lifecycle.py::TestOrderLifecycle::test_order_via_signals_act_endpoint",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000; order submissions; import-time health and authentication probes"
+    },
+    {
+      "nodeid": "tests/test_order_lifecycle.py::test_order_idempotency",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000; order submissions; import-time health and authentication probes"
+    },
+    {
+      "nodeid": "tests/test_order_lifecycle.py::test_order_lifecycle_orders",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000; order submissions; import-time health and authentication probes"
+    },
+    {
+      "nodeid": "tests/test_order_lifecycle.py::test_order_lifecycle_signals_act",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000; order submissions; import-time health and authentication probes"
+    },
+    {
+      "nodeid": "tests/test_order_lifecycle.py::test_paper_trading_integration",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000; order submissions; import-time health and authentication probes"
+    },
+    {
+      "nodeid": "tests/test_order_validation.py::test_validate_order",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Requests to installed API localhost:8000 and live-token fixture; import-time health probe"
+    },
+    {
+      "nodeid": "tests/test_portfolio_api.py::test_portfolio_service",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Concrete Alpaca broker account client and installed portfolio service; no isolated provider fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_add_to_position_validation",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_close_position_validation",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_fetch_positions",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_position_calculations",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_position_detail_fields",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_position_fields",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_position_filtering",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_position_sorting",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_position_statistics",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_position_management.py::test_real_time_compatibility",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API/position workflow; import-time health probe; positions are not an isolated fixture"
+    },
+    {
+      "nodeid": "tests/test_pretrade_validation.py::test_checks_count",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API workflow; import-time health probe"
+    },
+    {
+      "nodeid": "tests/test_pretrade_validation.py::test_cost_estimation",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API workflow; import-time health probe"
+    },
+    {
+      "nodeid": "tests/test_pretrade_validation.py::test_insufficient_funds",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API workflow; import-time health probe"
+    },
+    {
+      "nodeid": "tests/test_pretrade_validation.py::test_invalid_symbol",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API workflow; import-time health probe"
+    },
+    {
+      "nodeid": "tests/test_pretrade_validation.py::test_limit_order",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API workflow; import-time health probe"
+    },
+    {
+      "nodeid": "tests/test_pretrade_validation.py::test_valid_market_buy",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API workflow; import-time health probe"
+    },
+    {
+      "nodeid": "tests/test_pretrade_validation.py::test_zero_quantity",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual installed-API workflow; import-time health probe"
+    },
+    {
+      "nodeid": "tests/test_trades_api.py::test_trades",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Manual access-token prompt and installed APIlocalhost:8000; currently permanently skipped"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketBroadcasting::test_broadcast_sequence",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketBroadcasting::test_broadcast_to_multiple_clients",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketBroadcasting::test_broadcast_to_single_user",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketConnection::test_connect_with_invalid_token",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketConnection::test_connect_with_valid_token",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketConnection::test_connect_without_token",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketReconnection::test_reconnect_after_disconnect",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketSubscriptions::test_multiple_subscriptions",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketSubscriptions::test_subscribe_to_portfolio",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    },
+    {
+      "nodeid": "tests/test_websocket_integration.py::TestWebSocketUserIsolation::test_user_isolation",
+      "dependencies": [
+        "dedicated_external_installation"
+      ],
+      "status": "UNAVAILABLE",
+      "reason": "Installed websocket API localhost:8000; opt-in flag does not provision isolated server"
+    }
+  ],
+  "selected_after_marker_filter": [
+    "tests/test_composite_correction_replay.py::test_corrected_actual_orders_protective_exit_and_eod_accounting",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[chop]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[crash]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[down]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[eod]",
+    "tests/test_composite_correction_replay.py::test_equal_inputs_causal_features_and_deterministic_real_replays[up]",
+    "tests/test_organism_engine_scenarios.py::test_entry_with_partial_fill_tracked_correctly",
+    "tests/test_organism_engine_scenarios.py::test_tick_count_and_state_survive_restart",
+    "tests/test_organism_integration_smoke.py::TestBrainRoundTrip::test_tick_count_survives_restart",
+    "tests/test_organism_integration_smoke.py::TestFitnessGate::test_low_fitness_blocks_entry",
+    "tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_10_tick_invariants",
+    "tests/test_organism_live_engine.py::TestMultiRunRegression::test_brain_persistence_across_runs",
+    "tests/test_replay_simulator.py::test_replay_completes_100_ticks",
+    "tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops",
+    "tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops",
+    "tests/test_replay_simulator.py::test_replay_no_throttle_blocking",
+    "tests/test_replay_simulator.py::test_replay_regime_history_populated",
+    "tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit",
+    "tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl",
+    "tests/test_replay_simulator.py::test_replay_with_crash_data",
+    "tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_signals_generated_on_uptrend",
+    "tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn"
+  ],
+  "required_replay_selection": {
+    "status": "PASS",
+    "missing_nodes": [],
+    "unexpected_nodes": []
+  }
+}

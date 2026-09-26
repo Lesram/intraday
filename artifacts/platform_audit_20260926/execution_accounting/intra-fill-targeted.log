@@ -1,0 +1,50 @@
+Isolated test scratch: /private/tmp/intra-audit-test-ssxawd3d
+................F.F.FF.                                                  [100%]
+=================================== FAILURES ===================================
+_ test_recovery_repairs_identical_summary_and_does_not_double_account[filled-reconnect] _
+tests/test_fill_accounting_integrity.py:206: in test_recovery_repairs_identical_summary_and_does_not_double_account
+    assert (await session.execute(select(Execution.fill_qty).where(Execution.order_id == identity))).scalar_one() == 4
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1481: in scalar_one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:772: in _only_one_row
+    raise exc.NoResultFound(
+E   sqlalchemy.exc.NoResultFound: No row was found when one was required
+------------------------------ Captured log call -------------------------------
+WARNING  backend.integrations.alpaca_stream:alpaca_stream.py:1177 {"event": "EXEC-002 gap-fill: failed to reconcile order 9b92bb33-1bd1-4421-ba5d-237be3325541: 'AlpacaStreamClient' object has no attribute 'get'", "logger": "backend.integrations.alpaca_stream", "level": "warning", "timestamp": "2026-09-26T22:43:19.635301Z"}
+WARNING  backend.integrations.alpaca_stream:alpaca_stream.py:1177 {"event": "EXEC-002 gap-fill: failed to reconcile order 9b92bb33-1bd1-4421-ba5d-237be3325541: 'AlpacaStreamClient' object has no attribute 'get'", "logger": "backend.integrations.alpaca_stream", "level": "warning", "timestamp": "2026-09-26T22:43:19.635988Z"}
+_ test_recovery_repairs_identical_summary_and_does_not_double_account[canceled-reconnect] _
+tests/test_fill_accounting_integrity.py:206: in test_recovery_repairs_identical_summary_and_does_not_double_account
+    assert (await session.execute(select(Execution.fill_qty).where(Execution.order_id == identity))).scalar_one() == 4
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1481: in scalar_one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:772: in _only_one_row
+    raise exc.NoResultFound(
+E   sqlalchemy.exc.NoResultFound: No row was found when one was required
+------------------------------ Captured log call -------------------------------
+WARNING  backend.integrations.alpaca_stream:alpaca_stream.py:1177 {"event": "EXEC-002 gap-fill: failed to reconcile order 99141cb9-61bd-497b-902f-dbcda3432f3e: 'AlpacaStreamClient' object has no attribute 'get'", "logger": "backend.integrations.alpaca_stream", "level": "warning", "timestamp": "2026-09-26T22:43:19.731014Z"}
+WARNING  backend.integrations.alpaca_stream:alpaca_stream.py:1177 {"event": "EXEC-002 gap-fill: failed to reconcile order 99141cb9-61bd-497b-902f-dbcda3432f3e: 'AlpacaStreamClient' object has no attribute 'get'", "logger": "backend.integrations.alpaca_stream", "level": "warning", "timestamp": "2026-09-26T22:43:19.731713Z"}
+_ test_failed_recovery_rolls_back_whole_order_but_next_order_and_retry_succeed[reconnect] _
+tests/test_fill_accounting_integrity.py:227: in test_failed_recovery_rolls_back_whole_order_but_next_order_and_retry_succeed
+    assert (await session.get(Order, identities[1])).filled_qty == 10
+E   AssertionError: assert Decimal('0.000000') == 10
+E    +  where Decimal('0.000000') = <backend.infra.schemas.Order object at 0x111b143e0>.filled_qty
+------------------------------ Captured log call -------------------------------
+WARNING  backend.integrations.alpaca_stream:alpaca_stream.py:1177 {"event": "EXEC-002 gap-fill: failed to reconcile order 73d51f99-1158-48fa-b665-4694c7163b0f: 'AlpacaStreamClient' object has no attribute 'get'", "logger": "backend.integrations.alpaca_stream", "level": "warning", "timestamp": "2026-09-26T22:43:19.775569Z"}
+WARNING  backend.integrations.alpaca_stream:alpaca_stream.py:1177 {"event": "EXEC-002 gap-fill: failed to reconcile order e3e824c4-3dad-466c-b57a-9e2cad338461: 'AlpacaStreamClient' object has no attribute 'get'", "logger": "backend.integrations.alpaca_stream", "level": "warning", "timestamp": "2026-09-26T22:43:19.776533Z"}
+________ test_exit_audit_is_atomic_durable_and_not_duplicated_on_retry _________
+tests/test_fill_accounting_integrity.py:261: in test_exit_audit_is_atomic_durable_and_not_duplicated_on_retry
+    assert audit.action == "order_filled" and audit.entity_id == str(sell_id)
+E   AssertionError: assert ('order.filled' == 'order_filled'
+E     
+E     - order_filled
+E     ?      ^
+E     + order.filled
+E     ?      ^)
+=========================== short test summary info ============================
+FAILED tests/test_fill_accounting_integrity.py::test_recovery_repairs_identical_summary_and_does_not_double_account[filled-reconnect]
+FAILED tests/test_fill_accounting_integrity.py::test_recovery_repairs_identical_summary_and_does_not_double_account[canceled-reconnect]
+FAILED tests/test_fill_accounting_integrity.py::test_failed_recovery_rolls_back_whole_order_but_next_order_and_retry_succeed[reconnect]
+FAILED tests/test_fill_accounting_integrity.py::test_exit_audit_is_atomic_durable_and_not_duplicated_on_retry
+4 failed, 19 passed in 1.02s

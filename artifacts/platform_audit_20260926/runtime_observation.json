@@ -1,0 +1,62 @@
+{
+  "observed_at_utc": "2026-09-26T22:29:32.477717+00:00",
+  "source_scope": "actual installed paper runtime; audit read-only; no deployment performed",
+  "deployment": {
+    "source_sha": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+    "migration_head": "20260503_000003",
+    "build_time": "2026-09-25T21:01:44Z",
+    "image_sha": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+    "runtime_config_hash": "ffc18df3e0051af4",
+    "container_hostname": "517f96ec73cd",
+    "app_environment": "development"
+  },
+  "active_freeze_verification_exit": 0,
+  "binding_sha256": "a827348a77d28e7c04bc0e4bd783d477338e794bff788c496b16f979ef0de0a1",
+  "account_status": "ACTIVE",
+  "position_count": 0,
+  "open_order_count": 0,
+  "clock": {
+    "is_open": false,
+    "next_close": "2026-09-28T16:00:00-04:00",
+    "next_open": "2026-09-28T09:30:00-04:00",
+    "timestamp": "2026-09-26T18:29:29.758812713-04:00"
+  },
+  "readiness": {
+    "status": "ready",
+    "checks": {
+      "database": true,
+      "broker": true,
+      "scheduler_running": true,
+      "engine_initialized": true,
+      "brain_loaded": true,
+      "scheduler_loop_recent": true
+    },
+    "problems": {},
+    "timestamp": "2026-09-26T22:29:29.847372+00:00",
+    "cached": false,
+    "cache_age_ms": 0.0,
+    "dependencies": {
+      "database": {
+        "component": "postgresql",
+        "outcome": "ok",
+        "elapsed_ms": 1.797,
+        "budget_ms": 100,
+        "measured_at": "2026-09-26T22:29:29.843580+00:00"
+      },
+      "broker": {
+        "component": "redis",
+        "outcome": "ok",
+        "elapsed_ms": 1.896,
+        "budget_ms": 200,
+        "measured_at": "2026-09-26T22:29:29.845399+00:00"
+      }
+    },
+    "runtime": {
+      "state": "market_closed",
+      "tick_expected": false,
+      "budget_seconds": 70.0,
+      "loop_age_seconds": 9.519,
+      "tick_age_seconds": null
+    }
+  }
+}

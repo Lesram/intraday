@@ -1,0 +1,168 @@
+{
+  "ruff": [
+    {
+      "path": "backend/services/portfolio_service.py",
+      "baseline_findings": 19,
+      "current_findings": 15,
+      "new_findings": []
+    },
+    {
+      "path": "backend/api/portfolio.py",
+      "baseline_findings": 26,
+      "current_findings": 26,
+      "new_findings": []
+    },
+    {
+      "path": "backend/api/socketio_server.py",
+      "baseline_findings": 2,
+      "current_findings": 2,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_portfolio_service_comprehensive.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_portfolio_availability_contract.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_socketio_topic_authorization.py",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    }
+  ],
+  "eslint": [
+    {
+      "path": "frontend/src/features/organism/OrganismDashboard.tsx",
+      "baseline_findings": 4,
+      "current_findings": 4,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.tsx",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx",
+      "baseline_findings": 1,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.test.tsx",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/hooks/useData.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/hooks/usePortfolio.test.tsx",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.tsx",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.test.tsx",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.test.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/test/portfolioFixture.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/hooks/useWebSocket.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/services/websocketManager.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/services/websocketManager.test.tsx",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/services/api.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/services/api.test.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/services/authService.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/services/authService.test.tsx",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/store/portfolioStore.ts",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.tsx",
+      "baseline_findings": 1,
+      "current_findings": 1,
+      "new_findings": []
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.test.tsx",
+      "baseline_findings": 0,
+      "current_findings": 0,
+      "new_findings": []
+    }
+  ]
+}
