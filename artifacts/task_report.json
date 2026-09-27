@@ -327,7 +327,7 @@
     "semantic_invariants",
     "replay_simulator",
     "261 recovery/accounting regression cases;231 acknowledgement/accounting cases (overlap)",
-    "12 PostgreSQL cases:7 actual concurrent database scenarios and5 isolation guards",
+    "12 PostgreSQL cases:6 actual concurrent database scenarios,1 persisted-lineage/UUID-keyset database case,and5 isolation guards",
     "91 portfolio/private-room/backend cases",
     "104 frontend cases, including20 session-bootstrap cases; production build passed",
     "72 config/integration cases; final31 workflow/configuration contract cases",
