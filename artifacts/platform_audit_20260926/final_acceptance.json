@@ -1,5 +1,5 @@
 {
-  "validated_source_sha": "efa2972de8b6d04d87ce07a17067efbd3274a015",
+  "validated_source_sha": "22c324abb7f8ae991d29b5765796d2bb5225de73",
   "observed_at_utc": "2026-09-27T00:06:35.754822+00:00",
   "local_verdict": "PASS for bounded non-frozen repairs; not whole-platform trading readiness",
   "active_freeze_verification": {
@@ -16,13 +16,14 @@
     "restart_count": 0
   },
   "checks": {
-    "source_secret_scan": "pass;6commits;noexclusions",
+    "source_secret_scan": "pass; no detector exclusions; final source/evidence delta scanned before delivery",
     "artifact_secret_scan": "pass;losslesslyexported verified hash maps;noexclusions",
     "full_artifact_pack": "pass",
     "full_frontend_selection": "104passed",
     "actual_postgres": "12passed",
     "native_browser": "pass;syntheticonly;cleanupcomplete",
-    "final_image_proxy": "pass;cleanupcomplete"
+    "final_image_proxy": "pass;cleanupcomplete",
+    "portable_container_probe": "22focusedtests+53combinedworkflowtests+actual5groups pass; independently reviewed"
   },
   "unresolved": [
     "5frozen correctness repairs awaiting explicit approval/new forward boundary",
@@ -30,5 +31,7 @@
     "fullnaturalmarket-session acceptance",
     "strategyedge evidence insufficient",
     "parked dependency/legacycleanup and documentedauth/history/crash limitations"
-  ]
+  ],
+  "application_source_sha": "efa2972de8b6d04d87ce07a17067efbd3274a015",
+  "inventory_boundary_note": "Generated source inventory uses immutable base\u202622c324abb7f8ae991d29b5765796d2bb5225de73; following evidence-only commit excluded."
 }

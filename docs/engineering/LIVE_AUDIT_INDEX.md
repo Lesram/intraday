@@ -1,33 +1,33 @@
 # Live Audit Index
 
-Generated: 2026-09-27T00:05:21Z
+Generated: 2026-09-27T00:21:52Z
 PR: n/a
-SHA: `efa2972de8`
+SHA: `22c324abb7`
 Branch: `codex/platform-audit-20260926`
 Scope: **backend_logic**
-Change scope: `base` (`bf533a43d01a4c2e7428ea9589159d9c7d242319...HEAD`)
+Change scope: `base` (`bf533a43d01a4c2e7428ea9589159d9c7d242319...22c324abb7f8ae991d29b5765796d2bb5225de73`)
 
 ## Changed files
 
-Total distinct changed files: **184**
+Total distinct changed files: **298**
 
-Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
+Category counts below partition that total. File previews show at most ten paths per category; the full list for that immutable source boundary follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
 | Backend | 9 | `backend/api/lifespan.py`, `backend/api/portfolio.py`, `backend/api/socketio_server.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_stream.py`, `backend/services/order_recovery_service.py`, `backend/services/portfolio_service.py`, `backend/services/scheduled_reconciliation.py` |
 | Scripts | 2 | `scripts/ci/check_frontend_container.py`, `scripts/ci/nightly_test_contract.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 17 | `tests/test_adversarial_inputs_v7.py`, `tests/test_fill_accounting_integrity.py`, `tests/test_fill_accounting_postgres.py`, `tests/test_monday_ci_workflows.py`, `tests/test_nightly_test_contract.py`, `tests/test_order_recovery_service.py`, `tests/test_outbox_fill_race.py`, `tests/test_paper_frontend_deployment.py`, `tests/test_portfolio_availability_contract.py`, `tests/test_portfolio_service_comprehensive.py` |
+| Tests | 18 | `tests/test_adversarial_inputs_v7.py`, `tests/test_fill_accounting_integrity.py`, `tests/test_fill_accounting_postgres.py`, `tests/test_frontend_container_probe.py`, `tests/test_monday_ci_workflows.py`, `tests/test_nightly_test_contract.py`, `tests/test_order_recovery_service.py`, `tests/test_outbox_fill_race.py`, `tests/test_paper_frontend_deployment.py`, `tests/test_portfolio_availability_contract.py` |
 | Docs | 3 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/MONDAY_CI_READINESS.md`, `docs/engineering/PAPER_OPERATOR_UI.md` |
-| Artifacts/evidence | 117 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
+| Artifacts/evidence | 230 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 4 | `reports/PLATFORM_AUDIT_FROZEN_REPAIR_SCOPE_2026-09-26.md`, `reports/platform_audit_20260926/PLATFORM_REVIEW.md`, `reports/platform_audit_20260926/research_readiness.md`, `reports/platform_audit_20260926/research_readiness_sources.json` |
 | Configuration | 1 | `docker-compose.paper.yml` |
 | Other | 30 | `frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`, `frontend/nginx.conf`, `frontend/src/App.tsx`, `frontend/src/components/auth/AuthBootstrap.test.tsx`, `frontend/src/components/auth/AuthBootstrap.tsx`, `frontend/src/components/auth/ProtectedRoute.tsx`, `frontend/src/components/layout/GlobalStatusBar.test.tsx`, `frontend/src/components/layout/GlobalStatusBar.tsx`, `frontend/src/features/dashboard/Dashboard.test.tsx` |
 
 Organism subset of Backend: **0** file(s).
 
-### Full changed-file list
+### Full changed-file list at the immutable source boundary
 
 - `.github/workflows/paper-readiness.yml`
 - `artifacts/algorithm_improvements.junit.xml`
@@ -42,6 +42,13 @@ Organism subset of Backend: **0** file(s).
 - `artifacts/organism_live_engine.log`
 - `artifacts/platform_audit_20260926/active-freeze-final.log`
 - `artifacts/platform_audit_20260926/audit-index.log`
+- `artifacts/platform_audit_20260926/auth_bootstrap/eslint.log`
+- `artifacts/platform_audit_20260926/auth_bootstrap/final.log`
+- `artifacts/platform_audit_20260926/auth_bootstrap/final.xml`
+- `artifacts/platform_audit_20260926/auth_bootstrap/implementation.json`
+- `artifacts/platform_audit_20260926/auth_bootstrap/independent_review.json`
+- `artifacts/platform_audit_20260926/auth_bootstrap/plan.json`
+- `artifacts/platform_audit_20260926/auth_bootstrap/tsc.log`
 - `artifacts/platform_audit_20260926/ci-workflow-contract-final.log`
 - `artifacts/platform_audit_20260926/ci-workflow-contract-final.xml`
 - `artifacts/platform_audit_20260926/ci-workflow-final.log`
@@ -54,6 +61,8 @@ Organism subset of Backend: **0** file(s).
 - `artifacts/platform_audit_20260926/data_decision_proof.json`
 - `artifacts/platform_audit_20260926/data_decision_report.json`
 - `artifacts/platform_audit_20260926/data_decision_startup-proof.json`
+- `artifacts/platform_audit_20260926/dependency_review.json`
+- `artifacts/platform_audit_20260926/evidence_export_addendum.json`
 - `artifacts/platform_audit_20260926/evidence_export_receipt.json`
 - `artifacts/platform_audit_20260926/execution_accounting/audit_findings.json`
 - `artifacts/platform_audit_20260926/execution_accounting/fill_regressions_first_fix.json`
@@ -94,26 +103,124 @@ Organism subset of Backend: **0** file(s).
 - `artifacts/platform_audit_20260926/execution_accounting/pre_repair_proofs.stderr`
 - `artifacts/platform_audit_20260926/execution_accounting/pre_repair_proofs.stdout`
 - `artifacts/platform_audit_20260926/execution_accounting/repair_plan.json`
+- `artifacts/platform_audit_20260926/final_acceptance.json`
+- `artifacts/platform_audit_20260926/final_config_ci.xml`
+- `artifacts/platform_audit_20260926/final_frontend.xml`
+- `artifacts/platform_audit_20260926/final_workflow_contract.xml`
 - `artifacts/platform_audit_20260926/frontend_browser/login.png`
 - `artifacts/platform_audit_20260926/frontend_browser/preview.log`
 - `artifacts/platform_audit_20260926/frontend_browser/result.json`
 - `artifacts/platform_audit_20260926/frontend_browser_final/login.png`
 - `artifacts/platform_audit_20260926/frontend_browser_final/preview.log`
 - `artifacts/platform_audit_20260926/frontend_browser_final/result.json`
+- `artifacts/platform_audit_20260926/frontend_container/result.json`
+- `artifacts/platform_audit_20260926/frontend_container_committed/proxy.log`
+- `artifacts/platform_audit_20260926/frontend_container_committed/result.json`
+- `artifacts/platform_audit_20260926/frontend_container_final/proxy.log`
+- `artifacts/platform_audit_20260926/frontend_container_final/result.json`
+- `artifacts/platform_audit_20260926/frontend_container_retry/result.json`
+- `artifacts/platform_audit_20260926/frontend_deployment/independent_final_review.json`
+- `artifacts/platform_audit_20260926/frontend_deployment/independent_source_review.json`
+- `artifacts/platform_audit_20260926/frontend_deployment_plan.json`
 - `artifacts/platform_audit_20260926/full-pack.log`
 - `artifacts/platform_audit_20260926/gitleaks-source.json`
 - `artifacts/platform_audit_20260926/gitleaks-source.log`
+- `artifacts/platform_audit_20260926/hosted_initial_summary.json`
 - `artifacts/platform_audit_20260926/installed_release_runtime_config.json`
 - `artifacts/platform_audit_20260926/metadata-refresh.log`
+- `artifacts/platform_audit_20260926/native_browser/before_bootstrap.json`
+- `artifacts/platform_audit_20260926/native_browser/committed_result.json`
 - `artifacts/platform_audit_20260926/nightly-contract-tests.xml`
 - `artifacts/platform_audit_20260926/nightly-replay.xml`
 - `artifacts/platform_audit_20260926/nightly_original_failures.json`
 - `artifacts/platform_audit_20260926/nightly_repair_plan.json`
+- `artifacts/platform_audit_20260926/order_recovery/expanded_01.log`
+- `artifacts/platform_audit_20260926/order_recovery/expanded_01.xml`
+- `artifacts/platform_audit_20260926/order_recovery/expanded_02.log`
+- `artifacts/platform_audit_20260926/order_recovery/expanded_02.xml`
+- `artifacts/platform_audit_20260926/order_recovery/frozen_after.json`
+- `artifacts/platform_audit_20260926/order_recovery/frozen_before.json`
+- `artifacts/platform_audit_20260926/order_recovery/implementation.json`
+- `artifacts/platform_audit_20260926/order_recovery/implementation_before_public_validator.json`
+- `artifacts/platform_audit_20260926/order_recovery/independent_review.json`
+- `artifacts/platform_audit_20260926/order_recovery/plan.json`
+- `artifacts/platform_audit_20260926/order_recovery/post_test_formatting.json`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_01/postgres_container.log`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_01/postgres_run_receipt.json`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_01/postgres_tests.xml`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_ack_02/postgres_container.log`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_ack_02/postgres_run_receipt.json`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_ack_02/postgres_tests.xml`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_ack_addendum.json`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_default.log`
+- `artifacts/platform_audit_20260926/order_recovery/postgres_default.xml`
+- `artifacts/platform_audit_20260926/order_recovery/public_validator.log`
+- `artifacts/platform_audit_20260926/order_recovery/public_validator.xml`
+- `artifacts/platform_audit_20260926/order_recovery/public_validator_interface.json`
+- `artifacts/platform_audit_20260926/order_recovery/ruff_delta.json`
+- `artifacts/platform_audit_20260926/order_recovery/targeted_01.log`
+- `artifacts/platform_audit_20260926/order_recovery/targeted_01.xml`
+- `artifacts/platform_audit_20260926/order_recovery/targeted_02.log`
+- `artifacts/platform_audit_20260926/order_recovery/targeted_02.xml`
 - `artifacts/platform_audit_20260926/organism-regression.log`
 - `artifacts/platform_audit_20260926/organism-regression.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/expanded_01.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/expanded_01.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/expanded_02.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/expanded_02.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/expanded_final.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/expanded_final.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/final.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/final.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/frozen_after.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/frozen_after.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/frozen_before.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/frozen_before.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/frozen_final.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/frozen_final.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/implementation.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/implementation_updater_only.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/independent.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/independent.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/independent_review.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/independent_wrapper.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/independent_wrapper.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/plan.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/proof_harness_first.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/proof_harness_first.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/proof_plan.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/proof_real_shape_red.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/proof_real_shape_red.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/proof_red.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/proof_red.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/proof_test_delayed_ack.py.txt`
+- `artifacts/platform_audit_20260926/outbox_fill_race/static_delta.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/static_final.json`
+- `artifacts/platform_audit_20260926/outbox_fill_race/targeted_01.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/targeted_01.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/wrapper_expanded_01.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/wrapper_expanded_01.xml`
+- `artifacts/platform_audit_20260926/outbox_fill_race/wrapper_red.log`
+- `artifacts/platform_audit_20260926/outbox_fill_race/wrapper_red.xml`
 - `artifacts/platform_audit_20260926/plan.json`
+- `artifacts/platform_audit_20260926/reachability_repair/before.log`
+- `artifacts/platform_audit_20260926/reachability_repair/before.xml`
+- `artifacts/platform_audit_20260926/reachability_repair/hosted_selection.log`
+- `artifacts/platform_audit_20260926/reachability_repair/hosted_selection.xml`
+- `artifacts/platform_audit_20260926/reachability_repair/implementation.json`
+- `artifacts/platform_audit_20260926/reachability_repair/independent_review.json`
+- `artifacts/platform_audit_20260926/reachability_repair/plan.json`
+- `artifacts/platform_audit_20260926/reachability_repair/targeted.log`
+- `artifacts/platform_audit_20260926/reachability_repair/targeted.xml`
+- `artifacts/platform_audit_20260926/recovery_ci_plan.json`
 - `artifacts/platform_audit_20260926/replay-selection.json`
 - `artifacts/platform_audit_20260926/runtime_observation.json`
+- `artifacts/platform_audit_20260926/ui_origin/eslint.log`
+- `artifacts/platform_audit_20260926/ui_origin/implementation.json`
+- `artifacts/platform_audit_20260926/ui_origin/targeted.log`
+- `artifacts/platform_audit_20260926/ui_origin/targeted.xml`
+- `artifacts/platform_audit_20260926/ui_origin/tsc.log`
+- `artifacts/platform_audit_20260926/ui_origin_plan.json`
 - `artifacts/platform_audit_20260926/validated_source_manifest.json`
 - `artifacts/platform_audit_20260926/verification_ui/backend_final.log`
 - `artifacts/platform_audit_20260926/verification_ui/backend_final.xml`
@@ -130,6 +237,12 @@ Organism subset of Backend: **0** file(s).
 - `artifacts/platform_audit_20260926/verification_ui/ruff_final.json`
 - `artifacts/platform_audit_20260926/verification_ui/static_delta.json`
 - `artifacts/platform_audit_20260926/verification_ui_independent_review.json`
+- `artifacts/platform_audit_20260926/wave51_contract/frozen_after.json`
+- `artifacts/platform_audit_20260926/wave51_contract/implementation.json`
+- `artifacts/platform_audit_20260926/wave51_contract/independent_review.json`
+- `artifacts/platform_audit_20260926/wave51_contract/plan.json`
+- `artifacts/platform_audit_20260926/wave51_contract/targeted_01.log`
+- `artifacts/platform_audit_20260926/wave51_contract/targeted_01.xml`
 - `artifacts/replay_simulator.junit.xml`
 - `artifacts/replay_simulator.log`
 - `artifacts/replay_summary.json`
@@ -199,6 +312,7 @@ Organism subset of Backend: **0** file(s).
 - `tests/test_adversarial_inputs_v7.py`
 - `tests/test_fill_accounting_integrity.py`
 - `tests/test_fill_accounting_postgres.py`
+- `tests/test_frontend_container_probe.py`
 - `tests/test_monday_ci_workflows.py`
 - `tests/test_nightly_test_contract.py`
 - `tests/test_order_recovery_service.py`
@@ -254,3 +368,5 @@ These values describe this generator's configuration inputs. Offline runs can co
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
 - 9 backend runtime file(s) changed — require targeted verification
+
+Inventory boundary: this generated list ends at source `22c324abb7f8ae991d29b5765796d2bb5225de73`. Reports and evidence attached by the following delivery commit are outside this range; it is not a claim to enumerate its own later delivery files.

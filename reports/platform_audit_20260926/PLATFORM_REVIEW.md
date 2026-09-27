@@ -90,7 +90,7 @@ None of these gates authorizes real-money trading or promises profitability.
 
 ## Repair validation
 
-The validated product source is `efa2972de8b6d04d87ce07a17067efbd3274a015`. Independent accounting, recovery, acknowledgement, UI/authentication, deployment and CI reviews are preserved with source hashes. A 60-file manifest binds changed product/test/workflow bytes; later report and evidence changes do not alter those bytes.
+The validated product source is `efa2972de8b6d04d87ce07a17067efbd3274a015`. Independent accounting, recovery, acknowledgement, UI/authentication, deployment and CI reviews are preserved with source hashes. The current manifest binds 61 changed product/test/workflow files. Backend, frontend and deployment product bytes still match this browser-tested source; the later source revision only corrects the Docker test harness and its CI coverage. Inventory ranges name the immutable generation commit, excluding the following evidence-only delivery.
 
 Recovery/accounting regression selection: 261 passed. Acknowledgement/accounting selection: 231 passed, including 36 new acknowledgement cases. Disposable PostgreSQL: 12 passed without skips, comprising seven actual concurrent database scenarios and five isolation guards. Portfolio/private-room backend selection: 91 passed. Configuration/integration: 72 passed; final workflow/configuration contract: 31 passed. These selections overlap and must not be summed as unique platform coverage.
 

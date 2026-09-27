@@ -1,10 +1,11 @@
 {
-  "source_sha": "efa2972de8b6d04d87ce07a17067efbd3274a015",
-  "generated_at": "2026-09-27T00:05:21.355649+00:00",
+  "source_sha": "22c324abb7f8ae991d29b5765796d2bb5225de73",
+  "application_source_sha": "efa2972de8b6d04d87ce07a17067efbd3274a015",
+  "generated_at": "2026-09-27T00:21:52.340702+00:00",
   "files": [
     {
       "path": ".github/workflows/paper-readiness.yml",
-      "sha256": "076a205de55f142c4c13bb15d21c364b235cc28d61c2fb76b44e6441eebf5b8b"
+      "sha256": "dc99706f04a9817e2f4b584e5424594536fdf9bf8dde154ef01521863d25d05f"
     },
     {
       "path": "backend/api/lifespan.py",
@@ -168,7 +169,7 @@
     },
     {
       "path": "scripts/ci/check_frontend_container.py",
-      "sha256": "f154f7e26e9274a21d1b409f587bbb0bc882110933786c8b81a190ccb09e589e"
+      "sha256": "838ea9e9f7c91b2a47408fccb1a4f008a5109a6b1b301892a39e3ca006f26ee8"
     },
     {
       "path": "scripts/ci/nightly_test_contract.py",
@@ -187,8 +188,12 @@
       "sha256": "ebd3db4875fbfd28b10b4b260915ac04610338406947cf392a95134f6507407d"
     },
     {
+      "path": "tests/test_frontend_container_probe.py",
+      "sha256": "b53dd45332bf2c76f3117f6cab97cea8a437b8df16ae7bd75ae3cc71edba15ff"
+    },
+    {
       "path": "tests/test_monday_ci_workflows.py",
-      "sha256": "66c8e681032a3aedc3de7035f1b7598c1f34eccc894722f9e23d86f0a58945c5"
+      "sha256": "a55ab6403d47ad7319ebb96243786fdf48c29881595d2ae013e02b3dcc070bad"
     },
     {
       "path": "tests/test_nightly_test_contract.py",
@@ -243,5 +248,5 @@
       "sha256": "7965ba0b9a5eeb10835f99f44492db1c00be42dcfcb328b8bd9a7e38b68b4810"
     }
   ],
-  "note": "Validated product/test/workflow source bytes. Subsequent human-report and evidence-only changes are excluded; every listed file must remain byte-identical. Per-scope receipts retain prior observations and red controls."
+  "note": "Current immutable product/test/workflow source. Backend, frontend and deployment product bytes remain identical to the browser-tested efa2972 release; subsequent changes only repair the disposable Docker test harness/CI and report/evidence references."
 }

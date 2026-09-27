@@ -1,0 +1,77 @@
+{
+  "schema": "intra_frontend_probe_network_repair_v1",
+  "created_at": "2026-09-27T00:14:57.787742+00:00",
+  "status": "ACCEPTED_LOCAL_VALIDATION_HOSTED_PENDING",
+  "checkout_sha": "313b4902fa9cfcf75d69b9a41257df9a5ac3754f",
+  "source_files": {
+    "scripts/ci/check_frontend_container.py": "838ea9e9f7c91b2a47408fccb1a4f008a5109a6b1b301892a39e3ca006f26ee8",
+    "tests/test_frontend_container_probe.py": "b53dd45332bf2c76f3117f6cab97cea8a437b8df16ae7bd75ae3cc71edba15ff"
+  },
+  "summary": "Use a read-only validated network inventory to choose a nonoverlapping explicit private /24 for the owned internal Docker probe. This makes the existing static old-IP holder portable to hosted Linux without weakening different-IP recovery.",
+  "invariants": [
+    "Existing networks are read but never changed or deleted",
+    "Only a unique owned network receives explicit --subnet; API remains internal without published ports",
+    "UI loopback ingress unchanged",
+    "Old address holder and old_ip != new_ip remain mandatory",
+    "Concurrent subnet overlap fails without retry/deleting another network",
+    "Malformed/incomplete/oversized/exhausted inventory fails closed; only positively identified host/null driver permits no IPAM allocation",
+    "No product frontend/backend/config/trading/frozen behavior changed"
+  ],
+  "tests": {
+    "corrected": {
+      "tests": 22,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "old_source_negative_control": {
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ruff_exit_code": 0,
+    "diff_check_exit_code": 0
+  },
+  "actual_disposable_probe": {
+    "scope": "Synthetic HTTP/websocket proxy; no trading startup, credentials or installed services",
+    "image": "sha256:94eddbaa767c7c4a9784391d474e8138483459619845ccfa8a336496fbc1b254",
+    "checks": [
+      "Static health, SPA deep-link refresh and missing-asset refusal",
+      "API path/query/auth/host forwarding and truthful upstream503",
+      "All three websocket routes upgrade and carry a frame",
+      "API disappearance stays unavailable; replacement at a different IP recovers",
+      "Access logs omit authentication query and header"
+    ],
+    "passed": true,
+    "internal_subnet": "10.240.0.0/24",
+    "api_replacement": {
+      "old_ip": "10.240.0.2",
+      "new_ip": "10.240.0.4"
+    },
+    "image_id": "sha256:94eddbaa767c7c4a9784391d474e8138483459619845ccfa8a336496fbc1b254",
+    "cleanup_errors": []
+  },
+  "preexisting_docker_objects": {
+    "containers_unchanged": true,
+    "networks_unchanged": true
+  },
+  "evidence": {
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/plan.json": "8aa50944119edeacfc5e87278f47b1f7fe50d7af879e16db1e77c2c7958fdf1d",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/targeted.xml": "27c98941022ce452f41151e3ede5603b6daa96ac0983284133561bbf42ba393b",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/targeted.log": "6fe9e11ba882d1e350044c9cafb03f67b3268988840cde179c7e63f59fb2c61c",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/before.xml": "275ae1d58bb339127be2b2e9731c1e05208368508f9424c05d9b3d5a83035ccd",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/before.log": "1d4097884a00134377da93a8c76b43c2d403793aea3d0c83be5b9086c8db816f",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/ruff.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/disposable/result.json": "e80d55ad0bc9ef023a61fd2e9b331e478024cbe4ccd4552dcd97a39348b3c36b",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/disposable/proxy.log": "dab90dd74e52d9bada67e1846e854452521f3693e623714168ea777c103316c9",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/disposable.log": "e80d55ad0bc9ef023a61fd2e9b331e478024cbe4ccd4552dcd97a39348b3c36b",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/preservation.json": "5acd68e3ca8fcc421fc49813af7384353b6cbf1a88b362c525c4a490cb59fc7c",
+    "artifacts/platform_audit_20260926/frontend_probe_network_repair/hosted_failure.json": "c79a0f5fe2f2431080647d20b1b3f009ec74fefbe7ba55e3eaff0c37e6ff4bcf"
+  },
+  "limitations": [
+    "Local Docker Desktop arm64 proof does not substitute for a fresh hosted Linux CI run",
+    "Synthetic proxy proof does not certify trading API/authentication or live deployment",
+    "Root owns final CI selection/commit/PR/full release gates; this author made no commit or runtime service mutation"
+  ]
+}

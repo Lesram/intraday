@@ -1,0 +1,19 @@
+{
+  "scope": "Synthetic HTTP/websocket proxy; no trading startup, credentials or installed services",
+  "image": "sha256:94eddbaa767c7c4a9784391d474e8138483459619845ccfa8a336496fbc1b254",
+  "checks": [
+    "Static health, SPA deep-link refresh and missing-asset refusal",
+    "API path/query/auth/host forwarding and truthful upstream503",
+    "All three websocket routes upgrade and carry a frame",
+    "API disappearance stays unavailable; replacement at a different IP recovers",
+    "Access logs omit authentication query and header"
+  ],
+  "passed": true,
+  "internal_subnet": "10.240.0.0/24",
+  "api_replacement": {
+    "old_ip": "10.240.0.2",
+    "new_ip": "10.240.0.4"
+  },
+  "image_id": "sha256:94eddbaa767c7c4a9784391d474e8138483459619845ccfa8a336496fbc1b254",
+  "cleanup_errors": []
+}
