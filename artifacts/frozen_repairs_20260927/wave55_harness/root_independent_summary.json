@@ -1,0 +1,19 @@
+{
+  "scope": "Independent root rerun of same four-case module; non-additive selection",
+  "original_private_junit_basename": "intra-pr32-wave55-root.xml",
+  "original_private_junit_sha256": "ae1084e509eec1eab9d04f9288ac7016056c5a71c4bf45f8a0c74926793ca9d4",
+  "tests": 4,
+  "passed": 4,
+  "failure": 0,
+  "error": 0,
+  "skipped": 0,
+  "case_ids": [
+    "tests.test_wave55_fixes::test_xx_1_ec197_downgrade_uses_if_exists",
+    "tests.test_wave55_fixes::test_xx_2_widen_ck_orders_status_migration_exists",
+    "tests.test_wave55_fixes::test_xx_2_migration_tree_still_single_headed",
+    "tests.test_wave55_fixes::test_bb4_f2_verify_eod_cancel_inline_in_live_engine"
+  ],
+  "source_test_sha256": "3679f2e79f93eaef1faeb47d060286bff404e79451201b145b6a930e07353377",
+  "root_reported_candidate_verify_exit": 0,
+  "candidate_verify_limit": "Parent-reported independent check; raw verification receipt is outside this publication folder."
+}

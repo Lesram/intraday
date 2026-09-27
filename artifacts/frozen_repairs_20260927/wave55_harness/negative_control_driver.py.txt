@@ -1,0 +1,33 @@
+"""Remove only the real EOD cancellation await in memory, not repository code."""
+import ast
+import inspect
+import textwrap
+import pytest
+
+class RemoveEODCancel:
+    def pytest_collection_modifyitems(self, session, config, items):
+        from backend.organism.live_engine import OrganismLiveEngine
+        original = OrganismLiveEngine._live_tick_inner
+        tree = ast.parse(textwrap.dedent(inspect.getsource(original)))
+        removed = 0
+        for node in ast.walk(tree):
+            if isinstance(node, ast.If) and isinstance(node.test, ast.BoolOp):
+                if not any(isinstance(child, ast.Name) and child.id == '_eod_flatten_triggered' for child in ast.walk(node.test)):
+                    continue
+                for index, statement in enumerate(node.body):
+                    if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Await):
+                        call = statement.value.value
+                        if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and call.func.attr == '_cancel_pending_entry_orders':
+                            node.body[index] = ast.copy_location(ast.Pass(), statement)
+                            removed += 1
+        assert removed == 1, f'Expected one EOD await, got {removed}'
+        ast.fix_missing_locations(tree)
+        scope = dict(original.__globals__)
+        exec(compile(tree, '<private-negative-control-eod-cancel-removed>', 'exec'), scope)
+        OrganismLiveEngine._live_tick_inner = scope['_live_tick_inner']
+        print('Semantic negative control: exactly one EOD cancel await removed in memory.')
+
+raise SystemExit(pytest.main([
+    '-q', 'tests/test_wave55_fixes.py::test_bb4_f2_verify_eod_cancel_inline_in_live_engine',
+    '--junitxml=negative_control.xml',
+], plugins=[RemoveEODCancel()]))

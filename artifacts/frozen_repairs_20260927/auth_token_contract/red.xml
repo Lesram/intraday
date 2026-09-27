@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="50" failures="20" errors="0" time="0.082345125">
+    <testsuite name="src/services/authService.test.tsx" timestamp="2026-09-27T19:55:25.379Z" hostname="Marsels-MacBook-Pro.local" tests="50" failures="20" errors="0" skipped="0" time="0.082345125">
+        <testcase classname="src/services/authService.test.tsx" name="actual backend LoginResponse normalizes principal through auth store and portfolio query" time="0.06193075">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.00060875">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000139875">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000124375">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is missing" time="0.000157542">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is null" time="0.000114667">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is number" time="0.000102875">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is boolean" time="0.000107834">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is object" time="0.000131125">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is array" time="0.000144292">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is empty" time="0.004544583">
+            <failure message="promise resolved &quot;{ access_token: &apos;&apos;, …(4) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ access_token: &apos;&apos;, …(4) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot;synthetic-refresh&quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is whitespace" time="0.000512083">
+            <failure message="promise resolved &quot;{ access_token: &apos; \t\n &apos;, …(4) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ access_token: &apos; \t\n &apos;, …(4) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot; 	
++  &quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot;synthetic-refresh&quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is missing" time="0.000107333">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is null" time="0.000363084">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: null,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is number" time="0.000274125">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: 42,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is boolean" time="0.00029125">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: true,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is object" time="0.000244334">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: {
++     &quot;value&quot;: &quot;synthetic&quot;,
++   },
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is array" time="0.00030425">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: [
++     &quot;synthetic&quot;,
++   ],
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is empty" time="0.000245417">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot;&quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is whitespace" time="0.000214417">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot; 	
++  &quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login preserves valid credentials and principal" time="0.000100625">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full malformed access_token never authenticates the login hook" time="0.002381917">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full malformed refresh_token never authenticates the login hook" time="0.001149833">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: null,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T00:00:00Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;Alice&quot;,
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:94:94
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:48:24
+ ❯ process.env.NODE_ENV.exports.act node_modules/react/cjs/react.development.js:814:22
+ ❯ Proxy.&lt;anonymous&gt; node_modules/@testing-library/react/dist/act-compat.js:47:25
+ ❯ src/services/authService.test.tsx:93:13
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full valid login authenticates and navigates" time="0.0008955">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is missing" time="0.000104458">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is null" time="0.0000855">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is number" time="0.000068375">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is boolean" time="0.000072458">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is object" time="0.000063">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is array" time="0.000060292">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is empty" time="0.000060917">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is whitespace" time="0.000256833">
+            <failure message="promise resolved &quot;{ access_token: &apos; \t\n &apos;, …(4) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ access_token: &apos; \t\n &apos;, …(4) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot; 	
++  &quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot;synthetic-refresh&quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.347Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is missing" time="0.000202084">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot;&quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.347Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is null" time="0.000179958">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot;&quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.348Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is number" time="0.000189667">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: 42,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.348Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is boolean" time="0.000179209">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: true,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.348Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is object" time="0.000182917">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: {
++     &quot;value&quot;: &quot;synthetic&quot;,
++   },
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.348Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is array" time="0.000189792">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: [
++     &quot;synthetic&quot;,
++   ],
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.348Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is empty" time="0.000185375">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot;&quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.349Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is whitespace" time="0.000173375">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot; 	
++  &quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.349Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:71:83
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login preserves valid credentials and principal" time="0.00007675">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend malformed access_token never authenticates the login hook" time="0.00225475">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend malformed refresh_token never authenticates the login hook" time="0.00087725">
+            <failure message="promise resolved &quot;{ …(5) }&quot; instead of rejecting" type="AssertionError">
+AssertionError: promise resolved &quot;{ …(5) }&quot; instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   &quot;message&quot;: &quot;rejected promise&quot;,
++ {
++   &quot;access_token&quot;: &quot;synthetic-access&quot;,
++   &quot;expires_in&quot;: 3600,
++   &quot;refresh_token&quot;: &quot;&quot;,
++   &quot;token_type&quot;: &quot;bearer&quot;,
++   &quot;user&quot;: {
++     &quot;created_at&quot;: &quot;2026-09-27T19:55:25.352Z&quot;,
++     &quot;email&quot;: &quot;alice&quot;,
++     &quot;id&quot;: &quot;alice&quot;,
++     &quot;is_active&quot;: true,
++     &quot;name&quot;: &quot;alice&quot;,
++     &quot;permissions&quot;: [
++       &quot;viewer&quot;,
++     ],
++     &quot;role&quot;: &quot;viewer&quot;,
++   },
+  }
+
+ ❯ src/services/authService.test.tsx:94:94
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:48:24
+ ❯ process.env.NODE_ENV.exports.act node_modules/react/cjs/react.development.js:814:22
+ ❯ Proxy.&lt;anonymous&gt; node_modules/@testing-library/react/dist/act-compat.js:47:25
+ ❯ src/services/authService.test.tsx:93:13
+            </failure>
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend valid login authenticates and navigates" time="0.000613375">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;admin&quot;] as admin" time="0.000115875">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;trader&quot;] as trader" time="0.000064583">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;risk_manager&quot;] as risk_manager" time="0.00005775">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;risk-manager&quot;] as risk_manager" time="0.0000585">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;viewer&quot;] as viewer" time="0.000058542">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;paper_monitor&quot;] as viewer" time="0.0000495">
+        </testcase>
+    </testsuite>
+</testsuites>

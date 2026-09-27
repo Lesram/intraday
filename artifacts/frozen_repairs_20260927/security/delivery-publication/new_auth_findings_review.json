@@ -1,0 +1,123 @@
+{
+  "findings": [
+    {
+      "classification": "verified_source_content_sha256_metadata_false_positive",
+      "digest_fully_inside_reported_span": true,
+      "end_column": 111,
+      "file": "artifacts/frozen_repairs_20260927/auth_token_contract/implementation.json",
+      "json_field": "source_hashes",
+      "line": 16,
+      "origin_file": "frontend/src/services/authService.ts",
+      "origin_revision": "current_worktree_bytes_equal_scanned_copy",
+      "rule_id": "generic-api-key",
+      "scanned_artifact_equals_current": true,
+      "scanned_artifact_sha256": "37241522dbbe3814ad8a4cb84b9f45a0eb5688071453189ae9c87e50fe078af5",
+      "start_column": 29,
+      "verified_sha256": "36ac1c0497f8fac89d19b108f06dbfe05ee5f7885babbb6db86134d3788b3c11"
+    },
+    {
+      "classification": "verified_source_content_sha256_metadata_false_positive",
+      "digest_fully_inside_reported_span": true,
+      "end_column": 117,
+      "file": "artifacts/frozen_repairs_20260927/auth_token_contract/implementation.json",
+      "json_field": "source_hashes",
+      "line": 17,
+      "origin_file": "frontend/src/services/authService.test.tsx",
+      "origin_revision": "current_worktree_bytes_equal_scanned_copy",
+      "rule_id": "generic-api-key",
+      "scanned_artifact_equals_current": true,
+      "scanned_artifact_sha256": "37241522dbbe3814ad8a4cb84b9f45a0eb5688071453189ae9c87e50fe078af5",
+      "start_column": 29,
+      "verified_sha256": "427ae4f37f0af32cfb0ad989264e7f5a12a501d1fa7fbfa08a64f94439115311"
+    },
+    {
+      "classification": "verified_source_content_sha256_metadata_false_positive",
+      "digest_fully_inside_reported_span": true,
+      "end_column": 117,
+      "file": "artifacts/frozen_repairs_20260927/auth_token_contract/independent_review.json",
+      "json_field": "source_sha256",
+      "line": 68,
+      "origin_file": "frontend/src/services/authService.test.tsx",
+      "origin_revision": "current_worktree_bytes_equal_scanned_copy",
+      "rule_id": "generic-api-key",
+      "scanned_artifact_equals_current": true,
+      "scanned_artifact_sha256": "ce7ac6dee21bd220a400ef526cbe7400594559eead5c0c57ec73baabbfe1687e",
+      "start_column": 29,
+      "verified_sha256": "427ae4f37f0af32cfb0ad989264e7f5a12a501d1fa7fbfa08a64f94439115311"
+    },
+    {
+      "classification": "verified_source_content_sha256_metadata_false_positive",
+      "digest_fully_inside_reported_span": true,
+      "end_column": 111,
+      "file": "artifacts/frozen_repairs_20260927/auth_token_contract/independent_review.json",
+      "json_field": "source_sha256",
+      "line": 69,
+      "origin_file": "frontend/src/services/authService.ts",
+      "origin_revision": "current_worktree_bytes_equal_scanned_copy",
+      "rule_id": "generic-api-key",
+      "scanned_artifact_equals_current": true,
+      "scanned_artifact_sha256": "ce7ac6dee21bd220a400ef526cbe7400594559eead5c0c57ec73baabbfe1687e",
+      "start_column": 29,
+      "verified_sha256": "36ac1c0497f8fac89d19b108f06dbfe05ee5f7885babbb6db86134d3788b3c11"
+    },
+    {
+      "classification": "verified_source_content_sha256_metadata_false_positive",
+      "digest_fully_inside_reported_span": true,
+      "end_column": 111,
+      "file": "artifacts/frozen_repairs_20260927/auth_token_contract/plan.json",
+      "json_field": "before_hashes",
+      "line": 10,
+      "origin_file": "frontend/src/services/authService.ts",
+      "origin_revision": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+      "rule_id": "generic-api-key",
+      "scanned_artifact_equals_current": true,
+      "scanned_artifact_sha256": "be745d702d1d6c4614ce7d6cb169824259baf3accd7a4b488379c63f5a490d80",
+      "start_column": 29,
+      "verified_sha256": "c948b7c16bab7d0c0012eae791b332b0b2740b13e5eccf4e56668f7b606a6446"
+    },
+    {
+      "classification": "verified_source_content_sha256_metadata_false_positive",
+      "digest_fully_inside_reported_span": true,
+      "end_column": 117,
+      "file": "artifacts/frozen_repairs_20260927/auth_token_contract/plan.json",
+      "json_field": "before_hashes",
+      "line": 11,
+      "origin_file": "frontend/src/services/authService.test.tsx",
+      "origin_revision": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+      "rule_id": "generic-api-key",
+      "scanned_artifact_equals_current": true,
+      "scanned_artifact_sha256": "be745d702d1d6c4614ce7d6cb169824259baf3accd7a4b488379c63f5a490d80",
+      "start_column": 29,
+      "verified_sha256": "15f69a72df9a84347c2e4c80244f74ccb12a85b60b019cee9acaf88cea67eda4"
+    }
+  ],
+  "limits": [
+    "This disposition covers only these six hash-metadata findings; the other eighteen findings remain assigned to the parent review.",
+    "The raw scanner exit 1 remains intact. This is a precise false-positive disposition, not a suppressed or clean scanner run.",
+    "No authentication implementation review was repeated; existing independent source review was neither edited nor overwritten."
+  ],
+  "method": [
+    "Selected exactly the six auth_token_contract plan/implementation/independent_review matches from the unchanged redacted raw report and matched their path/line/column to the public receipt.",
+    "Verified complete digest falls inside every exact reported span; parsed its corresponding JSON source-digest metadata.",
+    "Computed prior source/test SHA256 from exact immutable c765e685f856d88cb5b30a97628a5045ab9081e8 git-show bytes.",
+    "Computed current source/test and evidence-file SHA256, matched the scan manifest, and proved current bytes equal the actual scanned copies."
+  ],
+  "mutations": {
+    "report_only": "artifacts/frozen_repairs_20260927/security/delivery-publication/new_auth_findings_review.json",
+    "scanner_or_allowlist_changes": false,
+    "source_or_runtime_changes": false
+  },
+  "other_findings_parent_review_count": 18,
+  "raw_total_findings": 24,
+  "redacted_raw_report_sha256": "8012fcb9e6ff35294eed0cfa463b610fc4f13a35e9d5c480149792fb0d6fc6e1",
+  "reviewed_at_utc": "2026-09-27T20:05:27.322879+00:00",
+  "scanner_exit_code_retained": 1,
+  "scanner_sha256": "ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f",
+  "schema_version": 1,
+  "scoped_findings": 6,
+  "scoped_unresolved_findings": 0,
+  "source_scan_receipt": "artifacts/frozen_repairs_20260927/security/delivery-publication/receipt.json",
+  "source_scan_receipt_sha256": "f238d6fc7d6b1400beeca0320841fb0e9112cf29e9f72086321b0286c9211813",
+  "task_id": "pr32_auth_metadata_secret_scan_review",
+  "verdict": "ACCEPTED_FOR_EXACT_SIX_SCOPED_FINDINGS"
+}

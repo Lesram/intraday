@@ -1,0 +1,131 @@
+{
+  "task_id": "PR32-auth-required-token-contract",
+  "status": "LOCAL_ACCEPTED_PENDING_PARENT_CI",
+  "created_at_utc": "2026-09-27T19:59:04.902155+00:00",
+  "base_sha": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+  "review_comment": {
+    "id": 4116675561,
+    "url": "https://github.com/Lesram/intraday/pull/32#discussion_r4116675561"
+  },
+  "summary": "Reject malformed access or refresh credentials before either supported login response shape can reach authenticated UI state.",
+  "files_changed": [
+    "frontend/src/services/authService.ts",
+    "frontend/src/services/authService.test.tsx"
+  ],
+  "source_hashes": {
+    "frontend/src/services/authService.ts": "36ac1c0497f8fac89d19b108f06dbfe05ee5f7885babbb6db86134d3788b3c11",
+    "frontend/src/services/authService.test.tsx": "427ae4f37f0af32cfb0ad989264e7f5a12a501d1fa7fbfa08a64f94439115311"
+  },
+  "plan_sha256": "be745d702d1d6c4614ce7d6cb169824259baf3accd7a4b488379c63f5a490d80",
+  "backend_contract": {
+    "path": "backend/api/routes/auth.py",
+    "sha256": "019c45dec412c54687ad787cdb1797683b9a9929dfec31d43d388941be1e75d9",
+    "model_lines": "46-52",
+    "success_handler_lines": "309-321,354-361",
+    "model_refresh_token_nullable": true,
+    "successful_login_handler_issues_access_and_refresh": true,
+    "scope": "Frontend AuthResponse/reload recovery requires both primitive nonblank strings; no backend schema change."
+  },
+  "behavior": [
+    "One shared primitive/nonblank token predicate used by full-shape guard and backend fallback",
+    "Reject absent/null/number/boolean/object/array/empty/whitespace-only credentials without accepting login",
+    "Keep valid token bytes unchanged; no empty refresh fallback",
+    "Existing backend principal consistency and roles logic unchanged; prior negative-principal fixtures now contain valid tokens so they exercise identity validation"
+  ],
+  "red": {
+    "stats": {
+      "tests": 50,
+      "passed": 30,
+      "failure": 20,
+      "error": 0,
+      "skipped": 0,
+      "suites": [
+        {
+          "name": "src/services/authService.test.tsx",
+          "tests": 50,
+          "failures": 20,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "junit_sha256": "7de8f563c9a6f9a7f25803aeab92d5c04901aedf3a58c492d0a5aa47a3cd93f6",
+    "log_sha256": "7043e186745837babeb338141e915289b2e18198dcf331bb27c05038ff4cd750",
+    "production_before_sha256": "c948b7c16bab7d0c0012eae791b332b0b2740b13e5eccf4e56668f7b606a6446",
+    "test_at_red_sha256": "dab8c57e126dd62cef85e7f6041f13e097ab9277f4c743e22b75d2d3809d00db",
+    "note": "New matrix/login-hook tests ran before product edit:20 failed/30 passed. Final test changes after this red run only give three existing principal-invalid fixtures valid tokens, avoiding short-circuiting those assertions."
+  },
+  "final": {
+    "stats": {
+      "tests": 84,
+      "passed": 84,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0,
+      "suites": [
+        {
+          "name": "src/services/api.test.ts",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "src/services/authService.test.tsx",
+          "tests": 50,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "src/components/auth/AuthBootstrap.test.tsx",
+          "tests": 20,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "src/features/auth/LoginPage.test.tsx",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "junit_sha256": "310d409e5d046b473e7df874f11b6569f5342dfe6eed41444f11dff10fe2076d",
+    "log_sha256": "12b7b8dde991b1d518945dac1c078b4aaebebdd2466c303d35edb4f219e6cc15",
+    "auth_service_cases": 50,
+    "new_cases": 46,
+    "adjacent_cases": 34,
+    "selection": [
+      "src/services/authService.test.tsx",
+      "src/services/api.test.ts",
+      "src/components/auth/AuthBootstrap.test.tsx",
+      "src/features/auth/LoginPage.test.tsx"
+    ]
+  },
+  "checks": {
+    "typecheck": {
+      "command": "node node_modules/typescript/bin/tsc -b --pretty false",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "scoped_eslint": {
+      "command": "node node_modules/eslint/bin/eslint.js src/services/authService.ts src/services/authService.test.tsx",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "git_diff_check_owned_files": 0,
+    "backend_tree_diff_from_c765": []
+  },
+  "isolation": "Clean allowlisted environment; OS network-denied sandbox; synthetic HTTP fixtures; no installed env, credentials, API/broker or production model access.",
+  "frontend_runtime_behavior_changed": true,
+  "backend_or_frozen_trading_behavior_changed": false,
+  "limits": [
+    "Valid means primitive nonblank credential representation, not client-side JWT signature/authenticity verification.",
+    "No token persistence/refresh architecture or backend account-role revocation changes.",
+    "No actual browser/runtime login proof claimed by these isolated tests.",
+    "Broader CI, production build/image and activation remain parent-owned; no commit or deployment by author."
+  ]
+}

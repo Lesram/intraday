@@ -1,0 +1,251 @@
+{
+  "artifact_manifest_sha256": "b53a6199b949433ae5a471f1f11306415a8aa4e123b7cc5ae93d54d4d16435c8",
+  "conclusion": "failure",
+  "current_workflow_xml": [
+    {
+      "artifact": "monday_readiness/github_operational.xml",
+      "cases": 2102,
+      "errors": 0,
+      "failed": 0,
+      "failures": [],
+      "passed": 2101,
+      "sha256": "0a4f885e0f0edd8804e3a6703d0b18574d65378a76c4083bd4e86254a25996ff",
+      "skipped": 1,
+      "skips": [
+        {
+          "class": "tests.test_v12_baseline_invariants",
+          "message": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim",
+          "name": "test_installed_history_has_not_shrunk_from_committed_baseline"
+        }
+      ]
+    },
+    {
+      "artifact": "frozen_repairs_20260927/github_targeted.xml",
+      "cases": 240,
+      "errors": 0,
+      "failed": 0,
+      "failures": [],
+      "passed": 240,
+      "sha256": "e1b5f3b35adafb5dbfee50efac063bf78913abb60b42d91b3ab8f4b97014a29c",
+      "skipped": 0,
+      "skips": []
+    },
+    {
+      "artifact": "composite_indicator_repair/replay/github_replay.xml",
+      "cases": 18,
+      "errors": 0,
+      "failed": 0,
+      "failures": [],
+      "passed": 18,
+      "sha256": "0b311775435bf7f44629f88f6abf4a20dd962e918c32bf6455d410d4d2fbb7ab",
+      "skipped": 0,
+      "skips": []
+    },
+    {
+      "artifact": "nightly_test_harness/github_targeted.xml",
+      "cases": 303,
+      "errors": 0,
+      "failed": 1,
+      "failures": [
+        {
+          "class": "tests.test_wave55_fixes",
+          "message": "AssertionError: BB4-F2 false-positive: DD3-4 inline cancel block removed.\nassert 'EOD flatten cancelled pending' in '    async def _live_tick_inner(self) -> LiveTickResult:\\n        \"\"\"Inner tick logic \u2014 always called under _tick_lock...lt)\\n        except Exception:\\n            pass  # Watchdog must never break the tick loop\\n\\n        return result\\n'",
+          "name": "test_bb4_f2_verify_eod_cancel_inline_in_live_engine"
+        }
+      ],
+      "passed": 302,
+      "sha256": "979062fa256eb8854038d70c9a69cfd0fba527a966cf55e868a7cc3f689b1a21",
+      "skipped": 0,
+      "skips": []
+    }
+  ],
+  "failure_disposition": "The recorded source-string assertion requires an old inline EOD log message. It does not execute the current EOD helper; a separately owned behavioral test repair is in progress. This report preserves the failure and does not mark this run passed.",
+  "frontend_container_checks": {
+    "checks": [
+      "Static health, SPA deep-link refresh and missing-asset refusal",
+      "API path/query/auth/host forwarding and truthful upstream503",
+      "All three websocket routes upgrade and carry a frame",
+      "API disappearance stays unavailable; replacement at a different IP recovers",
+      "Access logs omit authentication query and header"
+    ],
+    "cleanup_errors": [],
+    "passed": true
+  },
+  "full_pack": [
+    {
+      "error": "",
+      "errors": 0,
+      "exit_code": 0,
+      "failed": 0,
+      "junit_file": "artifacts/organism_live_engine.junit.xml",
+      "junit_sha256": "ac31477814c2079673cb324efea1d3fc6d040cbbdbc7ef51b0a0e90405974149",
+      "output_file": "artifacts/organism_live_engine.log",
+      "output_tail": "..........................                                               [100%]\n=============================== warnings summary ===============================\ntests/test_organism_live_engine.py::TestOrganismLiveEngine::test_initialize_fresh\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n26 passed, 1 warning in 24.78s\n",
+      "passed": 26,
+      "skipped": 0,
+      "status": "pass",
+      "suite": "organism_live_engine",
+      "timed_out": false,
+      "total": 26
+    },
+    {
+      "error": "",
+      "errors": 0,
+      "exit_code": 0,
+      "failed": 0,
+      "junit_file": "artifacts/organism_engine_scenarios.junit.xml",
+      "junit_sha256": "d2c9d37ca2506b4e194faaddd1837de2c38a0d04aaaefac140d4e9986e7fa430",
+      "output_file": "artifacts/organism_engine_scenarios.log",
+      "output_tail": "...............................                                          [100%]\n=============================== warnings summary ===============================\ntests/test_organism_engine_scenarios.py::test_insufficient_data_still_processes_exits\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n31 passed, 1 warning in 64.52s (0:01:04)\n",
+      "passed": 31,
+      "skipped": 0,
+      "status": "pass",
+      "suite": "organism_engine_scenarios",
+      "timed_out": false,
+      "total": 31
+    },
+    {
+      "error": "",
+      "errors": 0,
+      "exit_code": 0,
+      "failed": 0,
+      "junit_file": "artifacts/multi_tick_state.junit.xml",
+      "junit_sha256": "6303f38272e16ed40614dbe3b9a06675b509bb0bdd70fcf97e0a578b0fec6e9b",
+      "output_file": "artifacts/multi_tick_state.log",
+      "output_tail": ".........                                                                [100%]\n=============================== warnings summary ===============================\ntests/test_multi_tick_state.py::TestMultiTickState::test_position_closes_no_duplicate_exit\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n9 passed, 1 warning in 1.17s\n",
+      "passed": 9,
+      "skipped": 0,
+      "status": "pass",
+      "suite": "multi_tick_state",
+      "timed_out": false,
+      "total": 9
+    },
+    {
+      "error": "",
+      "errors": 0,
+      "exit_code": 0,
+      "failed": 0,
+      "junit_file": "artifacts/safety_invariants.junit.xml",
+      "junit_sha256": "bfe8fc7df529b73e56f30c665957c7f11a8ef52339a0ea38c0c3c70c96c9a725",
+      "output_file": "artifacts/safety_invariants.log",
+      "output_tail": ".............................                                            [100%]\n=============================== warnings summary ===============================\ntests/test_safety_invariants.py::TestSafetyInvariants::test_insufficient_features_still_processes_exits\n  <string>:15: RuntimeWarning: SECRET_KEY not set \u2014 using generated ephemeral key. Set SECRET_KEY env var for production.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n29 passed, 1 warning in 1.59s\n",
+      "passed": 29,
+      "skipped": 0,
+      "status": "pass",
+      "suite": "safety_invariants",
+      "timed_out": false,
+      "total": 29
+    },
+    {
+      "error": "",
+      "errors": 0,
+      "exit_code": 0,
+      "failed": 0,
+      "junit_file": "artifacts/self_evolution.junit.xml",
+      "junit_sha256": "9d521a44de8c705350cb0e3265508cc8140c5f085ef329c257f1684d2907cffe",
+      "output_file": "artifacts/self_evolution.log",
+      "output_tail": "...............                                                          [100%]\n15 passed in 0.91s\n",
+      "passed": 15,
+      "skipped": 0,
+      "status": "pass",
+      "suite": "self_evolution",
+      "timed_out": false,
+      "total": 15
+    },
+    {
+      "error": "",
+      "errors": 0,
+      "exit_code": 0,
+      "failed": 0,
+      "junit_file": "artifacts/algorithm_improvements.junit.xml",
+      "junit_sha256": "bb90878e84754df5e8cd08246873dd9d13cac6ca5e626fb3e86584756e031c01",
+      "output_file": "artifacts/algorithm_improvements.log",
+      "output_tail": "..........................................................               [100%]\n58 passed in 1.43s\n",
+      "passed": 58,
+      "skipped": 0,
+      "status": "pass",
+      "suite": "algorithm_improvements",
+      "timed_out": false,
+      "total": 58
+    },
+    {
+      "errors": 0,
+      "failed": 0,
+      "junit_sha256": "c5767a84e9d26b6c2d6b15dbf9cce7a03faf04aa1f91aa5690acfa8547398c12",
+      "passed": 28,
+      "sha256": "c5767a84e9d26b6c2d6b15dbf9cce7a03faf04aa1f91aa5690acfa8547398c12",
+      "skipped": 0,
+      "status": "pass",
+      "suite": "replay_simulator",
+      "total": 28
+    },
+    {
+      "errors": 0,
+      "failed": 0,
+      "junit_sha256": "80b77f2bf76881068101fb4d2a0a9df60d5f3e8b4de06f1d712e8779c5f362d5",
+      "passed": 20,
+      "sha256": "80b77f2bf76881068101fb4d2a0a9df60d5f3e8b4de06f1d712e8779c5f362d5",
+      "skipped": 0,
+      "status": "pass",
+      "suite": "semantic_invariants",
+      "total": 20
+    }
+  ],
+  "full_pack_current_group_count": 8,
+  "full_pack_current_passed": 216,
+  "full_pack_overall": "pass",
+  "historical_xml_in_uploaded_artifact_not_counted": true,
+  "known_budget_assertions": "Both previously failing timeout-budget assertions passed in this exact run; only the named EOD source-string assertion failed.",
+  "limitations": [
+    "This c765 readiness run failed and cannot qualify a later test-repair commit.",
+    "Candidate-surface verification and frontend dashboard/login validation were skipped after the harness failure. Separate frontend-container proof is successful and distinct.",
+    "Full pack216, operational2101, targeted240, paired18 and harness302 passes overlap; they must not be summed as distinct coverage.",
+    "The installed-history skip explicitly disclaims installed data preservation without INTRA_INSTALLED_HISTORY_CSV.",
+    "Uploaded artifacts contain committed historical red/green evidence; only workflow-selected current XML and top-level generated pack are counted here.",
+    "The separate c765 nightly run is still being observed and is not included in this readiness verdict.",
+    "No workflow rerun/cancellation, GitHub mutation, source edit, runtime/broker call or deployment was performed by this reviewer."
+  ],
+  "operational_job_log_sha256": "35c4d6eddef15b6cd43cc3f360b0fafce6d813b992bbbf0e7c2d2ba0895d7b2d",
+  "original_logs_and_uploaded_artifacts_retained_privately": true,
+  "overlapping_counts_are_not_additive": true,
+  "postgres_test_summary": {
+    "elapsed_seconds": 3.2,
+    "errors": 0,
+    "failed": 0,
+    "job_url": "https://github.com/Lesram/intraday/actions/runs/36344234541/job/108690099787",
+    "log_sha256": "9317c17e7b3ee4b712a63738b29b76303beb16ac2137a8b040b2dd11ef78cad8",
+    "passed": 12,
+    "skipped": 0
+  },
+  "private_review_sha256": "226e88d7cd72db11253a022b64b1186ff0ae21f6c2da2a77a240ec4039ddd5e9",
+  "reason": "One obsolete source-string test asserts the removed inline EOD cancellation log message.",
+  "reviewed_at_utc": "2026-09-27T19:50:20.476573+00:00",
+  "run": 36344234541,
+  "run_metadata_sha256": "4f047fdd4befe7534be039dbd42d4b02ae017e341066c24720462cb2aa0d8056",
+  "schema_version": 1,
+  "separate_frontend_container_job": "success_five_groups",
+  "separate_postgresql_job": "success_12_passed",
+  "skipped_after_harness_failure": [
+    "Verify candidate surface without changing active authority",
+    "Verify operator dashboard and login"
+  ],
+  "source_checkout_proof": {
+    "checkout_api_metadata_sha256": "8bcf58c56f15a9e84314cc169b46b80aff122a9e82ad3760171fdcc8daa7e944",
+    "event_head": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+    "generated_task_report_sha256": "f53e1b3894c13245a00bdeb0c9e5b99acae7625c09a8663519b2d6c28a0ff87d",
+    "head_api_metadata_sha256": "1de0f2678ba550294cd5f825e92c019acb8f372ff0cfe9d14cc819f8ffacf413",
+    "head_tree": "8629b392650f2c179a05738cd219828a6546ba73",
+    "method": "Read-only GitHub Git commits API for the event head and generated task_report checkout SHA; identical Git tree IDs prove identical tracked content.",
+    "tested_merge_parents": [
+      "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+      "c765e685f856d88cb5b30a97628a5045ab9081e8"
+    ],
+    "tested_merge_tree": "8629b392650f2c179a05738cd219828a6546ba73",
+    "tested_pull_request_merge": "11514675742ee4bf6b4fccbc3a4bf5f76ea6812b",
+    "trees_identical": true
+  },
+  "source_sha": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+  "task_id": "PR32_HOSTED_READINESS_BEFORE_WAVE55_TEST_REPAIR",
+  "url": "https://github.com/Lesram/intraday/actions/runs/36344234541",
+  "verdict": "FAILED_ONE_OBSOLETE_TEST_ASSERTION_OTHER_REPORTED_STEPS_AS_RECORDED"
+}

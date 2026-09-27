@@ -1,0 +1,77 @@
+{
+  "backend_contract_source": {
+    "model_lines": "46-52",
+    "model_refresh_token_nullable": true,
+    "path": "backend/api/routes/auth.py",
+    "scope": "Frontend AuthResponse/reload recovery requires both primitive nonblank strings; no backend schema change.",
+    "sha256": "019c45dec412c54687ad787cdb1797683b9a9929dfec31d43d388941be1e75d9",
+    "success_handler_lines": "309-321,354-361",
+    "successful_login_handler_issues_access_and_refresh": true
+  },
+  "blocking_findings": [],
+  "evidence": {
+    "final_junit_sha256": "310d409e5d046b473e7df874f11b6569f5342dfe6eed41444f11dff10fe2076d",
+    "original_red_failures_retained": true,
+    "parsed_counts": {
+      "final": {
+        "cases": 84,
+        "errors": 0,
+        "failed": 0,
+        "passed": 84,
+        "skipped": 0
+      },
+      "red": {
+        "cases": 50,
+        "errors": 0,
+        "failed": 20,
+        "passed": 30,
+        "skipped": 0
+      }
+    },
+    "red_junit_sha256": "7de8f563c9a6f9a7f25803aeab92d5c04901aedf3a58c492d0a5aa47a3cd93f6",
+    "reviewer_rerun": false,
+    "scoped_eslint_exit_code": 0,
+    "typecheck_exit_code": 0
+  },
+  "findings": [
+    {
+      "assessment": "Shared hasRequiredTokens requires both primitive string values and rejects blank/whitespace-only strings before either full response or backend fallback can return authenticated credentials. It checks without trimming or otherwise rewriting accepted token bytes.",
+      "line": 38,
+      "path": "frontend/src/services/authService.ts",
+      "severity": "resolved"
+    },
+    {
+      "assessment": "Backend fallback no longer substitutes an empty refresh token. Successful backend login handler issues both tokens; existing identity consistency and role mapping remain unchanged.",
+      "line": 68,
+      "path": "frontend/src/services/authService.ts",
+      "severity": "resolved"
+    },
+    {
+      "assessment": "Both supported response shapes exercise missing/null/nonstring/empty/whitespace token values through real authService.login. Actual useLogin tests assert no authenticated state/navigation for malformed replies and successful positive controls; legacy principal-negative tests have valid tokens and still exercise principal checks.",
+      "line": 49,
+      "path": "frontend/src/services/authService.test.tsx",
+      "severity": "accepted"
+    }
+  ],
+  "implementation": {
+    "path": "artifacts/frozen_repairs_20260927/auth_token_contract/implementation.json",
+    "sha256": "37241522dbbe3814ad8a4cb84b9f45a0eb5688071453189ae9c87e50fe078af5"
+  },
+  "limits": [
+    "Inspected author tests/types/lint evidence without rerunning; no runtime/API/browser/auth/broker calls performed.",
+    "The test-only Wave55 repair and any final hosted/build/image acceptance are separate.",
+    "Previous frontend image/browser evidence predates this auth source change; final source needs its own build and required CI."
+  ],
+  "reviewed_at_utc": "2026-09-27T20:00:41.325266+00:00",
+  "schema_version": 1,
+  "source_sha256": {
+    "frontend/src/services/authService.test.tsx": "427ae4f37f0af32cfb0ad989264e7f5a12a501d1fa7fbfa08a64f94439115311",
+    "frontend/src/services/authService.ts": "36ac1c0497f8fac89d19b108f06dbfe05ee5f7885babbb6db86134d3788b3c11"
+  },
+  "task_id": "PR32_AUTH_REQUIRED_TOKEN_INDEPENDENT_REVIEW",
+  "unchanged_scope": [
+    "No backend, auth-store, hook, routing, token persistence/refresh architecture or trading code changes in this delta.",
+    "Credential validity here is a primitive nonblank representation contract; no JWT signature, expiry or server authorization assurance is inferred."
+  ],
+  "verdict": "BOUNDED_SOURCE_AND_LOCAL_TEST_EVIDENCE_ACCEPTED_PENDING_FINAL_CI_BUILD"
+}

@@ -1,0 +1,63 @@
+{
+  "status": "LOCAL_DELIVERY_DELTAS_ACCEPTED_HOSTED_AND_DEPLOYMENT_PENDING",
+  "created_at_utc": "2026-09-27T20:01:26.449624+00:00",
+  "validated_product_source": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+  "delivery_parent": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+  "non_evidence_changes_since_product_validation": [
+    {
+      "path": ".github/workflows/paper-readiness.yml",
+      "sha256": "46b21b974e7bb1674d4ed3b09304bdfa25c72b1fbdfaf07f0763774570e64958"
+    },
+    {
+      "path": "frontend/src/services/authService.test.tsx",
+      "sha256": "427ae4f37f0af32cfb0ad989264e7f5a12a501d1fa7fbfa08a64f94439115311"
+    },
+    {
+      "path": "frontend/src/services/authService.ts",
+      "sha256": "36ac1c0497f8fac89d19b108f06dbfe05ee5f7885babbb6db86134d3788b3c11"
+    },
+    {
+      "path": "reports/platform_audit_20260926/PLATFORM_REVIEW.md",
+      "sha256": "626071e6707e8fda354cf929e4a3ede047499b52a053ade2fb281e4c43f224f5"
+    },
+    {
+      "path": "tests/test_wave55_fixes.py",
+      "sha256": "3679f2e79f93eaef1faeb47d060286bff404e79451201b145b6a930e07353377"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json",
+      "sha256": "9bc9522c453930b79c078f6d5b66fb198787417b53e2126d9579039c8abcf963"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/workflow_budget/acceptance.json",
+      "sha256": "34f9b5209a8a8b8ec9d621bca9c294047db021ab6e45d0da4aa4bd9e06b0fbad"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/wave55_harness/implementation.json",
+      "sha256": "9805ac1b5700b345bcd9f610cd599a3da4fcde0e5794bfc0c9f772597023f1b5"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/wave55_harness/publication_review.json",
+      "sha256": "815963b26d1e521d8cbec77b6fb144bb5891352c19dfa876f979f2ba588859bc"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/auth_token_contract/implementation.json",
+      "sha256": "37241522dbbe3814ad8a4cb84b9f45a0eb5688071453189ae9c87e50fe078af5"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/auth_token_contract/independent_review.json",
+      "sha256": "ce7ac6dee21bd220a400ef526cbe7400594559eead5c0c57ec73baabbfe1687e"
+    }
+  ],
+  "trading_runtime_scripts_deployment_dependencies_identical_to_product_validation": true,
+  "frozen_candidate_verified_read_only": true,
+  "candidate_freeze_sha256": "b56d9285099500d915b5214f3210cab245a25228ff639ea0e40791f387b652cc",
+  "root_review": "Reviewed final token validation in both response paths, valid identity handling, real EOD cancellation test and semantic negative control; source-bounded peer receipts accepted. Original source evidence and failed runs preserved.",
+  "scope_limits": [
+    "Frontend source changes supersede prior frontend byte-equivalence claims and require a fresh build and hosted UI tests.",
+    "Hosted success, immutable image verification, merge and installed acceptance remain pending.",
+    "No strategy tuning, feed change, real-money deployment, history rewrite or profitability assertion."
+  ]
+}
