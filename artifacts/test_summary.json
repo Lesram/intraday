@@ -118,7 +118,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/organism_live_engine.log",
-      "output_tail": "..........................                                               [100%]\n26 passed in 16.91s\n",
+      "output_tail": "..........................                                               [100%]\n26 passed in 17.33s\n",
       "junit_file": "artifacts/organism_live_engine.junit.xml"
     },
     "organism_engine_scenarios": {
@@ -258,7 +258,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/organism_engine_scenarios.log",
-      "output_tail": "...............................                                          [100%]\n=============================== warnings summary ===============================\ntests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net\n  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3023: RuntimeWarning: invalid value encountered in divide\n    c /= stddev[:, None]\n\ntests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net\n  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3024: RuntimeWarning: invalid value encountered in divide\n    c /= stddev[None, :]\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n31 passed, 2 warnings in 43.21s\n",
+      "output_tail": "...............................                                          [100%]\n=============================== warnings summary ===============================\ntests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net\n  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3023: RuntimeWarning: invalid value encountered in divide\n    c /= stddev[:, None]\n\ntests/test_organism_engine_scenarios.py::test_missing_exit_levels_triggers_safety_net\n  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3024: RuntimeWarning: invalid value encountered in divide\n    c /= stddev[None, :]\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n31 passed, 2 warnings in 43.49s\n",
       "junit_file": "artifacts/organism_engine_scenarios.junit.xml"
     },
     "multi_tick_state": {
@@ -442,7 +442,7 @@
       "timed_out": false,
       "error": "",
       "output_file": "artifacts/safety_invariants.log",
-      "output_tail": ".............................                                            [100%]\n29 passed in 1.29s\n",
+      "output_tail": ".............................                                            [100%]\n29 passed in 1.30s\n",
       "junit_file": "artifacts/safety_invariants.junit.xml"
     },
     "self_evolution": {

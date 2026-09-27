@@ -1,0 +1,7 @@
+{
+  "path": "backend/infra/repositories/orders.py",
+  "tested_sha256": "c6e416134e719c8f8694ee926d4b36bca3b89f5e64a8945f049a9d1b70c0adb9",
+  "final_sha256": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b",
+  "ast_equal": true,
+  "changes": "Line wrapping and comment spacing only; reconstructed tested bytes match recorded PostgreSQL source hash."
+}

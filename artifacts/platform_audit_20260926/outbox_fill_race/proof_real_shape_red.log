@@ -1,0 +1,45 @@
+Isolated test scratch: /private/tmp/intra-audit-test-5womdtwk
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+____________ test_delayed_ack_cannot_overwrite_terminal_fill[None] _____________
+/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:38: in test_delayed_ack_cannot_overwrite_terminal_fill
+    assert (current.status,current.filled_qty,current.avg_fill_price)==('filled',Decimal('10'),Decimal('100'))
+E   AssertionError: assert ('submitted',...'100.000000')) == ('filled', De...ecimal('100'))
+E     
+E     At index 0 diff: 'submitted' != 'filled'
+E     Use -v to get more diff
+__________ test_delayed_ack_cannot_overwrite_terminal_fill[details1] ___________
+/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:38: in test_delayed_ack_cannot_overwrite_terminal_fill
+    assert (current.status,current.filled_qty,current.avg_fill_price)==('filled',Decimal('10'),Decimal('100'))
+E   AssertionError: assert ('submitted',...'100.000000')) == ('filled', De...ecimal('100'))
+E     
+E     At index 0 diff: 'submitted' != 'filled'
+E     Use -v to get more diff
+__________ test_delayed_ack_cannot_overwrite_terminal_fill[details2] ___________
+/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:38: in test_delayed_ack_cannot_overwrite_terminal_fill
+    assert (current.status,current.filled_qty,current.avg_fill_price)==('filled',Decimal('10'),Decimal('100'))
+E   AssertionError: assert ('submitted',...('90.000000')) == ('filled', De...ecimal('100'))
+E     
+E     At index 0 diff: 'submitted' != 'filled'
+E     Use -v to get more diff
+_________ test_real_alpaca_ack_shape_preserves_or_accounts_fill[False] _________
+/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:65: in test_real_alpaca_ack_shape_preserves_or_accounts_fill
+    assert (current.status,current.filled_qty,qty)==('filled',Decimal('10'),Decimal('10'))
+E   AssertionError: assert ('filled', De...0.000000'), 0) == ('filled', De...Decimal('10'))
+E     
+E     At index 1 diff: Decimal('0.000000') != Decimal('10')
+E     Use -v to get more diff
+_________ test_real_alpaca_ack_shape_preserves_or_accounts_fill[True] __________
+/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:65: in test_real_alpaca_ack_shape_preserves_or_accounts_fill
+    assert (current.status,current.filled_qty,qty)==('filled',Decimal('10'),Decimal('10'))
+E   AssertionError: assert ('new', Decim...('10.000000')) == ('filled', De...Decimal('10'))
+E     
+E     At index 0 diff: 'new' != 'filled'
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED ../../../../../../private/tmp/intra-delayed-ack-review/test_delayed_ack.py::test_delayed_ack_cannot_overwrite_terminal_fill[None]
+FAILED ../../../../../../private/tmp/intra-delayed-ack-review/test_delayed_ack.py::test_delayed_ack_cannot_overwrite_terminal_fill[details1]
+FAILED ../../../../../../private/tmp/intra-delayed-ack-review/test_delayed_ack.py::test_delayed_ack_cannot_overwrite_terminal_fill[details2]
+FAILED ../../../../../../private/tmp/intra-delayed-ack-review/test_delayed_ack.py::test_real_alpaca_ack_shape_preserves_or_accounts_fill[False]
+FAILED ../../../../../../private/tmp/intra-delayed-ack-review/test_delayed_ack.py::test_real_alpaca_ack_shape_preserves_or_accounts_fill[True]
+5 failed in 0.67s

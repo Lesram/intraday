@@ -1,0 +1,14 @@
+{
+  "scope": "Synthetic HTTP/websocket proxy; no trading startup, credentials or installed services",
+  "image": "intra-operator-ui:audit-20260926",
+  "checks": [
+    "Static health, SPA deep-link refresh and missing-asset refusal",
+    "API path/query/auth/host forwarding and truthful upstream503",
+    "All three websocket routes upgrade and carry a frame",
+    "API disappearance stays unavailable; replacement at a different IP recovers",
+    "Access logs omit authentication query and header"
+  ],
+  "passed": true,
+  "image_id": "sha256:ecba2d7d4972a83961bcae2bd3d6b7289e32f4c35bc86224c3705cb214160e27",
+  "cleanup_errors": []
+}

@@ -1,0 +1,588 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="104" failures="0" errors="0" time="9.87173954">
+    <testsuite name="src/hooks/usePortfolio.test.tsx" timestamp="2026-09-27T00:04:03.773Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="1.107281375">
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; refresh replaces existing store and failure hides balances until verified recovery" time="1.048512417">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; does not overwrite a newer WebSocket observation with older HTTP cache data" time="0.054089583">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; expires an observation even if the refresh is hanging" time="0.002392166">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; polls again after ten seconds and never shows a previous user portfolio" time="0.001698375">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/hooks/useScannerWebSocket.test.tsx" timestamp="2026-09-27T00:04:03.773Z" hostname="Marsels-MacBook-Pro.local" tests="7" failures="0" errors="0" skipped="0" time="0.016400458">
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; connects without require and preserves the encoded query-token route" time="0.009434042">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; preserves the explicit secure WebSocket base override" time="0.00115625">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; reads a refreshed token when the reconnect timer actually fires" time="0.001629959">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not reconnect after logout even if a legacy token remains" time="0.001085709">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not open an unauthenticated socket" time="0.000747792">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; cancels a scheduled reconnect on explicit disconnect" time="0.000791083">
+        </testcase>
+        <testcase classname="src/hooks/useScannerWebSocket.test.tsx" name="scanner browser authentication &gt; does not log URL-bearing error events or constructor failures" time="0.000939709">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/api.test.ts" timestamp="2026-09-27T00:04:03.774Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.115544833">
+        <testcase classname="src/services/api.test.ts" name="concurrent 401 without refresh settle, and later login can refresh and retry" time="0.005493625">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh success cannot overwrite or clear replacement login" time="0.053269625">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh failure cannot overwrite or clear replacement login" time="0.053960666">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="queued retry cannot dispatch old work as a replacement principal" time="0.002129375">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/authService.test.tsx" timestamp="2026-09-27T00:04:03.774Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.064733459">
+        <testcase classname="src/services/authService.test.tsx" name="actual backend LoginResponse normalizes principal through auth store and portfolio query" time="0.063329791">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000582125">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000145584">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000111042">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/marketDataWebSocketService.test.ts" timestamp="2026-09-27T00:04:03.774Z" hostname="Marsels-MacBook-Pro.local" tests="8" failures="0" errors="0" skipped="0" time="0.139207833">
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; uses the actual current store token rather than a stale caller argument" time="0.093561334">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; reconnects without require and ignores a stale legacy token" time="0.008576541">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; reconnects from the current store when there is no legacy storage" time="0.006066583">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; does not reuse captured or legacy credentials after logout during backoff" time="0.003814875">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; rejects missing current credentials even when a caller supplies an old token" time="0.00564">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; cancels the reconnect timer on explicit disconnect" time="0.006978">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; does not log encoded credentials or raw URL-bearing events" time="0.007600166">
+        </testcase>
+        <testcase classname="src/services/marketDataWebSocketService.test.ts" name="market data browser authentication &gt; sanitizes constructor errors and refreshes credentials before a failed-connect retry" time="0.006183583">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/originRouting.test.ts" timestamp="2026-09-27T00:04:03.775Z" hostname="Marsels-MacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.099905917">
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP defaults to page origin when override is undefined" time="0.076734625">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP defaults to page origin when override is " time="0.001954292">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP preserves an explicit deployment origin" time="0.002466458">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin (undefined)" time="0.006800042">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin ()" time="0.008143208">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin (https://socket.example.test)" time="0.002698708">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/websocketManager.test.tsx" timestamp="2026-09-27T00:04:03.775Z" hostname="Marsels-MacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.01105075">
+        <testcase classname="src/services/websocketManager.test.tsx" name="logout closes connected session and removes private-delivery callbacks" time="0.008187791">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 2)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/websocketManager.test.tsx" name="token rotation while connected or connecting retires old transport and resubscribes once" time="0.002021916">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 8)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/websocketManager.test.tsx" name="an obsolete caller cannot open a socket using a retired token" time="0.000207291">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/utils/portfolioSnapshot.test.ts" timestamp="2026-09-27T00:04:03.776Z" hostname="Marsels-MacBook-Pro.local" tests="11" failures="0" errors="0" skipped="0" time="0.00284925">
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; accepts a genuine current empty account without inventing positions" time="0.001205833">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;totalEquity&quot;:null}" time="0.000163">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;cash&quot;:null}" time="0.000069417">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;lastUpdate&quot;:&quot;2026-09-26T10:00:00&quot;}" time="0.000050583">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;lastUpdate&quot;:&quot;2026-09-27T00:03:27.782Z&quot;}" time="0.000042167">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;lastUpdate&quot;:&quot;2026-09-27T00:04:58.782Z&quot;}" time="0.000042583">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;userId&quot;:&quot;bob&quot;}" time="0.000035666">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;positions&quot;:[{&quot;symbol&quot;:&quot;AAPL&quot;}]}" time="0.000055917">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {&quot;buyingPower&quot;:&quot;2000&quot;}" time="0.000040583">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; rejects malformed/stale/wrong-user snapshot {}" time="0.000047417">
+        </testcase>
+        <testcase classname="src/utils/portfolioSnapshot.test.ts" name="portfolio observation validation &gt; chooses by observation timestamp, not arrival order" time="0.000077583">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/auth/AuthBootstrap.test.tsx" timestamp="2026-09-27T00:04:03.776Z" hostname="Marsels-MacBook-Pro.local" tests="20" failures="0" errors="0" skipped="0" time="0.343357041">
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="reload restores once under StrictMode before protected HTTP/socket traffic" time="0.070557834">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration missing-refresh clears and redirects without mounting protected content" time="0.007422042">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration refresh-rejected clears and redirects without mounting protected content" time="0.008009792">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration malformed-refresh clears and redirects without mounting protected content" time="0.006226834">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration me-rejected clears and redirects without mounting protected content" time="0.005813125">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration wrong-principal clears and redirects without mounting protected content" time="0.005898792">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration inactive clears and redirects without mounting protected content" time="0.005388375">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration malformed-roles clears and redirects without mounting protected content" time="0.00567625">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;success&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.001994791">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;failure&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.001962666">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;success&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.05425675">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;failure&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.052742375">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;success&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.001940375">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;failure&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.001903792">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;success&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.054188375">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;failure&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.054317125">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="a nonresponding refresh is aborted at the whole-session deadline" time="0.001852167">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="anonymous startup finishes without network and explicit API origin is honored on reload" time="0.000804458">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="deadline clears the captured session even if refresh resolves after abort" time="0.001011084">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="deadline clears the captured session even if me resolves after abort" time="0.000654417">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/layout/GlobalStatusBar.test.tsx" timestamp="2026-09-27T00:04:03.779Z" hostname="Marsels-MacBook-Pro.local" tests="7" failures="0" errors="0" skipped="0" time="0.194299666">
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; labels a genuine current portfolio without claiming broker connectivity" time="0.091653333">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark stale portfolio data current" time="0.017777041">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark future portfolio data current" time="0.019044125">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark missing portfolio data current" time="0.016210334">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark nan portfolio data current" time="0.015004166">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark error portfolio data current" time="0.015821625">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="ignores old user response after identity changes during request" time="0.018110791">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/auth/LoginPage.test.tsx" timestamp="2026-09-27T00:04:03.779Z" hostname="Marsels-MacBook-Pro.local" tests="10" failures="0" errors="0" skipped="0" time="2.943253125">
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in production even with the bypass flag enabled" time="1.454575958">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in development without explicit opt-in" time="0.032304916">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; retains the explicit development opt-in and only attempts once under StrictMode" time="0.031897583">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed plain username without changing the password" time="0.23184275">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed email without changing the password" time="0.199191292">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;&quot;)" time="0.234526292">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;   &quot;)" time="0.230934375">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;&quot;)" time="0.223515875">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;short&quot;)" time="0.221810959">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; provides honest recovery guidance without a dead recovery link" time="0.081792042">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/dashboard/Dashboard.test.tsx" timestamp="2026-09-27T00:04:03.780Z" hostname="Marsels-MacBook-Pro.local" tests="2" failures="0" errors="0" skipped="0" time="1.103032416">
+        <testcase classname="src/features/dashboard/Dashboard.test.tsx" name="actual manager direct payload updates displayed equity, rejects wrong user and malformed data" time="1.07560075">
+            <system-out>
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/features/dashboard/Dashboard.test.tsx" name="failed API refresh hides old store rather than rendering flat or current account" time="0.02690875">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/portfolio/PortfolioPage.test.tsx" timestamp="2026-09-27T00:04:03.780Z" hostname="Marsels-MacBook-Pro.local" tests="1" failures="0" errors="0" skipped="0" time="0.069519167">
+        <testcase classname="src/features/portfolio/PortfolioPage.test.tsx" name="an unavailable hook cannot be overridden by a previously healthy store" time="0.069010625">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/organism/__tests__/OrganismDashboard.test.tsx" timestamp="2026-09-27T00:04:03.780Z" hostname="Marsels-MacBook-Pro.local" tests="17" failures="0" errors="0" skipped="0" time="3.66130425">
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the research lock and disables training without blocking the entry halt" time="0.450817875">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; does not display active operation for an uninitialized engine" time="0.113541292">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; does not claim entries resumed when another risk block remains" time="0.329371917">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; reports a retained halt from a structured incomplete response" time="0.298450916">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; replaces a previously healthy status with unavailable on poll failure and recovers" time="0.600395708">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; does not certify a malformed primary status" time="0.0449035">
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; keeps a good primary status available when a secondary panel fails" time="0.203753708">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; accepts a slow primary without overlapping polls and expires a later hung request" time="0.429636542">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; optional hung panel cannot delay primary failure or restore obsolete healthy state" time="0.550133834">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; renders the dashboard title" time="0.07910425">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; displays engine performance stats" time="0.080496375">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows regime tag" time="0.071503167">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; renders the tabs" time="0.079960541">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the position heatmap" time="0.078967042">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows position symbols in heatmap" time="0.079346042">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the P&amp;L waterfall" time="0.092718">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+        <testcase classname="src/features/organism/__tests__/OrganismDashboard.test.tsx" name="OrganismDashboard &gt; shows the regime timeline" time="0.077366541">
+            <system-err>
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement&apos;s getContext() method: without installing the canvas npm package
+
+            </system-err>
+        </testcase>
+    </testsuite>
+</testsuites>

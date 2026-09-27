@@ -1,0 +1,41 @@
+{
+  "status": "SOURCE_AND_TARGETED_TESTS_ACCEPTED_BUILD_PENDING_PARENT",
+  "created_at": "2026-09-26T23:29:18.760641+00:00",
+  "summary": "Browser-origin fallback for actual axios HTTP and Socket.IO clients; explicit VITE overrides unchanged.",
+  "owned_source_sha256": [
+    {
+      "name": "frontend/src/services/api.ts",
+      "sha256": "aae66087e204ae78cf6add16e28e6c76b0f8a313ae2a0e0278376d7cebae6155"
+    },
+    {
+      "name": "frontend/src/services/websocketManager.ts",
+      "sha256": "af1f4a4201ae2664234cff690ee1d3d9e4ed4e12ba28d0eb0a6ca74f34d60caf"
+    },
+    {
+      "name": "frontend/src/services/originRouting.test.ts",
+      "sha256": "30b6f1b1c1439ce10d6257ddcc3573bfc1888b7b3940104b7cec8fb0941ac3ba"
+    }
+  ],
+  "tests": {
+    "passed": 13,
+    "failed": 0,
+    "new_origin_cases": 6,
+    "existing_auth_socket_cases": 7,
+    "tsc_exit": 0,
+    "eslint_exit": 0,
+    "diff_check_exit": 0
+  },
+  "evidence": {
+    "eslint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "targeted.log": "9f6bf24b6e1110379576792f3cfc9ef0bceea9dea0f14e929d84b4d2c2572bd7",
+    "targeted.xml": "eaa4bded6044d7f94a61158e4d3da898f00f7659495d151d514b5a0dd25346f2",
+    "tsc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "scope_limits": [
+    "No backend/trading/runtime changes",
+    "No deployment or installed frontend listener started",
+    "Parent owns source-bound production image/build/proxy verification",
+    "Earlier synthetic backend integration passed8checks; browser end-to-end setup blocked, not certified"
+  ],
+  "source_change": "Two fallback expression replacements; same auth/request/reconnect behavior."
+}

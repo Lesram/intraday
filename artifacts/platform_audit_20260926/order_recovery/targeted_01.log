@@ -1,0 +1,2428 @@
+Isolated test scratch: /private/tmp/intra-audit-test-utb4eya7
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.F..................................... [ 98%]
+.                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_old_owned_order_recovers_terminal_fills_once[filled] ___________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d341b10>, autoflush=True, expire_on_commit=False)
+status = 'filled'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", ["filled", "canceled", "expired"])
+    async def test_old_owned_order_recovers_terminal_fills_once(sessions, status):
+        row = make_order()
+        await seed(sessions, row)
+        fetch = AsyncMock(return_value=snapshot(row, status=status, filled="4"))
+        service = recovery.OrderRecoveryService()
+        first = await service.recover(sessions, fetch)
+        second = await service.recover(sessions, fetch)
+>       assert first["applied"] == 1 and first["sweep_complete"]
+E       assert (0 == 1)
+
+tests/test_order_recovery_service.py:68: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.527763Z"}
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.528702Z"}
+_________ test_old_owned_order_recovers_terminal_fills_once[canceled] __________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d221a90>, autoflush=True, expire_on_commit=False)
+status = 'canceled'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", ["filled", "canceled", "expired"])
+    async def test_old_owned_order_recovers_terminal_fills_once(sessions, status):
+        row = make_order()
+        await seed(sessions, row)
+        fetch = AsyncMock(return_value=snapshot(row, status=status, filled="4"))
+        service = recovery.OrderRecoveryService()
+        first = await service.recover(sessions, fetch)
+        second = await service.recover(sessions, fetch)
+>       assert first["applied"] == 1 and first["sweep_complete"]
+E       assert (0 == 1)
+
+tests/test_order_recovery_service.py:68: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.586438Z"}
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.587188Z"}
+__________ test_old_owned_order_recovers_terminal_fills_once[expired] __________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d34df50>, autoflush=True, expire_on_commit=False)
+status = 'expired'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", ["filled", "canceled", "expired"])
+    async def test_old_owned_order_recovers_terminal_fills_once(sessions, status):
+        row = make_order()
+        await seed(sessions, row)
+        fetch = AsyncMock(return_value=snapshot(row, status=status, filled="4"))
+        service = recovery.OrderRecoveryService()
+        first = await service.recover(sessions, fetch)
+        second = await service.recover(sessions, fetch)
+>       assert first["applied"] == 1 and first["sweep_complete"]
+E       assert (0 == 1)
+
+tests/test_order_recovery_service.py:68: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.599607Z"}
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.600395Z"}
+____________ test_unowned_legacy_and_old_terminal_are_not_migrated _____________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d68fbd0>, autoflush=True, expire_on_commit=False)
+
+    @pytest.mark.asyncio
+    async def test_unowned_legacy_and_old_terminal_are_not_migrated(sessions):
+        rows = [make_order(1, owned=False), make_order(2, owned=False, status="failed"),
+                make_order(3, status="filled"), make_order(4, status="cancelled")]
+        rows[-1].filled_qty, rows[-1].avg_fill_price = Decimal(4), Decimal(100)
+        await seed(sessions, *rows)
+        fetch = AsyncMock()
+        assert (await recovery.OrderRecoveryService().recover(sessions, fetch))["attempted"] == 0
+        fetch.assert_not_awaited()
+        async with sessions() as session:
+            assert not list((await session.execute(select(Execution))).scalars())
+>           assert [(await session.get(Order, row.id)).status for row in rows] == [r.status for r in rows]
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d1ec450>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+__________ test_outbox_lineage_requires_matching_order_and_client_key __________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e0d71d0>, autoflush=True, expire_on_commit=False)
+
+    @pytest.mark.asyncio
+    async def test_outbox_lineage_requires_matching_order_and_client_key(sessions):
+        rows = [make_order(i, owned=False) for i in range(1, 4)]
+        await seed(sessions, *rows)
+        async with sessions() as session:
+            for row, key in [(rows[0], rows[0].client_idempotency_key), (rows[1], "wrong")]:
+                session.add(OutboxEvent(topic="order.submitted", status="sent",
+                    payload={"order_id": str(row.id), "client_key": key}))
+            session.add(OutboxEvent(topic="unrelated", status="sent", payload={
+                "order_id": str(rows[2].id), "client_key": rows[2].client_idempotency_key}))
+            await session.commit()
+        fetch = AsyncMock(return_value=snapshot(rows[0]))
+        result = await recovery.OrderRecoveryService().recover(sessions, fetch)
+>       assert result["attempted"] == result["applied"] == 1
+E       assert 0 == 1
+
+tests/test_order_recovery_service.py:103: AssertionError
+________ test_keyset_progress_covers_more_than100_despite_early_errors _________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e0ccc10>, autoflush=True, expire_on_commit=False)
+
+    @pytest.mark.asyncio
+    async def test_keyset_progress_covers_more_than100_despite_early_errors(sessions):
+        rows = [make_order(i) for i in range(1, 104)]
+        await seed(sessions, *rows)
+        by_id = {r.broker_order_id: r for r in rows}
+        visited = []
+    
+        async def fetch(broker_id):
+            visited.append(broker_id)
+            if broker_id == rows[0].broker_order_id:
+                raise ValueError("Synthetic404")
+            return snapshot(by_id[broker_id], status="accepted", filled="0", price=None)
+    
+        service = recovery.OrderRecoveryService()
+        for _ in range(6):
+            result = await service.recover(sessions, fetch)
+            assert result["attempted"] <= 20
+>       assert visited == [r.broker_order_id for r in rows]
+E       AssertionError: assert [] == ['00000000-00...0002716', ...]
+E         
+E         Right contains 103 more items, first extra item: '00000000-0000-0000-0000-000000002711'
+E         Use -v to get more diff
+
+tests/test_order_recovery_service.py:124: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.727432Z"}
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.728297Z"}
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.729047Z"}
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.729768Z"}
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.730453Z"}
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.731188Z"}
+_ test_invalid_or_unrelated_snapshot_never_changes_order[id-00000000-0000-0000-0000-0000000003e7] _
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10de67150>, autoflush=True, expire_on_commit=False)
+field = 'id', value = '00000000-0000-0000-0000-0000000003e7'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10de6c110>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.743422Z"}
+_ test_invalid_or_unrelated_snapshot_never_changes_order[client_order_id-other] _
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10df9b690>, autoflush=True, expire_on_commit=False)
+field = 'client_order_id', value = 'other'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d954910>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.818694Z"}
+_____ test_invalid_or_unrelated_snapshot_never_changes_order[symbol-OTHER] _____
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e0876d0>, autoflush=True, expire_on_commit=False)
+field = 'symbol', value = 'OTHER'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d99b790>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.895514Z"}
+______ test_invalid_or_unrelated_snapshot_never_changes_order[side-sell] _______
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e2bfbd0>, autoflush=True, expire_on_commit=False)
+field = 'side', value = 'sell'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d6fbe90>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:35.972971Z"}
+________ test_invalid_or_unrelated_snapshot_never_changes_order[qty-11] ________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10deb1890>, autoflush=True, expire_on_commit=False)
+field = 'qty', value = '11'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d62ccd0>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.048386Z"}
+____ test_invalid_or_unrelated_snapshot_never_changes_order[filled_qty-NaN] ____
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e3bf710>, autoflush=True, expire_on_commit=False)
+field = 'filled_qty', value = 'NaN'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10deb2850>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.122896Z"}
+____ test_invalid_or_unrelated_snapshot_never_changes_order[filled_qty-11] _____
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e11a150>, autoflush=True, expire_on_commit=False)
+field = 'filled_qty', value = '11'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d70e650>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.197473Z"}
+____ test_invalid_or_unrelated_snapshot_never_changes_order[filled_qty--1] _____
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10dbffed0>, autoflush=True, expire_on_commit=False)
+field = 'filled_qty', value = '-1'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10dd28510>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.272794Z"}
+___ test_invalid_or_unrelated_snapshot_never_changes_order[filled_qty-True] ____
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e393950>, autoflush=True, expire_on_commit=False)
+field = 'filled_qty', value = True
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10e05ff50>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.348275Z"}
+_ test_invalid_or_unrelated_snapshot_never_changes_order[filled_avg_price-Infinity] _
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10dd43cd0>, autoflush=True, expire_on_commit=False)
+field = 'filled_avg_price', value = 'Infinity'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10da27850>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.425440Z"}
+_ test_invalid_or_unrelated_snapshot_never_changes_order[filled_avg_price-None] _
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10dbfd390>, autoflush=True, expire_on_commit=False)
+field = 'filled_avg_price', value = None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d610410>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.500540Z"}
+____ test_invalid_or_unrelated_snapshot_never_changes_order[status-unknown] ____
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10dd4b590>, autoflush=True, expire_on_commit=False)
+field = 'status', value = 'unknown'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d95a5d0>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.575711Z"}
+___ test_invalid_or_unrelated_snapshot_never_changes_order[status-replaced] ____
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10dd5b210>, autoflush=True, expire_on_commit=False)
+field = 'status', value = 'replaced'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("id", str(uuid.UUID(int=999))), ("client_order_id", "other"), ("symbol", "OTHER"),
+        ("side", "sell"), ("qty", "11"), ("filled_qty", "NaN"), ("filled_qty", "11"),
+        ("filled_qty", "-1"), ("filled_qty", True), ("filled_avg_price", "Infinity"),
+        ("filled_avg_price", None), ("status", "unknown"), ("status", "replaced"),
+    ])
+    async def test_invalid_or_unrelated_snapshot_never_changes_order(sessions, field, value):
+        row = make_order()
+        await seed(sessions, row)
+        data = {**snapshot(row), field: value}
+        result = await recovery.OrderRecoveryService().recover(sessions, AsyncMock(return_value=data))
+        assert result["errors"] == 1 and result["applied"] == 0
+        async with sessions() as session:
+>           saved = await session.get(Order, row.id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10e058d10>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.650301Z"}
+________ test_exact_get_errors_never_infer_cancel_or_submit[404-body0] _________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e213dd0>, autoflush=True, expire_on_commit=False)
+status_code = 404, body = {}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status_code,body", [(404, {}), (429, {}), (200, []), (200, None)])
+    async def test_exact_get_errors_never_infer_cancel_or_submit(sessions, status_code, body):
+        row = make_order()
+        await seed(sessions, row)
+        transport = SimpleNamespace(get=AsyncMock(return_value=httpx.Response(status_code, json=body)),
+                                    post=AsyncMock(), delete=AsyncMock())
+        broker = SimpleNamespace(client=transport, base_url="https://paper.invalid", _get_auth_headers=lambda: {})
+        result = await recovery.recover_persisted_orders(sessions, broker)
+        assert result["errors"] == 1
+>       assert transport.get.call_args.args[0].endswith("/v2/orders/" + row.broker_order_id)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'args'
+
+tests/test_order_recovery_service.py:162: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.749012Z"}
+________ test_exact_get_errors_never_infer_cancel_or_submit[429-body1] _________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e0cffd0>, autoflush=True, expire_on_commit=False)
+status_code = 429, body = {}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status_code,body", [(404, {}), (429, {}), (200, []), (200, None)])
+    async def test_exact_get_errors_never_infer_cancel_or_submit(sessions, status_code, body):
+        row = make_order()
+        await seed(sessions, row)
+        transport = SimpleNamespace(get=AsyncMock(return_value=httpx.Response(status_code, json=body)),
+                                    post=AsyncMock(), delete=AsyncMock())
+        broker = SimpleNamespace(client=transport, base_url="https://paper.invalid", _get_auth_headers=lambda: {})
+        result = await recovery.recover_persisted_orders(sessions, broker)
+        assert result["errors"] == 1
+>       assert transport.get.call_args.args[0].endswith("/v2/orders/" + row.broker_order_id)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'args'
+
+tests/test_order_recovery_service.py:162: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.761238Z"}
+________ test_exact_get_errors_never_infer_cancel_or_submit[200-body2] _________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e0cc410>, autoflush=True, expire_on_commit=False)
+status_code = 200, body = []
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status_code,body", [(404, {}), (429, {}), (200, []), (200, None)])
+    async def test_exact_get_errors_never_infer_cancel_or_submit(sessions, status_code, body):
+        row = make_order()
+        await seed(sessions, row)
+        transport = SimpleNamespace(get=AsyncMock(return_value=httpx.Response(status_code, json=body)),
+                                    post=AsyncMock(), delete=AsyncMock())
+        broker = SimpleNamespace(client=transport, base_url="https://paper.invalid", _get_auth_headers=lambda: {})
+        result = await recovery.recover_persisted_orders(sessions, broker)
+        assert result["errors"] == 1
+>       assert transport.get.call_args.args[0].endswith("/v2/orders/" + row.broker_order_id)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'args'
+
+tests/test_order_recovery_service.py:162: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.773605Z"}
+_________ test_exact_get_errors_never_infer_cancel_or_submit[200-None] _________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d2cd510>, autoflush=True, expire_on_commit=False)
+status_code = 200, body = None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status_code,body", [(404, {}), (429, {}), (200, []), (200, None)])
+    async def test_exact_get_errors_never_infer_cancel_or_submit(sessions, status_code, body):
+        row = make_order()
+        await seed(sessions, row)
+        transport = SimpleNamespace(get=AsyncMock(return_value=httpx.Response(status_code, json=body)),
+                                    post=AsyncMock(), delete=AsyncMock())
+        broker = SimpleNamespace(client=transport, base_url="https://paper.invalid", _get_auth_headers=lambda: {})
+        result = await recovery.recover_persisted_orders(sessions, broker)
+        assert result["errors"] == 1
+>       assert transport.get.call_args.args[0].endswith("/v2/orders/" + row.broker_order_id)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'args'
+
+tests/test_order_recovery_service.py:162: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.785445Z"}
+__________ test_missing_or_unsafe_broker_identity_is_never_looked_up ___________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d1d9e10>, autoflush=True, expire_on_commit=False)
+
+    @pytest.mark.asyncio
+    async def test_missing_or_unsafe_broker_identity_is_never_looked_up(sessions):
+        a, b = make_order(1), make_order(2)
+        a.broker_order_id = None
+        b.broker_order_id = "../account"
+        await seed(sessions, a, b)
+        fetch = AsyncMock()
+        result = await recovery.OrderRecoveryService().recover(sessions, fetch)
+>       assert result["attempted"] == result["errors"] == 1
+E       assert 0 == 1
+
+tests/test_order_recovery_service.py:177: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.797162Z"}
+_______________ test_order_race_revalidated_under_lock[identity] _______________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10de863d0>, autoflush=True, expire_on_commit=False)
+change = 'identity'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("change", ["identity", "terminal", "ownership"])
+    async def test_order_race_revalidated_under_lock(sessions, change):
+        row = make_order()
+        await seed(sessions, row)
+    
+        async def fetch(_):
+            async with sessions() as session:
+                current = await session.get(Order, row.id)
+                if change == "identity":
+                    current.client_idempotency_key = "changed"
+                elif change == "terminal":
+                    current.status = "cancelled"
+                else:
+                    current.attributes = {}
+                await session.commit()
+            return snapshot(row)
+    
+        result = await recovery.OrderRecoveryService().recover(sessions, fetch)
+>       assert result["changed"] == 1 and result["applied"] == 0
+E       assert (0 == 1)
+
+tests/test_order_recovery_service.py:200: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.808879Z"}
+_______________ test_order_race_revalidated_under_lock[terminal] _______________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d5f1110>, autoflush=True, expire_on_commit=False)
+change = 'terminal'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("change", ["identity", "terminal", "ownership"])
+    async def test_order_race_revalidated_under_lock(sessions, change):
+        row = make_order()
+        await seed(sessions, row)
+    
+        async def fetch(_):
+            async with sessions() as session:
+                current = await session.get(Order, row.id)
+                if change == "identity":
+                    current.client_idempotency_key = "changed"
+                elif change == "terminal":
+                    current.status = "cancelled"
+                else:
+                    current.attributes = {}
+                await session.commit()
+            return snapshot(row)
+    
+        result = await recovery.OrderRecoveryService().recover(sessions, fetch)
+>       assert result["changed"] == 1 and result["applied"] == 0
+E       assert (0 == 1)
+
+tests/test_order_recovery_service.py:200: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.821181Z"}
+______________ test_order_race_revalidated_under_lock[ownership] _______________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e146a50>, autoflush=True, expire_on_commit=False)
+change = 'ownership'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("change", ["identity", "terminal", "ownership"])
+    async def test_order_race_revalidated_under_lock(sessions, change):
+        row = make_order()
+        await seed(sessions, row)
+    
+        async def fetch(_):
+            async with sessions() as session:
+                current = await session.get(Order, row.id)
+                if change == "identity":
+                    current.client_idempotency_key = "changed"
+                elif change == "terminal":
+                    current.status = "cancelled"
+                else:
+                    current.attributes = {}
+                await session.commit()
+            return snapshot(row)
+    
+        result = await recovery.OrderRecoveryService().recover(sessions, fetch)
+>       assert result["changed"] == 1 and result["applied"] == 0
+E       assert (0 == 1)
+
+tests/test_order_recovery_service.py:200: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.832983Z"}
+_________ test_accounting_failure_rolls_back_then_retry_is_idempotent __________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d932150>, autoflush=True, expire_on_commit=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107aa62a0>
+
+    @pytest.mark.asyncio
+    async def test_accounting_failure_rolls_back_then_retry_is_idempotent(sessions, monkeypatch):
+        from backend.services.lot_tracker_service import LotTracker
+    
+        row = make_order()
+        await seed(sessions, row)
+        original = LotTracker.create_lot
+        monkeypatch.setattr(LotTracker, "create_lot", AsyncMock(side_effect=RuntimeError("Synthetic")))
+        service = recovery.OrderRecoveryService()
+        fetch = AsyncMock(return_value=snapshot(row))
+        assert (await service.recover(sessions, fetch))["errors"] == 1
+        async with sessions() as session:
+>           assert (await session.get(Order, row.id)).filled_qty == 0
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:217: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d9946d0>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.845516Z"}
+__________________ test_lookup_timeout_advances_to_later_row ___________________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e0c2750>, autoflush=True, expire_on_commit=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d632e70>
+
+    @pytest.mark.asyncio
+    async def test_lookup_timeout_advances_to_later_row(sessions, monkeypatch):
+        rows = [make_order(1), make_order(2)]
+        await seed(sessions, *rows)
+        monkeypatch.setattr(recovery, "LOOKUP_BUDGET_SECONDS", .01)
+    
+        async def fetch(broker_id):
+            if broker_id == rows[0].broker_order_id:
+                await asyncio.Event().wait()
+            return snapshot(rows[1])
+    
+        result = await recovery.OrderRecoveryService().recover(sessions, fetch)
+>       assert result["attempted"] == 2 and result["errors"] == 1 and result["applied"] == 1
+E       assert (0 == 2)
+
+tests/test_order_recovery_service.py:236: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:36.923916Z"}
+_______________ test_total_deadline_covers_database_waits[page] ________________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x107ad6050>, autoflush=True, expire_on_commit=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6590d0>
+blocked_at = 'page'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("blocked_at", ["page", "lock", "commit"])
+    async def test_total_deadline_covers_database_waits(sessions, monkeypatch, blocked_at):
+        row = make_order()
+        await seed(sessions, row)
+        monkeypatch.setattr(recovery, "PASS_BUDGET_SECONDS", .03)
+    
+        async def block(*args, **kwargs):
+            await asyncio.Event().wait()
+    
+        if blocked_at == "page":
+            monkeypatch.setattr(OrdersRepo, "get_recovery_orders_page", block)
+        elif blocked_at == "lock":
+            monkeypatch.setattr(OrdersRepo, "lock_recovery_order", block)
+        else:
+            monkeypatch.setattr(AsyncSession, "commit", block)
+        service = recovery.OrderRecoveryService()
+        result = await asyncio.wait_for(service.recover(sessions, AsyncMock(return_value=snapshot(row))), .5)
+        assert result["state"] == "deadline" and result["backlog"]
+        assert service.cursor == (None if blocked_at == "page" else row.id)
+        async with sessions() as session:
+>           assert (await session.get(Order, row.id)).filled_qty == 0
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:260: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10e3916d0>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+_______________ test_total_deadline_covers_database_waits[lock] ________________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e37f910>, autoflush=True, expire_on_commit=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107aa6f00>
+blocked_at = 'lock'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("blocked_at", ["page", "lock", "commit"])
+    async def test_total_deadline_covers_database_waits(sessions, monkeypatch, blocked_at):
+        row = make_order()
+        await seed(sessions, row)
+        monkeypatch.setattr(recovery, "PASS_BUDGET_SECONDS", .03)
+    
+        async def block(*args, **kwargs):
+            await asyncio.Event().wait()
+    
+        if blocked_at == "page":
+            monkeypatch.setattr(OrdersRepo, "get_recovery_orders_page", block)
+        elif blocked_at == "lock":
+            monkeypatch.setattr(OrdersRepo, "lock_recovery_order", block)
+        else:
+            monkeypatch.setattr(AsyncSession, "commit", block)
+        service = recovery.OrderRecoveryService()
+        result = await asyncio.wait_for(service.recover(sessions, AsyncMock(return_value=snapshot(row))), .5)
+>       assert result["state"] == "deadline" and result["backlog"]
+E       AssertionError: assert ('unavailable' == 'deadline'
+E         
+E         - deadline
+E         + unavailable)
+
+tests/test_order_recovery_service.py:257: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:37.045688Z"}
+______________ test_total_deadline_covers_database_waits[commit] _______________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d68d390>, autoflush=True, expire_on_commit=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d657140>
+blocked_at = 'commit'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("blocked_at", ["page", "lock", "commit"])
+    async def test_total_deadline_covers_database_waits(sessions, monkeypatch, blocked_at):
+        row = make_order()
+        await seed(sessions, row)
+        monkeypatch.setattr(recovery, "PASS_BUDGET_SECONDS", .03)
+    
+        async def block(*args, **kwargs):
+            await asyncio.Event().wait()
+    
+        if blocked_at == "page":
+            monkeypatch.setattr(OrdersRepo, "get_recovery_orders_page", block)
+        elif blocked_at == "lock":
+            monkeypatch.setattr(OrdersRepo, "lock_recovery_order", block)
+        else:
+            monkeypatch.setattr(AsyncSession, "commit", block)
+        service = recovery.OrderRecoveryService()
+        result = await asyncio.wait_for(service.recover(sessions, AsyncMock(return_value=snapshot(row))), .5)
+>       assert result["state"] == "deadline" and result["backlog"]
+E       AssertionError: assert ('unavailable' == 'deadline'
+E         
+E         - deadline
+E         + unavailable)
+
+tests/test_order_recovery_service.py:257: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:37.057807Z"}
+____________________ test_concurrent_pass_is_single_flight _____________________
+
+fut = <coroutine object Event.wait at 0x10d645b60>, timeout = 1
+
+    async def wait_for(fut, timeout):
+        """Wait for the single Future or coroutine to complete, with timeout.
+    
+        Coroutine will be wrapped in Task.
+    
+        Returns result of the Future or coroutine.  When a timeout occurs,
+        it cancels the task and raises TimeoutError.  To avoid the task
+        cancellation, wrap it in shield().
+    
+        If the wait is cancelled, the task is also cancelled.
+    
+        If the task suppresses the cancellation and returns a value instead,
+        that value is returned.
+    
+        This function is a coroutine.
+        """
+        # The special case for timeout <= 0 is for the following case:
+        #
+        # async def test_waitfor():
+        #     func_started = False
+        #
+        #     async def func():
+        #         nonlocal func_started
+        #         func_started = True
+        #
+        #     try:
+        #         await asyncio.wait_for(func(), 0)
+        #     except asyncio.TimeoutError:
+        #         assert not func_started
+        #     else:
+        #         assert False
+        #
+        # asyncio.run(test_waitfor())
+    
+    
+        if timeout is not None and timeout <= 0:
+            fut = ensure_future(fut)
+    
+            if fut.done():
+                return fut.result()
+    
+            await _cancel_and_wait(fut)
+            try:
+                return fut.result()
+            except exceptions.CancelledError as exc:
+                raise TimeoutError from exc
+    
+        async with timeouts.timeout(timeout):
+>           return await fut
+                   ^^^^^^^^^
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/tasks.py:520: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.locks.Event object at 0x10d4112b0 [unset]>
+
+    async def wait(self):
+        """Block until the internal flag is true.
+    
+        If the internal flag is true on entry, return True
+        immediately.  Otherwise, block until another coroutine calls
+        set() to set the flag to true, then return True.
+        """
+        if self._value:
+            return True
+    
+        fut = self._get_loop().create_future()
+        self._waiters.append(fut)
+        try:
+>           await fut
+E           asyncio.exceptions.CancelledError
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/locks.py:212: CancelledError
+
+The above exception was the direct cause of the following exception:
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10e37c290>, autoflush=True, expire_on_commit=False)
+
+    @pytest.mark.asyncio
+    async def test_concurrent_pass_is_single_flight(sessions):
+        row = make_order()
+        await seed(sessions, row)
+        entered, release = asyncio.Event(), asyncio.Event()
+    
+        async def fetch(_):
+            entered.set()
+            await release.wait()
+            return snapshot(row)
+    
+        service = recovery.OrderRecoveryService()
+        task = asyncio.create_task(service.recover(sessions, fetch))
+>       await asyncio.wait_for(entered.wait(), 1)
+
+tests/test_order_recovery_service.py:277: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/tasks.py:519: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Timeout [expired]>
+exc_type = <class 'asyncio.exceptions.CancelledError'>
+exc_val = CancelledError(), exc_tb = <traceback object at 0x10e37cac0>
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> Optional[bool]:
+        assert self._state in (_State.ENTERED, _State.EXPIRING)
+    
+        if self._timeout_handler is not None:
+            self._timeout_handler.cancel()
+            self._timeout_handler = None
+    
+        if self._state is _State.EXPIRING:
+            self._state = _State.EXPIRED
+    
+            if self._task.uncancel() <= self._cancelling and exc_type is exceptions.CancelledError:
+                # Since there are no new cancel requests, we're
+                # handling this.
+>               raise TimeoutError from exc_val
+E               TimeoutError
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/timeouts.py:115: TimeoutError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:37.069667Z"}
+___________ test_startup_recovery_precedes_empty_latest500_response ____________
+
+sessions = sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x10d1ac590>, autoflush=True, expire_on_commit=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d853dd0>
+
+    @pytest.mark.asyncio
+    async def test_startup_recovery_precedes_empty_latest500_response(sessions, monkeypatch):
+        from backend.api.lifespan import _sync_orders
+    
+        row = make_order()
+        await seed(sessions, row)
+    
+        async def get(url, **kwargs):
+            return httpx.Response(200, json=snapshot(row) if url.endswith(row.broker_order_id) else [])
+    
+        broker = SimpleNamespace(client=SimpleNamespace(get=get), base_url="https://paper.invalid",
+                                 _get_auth_headers=lambda: {})
+        monkeypatch.setattr("backend.integrations.alpaca_broker.get_alpaca_broker_client", lambda: broker)
+        await _sync_orders(SimpleNamespace(state=SimpleNamespace(sessionmaker=sessions)))
+        async with sessions() as session:
+>           assert (await session.get(Order, row.id)).filled_qty == 10
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_order_recovery_service.py:313: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:592: in get
+    return await greenlet_spawn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
+    result = context.switch(value)
+             ^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3680: in get
+    return self._get_impl(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:3859: in _get_impl
+    return db_load_fn(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:706: in load_on_pk_identity
+    return result.one()
+           ^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1827: in one
+    return self._only_one_row(
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:769: in _only_one_row
+    row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1690: in _fetchone_impl
+    return self._real_result._fetchone_impl(hard_close=hard_close)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:2276: in _fetchone_impl
+    row = next(self.iterator, _NO_ROW)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
+    fetch = cursor._raw_all_rows()
+            ^^^^^^^^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:553: in _raw_all_rows
+    return [make_row(row) for row in rows]
+            ^^^^^^^^^^^^^
+lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
+    ???
+lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
+    ???
+../../../../VS/intra/venv/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:3759: in process
+    value = _python_UUID(value)
+            ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <[AttributeError("'UUID' object has no attribute 'int'") raised in repr()] UUID object at 0x10d9359d0>
+hex = 1, bytes = None, bytes_le = None, fields = None, int = None
+version = None
+
+    def __init__(self, hex=None, bytes=None, bytes_le=None, fields=None,
+                       int=None, version=None,
+                       *, is_safe=SafeUUID.unknown):
+        r"""Create a UUID from either a string of 32 hexadecimal digits,
+        a string of 16 bytes as the 'bytes' argument, a string of 16 bytes
+        in little-endian order as the 'bytes_le' argument, a tuple of six
+        integers (32-bit time_low, 16-bit time_mid, 16-bit time_hi_version,
+        8-bit clock_seq_hi_variant, 8-bit clock_seq_low, 48-bit node) as
+        the 'fields' argument, or a single 128-bit integer as the 'int'
+        argument.  When a string of hex digits is given, curly braces,
+        hyphens, and a URN prefix are all optional.  For example, these
+        expressions all yield the same UUID:
+    
+        UUID('{12345678-1234-5678-1234-567812345678}')
+        UUID('12345678123456781234567812345678')
+        UUID('urn:uuid:12345678-1234-5678-1234-567812345678')
+        UUID(bytes='\x12\x34\x56\x78'*4)
+        UUID(bytes_le='\x78\x56\x34\x12\x34\x12\x78\x56' +
+                      '\x12\x34\x56\x78\x12\x34\x56\x78')
+        UUID(fields=(0x12345678, 0x1234, 0x5678, 0x12, 0x34, 0x567812345678))
+        UUID(int=0x12345678123456781234567812345678)
+    
+        Exactly one of 'hex', 'bytes', 'bytes_le', 'fields', or 'int' must
+        be given.  The 'version' argument is optional; if given, the resulting
+        UUID will have its variant and version set according to RFC 4122,
+        overriding the given 'hex', 'bytes', 'bytes_le', 'fields', or 'int'.
+    
+        is_safe is an enum exposed as an attribute on the instance.  It
+        indicates whether the UUID has been generated in a way that is safe
+        for multiprocessing applications, via uuid_generate_time_safe(3).
+        """
+    
+        if [hex, bytes, bytes_le, fields, int].count(None) != 4:
+            raise TypeError('one of the hex, bytes, bytes_le, fields, '
+                            'or int arguments must be given')
+        if hex is not None:
+>           hex = hex.replace('urn:', '').replace('uuid:', '')
+                  ^^^^^^^^^^^
+E           AttributeError: 'int' object has no attribute 'replace'
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/uuid.py:175: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.services.order_recovery_service:order_recovery_service.py:144 {"reason": "AttributeError", "event": "Persisted order recovery unavailable", "logger": "backend.services.order_recovery_service", "level": "warning", "timestamp": "2026-09-26T23:23:38.123154Z"}
+=========================== short test summary info ============================
+FAILED tests/test_order_recovery_service.py::test_old_owned_order_recovers_terminal_fills_once[filled]
+FAILED tests/test_order_recovery_service.py::test_old_owned_order_recovers_terminal_fills_once[canceled]
+FAILED tests/test_order_recovery_service.py::test_old_owned_order_recovers_terminal_fills_once[expired]
+FAILED tests/test_order_recovery_service.py::test_unowned_legacy_and_old_terminal_are_not_migrated
+FAILED tests/test_order_recovery_service.py::test_outbox_lineage_requires_matching_order_and_client_key
+FAILED tests/test_order_recovery_service.py::test_keyset_progress_covers_more_than100_despite_early_errors
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[id-00000000-0000-0000-0000-0000000003e7]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[client_order_id-other]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[symbol-OTHER]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[side-sell]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[qty-11]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[filled_qty-NaN]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[filled_qty-11]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[filled_qty--1]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[filled_qty-True]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[filled_avg_price-Infinity]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[filled_avg_price-None]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[status-unknown]
+FAILED tests/test_order_recovery_service.py::test_invalid_or_unrelated_snapshot_never_changes_order[status-replaced]
+FAILED tests/test_order_recovery_service.py::test_exact_get_errors_never_infer_cancel_or_submit[404-body0]
+FAILED tests/test_order_recovery_service.py::test_exact_get_errors_never_infer_cancel_or_submit[429-body1]
+FAILED tests/test_order_recovery_service.py::test_exact_get_errors_never_infer_cancel_or_submit[200-body2]
+FAILED tests/test_order_recovery_service.py::test_exact_get_errors_never_infer_cancel_or_submit[200-None]
+FAILED tests/test_order_recovery_service.py::test_missing_or_unsafe_broker_identity_is_never_looked_up
+FAILED tests/test_order_recovery_service.py::test_order_race_revalidated_under_lock[identity]
+FAILED tests/test_order_recovery_service.py::test_order_race_revalidated_under_lock[terminal]
+FAILED tests/test_order_recovery_service.py::test_order_race_revalidated_under_lock[ownership]
+FAILED tests/test_order_recovery_service.py::test_accounting_failure_rolls_back_then_retry_is_idempotent
+FAILED tests/test_order_recovery_service.py::test_lookup_timeout_advances_to_later_row
+FAILED tests/test_order_recovery_service.py::test_total_deadline_covers_database_waits[page]
+FAILED tests/test_order_recovery_service.py::test_total_deadline_covers_database_waits[lock]
+FAILED tests/test_order_recovery_service.py::test_total_deadline_covers_database_waits[commit]
+FAILED tests/test_order_recovery_service.py::test_concurrent_pass_is_single_flight
+FAILED tests/test_order_recovery_service.py::test_startup_recovery_precedes_empty_latest500_response
+34 failed, 39 passed in 8.63s

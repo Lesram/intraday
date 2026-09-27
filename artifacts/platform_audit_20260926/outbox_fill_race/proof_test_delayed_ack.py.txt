@@ -1,0 +1,65 @@
+"""Private synthetic regression for actual terminal-fill then delayed-ACK order."""
+from contextlib import asynccontextmanager
+from decimal import Decimal
+
+import pytest
+from sqlalchemy import select
+
+from tests.test_fill_accounting_integrity import sessions, make_order
+from backend.infra.schemas import Order, Execution, PositionLot
+from backend.integrations.alpaca_stream import apply_order_fill_snapshot
+from backend.infra.outbox_worker import OutboxWorker
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('details', [None, {'filled_qty': '0'}, {'filled_qty': '5', 'avg_fill_price': '90'}])
+async def test_delayed_ack_cannot_overwrite_terminal_fill(sessions, monkeypatch, details):
+    row = make_order()
+    async with sessions() as session:
+        session.add(row)
+        await session.flush()
+        await apply_order_fill_snapshot(session, row, status='filled', cumulative_filled_qty='10', avg_fill_price='100', broker_order_id=row.broker_order_id)
+        await session.commit()
+
+    @asynccontextmanager
+    async def context():
+        async with sessions() as session:
+            yield session
+    monkeypatch.setattr('backend.infra.db.get_session_context', context)
+    worker = OutboxWorker.__new__(OutboxWorker)
+    await worker._update_order_status(str(row.id), 'submitted', row.broker_order_id, details)
+    async with sessions() as session:
+        current = await session.get(Order, row.id)
+        executions = list((await session.execute(select(Execution))).scalars())
+        lots = list((await session.execute(select(PositionLot))).scalars())
+        assert sum(x.fill_qty for x in executions) == Decimal('10')
+        assert sum(x.fill_qty*x.fill_price for x in executions) == Decimal('1000')
+        assert sum(x.remaining_qty for x in lots) == Decimal('10')
+        assert (current.status,current.filled_qty,current.avg_fill_price)==('filled',Decimal('10'),Decimal('100'))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('pre_filled', [False, True])
+async def test_real_alpaca_ack_shape_preserves_or_accounts_fill(sessions, monkeypatch, pre_filled):
+    row = make_order()
+    async with sessions() as session:
+        session.add(row)
+        await session.flush()
+        if pre_filled:
+            await apply_order_fill_snapshot(session, row, status='filled', cumulative_filled_qty='10', avg_fill_price='100', broker_order_id=row.broker_order_id)
+        await session.commit()
+    @asynccontextmanager
+    async def context():
+        async with sessions() as session:
+            yield session
+    monkeypatch.setattr('backend.infra.db.get_session_context', context)
+    nested = {'id':row.broker_order_id,'client_order_id':row.client_idempotency_key,
+              'symbol':row.symbol,'side':row.side,'qty':'10','status':'new' if pre_filled else 'filled',
+              'filled_qty':'0' if pre_filled else '10','filled_avg_price':None if pre_filled else '100'}
+    result = {'success':True,'broker_order_id':row.broker_order_id,'status':nested['status'],
+              'broker':'alpaca','alpaca_response':nested}
+    await OutboxWorker.__new__(OutboxWorker)._update_order_status(str(row.id),result['status'],row.broker_order_id,result)
+    async with sessions() as session:
+        current=await session.get(Order,row.id)
+        qty=sum(x.fill_qty for x in (await session.execute(select(Execution))).scalars())
+        assert (current.status,current.filled_qty,qty)==('filled',Decimal('10'),Decimal('10'))

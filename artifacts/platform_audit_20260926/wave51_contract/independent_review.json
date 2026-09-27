@@ -1,0 +1,44 @@
+{
+  "status": "ACCEPTED",
+  "reviewed_at_utc": "2026-09-26T23:57:20.037710+00:00",
+  "reviewer": "daily_evidence_contract",
+  "test_source": {
+    "path": "tests/test_wave51_fixes.py",
+    "sha256": "5b68d99c6d20fa8283ec0b725a1e4897e1fce1979690b88b0764730f4ab764e9"
+  },
+  "support_fixture": {
+    "path": "tests/test_fill_accounting_integrity.py",
+    "sha256": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972"
+  },
+  "actual_context": {
+    "path": "backend/infra/db.py",
+    "sha256": "b2aab568b7a35ad41db006354bed3f785e95e5967486a1ba85f301251ce98fe5"
+  },
+  "stream": {
+    "path": "backend/integrations/alpaca_stream.py",
+    "sha256": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43"
+  },
+  "targeted": {
+    "path": "artifacts/platform_audit_20260926/wave51_contract/targeted_01.xml",
+    "sha256": "a41ff21832c57e8efaab92ac742b301ecdc635d398acfbd34213b2a9a8aa1ddf",
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0
+  },
+  "assessment": [
+    "Two parameterized cases invoke actual stream handler, actual database session context and actual LotTracker insertion, then inject failure only after both Execution and PositionLot are queried in the transaction.",
+    "Normal rollback and deliberately failed rollback both propagate explicit exceptions and produce stream ERROR log with matching cause; subsequent separate session verifies no persisted fill/lot or summary change.",
+    "Failed rollback case relies on actual session-close cleanup and explicitly verifies original lot exception remains the exception context.",
+    "Other three existing Wave51 tests are AST-identical. Replacing an obsolete comment marker with observed transaction/error behavior strengthens the relevant contract."
+  ],
+  "unchanged_tests": [
+    "test_pp2_1_lifespan_smoke_select_in_outer_block",
+    "test_uu2_a_successful_login_rollback_logs_error",
+    "test_ww_1_essential_save_creates_backup"
+  ],
+  "limitations": [
+    "Reviewer read source and parsed supplied green JUnit; did not rerun tests or access runtime.",
+    "Synthetic SQLite proves this failure path, not arbitrary database-disconnection recovery; PostgreSQL concurrency evidence remains separate."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,116 @@
+{
+  "task_id": "persisted-order-recovery",
+  "written_at": "2026-09-26T23:34:24.131569+00:00",
+  "source_head_before_delivery": "85b2534b3fdc1e72e3a9afb3c8e1a1a45bb0ef89",
+  "summary": "Bounded exact-ID GET recovery now traverses attributed unresolved persisted orders independently of age through startup, reconnect and periodic reconciliation. Existing atomic accounting remains the sole fill application path.",
+  "source_hashes": {
+    "backend/services/order_recovery_service.py": "9eca5aab6ba19a30cd84976502d3169c136f5483981a49013427d77d605996ae",
+    "backend/infra/repositories/orders.py": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b",
+    "backend/services/scheduled_reconciliation.py": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5",
+    "backend/api/lifespan.py": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef",
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "tests/test_order_recovery_service.py": "071de3f7a229462735c8202d20f07915b1b02ebbf26ba74a2081a0581db56208",
+    "tests/test_fill_accounting_postgres.py": "09743dadd3e481c749345e1db14e9a45ee4ce9b8a9676fde7e0d4c765d4f3111"
+  },
+  "behavior": [
+    "Eligibility requires an existing broker UUID and original client key, nonterminal local state, plus organism source attribution or an exact order.submitted outbox order/client identity. Unknown legacy rows and missing broker identities are excluded.",
+    "Up to20 requests per pass,2 seconds per broker lookup,10 seconds for the entire asynchronous page/read/lookup/row-lock/accounting/commit scope. An immutable-ID process-local cursor advances before each attempted row, including errors/timeouts; a completed sweep wraps.",
+    "Responses must match original broker ID, client ID, symbol, side and requested quantity. Nonfinite/bool/negative/excess fill quantities, missing positive-fill prices, unknown status, any replaced status and filled status with less than requested quantity remain unresolved.",
+    "After each GET the qualifying row is selected under lock and immutable identity rechecked. Existing apply_order_fill_snapshot handles incremental cashflow and idempotency in the same transaction as status/execution/lots/audit; commit occurs only after success.",
+    "Only exact GET is used by this service. No submission, cancellation, outbox mutation or invented terminal status on404/unavailable response.",
+    "Reconnect retains the preceding connection boundary until its bounded recent-history lookup uses it; fresh connect no longer overwrites that anchor before recovery. Existing one-hour maximum recent-history lookback is preserved."
+  ],
+  "validation": {
+    "expanded_final": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/expanded_02.xml",
+      "sha256": "bb84f83a219358e8f418ff2e3dba45b1c51f1914a0486f51a5d7a4b92584de19",
+      "tests": 261,
+      "passed": 261,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "new_recovery_cases": 40,
+    "postgres_real": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/postgres_01/postgres_tests.xml",
+      "sha256": "71e5b77e5dc779700d4273841e7bf3527b98f0408a23766ecbfb1ceedcadc54b",
+      "tests": 11,
+      "passed": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "postgres_default": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/postgres_default.xml",
+      "sha256": "42bd4ea4d3c64bd1e0e3a4ddc9610f69f506c23bb0d7d1e7812b6d241ca7e67b",
+      "tests": 11,
+      "passed": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6
+    },
+    "postgres_safety": "Dedicated postgres:16-alpine, new internal Docker network, no published ports, tmpfs database; existing immutable API image runs candidate read-only mount with synthetic credentials and scratch brain. Six actual DB cases plus five URL safety validation cases. Original four contention proofs retained.",
+    "postgres_new_proofs": [
+      "Actual PostgreSQL JSON lineage predicate and UUID keyset select old attributable rows while excluding wrong-client/unowned rows.",
+      "pg_blocking_pids confirms recovery waits for concurrent stream partial-fill transaction; then applies only6 incremental shares after4 shares, total cost1120, one final10-share summary."
+    ],
+    "postgres_cleanup_all_owned_resources_removed": true,
+    "ruff_delta": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/ruff_delta.json",
+      "sha256": "14b2723644fbfe7ee54d1eca00fa874e439824bfacc8ad2b77c074f51c05fb1c",
+      "new_findings": 0
+    },
+    "freeze": {
+      "before": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "after": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "byte_identical": true,
+      "candidate_surface_matches": true,
+      "environment": "Recorded non-secret candidate variables only; no runtime read."
+    },
+    "post_test_formatting": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/post_test_formatting.json",
+      "sha256": "8070cc47bc6da09a1dbe75fc7f4efdf41f89c9edad48e416c15c9b25527e262a",
+      "ast_equal": true
+    },
+    "initial_red_receipt": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/targeted_01.xml",
+      "sha256": "9dc5f559a2e748828bffc31b82b429a88c339c521fced717ab8fae263dd0114f",
+      "tests": 73,
+      "passed": 39,
+      "failures": 34,
+      "errors": 0,
+      "skipped": 0
+    },
+    "initial_red_explanation": "New SQLite fixture used all-numeric UUID text, which SQLite converted to integer. Changed synthetic UUID prefix to alphabetic; no production UUID workaround or weakened assertion.",
+    "prior_green_receipts": [
+      {
+        "path": "artifacts/platform_audit_20260926/order_recovery/targeted_02.xml",
+        "sha256": "493e47c77985171d73ee96bf85579e9d277ff984d77e12c5578ca1d44cb4326d",
+        "tests": 73,
+        "passed": 73,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "path": "artifacts/platform_audit_20260926/order_recovery/expanded_01.xml",
+        "sha256": "d1c62340acbd84bacb2dea33d86a0e0971bb2fc50e84d74b57e9ad82dc081c18",
+        "tests": 258,
+        "passed": 258,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "warnings": "Six pre-existing deprecation/legacy websocket mock coroutine warnings retained in expanded log."
+  },
+  "limits": [
+    "Process-local cursor resets on restart; repeated restarts can delay later rows. This is bounded eventual traversal within a continuing process, not immediate complete history reconciliation.",
+    "Unowned historical UNKNOWN, missing broker ID and already-terminal old history are intentionally not auto-rewritten. An unavailable exact broker lookup remains unresolved and observable.",
+    "Recently terminal recovery remains separately bounded by existing100-row/one-hour reconnect and latest500 startup windows. Arbitrary old closed history is not reconstructed.",
+    "Existing delayed ACK writer can regress an order summary after a fill; its separate repair is being reviewed by the owning agent. This change does not claim every writer is monotonic.",
+    "Async deadlines cancel cooperative awaits and roll back session contexts; this does not guarantee a hard OS-level wall bound against uncooperative dependencies.",
+    "No active runtime, broker, production database, credentials, saved brain, freeze cutoff, deployment or trading decision parameter was changed."
+  ],
+  "handoff": "Root owns full artifact pack, CI wiring, documentation, commits/PR and later deployment acceptance. Independent reviewer binds acceptance separately; this report does not self-approve deployment."
+}

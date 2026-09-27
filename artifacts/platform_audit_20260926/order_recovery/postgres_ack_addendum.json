@@ -1,0 +1,38 @@
+{
+  "status": "PASSED",
+  "purpose": "Authorized additive real PostgreSQL ACK-writer contention proof, extending accepted recovery evidence without changing its source or original11 tests.",
+  "source_hashes": {
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "backend/api/lifespan.py": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef",
+    "tests/test_fill_accounting_postgres.py": "ebd3db4875fbfd28b10b4b260915ac04610338406947cf392a95134f6507407d",
+    "backend/infra/outbox_worker.py": "d31b791cc451c596e2c25f11b4406d0b60441b50d2c96f64835695f87072a1d6",
+    "backend/services/order_recovery_service.py": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e",
+    "backend/infra/repositories/orders.py": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b",
+    "backend/services/scheduled_reconciliation.py": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5"
+  },
+  "original11_test_source_sha256": "09743dadd3e481c749345e1db14e9a45ee4ce9b8a9676fde7e0d4c765d4f3111",
+  "original11_exact_bytes_reconstructible": true,
+  "new_case": "tests/test_fill_accounting_postgres.py::test_real_ack_waits_for_stream_fill_then_late_ack_preserves_terminal_on_postgres",
+  "proof": [
+    "Actual worker updater waits while stream partial-fill transaction owns same order lock; pg_blocking_pids confirms different-session wait.",
+    "After stream commit4shares at100, full10-share VWAP112 ACK adds only6shares at120; two execution records and lots preserve total cost1120.",
+    "Subsequent stale new/zero-fill ACK leaves filled10-share summary and accounting unchanged."
+  ],
+  "tests": {
+    "total": 12,
+    "real_postgres": 7,
+    "dsn_safety": 5,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "junit": "artifacts/platform_audit_20260926/order_recovery/postgres_ack_02/postgres_tests.xml",
+    "junit_sha256": "d14a646d1a4a4abffb015a732b7d5924e9746eb1a8d2b79238c6c850a793967f"
+  },
+  "updater_ast_sha256": "fff04d2e61d836af49f8f659838996681bd276d2000fa4085abb644424273412",
+  "isolation_receipt": {
+    "path": "artifacts/platform_audit_20260926/order_recovery/postgres_ack_02/postgres_run_receipt.json",
+    "sha256": "2cadde6355d362879e30587222a3bf58557abfaabe7a1ebe1e0aa2f2a39ffbf3",
+    "all_created_resources_removed": true
+  },
+  "scope": "New disposable internal network, tmpfs PostgreSQL, no host ports, read-only candidate mount, scratch state and synthetic credentials. No running platform/API/broker/production data touched. Wrapper retry classification is independently tested by its owner and review; this DB case calls the actual updater."
+}

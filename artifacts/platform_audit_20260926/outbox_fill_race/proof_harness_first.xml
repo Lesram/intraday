@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="3" failures="0" skipped="0" tests="3" time="0.620" timestamp="2026-09-26T16:30:56.188530-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="test_delayed_ack" name="test_delayed_ack_cannot_overwrite_terminal_fill[None]" time="0.000"><error message="failed on setup with &quot;pytest.PytestRemovedIn9Warning: 'test_delayed_ack_cannot_overwrite_terminal_fill[None]' requested an async fixture 'sessions', with no plugin or hook that handled it. This is usually an error, as pytest does not natively support it. This will turn into an error in pytest 9.&#10;See: https://docs.pytest.org/en/stable/deprecations.html#sync-test-depending-on-async-fixture&quot;">../../../../VS/intra/venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+E   pytest.PytestRemovedIn9Warning: 'test_delayed_ack_cannot_overwrite_terminal_fill[None]' requested an async fixture 'sessions', with no plugin or hook that handled it. This is usually an error, as pytest does not natively support it. This will turn into an error in pytest 9.
+E   See: https://docs.pytest.org/en/stable/deprecations.html#sync-test-depending-on-async-fixture</error></testcase><testcase classname="test_delayed_ack" name="test_delayed_ack_cannot_overwrite_terminal_fill[details1]" time="0.000"><error message="failed on setup with &quot;pytest.PytestRemovedIn9Warning: 'test_delayed_ack_cannot_overwrite_terminal_fill[details1]' requested an async fixture 'sessions', with no plugin or hook that handled it. This is usually an error, as pytest does not natively support it. This will turn into an error in pytest 9.&#10;See: https://docs.pytest.org/en/stable/deprecations.html#sync-test-depending-on-async-fixture&quot;">../../../../VS/intra/venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+E   pytest.PytestRemovedIn9Warning: 'test_delayed_ack_cannot_overwrite_terminal_fill[details1]' requested an async fixture 'sessions', with no plugin or hook that handled it. This is usually an error, as pytest does not natively support it. This will turn into an error in pytest 9.
+E   See: https://docs.pytest.org/en/stable/deprecations.html#sync-test-depending-on-async-fixture</error></testcase><testcase classname="test_delayed_ack" name="test_delayed_ack_cannot_overwrite_terminal_fill[details2]" time="0.000"><error message="failed on setup with &quot;pytest.PytestRemovedIn9Warning: 'test_delayed_ack_cannot_overwrite_terminal_fill[details2]' requested an async fixture 'sessions', with no plugin or hook that handled it. This is usually an error, as pytest does not natively support it. This will turn into an error in pytest 9.&#10;See: https://docs.pytest.org/en/stable/deprecations.html#sync-test-depending-on-async-fixture&quot;">../../../../VS/intra/venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+../../../../VS/intra/venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:728: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+E   pytest.PytestRemovedIn9Warning: 'test_delayed_ack_cannot_overwrite_terminal_fill[details2]' requested an async fixture 'sessions', with no plugin or hook that handled it. This is usually an error, as pytest does not natively support it. This will turn into an error in pytest 9.
+E   See: https://docs.pytest.org/en/stable/deprecations.html#sync-test-depending-on-async-fixture</error></testcase></testsuite></testsuites>

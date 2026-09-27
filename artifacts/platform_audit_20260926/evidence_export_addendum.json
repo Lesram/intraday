@@ -1,0 +1,146 @@
+{
+  "reason": "Verified SHA256 source hashes falsely matched generic secret detection next to auth/API map keys. Export only those maps as name/sha256 rows, without detector exclusions. Original bytes retained privately; reconstruct each listed map with dict(row.name:row.sha256), retaining order and original final newline, to recover the referenced original report hash.",
+  "exports": [
+    {
+      "file": "artifacts/platform_audit_20260926/frontend_deployment/independent_source_review.json",
+      "original_sha256": "8a48d8a5cf3c0614c05699e90dadc7f0466a9d9f8da84811d0fee874d720e8b7",
+      "export_sha256": "d076e4c5c355405d333fafb4ed9128cc1a44c1cf67eac59b4980631a034ca270",
+      "changed_map_locations": [
+        [
+          "files"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/frontend_deployment/independent_final_review.json",
+      "original_sha256": "70b10942ceaf7560f95b166bfc720bcc302fe3a8b18e680c86be7ab4ba71c481",
+      "export_sha256": "664c71d1b9e634306f735b14b6519aa04bb4140f48c7201177eecd00912a378d",
+      "changed_map_locations": [
+        [
+          "files"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/auth_bootstrap/implementation.json",
+      "original_sha256": "40393578056a9744014cd559ea30b8dbfa773d387a92c7b3ad4336cf18e9c86f",
+      "export_sha256": "d2322a0ced92f65aeba3abcabdd1d484cf93b1e034e4b10293723908538e8397",
+      "changed_map_locations": [
+        [
+          "files"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/ui_origin/implementation.json",
+      "original_sha256": "86751b3960eb418b3354fbf5d18a8b8dcaa3c6bbe5a82fd594e8ebf0a5bb2b26",
+      "export_sha256": "77b09ca8b02ce3d1152746c16256479f2b0c3a24b793215b0639b9d9e4fff8b8",
+      "changed_map_locations": [
+        [
+          "owned_source_sha256"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/order_recovery/frozen_before.json",
+      "original_sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "export_sha256": "0c8e80bcf733891536732dea0d14aedb99f06897f595e9fb1601b94e5182af09",
+      "changed_map_locations": [
+        [
+          "surface",
+          "research_policy_sources"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/outbox_fill_race/frozen_before.json",
+      "original_sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "export_sha256": "0c8e80bcf733891536732dea0d14aedb99f06897f595e9fb1601b94e5182af09",
+      "changed_map_locations": [
+        [
+          "surface",
+          "research_policy_sources"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/outbox_fill_race/frozen_final.json",
+      "original_sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "export_sha256": "0c8e80bcf733891536732dea0d14aedb99f06897f595e9fb1601b94e5182af09",
+      "changed_map_locations": [
+        [
+          "surface",
+          "research_policy_sources"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/order_recovery/frozen_after.json",
+      "original_sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "export_sha256": "0c8e80bcf733891536732dea0d14aedb99f06897f595e9fb1601b94e5182af09",
+      "changed_map_locations": [
+        [
+          "surface",
+          "research_policy_sources"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/auth_bootstrap/independent_review.json",
+      "original_sha256": "62679b15f2790ba507f8cb0866d040c04f682d2e93da471806dc5af39b74ab23",
+      "export_sha256": "6457e86e9e072277a3060af76b16172ef09aa4b7cfd6bdfb93fb08bd1c2a3fef",
+      "changed_map_locations": [
+        [
+          "files"
+        ],
+        [
+          "reviewed_support"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/outbox_fill_race/frozen_after.json",
+      "original_sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "export_sha256": "0c8e80bcf733891536732dea0d14aedb99f06897f595e9fb1601b94e5182af09",
+      "changed_map_locations": [
+        [
+          "surface",
+          "research_policy_sources"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    },
+    {
+      "file": "artifacts/platform_audit_20260926/wave51_contract/frozen_after.json",
+      "original_sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "export_sha256": "0c8e80bcf733891536732dea0d14aedb99f06897f595e9fb1601b94e5182af09",
+      "changed_map_locations": [
+        [
+          "surface",
+          "research_policy_sources"
+        ]
+      ],
+      "lossless_byte_reconstruction_verified": true,
+      "flagged_digests_match_actual_source_bytes": true
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "status": "ACCEPTED",
+  "reviewed_at_utc": "2026-09-26T23:59:27.753834+00:00",
+  "reviewer": "daily_evidence_contract",
+  "head_at_review": "efa2972de8b6d04d87ce07a17067efbd3274a015",
+  "implementation": {
+    "path": "artifacts/platform_audit_20260926/auth_bootstrap/implementation.json",
+    "sha256": "40393578056a9744014cd559ea30b8dbfa773d387a92c7b3ad4336cf18e9c86f"
+  },
+  "files": [
+    {
+      "name": "frontend/src/store/authStore.ts",
+      "sha256": "8ab239b3e8ef2faed8d7d50e8cf2dc3e0842ea62fdedeac9f45ad94e1f9e3b63"
+    },
+    {
+      "name": "frontend/src/services/authService.ts",
+      "sha256": "c948b7c16bab7d0c0012eae791b332b0b2740b13e5eccf4e56668f7b606a6446"
+    },
+    {
+      "name": "frontend/src/components/auth/AuthBootstrap.tsx",
+      "sha256": "c28e4385a511f04c39685b1ca7def95f34873d15e0163a377bda554fbd33ed91"
+    },
+    {
+      "name": "frontend/src/components/auth/ProtectedRoute.tsx",
+      "sha256": "4e00da40264e5c0a161fbb9d738c15e266c9477e99f705c946e690b41104de34"
+    },
+    {
+      "name": "frontend/src/App.tsx",
+      "sha256": "2e835cd783357e57450347d8f455a995019565fde2ba6139fab94cc143289ab4"
+    },
+    {
+      "name": "frontend/src/components/auth/AuthBootstrap.test.tsx",
+      "sha256": "5b97c956db85b2a66e6cb7874504550d695ec8da9ae82bede448ba4ef2c8fc69"
+    }
+  ],
+  "evidence": {
+    "path": "artifacts/platform_audit_20260926/auth_bootstrap/final.xml",
+    "sha256": "ba4c47cde6cc7fbd8812950af0c18092b0298ff342feae3110f2382a5d5a5c9b",
+    "passed": 58,
+    "bootstrap_cases": 20,
+    "adjacent_cases": 38,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "reviewed_support": [
+    {
+      "name": "backend/api/routes/auth.py",
+      "sha256": "019c45dec412c54687ad787cdb1797683b9a9929dfec31d43d388941be1e75d9"
+    },
+    {
+      "name": "frontend/src/routes/index.tsx",
+      "sha256": "0bf014d498989660498c156943ca3b4c585b60caa7958209f61f0ece68dc31f0"
+    },
+    {
+      "name": "frontend/src/components/layout/MainLayout.tsx",
+      "sha256": "167b93b9ba1fba28af41dadc726ef05bbcf97028ecb3970398b33ce5932c8a26"
+    },
+    {
+      "name": "frontend/src/services/api.ts",
+      "sha256": "aae66087e204ae78cf6add16e28e6c76b0f8a313ae2a0e0278376d7cebae6155"
+    },
+    {
+      "name": "frontend/src/services/websocketManager.ts",
+      "sha256": "af1f4a4201ae2664234cff690ee1d3d9e4ed4e12ba28d0eb0a6ca74f34d60caf"
+    }
+  ],
+  "checks": [
+    "Persist merge discards access token, expiry and readiness; persisted role/identity alone cannot mount routes. Missing owner/refresh clears synchronously without network.",
+    "Single-flight restoration under StrictMode redeems existing refresh once, verifies actual /auth/me authenticated/is_active/user_id/username schema and normalizes validated roles before setAuth.",
+    "Captured epoch plus user ID/refresh/access tuple protects both async stages and normalization continuation. Logout or same-user replacement login aborts and invalidates old success/failure.",
+    "AuthBootstrap encloses all App routes and MainLayout/socket effects; ProtectedRoute additionally requires ready/user/token. The real API client and Socket.IO manager mock transport test observes no protected dispatch until /me completes.",
+    "30second whole-session timer aborts and actively clears only the captured owner. Both refresh and /me late-success tests deliberately ignore cancellation and prove no token resurrection or readiness limbo.",
+    "No raw token or backend error logging added. Direct bounded Axios restoration avoids recursive interception. Access token/expiry/readiness remain unpersisted; existing explicit API-origin override is retained."
+  ],
+  "closed_finding": {
+    "finding": "Abort-only timeout could admit a late continuation or leave readiness stuck.",
+    "resolution": "Timer now clears captured owner immediately after abort; epoch invalidation blocks continuation. Both late-refresh and late-/me outcomes pass."
+  },
+  "limits": [
+    "Independent source/evidence review only; no rerun, browser, API or runtime access. Parent owns actual browser refresh/handshake and final container build evidence.",
+    "/auth/me returns authenticated JWT principal/roles and currently sets is_active=true without a DB lookup. This change does not certify fresh database account/role revocation.",
+    "Existing JavaScript-readable sessionStorage refresh tokens and backend Redis-revocation failure behavior are unchanged.",
+    "Adjacent tests overlap earlier suites;58 is this supplied run, not an additive platform coverage total."
+  ],
+  "blockers": []
+}

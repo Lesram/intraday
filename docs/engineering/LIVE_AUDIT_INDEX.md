@@ -1,41 +1,172 @@
 # Live Audit Index
 
-Generated: 2026-09-26T23:03:58Z
+Generated: 2026-09-27T00:05:21Z
 PR: n/a
-SHA: `8ebbb1c126`
+SHA: `efa2972de8`
 Branch: `codex/platform-audit-20260926`
 Scope: **backend_logic**
 Change scope: `base` (`bf533a43d01a4c2e7428ea9589159d9c7d242319...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **45**
+Total distinct changed files: **184**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 5 | `backend/api/lifespan.py`, `backend/api/portfolio.py`, `backend/api/socketio_server.py`, `backend/integrations/alpaca_stream.py`, `backend/services/portfolio_service.py` |
-| Scripts | 1 | `scripts/ci/nightly_test_contract.py` |
+| Backend | 9 | `backend/api/lifespan.py`, `backend/api/portfolio.py`, `backend/api/socketio_server.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_stream.py`, `backend/services/order_recovery_service.py`, `backend/services/portfolio_service.py`, `backend/services/scheduled_reconciliation.py` |
+| Scripts | 2 | `scripts/ci/check_frontend_container.py`, `scripts/ci/nightly_test_contract.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 12 | `tests/test_adversarial_inputs_v7.py`, `tests/test_fill_accounting_integrity.py`, `tests/test_fill_accounting_postgres.py`, `tests/test_monday_ci_workflows.py`, `tests/test_nightly_test_contract.py`, `tests/test_portfolio_availability_contract.py`, `tests/test_portfolio_service_comprehensive.py`, `tests/test_socketio_topic_authorization.py`, `tests/test_wave43_fixes.py`, `tests/test_wave52_fixes.py` |
-| Docs | 1 | `docs/engineering/MONDAY_CI_READINESS.md` |
-| Artifacts/evidence | 0 | none |
+| Tests | 17 | `tests/test_adversarial_inputs_v7.py`, `tests/test_fill_accounting_integrity.py`, `tests/test_fill_accounting_postgres.py`, `tests/test_monday_ci_workflows.py`, `tests/test_nightly_test_contract.py`, `tests/test_order_recovery_service.py`, `tests/test_outbox_fill_race.py`, `tests/test_paper_frontend_deployment.py`, `tests/test_portfolio_availability_contract.py`, `tests/test_portfolio_service_comprehensive.py` |
+| Docs | 3 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/MONDAY_CI_READINESS.md`, `docs/engineering/PAPER_OPERATOR_UI.md` |
+| Artifacts/evidence | 117 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 4 | `reports/PLATFORM_AUDIT_FROZEN_REPAIR_SCOPE_2026-09-26.md`, `reports/platform_audit_20260926/PLATFORM_REVIEW.md`, `reports/platform_audit_20260926/research_readiness.md`, `reports/platform_audit_20260926/research_readiness_sources.json` |
-| Configuration | 0 | none |
-| Other | 21 | `frontend/src/components/layout/GlobalStatusBar.test.tsx`, `frontend/src/components/layout/GlobalStatusBar.tsx`, `frontend/src/features/dashboard/Dashboard.test.tsx`, `frontend/src/features/dashboard/Dashboard.tsx`, `frontend/src/features/organism/OrganismDashboard.tsx`, `frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx`, `frontend/src/features/portfolio/PortfolioPage.test.tsx`, `frontend/src/features/portfolio/PortfolioPage.tsx`, `frontend/src/hooks/useData.ts`, `frontend/src/hooks/usePortfolio.test.tsx` |
+| Configuration | 1 | `docker-compose.paper.yml` |
+| Other | 30 | `frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`, `frontend/nginx.conf`, `frontend/src/App.tsx`, `frontend/src/components/auth/AuthBootstrap.test.tsx`, `frontend/src/components/auth/AuthBootstrap.tsx`, `frontend/src/components/auth/ProtectedRoute.tsx`, `frontend/src/components/layout/GlobalStatusBar.test.tsx`, `frontend/src/components/layout/GlobalStatusBar.tsx`, `frontend/src/features/dashboard/Dashboard.test.tsx` |
 
 Organism subset of Backend: **0** file(s).
 
 ### Full changed-file list
 
 - `.github/workflows/paper-readiness.yml`
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
+- `artifacts/platform_audit_20260926/active-freeze-final.log`
+- `artifacts/platform_audit_20260926/audit-index.log`
+- `artifacts/platform_audit_20260926/ci-workflow-contract-final.log`
+- `artifacts/platform_audit_20260926/ci-workflow-contract-final.xml`
+- `artifacts/platform_audit_20260926/ci-workflow-final.log`
+- `artifacts/platform_audit_20260926/ci-workflow-final.xml`
+- `artifacts/platform_audit_20260926/ci_independent_contract_tests.xml`
+- `artifacts/platform_audit_20260926/ci_independent_review.json`
+- `artifacts/platform_audit_20260926/composite-replay.xml`
+- `artifacts/platform_audit_20260926/config-ci-regression.log`
+- `artifacts/platform_audit_20260926/config-ci-regression.xml`
+- `artifacts/platform_audit_20260926/data_decision_proof.json`
+- `artifacts/platform_audit_20260926/data_decision_report.json`
+- `artifacts/platform_audit_20260926/data_decision_startup-proof.json`
+- `artifacts/platform_audit_20260926/evidence_export_receipt.json`
+- `artifacts/platform_audit_20260926/execution_accounting/audit_findings.json`
+- `artifacts/platform_audit_20260926/execution_accounting/fill_regressions_first_fix.json`
+- `artifacts/platform_audit_20260926/execution_accounting/fill_regressions_first_fix.stderr`
+- `artifacts/platform_audit_20260926/execution_accounting/fill_regressions_first_fix.stdout`
+- `artifacts/platform_audit_20260926/execution_accounting/fill_regressions_red.json`
+- `artifacts/platform_audit_20260926/execution_accounting/fill_regressions_red.stderr`
+- `artifacts/platform_audit_20260926/execution_accounting/fill_regressions_red.stdout`
+- `artifacts/platform_audit_20260926/execution_accounting/frozen_after.json`
+- `artifacts/platform_audit_20260926/execution_accounting/frozen_after.stderr`
+- `artifacts/platform_audit_20260926/execution_accounting/frozen_after.stdout`
+- `artifacts/platform_audit_20260926/execution_accounting/frozen_before.json`
+- `artifacts/platform_audit_20260926/execution_accounting/frozen_before.stderr`
+- `artifacts/platform_audit_20260926/execution_accounting/frozen_before.stdout`
+- `artifacts/platform_audit_20260926/execution_accounting/implementation.json`
+- `artifacts/platform_audit_20260926/execution_accounting/independent_fill_tests.xml`
+- `artifacts/platform_audit_20260926/execution_accounting/independent_review.json`
+- `artifacts/platform_audit_20260926/execution_accounting/intra-fill-expanded.log`
+- `artifacts/platform_audit_20260926/execution_accounting/intra-fill-expanded.xml`
+- `artifacts/platform_audit_20260926/execution_accounting/intra-fill-expanded2.log`
+- `artifacts/platform_audit_20260926/execution_accounting/intra-fill-expanded2.xml`
+- `artifacts/platform_audit_20260926/execution_accounting/intra-fill-expanded3.log`
+- `artifacts/platform_audit_20260926/execution_accounting/intra-fill-expanded3.xml`
+- `artifacts/platform_audit_20260926/execution_accounting/intra-fill-targeted.log`
+- `artifacts/platform_audit_20260926/execution_accounting/intra-fill-targeted.xml`
+- `artifacts/platform_audit_20260926/execution_accounting/lint_delta.json`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_acceptance_addendum.json`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_container.log`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_default_tests.xml`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_first_container.log`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_first_run_receipt.json`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_implementation.json`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_plan.json`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_run_receipt.json`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_test_executed.py.txt`
+- `artifacts/platform_audit_20260926/execution_accounting/postgres_tests.xml`
+- `artifacts/platform_audit_20260926/execution_accounting/pre_repair_proofs.json`
+- `artifacts/platform_audit_20260926/execution_accounting/pre_repair_proofs.stderr`
+- `artifacts/platform_audit_20260926/execution_accounting/pre_repair_proofs.stdout`
+- `artifacts/platform_audit_20260926/execution_accounting/repair_plan.json`
+- `artifacts/platform_audit_20260926/frontend_browser/login.png`
+- `artifacts/platform_audit_20260926/frontend_browser/preview.log`
+- `artifacts/platform_audit_20260926/frontend_browser/result.json`
+- `artifacts/platform_audit_20260926/frontend_browser_final/login.png`
+- `artifacts/platform_audit_20260926/frontend_browser_final/preview.log`
+- `artifacts/platform_audit_20260926/frontend_browser_final/result.json`
+- `artifacts/platform_audit_20260926/full-pack.log`
+- `artifacts/platform_audit_20260926/gitleaks-source.json`
+- `artifacts/platform_audit_20260926/gitleaks-source.log`
+- `artifacts/platform_audit_20260926/installed_release_runtime_config.json`
+- `artifacts/platform_audit_20260926/metadata-refresh.log`
+- `artifacts/platform_audit_20260926/nightly-contract-tests.xml`
+- `artifacts/platform_audit_20260926/nightly-replay.xml`
+- `artifacts/platform_audit_20260926/nightly_original_failures.json`
+- `artifacts/platform_audit_20260926/nightly_repair_plan.json`
+- `artifacts/platform_audit_20260926/organism-regression.log`
+- `artifacts/platform_audit_20260926/organism-regression.xml`
+- `artifacts/platform_audit_20260926/plan.json`
+- `artifacts/platform_audit_20260926/replay-selection.json`
+- `artifacts/platform_audit_20260926/runtime_observation.json`
+- `artifacts/platform_audit_20260926/validated_source_manifest.json`
+- `artifacts/platform_audit_20260926/verification_ui/backend_final.log`
+- `artifacts/platform_audit_20260926/verification_ui/backend_final.xml`
+- `artifacts/platform_audit_20260926/verification_ui/eslint_intermediate.json`
+- `artifacts/platform_audit_20260926/verification_ui/frontend_build.log`
+- `artifacts/platform_audit_20260926/verification_ui/frontend_final.log`
+- `artifacts/platform_audit_20260926/verification_ui/frontend_final.xml`
+- `artifacts/platform_audit_20260926/verification_ui/frontend_typecheck.log`
+- `artifacts/platform_audit_20260926/verification_ui/implementation_plan.json`
+- `artifacts/platform_audit_20260926/verification_ui/implementation_report.json`
+- `artifacts/platform_audit_20260926/verification_ui/offline_probes.json`
+- `artifacts/platform_audit_20260926/verification_ui/offline_probes.py`
+- `artifacts/platform_audit_20260926/verification_ui/plan.json`
+- `artifacts/platform_audit_20260926/verification_ui/ruff_final.json`
+- `artifacts/platform_audit_20260926/verification_ui/static_delta.json`
+- `artifacts/platform_audit_20260926/verification_ui_independent_review.json`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/resolved_config_snapshot.json`
+- `artifacts/runtime_config_snapshot.json`
+- `artifacts/runtime_defaults_snapshot.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
 - `backend/api/lifespan.py`
 - `backend/api/portfolio.py`
 - `backend/api/socketio_server.py`
+- `backend/infra/outbox_worker.py`
+- `backend/infra/repositories/orders.py`
 - `backend/integrations/alpaca_stream.py`
+- `backend/services/order_recovery_service.py`
 - `backend/services/portfolio_service.py`
+- `backend/services/scheduled_reconciliation.py`
+- `docker-compose.paper.yml`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `docs/engineering/MONDAY_CI_READINESS.md`
+- `docs/engineering/PAPER_OPERATOR_UI.md`
+- `frontend/Dockerfile`
+- `frontend/Dockerfile.dockerignore`
+- `frontend/nginx.conf`
+- `frontend/src/App.tsx`
+- `frontend/src/components/auth/AuthBootstrap.test.tsx`
+- `frontend/src/components/auth/AuthBootstrap.tsx`
+- `frontend/src/components/auth/ProtectedRoute.tsx`
 - `frontend/src/components/layout/GlobalStatusBar.test.tsx`
 - `frontend/src/components/layout/GlobalStatusBar.tsx`
 - `frontend/src/features/dashboard/Dashboard.test.tsx`
@@ -51,8 +182,10 @@ Organism subset of Backend: **0** file(s).
 - `frontend/src/services/api.ts`
 - `frontend/src/services/authService.test.tsx`
 - `frontend/src/services/authService.ts`
+- `frontend/src/services/originRouting.test.ts`
 - `frontend/src/services/websocketManager.test.tsx`
 - `frontend/src/services/websocketManager.ts`
+- `frontend/src/store/authStore.ts`
 - `frontend/src/store/portfolioStore.ts`
 - `frontend/src/test/portfolioFixture.ts`
 - `frontend/src/utils/portfolioSnapshot.test.ts`
@@ -61,16 +194,22 @@ Organism subset of Backend: **0** file(s).
 - `reports/platform_audit_20260926/PLATFORM_REVIEW.md`
 - `reports/platform_audit_20260926/research_readiness.md`
 - `reports/platform_audit_20260926/research_readiness_sources.json`
+- `scripts/ci/check_frontend_container.py`
 - `scripts/ci/nightly_test_contract.py`
 - `tests/test_adversarial_inputs_v7.py`
 - `tests/test_fill_accounting_integrity.py`
 - `tests/test_fill_accounting_postgres.py`
 - `tests/test_monday_ci_workflows.py`
 - `tests/test_nightly_test_contract.py`
+- `tests/test_order_recovery_service.py`
+- `tests/test_outbox_fill_race.py`
+- `tests/test_paper_frontend_deployment.py`
 - `tests/test_portfolio_availability_contract.py`
 - `tests/test_portfolio_service_comprehensive.py`
+- `tests/test_reachability_v8.py`
 - `tests/test_socketio_topic_authorization.py`
 - `tests/test_wave43_fixes.py`
+- `tests/test_wave51_fixes.py`
 - `tests/test_wave52_fixes.py`
 - `tests/unit/test_alpaca_stream_comprehensive.py`
 - `tests/unit/test_api_routes_mocked_coverage.py`
@@ -114,4 +253,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 5 backend runtime file(s) changed — require targeted verification
+- 9 backend runtime file(s) changed — require targeted verification

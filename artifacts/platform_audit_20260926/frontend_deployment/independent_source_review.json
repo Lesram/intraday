@@ -1,0 +1,74 @@
+{
+  "status": "SOURCE_ACCEPTED_ACTUAL_CONTAINER_PROOF_PENDING_PARENT",
+  "reviewed_at_utc": "2026-09-26T23:33:03.174579+00:00",
+  "reviewer": "daily_evidence_contract",
+  "files": [
+    {
+      "name": "frontend/Dockerfile",
+      "sha256": "46f12eb3ab97edd979217abdac8b289bbbbcbb4914ba34d6c105ca8d9295cc91"
+    },
+    {
+      "name": "frontend/Dockerfile.dockerignore",
+      "sha256": "b8fffb9e08dbb16aa470b2655354f11df1eb298880baa10c5a4d5a9924eb7292"
+    },
+    {
+      "name": "frontend/nginx.conf",
+      "sha256": "ab97353faec5164d2f604a80c9c1a6ed55cadb6aebf153cff523026a47a3cc88"
+    },
+    {
+      "name": "docker-compose.paper.yml",
+      "sha256": "fc73c8d6db66abd1d3684562118bc219d33e499c3e6834a1ba8771b2c82eb9f9"
+    },
+    {
+      "name": "scripts/ci/check_frontend_container.py",
+      "sha256": "697aa5474ffca6964dd60d1259e3245293b686e21525ab9961b18ee121914827"
+    },
+    {
+      "name": "tests/test_paper_frontend_deployment.py",
+      "sha256": "7f9576beabba55f24f274057580447f45cd1feb42c27d1e4f79259196583051b"
+    },
+    {
+      "name": "frontend/src/services/api.ts",
+      "sha256": "aae66087e204ae78cf6add16e28e6c76b0f8a313ae2a0e0278376d7cebae6155"
+    },
+    {
+      "name": "frontend/src/services/websocketManager.ts",
+      "sha256": "af1f4a4201ae2664234cff690ee1d3d9e4ed4e12ba28d0eb0a6ca74f34d60caf"
+    },
+    {
+      "name": "frontend/src/services/originRouting.test.ts",
+      "sha256": "30b6f1b1c1439ce10d6257ddcc3573bfc1888b7b3940104b7cec8fb0941ac3ba"
+    }
+  ],
+  "fixed_findings": [
+    "HTTP and Socket.IO now default to actual browser origin, with unset/empty/explicit override assertions on actual axios/io constructors.",
+    "Smoke helper inspects combined stdout/stderr for synthetic credentials.",
+    "Unique container names registered before creation attempt, so failed or timed-out creation is included in cleanup."
+  ],
+  "accepted_design": [
+    "Frontend-only Docker context allowlist; no env/brain/backend copying or runtime credential injection.",
+    "Nonroot/read-only/capability-free localhost5173 service on same Compose network; only tmpfs writable.",
+    "Nginx SPA fallback excludes missingassets and API failures; preserves API query/auth/host and websocket upgrade; Docker DNS re-resolves API replacement.",
+    "Access logging excludes request query/header/body; frontend-only health scope explicit.",
+    "Disposable smoke stub uses unique owned names/internal Docker network, no trading service or installed runtime; actual frame/HTTP503/newIP assertions are stronger than static config only."
+  ],
+  "evidence": {
+    "origin_author_report": {
+      "path": "artifacts/platform_audit_20260926/ui_origin/implementation.json",
+      "sha256": "86751b3960eb418b3354fbf5d18a8b8dcaa3c6bbe5a82fd594e8ebf0a5bb2b26"
+    },
+    "origin_junit": {
+      "path": "artifacts/platform_audit_20260926/ui_origin/targeted.xml",
+      "sha256": "eaa4bded6044d7f94a61158e4d3da898f00f7659495d151d514b5a0dd25346f2",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0
+    }
+  },
+  "limits": [
+    "Reviewer executed no Docker/container/runtime/browser action. Parent must bind successful actual source-bound build/proxy proof before deployment.",
+    "Raw websocket echo does not certify Socket.IO application protocol/authentication; prior synthetic backend integration is separate evidence.",
+    "This does not repair or dismiss parked dependency alerts."
+  ],
+  "blockers": []
+}

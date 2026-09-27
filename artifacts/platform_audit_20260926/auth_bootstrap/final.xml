@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="58" failures="0" errors="0" time="4.360432792">
+    <testsuite name="src/hooks/usePortfolio.test.tsx" timestamp="2026-09-26T23:57:21.616Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="1.112369125">
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; refresh replaces existing store and failure hides balances until verified recovery" time="1.053279833">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; does not overwrite a newer WebSocket observation with older HTTP cache data" time="0.054139291">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; expires an observation even if the refresh is hanging" time="0.002454292">
+        </testcase>
+        <testcase classname="src/hooks/usePortfolio.test.tsx" name="current portfolio hook &gt; polls again after ten seconds and never shows a previous user portfolio" time="0.001879125">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/api.test.ts" timestamp="2026-09-26T23:57:21.616Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.110845375">
+        <testcase classname="src/services/api.test.ts" name="concurrent 401 without refresh settle, and later login can refresh and retry" time="0.004732292">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh success cannot overwrite or clear replacement login" time="0.052555833">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh failure cannot overwrite or clear replacement login" time="0.051746959">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="queued retry cannot dispatch old work as a replacement principal" time="0.001190542">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/authService.test.tsx" timestamp="2026-09-26T23:57:21.616Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.064343833">
+        <testcase classname="src/services/authService.test.tsx" name="actual backend LoginResponse normalizes principal through auth store and portfolio query" time="0.0630485">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000562292">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000116625">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000110583">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/originRouting.test.ts" timestamp="2026-09-26T23:57:21.617Z" hostname="Marsels-MacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.071215917">
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP defaults to page origin when override is undefined" time="0.038064416">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP defaults to page origin when override is " time="0.005649375">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP preserves an explicit deployment origin" time="0.003191208">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin (undefined)" time="0.017940833">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin ()" time="0.003650375">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin (https://socket.example.test)" time="0.002123167">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/websocketManager.test.tsx" timestamp="2026-09-26T23:57:21.617Z" hostname="Marsels-MacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.011240542">
+        <testcase classname="src/services/websocketManager.test.tsx" name="logout closes connected session and removes private-delivery callbacks" time="0.008292166">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 2)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/websocketManager.test.tsx" name="token rotation while connected or connecting retires old transport and resubscribes once" time="0.00208425">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 8)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/websocketManager.test.tsx" name="an obsolete caller cannot open a socket using a retired token" time="0.000227917">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/auth/AuthBootstrap.test.tsx" timestamp="2026-09-26T23:57:21.618Z" hostname="Marsels-MacBook-Pro.local" tests="20" failures="0" errors="0" skipped="0" time="0.3373585">
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="reload restores once under StrictMode before protected HTTP/socket traffic" time="0.068819791">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration missing-refresh clears and redirects without mounting protected content" time="0.007371542">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration refresh-rejected clears and redirects without mounting protected content" time="0.007632667">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration malformed-refresh clears and redirects without mounting protected content" time="0.006359791">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration me-rejected clears and redirects without mounting protected content" time="0.005762125">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration wrong-principal clears and redirects without mounting protected content" time="0.00521925">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration inactive clears and redirects without mounting protected content" time="0.005165209">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration malformed-roles clears and redirects without mounting protected content" time="0.005055">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;success&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.001945">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;failure&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.001829375">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;success&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.054195042">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;failure&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.053543416">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;success&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.001925834">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;failure&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.001846625">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;success&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.053100167">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;failure&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.053959041">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="a nonresponding refresh is aborted at the whole-session deadline" time="0.00144375">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="anonymous startup finishes without network and explicit API origin is honored on reload" time="0.000637583">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="deadline clears the captured session even if refresh resolves after abort" time="0.000484417">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="deadline clears the captured session even if me resolves after abort" time="0.00037425">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/layout/GlobalStatusBar.test.tsx" timestamp="2026-09-26T23:57:21.620Z" hostname="Marsels-MacBook-Pro.local" tests="7" failures="0" errors="0" skipped="0" time="0.180886">
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; labels a genuine current portfolio without claiming broker connectivity" time="0.087147125">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark stale portfolio data current" time="0.019625125">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark future portfolio data current" time="0.014924125">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark missing portfolio data current" time="0.014706333">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark nan portfolio data current" time="0.0123885">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="portfolio observation status &gt; does not mark error portfolio data current" time="0.012671542">
+        </testcase>
+        <testcase classname="src/components/layout/GlobalStatusBar.test.tsx" name="ignores old user response after identity changes during request" time="0.018728083">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/auth/LoginPage.test.tsx" timestamp="2026-09-26T23:57:21.620Z" hostname="Marsels-MacBook-Pro.local" tests="10" failures="0" errors="0" skipped="0" time="2.4721735">
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in production even with the bypass flag enabled" time="1.093385375">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in development without explicit opt-in" time="0.030517375">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; retains the explicit development opt-in and only attempts once under StrictMode" time="0.0395905">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed plain username without changing the password" time="0.202878875">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed email without changing the password" time="0.18339425">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;&quot;)" time="0.217287291">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;   &quot;)" time="0.214577709">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;&quot;)" time="0.205606834">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;short&quot;)" time="0.206860042">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; provides honest recovery guidance without a dead recovery link" time="0.076858334">
+        </testcase>
+    </testsuite>
+</testsuites>

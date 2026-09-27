@@ -1,0 +1,110 @@
+{
+  "task_id": "outbox-fill-race",
+  "written_at_utc": "2026-09-26T23:42:38.551595+00:00",
+  "status": "SCOPED_IMPLEMENTATION_COMPLETE_PENDING_INDEPENDENT_REVIEW",
+  "summary": "Broker acknowledgement attachment now locks/rereads the order, rejects identity changes, consumes actual nested Alpaca fill summaries through the existing atomic accounting helper, and prevents stale ACK or synthetic mode changes from overwriting established real-fill evidence.",
+  "owned_source_hashes": {
+    "backend/infra/outbox_worker.py": "d31b791cc451c596e2c25f11b4406d0b60441b50d2c96f64835695f87072a1d6",
+    "tests/test_outbox_fill_race.py": "218f616a81e5143f9dc3e94c4c20bed05a4b3623897e43a8f4733c0c43a5914b"
+  },
+  "dependencies": {
+    "backend/services/order_recovery_service.py": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e",
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "tests/test_fill_accounting_integrity.py": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972"
+  },
+  "plan": {
+    "path": "artifacts/platform_audit_20260926/outbox_fill_race/plan.json",
+    "sha256": "12b0dd2989359ac13dc9fa221df169ae2b4d70a71770bfd878185d305e19b167"
+  },
+  "changes": [
+    "SELECT FOR UPDATE and populate_existing before ACK attachment serialize with existing stream/recovery writers; different persisted broker identity is rejected.",
+    "Real Alpaca dispatcher shape contains alpaca_response; original broker/client/symbol/side/requested quantity and fill/status fields validated by shared pure validate_order_snapshot.",
+    "First full/partial/terminal-partial real ACK applies cumulative cashflow through unchanged apply_order_fill_snapshot and commits summary+Execution+PositionLot/RealizedTrade+ORDER_FILLED audit together.",
+    "Stale lower cumulative ACK is ignored; duplicate is idempotent; same-quantity price correction stays explicit rather than rewriting lots.",
+    "Top-level mock/shadow compatibility retained for first ACK; delayed lower fills/partial-state demotions are blocked, and synthetic mode metadata cannot relabel an existing real broker UUID.",
+    "Only _update_order_status implementation changed in the existing worker; submission/retry/DLQ protocol remains byte/AST-equivalent outside this method."
+  ],
+  "validation": {
+    "expanded_final": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/expanded_final.xml",
+      "sha256": "9d187d7d303e3697be287e0512660d0e4bde37d6d3536c99c689eadfefc6d663",
+      "cases": 228,
+      "passed": 228,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "new_ack_cases": 33,
+    "earlier_green": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/targeted_01.xml",
+      "sha256": "c0eac158ca655d40f72dc8ff2798bcafe04c3e65acf0e2328eb92c8cf4365b70",
+      "cases": 27,
+      "passed": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "red_regressions": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/proof_real_shape_red.xml",
+      "sha256": "e10b3e9e492afc4a619242c2d8a37c69c4e915d9853e306fb18546b493a22187",
+      "cases": 5,
+      "passed": 0,
+      "failures": 5,
+      "errors": 0,
+      "skipped": 0
+    },
+    "red_scope": "Five desired-invariant failures: two actual nested real-dispatch cases (late new/zero ACK after filled; first filled ACK without accounted fills), plus three direct updater/top-level variants. The latter are not misrepresented as real dispatcher top-level fill fields.",
+    "test_environment": "Parent isolated runner; fresh scratch HOME/brain, synthetic SQLite, explicit async/timeout plugins, all network denied, installed writes/private runtime reads denied.",
+    "static": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/static_delta.json",
+      "sha256": "637d56264411a747e405f3d41173004985e56e01bd84afc8fb572ea464fa59d1",
+      "new_findings": 0,
+      "removed_findings": 2,
+      "new_tests_clean": true,
+      "only_owned_method_ast_changed": true
+    },
+    "freeze": {
+      "before": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "after": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "byte_equal": true,
+      "candidate_matches": true,
+      "basis": "Recorded candidate nonsecret environment; no actual runtime observation."
+    }
+  },
+  "limits": [
+    "SQLite tests prove transaction rollback and both serialized event orders; simultaneous PostgreSQL ACK-writer contention has not been separately exercised in this scoped receipt. Existing shared atomic helper/recovery PostgreSQL evidence is separate.",
+    "Outer _process_order_submitted currently classifies post-broker-success persistence exceptions as generic failure; a separate explicitly authorized follow-up is needed to preserve lookup-only/reconciliation-required classification. Parent/peer notified.",
+    "No old history rewrite, live broker/order/API call, installed runtime change, credential/model access, active cutoff/reset, or strategy change.",
+    "Full safety artifact pack/CI/docs/commit/PR are parent-owned and remain separate gates."
+  ],
+  "evidence": {
+    "proof_real_shape_red.log": {
+      "sha256": "7738a2ce0cddf860856bfacc61d3adbc29a1289369c543e561c4480a5a1b625a",
+      "bytes": 3412
+    },
+    "proof_test_delayed_ack.py.txt": {
+      "sha256": "2124ed465fd302cdd3b376880854c2fe4a06ba33080e1c9addc81fc3f1ea7cd8",
+      "bytes": 3443
+    },
+    "expanded_final.log": {
+      "sha256": "1fb9abb4695c8c3f45041bacc5b8d11a04c3e7e11d1906659617323707585000",
+      "bytes": 1940
+    },
+    "expanded_final.xml": {
+      "sha256": "9d187d7d303e3697be287e0512660d0e4bde37d6d3536c99c689eadfefc6d663",
+      "bytes": 33661
+    },
+    "frozen_before.json": {
+      "sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "bytes": 12792
+    },
+    "frozen_after.json": {
+      "sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "bytes": 12792
+    },
+    "static_delta.json": {
+      "sha256": "637d56264411a747e405f3d41173004985e56e01bd84afc8fb572ea464fa59d1",
+      "bytes": 366
+    }
+  }
+}

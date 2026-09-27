@@ -1,0 +1,30 @@
+{
+  "status": "ACCEPTED",
+  "reviewed_at_utc": "2026-09-26T23:46:39.717453+00:00",
+  "reviewer": "daily_evidence_contract",
+  "source_hashes": {
+    "tests/test_reachability_v8.py": "a2ee21a87fc574978119ba4dbf6b6625c240720a2b48e75f5ba0c60ccbbad65a"
+  },
+  "implementation_sha256": "6a89aad0370c667a11601ef8ae628d04db21232603c69b5ee7909e819c502337",
+  "findings": [
+    "Stale inline LotTracker source-string assertion replaced with actual live websocket ingress invocation.",
+    "Exact awaited helper args and accounting-before-commit-before-broadcast ordering are asserted.",
+    "Accounting exception must propagate without commit/broadcast; no fake successful lot application is inferred from this ingress-only mock.",
+    "Real lot/cashflow/rollback proof remains in unchanged functional accounting suite."
+  ],
+  "evidence": {
+    "targeted": {
+      "cases": 36,
+      "sha256": "177c6f774475e7d20c2e2630e1758fcbcfd05c1e509ac81aaccca41365fb5619"
+    },
+    "hosted_selection_local_replay": {
+      "cases": 292,
+      "sha256": "296109daaee49a4ebbeeafb45b17591cc3f3d43f3ef6f262e4ff04cfa55bba93"
+    }
+  },
+  "limitations": [
+    "No production edits from this test repair. Reviewer read code/verified author evidence without duplicate execution.",
+    "292 is local replay of hosted selection, not a newly observed GitHub run. Counts overlap and are not additive."
+  ],
+  "blockers": []
+}

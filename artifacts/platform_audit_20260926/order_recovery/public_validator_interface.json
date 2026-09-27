@@ -1,0 +1,14 @@
+{
+  "source_path": "backend/services/order_recovery_service.py",
+  "previous_sha256": "9eca5aab6ba19a30cd84976502d3169c136f5483981a49013427d77d605996ae",
+  "current_sha256": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e",
+  "delta": "Pure validator rename from _validate_snapshot to validate_order_snapshot plus its call and docstring. Prior bytes reconstructed exactly and hash matches PostgreSQL/expanded-test source. No changed validation semantics.",
+  "focused_tests": {
+    "path": "artifacts/platform_audit_20260926/order_recovery/public_validator.xml",
+    "sha256": "032cc57674ddce741ef9cf2829770feaca2701884d8b9ac67cef8feb10450c80",
+    "passed": 39,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

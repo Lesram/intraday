@@ -1,0 +1,19 @@
+{
+  "task_id": "platform-audit-20260926-recovery-ci",
+  "scope": "Keep the hosted operational suite mandatory for the new persisted unresolved-order recovery service.",
+  "files": [
+    ".github/workflows/paper-readiness.yml",
+    "tests/test_monday_ci_workflows.py"
+  ],
+  "tests": [
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_order_recovery_service.py",
+    "tests/test_away_mode_wave_b.py"
+  ],
+  "constraints": [
+    "No frozen surface or runtime settings changes",
+    "Preserve all existing test selections and failures",
+    "Root owns workflow and reporting; explorer owns recovery implementation"
+  ],
+  "hosted_follow_up": "Add tests/test_wave51_fixes.py to mandatory targeted nightly-harness inventory after observed obsolete UU2-C marker assertion; preserve its rollback failure contract with executed behavior."
+}

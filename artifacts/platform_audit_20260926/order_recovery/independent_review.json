@@ -1,0 +1,72 @@
+{
+  "status": "ACCEPTED",
+  "reviewed_at_utc": "2026-09-26T23:39:25.703563+00:00",
+  "reviewer": "daily_evidence_contract",
+  "implementation": {
+    "path": "artifacts/platform_audit_20260926/order_recovery/implementation.json",
+    "sha256": "f0d5a440ecf0e9e9f4feb9c5912fd4b83c3047c53ea8cc7a30e1bdd393cd20c2"
+  },
+  "source_hashes": {
+    "backend/services/order_recovery_service.py": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e",
+    "backend/infra/repositories/orders.py": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b",
+    "backend/services/scheduled_reconciliation.py": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5",
+    "backend/api/lifespan.py": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef",
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "tests/test_order_recovery_service.py": "071de3f7a229462735c8202d20f07915b1b02ebbf26ba74a2081a0581db56208",
+    "tests/test_fill_accounting_postgres.py": "09743dadd3e481c749345e1db14e9a45ee4ce9b8a9676fde7e0d4c765d4f3111"
+  },
+  "accepted_contract": [
+    "Positive persisted broker UUID/client-key plus real organism or exact outbox order/client lineage; original five unowned historical UNKNOWN rows are not inferred safe or rewritten.",
+    "Immutable-ID cursor advances on failure and wraps, including inserted-behind-cursor test; bounded continuing-process traversal, restart resets cursor.",
+    "Exact GET only with2s lookup/10s cooperative total deadline including DB read/row lock/commit and maximum20 requests.",
+    "Broker identity/symbol/side/original requested quantity revalidated; snapshot not trusted by brokerID alone; eligibility and identity reread under row lock.",
+    "Any replaced snapshot including0fill and internally inconsistent filled<requested are rejected unchanged.404 is unresolved, never inferred cancel.",
+    "Atomic fill helpers AST-identical to accepted85b2534 source; summary/Execution/lot/audit rollback and cumulative cashflow contracts preserved.",
+    "Startup, reconnect and periodic hooks invoke shared recovery; long outage anchor survives successful connect timestamp overwrite."
+  ],
+  "review_findings_closed": [
+    "Zero-filled replaced predecessor can hide successor; validator now refuses it and two consecutive passes prove unchanged persistence.",
+    "Filled quantity below requested quantity now refused; canceled/expired partial fixtures remain valid.",
+    "Added row behind cursor appears after wrap; positive PostgreSQL JSON/UUID scope and concurrent partial-fill lock wait are proven."
+  ],
+  "evidence": {
+    "expanded_final": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/expanded_02.xml",
+      "sha256": "bb84f83a219358e8f418ff2e3dba45b1c51f1914a0486f51a5d7a4b92584de19",
+      "cases": 261,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "postgres_real": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/postgres_01/postgres_tests.xml",
+      "sha256": "71e5b77e5dc779700d4273841e7bf3527b98f0408a23766ecbfb1ceedcadc54b",
+      "cases": 11,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "postgres_default": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/postgres_default.xml",
+      "sha256": "42bd4ea4d3c64bd1e0e3a4ddc9610f69f506c23bb0d7d1e7812b6d241ca7e67b",
+      "cases": 11,
+      "failure": 0,
+      "error": 0,
+      "skipped": 6
+    }
+  },
+  "freeze": {
+    "path": "artifacts/platform_audit_20260926/order_recovery/frozen_after.json",
+    "sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+    "before_after_byte_identical": true
+  },
+  "limitations": [
+    "No live runtime/broker/API/database query or mutation performed by reviewer.",
+    "Reviewed author261-case/11-case receipts rather than duplicating their suites; actual PostgreSQL proof has6 DB cases plus5 DSN safety cases and is not a stress certification.",
+    "Local cursor may be delayed by repeated restarts; excludes missing brokerIDs/unowned legacy and arbitrary old terminal history.",
+    "Existing recent-terminal fallback remains bounded independently.",
+    "Uncooperative sync work cannot be given a hard OS wall limit by asyncio.timeout.",
+    "Outbox delayed-ACK writer repair is separate, concurrently underway; this acceptance does not claim every writer is monotonic."
+  ],
+  "blockers": []
+}

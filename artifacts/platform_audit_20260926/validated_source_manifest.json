@@ -1,14 +1,14 @@
 {
-  "source_sha": "8ebbb1c126b59d111bc2b1be11f0a5592afd0142",
-  "generated_at": "2026-09-26T23:03:58.083048+00:00",
+  "source_sha": "efa2972de8b6d04d87ce07a17067efbd3274a015",
+  "generated_at": "2026-09-27T00:05:21.355649+00:00",
   "files": [
     {
       "path": ".github/workflows/paper-readiness.yml",
-      "sha256": "975e1552ff2ec2fb0a14d73fec2a1386d1b92eebf7eca935dc87dffe75af900c"
+      "sha256": "076a205de55f142c4c13bb15d21c364b235cc28d61c2fb76b44e6441eebf5b8b"
     },
     {
       "path": "backend/api/lifespan.py",
-      "sha256": "66264fc37295b295f28dc956bad23ac0a08f6c77c2a99853324961cde70a5208"
+      "sha256": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef"
     },
     {
       "path": "backend/api/portfolio.py",
@@ -19,16 +19,60 @@
       "sha256": "044f6d4fd76a8d343773dd68ae025b8852136e8068904a1b118b4df45b28e81e"
     },
     {
+      "path": "backend/infra/outbox_worker.py",
+      "sha256": "ac2ccecc3480ac74a4977416b83fae9af765de13bd729e2b92b38180dd753178"
+    },
+    {
+      "path": "backend/infra/repositories/orders.py",
+      "sha256": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b"
+    },
+    {
       "path": "backend/integrations/alpaca_stream.py",
-      "sha256": "fa46735e7848310c7bec651f20ed5939157dce1f193368117521e28bbb9b0373"
+      "sha256": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43"
+    },
+    {
+      "path": "backend/services/order_recovery_service.py",
+      "sha256": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e"
     },
     {
       "path": "backend/services/portfolio_service.py",
       "sha256": "52fdfb7b932fdf8714ff71f8863fc86081a50c76e122ba4ed5711bfdb01e549c"
     },
     {
-      "path": "docs/engineering/MONDAY_CI_READINESS.md",
-      "sha256": "81015ab0ea783a90303b9305e3237aaa95c6b1713754d237274fbcd8410afebc"
+      "path": "backend/services/scheduled_reconciliation.py",
+      "sha256": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5"
+    },
+    {
+      "path": "docker-compose.paper.yml",
+      "sha256": "fc73c8d6db66abd1d3684562118bc219d33e499c3e6834a1ba8771b2c82eb9f9"
+    },
+    {
+      "path": "frontend/Dockerfile",
+      "sha256": "46f12eb3ab97edd979217abdac8b289bbbbcbb4914ba34d6c105ca8d9295cc91"
+    },
+    {
+      "path": "frontend/Dockerfile.dockerignore",
+      "sha256": "b8fffb9e08dbb16aa470b2655354f11df1eb298880baa10c5a4d5a9924eb7292"
+    },
+    {
+      "path": "frontend/nginx.conf",
+      "sha256": "27e14db284ab69b7f49f67698a503adb91181979d8238780f983772d39fe1ea5"
+    },
+    {
+      "path": "frontend/src/App.tsx",
+      "sha256": "2e835cd783357e57450347d8f455a995019565fde2ba6139fab94cc143289ab4"
+    },
+    {
+      "path": "frontend/src/components/auth/AuthBootstrap.test.tsx",
+      "sha256": "5b97c956db85b2a66e6cb7874504550d695ec8da9ae82bede448ba4ef2c8fc69"
+    },
+    {
+      "path": "frontend/src/components/auth/AuthBootstrap.tsx",
+      "sha256": "c28e4385a511f04c39685b1ca7def95f34873d15e0163a377bda554fbd33ed91"
+    },
+    {
+      "path": "frontend/src/components/auth/ProtectedRoute.tsx",
+      "sha256": "4e00da40264e5c0a161fbb9d738c15e266c9477e99f705c946e690b41104de34"
     },
     {
       "path": "frontend/src/components/layout/GlobalStatusBar.test.tsx",
@@ -80,7 +124,7 @@
     },
     {
       "path": "frontend/src/services/api.ts",
-      "sha256": "8a1f9fea46a4919b774d974e42e5b56a06ffc1219220d4d64100e38ed0e32c06"
+      "sha256": "aae66087e204ae78cf6add16e28e6c76b0f8a313ae2a0e0278376d7cebae6155"
     },
     {
       "path": "frontend/src/services/authService.test.tsx",
@@ -88,7 +132,11 @@
     },
     {
       "path": "frontend/src/services/authService.ts",
-      "sha256": "fea1c9628e531996f45cac4f10bd336148fdf81ea42f518005ef4ddedbe69e59"
+      "sha256": "c948b7c16bab7d0c0012eae791b332b0b2740b13e5eccf4e56668f7b606a6446"
+    },
+    {
+      "path": "frontend/src/services/originRouting.test.ts",
+      "sha256": "30b6f1b1c1439ce10d6257ddcc3573bfc1888b7b3940104b7cec8fb0941ac3ba"
     },
     {
       "path": "frontend/src/services/websocketManager.test.tsx",
@@ -96,7 +144,11 @@
     },
     {
       "path": "frontend/src/services/websocketManager.ts",
-      "sha256": "47e8886c7f674b950432fa67442bd0776548c4103e79c9bb6192cb64c81da11a"
+      "sha256": "af1f4a4201ae2664234cff690ee1d3d9e4ed4e12ba28d0eb0a6ca74f34d60caf"
+    },
+    {
+      "path": "frontend/src/store/authStore.ts",
+      "sha256": "8ab239b3e8ef2faed8d7d50e8cf2dc3e0842ea62fdedeac9f45ad94e1f9e3b63"
     },
     {
       "path": "frontend/src/store/portfolioStore.ts",
@@ -115,20 +167,8 @@
       "sha256": "48578b4a821294140afd4b23823315ea661fef0be4964f915072c9a4e640dcd0"
     },
     {
-      "path": "reports/PLATFORM_AUDIT_FROZEN_REPAIR_SCOPE_2026-09-26.md",
-      "sha256": "8cddd7d3e7e12606680193e4f8bcb327503f8fa922b9354568ccb0e63b4516e8"
-    },
-    {
-      "path": "reports/platform_audit_20260926/PLATFORM_REVIEW.md",
-      "sha256": "82247ef57ccc81e5403090d160ad12b5ed867b413fbd35174274c6d161552564"
-    },
-    {
-      "path": "reports/platform_audit_20260926/research_readiness.md",
-      "sha256": "051522ac82f27fbcf0c4cc3f228a0726db49f4e7ccfcd92e2959158da7fbac86"
-    },
-    {
-      "path": "reports/platform_audit_20260926/research_readiness_sources.json",
-      "sha256": "4b3ce8c9c3a3f133ce38ee73b766b4eda36c041bcb9d09abeecb144f25bf9797"
+      "path": "scripts/ci/check_frontend_container.py",
+      "sha256": "f154f7e26e9274a21d1b409f587bbb0bc882110933786c8b81a190ccb09e589e"
     },
     {
       "path": "scripts/ci/nightly_test_contract.py",
@@ -144,15 +184,27 @@
     },
     {
       "path": "tests/test_fill_accounting_postgres.py",
-      "sha256": "67d3774da1549e68070f9f0d2c105e8d8c9f950e8548ef07d811a88e933dcce8"
+      "sha256": "ebd3db4875fbfd28b10b4b260915ac04610338406947cf392a95134f6507407d"
     },
     {
       "path": "tests/test_monday_ci_workflows.py",
-      "sha256": "dd657c00bcc705190186ca5eda52e7a46445b9a859374aafaae8dc04d151500d"
+      "sha256": "66c8e681032a3aedc3de7035f1b7598c1f34eccc894722f9e23d86f0a58945c5"
     },
     {
       "path": "tests/test_nightly_test_contract.py",
       "sha256": "6592cfc0b628bba5febe707b256ee46e8371db0c208a798b6e8ad7b751853906"
+    },
+    {
+      "path": "tests/test_order_recovery_service.py",
+      "sha256": "071de3f7a229462735c8202d20f07915b1b02ebbf26ba74a2081a0581db56208"
+    },
+    {
+      "path": "tests/test_outbox_fill_race.py",
+      "sha256": "f3a77660ca8779ed04e7bc078bfe7491f5025762591b0eedb38e18e9c4332843"
+    },
+    {
+      "path": "tests/test_paper_frontend_deployment.py",
+      "sha256": "7f9576beabba55f24f274057580447f45cd1feb42c27d1e4f79259196583051b"
     },
     {
       "path": "tests/test_portfolio_availability_contract.py",
@@ -163,12 +215,20 @@
       "sha256": "2a3537686ebee8f01132484ab8336ae51cb78c0d32e89c9b7a327371550d38a3"
     },
     {
+      "path": "tests/test_reachability_v8.py",
+      "sha256": "a2ee21a87fc574978119ba4dbf6b6625c240720a2b48e75f5ba0c60ccbbad65a"
+    },
+    {
       "path": "tests/test_socketio_topic_authorization.py",
       "sha256": "79af2b0af55f34a2c5031f3909a853431e0a115e344a8fcea825d45928aae179"
     },
     {
       "path": "tests/test_wave43_fixes.py",
       "sha256": "fee8b3e4873454983b6f58414a071a41a040d6a80f2f6cdc208729a79a56442a"
+    },
+    {
+      "path": "tests/test_wave51_fixes.py",
+      "sha256": "5b68d99c6d20fa8283ec0b725a1e4897e1fce1979690b88b0764730f4ab764e9"
     },
     {
       "path": "tests/test_wave52_fixes.py",
@@ -183,5 +243,5 @@
       "sha256": "7965ba0b9a5eeb10835f99f44492db1c00be42dcfcb328b8bd9a7e38b68b4810"
     }
   ],
-  "note": "Committed source/test/docs state; validation receipts separately bind each tested subset. Later evidence-only commit does not change these bytes."
+  "note": "Validated product/test/workflow source bytes. Subsequent human-report and evidence-only changes are excluded; every listed file must remain byte-identical. Per-scope receipts retain prior observations and red controls."
 }

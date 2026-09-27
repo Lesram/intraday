@@ -1,0 +1,18 @@
+{
+  "before_findings": 14,
+  "current_findings": 12,
+  "new_normalized_findings": 0,
+  "new_test_findings": 0,
+  "allowed_changed_methods": [
+    "_process_event",
+    "_process_order_submitted",
+    "_update_order_status"
+  ],
+  "all_other_source_ast_equal": true,
+  "frozen_before_final_equal": true,
+  "updater_ast_matches_postgres_proof": true,
+  "updater_ast_sha256": "fff04d2e61d836af49f8f659838996681bd276d2000fa4085abb644424273412",
+  "ast_interpreter": "3.12.12",
+  "source_sha256": "ac2ccecc3480ac74a4977416b83fae9af765de13bd729e2b92b38180dd753178",
+  "test_sha256": "f3a77660ca8779ed04e7bc078bfe7491f5025762591b0eedb38e18e9c4332843"
+}

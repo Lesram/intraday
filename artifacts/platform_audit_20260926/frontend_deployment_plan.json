@@ -1,0 +1,47 @@
+{
+  "task_id": "platform-audit-20260926-persistent-ui",
+  "scope": "Provide a persistent local operator interface with a consistent same-origin API and websocket path; prepare and validate only, do not activate on installed paper stack.",
+  "finding": "Paper compose runs API/Postgres/Redis but no frontend service, and source defaults split API/socket destinations.",
+  "files_before_edits": [
+    "frontend/Dockerfile",
+    "frontend/Dockerfile.dockerignore",
+    "frontend/nginx.conf",
+    "docker-compose.paper.yml",
+    "tests/test_paper_frontend_deployment.py",
+    "docs/engineering/PAPER_OPERATOR_UI.md",
+    ".github/workflows/paper-readiness.yml",
+    "tests/test_monday_ci_workflows.py",
+    "frontend/src/services/api.ts",
+    "frontend/src/services/websocketManager.ts",
+    "frontend/src/services/api.test.ts",
+    "frontend/src/services/websocketManager.test.tsx",
+    "scripts/ci/check_frontend_container.py"
+  ],
+  "ownership": {
+    "root": "Container/proxy/compose/CI/docs/configuration checks",
+    "combined_acceptance_review": "Frontend same-origin defaults and related tests"
+  },
+  "acceptance": [
+    "Pinned multi-stage image builds from lock; no .env, keys, models or trading state in UI context",
+    "UI binds only127.0.0.1:5173, unprivileged read-only runtime, bounded temporary filesystem",
+    "SPA deep links serve; unknown assets fail404; API failures stay errors; raw/Socket.IO websocket upgrades proxy",
+    "API restart DNS changes do not pin obsolete upstream address",
+    "Synthetic authenticated UI subset flow through owned resources; no real broker or installed API",
+    "Mandatory configuration/state/replay/artifact/freeze checks pass; no existing paper service settings altered"
+  ],
+  "constraints": [
+    "No API restart or runtime deployment",
+    "No strategy/feed/frozen changes",
+    "No parked dependency or legacy CI cleanup"
+  ],
+  "base_images": {
+    "node": "node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+    "nginx": "nginxinc/nginx-unprivileged:stable-alpine@sha256:4714e0b1b2577eaa1a6131d07c958b67f0eb68e6d0521e90c6e5287db8cf0bc5"
+  },
+  "image_documentation": "https://github.com/nginx/docker-nginx-unprivileged",
+  "tests": [
+    "tests/test_paper_frontend_deployment.py",
+    "tests/test_monday_ci_workflows.py",
+    "Actual isolated Docker proxy checks with scripts/ci/check_frontend_container.py"
+  ]
+}

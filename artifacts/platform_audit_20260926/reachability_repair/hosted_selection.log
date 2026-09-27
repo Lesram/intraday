@@ -1,0 +1,18 @@
+Isolated test scratch: /private/tmp/intra-audit-test-n0jx4qw7
+........................................................................ [ 24%]
+........................................................................ [ 49%]
+........................................................................ [ 73%]
+........................................................................ [ 98%]
+....                                                                     [100%]
+============================= slowest 10 durations =============================
+8.58s call     tests/test_wave48_fixes.py::test_z7_1_pytest_collection_clean
+5.53s call     tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_10_tick_invariants
+4.10s call     tests/test_organism_integration_smoke.py::TestFitnessGate::test_low_fitness_blocks_entry
+4.10s call     tests/test_organism_integration_smoke.py::TestBrainRoundTrip::test_tick_count_survives_restart
+2.06s call     tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_save_load_invariant
+2.04s call     tests/test_organism_integration_smoke.py::TestRetrainTrigger::test_bars_since_retrain_increments
+1.80s call     tests/test_organism_integration_smoke.py::TestPartialFillNoDoubleEntry::test_fresh_position_check_blocks_duplicate
+1.12s call     tests/test_organism_integration_smoke.py::TestGovernanceDrawdown::test_halts_on_drawdown
+0.81s call     tests/test_organism_integration_smoke.py::TestPartialFillNoDoubleEntry::test_no_double_entry_after_partial_fill
+0.41s call     tests/test_organism_integration_smoke.py::TestRetrainTrigger::test_retrain_resets_counter
+292 passed in 40.90s

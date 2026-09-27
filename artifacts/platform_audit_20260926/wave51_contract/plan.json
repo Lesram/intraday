@@ -1,0 +1,17 @@
+{
+  "task_id": "wave51-rollback-behavior-contract",
+  "authorized_scope": "Replace only stale UU2-C source-comment assertion in tests/test_wave51_fixes.py with actual stream accounting failure, shared session rollback, propagation and error logging behavior. No production or frozen edits.",
+  "owned_files": [
+    "tests/test_wave51_fixes.py::test_uu2_c_lot_tracker_rollback_logs_error"
+  ],
+  "tests": [
+    "Synthetic SQLite order and actual shared get_session_context; LotTracker failure triggers transaction rollback, leaves order/executions/lots unchanged, logs ERROR and propagates original exception.",
+    "Injected rollback exception remains logged and propagated with original accounting failure chained, while session close cleans transaction.",
+    "Run whole wave51 file plus existing accounting integrity suite; other wave51 test bodies unchanged."
+  ],
+  "constraints": [
+    "No network, broker, runtime, credentials, saved models or installed writes.",
+    "Do not restore an obsolete code-comment marker or relax accounting assertions.",
+    "Root owns mandatory CI wiring and full artifact pack."
+  ]
+}

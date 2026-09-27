@@ -1,0 +1,49 @@
+{
+  "source_head": "85b2534b3fdc1e72e3a9afb3c8e1a1a45bb0ef89",
+  "tool": "ruff 0.15.12",
+  "files": {
+    "backend/services/order_recovery_service.py": {
+      "sha256": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e",
+      "before_count": 0,
+      "after_count": 0,
+      "new_findings": []
+    },
+    "backend/infra/repositories/orders.py": {
+      "sha256": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b",
+      "before_count": 1,
+      "after_count": 1,
+      "new_findings": []
+    },
+    "backend/services/scheduled_reconciliation.py": {
+      "sha256": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5",
+      "before_count": 11,
+      "after_count": 11,
+      "new_findings": []
+    },
+    "backend/api/lifespan.py": {
+      "sha256": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef",
+      "before_count": 52,
+      "after_count": 52,
+      "new_findings": []
+    },
+    "backend/integrations/alpaca_stream.py": {
+      "sha256": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+      "before_count": 0,
+      "after_count": 0,
+      "new_findings": []
+    },
+    "tests/test_order_recovery_service.py": {
+      "sha256": "071de3f7a229462735c8202d20f07915b1b02ebbf26ba74a2081a0581db56208",
+      "before_count": 0,
+      "after_count": 0,
+      "new_findings": []
+    },
+    "tests/test_fill_accounting_postgres.py": {
+      "sha256": "09743dadd3e481c749345e1db14e9a45ee4ce9b8a9676fde7e0d4c765d4f3111",
+      "before_count": 0,
+      "after_count": 0,
+      "new_findings": []
+    }
+  },
+  "new_findings": []
+}

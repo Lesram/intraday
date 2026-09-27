@@ -1,0 +1,39 @@
+{
+  "task_id": "outbox-fill-race",
+  "authorized": true,
+  "scope": "Serialize delayed broker acknowledgement attachment against atomic fills; preserve broker identity, terminal outcomes and cumulative accounting. Consume actual nested Alpaca response through existing atomic fill helper so a first terminal acknowledgement cannot bypass execution/lot accounting. No broker calls or submission/cancellation changes.",
+  "owned_files": [
+    "backend/infra/outbox_worker.py::_update_order_status",
+    "tests/test_outbox_fill_race.py"
+  ],
+  "existing_helper_unchanged": "backend/integrations/alpaca_stream.py::apply_order_fill_snapshot",
+  "source_sha256_before": "0c072ed0894f4256870e930be089a17e16f6bc0cc33a5bbabeb3686c8aaed34a",
+  "frozen_inventory": "Owned source is not included by scripts/phase2_freeze.compute_surface; exact full surface and canonical/candidate bytes are checked before and after under recorded nonsecret candidate environment. No active runtime access.",
+  "tests": [
+    "Real nested Alpaca delayed ACK after filled/cancelled partial; no status/qty/cash rollback.",
+    "First real nested filled ACK commits execution/lot/summary together; duplicates no double-account.",
+    "Mismatched broker/client/symbol/side/qty, nonfinite fill and conflicting equal-qty cash fail closed.",
+    "Legitimate first zero-fill ACK; existing mock/shadow paths preserved.",
+    "Injected accounting/commit failure rolls back and retry safe; serial race orders cover both ACK-before-fill and fill-before-ACK.",
+    "Existing broker ACK reconciliation/outbox suites and required order integrity/reconciliation suites."
+  ],
+  "limits": [
+    "No source changes to outbox submit/retry/DLQ protocol, no new broker POST/GET/cancel.",
+    "No historical backfill or active freeze/cutoff/runtime/state modification.",
+    "PostgreSQL contention proof may be delegated using existing disposable harness; SQLite cannot alone prove row-lock behavior."
+  ],
+  "red_evidence": "Private5case executable red proof includes actual nested real-dispatch schema. Three direct updater variants additionally demonstrate top-level cumulative fields used by simulation/other callers; these are not misrepresented as real Alpaca dispatcher shape.",
+  "authorized_scope_extension": {
+    "approved_by": "root under user correctness-repair authorization",
+    "at_utc": "2026-09-26T23:43:20.666706+00:00",
+    "methods": [
+      "OutboxWorker._process_order_submitted",
+      "OutboxWorker._process_event (latch real-success marker before mark_sent persistence)"
+    ],
+    "scope": "Known real broker acknowledgement followed by local persistence failure uses existing original-client durable lookup-only marker and reconciliation-required DLQ. No submit/cancel/retry policy change.",
+    "tests": [
+      "Actual wrapper with real Alpaca adapter and mock HTTP -> nested filled ACK -> injected local accounting failure -> durable marker -> new worker exact client GET only -> recovery or truthful DLQ.",
+      "Successful fill commit followed by failed mark_sent commit also retains same lookup-only boundary."
+    ]
+  }
+}
