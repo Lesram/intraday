@@ -250,7 +250,12 @@ def test_readiness_runs_latest_data_and_prefill_regressions():
                  "tests/test_frontend_container_probe.py",
                  "tests/test_phase3_attribution_report.py"):
         assert path in step["run"]
-    assert step["timeout-minutes"] == 5
+    # The full operational selection needs margin beyond observed 3-5 minute
+    # hosted runs; individual cases retain their 30-second deadline.
+    assert step["timeout-minutes"] == 10
+    assert "--timeout=30" in step["run"]
+    assert not step.get("continue-on-error", False)
+    assert not job.get("continue-on-error", False)
     assert "set -o pipefail" in step["run"]
 
 

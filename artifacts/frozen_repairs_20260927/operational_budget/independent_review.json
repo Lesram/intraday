@@ -1,0 +1,123 @@
+{
+  "baseline_source_sha": "54c1ec1c73683d2bdb4054e07f5600a546a5965e",
+  "blocking_findings": [],
+  "existing_evidence_parsed": {
+    "focused_workflow_artifact_suites": {
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "passed": 102,
+        "skipped": 0
+      },
+      "junit": {
+        "path": "artifacts/frozen_repairs_20260927/operational_budget/final.xml",
+        "sha256": "91d1d0e83101af67df17343a574fde8972c3abad895de8bbd7dd21a4f537af17"
+      },
+      "log": {
+        "path": "artifacts/frozen_repairs_20260927/operational_budget/final.log",
+        "sha256": "0680dd6391778974d9744cacf2a1e81e93f8e11a8f09a0b0192bf6a0a91fcf61"
+      },
+      "modules": {
+        "tests.test_artifact_change_scope": 15,
+        "tests.test_artifact_workflow_contract": 18,
+        "tests.test_generate_artifacts": 40,
+        "tests.test_monday_ci_workflows": 29
+      }
+    },
+    "negative_budget_contract": {
+      "counts": {
+        "errors": 0,
+        "failed": 1,
+        "passed": 0,
+        "skipped": 0
+      },
+      "junit": {
+        "path": "artifacts/frozen_repairs_20260927/operational_budget/red.xml",
+        "sha256": "2c018817a043c8151938931b2ffe0588946d62f24dbcb9e4fdfd50565adf6e05"
+      },
+      "log": {
+        "path": "artifacts/frozen_repairs_20260927/operational_budget/red.log",
+        "sha256": "c1c1d779707e19c92654c25e58b1312d9f80c9b40a349b584464032c2c480d7a"
+      },
+      "modules": {
+        "tests.test_monday_ci_workflows": 1
+      }
+    }
+  },
+  "implementation": {
+    "path": "artifacts/frozen_repairs_20260927/operational_budget/implementation.json",
+    "sha256": "63a72d18319f0e1d3e9650dc4b9cfaf0768baa8dd12049ccb2ba8ee8235098cf"
+  },
+  "limits": [
+    "The original54 hosted operational failure remains failed and its exact cause is unresolved pending terminal logs; elapsed307seconds against300seconds alone does not establish sole cause.",
+    "This is an authorized aggregate robustness margin change, not a claim that an assertion or per-case timeout was fixed. Any concrete failure exposed by terminal logs still requires diagnosis.",
+    "102 local workflow/artifact contract cases passed; exact final-head hosted execution remains required.",
+    "Reviewer read source, immutable baseline and existing evidence only; no source changes, test reruns, CI actions, runtime operations or deployment."
+  ],
+  "original_hosted_observation": {
+    "path": "artifacts/frozen_repairs_20260927/operational_budget/hosted_before_repair.json",
+    "sha256": "bf55cee094f7c3c00a657ddcdcf767c5c3830c31ca83c012e8e9e24f1ba34da2"
+  },
+  "plan": {
+    "path": "artifacts/frozen_repairs_20260927/operational_budget/plan.json",
+    "sha256": "41f6c42b1a0a76c373b02c7ce40c0d22da50cfa1e24c1c5b96e8a285500591d9"
+  },
+  "reviewed_at_utc": "2026-09-27T20:48:55.438937+00:00",
+  "runtime_preservation": {
+    "active_authority_mutated": false,
+    "build_receipt": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-27/pr32-release/image/54c1ec1c73683d2bdb4054e07f5600a546a5965e/build_result.json",
+      "sha256": "39c41879abaa3be50cd09dc71c5278a17139155ceffd8312b3cfe0c6c80b834d"
+    },
+    "frozen_and_snapshot_references_equal_to_immutable_base": {
+      "artifacts/monday_readiness/frozen_surface_reference.json": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "artifacts/phase2/candidate_param_freeze.json": "b56d9285099500d915b5214f3210cab245a25228ff639ea0e40791f387b652cc",
+      "artifacts/phase2/param_freeze.json": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "artifacts/resolved_config_snapshot.json": "27c8c9e4e10b710165e786c955b3edd1075ee0439405d3019b47e0bc9c209e8e",
+      "artifacts/runtime_config_snapshot.json": "148eb77213ec05e167174812306d54f8165779565462a424ade1d969f031e672"
+    },
+    "runtime_manifest_files_equal": 583
+  },
+  "schema_version": 1,
+  "sources": [
+    {
+      "path": ".github/workflows/paper-readiness.yml",
+      "sha256": "4fa310a77824fa830d1c391e8434471f9efa1dd2eb5e6a6f0c3b776e1c6e4961"
+    },
+    {
+      "path": "tests/test_monday_ci_workflows.py",
+      "sha256": "c7f46d0ab914777042eee62b93ebcbfd0cbec6ceb21431c2320a296c6e36a9f9"
+    }
+  ],
+  "task_id": "pr32-operational-budget-independent-review",
+  "test_contract": {
+    "new_negative_case_detects_old_five_minute_budget": true,
+    "only_changed_function": "test_readiness_runs_latest_data_and_prefill_regressions",
+    "other_module_ast_equal": true,
+    "stricter_assertions": "Retains mandatory module coverage and additionally asserts 30-second case timeout and no continue-on-error at step/job."
+  },
+  "verdict": "ACCEPTED_BOUNDED_CI_BUDGET_CORRECTION_PENDING_FINAL_HOSTED_RUN",
+  "workflow_contract": {
+    "all_other_yaml_equal": true,
+    "always_upload_retained": true,
+    "authorized_changes_only": {
+      "job_minutes": [
+        120,
+        125
+      ],
+      "operational_step_minutes": [
+        5,
+        10
+      ]
+    },
+    "continue_on_error_absent": true,
+    "entire_operational_run_byte_equal": true,
+    "per_test_timeout_seconds": 30,
+    "pipefail_retained": true,
+    "reporting_reserve_minutes": 9,
+    "required_minimum_reserve": 5,
+    "selection_sha256": "6e17d26811037dfda4e25f3b1f9edb3de1be25169e493958a9f1c884f88be664",
+    "sum_explicit_minutes": 116,
+    "unchanged_selected_paths": 79
+  }
+}

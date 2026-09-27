@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.083" timestamp="2026-09-27T13:44:22.685571-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_monday_ci_workflows" name="test_readiness_runs_latest_data_and_prefill_regressions" time="0.006"><failure message="assert 5 == 10">def test_readiness_runs_latest_data_and_prefill_regressions():
+        job = _load("paper-readiness.yml")["jobs"]["operational-safety"]
+        step = next(step for step in job["steps"]
+                    if step.get("name") == "Verify operational fixes and trading safety")
+        for path in ("tests/unit/test_alpaca_data_comprehensive.py",
+                     "tests/unit/test_streaming_data_provider.py",
+                     "tests/unit/test_paper_data_freshness.py",
+                     "tests/test_live_engine_fill_accounting.py",
+                     "tests/test_order_recovery_service.py",
+                     "tests/test_outbox_fill_race.py",
+                     "tests/test_away_mode_wave_b.py",
+                     "tests/test_paper_frontend_deployment.py",
+                     "tests/test_frontend_container_probe.py",
+                     "tests/test_phase3_attribution_report.py"):
+            assert path in step["run"]
+        # The full operational selection needs margin beyond observed 3-5 minute
+        # hosted runs; individual cases retain their 30-second deadline.
+&gt;       assert step["timeout-minutes"] == 10
+E       assert 5 == 10
+
+tests/test_monday_ci_workflows.py:255: AssertionError</failure></testcase></testsuite></testsuites>

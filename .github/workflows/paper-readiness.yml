@@ -11,7 +11,7 @@ permissions:
 jobs:
   operational-safety:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 125
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       PYTHONPATH: .
@@ -61,7 +61,7 @@ jobs:
           subprocess.run([sys.executable, '-m', 'pip', 'install', pins[0]], check=True)
           PYCODE
       - name: Verify operational fixes and trading safety
-        timeout-minutes: 5
+        timeout-minutes: 10
         shell: bash
         run: |
           set -o pipefail

@@ -1,0 +1,44 @@
+{
+  "source_sha": "54c1ec1c73683d2bdb4054e07f5600a546a5965e",
+  "run_id": 36347889730,
+  "job_id": 108700712782,
+  "url": "https://github.com/Lesram/intraday/actions/runs/36347889730/job/108700712782",
+  "stage": {
+    "name": "Verify operational fixes and trading safety",
+    "status": "completed",
+    "conclusion": "failure",
+    "number": 6,
+    "started_at": "2026-09-27T20:27:04Z",
+    "completed_at": "2026-09-27T20:32:11Z"
+  },
+  "configured_step_minutes": 5,
+  "observed_elapsed_seconds": 307,
+  "raw_metadata": {
+    "path": "/private/tmp/intra-pr32-hosted-review-54c1/operational-live-job.json",
+    "sha256": "df39661263ee8283e9fd35625c60b7078d6b6947cd0b3042bd4461f35c4d3f64"
+  },
+  "prior_runs": [
+    {
+      "head": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+      "run_id": 36344234541,
+      "step_conclusion": "success",
+      "started_at": "2026-09-27T19:27:36Z",
+      "completed_at": "2026-09-27T19:30:45Z",
+      "elapsed_seconds": 189
+    },
+    {
+      "head": "9d18832bbda687d9d2d81a63c1d5e45a0b28d634",
+      "run_id": 36346786928,
+      "step_conclusion": "success",
+      "started_at": "2026-09-27T20:09:36Z",
+      "completed_at": "2026-09-27T20:13:18Z",
+      "elapsed_seconds": 222
+    }
+  ],
+  "diagnosis": "Observed 5m07s failure against 5min budget motivates more bounded CI headroom; sole failure cause NOT yet established.",
+  "terminal_log_available_at_author_finalization": false,
+  "fresh_junit": "Unavailable pending terminal artifact publication; no passing result substituted.",
+  "assertion_failure_status": "Unknown until terminal output; investigate separately if present.",
+  "failure_retained": true,
+  "old_tracked_operational_junit_exists": false
+}
