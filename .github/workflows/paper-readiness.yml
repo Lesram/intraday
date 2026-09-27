@@ -87,6 +87,7 @@ jobs:
             tests/test_audit_0_4_eod_flatten_escalation.py \
             tests/test_paper_runtime_config.py \
             tests/test_paper_frontend_deployment.py \
+            tests/test_frontend_container_probe.py \
             tests/test_admin_trading_execution_mode.py \
             tests/test_paper_watchdog.py \
             tests/test_session_logging_contract.py \

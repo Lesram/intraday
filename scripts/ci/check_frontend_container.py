@@ -8,9 +8,11 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import ipaddress
 import json
 from pathlib import Path
 import socket
+import re
 import subprocess
 import tempfile
 import time
@@ -61,6 +63,50 @@ def docker(*args: str, timeout: int = 90, merge_output: bool = False) -> str:
     if result.returncode:
         raise RuntimeError(f"docker {args[0]} failed: {result.stderr[-2000:]}")
     return (result.stdout + (result.stderr if merge_output else "")).strip()
+
+
+def available_probe_subnet() -> str:
+    """Choose an explicit private subnet without modifying existing networks.
+
+    Linux Docker requires user-configured IPAM for the old-address holder.
+    Docker's create-time overlap check remains authoritative if another process
+    allocates a network after this read-only inventory; do not retry or remove it.
+    """
+    ids = docker("network", "ls", "--no-trunc", "--quiet").splitlines()
+    if len(ids) > 256 or len(ids) != len(set(ids)) or any(
+        re.fullmatch(r"[0-9a-f]{64}", value) is None for value in ids
+    ):
+        raise ValueError("Invalid or oversized Docker network inventory")
+    networks = json.loads(docker("network", "inspect", *ids)) if ids else []
+    if not isinstance(networks, list) or len(networks) != len(ids):
+        raise ValueError("Incomplete Docker network inventory")
+    occupied = []
+    observed_ids = set()
+    for network in networks:
+        if not isinstance(network, dict) or network.get("Id") not in ids:
+            raise ValueError("Invalid Docker network identity")
+        observed_ids.add(network["Id"])
+        ipam = network.get("IPAM")
+        if not isinstance(ipam, dict):
+            raise ValueError("Missing Docker network IPAM")
+        configs = ipam.get("Config")
+        if configs is None or configs == []:
+            # Only positively identified host/none networks lack allocation.
+            if network.get("Driver") not in ("host", "null"):
+                raise ValueError("Unverified Docker network allocation")
+            configs = []
+        if not isinstance(configs, list) or len(configs) > 64:
+            raise ValueError("Invalid Docker subnet inventory")
+        for config in configs:
+            if not isinstance(config, dict) or not isinstance(config.get("Subnet"), str):
+                raise ValueError("Missing Docker subnet")
+            occupied.append(ipaddress.ip_network(config["Subnet"], strict=False))
+    if observed_ids != set(ids):
+        raise ValueError("Incomplete Docker network identities")
+    for candidate in ipaddress.ip_network("10.240.0.0/12").subnets(new_prefix=24):
+        if not any(item.version == 4 and candidate.overlaps(item) for item in occupied):
+            return str(candidate)
+    raise ValueError("No nonoverlapping private probe subnet available")
 
 
 def fetch(base: str, path: str):
@@ -118,8 +164,10 @@ def main() -> int:
     try:
         docker("image", "inspect", args.image)
         docker("pull", PYTHON_IMAGE, timeout=180)
-        docker("network", "create", "--internal", network)
+        subnet = available_probe_subnet()
+        docker("network", "create", "--internal", "--subnet", subnet, network)
         network_created = True
+        result["internal_subnet"] = subnet
         # Docker does not publish host ports for an internal-only network.
         # Only the credential-free UI joins this disposable ingress bridge;
         # the synthetic API remains internal with no published ports.
@@ -175,6 +223,7 @@ def main() -> int:
             start_api()
             new_ip = json.loads(docker("inspect", api))[0]["NetworkSettings"]["Networks"][network]["IPAddress"]
             assert new_ip != old_ip
+            result["api_replacement"] = {"old_ip": old_ip, "new_ip": new_ip}
             deadline = time.monotonic() + 25
             while time.monotonic() < deadline:
                 if fetch(base, "/api/v1/probe")[0] == 200:

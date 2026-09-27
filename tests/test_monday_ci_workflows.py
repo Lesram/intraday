@@ -247,6 +247,7 @@ def test_readiness_runs_latest_data_and_prefill_regressions():
                  "tests/test_outbox_fill_race.py",
                  "tests/test_away_mode_wave_b.py",
                  "tests/test_paper_frontend_deployment.py",
+                 "tests/test_frontend_container_probe.py",
                  "tests/test_phase3_attribution_report.py"):
         assert path in step["run"]
     assert step["timeout-minutes"] == 5
