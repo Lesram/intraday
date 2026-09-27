@@ -20,7 +20,7 @@ type BackendLoginResponse = {
   token_type?: string;
   expires_in?: number;
   user_id?: string | null;
-  refresh_token?: string; // M-30 FIX: Added to avoid 'as any' cast
+  refresh_token: string;
   user?: {
     username?: string;
     roles?: string[];
@@ -35,15 +35,25 @@ const derivePrimaryRole = (roles: string[] | undefined): User['role'] => {
   return 'viewer';
 };
 
-const normalizeLoginResponse = (raw: unknown): AuthResponse => {
+const hasRequiredTokens = (obj: unknown): obj is Pick<AuthResponse, 'access_token' | 'refresh_token'> => {
+  if (obj === null || typeof obj !== 'object') return false;
+  const tokens = obj as Partial<AuthResponse>;
+  return typeof tokens.access_token === 'string' && !!tokens.access_token.trim()
+    && typeof tokens.refresh_token === 'string' && !!tokens.refresh_token.trim();
+};
+
+export const normalizeLoginResponse = (raw: unknown): AuthResponse => {
   // M-30 FIX: Use type guard to avoid 'as any' casts
   const isFullAuthResponse = (obj: unknown): obj is AuthResponse => {
     return (
-      obj !== null &&
-      typeof obj === 'object' &&
-      'access_token' in obj &&
+      hasRequiredTokens(obj) &&
       'user' in obj &&
-      'refresh_token' in obj
+      typeof (obj as AuthResponse).user?.id === 'string' &&
+      !!(obj as AuthResponse).user.id &&
+      typeof (obj as AuthResponse).user.email === 'string' &&
+      typeof (obj as AuthResponse).user.name === 'string' &&
+      typeof (obj as AuthResponse).user.is_active === 'boolean' &&
+      ['admin', 'trader', 'viewer', 'risk_manager'].includes((obj as AuthResponse).user.role)
     );
   };
 
@@ -53,18 +63,21 @@ const normalizeLoginResponse = (raw: unknown): AuthResponse => {
   }
 
   const data = raw as BackendLoginResponse;
-  const username =
-    data?.user?.username ||
-    data?.user_id ||
-    'unknown@example.com';
+  const username = data?.user?.username ?? data?.user_id;
+  const roles = data?.user?.roles;
+  if (!hasRequiredTokens(data)
+      || typeof username !== 'string' || !username.trim()
+      || (data.user?.username && data.user_id && data.user.username !== data.user_id)
+      || !Array.isArray(roles) || roles.some((role) => typeof role !== 'string')) {
+    throw new Error('Invalid authenticated user response');
+  }
 
-  const roles = data?.user?.roles ?? [];
   const role = derivePrimaryRole(roles);
   const name = username.includes('@') ? username.split('@')[0] : username;
 
   return {
     access_token: data.access_token,
-    refresh_token: data.refresh_token || '', // M-30 FIX: Use typed property
+    refresh_token: data.refresh_token,
     token_type: data.token_type ?? 'bearer',
     expires_in: data.expires_in ?? 3600,
     user: {

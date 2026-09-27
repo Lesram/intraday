@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.134" timestamp="2026-09-27T11:21:53.413241-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_phase2_freeze" name="test_pipeline_source_drift_invalidates_freeze_without_reset[alpaca_market_data_stream]" time="1.026"><failure message="assert 0 == 1&#10; +  where 0 = verify()">tests/test_phase2_freeze.py:243: in test_pipeline_source_drift_invalidates_freeze_without_reset
+    assert verify() == 1
+E   assert 0 == 1
+E    +  where 0 = verify()</failure></testcase></testsuite></testsuites>

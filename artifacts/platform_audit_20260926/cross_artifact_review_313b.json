@@ -1,0 +1,126 @@
+{
+  "status": "ACCEPTED_COMMITTED_SOURCE_AND_EVIDENCE_WITH_INVENTORY_SCOPE_CLARIFICATION",
+  "reviewed_at_utc": "2026-09-27T00:14:18.336137+00:00",
+  "head": "313b4902fa9cfcf75d69b9a41257df9a5ac3754f",
+  "validated_product_source": "efa2972de8b6d04d87ce07a17067efbd3274a015",
+  "scope": "Read-only cross-artifact review only. No source review rerun, tests, runtime, auth, broker, deployment or mutation. Pending worktree probe helper extension is outside this receipt.",
+  "source_manifest": {
+    "files": 60,
+    "all_match_product_and_head": true,
+    "mismatches": []
+  },
+  "exports": [
+    {
+      "path": "artifacts/platform_audit_20260926/frontend_deployment/independent_source_review.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/frontend_deployment/independent_final_review.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/auth_bootstrap/implementation.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": false
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/ui_origin/implementation.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": false
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/order_recovery/frozen_before.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/frozen_before.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/frozen_final.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/order_recovery/frozen_after.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/auth_bootstrap/independent_review.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/frozen_after.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/wave51_contract/frozen_after.json",
+      "export_digest_matches": true,
+      "original_reconstructed": true,
+      "original_final_newline": true
+    }
+  ],
+  "local_pack_counts": {
+    "core": 168,
+    "replay": 28,
+    "semantic": 20,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "method": "Parsed exact referenced JUnit cases and compared JSON totals"
+  },
+  "independent_receipts": {
+    "checked": 10,
+    "current_or_losslessly_reconstructed_links_valid": true,
+    "historical_ui_source_supersession": [
+      "frontend/src/services/api.ts and websocketManager.ts bound by frontend_deployment/independent_final_review and auth_bootstrap/independent_review",
+      "frontend/src/services/authService.ts bound by auth_bootstrap/independent_review"
+    ],
+    "private_original_ui_report_and_63_case_junit_hashes_match": true,
+    "no_public_identical_copy_for_two_private_originals": "Historical original report and JUnit remain privately retained; public exported report/later104-case proof present; not a public-only reproduction claim."
+  },
+  "inventory_clarification": {
+    "generated_range_count": 184,
+    "equals_exact_base_to_product": true,
+    "final_delivery_count": 297,
+    "later_evidence_only_paths_omitted": 113,
+    "locations": [
+      "artifacts/changed_files.json:3",
+      "docs/engineering/LIVE_AUDIT_INDEX.md:8",
+      "docs/engineering/LIVE_AUDIT_INDEX.md:12",
+      "docs/engineering/LIVE_AUDIT_INDEX.md:14",
+      "docs/engineering/LIVE_AUDIT_INDEX.md:30"
+    ],
+    "resolution_agreed_with_root": "Replace mutable HEAD range with full validated product source SHA; label inventory as that immutable generation boundary and exclude later evidence-only deliveries explicitly."
+  },
+  "claims_review": {
+    "local_vs_initial_hosted_distinguished": true,
+    "initial_hosted_2_failures_retained": true,
+    "not_deployed_explicit": true,
+    "frozen_repairs_pending_approval_explicit": true,
+    "no_strategy_profitability_claim": true,
+    "offline_snapshot_labeled_not_runtime_observation": true
+  },
+  "limits": [
+    "Current final hosted gates are root-owned and not accepted by this receipt.",
+    "Pending Linux Docker probe extension requires new source/evidence binding.",
+    "No statement of universal correctness, deployment readiness, frozen approval or trading profitability."
+  ]
+}

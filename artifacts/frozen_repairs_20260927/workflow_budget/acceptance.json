@@ -1,0 +1,24 @@
+{
+  "task_id": "PR32-workflow-step-budget",
+  "scope": "One workflow ceiling110\u2192120; leave every test and timeout unchanged",
+  "source_before": "e5376e93d4f68d717d963ce5bcb033d5b431298a",
+  "product_source_unchanged": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+  "files_changed": [
+    ".github/workflows/paper-readiness.yml"
+  ],
+  "workflow_sha256": "46b21b974e7bb1674d4ed3b09304bdfa25c72b1fbdfaf07f0763774570e64958",
+  "step_minutes": 111,
+  "job_minutes": 120,
+  "reserved_minutes": 9,
+  "tests_passed": 155,
+  "tests_failed": 0,
+  "junit_sha256": "6f09d72670740bea5db221c7863037b1c29d2115a3d63c19f7b7da53b4c62798",
+  "candidate_freeze_verify_exit": 0,
+  "active_authority_changed": false,
+  "independent_reviewer": "root",
+  "limits": [
+    "Prior green source/replay evidence retains originalSHA; hosted checks must pass on newdeliveryhead",
+    "Earlier artifact-reporting153pass2fail preserved; no test removed/weakened"
+  ],
+  "approval_reference": "artifacts/frozen_repairs_20260927/plan.json"
+}

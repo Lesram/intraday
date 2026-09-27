@@ -1,0 +1,23 @@
+{
+  "task_id": "platform-audit-nightly-contract",
+  "evidence": "GitHub run36211294000 actual source87c1add;17 failed/error outcomes:2 obsolete health test contracts and15 coverage-timeout outcomes across10 fixture/test computations",
+  "files": [
+    "scripts/ci/nightly_test_contract.py",
+    "tests/test_nightly_test_contract.py",
+    "tests/unit/test_api_routes_mocked_coverage.py",
+    "tests/test_wave52_fixes.py",
+    "tests/test_monday_ci_workflows.py",
+    ".github/workflows/paper-readiness.yml",
+    "docs/engineering/MONDAY_CI_READINESS.md"
+  ],
+  "change": "Update stale readiness fixtures/behavior assertions; route explicitly enumerated expensive cases to required no-coverage replay lane without dropping assertions, editing explicit timeout markers, or touching parked legacy CI trio",
+  "tests": [
+    "reproduce2 health failures",
+    "nightly collector contract incl parametrized inventory and filter failure",
+    "health test modules and readiness contract",
+    "all required replay nodes without coverage and timing evidence"
+  ],
+  "runtime_behavior_changed": false,
+  "frozen_surface_changed": false,
+  "timeout_scope": "Moved unmarked cases inherit the existing replay120s default instead of core30s; explicit180/300s markers unchanged."
+}

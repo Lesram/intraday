@@ -15,7 +15,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/services/api';
 import { usePortfolio } from '@/hooks/useData';
-import { usePortfolioStore, type Position } from '@/store/portfolioStore';
+import type { Position } from '@/store/portfolioStore';
 
 const { Title, Text } = Typography;
 
@@ -36,8 +36,7 @@ const PortfolioPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Use the same hook as Dashboard for portfolio data (WebSocket-backed store)
-  const { isLoading: portfolioLoading, error: portfolioError, refetch: refetchPortfolio } = usePortfolio();
-  const portfolio = usePortfolioStore((state) => state.portfolio);
+  const { data: portfolio, isLoading: portfolioLoading, error: portfolioError, refetch: refetchPortfolio } = usePortfolio();
 
   // Performance metrics (separate endpoint, not available via WebSocket)
   const { data: performance } = useQuery<PerformanceMetrics>({
@@ -71,10 +70,10 @@ const PortfolioPage = () => {
     );
   }
 
-  if (portfolioError && !portfolio) {
+  if (portfolioError || !portfolio) {
     return (
       <div style={{ padding: 24 }}>
-        <Alert message="Portfolio Error" description={String(portfolioError)} type="error" showIcon
+        <Alert message="Portfolio Error" description="Current balances and positions could not be verified." type="error" showIcon
           action={<Button onClick={() => refetchPortfolio()} icon={<ReloadOutlined />}>Retry</Button>}
         />
       </div>
@@ -148,7 +147,7 @@ const PortfolioPage = () => {
           <Card>
             <Tooltip title="Total unrealized P&L across all open positions">
               <Statistic
-                title="Total P&L"
+                title="Open P&L"
                 value={portfolio?.totalPnL ?? 0}
                 precision={2}
                 prefix={<DollarOutlined />}
@@ -160,14 +159,14 @@ const PortfolioPage = () => {
         </Col>
         <Col span={6}>
           <Card>
-            <Tooltip title="Profit/loss for today's trading session">
+            <Tooltip title="Change in broker account equity since prior-session equity; may include cashflows.">
               <Statistic
-                title="Day P&L"
+                title="Day Equity Change"
                 value={portfolio?.dayPnL ?? 0}
                 precision={2}
                 prefix={(portfolio?.dayPnL ?? 0) >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
                 valueStyle={{ color: (portfolio?.dayPnL ?? 0) >= 0 ? '#3f8600' : '#cf1322' }}
-                suffix={portfolio?.dayPnLPercent ? `(${portfolio.dayPnLPercent.toFixed(1)}%)` : ''}
+                suffix={portfolio.dayPnLPercent === null ? 'N/A (zero prior equity)' : `(${portfolio.dayPnLPercent.toFixed(1)}%)`}
               />
             </Tooltip>
           </Card>

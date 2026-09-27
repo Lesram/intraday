@@ -1,0 +1,148 @@
+Isolated test scratch: /private/tmp/intra-audit-test-k527g8qb
+............FF......F......FF.......................                     [100%]
+=================================== FAILURES ===================================
+__________ test_stale_prefill_uses_event_age_and_forces_rest_fallback __________
+
+    @pytest.mark.asyncio
+    async def test_stale_prefill_uses_event_age_and_forces_rest_fallback():
+        provider = StreamingDataProvider(time_fn=lambda: NOW.timestamp())
+        latest = NOW - timedelta(days=2)
+        data = AsyncMock()
+        data.get_historical_bars_df.return_value = frame([latest-timedelta(minutes=1), latest])
+        await provider._prefill(["AAPL"], data)
+        assert provider.bar_count("AAPL") == 2
+>       assert provider.get_bar_age("AAPL") == 2*86400
+E       AssertionError: assert inf == (2 * 86400)
+E        +  where inf = get_bar_age('AAPL')
+E        +    where get_bar_age = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10a3b7bc0>.get_bar_age
+
+tests/unit/test_paper_data_freshness.py:135: AssertionError
+_____ test_unsorted_prefill_is_chronological_and_uses_newest_not_last_row ______
+
+    @pytest.mark.asyncio
+    async def test_unsorted_prefill_is_chronological_and_uses_newest_not_last_row():
+        provider = StreamingDataProvider(buffer_size=2, time_fn=lambda: NOW.timestamp())
+        data = AsyncMock()
+        data.get_historical_bars_df.return_value = frame([
+            NOW-timedelta(seconds=30), NOW-timedelta(seconds=150), NOW-timedelta(seconds=90),
+        ])
+        await provider._prefill(["AAPL"], data)
+>       assert provider.get_bar_age("AAPL") == 30
+E       AssertionError: assert inf == 30
+E        +  where inf = get_bar_age('AAPL')
+E        +    where get_bar_age = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10a3b65a0>.get_bar_age
+
+tests/unit/test_paper_data_freshness.py:149: AssertionError
+__________ test_stale_second_symbol_does_not_lower_global_event_time ___________
+
+    @pytest.mark.asyncio
+    async def test_stale_second_symbol_does_not_lower_global_event_time():
+        provider = StreamingDataProvider(time_fn=lambda: NOW.timestamp())
+        data = AsyncMock(); data.get_historical_bars_df.side_effect = [
+            frame([NOW-timedelta(seconds=30)]), frame([NOW-timedelta(days=2)]),
+        ]
+        await provider._prefill(["AAPL", "MSFT"], data)
+>       assert provider.last_update_time == NOW.timestamp()-30
+E       assert None == (1789761580.0 - 30)
+E        +  where None = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10a629c40>.last_update_time
+E        +  and   1789761580.0 = <built-in method timestamp of datetime.datetime object at 0x10538a4f0>()
+E        +    where <built-in method timestamp of datetime.datetime object at 0x10538a4f0> = datetime.datetime(2026, 9, 18, 19, 59, 40, tzinfo=datetime.timezone.utc).timestamp
+
+tests/unit/test_paper_data_freshness.py:186: AssertionError
+__ test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True] __
+
+tmp_path = PosixPath('/private/tmp/intra-audit-test-k527g8qb/pytest-of-marselkei/pytest-0/test_real_streaming_feeder_rec0')
+feature_store = True
+
+    @pytest.mark.parametrize("feature_store", [True, False])
+    @pytest.mark.timeout(120)
+    def test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol(tmp_path, feature_store):
+        output = tmp_path / "profile.json"
+        env = {**os.environ, "TESTING": "true", "USE_MOCK_DATA": "true", "USE_MOCK_BROKER": "true",
+               "ORGANISM_LIVE_TIMEFRAME": "1Min", "ORGANISM_LIVE_LOOKBACK": "80", "ORGANISM_MIN_BARS": "50",
+               "PYTHONPATH": str(ROOT), "PYTHONDONTWRITEBYTECODE": "1"}
+        command = [sys.executable, "-B", str(SCRIPT), "--loads", "2", "--rows", "80", "--repeats", "2",
+                   "--profile", "--held-symbol", "--output", str(output)]
+        if not feature_store:
+            command.append("--no-feature-store")
+        process = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=110)
+>       assert process.returncode == 0, process.stdout[-3000:] + process.stderr[-3000:]
+E       AssertionError: Traceback (most recent call last):
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 322, in <module>
+E             raise SystemExit(main())
+E                              ^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 312, in main
+E             report = asyncio.run(experiment(args))
+E                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
+E             return runner.run(main)
+E                    ^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+E             return self._loop.run_until_complete(task)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+E             return future.result()
+E                    ^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 268, in experiment
+E             runs = [await measure_load(count, args.rows, args.repeats, profiles=args.profile,
+E                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 224, in measure_load
+E             raise AssertionError("Synthetic streaming prefill was not complete/fresh")
+E         AssertionError: Synthetic streaming prefill was not complete/fresh
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/marselkei/VS/intra/venv/bin/python', '-B', '/Users/marselkei/.codex/worktrees/platform-...etic streaming prefill was not complete/fresh")\nAssertionError: Synthetic streaming prefill was not complete/fresh\n').returncode
+
+tests/test_pipeline_profile.py:55: AssertionError
+_ test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False] __
+
+tmp_path = PosixPath('/private/tmp/intra-audit-test-k527g8qb/pytest-of-marselkei/pytest-0/test_real_streaming_feeder_rec1')
+feature_store = False
+
+    @pytest.mark.parametrize("feature_store", [True, False])
+    @pytest.mark.timeout(120)
+    def test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol(tmp_path, feature_store):
+        output = tmp_path / "profile.json"
+        env = {**os.environ, "TESTING": "true", "USE_MOCK_DATA": "true", "USE_MOCK_BROKER": "true",
+               "ORGANISM_LIVE_TIMEFRAME": "1Min", "ORGANISM_LIVE_LOOKBACK": "80", "ORGANISM_MIN_BARS": "50",
+               "PYTHONPATH": str(ROOT), "PYTHONDONTWRITEBYTECODE": "1"}
+        command = [sys.executable, "-B", str(SCRIPT), "--loads", "2", "--rows", "80", "--repeats", "2",
+                   "--profile", "--held-symbol", "--output", str(output)]
+        if not feature_store:
+            command.append("--no-feature-store")
+        process = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=110)
+>       assert process.returncode == 0, process.stdout[-3000:] + process.stderr[-3000:]
+E       AssertionError: Traceback (most recent call last):
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 322, in <module>
+E             raise SystemExit(main())
+E                              ^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 312, in main
+E             report = asyncio.run(experiment(args))
+E                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
+E             return runner.run(main)
+E                    ^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+E             return self._loop.run_until_complete(task)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+E             return future.result()
+E                    ^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 268, in experiment
+E             runs = [await measure_load(count, args.rows, args.repeats, profiles=args.profile,
+E                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 224, in measure_load
+E             raise AssertionError("Synthetic streaming prefill was not complete/fresh")
+E         AssertionError: Synthetic streaming prefill was not complete/fresh
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/marselkei/VS/intra/venv/bin/python', '-B', '/Users/marselkei/.codex/worktrees/platform-...etic streaming prefill was not complete/fresh")\nAssertionError: Synthetic streaming prefill was not complete/fresh\n').returncode
+
+tests/test_pipeline_profile.py:55: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/test_paper_data_freshness.py::test_stale_prefill_uses_event_age_and_forces_rest_fallback
+FAILED tests/unit/test_paper_data_freshness.py::test_unsorted_prefill_is_chronological_and_uses_newest_not_last_row
+FAILED tests/unit/test_paper_data_freshness.py::test_stale_second_symbol_does_not_lower_global_event_time
+FAILED tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+FAILED tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]
+5 failed, 47 passed in 4.73s

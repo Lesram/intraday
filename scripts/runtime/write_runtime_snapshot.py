@@ -32,6 +32,9 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.close_accounting import ACCOUNTING_POLICY
         from backend.organism.composite_indicators import COMPOSITE_COLUMNS
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
+        from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
+        from backend.organism.streaming_data_provider import StreamingDataProvider
+        from backend.organism import operator_cancellation
         from scripts.phase2_freeze import compute_data_pipeline_sources
         from backend.organism.research_policy import policy_status
         from backend.organism.governance import (
@@ -78,8 +81,26 @@ def _build_defaults_snapshot() -> dict:
             # bound to this candidate before these hashes describe deployment.
             "candidate_data_pipeline_sources": compute_data_pipeline_sources(),
             "composite_feature_columns": list(COMPOSITE_COLUMNS),
+            "pending_entry_resolution": {
+                "call_timeout_seconds": operator_cancellation.CALL_TIMEOUT,
+                "total_timeout_seconds": operator_cancellation.TOTAL_TIMEOUT,
+                "confirmation_attempts": operator_cancellation.CONFIRM_ATTEMPTS,
+                "inventory_limit": operator_cancellation.INVENTORY_LIMIT,
+                "filled_entry_cooldown": "preserve_engine_pending_entry_ticks",
+                "expiry": "unresolved_identity_never_expires_by_time",
+                "release": "broker_terminal_and_exact_accounting_exposure_confirmation",
+                "ordinary_reconciliation": "read_only_after_fill_accounting",
+                "retry_order": "resume_after_last_attempted_identity",
+            },
             "streaming_subscription_sync": {
                 "timeout_seconds": OrganismLiveEngine._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S,
+                "ack_timeout_seconds": AlpacaMarketDataStream.SUBSCRIPTION_ACK_TIMEOUT_S,
+                "subscription_retry_interval_seconds": AlpacaMarketDataStream.SUBSCRIPTION_RETRY_INTERVAL_S,
+                "startup_retry_interval_seconds": StreamingDataProvider.STARTUP_RETRY_INTERVAL_S,
+                "startup_timeout_seconds": StreamingDataProvider.STARTUP_TIMEOUT_S,
+                "completion": "provider_confirmed_bars_and_quotes_current_connection",
+                "unsubscribe": "retain_until_provider_confirmed_removal",
+                "historical_prefill": "history_only_never_a_live_receipt",
                 "universe": "constructor_base_plus_SPY_QQQ_current_universe_and_held_positions",
                 "checked_at": "after_fresh_position_query_before_entry_dispatch",
                 "failure": "block_entries_retry_next_tick_preserve_exits",
@@ -405,6 +426,7 @@ def _build_resolved_config_snapshot() -> dict:
         "candidate_data_pipeline_sources": defaults.get("candidate_data_pipeline_sources"),
         "composite_feature_columns": defaults.get("composite_feature_columns"),
         "streaming_subscription_sync": defaults.get("streaming_subscription_sync"),
+        "pending_entry_resolution": defaults.get("pending_entry_resolution"),
         "entry_freshness": defaults.get("entry_freshness"),
         "drawdown_kill_pct": _resolve_float(
             "ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct", "drawdown_kill_pct",

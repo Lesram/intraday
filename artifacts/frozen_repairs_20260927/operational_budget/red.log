@@ -1,0 +1,29 @@
+Isolated test scratch: /private/tmp/intra-audit-test-750_nlzq
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ test_readiness_runs_latest_data_and_prefill_regressions ____________
+
+    def test_readiness_runs_latest_data_and_prefill_regressions():
+        job = _load("paper-readiness.yml")["jobs"]["operational-safety"]
+        step = next(step for step in job["steps"]
+                    if step.get("name") == "Verify operational fixes and trading safety")
+        for path in ("tests/unit/test_alpaca_data_comprehensive.py",
+                     "tests/unit/test_streaming_data_provider.py",
+                     "tests/unit/test_paper_data_freshness.py",
+                     "tests/test_live_engine_fill_accounting.py",
+                     "tests/test_order_recovery_service.py",
+                     "tests/test_outbox_fill_race.py",
+                     "tests/test_away_mode_wave_b.py",
+                     "tests/test_paper_frontend_deployment.py",
+                     "tests/test_frontend_container_probe.py",
+                     "tests/test_phase3_attribution_report.py"):
+            assert path in step["run"]
+        # The full operational selection needs margin beyond observed 3-5 minute
+        # hosted runs; individual cases retain their 30-second deadline.
+>       assert step["timeout-minutes"] == 10
+E       assert 5 == 10
+
+tests/test_monday_ci_workflows.py:255: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_monday_ci_workflows.py::test_readiness_runs_latest_data_and_prefill_regressions
+1 failed in 0.08s

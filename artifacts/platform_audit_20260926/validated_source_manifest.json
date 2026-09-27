@@ -1,0 +1,252 @@
+{
+  "source_sha": "22c324abb7f8ae991d29b5765796d2bb5225de73",
+  "application_source_sha": "efa2972de8b6d04d87ce07a17067efbd3274a015",
+  "generated_at": "2026-09-27T00:21:52.340702+00:00",
+  "files": [
+    {
+      "path": ".github/workflows/paper-readiness.yml",
+      "sha256": "dc99706f04a9817e2f4b584e5424594536fdf9bf8dde154ef01521863d25d05f"
+    },
+    {
+      "path": "backend/api/lifespan.py",
+      "sha256": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef"
+    },
+    {
+      "path": "backend/api/portfolio.py",
+      "sha256": "8bf365f6edb4b4a861eaf810699400a1b3e202651434df796df6ee83cf3d5511"
+    },
+    {
+      "path": "backend/api/socketio_server.py",
+      "sha256": "044f6d4fd76a8d343773dd68ae025b8852136e8068904a1b118b4df45b28e81e"
+    },
+    {
+      "path": "backend/infra/outbox_worker.py",
+      "sha256": "ac2ccecc3480ac74a4977416b83fae9af765de13bd729e2b92b38180dd753178"
+    },
+    {
+      "path": "backend/infra/repositories/orders.py",
+      "sha256": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b"
+    },
+    {
+      "path": "backend/integrations/alpaca_stream.py",
+      "sha256": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43"
+    },
+    {
+      "path": "backend/services/order_recovery_service.py",
+      "sha256": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e"
+    },
+    {
+      "path": "backend/services/portfolio_service.py",
+      "sha256": "52fdfb7b932fdf8714ff71f8863fc86081a50c76e122ba4ed5711bfdb01e549c"
+    },
+    {
+      "path": "backend/services/scheduled_reconciliation.py",
+      "sha256": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5"
+    },
+    {
+      "path": "docker-compose.paper.yml",
+      "sha256": "fc73c8d6db66abd1d3684562118bc219d33e499c3e6834a1ba8771b2c82eb9f9"
+    },
+    {
+      "path": "frontend/Dockerfile",
+      "sha256": "46f12eb3ab97edd979217abdac8b289bbbbcbb4914ba34d6c105ca8d9295cc91"
+    },
+    {
+      "path": "frontend/Dockerfile.dockerignore",
+      "sha256": "b8fffb9e08dbb16aa470b2655354f11df1eb298880baa10c5a4d5a9924eb7292"
+    },
+    {
+      "path": "frontend/nginx.conf",
+      "sha256": "27e14db284ab69b7f49f67698a503adb91181979d8238780f983772d39fe1ea5"
+    },
+    {
+      "path": "frontend/src/App.tsx",
+      "sha256": "2e835cd783357e57450347d8f455a995019565fde2ba6139fab94cc143289ab4"
+    },
+    {
+      "path": "frontend/src/components/auth/AuthBootstrap.test.tsx",
+      "sha256": "5b97c956db85b2a66e6cb7874504550d695ec8da9ae82bede448ba4ef2c8fc69"
+    },
+    {
+      "path": "frontend/src/components/auth/AuthBootstrap.tsx",
+      "sha256": "c28e4385a511f04c39685b1ca7def95f34873d15e0163a377bda554fbd33ed91"
+    },
+    {
+      "path": "frontend/src/components/auth/ProtectedRoute.tsx",
+      "sha256": "4e00da40264e5c0a161fbb9d738c15e266c9477e99f705c946e690b41104de34"
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.test.tsx",
+      "sha256": "a34e8d67191b9352ad991eadbd7651da382e249af5ec9e710dea980d76da85a7"
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.tsx",
+      "sha256": "da91aaa6b9237dce425093c0779bc7318664263f3b5c3baaa6ad36d386987a7f"
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.test.tsx",
+      "sha256": "bf43c0916ae94c14caa58492782bea3671ca949641ea98a53d66e919cabd97f6"
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.tsx",
+      "sha256": "8a4811897da33dd0660070953b8b44c5a90d521018ea6fd10aee52c1dae9c210"
+    },
+    {
+      "path": "frontend/src/features/organism/OrganismDashboard.tsx",
+      "sha256": "c3c2a7f2b9124028171a90d21a1a13ed64ce33b74edb2a8e3783ba4c67744877"
+    },
+    {
+      "path": "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx",
+      "sha256": "766e984e8d4fa4cc892d0545c45a71b8d651e0fd8992511439613edc32e41fa7"
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.test.tsx",
+      "sha256": "c7e8b151316fbcf7c65bc5ab0b1a1a754bf593754c04e6d5c59af143114265dc"
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.tsx",
+      "sha256": "d502ec12d4d5e5229185417a938137fe74bed2680f00a3472c3d7d09beff44f3"
+    },
+    {
+      "path": "frontend/src/hooks/useData.ts",
+      "sha256": "311330d3e48433cd61894bb1c359243e8a6857252e0fa2eb23f22d7e2418b7c7"
+    },
+    {
+      "path": "frontend/src/hooks/usePortfolio.test.tsx",
+      "sha256": "7c52ea39d3975a728e1c465b226f469d031b2ae1efe185c8cd367a48e92a9ee0"
+    },
+    {
+      "path": "frontend/src/hooks/useWebSocket.ts",
+      "sha256": "565c2620baba2e4fe448305b8a9e694f42a83d9db11fe0a63ac35b1fd7d060d3"
+    },
+    {
+      "path": "frontend/src/services/api.test.ts",
+      "sha256": "225409dcdf9616f6beb8690da28db1ccfb59f7dd0cd17389a32cbdff35951828"
+    },
+    {
+      "path": "frontend/src/services/api.ts",
+      "sha256": "aae66087e204ae78cf6add16e28e6c76b0f8a313ae2a0e0278376d7cebae6155"
+    },
+    {
+      "path": "frontend/src/services/authService.test.tsx",
+      "sha256": "15f69a72df9a84347c2e4c80244f74ccb12a85b60b019cee9acaf88cea67eda4"
+    },
+    {
+      "path": "frontend/src/services/authService.ts",
+      "sha256": "c948b7c16bab7d0c0012eae791b332b0b2740b13e5eccf4e56668f7b606a6446"
+    },
+    {
+      "path": "frontend/src/services/originRouting.test.ts",
+      "sha256": "30b6f1b1c1439ce10d6257ddcc3573bfc1888b7b3940104b7cec8fb0941ac3ba"
+    },
+    {
+      "path": "frontend/src/services/websocketManager.test.tsx",
+      "sha256": "f5f631ad91e9b6137811796452339d3e62b1d4d51dcc0ea673ce25bf257e1c1f"
+    },
+    {
+      "path": "frontend/src/services/websocketManager.ts",
+      "sha256": "af1f4a4201ae2664234cff690ee1d3d9e4ed4e12ba28d0eb0a6ca74f34d60caf"
+    },
+    {
+      "path": "frontend/src/store/authStore.ts",
+      "sha256": "8ab239b3e8ef2faed8d7d50e8cf2dc3e0842ea62fdedeac9f45ad94e1f9e3b63"
+    },
+    {
+      "path": "frontend/src/store/portfolioStore.ts",
+      "sha256": "04c866c5ba1dae9fd86d51b73a36ad254682a215d434bb51d97f10d104f71fb0"
+    },
+    {
+      "path": "frontend/src/test/portfolioFixture.ts",
+      "sha256": "6ffa08b6ae13fe3b327d0beef3f9ad06a62620a8068a99128d781caa50ca002d"
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.test.ts",
+      "sha256": "4c40604c777caa3da4b1785b5f23d96258b4517ac7fa04ea93ccb3f863de9db6"
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.ts",
+      "sha256": "48578b4a821294140afd4b23823315ea661fef0be4964f915072c9a4e640dcd0"
+    },
+    {
+      "path": "scripts/ci/check_frontend_container.py",
+      "sha256": "838ea9e9f7c91b2a47408fccb1a4f008a5109a6b1b301892a39e3ca006f26ee8"
+    },
+    {
+      "path": "scripts/ci/nightly_test_contract.py",
+      "sha256": "ff7422fd9e767581c9c171170c4ead18c5fd913de96fa24d8442d6e088186ddc"
+    },
+    {
+      "path": "tests/test_adversarial_inputs_v7.py",
+      "sha256": "bccc615cf2c37126ee99eefec0ef55ddac79a4c96f576ea7a78f03d64c5ac74f"
+    },
+    {
+      "path": "tests/test_fill_accounting_integrity.py",
+      "sha256": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972"
+    },
+    {
+      "path": "tests/test_fill_accounting_postgres.py",
+      "sha256": "ebd3db4875fbfd28b10b4b260915ac04610338406947cf392a95134f6507407d"
+    },
+    {
+      "path": "tests/test_frontend_container_probe.py",
+      "sha256": "b53dd45332bf2c76f3117f6cab97cea8a437b8df16ae7bd75ae3cc71edba15ff"
+    },
+    {
+      "path": "tests/test_monday_ci_workflows.py",
+      "sha256": "a55ab6403d47ad7319ebb96243786fdf48c29881595d2ae013e02b3dcc070bad"
+    },
+    {
+      "path": "tests/test_nightly_test_contract.py",
+      "sha256": "6592cfc0b628bba5febe707b256ee46e8371db0c208a798b6e8ad7b751853906"
+    },
+    {
+      "path": "tests/test_order_recovery_service.py",
+      "sha256": "071de3f7a229462735c8202d20f07915b1b02ebbf26ba74a2081a0581db56208"
+    },
+    {
+      "path": "tests/test_outbox_fill_race.py",
+      "sha256": "f3a77660ca8779ed04e7bc078bfe7491f5025762591b0eedb38e18e9c4332843"
+    },
+    {
+      "path": "tests/test_paper_frontend_deployment.py",
+      "sha256": "7f9576beabba55f24f274057580447f45cd1feb42c27d1e4f79259196583051b"
+    },
+    {
+      "path": "tests/test_portfolio_availability_contract.py",
+      "sha256": "bb4078fda1dc654d160d87146f53a17f58fef5a8ceb53401b72ed20ae533878c"
+    },
+    {
+      "path": "tests/test_portfolio_service_comprehensive.py",
+      "sha256": "2a3537686ebee8f01132484ab8336ae51cb78c0d32e89c9b7a327371550d38a3"
+    },
+    {
+      "path": "tests/test_reachability_v8.py",
+      "sha256": "a2ee21a87fc574978119ba4dbf6b6625c240720a2b48e75f5ba0c60ccbbad65a"
+    },
+    {
+      "path": "tests/test_socketio_topic_authorization.py",
+      "sha256": "79af2b0af55f34a2c5031f3909a853431e0a115e344a8fcea825d45928aae179"
+    },
+    {
+      "path": "tests/test_wave43_fixes.py",
+      "sha256": "fee8b3e4873454983b6f58414a071a41a040d6a80f2f6cdc208729a79a56442a"
+    },
+    {
+      "path": "tests/test_wave51_fixes.py",
+      "sha256": "5b68d99c6d20fa8283ec0b725a1e4897e1fce1979690b88b0764730f4ab764e9"
+    },
+    {
+      "path": "tests/test_wave52_fixes.py",
+      "sha256": "b2a7ddeca22f2db36016a813f1f5aadabe6619f4ba2ce6d10e59ba85656c9c2b"
+    },
+    {
+      "path": "tests/unit/test_alpaca_stream_comprehensive.py",
+      "sha256": "889ff4eca1865cc63a1e88e5f24a197d71d3e0857b881e2af346e149c978eed0"
+    },
+    {
+      "path": "tests/unit/test_api_routes_mocked_coverage.py",
+      "sha256": "7965ba0b9a5eeb10835f99f44492db1c00be42dcfcb328b8bd9a7e38b68b4810"
+    }
+  ],
+  "note": "Current immutable product/test/workflow source. Backend, frontend and deployment product bytes remain identical to the browser-tested efa2972 release; subsequent changes only repair the disposable Docker test harness/CI and report/evidence references."
+}

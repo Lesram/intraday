@@ -1,0 +1,172 @@
+{
+  "task_id": "EOD-01",
+  "status": "IMPLEMENTED_TARGETED_VALIDATION_PASSED",
+  "baseline": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "scope": "Approved cancellation/retention correctness only; no tuning, decomposition, real broker actions, source commit or deployment.",
+  "source_hashes": {
+    "backend/organism/live_engine.py": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323",
+    "backend/organism/operator_cancellation.py": "59e69af2c6d40932b039ce477ec746c98e05d1b494ac74d777b5f85f0e61de38",
+    "backend/organism/replay_simulator.py": "deb6563f02636c69e909ad374b27233dc24131d44ce515b8ec80ace9df7ed159",
+    "tests/test_eod_pending_cancellation.py": "02dc2ac817a90a158392f6103977fa1a169d1d18670fa31640f040da94380cd2",
+    "tests/test_audit_patch_queue_j6.py": "396548a35da57a6087504a7802d01a544b2d8df31df28072b4ab8b4904209c6e",
+    "tests/test_audit_patch_queue_j6b.py": "80b4c69b8ddfa2b1c65823f5500d80c8d82131c6398c40d9672dbc4e18b22de4",
+    "tests/test_eod_cancellation_fairness.py": "1bf41a0c5231244095eee5c9a8da93357f7abb8d79defc5af3e3ad91c9c3930e"
+  },
+  "engine_methods_changed": [
+    "initialize",
+    "_stage_expire_cooldowns",
+    "_live_tick_inner",
+    "_check_tick_invariants",
+    "_cancel_pending_entry_orders",
+    "_confirm_pending_entry_orders",
+    "_reconcile_pending_entry_orders"
+  ],
+  "behavior": [
+    "Startup restores pending IDs before any attempt; strict cancellation follows baseline validation and position reconstruction.",
+    "EOD/drawdown use supported paper broker GET/DELETE/GET rather than nonexistent stream method or OrderService summary.",
+    "TTL, stream boolean, transport failure and generic invariant cleanup never erase unresolved identity; orphan missing-ID blockers remain.",
+    "Zero-fill release requires broker terminal, zero DB fill summary and no Execution/PositionLot evidence.",
+    "Positive fill requires broker terminal consistency, exact cumulative DB/Execution/original-lot quantity and cash, plus exact protected remaining position or exact closed-trade/flat proof.",
+    "Position authority uses bounded direct broker GET; error-swallowing PositionsService is not flat proof.",
+    "Filled-order admission cooldown remains30ticks. Existing bounds2s/call12s/operation3confirmationGETs256trackedIDs reused unchanged.",
+    "ReplayEngine explicitly injects its synthetic exact receipt/inventory confirmation adapter; production has no no-DB fallback.",
+    "No DB order status writes, fill edits, cancellation of exits, order resubmission, learning ML or Kelly changes.",
+    "Validated exact identities traverse in round-robin order, advancing the memory-only cursor before awaiting; bounded timeout/cancellation retains all unresolved maps and permits later identities next pass. Restart safely resets traversal only."
+  ],
+  "validation_selections_not_additive": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/negative_control_corrected.xml",
+      "sha256": "42e7c368110d8aecbc19870ebba0c22734bc6e484576b359d79c9db3a60de916",
+      "passed": 0,
+      "failed": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/targeted_final.xml",
+      "sha256": "feebb6a6750ba3247c78e93c00d51a06962080fba8d96b462106c2a6194c69f8",
+      "passed": 231,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/targeted_pyramid_limit.xml",
+      "sha256": "1f61e31e91ddd2ebe586c211b39b8f5a62ee2246258eed39274f99fb7e95672a",
+      "passed": 69,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/fairness_red.xml",
+      "sha256": "1c0b8241d5229e37b8bd18fd3fc3465c99efbe82a32208a16cc319cdb292336a",
+      "failed": 3,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 1
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/fairness_final.xml",
+      "sha256": "3a86bc3ebc7181c6cbbfb3fc888a4fdc8604c652defb3b950d5d1cc8198cb981",
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 4
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/targeted_fairness_final.xml",
+      "sha256": "b503835dd86b6a5c766fc4a95db770c4cc437fad0716675fd6fb3dc07a5948a2",
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 73
+    }
+  ],
+  "negative_control": "Four corrected-fixture cases fail on original engine: uncertainty loses identity and TTL/cache erases it. Initial fixture-error attempt retained separately, not used as proof.",
+  "replay": "Final combined231 cases includes13W100 actual live_tick cases: nonempty entries, actual losing-position protective close, EOD accounted closure/flat, normal ML isolation/fixed-risk assertions. Earlier208pass/1fail explicitly preserved; strict production authority exposed missing replay DB model, then exact simulated ledger adapter repaired fidelity without weakening assertions.",
+  "restart": "Real force_save_brain and two actual initialize cycles preserve unresolved IDs and missing-ID blocker across1000tickTTL; no mocked cancellation success.",
+  "pyramid_limit": "Actual base+add Execution/lots and atomic12shareclose verified. Open protected exact-anchor path resolves; anchor-only closed12shareTradeRecord cannot prove specific base10/add2 closure and remains unresolved beyondTTL. No explicit durable per-add lifecycle link exists; current approved profile keeps ORGANISM_PYRAMID_ENABLED=false. No blanket terminal or guessed attribution fallback.",
+  "limits": [
+    "Synthetic SQLite and simulated paper broker evidence; no actual broker cancellation performed.",
+    "Unknown/missing/replaced/unaccounted identities can intentionally block entry until reconciled; never automatically forget or requeue.",
+    "Aggregate execution/lot reads are complete by exactorder index and bounded by total12second deadline; no row truncation.",
+    "Independent review, full required safety/reconciliation/replay pack, frozen candidate snapshot, hosted checks, PR and any activation remain parent-owned gates.",
+    "No claim of strategy improvement or universal closed-pyramid liveness."
+  ],
+  "static": {
+    "receipt": "artifacts/frozen_repairs_20260927/eod/lint_delta.json",
+    "sha256": "b42883138fa5de24a73033c7a41e1a82e72dab78f8b56acbe108f956a5d010e7",
+    "new_findings": 0
+  },
+  "commands": [
+    "/Users/marselkei/VS/intra/venv/bin/python /private/tmp/intra-audit-isolated.py -q <owned cancellation + existing EOD/operator + W100 selections> --junitxml=<evidence>",
+    "ruff check <owned modules/tests> (baseline delta for replay)",
+    "git diff --check -- <owned paths>"
+  ],
+  "preservation": {
+    "production_runtime_accessed": false,
+    "active_freeze_written_by_author": false,
+    "committed_by_author": false,
+    "other_agents_changes_reverted": false
+  },
+  "evidence_hashes": {
+    "artifacts/frozen_repairs_20260927/eod/lint_delta.json": "b42883138fa5de24a73033c7a41e1a82e72dab78f8b56acbe108f956a5d010e7",
+    "artifacts/frozen_repairs_20260927/eod/negative_control.log": "cd82afbe0bf62a09695fc645ce5401a7a0b5c4233ae48464f26ce505e7272d21",
+    "artifacts/frozen_repairs_20260927/eod/negative_control.xml": "282bc6b33b076fb5935a86e5e9f197dd959649045a5d07c7f94c7fca45a6ba76",
+    "artifacts/frozen_repairs_20260927/eod/negative_control_corrected.log": "272c5549905d82ff75c9b7c85b38cb794d6b927ca4e785d320da56912f5a5a81",
+    "artifacts/frozen_repairs_20260927/eod/negative_control_corrected.xml": "42e7c368110d8aecbc19870ebba0c22734bc6e484576b359d79c9db3a60de916",
+    "artifacts/frozen_repairs_20260927/eod/plan.json": "db630a553b4592a5ab9f9324de8417a670bc844cd75a9fcbee7565d4a4612116",
+    "artifacts/frozen_repairs_20260927/eod/replay_01.log": "eecce37a82f8d2730a945e330bdd09d5cc7fb8c2ff320a45c22787ba1bd40c13",
+    "artifacts/frozen_repairs_20260927/eod/replay_01.xml": "d9918d63696f96dc95f1a1166eee886f3ecbbead3e929b082732542df55b897c",
+    "artifacts/frozen_repairs_20260927/eod/targeted_02.log": "5a5f9dd69a402fd9c444e94f81940d7429c1149977e03d2e21b7ef0cc0110c27",
+    "artifacts/frozen_repairs_20260927/eod/targeted_02.xml": "0590c0839cbc14b89a1420121e1579eae6e54572aa52fbfb1866ba944b80b8a7",
+    "artifacts/frozen_repairs_20260927/eod/targeted_03.log": "6f0a99634b55fcf337f609c7c804c940e3a438577bf9157955dac51867d59f8c",
+    "artifacts/frozen_repairs_20260927/eod/targeted_03.xml": "75a7a5366017ea844727d3de4f80a62cbcdd3df85dd307894e251d9a12184b64",
+    "artifacts/frozen_repairs_20260927/eod/targeted_04.log": "1d4a7049a222e540592e34174395097cd0c77aede9185988ee957a9909c8578d",
+    "artifacts/frozen_repairs_20260927/eod/targeted_04.xml": "aaa9f146c5f4686a2ac450283b22652f168068099c1a436ec7032c545ec1b0f0",
+    "artifacts/frozen_repairs_20260927/eod/targeted_05.log": "9def168af90ee2627ff4e3804834a7dd756d458a8dbfbcb7ed9395f57ea1f3ad",
+    "artifacts/frozen_repairs_20260927/eod/targeted_05.xml": "ed16ed5f8b1fedf2ebaf04df35fb4a32f7d22b993fb8f19d1099033bba066083",
+    "artifacts/frozen_repairs_20260927/eod/targeted_06.log": "2b20289f73409f0c6f1846ecd815d1ecc8c36c909664700710038c0808a01203",
+    "artifacts/frozen_repairs_20260927/eod/targeted_06.xml": "41ee8f3aa8b5291d24bf8947af58b1a07d1453d4fcf945a1d4adc017cbe832ed",
+    "artifacts/frozen_repairs_20260927/eod/targeted_07.log": "92555048ea6c446e0060f5237685eba36fcf470a3c1eea9ff25648b3bf44c3d1",
+    "artifacts/frozen_repairs_20260927/eod/targeted_07.xml": "b04f8bcafca91568b06d9cf91af445028225470c5dd9eeef3b0e056b8252ee6e",
+    "artifacts/frozen_repairs_20260927/eod/targeted_08.log": "146e8a3755ccdd43ee80e375968239d8ade744ea10d85aa862abed8f0feb6b87",
+    "artifacts/frozen_repairs_20260927/eod/targeted_08.xml": "e20c8e05812771e95f0a6bf2ed5f29d54257dfa65374b25a0a799355badbfc1b",
+    "artifacts/frozen_repairs_20260927/eod/targeted_final.log": "56cb34b7075b25996a5d1bb7b08b07f607a0e0a55ae1d3fc87450f2e6ade8bbd",
+    "artifacts/frozen_repairs_20260927/eod/targeted_final.xml": "feebb6a6750ba3247c78e93c00d51a06962080fba8d96b462106c2a6194c69f8",
+    "artifacts/frozen_repairs_20260927/eod/targeted_initial.log": "267e9c2033f962351c946180bb30f3de155f50f9a40e33b064428babed6120c1",
+    "artifacts/frozen_repairs_20260927/eod/targeted_initial.xml": "42ed281823f290d0467e21a0ee219cee685b43b0b08bd3be69d311f6661fad99",
+    "artifacts/frozen_repairs_20260927/eod/targeted_pyramid_limit.log": "1610c97777db32207f2587f54e538542d2ddac838ebe92722e92ffbd9af01cfe",
+    "artifacts/frozen_repairs_20260927/eod/targeted_pyramid_limit.xml": "1f61e31e91ddd2ebe586c211b39b8f5a62ee2246258eed39274f99fb7e95672a",
+    "artifacts/frozen_repairs_20260927/eod/fairness_green.xml": "dc94b31c2618c39d1a2e5a15053400b1a1fae2400c99c15d270fecf0e9ca05a1",
+    "artifacts/frozen_repairs_20260927/eod/fairness_red.log": "20d6cb9030201aa41f6ba1b1b0b033444c9fbfdda968efbff7ce7f7e5afff848",
+    "artifacts/frozen_repairs_20260927/eod/targeted_fairness_final.log": "fde7124295f2544933402dc880f5693c93b524488bdcc7df3674487e154f043c",
+    "artifacts/frozen_repairs_20260927/eod/fairness_test_report.json": "73fefd817f6f239719665a1f29c5bdbf50132417aab35c6b0fe6f736c3f25a88",
+    "artifacts/frozen_repairs_20260927/eod/fairness_final.log": "0ab7556969f7e1737268d0ca8646caad813b1b10d15508e330f3227f3244fe78",
+    "artifacts/frozen_repairs_20260927/eod/independent_targeted.xml": "6c12c6d663a3f9a1d72b379a6b5a36428d3387a7a589fd720cb97cb5147f379d",
+    "artifacts/frozen_repairs_20260927/eod/implementation_before_fairness.json": "5bcd3283288b97a2a805ebc491e89f0f8edf5e6e9c769c9a4e83a00c26fa6e3f",
+    "artifacts/frozen_repairs_20260927/eod/fairness_final.xml": "3a86bc3ebc7181c6cbbfb3fc888a4fdc8604c652defb3b950d5d1cc8198cb981",
+    "artifacts/frozen_repairs_20260927/eod/independent_targeted.log": "44c03fe8efb37a71ab6cc3cea5a1d0da372885cda22a4942aca497fe9a34a87e",
+    "artifacts/frozen_repairs_20260927/eod/fairness_test_plan.json": "6c6c26f3c880088ca1f93bea13be770652fa6c4b0bac6b1ffc961b77d3329444",
+    "artifacts/frozen_repairs_20260927/eod/fairness_test_before_lint.py.txt": "066acdfb26429f2be48f5e9027371cba62a05c6506cec4f9c69814e41b24ccd6",
+    "artifacts/frozen_repairs_20260927/eod/fairness_lint.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "artifacts/frozen_repairs_20260927/eod/fairness_green.log": "5b7c39c44997a6c6b24c9c61719abbc4b41666b89e5a41ae4e8bce5504dad4c5",
+    "artifacts/frozen_repairs_20260927/eod/fairness_negative_driver.py.txt": "87dee700c6fc08471a91db674c1a76daa49f2652e4ae5754c1c311ff1686bf39",
+    "artifacts/frozen_repairs_20260927/eod/fairness_pre_cursor_source.py.txt": "97acbedd0bad8b6adef1be99fd2f0df0bd99463f5372b968b6655588df4a852f",
+    "artifacts/frozen_repairs_20260927/eod/fairness_red.xml": "1c0b8241d5229e37b8bd18fd3fc3465c99efbe82a32208a16cc319cdb292336a",
+    "artifacts/frozen_repairs_20260927/eod/targeted_fairness_final.xml": "b503835dd86b6a5c766fc4a95db770c4cc437fad0716675fd6fb3dc07a5948a2"
+  },
+  "fairness_followup": {
+    "supersedes_source_binding": {
+      "path": "artifacts/frozen_repairs_20260927/eod/implementation_before_fairness.json",
+      "sha256": "5bcd3283288b97a2a805ebc491e89f0f8edf5e6e9c769c9a4e83a00c26fa6e3f"
+    },
+    "before_source_path": "/private/tmp/intra-eod-before-fairness.py",
+    "before_source_sha256": "97acbedd0bad8b6adef1be99fd2f0df0bd99463f5372b968b6655588df4a852f",
+    "red": "3 failed/1 passed against exact original function; slow-prefix starvation and missing cursor behavior reproduced",
+    "final": "73 passed;69 existing final cancellation plus4 fairness cases; no failures/errors/skips",
+    "unchanged_bounds": "2s/call,12s/operation,3confirmation attempts,256IDs; no constant/tuning changes",
+    "cursor": "_pending_entry_confirmation_cursor; last attempted exact validated ID; nonpersistent"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "before_findings": 14,
+  "current_findings": 12,
+  "new_normalized_findings": [],
+  "new_test_findings": [],
+  "changed_method_only_ast": true,
+  "frozen_before_after_equal": true,
+  "current_source_sha256": "d31b791cc451c596e2c25f11b4406d0b60441b50d2c96f64835695f87072a1d6",
+  "test_sha256": "218f616a81e5143f9dc3e94c4c20bed05a4b3623897e43a8f4733c0c43a5914b"
+}

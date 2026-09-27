@@ -1,0 +1,31 @@
+Isolated test scratch: /private/tmp/intra-audit-test-m88sxpa4
+FFF.                                                                     [100%]
+=================================== FAILURES ===================================
+_____ test_bounded_passes_reach_healthy_tail_after_persistent_slow_prefix ______
+tests/test_eod_cancellation_fairness.py:60: in test_bounded_passes_reach_healthy_tail_after_persistent_slow_prefix
+    assert healthy.broker_order_id in attempts, 'slow prefix starved healthy tail'
+E   AssertionError: slow prefix starved healthy tail
+E   assert 'a9f41748-e0b6-4e31-a8da-f4a0c72c7609' in ['f0c0ddc5-5340-425c-b0cf-272cfc17b121', 'a6bab10f-01a0-450a-b52e-295113e5fe50', 'f73a9fb6-73fd-4913-9ab6-19f24db05774...ddc5-5340-425c-b0cf-272cfc17b121', 'a6bab10f-01a0-450a-b52e-295113e5fe50', 'f73a9fb6-73fd-4913-9ab6-19f24db05774', ...]
+E    +  where 'a9f41748-e0b6-4e31-a8da-f4a0c72c7609' = <backend.infra.schemas.Order object at 0x111999f10>.broker_order_id
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['broker_confirmation_unavailable', 'cancellation_deadline_exceeded']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:54:25.162818Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['broker_confirmation_unavailable', 'cancellation_deadline_exceeded']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:54:25.435339Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['broker_confirmation_unavailable', 'cancellation_deadline_exceeded']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:54:25.707759Z"}
+_ test_external_cancellation_advances_cursor_before_await_and_retains_identity _
+tests/test_eod_cancellation_fairness.py:97: in test_external_cancellation_advances_cursor_before_await_and_retains_identity
+    assert cursor_during_await == str(rows[0].id)
+E   AssertionError: assert None == 'fa4db546-f3b3-458f-a811-558fdb93a748'
+E    +  where 'fa4db546-f3b3-458f-a811-558fdb93a748' = str(UUID('fa4db546-f3b3-458f-a811-558fdb93a748'))
+E    +    where UUID('fa4db546-f3b3-458f-a811-558fdb93a748') = <backend.infra.schemas.Order object at 0x1119ce960>.id
+____ test_removed_cursor_wraps_without_skipping_remaining_exact_identities _____
+tests/test_eod_cancellation_fairness.py:123: in test_removed_cursor_wraps_without_skipping_remaining_exact_identities
+    assert engine._pending_entry_confirmation_cursor == str(rows[2].id)
+E   AssertionError: assert 'e400da96-0fd...-75b8c113d554' == '713db085-063...-fa3aadc34610'
+E     
+E     - 713db085-0632-4ef0-9fbc-fa3aadc34610
+E     + e400da96-0fdf-4a8e-af2b-75b8c113d554
+=========================== short test summary info ============================
+FAILED tests/test_eod_cancellation_fairness.py::test_bounded_passes_reach_healthy_tail_after_persistent_slow_prefix
+FAILED tests/test_eod_cancellation_fairness.py::test_external_cancellation_advances_cursor_before_await_and_retains_identity
+FAILED tests/test_eod_cancellation_fairness.py::test_removed_cursor_wraps_without_skipping_remaining_exact_identities
+3 failed, 1 passed in 2.13s

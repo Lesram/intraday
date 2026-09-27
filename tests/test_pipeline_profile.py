@@ -57,6 +57,9 @@ def test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol(tmp_pat
     assert report["source_unchanged_during_run"] is True
     run = report["runs"][0]
     assert run["history_prefill_calls"] == ["SPY", "SYN001", "HELD"]
+    assert run["history_only_unavailable_symbols"] == ["SPY", "SYN001", "HELD"]
+    assert run["synthetic_live_bar_callbacks"] == ["SPY", "SYN001", "HELD"]
+    assert "production callback" in run["freshness_setup"]
     assert run["rest_fallback_calls"] == 0
     assert run["input_unchanged"] and run["outputs_identical"]
     assert run["universe_count"] == 2 and run["held_only_count"] == 1
@@ -93,3 +96,20 @@ def test_cli_refuses_wrong_timeframe_before_platform_import(tmp_path):
     assert "requires explicit 1Min" in process.stderr
     assert not (tmp_path / "bad.json").exists()
     assert not (tmp_path / "logs").exists()
+
+
+def test_missing_synthetic_callback_cannot_qualify_feature_profile(tmp_path):
+    env = {**os.environ, "TESTING": "true", "USE_MOCK_DATA": "true", "USE_MOCK_BROKER": "true",
+           "ORGANISM_LIVE_TIMEFRAME": "1Min", "ORGANISM_LIVE_LOOKBACK": "80", "ORGANISM_MIN_BARS": "50",
+           "PYTHONPATH": str(ROOT), "PYTHONDONTWRITEBYTECODE": "1"}
+    code = """import asyncio
+from scripts.diagnostics import profile_paper_pipeline as p
+async def drop(*args):
+    pass
+p.MemoryTransport.emit_bar = drop
+asyncio.run(p.measure_load(1, 80, 1, profiles=False, feature_store=False))
+"""
+    process = subprocess.run([sys.executable, "-B", "-c", code], cwd=tmp_path, env=env,
+                             capture_output=True, text=True, timeout=30)
+    assert process.returncode != 0
+    assert "Synthetic advancing live callbacks did not establish freshness" in process.stderr

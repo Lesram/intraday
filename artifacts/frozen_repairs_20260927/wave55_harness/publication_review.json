@@ -1,0 +1,40 @@
+{
+  "reviewed_at_utc": "2026-09-27T19:51:12.175360+00:00",
+  "scope": "All public files listed in this receipt; includes independent root summary, excludes this receipt itself",
+  "method": [
+    "Manual bounded review of failed control, hosted error excerpt and exact green XML payload",
+    "Pattern scan for literal credentials, bearer values, JWTs, private-key blocks and credential-bearing URLs"
+  ],
+  "patterns_checked": [
+    "private_key_block",
+    "jwt_token",
+    "credential_url",
+    "bearer_value",
+    "literal_secret_assignment"
+  ],
+  "findings": [],
+  "credential_values_published": false,
+  "limits": [
+    "This is not a Gitleaks run; root owns repository final secret gate.",
+    "Exact passing JUnit retains its original local test hostname to preserve bytes; no stdout/stderr or credentials are present.",
+    "Synthetic UUIDs in failed control are retained as test identity evidence."
+  ],
+  "checks": {
+    "harness_exact_bytes_preserved": true,
+    "harness_303_pass_no_fail_error_skip": true,
+    "semantic_negative_failure_identity_preserved": true
+  },
+  "files": {
+    "README.md": "9d0ddeb51523bf1ad387896481044614891e6bc566b5d19d7f924b3eddc0934b",
+    "adjacent_summary.json": "780f6298bedc01048c35338db726a6f01f8527d451bf1765b3b767ece7c7bc8a",
+    "focused_summary.json": "509900e22d4e5a88f85d8d3a393968f89d27400026a139b539f26b006dfe1d03",
+    "harness.xml": "89bfd0581c7137cb11e46809071c31701c18c701be03ee37984efd05bf7e2c02",
+    "hosted_before_repair.json": "2a07efd5a2ba0e87bae704de36b52060c81fb255b482e9b2d3bd5418657e2bfe",
+    "hosted_failure.json": "88f223a73e0501d9ef2de27af1e65a442a955312d180cfcb767a7fafad58b230",
+    "implementation.json": "9805ac1b5700b345bcd9f610cd599a3da4fcde0e5794bfc0c9f772597023f1b5",
+    "negative_control.json": "0af14be8098bfa7479fa7863cf702da6a21c467b9af16b0ff5e3a9a276b1f156",
+    "negative_control.xml": "deaa61861155b25fd9acb0e2e199f2df5bd51f0eedbb5f9e9f162042c4f1facf",
+    "negative_control_driver.py.txt": "97a7709d4aa49bbf09a59cdd9028671c212aa8acf853f7f37e24047c7d9060c0",
+    "root_independent_summary.json": "5da98e1ebbfadc6a7a7b6ccd748f7843a9d16e5ab09a8fdc1b48a46c2ca31fe9"
+  }
+}

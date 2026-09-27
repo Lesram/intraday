@@ -1,0 +1,36 @@
+{
+  "task": "Enforce required login access and refresh credentials across both response shapes",
+  "created_at_utc": "2026-09-27T19:54:12.265167+00:00",
+  "review_comment_id": 4116675561,
+  "owned_files": [
+    "frontend/src/services/authService.ts",
+    "frontend/src/services/authService.test.tsx"
+  ],
+  "before_hashes": {
+    "frontend/src/services/authService.ts": "c948b7c16bab7d0c0012eae791b332b0b2740b13e5eccf4e56668f7b606a6446",
+    "frontend/src/services/authService.test.tsx": "15f69a72df9a84347c2e4c80244f74ccb12a85b60b019cee9acaf88cea67eda4"
+  },
+  "backend_contract": {
+    "source": "backend/api/routes/auth.py",
+    "model_refresh_token_optional": true,
+    "actual_success_handler_issues_both_tokens": true,
+    "handler_lines": [
+      318,
+      354,
+      361
+    ]
+  },
+  "frontend_contract": "Both credential fields must be primitive nonblank strings before returning AuthResponse. Preserve bytes, principal/roles behavior and current error message; no JWT authenticity claim.",
+  "tests": [
+    "Invalid access/refresh matrix for full frontend shape and real backend principal shape through authService.login",
+    "Actual useLogin rejects malformed response without setting authenticated state or navigating; valid full/backend logins still succeed",
+    "Existing portfolio principal integration and bootstrap/refresh/login adjacent suites"
+  ],
+  "red_control": "Run new tests against unchanged authService first; retain failures before smallest source fix",
+  "boundaries": [
+    "No backend, store, hook, routing or deployment changes",
+    "No token persistence or refresh architecture change",
+    "Network-denied synthetic frontend tests; no real credentials/API calls",
+    "Parent owns commit, broad gates and final activation"
+  ]
+}

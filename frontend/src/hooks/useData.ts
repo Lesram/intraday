@@ -4,7 +4,9 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { isCurrentPortfolio, newestPortfolio, PORTFOLIO_REFRESH_MS } from '@/utils/portfolioSnapshot';
 import { App } from 'antd';
 import { portfolioService } from '@/services/portfolioService';
 import {
@@ -24,28 +26,44 @@ import { useStrategiesStore } from '@/store/strategiesStore';
 // ============= Portfolio Hooks =============
 
 export const usePortfolio = () => {
+  const userId = useAuthStore((state) => state.user?.id);
+  const authenticated = useAuthStore((state) => state.isAuthenticated);
   const setPortfolio = usePortfolioStore((state) => state.setPortfolio);
   const portfolio = usePortfolioStore((state) => state.portfolio);
-
+  const [now, setNow] = useState(Date.now);
   const query = useQuery({
-    queryKey: ['portfolio'],
-    queryFn: portfolioService.getPortfolio,
-    // CRITICAL: Disable auto-refetch - WebSocket provides real-time updates
-    // Without this, API would overwrite WebSocket updates every N seconds
-    refetchInterval: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    staleTime: Infinity,
+    queryKey: ['portfolio', userId],
+    enabled: authenticated && !!userId,
+    queryFn: async () => {
+      const data = await portfolioService.getPortfolio();
+      if (!isCurrentPortfolio(data, userId)) throw new Error('Current portfolio is unavailable or stale');
+      return data;
+    },
+    refetchInterval: PORTFOLIO_REFRESH_MS,
+    staleTime: PORTFOLIO_REFRESH_MS,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    retry: false,
   });
 
-  // Only update store on initial load - WebSocket handles all subsequent updates
   useEffect(() => {
-    if (query.data && !portfolio) {
-      setPortfolio(query.data);
-    }
-  }, [query.data, setPortfolio, portfolio]);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  return query;
+  useEffect(() => {
+    if (!authenticated || !userId) return;
+    const latest = newestPortfolio(query.data, portfolio, userId);
+    if (latest && latest !== portfolio) setPortfolio(latest);
+  }, [query.data, portfolio, userId, authenticated, setPortfolio]);
+
+  const current = authenticated && userId ? newestPortfolio(query.data, portfolio, userId, now) : undefined;
+  const unavailable = query.error || (!query.isLoading && !current);
+  return {
+    ...query,
+    data: unavailable ? undefined : current,
+    error: unavailable ? new Error('Current portfolio could not be verified. Balances and positions are unavailable.') : null,
+  };
 };
 
 export const usePositions = () => {

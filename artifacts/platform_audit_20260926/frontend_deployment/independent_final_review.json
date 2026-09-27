@@ -1,0 +1,94 @@
+{
+  "status": "ACCEPTED_SOURCE_AND_SUPPLIED_DISPOSABLE_PROXY_PROOF",
+  "reviewed_at_utc": "2026-09-26T23:54:21.477078+00:00",
+  "reviewer": "daily_evidence_contract",
+  "head_at_review": "85b2534b3fdc1e72e3a9afb3c8e1a1a45bb0ef89",
+  "files": [
+    {
+      "name": "frontend/Dockerfile",
+      "sha256": "46f12eb3ab97edd979217abdac8b289bbbbcbb4914ba34d6c105ca8d9295cc91"
+    },
+    {
+      "name": "frontend/Dockerfile.dockerignore",
+      "sha256": "b8fffb9e08dbb16aa470b2655354f11df1eb298880baa10c5a4d5a9924eb7292"
+    },
+    {
+      "name": "frontend/nginx.conf",
+      "sha256": "27e14db284ab69b7f49f67698a503adb91181979d8238780f983772d39fe1ea5"
+    },
+    {
+      "name": "docker-compose.paper.yml",
+      "sha256": "fc73c8d6db66abd1d3684562118bc219d33e499c3e6834a1ba8771b2c82eb9f9"
+    },
+    {
+      "name": "scripts/ci/check_frontend_container.py",
+      "sha256": "f154f7e26e9274a21d1b409f587bbb0bc882110933786c8b81a190ccb09e589e"
+    },
+    {
+      "name": "tests/test_paper_frontend_deployment.py",
+      "sha256": "7f9576beabba55f24f274057580447f45cd1feb42c27d1e4f79259196583051b"
+    },
+    {
+      "name": "frontend/src/services/api.ts",
+      "sha256": "aae66087e204ae78cf6add16e28e6c76b0f8a313ae2a0e0278376d7cebae6155"
+    },
+    {
+      "name": "frontend/src/services/websocketManager.ts",
+      "sha256": "af1f4a4201ae2664234cff690ee1d3d9e4ed4e12ba28d0eb0a6ca74f34d60caf"
+    },
+    {
+      "name": "frontend/src/services/originRouting.test.ts",
+      "sha256": "30b6f1b1c1439ce10d6257ddcc3573bfc1888b7b3940104b7cec8fb0941ac3ba"
+    }
+  ],
+  "prior_review": {
+    "path": "artifacts/platform_audit_20260926/frontend_deployment/independent_source_review.json",
+    "sha256": "8a48d8a5cf3c0614c05699e90dadc7f0466a9d9f8da84811d0fee874d720e8b7"
+  },
+  "actual_probe": {
+    "path": "artifacts/platform_audit_20260926/frontend_container_final/result.json",
+    "sha256": "4a4aabcff665c2ef5ea518d0f6ac1f76d4dc1338c1eece2c1cb8505594b86bdd",
+    "image_id": "sha256:ecba2d7d4972a83961bcae2bd3d6b7289e32f4c35bc86224c3705cb214160e27",
+    "check_groups": [
+      "Static health, SPA deep-link refresh and missing-asset refusal",
+      "API path/query/auth/host forwarding and truthful upstream503",
+      "All three websocket routes upgrade and carry a frame",
+      "API disappearance stays unavailable; replacement at a different IP recovers",
+      "Access logs omit authentication query and header"
+    ],
+    "cleanup_errors": [],
+    "log": {
+      "path": "artifacts/platform_audit_20260926/frontend_container_final/proxy.log",
+      "sha256": "4d32024987c2f20b711a510d8548fdd73b953ad6466ee24506476d1670099ffb"
+    }
+  },
+  "retained_failed_attempts": [
+    {
+      "path": "artifacts/platform_audit_20260926/frontend_container/result.json",
+      "sha256": "2038d43f6ea978a7f3ca6406694deacb404fc90acff5d6b52968654450828941"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/frontend_container_retry/result.json",
+      "sha256": "1d09e163a621096af46e6a110448a0b7609a479e8b61981688d552d2107db192"
+    }
+  ],
+  "closed_findings": [
+    "Server-scope access_log overrides inherited base access logger; path-only format excludes query and headers. Actual stdout+stderr log has all three websocket101 requests and neither synthetic auth marker.",
+    "Only credential-free disposable UI receives a loopback-published port via separate owned ingress bridge. Synthetic API remains internal and unpublished; both networks are cleaned.",
+    "Containers are registered before creation attempt; cleanup runs from finally. Combined stdout/stderr is inspected.",
+    "Same-origin HTTP/Socket.IO defaults are preserved, explicit overrides remain supported; new constructor tests were separately reviewed."
+  ],
+  "accepted_scope": [
+    "Pinned frontend-only build context with no env, backend, brain or runtime credentials; nonroot read-only localhost-only Compose service with bounded tmpfs.",
+    "SPA deep-link and missing-asset distinctions, upstream503 preservation, auth/query/host forwarding, three websocket upgrade/frame routes and DNS recovery at a different API IP are asserted by actual disposable probe.",
+    "Existing API/Postgres/Redis service configuration remains unchanged in Compose diff."
+  ],
+  "limitations": [
+    "Reviewer performed source/evidence reads only; no container, browser, API or broker calls.",
+    "This receipt binds current source files and the supplied immutable image-ID probe result. The smoke result does not itself contain a complete source/build manifest; final release packaging/build provenance remains parent-owned.",
+    "Raw websocket echo proves transport, not Socket.IO application authentication or trading semantics. Actual authenticated browser flow and ongoing auth reload repair are separate gates.",
+    "Source may change for the separately authorized auth bootstrap correction; any final rebuilt image needs its own release identity and validation.",
+    "No installed deployment, trading readiness, profitability, dependency remediation or universal absence of sensitive-message logging is asserted."
+  ],
+  "blockers": []
+}

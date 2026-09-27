@@ -29,7 +29,7 @@ export interface Portfolio {
   totalPnL: number;
   totalPnLPercent: number;
   dayPnL: number;
-  dayPnLPercent: number;
+  dayPnLPercent: number | null;
   positions: Position[];
   lastUpdate: string;
 }

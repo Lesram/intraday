@@ -1,0 +1,307 @@
+{
+  "started_at": "2026-09-26T22:54:54.580454+00:00",
+  "resources": {
+    "network": "intra-fill-proof-c493e29ea8ab",
+    "database_container": "intra-fill-proof-c493e29ea8ab-db",
+    "test_container": "intra-fill-proof-c493e29ea8ab-test"
+  },
+  "test_image": "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+  "scope": "Only new internal network and containers, tmpfs PostgreSQL, no host ports, candidate worktree read-only, no installed data mounts.",
+  "commands": [
+    {
+      "argv": [
+        "docker",
+        "network",
+        "create",
+        "--internal",
+        "intra-fill-proof-c493e29ea8ab"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "-d",
+        "--name",
+        "intra-fill-proof-c493e29ea8ab-db",
+        "--network",
+        "intra-fill-proof-c493e29ea8ab",
+        "--network-alias",
+        "intra-fill-postgres",
+        "--read-only",
+        "--tmpfs",
+        "/var/lib/postgresql/data:rw",
+        "--tmpfs",
+        "/var/run/postgresql:rw",
+        "--tmpfs",
+        "/tmp:rw",
+        "-e",
+        "POSTGRES_USER=test_fill_accounting",
+        "-e",
+        "POSTGRES_DB=test_fill_accounting",
+        "-e",
+        "POSTGRES_PASSWORD=synthetic-fill-test-only",
+        "postgres:16-alpine"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "intra-fill-proof-c493e29ea8ab-db",
+        "pg_isready",
+        "-U",
+        "test_fill_accounting",
+        "-d",
+        "test_fill_accounting"
+      ],
+      "exit_code": 2
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "intra-fill-proof-c493e29ea8ab-db",
+        "pg_isready",
+        "-U",
+        "test_fill_accounting",
+        "-d",
+        "test_fill_accounting"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "network",
+        "inspect",
+        "intra-fill-proof-c493e29ea8ab"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "intra-fill-proof-c493e29ea8ab-db"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--name",
+        "intra-fill-proof-c493e29ea8ab-test",
+        "--network",
+        "intra-fill-proof-c493e29ea8ab",
+        "--read-only",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--tmpfs",
+        "/tmp:rw,mode=1777",
+        "--mount",
+        "type=bind,source=/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra,target=/work,readonly",
+        "--workdir",
+        "/tmp",
+        "--entrypoint",
+        "python",
+        "-e",
+        "PYTHONPATH=/work",
+        "-e",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "-e",
+        "PYTHON_DOTENV_DISABLED=1",
+        "-e",
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1",
+        "-e",
+        "PYTEST_ADDOPTS=-p pytest_asyncio.plugin -p pytest_timeout -p no:cacheprovider",
+        "-e",
+        "TESTING=true",
+        "-e",
+        "APP_ENVIRONMENT=testing",
+        "-e",
+        "ENVIRONMENT=testing",
+        "-e",
+        "USE_MOCK_BROKER=true",
+        "-e",
+        "USE_MOCK_DATA=true",
+        "-e",
+        "TRADING_EXECUTION_MODE=shadow",
+        "-e",
+        "SECURITY_JWT_SECRET=test-jwt-secret-not-for-production",
+        "-e",
+        "SECRET_KEY=test-secret-key-not-for-production",
+        "-e",
+        "PICKLE_HMAC_SECRET=test-pickle-secret-not-for-production",
+        "-e",
+        "ORGANISM_BRAIN_DIR=/tmp/scratch-brain",
+        "-e",
+        "TELEMETRY_DIR=/tmp/telemetry",
+        "-e",
+        "HOME=/tmp",
+        "-e",
+        "INTRA_FILL_TEST_DATABASE_URL=postgresql+asyncpg://test_fill_accounting:synthetic-fill-test-only@intra-fill-postgres:5432/test_fill_accounting",
+        "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+        "-B",
+        "-c",
+        "import base64,pathlib,subprocess,sys; code=subprocess.call([sys.executable]+['-B', '-m', 'pytest', '-q', '-c', '/work/pytest.ini', '--rootdir=/work', '/work/tests/test_fill_accounting_postgres.py', '--timeout=20', '--junitxml=/tmp/postgres_tests.xml']); p=pathlib.Path(\"/tmp/postgres_tests.xml\"); print(\"INTRA_JUNIT_BASE64=\"+base64.b64encode(p.read_bytes()).decode() if p.exists() else \"INTRA_JUNIT_MISSING\"); sys.exit(code)"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "intra-fill-proof-c493e29ea8ab-test"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "intra-fill-proof-c493e29ea8ab-test"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "intra-fill-proof-c493e29ea8ab-db"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "network",
+        "rm",
+        "intra-fill-proof-c493e29ea8ab"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "network_inspect": {
+    "Name": "intra-fill-proof-c493e29ea8ab",
+    "Id": "31baf59b4d346314d89150ca5cceccc0dc5679b4c9762a89e32bbf0d8decbd2b",
+    "Created": "2026-09-26T22:54:54.594423761Z",
+    "Scope": "local",
+    "Driver": "bridge",
+    "EnableIPv4": true,
+    "EnableIPv6": false,
+    "IPAM": {
+      "Driver": "default",
+      "Options": {},
+      "Config": [
+        {
+          "Subnet": "172.19.0.0/16",
+          "Gateway": "172.19.0.1"
+        }
+      ]
+    },
+    "Internal": true,
+    "Attachable": false,
+    "Ingress": false,
+    "ConfigFrom": {
+      "Network": ""
+    },
+    "ConfigOnly": false,
+    "Options": {
+      "com.docker.network.enable_ipv4": "true",
+      "com.docker.network.enable_ipv6": "false"
+    },
+    "Labels": {},
+    "Containers": {
+      "7d299f2c444c0043f277a4017fd89ef09ca6b71320132baf557265ab4f528d00": {
+        "Name": "intra-fill-proof-c493e29ea8ab-db",
+        "EndpointID": "031e1cca2d804ea223e2def566560e46b115536feb3a7566ee83ce1379736ba0",
+        "MacAddress": "12:b8:50:16:79:f3",
+        "IPv4Address": "172.19.0.2/16",
+        "IPv6Address": ""
+      }
+    },
+    "Status": {
+      "IPAM": {
+        "Subnets": {
+          "172.19.0.0/16": {
+            "IPsInUse": 4,
+            "DynamicIPsAvailable": 65532
+          }
+        }
+      }
+    }
+  },
+  "database_isolation": {
+    "image": "sha256:97ff59a4e30e08d1c11bdcd9455e7832368c0572b576c9092cde2df4ae5552a3",
+    "port_bindings": {},
+    "mounts": [],
+    "tmpfs": {
+      "/tmp": "rw",
+      "/var/lib/postgresql/data": "rw",
+      "/var/run/postgresql": "rw"
+    },
+    "readonly_rootfs": true
+  },
+  "source_before": {
+    "backend/integrations/alpaca_stream.py": "fa46735e7848310c7bec651f20ed5939157dce1f193368117521e28bbb9b0373",
+    "backend/api/lifespan.py": "66264fc37295b295f28dc956bad23ac0a08f6c77c2a99853324961cde70a5208",
+    "tests/test_fill_accounting_postgres.py": "67d3774da1549e68070f9f0d2c105e8d8c9f950e8548ef07d811a88e933dcce8"
+  },
+  "pytest_exit_code": 0,
+  "test_isolation": {
+    "image": "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+    "port_bindings": {},
+    "mounts": [
+      {
+        "Type": "bind",
+        "Source": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra",
+        "Destination": "/work",
+        "Mode": "",
+        "RW": false,
+        "Propagation": "rprivate"
+      }
+    ],
+    "tmpfs": {
+      "/tmp": "rw,mode=1777"
+    },
+    "readonly_rootfs": true,
+    "state": {
+      "Status": "exited",
+      "Running": false,
+      "Paused": false,
+      "Restarting": false,
+      "OOMKilled": false,
+      "Dead": false,
+      "Pid": 0,
+      "ExitCode": 0,
+      "Error": "",
+      "StartedAt": "2026-09-26T22:54:55.105060595Z",
+      "FinishedAt": "2026-09-26T22:54:56.744095804Z",
+      "Health": {
+        "Status": "unhealthy",
+        "FailingStreak": 0,
+        "Log": []
+      }
+    }
+  },
+  "source_after": {
+    "backend/integrations/alpaca_stream.py": "fa46735e7848310c7bec651f20ed5939157dce1f193368117521e28bbb9b0373",
+    "backend/api/lifespan.py": "66264fc37295b295f28dc956bad23ac0a08f6c77c2a99853324961cde70a5208",
+    "tests/test_fill_accounting_postgres.py": "67d3774da1549e68070f9f0d2c105e8d8c9f950e8548ef07d811a88e933dcce8"
+  },
+  "source_stable": true,
+  "cleanup": {
+    "intra-fill-proof-c493e29ea8ab-test": 0,
+    "intra-fill-proof-c493e29ea8ab-db": 0,
+    "intra-fill-proof-c493e29ea8ab": 0
+  },
+  "finished_at": "2026-09-26T22:54:57.028488+00:00"
+}

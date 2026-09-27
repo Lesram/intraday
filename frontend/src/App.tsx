@@ -5,6 +5,7 @@ import { darkTheme } from './styles/theme';
 import { BrowserRouter } from 'react-router-dom';
 import AppRoutes from './routes';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import AuthBootstrap from './components/auth/AuthBootstrap';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts';
 import './styles/accessibility.css';
 
@@ -51,10 +52,12 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ConfigProvider theme={darkTheme}>
           <AntApp>
-            <BrowserRouter>
-              <KeyboardShortcuts />
-              <AppRoutes />
-            </BrowserRouter>
+            <AuthBootstrap>
+              <BrowserRouter>
+                <KeyboardShortcuts />
+                <AppRoutes />
+              </BrowserRouter>
+            </AuthBootstrap>
           </AntApp>
         </ConfigProvider>
         {/* L-11 FIX: DevTools only load in development mode */}

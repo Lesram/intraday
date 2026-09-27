@@ -1,0 +1,94 @@
+Isolated test scratch: /private/tmp/intra-audit-test-_ycpo7_k
+......F................................................F................ [ 98%]
+.                                                                        [100%]
+=================================== FAILURES ===================================
+_______ TestAlpacaMarketDataStreamConnect.test_connect_already_connected _______
+
+self = <unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamConnect object at 0x10811d2b0>
+mock_websocket = <AsyncMock id='4474588000'>
+
+    @pytest.mark.asyncio
+    async def test_connect_already_connected(self, mock_websocket):
+        """Test connect when already connected."""
+        from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
+    
+        stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
+        stream.is_connected = True
+    
+        result = await stream.connect()
+    
+>       assert result is True
+E       assert False is True
+
+tests/unit/test_alpaca_market_data_stream_comprehensive.py:206: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    backend.integrations.alpaca_market_data_stream:alpaca_market_data_stream.py:173 Failed to connect to Alpaca market data
+Traceback (most recent call last):
+  File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_market_data_stream.py", line 144, in connect
+    socket = await websockets.connect(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/websockets/asyncio/client.py", line 544, in __await_impl__
+    self.connection = await self.create_connection()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/websockets/asyncio/client.py", line 470, in create_connection
+    _, connection = await loop.create_connection(factory, **kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 1083, in create_connection
+    infos = await self._ensure_resolved(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 1466, in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 905, in getaddrinfo
+    return await self.run_in_executor(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/socket.py", line 978, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+_ TestAlpacaMarketDataStreamDisconnectOnAuthFail.test_connect_disconnects_on_auth_failure _
+
+self = <unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamDisconnectOnAuthFail object at 0x108137920>
+mock_websocket = <AsyncMock name='connect().__aenter__()' id='4479225632'>
+
+    @pytest.mark.asyncio
+    async def test_connect_disconnects_on_auth_failure(self, mock_websocket):
+        """Test connect calls disconnect when authentication fails."""
+        from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
+    
+        stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
+    
+        with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+            mock_connect.return_value.__aenter__.return_value = mock_websocket
+    
+            with patch.object(stream, "_authenticate", return_value=False):
+                with patch.object(stream, "disconnect") as mock_disconnect:
+                    result = await stream.connect()
+    
+                    assert result is False
+>                   mock_disconnect.assert_called_once()
+
+tests/unit/test_alpaca_market_data_stream_comprehensive.py:1183: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <AsyncMock name='disconnect' id='4477452464'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'disconnect' to have been called once. Called 0 times.
+
+/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py:928: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/test_alpaca_market_data_stream_comprehensive.py::TestAlpacaMarketDataStreamConnect::test_connect_already_connected
+FAILED tests/unit/test_alpaca_market_data_stream_comprehensive.py::TestAlpacaMarketDataStreamDisconnectOnAuthFail::test_connect_disconnects_on_auth_failure
+2 failed, 71 passed in 0.49s

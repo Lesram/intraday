@@ -1,0 +1,19 @@
+{
+  "status": "PUBLICATION_ACCEPTED_NO_UNRESOLVED_SECRET_FINDINGS",
+  "scanned_files": 257,
+  "raw_scanner_exit": 1,
+  "findings": 24,
+  "exact_verified_metadata_matches": 24,
+  "review_refs": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/security/delivery-publication/prior_findings_review.json",
+      "sha256": "07d7a296357319570ae98239fa2f564e9a4d65ea3157ec25afcdcb03fd3ae7ef"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/security/delivery-publication/new_auth_findings_review.json",
+      "sha256": "fa9e0fb38213999f18c4e0f56b38ec8479dbdb8b4a64159a62b25d33eab5885b"
+    }
+  ],
+  "all_scanned_files_still_match": true,
+  "scanner_allowances_added": false
+}

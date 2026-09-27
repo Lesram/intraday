@@ -1,0 +1,23 @@
+{
+  "task": "PR32 Linux Docker explicit-subnet probe repair",
+  "scope": [
+    "scripts/ci/check_frontend_container.py",
+    "tests/test_frontend_container_probe.py"
+  ],
+  "before": "Hosted Docker rejects static old-IP holder on automatically assigned subnet; first three behavior groups passed.",
+  "change": "Inspect existing Docker network subnet inventory, choose a nonoverlapping RFC1918 /24, explicitly create only owned internal probe network with that subnet. Preserve different-IP replacement and cleanup assertions.",
+  "constraints": [
+    "No product frontend/config/workflow changes",
+    "No existing network modifications",
+    "No installed runtime/container changes",
+    "No weakened proxy or replacement assertions",
+    "Fail closed on invalid or exhausted network inventory"
+  ],
+  "tests": [
+    "Pure mocked subnet overlap/exhaustion/schema/network creation contract",
+    "Mock full probe enforces old-IP holder and distinct replacement IP with cleanup",
+    "Actual disposable probe against existing reviewed UI image"
+  ],
+  "evidence": "/private/tmp/intra-hosted-ui-313b.log",
+  "follow_up": "Root integrates source and reruns exact hosted Linux gate; local Docker pass is not hosted acceptance."
+}

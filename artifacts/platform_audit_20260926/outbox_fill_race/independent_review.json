@@ -1,0 +1,74 @@
+{
+  "status": "ACCEPTED",
+  "reviewer": "session_contract_explorer",
+  "reviewed_at_utc": "2026-09-26T23:54:06.623223+00:00",
+  "implementation": {
+    "path": "artifacts/platform_audit_20260926/outbox_fill_race/implementation.json",
+    "sha256": "8d69d5679932c011313f93b0ca7a785a3532e9bc1bd573ea02d70dfba0739e9c"
+  },
+  "source_hashes": {
+    "backend/infra/outbox_worker.py": "ac2ccecc3480ac74a4977416b83fae9af765de13bd729e2b92b38180dd753178",
+    "tests/test_outbox_fill_race.py": "f3a77660ca8779ed04e7bc078bfe7491f5025762591b0eedb38e18e9c4332843"
+  },
+  "dependency_hashes": {
+    "backend/services/order_recovery_service.py": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e",
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "tests/test_fill_accounting_integrity.py": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972"
+  },
+  "accepted_contract": [
+    "Real acknowledgements reread and lock the same persisted order as stream/recovery, reject changed broker identity, validate the original client/symbol/side/quantity and apply the shared atomic fill transaction.",
+    "First real nested filled acknowledgement creates Execution/lot/audit effects once; late/stale snapshots cannot erase established fills or reopen terminal/partial summaries. Equal-quantity cash correction remains explicit.",
+    "Synthetic mode metadata cannot relabel a persisted real broker identity. Existing first synthetic acknowledgement compatibility remains.",
+    "Known real broker success followed by local accounting or delivery-status persistence failure latches original-client lookup-only state before the next persistence await. A restarted worker uses GET only; exhaustion broadcasts reconciliation-required rather than falsely rejected.",
+    "No submission/cancellation/retry-policy change; only three authorized worker method ASTs differ. Shared validator was previously independently reviewed by the accounting owner."
+  ],
+  "findings_closed": [
+    "Partial-fill status could be demoted by a no-new-fill generic acknowledgement; final guard and regression preserve it.",
+    "Mode flip to synthetic acknowledgement could relabel a real order; final identity/mode guard and four regressions reject it.",
+    "Post-success persistence failures formerly lost known acknowledgement classification and could falsely broadcast rejection; final wrapper and sent-commit latches retain the durable existing protocol."
+  ],
+  "evidence": {
+    "independent_updater": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/independent.xml",
+      "sha256": "056aab50226aa678e270ffddc3a4f2a33173bfa1284c5c0a8f26baa9a7cbb5f1",
+      "passed": 33,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "independent_wrapper": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/independent_wrapper.xml",
+      "sha256": "ed7739b1ef95a09d46e0e25336a0fd3e3e6581f341221667db78787db2944867",
+      "passed": 3,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "author_final": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/final.xml",
+      "sha256": "76a171ebae83e38fb1696915c6e19020ea9f53eddcdda37ad969c297ce399abb",
+      "passed": 231,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "actual_postgres": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/postgres_ack_addendum.json",
+      "sha256": "4c0ecd6d19b6f0f665b6ea801d2c80af6b9d47f3151fd09ea5a5bd4a94a405a5",
+      "tests_passed": 12,
+      "real_database_cases": 7,
+      "dsn_validation_cases": 5,
+      "current_updater_ast_matches_executed_source": true,
+      "updater_ast_sha256": "fff04d2e61d836af49f8f659838996681bd276d2000fa4085abb644424273412",
+      "ast_python_version": "3.12.12 (main, Oct  9 2025, 11:07:00) [Clang 17.0.0 (clang-1700.6.3.2)]"
+    },
+    "frozen_before_final_equal": true
+  },
+  "limitations": [
+    "Overlapping suites are not additive unique platform coverage.",
+    "Actual PostgreSQL lock wait and cumulative fill cases are bounded concurrency evidence, not a stress or distributed exactly-once certification.",
+    "A crash/cancellation or total durable-write failure before the lookup-only marker commits remains a broker/local persistence window; no atomic broker/database guarantee.",
+    "No runtime, real broker, production database, credentials, models or active freeze state were accessed or changed by this review."
+  ],
+  "blockers": []
+}

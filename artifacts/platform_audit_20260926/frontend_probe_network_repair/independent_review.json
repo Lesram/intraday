@@ -1,0 +1,60 @@
+{
+  "status": "ACCEPTED_SCOPED_REPAIR_HOSTED_LINUX_GATE_PENDING",
+  "reviewed_at_utc": "2026-09-27T00:15:56.022908+00:00",
+  "reviewer": "daily_evidence_contract",
+  "implementation": {
+    "path": "artifacts/platform_audit_20260926/frontend_probe_network_repair/implementation.json",
+    "sha256": "016b088bdb4b8106a44eb5ffe60bf1e3e1a961e7543567859304f5222f75d8fa"
+  },
+  "source_files": {
+    "scripts/ci/check_frontend_container.py": "838ea9e9f7c91b2a47408fccb1a4f008a5109a6b1b301892a39e3ca006f26ee8",
+    "tests/test_frontend_container_probe.py": "b53dd45332bf2c76f3117f6cab97cea8a437b8df16ae7bd75ae3cc71edba15ff"
+  },
+  "tests": {
+    "path": "artifacts/platform_audit_20260926/frontend_probe_network_repair/targeted.xml",
+    "sha256": "27c98941022ce452f41151e3ede5603b6daa96ac0983284133561bbf42ba393b",
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "old_source_negative": {
+      "path": "artifacts/platform_audit_20260926/frontend_probe_network_repair/before.xml",
+      "sha256": "275ae1d58bb339127be2b2e9731c1e05208368508f9424c05d9b3d5a83035ccd",
+      "failures": 1
+    }
+  },
+  "actual_disposable_probe": {
+    "path": "artifacts/platform_audit_20260926/frontend_probe_network_repair/disposable/result.json",
+    "sha256": "e80d55ad0bc9ef023a61fd2e9b331e478024cbe4ccd4552dcd97a39348b3c36b",
+    "image_id": "sha256:94eddbaa767c7c4a9784391d474e8138483459619845ccfa8a336496fbc1b254",
+    "check_groups": 5,
+    "api_replacement": {
+      "old_ip": "10.240.0.2",
+      "new_ip": "10.240.0.4"
+    },
+    "cleanup_errors": []
+  },
+  "preservation": {
+    "path": "artifacts/platform_audit_20260926/frontend_probe_network_repair/preservation.json",
+    "sha256": "5acd68e3ca8fcc421fc49813af7384353b6cbf1a88b362c525c4a490cb59fc7c"
+  },
+  "review_findings": [
+    "Validated exact bounded network ID inventory and complete matching inspection; parses all supplied subnet allocations, ignores IPv6 only for IPv4 overlap and selects a /24 wholly within RFC1918.",
+    "Missing/null/empty allocation is allowed only for positively identified host/null driver. The reviewer finding for arbitrary empty bridge inventory is closed by source guard and negative tests.",
+    "Inventory is read-only; only uniquely named owned internal network is created with explicit --subnet. Concurrent overlap fails without retry or deletion of competing resources.",
+    "API remains internal/unpublished and UI loopback ingress unchanged. Existing holder at old IP, mandatory changed IP, upstream errors, three frame routes and no-auth-query logs remain asserted.",
+    "Full mocked orchestration proves cleanup and refuses same-IP false success; actual supplied Docker probe confirms all five groups, .2 to .4 replacement, no cleanup errors and preexisting IDs preserved."
+  ],
+  "unchanged_existing_helper_asts": [
+    "docker",
+    "fetch",
+    "read_exact",
+    "websocket_echo"
+  ],
+  "limitations": [
+    "Reviewer executed no Docker, API, browser or runtime action; parsed supplied receipts and source only.",
+    "Current actual proof is Docker Desktop arm64. A fresh hosted Linux run remains required to close the original platform-specific failure.",
+    "Docker inventory does not certify arbitrary host VPN routes; create-time Docker overlap enforcement remains authoritative for concurrent allocations.",
+    "Raw websocket echo proves proxy transport, not Socket.IO application authentication, trading behavior or production deployment."
+  ],
+  "blockers": []
+}

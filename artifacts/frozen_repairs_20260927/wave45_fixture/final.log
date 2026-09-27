@@ -1,0 +1,10 @@
+Isolated test scratch: /private/tmp/intra-audit-test-u_02v6rj
+........................................................................ [ 81%]
+................                                                         [100%]
+=============================== warnings summary ===============================
+tests/test_pipeline_freshness_recovery.py::test_stale_stream_blocks_new_entries_but_real_eod_exit_still_flattens
+  tests/test_pipeline_freshness_recovery.py:365: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+88 passed, 1 warning in 3.61s

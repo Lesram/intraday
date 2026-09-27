@@ -1,0 +1,5 @@
+Isolated test scratch: /private/tmp/intra-audit-test-e4ylmyt5
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/task_report.json
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/changed_files.json
+  -> backfilled task_report: 8 passed, 0 failed
+[]

@@ -83,22 +83,28 @@ def test_pp_6_streaming_provider_exposes_stale_symbols():
 def test_pp_6_stale_symbols_returns_per_symbol_age():
     """stale_symbols returns (symbol, age) tuples for symbols past threshold."""
     from backend.organism.streaming_data_provider import StreamingDataProvider
-    # Build a minimal provider stub.
-    from collections import deque
-    sp = StreamingDataProvider.__new__(StreamingDataProvider)
-    sp._bars = {}
-    sp._quotes = {}
-    sp._last_bar_ts = {"AAA": 100.0, "BBB": 200.0, "CCC": 50.0}
+    # Use the real, inert constructor so lifecycle/recovery fields stay valid.
+    # These are controlled last-receipt times; no stream or broker is started.
+    clock = [250.0]
+    sp = StreamingDataProvider(time_fn=lambda: clock[0])
+    sp._last_bar_ts = {"AAA": 100.0, "BBB": 200.0, "CCC": 50.0, "EDGE": 130.0}
     sp.last_update_time = 200.0
-    sp._running = True
-    sp._time_fn = lambda: 250.0  # current time
 
     # threshold=120, now=250 → AAA (250-100=150) and CCC (250-50=200) stale.
     result = sp.stale_symbols(threshold_s=120, now=250.0)
-    syms = sorted(s for s, _ in result)
-    assert syms == ["AAA", "CCC"], (
-        f"PP-6 regression: expected ['AAA', 'CCC'] stale, got {syms}"
-    )
+    assert result == [("AAA", 150.0), ("CCC", 200.0)]
+    assert sp.stale_symbols(threshold_s=120) == result
+    assert sp.get_bar_age("BBB") == 50.0
+    assert sp.get_bar_age("EDGE") == 120.0
+
+    # Fresh aggregate traffic cannot hide a subscribed symbol with no receipt.
+    sp._subscribed_symbols.add("COLD")
+    assert dict(sp.stale_symbols(threshold_s=120)) == {
+        "AAA": 150.0, "CCC": 200.0, "COLD": float("inf"),
+    }
+    clock[0] += 1
+    assert dict(sp.stale_symbols(threshold_s=120))["EDGE"] == 121.0
+    assert sp._stream is None
 
 
 def test_pp_6_live_engine_consults_per_symbol_stale():

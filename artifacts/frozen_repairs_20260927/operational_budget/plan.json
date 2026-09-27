@@ -1,0 +1,60 @@
+{
+  "task_id": "pr32_operational_ci_budget",
+  "created_at_utc": "2026-09-27T20:44:22.371170+00:00",
+  "base_sha": "54c1ec1c73683d2bdb4054e07f5600a546a5965e",
+  "scope": "Increase only operational CI step and encompassing job ceilings; preserve all selection, per-case deadlines and failure semantics.",
+  "files_changed": [
+    ".github/workflows/paper-readiness.yml",
+    "tests/test_monday_ci_workflows.py"
+  ],
+  "owned_evidence_directory": "artifacts/frozen_repairs_20260927/operational_budget",
+  "current_observation": {
+    "run": 36347889730,
+    "job": 108700712782,
+    "stage_elapsed_seconds": 307,
+    "configured_step_seconds": 300,
+    "conclusion": "failure",
+    "exact_failure_cause": "UNRESOLVED_PENDING_TERMINAL_LOG",
+    "prior_identical_selection_success_seconds": [
+      189,
+      222
+    ]
+  },
+  "planned_budgets_minutes": {
+    "operational_step": 10,
+    "job": 125,
+    "all_explicit_steps_sum": 116,
+    "reserve": 9
+  },
+  "tests": [
+    "tests/test_monday_ci_workflows.py",
+    "tests/test_artifact_workflow_contract.py",
+    "tests/test_generate_artifacts.py",
+    "tests/test_artifact_change_scope.py"
+  ],
+  "validation": [
+    "New exact operational10minute contract fails against old5minute workflow.",
+    "Focused workflow/artifact suite validates unchanged failure propagation and job sum+5 reserve.",
+    "Compare parsed workflow against base after masking only the two authorized budgets.",
+    "Hash full runtime/build/frozen files before and after; parent owns fresh final CI, candidate verify and full artifact metadata."
+  ],
+  "preserved_invariants": [
+    "All operational test paths",
+    "pytest --timeout=30",
+    "set -o pipefail",
+    "No continue-on-error",
+    "Always evidence upload",
+    "Product and runtime config bytes",
+    "Frozen candidate/active authority and measurement boundary"
+  ],
+  "limitations": [
+    "This robustness correction does not classify or erase the original hosted failure.",
+    "Any concrete assertion from original terminal output must be investigated separately.",
+    "No runtime, broker, Docker, auth, DB or installed data calls.",
+    "No commit; root owns staging/review/final CI and delivery."
+  ],
+  "before_sha256": {
+    ".github/workflows/paper-readiness.yml": "46b21b974e7bb1674d4ed3b09304bdfa25c72b1fbdfaf07f0763774570e64958",
+    "tests/test_monday_ci_workflows.py": "a55ab6403d47ad7319ebb96243786fdf48c29881595d2ae013e02b3dcc070bad"
+  }
+}

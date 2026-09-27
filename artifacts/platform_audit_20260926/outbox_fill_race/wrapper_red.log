@@ -1,0 +1,47 @@
+Isolated test scratch: /private/tmp/intra-audit-test-ntx_gmjl
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+______ test_known_real_ack_persistence_failure_restarts_lookup_only[True] ______
+tests/test_outbox_fill_race.py:410: in test_known_real_ack_persistence_failure_restarts_lookup_only
+    assert pending.status == 'pending' and pending.last_error == marker(row.client_idempotency_key)
+E   assert ('pending' == 'pending'
+E     
+E       pending and 'synthetic pe...tence failure' == 'INTRA_BROKER...06fd4e62faa"}'
+E     
+E     - INTRA_BROKER_ACK:{"version":1,"client_order_id":"ecef4e41-07e9-44ba-92e0-e06fd4e62faa"}
+E     + synthetic persistence failure)
+------------------------------ Captured log call -------------------------------
+ERROR    backend.infra.outbox_worker:outbox_worker.py:947 {"order_id": "f7494a6a-2035-4512-82af-33658db569d3", "status": "filled", "error": "synthetic persistence failure", "error_type": "RuntimeError", "event": "Failed to update order status via ORM", "logger": "backend.infra.outbox_worker", "level": "error", "timestamp": "2026-09-26T23:44:47.325493Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/infra/outbox_worker.py\", line 857, in _update_order_status\n    accounting = await apply_order_fill_snapshot(\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py\", line 449, in apply_order_fill_snapshot\n    accounting = await apply_incremental_fill_accounting(\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py\", line 327, in apply_incremental_fill_accounting\n    await lot_tracker.create_lot(\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 2291, in _execute_mock_call\n    raise effect\nRuntimeError: synthetic persistence failure"}
+ERROR    backend.infra.outbox_worker:outbox_worker.py:626 {"order_id": "f7494a6a-2035-4512-82af-33658db569d3", "error": "synthetic persistence failure", "error_type": "RuntimeError", "event": "Order submission failed", "logger": "backend.infra.outbox_worker", "level": "error", "timestamp": "2026-09-26T23:44:47.326217Z"}
+WARNING  backend.infra.outbox:outbox.py:250 Outbox event scheduled for retry
+_____ test_known_real_ack_persistence_failure_restarts_lookup_only[False] ______
+tests/test_outbox_fill_race.py:410: in test_known_real_ack_persistence_failure_restarts_lookup_only
+    assert pending.status == 'pending' and pending.last_error == marker(row.client_idempotency_key)
+E   assert ('pending' == 'pending'
+E     
+E       pending and 'synthetic pe...tence failure' == 'INTRA_BROKER...f9cd510cf5a"}'
+E     
+E     - INTRA_BROKER_ACK:{"version":1,"client_order_id":"2b9df753-afb4-4816-ba51-5f9cd510cf5a"}
+E     + synthetic persistence failure)
+------------------------------ Captured log call -------------------------------
+ERROR    backend.infra.outbox_worker:outbox_worker.py:947 {"order_id": "0134225a-a2d3-4168-91e1-ec0e4b98e01b", "status": "filled", "error": "synthetic persistence failure", "error_type": "RuntimeError", "event": "Failed to update order status via ORM", "logger": "backend.infra.outbox_worker", "level": "error", "timestamp": "2026-09-26T23:44:47.390552Z", "exception": "Traceback (most recent call last):\n  File \"/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/infra/outbox_worker.py\", line 857, in _update_order_status\n    accounting = await apply_order_fill_snapshot(\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py\", line 449, in apply_order_fill_snapshot\n    accounting = await apply_incremental_fill_accounting(\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py\", line 327, in apply_incremental_fill_accounting\n    await lot_tracker.create_lot(\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py\", line 2291, in _execute_mock_call\n    raise effect\nRuntimeError: synthetic persistence failure"}
+ERROR    backend.infra.outbox_worker:outbox_worker.py:626 {"order_id": "0134225a-a2d3-4168-91e1-ec0e4b98e01b", "error": "synthetic persistence failure", "error_type": "RuntimeError", "event": "Order submission failed", "logger": "backend.infra.outbox_worker", "level": "error", "timestamp": "2026-09-26T23:44:47.390823Z"}
+WARNING  backend.infra.outbox:outbox.py:250 Outbox event scheduled for retry
+_____ test_mark_sent_commit_failure_after_real_fill_preserves_lookup_only ______
+tests/test_outbox_fill_race.py:475: in test_mark_sent_commit_failure_after_real_fill_preserves_lookup_only
+    assert event.status=='pending' and event.last_error==marker(row.client_idempotency_key)
+E   assert ('pending' == 'pending'
+E     
+E       pending and 'synthetic se...ommit failure' == 'INTRA_BROKER...5e3dd409cc7"}'
+E     
+E     - INTRA_BROKER_ACK:{"version":1,"client_order_id":"3969fae8-806b-4c64-a367-35e3dd409cc7"}
+E     + synthetic sent commit failure)
+------------------------------ Captured log call -------------------------------
+ERROR    backend.infra.outbox_worker:outbox_worker.py:978 {"event_id": "f079f4e1-8308-4cd8-9c99-671b9fc4fbb7", "error": "synthetic sent commit failure", "event": "Failed to mark event as succeeded", "logger": "backend.infra.outbox_worker", "level": "error", "timestamp": "2026-09-26T23:44:47.413470Z"}
+ERROR    backend.infra.outbox_worker:outbox_worker.py:476 {"event_id": "f079f4e1-8308-4cd8-9c99-671b9fc4fbb7", "topic": "order.submitted", "error": "synthetic sent commit failure", "error_type": "RuntimeError", "event": "Error processing event", "logger": "backend.infra.outbox_worker", "level": "error", "timestamp": "2026-09-26T23:44:47.413653Z"}
+WARNING  backend.infra.outbox:outbox.py:250 Outbox event scheduled for retry
+=========================== short test summary info ============================
+FAILED tests/test_outbox_fill_race.py::test_known_real_ack_persistence_failure_restarts_lookup_only[True]
+FAILED tests/test_outbox_fill_race.py::test_known_real_ack_persistence_failure_restarts_lookup_only[False]
+FAILED tests/test_outbox_fill_race.py::test_mark_sent_commit_failure_after_real_fill_preserves_lookup_only
+3 failed, 33 deselected in 0.60s

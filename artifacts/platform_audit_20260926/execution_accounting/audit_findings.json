@@ -1,0 +1,129 @@
+{
+  "status": "AUDIT_COMPLETE_SCOPED_NONFROZEN_REPAIR_TESTED_NOT_DEPLOYED",
+  "source_sha": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "read_only_proofs": "pre_repair_proofs.stdout",
+  "findings": [
+    {
+      "id": "EA-1",
+      "rank": "high",
+      "title": "Incremental execution/lot prices use cumulative average, corrupting partial-fill cashflow",
+      "files": [
+        "backend/integrations/alpaca_stream.py:268",
+        "backend/integrations/alpaca_stream.py:284"
+      ],
+      "proof": "5@100 then cumulative10@110 writes5@100+5@110 (1050) rather than1100",
+      "impact": "Execution cash, lot basis and realized-trade PnL; independent close-accounting order-summary PnL can remain correct.",
+      "freeze_impact": false,
+      "repair": "candidate fixed; 211 selected cases pass; no runtime deployment"
+    },
+    {
+      "id": "EA-2",
+      "rank": "high",
+      "title": "Summary commit precedes execution/lot accounting; retry treats missing accounting as already applied",
+      "files": [
+        "backend/integrations/alpaca_stream.py:883",
+        "backend/integrations/alpaca_stream.py:262",
+        "backend/integrations/alpaca_stream.py:1163",
+        "backend/api/lifespan.py:872"
+      ],
+      "proof": "Injected lot failure after summary commit leaves Order filled10 with zero executions/lots; next same snapshot returns duplicate_or_stale_fill. Handler also swallows exception so queue retry sees success.",
+      "impact": "Unrecoverable-by-normal-identical-snapshot DB accounting gap, with misleading terminal status.",
+      "freeze_impact": false,
+      "repair": "candidate fixed; 211 selected cases pass; no runtime deployment"
+    },
+    {
+      "id": "EA-3",
+      "rank": "high",
+      "title": "EOD pending-entry cancellation invokes missing stream method and silently does nothing",
+      "files": [
+        "backend/organism/live_engine.py:3887",
+        "backend/organism/live_engine.py:3896",
+        "backend/integrations/alpaca_stream.py:368",
+        "backend/organism/live_engine.py:2409"
+      ],
+      "proof": "Exact EOD source block executed with actual stream class and pending internal UUID: no cancel_order method, zero OrderService cancels. Pending IDs also expire after30ticks independent of broker status.",
+      "impact": "Previously admitted open limit entries can survive intended EOD cancellation; late fill can carry overnight. No observed production order claimed.",
+      "freeze_impact": "_live_tick_inner and/or other hashed entry surface; approval required",
+      "repair": "report only",
+      "additional_evidence": [
+        "_cancel_pending_entry_orders current7905 clears failed cancellations as well as confirmed ones; not a safe EOD drop-in",
+        "_stage_expire_cooldowns removes pending IDs on tick TTL, independent of broker terminal status"
+      ],
+      "smallest_approval_scope": [
+        "retain authoritative pending-entry identity until broker terminal confirmation",
+        "replace EOD dead stream cancel call with exact attributed entry cancellation/terminal reconciliation",
+        "preserve protective exits and handle filled-during-cancel without claiming flat"
+      ],
+      "required_proof": [
+        "real tick EOD with actual stream class and mocked broker exact IDs",
+        "cancel timeout/partial fill/filled-during-cancel leaves tracking until terminal",
+        "stale tick TTL cannot erase still-open broker entry",
+        "protective/EOD exits remain active; frozen surface update and new forward cutoff only after explicit approval"
+      ]
+    },
+    {
+      "id": "EA-4",
+      "rank": "medium",
+      "title": "Admin cleanup labels unknown accepted orders expired without broker/outbox proof",
+      "files": [
+        "backend/organism/routes.py:742",
+        "backend/organism/routes.py:778",
+        "backend/integrations/alpaca_stream.py:840"
+      ],
+      "proof": "Route updates accepted/no broker_id/>1h rows unconditionally; current stream can recover by exact client key despite route doc claiming impossible.",
+      "impact": "Unknown ambiguous acknowledgement or pending outbox can be represented as expired, including historical UNKNOWN rows. Admin-triggered only.",
+      "freeze_impact": "whole organism/routes.py hashed as operator_api",
+      "repair": "report only",
+      "smallest_approval_scope": [
+        "make cleanup report unresolved status or reconcile exact original client identity without synthetic expiration",
+        "never alter five historical UNKNOWN rows absent authoritative broker evidence"
+      ],
+      "required_proof": [
+        "admin invocation with accepted/no broker ID/pending outbox cannot label expired",
+        "lookup ambiguity/timeout and INTRA_BROKER_ACK preserved",
+        "read-only unresolved reporting and exact proven terminal mapping"
+      ]
+    },
+    {
+      "id": "EA-5",
+      "rank": "high",
+      "title": "Terminal cancellation/expiry with confirmed partial quantity never creates missing fill accounting",
+      "files": [
+        "backend/integrations/alpaca_stream.py:233"
+      ],
+      "proof": "Actual helper(status=cancelled,filled_qty4,avg100) returns non_fill_status; reconnect may only see terminal snapshot.",
+      "impact": "Missed partial update leaves executions/lots absent even when terminal broker snapshot has authoritative quantity.",
+      "freeze_impact": false,
+      "repair": "candidate fixed; 211 selected cases pass; no runtime deployment"
+    }
+  ],
+  "known_residuals": [
+    "Ambiguous-ACK persistence is correctly lookup-only AFTER marker commit; before-marker crash remains documented distributed boundary, not newly introduced.",
+    "Five exact historical unknown rows must remain UNKNOWN; no local cleanup or prior synthetic test can establish their broker outcome.",
+    "Close accounting replacement lineage intentionally fails closed and is not treated as safe replacement support.",
+    "Recovery inventory is bounded: reconnect100 recent locally updated rows <=1h, startup latest500 broker orders; old or unobserved rows outside inventory are not proven reconciled.",
+    "Positions table is a broker-refreshed mirror, separate from atomic execution/lot transaction.",
+    "Material same-quantity cash corrections and pre-existing wrong cost basis require explicit reconciliation; no historical rewrite.",
+    "SQLite isolation tests prove transactional rollback/idempotent replay, not empirical PostgreSQL concurrency."
+  ],
+  "further_source_observations_pending": [
+    "Outbox retries do not revalidate age/current admission; no fresh-intent expiry visible.",
+    "Startup cancels all open orders before engine initialization, including possibly protective orders; not modified.",
+    "Outbox status ACK can arrive after stream terminal update; generic repository setter has no monotonic guard.",
+    "Legacy drawdown cancellation clears failed local tracking; included in pending-attribution frozen scope."
+  ],
+  "source_refs_note": "Finding line references are original bf533 source unless marked current; repair implementation binds current worktree hashes.",
+  "evidence": {
+    "implementation": "artifacts/platform_audit_20260926/execution_accounting/implementation.json",
+    "pre_repair_proofs": "artifacts/platform_audit_20260926/execution_accounting/pre_repair_proofs.stdout",
+    "final_junit": "artifacts/platform_audit_20260926/execution_accounting/intra-fill-expanded3.xml",
+    "freeze": "artifacts/platform_audit_20260926/execution_accounting/frozen_after.stdout"
+  },
+  "nonclaims": [
+    "No observed live/paper loss attributed to these defects.",
+    "Historical Order-summary close accounting can remain correct even when Execution/Lot accounting was wrong.",
+    "Five historical unknown rows are inert unknowns, not proven current executable outbox work.",
+    "No broker/API/auth/runtime/model read or mutation by this task.",
+    "No strategy profitability or complete-platform safety certification."
+  ]
+}

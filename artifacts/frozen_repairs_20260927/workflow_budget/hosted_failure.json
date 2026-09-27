@@ -1,0 +1,14 @@
+{
+  "run_id": 36343972148,
+  "source_sha": "e5376e93d4f68d717d963ce5bcb033d5b431298a",
+  "tests_passed": 153,
+  "tests_failed": 2,
+  "root_cause": "Operational job110min ceiling less than explicit step ceilings111min plus5min evidence reserve after adding approved targeted repair stage",
+  "failed_tests": [
+    "test_full_consumer_job_budget_covers_all_step_limits_and_reporting[paper-readiness.yml-operational-safety]",
+    "test_readiness_runs_repaired_nightly_cases_with_durable_failure_evidence"
+  ],
+  "log_sha256": "4d3081fe1769e67d0566c99c1d01fb644001d27c4ba4422d1f3e3bf8f3a63610",
+  "retained_private_log": "/private/tmp/intra-pr32-workflow-budget-failure/failed.log",
+  "runtime_changed": false
+}

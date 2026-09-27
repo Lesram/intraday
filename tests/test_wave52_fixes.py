@@ -62,13 +62,29 @@ def test_yy_2_alpaca_stream_emits_order_filled_audit():
     )
 
 
-def test_yy_5_readyz_checks_brain_and_tick():
+def test_yy_5_readyz_checks_brain_and_tick(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+
     from backend.api.routes import health
-    src = inspect.getsource(health)
-    assert "YY-5" in src, "YY-5 marker missing in health.py"
-    assert "brain_loaded" in src, (
-        "YY-5 regression: /readyz no longer checks brain.is_loaded."
+    from backend.organism import scheduler as scheduler_module
+
+    sched = SimpleNamespace(
+        is_running=True, _stop=asyncio.Event(), _tick_interval=10,
+        _engine=SimpleNamespace(_initialized=True, brain=SimpleNamespace(_loaded=False)),
+        _readiness_started_at=100.0, _readiness_last_loop_at=990.0,
+        _readiness_tick_expected_since=500.0, _readiness_last_tick_completed_at=900.0,
     )
-    assert "tick_recent" in src or "tick_loop" in src, (
-        "YY-5 regression: /readyz no longer checks tick-loop liveness."
-    )
+    state = SimpleNamespace(organism_scheduler=sched)
+    monkeypatch.setattr(scheduler_module, "_is_market_tick_window", lambda: True)
+    checks, result = health._runtime_check(state, 1000.0)
+    assert checks["brain_loaded"] is False
+    assert result.state == "brain_unloaded"
+    sched._engine.brain._loaded = True
+    checks, result = health._runtime_check(state, 1000.0)
+    assert checks["tick_recent"] is False
+    assert result.state == "tick_stale"
+    sched._readiness_last_tick_completed_at = 990.0
+    checks, result = health._runtime_check(state, 1000.0)
+    assert all(checks.values())
+    assert result.state == "tick_recent"

@@ -1,0 +1,229 @@
+{
+  "task_id": "DATA-01-DATA-02-independent-review",
+  "at_utc": "2026-09-27T18:46:34.998546+00:00",
+  "judgment": "ACCEPTED_SCOPED_CANDIDATE",
+  "blocking_findings": [],
+  "scope": "Read-only independent review of approved streaming acknowledgement/freshness/recovery candidate; no runtime or provider calls.",
+  "authorization_and_invariants": "AGENTS.md and docs/architecture/mapss.md read; parent relayed explicit frozen repair approval. Active boundary remains unchanged; parent owns candidate governance, full safety/replay, hosted CI and later paper activation.",
+  "author_report": {
+    "path": "artifacts/frozen_repairs_20260927/streaming/implementation.json",
+    "sha256": "380a0c33fa899e2cbddc856a881a30d0a169e461bc21c08cf0e93daea440ddd9",
+    "bytes": 18003
+  },
+  "plan": {
+    "path": "artifacts/frozen_repairs_20260927/streaming/plan.json",
+    "sha256": "7137083fd770b217c76b5eb52b35bb955499f9d5ec6b1f1b4807de128099ecf2",
+    "bytes": 2755
+  },
+  "reviewed_files": [
+    {
+      "path": "backend/integrations/alpaca_market_data_stream.py",
+      "sha256": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead",
+      "bytes": 25241
+    },
+    {
+      "path": "backend/organism/streaming_data_provider.py",
+      "sha256": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535",
+      "bytes": 29836
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "sha256": "51b1df5aafc6763a40fe5cba49b0122195a36bfcbe658c8e96ed9438bf6cc203",
+      "bytes": 15842
+    },
+    {
+      "path": "tests/test_streaming_subscription_acknowledgement.py",
+      "sha256": "209a7950cdd4e7abb293d1a73ea8dc3d3cb3b61413478d760085b6c820d3a069",
+      "bytes": 19857
+    },
+    {
+      "path": "tests/test_scanner_streaming_integration.py",
+      "sha256": "029b5963cb0a8ef0026c4cfb92171373e95ff5f7321e924012b29cecd500290e",
+      "bytes": 18145
+    },
+    {
+      "path": "tests/unit/test_alpaca_market_data_stream_comprehensive.py",
+      "sha256": "6f3c5a546edf370d75290b9caadd1e5fe24458793d98b21dbb6ca2eadfe9d0de",
+      "bytes": 58286
+    },
+    {
+      "path": "tests/unit/test_streaming_data_provider.py",
+      "sha256": "73520353bd96de68a57dee9a321f3bdd9d294691657302cc8b424f8152f59dda",
+      "bytes": 9362
+    }
+  ],
+  "source_checks": [
+    {
+      "file": "backend/integrations/alpaca_market_data_stream.py",
+      "lines": [
+        135,
+        177,
+        223,
+        292,
+        369,
+        396,
+        555
+      ],
+      "accepted": "Authenticated reader starts before confirmation waits; current socket generation checks guard authentication and every delivered message; disconnect revokes intent and cancels owned tasks. Desired and confirmed sets remain distinct; only valid supplied snapshots advance channel versions, omission differs from empty, retries/error/timeout/partial acknowledgement withhold completion."
+    },
+    {
+      "file": "backend/organism/streaming_data_provider.py",
+      "lines": [
+        90,
+        163,
+        198,
+        220,
+        264,
+        342,
+        416,
+        561
+      ],
+      "accepted": "Configured failures retain recoverable provider and desired universe; intentional stop clears/revokes it. Reconnect clears live receipt eligibility. Historical prefill never renews health; advancing timely bars are still required. Unsubscribe retires buffers only after all requested channel confirmations. The new retry path retains the client but skips repeated warmup."
+    },
+    {
+      "file": "backend/organism/scheduler.py",
+      "lines": [
+        146,
+        164,
+        176,
+        188
+      ],
+      "accepted": "Failed configured startup remains attached to the actual engine; it is not replaced by None to bypass the freshness path."
+    },
+    {
+      "file": "backend/organism/live_engine.py",
+      "lines": [
+        2585,
+        2606,
+        2655
+      ],
+      "accepted": "Read-only caller review:30-tick health recovery and5-second synchronization remain distinct; failures block entries, same any-symbol120-second gate applies, held/base/current names remain desired. No engine changes authored by this reviewer."
+    },
+    {
+      "file": "backend/organism/live_engine_data.py",
+      "lines": [
+        151,
+        167,
+        180
+      ],
+      "accepted": "Read-only caller review: normal REST feature-history fallback remains available below MIN_BARS, independently of live receipt eligibility; this supports recovery without repeated prefill."
+    }
+  ],
+  "resolved_findings": [
+    {
+      "id": "STREAM-RETRY-WARMUP-DEADLINE",
+      "severity": "P2",
+      "file": "backend/organism/streaming_data_provider.py",
+      "function": "_retry_start",
+      "trigger": "An initial startup failure is followed by healthy transport recovery while sequential historical warmup exceeds the5-second per-tick synchronization deadline.",
+      "prior_effect": "Each per-tick retry repeated warmup and could be canceled/disconnected before success. Separate30-tick health recovery might still succeed within25seconds, so permanent failure was not established.",
+      "resolution": "Retry passes private _prefill_history=False while keeping original data_client; initial startup warmup remains unchanged. Normal feeder REST fallback supplies short-buffer feature history; actual fresh streaming receipt remains necessary.",
+      "red": {
+        "path": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_red.xml",
+        "sha256": "55dc124651e8accf6d69703218fe6730a109d935dd395a73064095926bc466e1",
+        "bytes": 4656,
+        "cases": 1,
+        "passed": 0,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "unique_case_count": 1
+      },
+      "author_green": {
+        "path": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_green.xml",
+        "sha256": "0a5c289359dc9281909a7260755db72155238191c9f83a14e980c12901b08641",
+        "bytes": 429,
+        "cases": 1,
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "unique_case_count": 1
+      },
+      "independent_green": {
+        "path": "artifacts/frozen_repairs_20260927/streaming/independent_retry.xml",
+        "sha256": "b5ee319858dbd4d0014933ddc5efb77468110b0609e61b45767abf86e7a9ef0f",
+        "bytes": 429,
+        "cases": 1,
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "unique_case_count": 1
+      }
+    }
+  ],
+  "independent_tests": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/streaming/independent_targeted.xml",
+      "sha256": "9950b8588599463f36baf65fbbbb5347373122b79c32c0cfeff6fce58e7e744d",
+      "bytes": 3507,
+      "cases": 21,
+      "passed": 21,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "unique_case_count": 21,
+      "log": {
+        "path": "artifacts/frozen_repairs_20260927/streaming/independent_targeted.log",
+        "sha256": "ec2e4e9fb722fb5954da66c4353f4e9002109aa1daa58b20d8b1e9447e20f89e",
+        "bytes": 161
+      },
+      "scope": "21 real-transport/socket/provider/scheduler contract cases on initial authored candidate before narrow retry correction."
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/streaming/independent_retry.xml",
+      "sha256": "b5ee319858dbd4d0014933ddc5efb77468110b0609e61b45767abf86e7a9ef0f",
+      "bytes": 429,
+      "cases": 1,
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "unique_case_count": 1,
+      "log": {
+        "path": "artifacts/frozen_repairs_20260927/streaming/independent_retry.log",
+        "sha256": "2ac86b69485fec13a7359a5ede63d84e2995cb1f114add248b72a6c379dea14a",
+        "bytes": 160
+      },
+      "scope": "The added retry-warmup regression on final source, including freshbar requirement and actual feeder fallback."
+    }
+  ],
+  "author_final_suite": {
+    "path": "artifacts/frozen_repairs_20260927/streaming/final_targeted02.xml",
+    "sha256": "a1f1994221c73be67160d8130782d6fe114da1b0ffd5944e98d034054831bcb6",
+    "bytes": 27675,
+    "cases": 165,
+    "passed": 165,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "unique_case_count": 165
+  },
+  "author_final_log": {
+    "path": "artifacts/frozen_repairs_20260927/streaming/final_targeted02.log",
+    "sha256": "69e56b7e551040b03820c6386786e330fd7baddcbcbe42a9881b46bd9a6d2f79",
+    "bytes": 1765
+  },
+  "reviewed_replay_evidence": "Authored real transport/provider/ReplayEngine tests require an actual MSFT entry only after confirmation and freshbar; permanent LAG refusal blocks subsequent entries while a held MSFT position still exits at EOD, reaches flat and clears accounting. Synthetic ACKs traverse the actual socket listener; replay bars enter the actual provider callback. Separate socket-message tests cover transport bar parsing. No provider/live execution claim.",
+  "static_delta": {
+    "path": "artifacts/frozen_repairs_20260927/streaming/static_delta.json",
+    "sha256": "ab008e0229a821dff662dda8d039b2cc845046f3f8569395ae596c1683214282",
+    "bytes": 1832
+  },
+  "limitations": [
+    "No real Alpaca quota, outage, market-session, broker, model or installed-runtime observation. Synthetic callbacks/messages and replay provide software-contract evidence only.",
+    "Timeouts are cooperative asyncio bounds and retain owned cleanup; they are not a hard process-kill guarantee.",
+    "Any genuinely sparse or unavailable required symbol can still globally block entries under existing120-second policy. No symbol/feed/threshold was removed or relaxed to manufacture availability.",
+    "Quote-age policy, existing universe accumulation and feature computation cost remain unchanged; no assurance of strategy edge or profitable trades.",
+    "This review accepts the scoped source delta. Parent full combined-source safety/replay, candidate freeze/snapshot, secret scan, hosted checks and explicit activation remain separate gates."
+  ],
+  "execution_constraints": {
+    "isolated_runner": "/private/tmp/intra-audit-isolated.py",
+    "network_denied": true,
+    "installed_state_access_denied": true,
+    "source_edits_by_reviewer": false,
+    "runtime_mutations": false,
+    "commits": false
+  }
+}

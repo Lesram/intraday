@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="13" failures="0" errors="0" time="0.155173876">
+    <testsuite name="src/services/api.test.ts" timestamp="2026-09-26T23:28:22.621Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.110594667">
+        <testcase classname="src/services/api.test.ts" name="concurrent 401 without refresh settle, and later login can refresh and retry" time="0.004521208">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh success cannot overwrite or clear replacement login" time="0.052936709">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh failure cannot overwrite or clear replacement login" time="0.051454416">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="queued retry cannot dispatch old work as a replacement principal" time="0.001102">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/originRouting.test.ts" timestamp="2026-09-26T23:28:22.622Z" hostname="Marsels-MacBook-Pro.local" tests="6" failures="0" errors="0" skipped="0" time="0.034107959">
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP defaults to page origin when override is undefined" time="0.026340167">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP defaults to page origin when override is " time="0.000879583">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="HTTP preserves an explicit deployment origin" time="0.00083025">
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin (undefined)" time="0.003114375">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin ()" time="0.001511042">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/originRouting.test.ts" name="Socket.IO uses the selected origin (https://socket.example.test)" time="0.00087475">
+            <system-out>
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/websocketManager.test.tsx" timestamp="2026-09-26T23:28:22.622Z" hostname="Marsels-MacBook-Pro.local" tests="3" failures="0" errors="0" skipped="0" time="0.01047125">
+        <testcase classname="src/services/websocketManager.test.tsx" name="logout closes connected session and removes private-delivery callbacks" time="0.007866042">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 2)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/websocketManager.test.tsx" name="token rotation while connected or connecting retires old transport and resubscribes once" time="0.001854667">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 8)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/services/websocketManager.test.tsx" name="an obsolete caller cannot open a socket using a retired token" time="0.000194125">
+            <system-out>
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+</testsuites>

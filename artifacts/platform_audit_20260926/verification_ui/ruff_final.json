@@ -1,0 +1,904 @@
+[
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 15,
+      "row": 5
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 6
+          },
+          "location": {
+            "column": 1,
+            "row": 5
+          }
+        }
+      ],
+      "message": "Remove unused import: `asyncio`"
+    },
+    "location": {
+      "column": 8,
+      "row": 5
+    },
+    "message": "`asyncio` imported but unused",
+    "noqa_row": 5,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 25,
+      "row": 6
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 7
+          },
+          "location": {
+            "column": 1,
+            "row": 6
+          }
+        }
+      ],
+      "message": "Remove unused import"
+    },
+    "location": {
+      "column": 22,
+      "row": 6
+    },
+    "message": "`datetime.UTC` imported but unused",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 35,
+      "row": 6
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 7
+          },
+          "location": {
+            "column": 1,
+            "row": 6
+          }
+        }
+      ],
+      "message": "Remove unused import"
+    },
+    "location": {
+      "column": 27,
+      "row": 6
+    },
+    "message": "`datetime.datetime` imported but unused",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 115,
+      "row": 59
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 21,
+      "row": 59
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 59,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 82,
+      "row": 63
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 21,
+      "row": 63
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 63,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 76,
+      "row": 66
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 21,
+      "row": 66
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 66,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 77,
+      "row": 68
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 21,
+      "row": 68
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 68,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 89
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 89
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 89,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 72,
+      "row": 90
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 22,
+      "row": 90
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 90,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 73,
+      "row": 91
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 22,
+      "row": 91
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 91,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 123
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 123
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 123,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 26,
+      "row": 123
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 26,
+            "row": 123
+          },
+          "location": {
+            "column": 21,
+            "row": 123
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `e`"
+    },
+    "location": {
+      "column": 25,
+      "row": 123
+    },
+    "message": "Local variable `e` is assigned to but never used",
+    "noqa_row": 123,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 207
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 207
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 207,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 26,
+      "row": 207
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 26,
+            "row": 207
+          },
+          "location": {
+            "column": 21,
+            "row": 207
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `e`"
+    },
+    "location": {
+      "column": 25,
+      "row": 207
+    },
+    "message": "Local variable `e` is assigned to but never used",
+    "noqa_row": 207,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "S112",
+    "end_location": {
+      "column": 21,
+      "row": 250
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 249
+    },
+    "message": "`try`-`except`-`continue` detected, consider logging the exception",
+    "noqa_row": 249,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/try-except-continue"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 25,
+      "row": 249
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 16,
+      "row": 249
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 249,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "F841",
+    "end_location": {
+      "column": 18,
+      "row": 272
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 21,
+            "row": 272
+          },
+          "location": {
+            "column": 9,
+            "row": 272
+          }
+        }
+      ],
+      "message": "Remove assignment to unused variable `total_pnl`"
+    },
+    "location": {
+      "column": 9,
+      "row": 272
+    },
+    "message": "Local variable `total_pnl` is assigned to but never used",
+    "noqa_row": 272,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-variable"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 319
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 319
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 319,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 68,
+      "row": 320
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 22,
+      "row": 320
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 320,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 86,
+      "row": 341
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 21,
+      "row": 341
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 341,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 79,
+      "row": 356
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 21,
+      "row": 356
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 356,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 25,
+      "row": 364
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 16,
+      "row": 364
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 364,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 86,
+      "row": 365
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 28,
+      "row": 365
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 365,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 375
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 375
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 375,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 78,
+      "row": 376
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 22,
+      "row": 376
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 376,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 68,
+      "row": 377
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/portfolio.py",
+    "fix": null,
+    "location": {
+      "column": 22,
+      "row": 377
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 377,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 25,
+      "row": 11
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/socketio_server.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 12
+          },
+          "location": {
+            "column": 1,
+            "row": 11
+          }
+        }
+      ],
+      "message": "Remove unused import"
+    },
+    "location": {
+      "column": 22,
+      "row": 11
+    },
+    "message": "`datetime.UTC` imported but unused",
+    "noqa_row": 11,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 35,
+      "row": 11
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/api/socketio_server.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 12
+          },
+          "location": {
+            "column": 1,
+            "row": 11
+          }
+        }
+      ],
+      "message": "Remove unused import"
+    },
+    "location": {
+      "column": 27,
+      "row": 11
+    },
+    "message": "`datetime.datetime` imported but unused",
+    "noqa_row": 11,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 71,
+      "row": 72
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 30,
+      "row": 72
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 72,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 131,
+      "row": 89
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 25,
+      "row": 89
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 89,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 116,
+      "row": 100
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 33,
+      "row": 100
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 100,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 104,
+      "row": 106
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 41,
+      "row": 106
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 106,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 37,
+      "row": 114
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 28,
+      "row": 114
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 114,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 119,
+      "row": 201
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 29,
+      "row": 201
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 201,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 68,
+      "row": 232
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 30,
+      "row": 232
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 232,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 105,
+      "row": 294
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 29,
+      "row": 294
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 294,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 25,
+      "row": 309
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 16,
+      "row": 309
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 309,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 84,
+      "row": 310
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 26,
+      "row": 310
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 310,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 25,
+      "row": 352
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 16,
+      "row": 352
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 352,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 84,
+      "row": 353
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 26,
+      "row": 353
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 353,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 77,
+      "row": 371
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 25,
+      "row": 371
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 371,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 25,
+      "row": 373
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 16,
+      "row": 373
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 373,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  },
+  {
+    "cell": null,
+    "code": "G004",
+    "end_location": {
+      "column": 91,
+      "row": 374
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/services/portfolio_service.py",
+    "fix": null,
+    "location": {
+      "column": 26,
+      "row": 374
+    },
+    "message": "Logging statement uses f-string",
+    "noqa_row": 374,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/logging-f-string"
+  }
+]

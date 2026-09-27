@@ -19,14 +19,13 @@ export const useWebSocket = <T = unknown>(
 ) => {
   const accessToken = useAuthStore((state) => state.accessToken);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userId = useAuthStore((state) => state.user?.id);
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) return;
 
     // Connect if not already connected
-    if (!websocketManager.isConnected()) {
-      websocketManager.connect(accessToken);
-    }
+    websocketManager.connect(accessToken);
 
     // Subscribe to topic
     websocketManager.subscribe(topic, handler as (data: unknown) => void, symbols);
@@ -35,7 +34,7 @@ export const useWebSocket = <T = unknown>(
     return () => {
       websocketManager.unsubscribe(topic, handler as (data: unknown) => void);
     };
-  }, [topic, handler, symbols, accessToken, isAuthenticated]);
+  }, [topic, handler, symbols, accessToken, isAuthenticated, userId]);
 };
 
 /**
@@ -44,19 +43,12 @@ export const useWebSocket = <T = unknown>(
 export const useWebSocketConnection = () => {
   const accessToken = useAuthStore((state) => state.accessToken);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userId = useAuthStore((state) => state.user?.id);
 
   useEffect(() => {
-    if (isAuthenticated && accessToken && !websocketManager.isConnected()) {
-      websocketManager.connect(accessToken);
-    }
-
-    // Cleanup: Disconnect when user logs out
-    return () => {
-      if (!isAuthenticated) {
-        websocketManager.disconnect();
-      }
-    };
-  }, [isAuthenticated, accessToken]);
+    if (isAuthenticated && accessToken) websocketManager.connect(accessToken);
+    else websocketManager.disconnect();
+  }, [isAuthenticated, accessToken, userId]);
 
   return {
     isConnected: websocketManager.isConnected(),

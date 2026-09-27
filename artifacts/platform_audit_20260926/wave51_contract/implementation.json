@@ -1,0 +1,41 @@
+{
+  "task_id": "wave51-rollback-behavior-contract",
+  "status": "IMPLEMENTED_TEST_ONLY",
+  "written_at_utc": "2026-09-26T23:57:17.882319+00:00",
+  "source_head": "85b2534b3fdc1e72e3a9afb3c8e1a1a45bb0ef89",
+  "changed_file": {
+    "path": "tests/test_wave51_fixes.py",
+    "sha256": "5b68d99c6d20fa8283ec0b725a1e4897e1fce1979690b88b0764730f4ab764e9"
+  },
+  "scope": "Replace obsolete UU2-C source-comment assertion after atomic fill transaction refactor with a real behavior regression. No production files changed.",
+  "mechanism": [
+    "Use actual stream._process_trade_update and actual shared db.get_session_context with a synthetic SQLite sessionmaker.",
+    "Actual LotTracker.create_lot flushes both Execution and PositionLot before injected failure; rollback assertions cannot pass merely because no database write was attempted.",
+    "Observe actual AsyncSession.rollback. Normal rollback propagates original lot error; injected rollback failure propagates itself with original error chained, and session close cleans the uncommitted transaction.",
+    "Assert actual captured ERROR log names the propagated failure; order remains accepted/unfilled and no Execution/PositionLot survives."
+  ],
+  "validation": {
+    "junit": {
+      "path": "artifacts/platform_audit_20260926/wave51_contract/targeted_01.xml",
+      "sha256": "a41ff21832c57e8efaab92ac742b301ecdc635d398acfbd34213b2a9a8aa1ddf",
+      "passed": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "new_parameter_cases": 2,
+    "other_wave51_functions_byte_identical": [
+      "test_ww_1_essential_save_creates_backup",
+      "test_pp2_1_lifespan_smoke_select_in_outer_block",
+      "test_uu2_a_successful_login_rollback_logs_error"
+    ],
+    "ruff_new_findings": 0,
+    "frozen_surface_and_artifact_bytes_equal": true,
+    "freeze_sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791"
+  },
+  "limits": [
+    "Synthetic SQLite validates failure/rollback/log behavior; independent PostgreSQL concurrency evidence remains in order_recovery/postgres_ack_addendum.json.",
+    "No runtime, API, broker, credentials, models or installed state accessed or changed.",
+    "Root owns final CI, artifacts, commit and PR delivery."
+  ]
+}

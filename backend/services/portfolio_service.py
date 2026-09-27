@@ -6,6 +6,7 @@ Integrates with database and Alpaca broker to provide real-time portfolio inform
 from datetime import UTC, datetime
 from decimal import Decimal
 import logging
+import math
 from typing import Any
 
 from sqlalchemy import and_, select
@@ -15,6 +16,10 @@ from backend.infra.db import get_session_context
 from backend.infra.schemas import Order, PortfolioHistory, Position
 
 logger = logging.getLogger(__name__)
+
+
+class PortfolioUnavailableError(RuntimeError):
+    """A current portfolio could not be verified; never substitute a flat account."""
 
 
 class PortfolioService:
@@ -73,9 +78,12 @@ class PortfolioService:
             account_data = await broker_client.get_account()
 
             # Use actual Alpaca values
-            total_equity = Decimal(str(account_data.get("equity", "100000")))
-            cash = Decimal(str(account_data.get("cash", "100000")))
-            buying_power = Decimal(str(account_data.get("buying_power", "100000")))
+            total_equity = Decimal(str(account_data["equity"]))
+            last_equity = Decimal(str(account_data["last_equity"]))
+            cash = Decimal(str(account_data["cash"]))
+            buying_power = Decimal(str(account_data["buying_power"]))
+            if not all(value.is_finite() for value in (total_equity, last_equity, cash, buying_power)) or last_equity < 0:
+                raise ValueError("Invalid account amounts")
             portfolio_value = Decimal(str(account_data.get("portfolio_value", "0")))
 
             logger.info(f"Fetched account data from Alpaca: equity={total_equity}, cash={cash}, portfolio_value={portfolio_value}")
@@ -102,14 +110,37 @@ class PortfolioService:
                             )
                             positions = positions_result.scalars().all()
                         else:
-                            logger.warning(f"Alpaca sync failed, using local data: {sync_result.get('error')}")
+                            logger.warning("Portfolio sync did not establish current inventory")
                     except Exception as sync_error:
-                        logger.warning(f"Failed to sync from Alpaca, using local data: {sync_error}")
+                        logger.warning("Portfolio sync unavailable (%s)", type(sync_error).__name__)
 
                 # Build positions data WITH REAL-TIME PRICES FROM ALPACA
                 # Fetch Alpaca positions to get current_price and unrealized P&L
                 alpaca_positions_list = await broker_client.get_positions()
-                alpaca_positions = {p['symbol']: p for p in alpaca_positions_list}
+                if not isinstance(alpaca_positions_list, list):
+                    raise ValueError("Invalid broker inventory")
+                alpaca_positions = {}
+                broker_quantities = {}
+                for item in alpaca_positions_list:
+                    symbol = item['symbol']
+                    qty = Decimal(str(item['qty']))
+                    if (not isinstance(symbol, str) or not symbol or symbol in alpaca_positions
+                            or not qty.is_finite() or qty == 0):
+                        raise ValueError("Invalid broker position")
+                    alpaca_positions[symbol] = item
+                    broker_quantities[symbol] = qty
+                local_quantities = {}
+                active_positions = []
+                for pos in positions:
+                    qty = Decimal(str(pos.qty))
+                    if not qty.is_finite() or pos.symbol in local_quantities:
+                        raise ValueError("Invalid local inventory")
+                    if qty:
+                        local_quantities[pos.symbol] = qty
+                        active_positions.append(pos)
+                if local_quantities != broker_quantities:
+                    raise ValueError("Broker and local inventory disagree")
+                positions = active_positions
 
                 # Pre-fetch all entry dates in ONE query to avoid N+1 (optimization)
                 position_symbols = [pos.symbol for pos in positions]
@@ -135,16 +166,19 @@ class PortfolioService:
                 for pos in positions:
                     symbol = pos.symbol
                     qty = float(pos.qty)
-                    avg_price = float(pos.avg_price)
+                    avg_price = float(alpaca_positions[symbol]['avg_entry_price'])
 
                     # Get real-time data from Alpaca positions
-                    alpaca_pos = alpaca_positions.get(symbol, {})
-                    current_price = float(alpaca_pos.get('current_price', avg_price))
-                    unrealized_pl = float(alpaca_pos.get('unrealized_pl', 0.0))
-                    unrealized_plpc = float(alpaca_pos.get('unrealized_plpc', 0.0)) * 100  # Convert to %
-                    market_value = float(alpaca_pos.get('market_value', qty * avg_price))
-                    side = alpaca_pos.get('side', 'long')
+                    alpaca_pos = alpaca_positions[symbol]
+                    current_price = float(alpaca_pos['current_price'])
+                    unrealized_pl = float(alpaca_pos['unrealized_pl'])
+                    unrealized_plpc = float(alpaca_pos['unrealized_plpc']) * 100  # Convert to %
+                    market_value = float(alpaca_pos['market_value'])
+                    side = alpaca_pos['side']
                     exchange = alpaca_pos.get('exchange', 'ALPACA')
+                    if (not all(math.isfinite(value) for value in (qty, avg_price, current_price, unrealized_pl, unrealized_plpc, market_value))
+                            or avg_price <= 0 or current_price <= 0 or side not in ('long', 'short')):
+                        raise ValueError("Invalid broker position values")
 
                     # Get entry date from pre-fetched map (N+1 fix)
                     entry_date_result = entry_dates_map.get(symbol)
@@ -185,8 +219,9 @@ class PortfolioService:
                     'maintenanceMargin': 0.0,
                     'totalPnL': float(total_pl),
                     'totalPnLPercent': float(total_pl_percent),
-                    'dayPnL': 0.0,  # Will calculate with price changes later
-                    'dayPnLPercent': 0.0,
+                    # Account equity change, not closed-trade realized P&L.
+                    'dayPnL': float(total_equity - last_equity),
+                    'dayPnLPercent': float((total_equity - last_equity) / last_equity * 100) if last_equity else None,
                     'positions': positions_data,
                     'userId': user_id,
                     'lastUpdate': datetime.now(UTC).isoformat()
@@ -198,23 +233,9 @@ class PortfolioService:
 
                 return portfolio_data
 
-        except Exception as e:
-            logger.error(f"Failed to get portfolio for user {user_id}: {e}")
-            # Return default portfolio on error
-            return {
-                'totalEquity': 100000.00,
-                'cash': 100000.00,
-                'buyingPower': 100000.00,
-                'marginUsed': 0.0,
-                'maintenanceMargin': 0.0,
-                'totalPnL': 0.0,
-                'totalPnLPercent': 0.0,
-                'dayPnL': 0.0,
-                'dayPnLPercent': 0.0,
-                'positions': [],
-                'userId': user_id,
-                'lastUpdate': datetime.now(UTC).isoformat()
-            }
+        except Exception as exc:
+            logger.error("Current portfolio unavailable (%s)", type(exc).__name__)
+            raise PortfolioUnavailableError("Current portfolio unavailable") from exc
 
     async def get_portfolio_history(
         self,

@@ -1,0 +1,437 @@
+{
+  "schema": "intra_dependency_exposure_review_v1",
+  "observed_at_utc": "2026-09-26T23:16:59.062327+00:00",
+  "read_only": true,
+  "source": "85b2534b3fdc1e72e3a9afb3c8e1a1a45bb0ef89",
+  "scope": "Fresh GitHub open Dependabot critical/high alerts, exact candidate/deployed-source npm lock comparison, and source role classification. No package installation, runtime probe, exploit, alert mutation, or dependency repair.",
+  "github_inventory": {
+    "observed_at_utc": "2026-09-26T23:11:38.658757+00:00",
+    "open": 106,
+    "critical": 1,
+    "high": 38,
+    "medium": 59,
+    "low": 8,
+    "all_manifest": "frontend/package-lock.json",
+    "default_branch_head": "e4f1e577105f57bf67ca1e8d5694057669d76bb7"
+  },
+  "source_lock_comparison": {
+    "default_branch": "main",
+    "default_head": "e4f1e577105f57bf67ca1e8d5694057669d76bb7",
+    "default_commit_date": "2026-09-25T21:17:29Z",
+    "current_lock_sha256": "3450c9614e1a31be12e4866ef3c41de9cc738eaf3b138f0f3382d7bbd376540a",
+    "default_lock_sha256": "96f2fc2314efe9bd66a5a00888956ef00eea57bbadd2caaf5edf2663957536e8",
+    "deployed_source": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+    "deployed_source_lock_sha256": "3450c9614e1a31be12e4866ef3c41de9cc738eaf3b138f0f3382d7bbd376540a",
+    "current_equals_deployed_source": true,
+    "current_equals_default": false,
+    "default_selected_versions": {
+      "vitest": "3.2.4",
+      "axios": "1.12.2",
+      "react-router": "7.12.0",
+      "socket.io-parser": "4.2.4",
+      "vite": "7.3.1",
+      "postcss": "8.5.6",
+      "js-yaml": "4.1.1",
+      "nanoid": "3.3.11",
+      "browserslist": "4.26.3"
+    },
+    "candidate_selected_versions": {
+      "vitest": "3.2.6",
+      "axios": "1.16.0",
+      "react-router": "7.17.0",
+      "socket.io-parser": "4.2.6",
+      "vite": "7.3.5",
+      "postcss": "8.5.13",
+      "js-yaml": "4.2.0",
+      "nanoid": "3.3.11",
+      "browserslist": "4.28.2"
+    },
+    "deployed_source_selected_versions": {
+      "vitest": "3.2.6",
+      "axios": "1.16.0",
+      "react-router": "7.17.0",
+      "socket.io-parser": "4.2.6",
+      "vite": "7.3.5",
+      "postcss": "8.5.13",
+      "js-yaml": "4.2.0",
+      "nanoid": "3.3.11",
+      "browserslist": "4.28.2"
+    }
+  },
+  "current_critical_high_counts": {
+    "critical_version_affected": 0,
+    "critical_out_of_range": 1,
+    "high_version_affected": 11,
+    "high_out_of_range": 27,
+    "high_version_affected_dev_alerts": 8,
+    "high_version_affected_runtime_alerts": 3,
+    "version_affected_distinct_packages": 7
+  },
+  "critical": {
+    "alert": 68,
+    "package": "vitest",
+    "default_version": "3.2.4",
+    "candidate_and_deployed_source_version": "3.2.6",
+    "affected_range": "<3.2.6",
+    "patched": "3.2.6",
+    "role": "Development/test tool; current readiness workflow uses vitest run, not an exposed Vitest UI. Advisory concerns exposed UI/API or Windows UI/browser mode.",
+    "disposition": "Not version-affected in candidate or deployed-source lock; default branch alert remains valid for its older lock.",
+    "advisory": "https://github.com/advisories/GHSA-5xrq-8626-4rwp"
+  },
+  "runtime_reachability": [
+    {
+      "alerts": [
+        98,
+        113
+      ],
+      "package": "react-router",
+      "version": "7.17.0",
+      "disposition": "Version matches both ranges, but required application modes are not used by this source.",
+      "evidence": "App.tsx imports and wraps BrowserRouter (Declarative Mode); Vite SPA build. #98 primary advisory explicitly excludes Declarative/Data Mode and applies to Framework Mode manifest endpoint; #113 explicitly requires unstable RSC APIs.",
+      "source_refs": [
+        "frontend/src/App.tsx:5",
+        "frontend/src/App.tsx:54",
+        "frontend/package.json:7",
+        "frontend/vite.config.ts"
+      ],
+      "advisories": [
+        "https://github.com/advisories/GHSA-chx6-hx7r-mcp5",
+        "https://github.com/advisories/GHSA-qwww-vcr4-c8h2"
+      ],
+      "limit": "Static source-mode applicability, not an exploit test or a blanket React Router waiver."
+    },
+    {
+      "alerts": [
+        105
+      ],
+      "package": "socket.io-parser",
+      "version": "4.2.6",
+      "patched": "4.2.7",
+      "disposition": "Unresolved high-severity browser dependency; retain in security follow-up.",
+      "evidence": "websocketManager.ts imports socket.io-client and creates a connection. The advisory patched table explicitly includes socket.io-client@4.x, and describes crafted binary-attachment memory exhaustion. The backend is Python Socket.IO, not the vulnerable Node Socket.IO server implementation.",
+      "source_refs": [
+        "frontend/src/services/websocketManager.ts:6",
+        "frontend/src/services/websocketManager.ts:84",
+        "frontend/package.json:33",
+        "Dockerfile:120"
+      ],
+      "advisory": "https://github.com/advisories/GHSA-2m8v-j782-fhvr",
+      "limit": "No malicious packet test or proof that current trusted server emits such packets; browser parser is not declared harmless merely because the API is Python."
+    }
+  ],
+  "development_highs": {
+    "alerts": [
+      124,
+      118,
+      116,
+      111,
+      99,
+      88,
+      87,
+      86
+    ],
+    "packages": {
+      "js-yaml": "4.2.0 (three alerts; patched latest relevant4.3.2)",
+      "nanoid": "3.3.11 (patched3.3.12)",
+      "browserslist": "4.28.2 (patched4.28.7)",
+      "postcss": "8.5.13 (patched8.5.18)",
+      "brace-expansion": "1.1.14 and2.1.0 (patched1.1.16 and2.1.2)"
+    },
+    "role": "Lock entries all dev=true; build/lint/test dependency exposure to relevant crafted input remains real but is separate from the Python paper-trading worker.",
+    "disposition": "Record unresolved; no cleanup undertaken under parked CI/dependency scope."
+  },
+  "operational_assessment": {
+    "new_proven_paper_worker_blocker": false,
+    "statement": "This bounded alert review does not establish a new exploitable critical/high dependency defect in the Python paper execution service. It does establish one unresolved high browser parser dependency and eight high development-tool alerts that must remain disclosed. The106 default-branch banner is not a count of vulnerabilities in the running paper worker.",
+    "image_source_evidence": "Paper Dockerfile installs requirements.lock into a Python runtime and starts uvicorn; .dockerignore excludes node_modules/frontend/node_modules/frontend/dist. Frontend manifest/lock text may remain in image but installed Node modules are not copied.",
+    "not_security_certification": true
+  },
+  "limitations": [
+    "No actual runtime package inventory or fresh deployed image query; deployed-source87 lock was read from immutable Git object, matching candidate lock byte-for-byte.",
+    "No Python, OS, container-base or transitive dependency vulnerability audit beyond current GitHub alerts; absence from this alert set is not proof of safety.",
+    "Only critical/high applicability analyzed;59 medium and8 low kept in aggregate without disposition.",
+    "No dependency updates, exploit verification, npm audit, source edits, alert dismissals, or workflow changes."
+  ],
+  "current_affected_high_alerts": [
+    {
+      "number": 124,
+      "severity": "high",
+      "package": "js-yaml",
+      "range": ">= 4.0.0, < 4.3.2",
+      "patched": "4.3.2",
+      "instances": [
+        {
+          "path": "node_modules/js-yaml",
+          "version": "4.2.0",
+          "dev": true,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "development",
+      "ghsa": "GHSA-2883-xcg3-v3hh",
+      "summary": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/124"
+    },
+    {
+      "number": 118,
+      "severity": "high",
+      "package": "nanoid",
+      "range": "< 3.3.12",
+      "patched": "3.3.12",
+      "instances": [
+        {
+          "path": "node_modules/nanoid",
+          "version": "3.3.11",
+          "dev": true,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "development",
+      "ghsa": "GHSA-xwg4-73v4-xw9w",
+      "summary": "nanoid: Integer Overflow or Wraparound",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/118"
+    },
+    {
+      "number": 116,
+      "severity": "high",
+      "package": "browserslist",
+      "range": "<= 4.28.6",
+      "patched": "4.28.7",
+      "instances": [
+        {
+          "path": "node_modules/browserslist",
+          "version": "4.28.2",
+          "dev": true,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "development",
+      "ghsa": "GHSA-73wf-gq98-2v4g",
+      "summary": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/116"
+    },
+    {
+      "number": 113,
+      "severity": "high",
+      "package": "react-router",
+      "range": ">= 7.12.0, < 7.18.2",
+      "patched": "7.18.2",
+      "instances": [
+        {
+          "path": "node_modules/react-router",
+          "version": "7.17.0",
+          "dev": false,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "runtime",
+      "ghsa": "GHSA-qwww-vcr4-c8h2",
+      "summary": "React Router: RSC Mode CSRF Bypass Allows Action Execution Before 400 Response",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/113"
+    },
+    {
+      "number": 111,
+      "severity": "high",
+      "package": "js-yaml",
+      "range": ">= 4.0.0, < 4.3.1",
+      "patched": "4.3.1",
+      "instances": [
+        {
+          "path": "node_modules/js-yaml",
+          "version": "4.2.0",
+          "dev": true,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "development",
+      "ghsa": "GHSA-5p4m-2wfm-xmqj",
+      "summary": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/111"
+    },
+    {
+      "number": 105,
+      "severity": "high",
+      "package": "socket.io-parser",
+      "range": ">= 4.0.0, < 4.2.7",
+      "patched": "4.2.7",
+      "instances": [
+        {
+          "path": "node_modules/socket.io-parser",
+          "version": "4.2.6",
+          "dev": false,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "runtime",
+      "ghsa": "GHSA-2m8v-j782-fhvr",
+      "summary": "Socket.IO: Zero-attachment Memory Exhaustion",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/105"
+    },
+    {
+      "number": 99,
+      "severity": "high",
+      "package": "postcss",
+      "range": "<= 8.5.17",
+      "patched": "8.5.18",
+      "instances": [
+        {
+          "path": "node_modules/postcss",
+          "version": "8.5.13",
+          "dev": true,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "development",
+      "ghsa": "GHSA-r28c-9q8g-f849",
+      "summary": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/99"
+    },
+    {
+      "number": 98,
+      "severity": "high",
+      "package": "react-router",
+      "range": ">= 7.0.0, < 7.18.0",
+      "patched": "7.18.0",
+      "instances": [
+        {
+          "path": "node_modules/react-router",
+          "version": "7.17.0",
+          "dev": false,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "runtime",
+      "ghsa": "GHSA-chx6-hx7r-mcp5",
+      "summary": "React Router: Unauthenticated Denial of Service via Inefficient Route Matching",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/98"
+    },
+    {
+      "number": 88,
+      "severity": "high",
+      "package": "js-yaml",
+      "range": ">= 4.0.0, < 4.3.0",
+      "patched": "4.3.0",
+      "instances": [
+        {
+          "path": "node_modules/js-yaml",
+          "version": "4.2.0",
+          "dev": true,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "development",
+      "ghsa": "GHSA-52cp-r559-cp3m",
+      "summary": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/88"
+    },
+    {
+      "number": 87,
+      "severity": "high",
+      "package": "brace-expansion",
+      "range": ">= 2.0.0, < 2.1.2",
+      "patched": "2.1.2",
+      "instances": [
+        {
+          "path": "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "version": "2.1.0",
+          "dev": true,
+          "affected": true
+        },
+        {
+          "path": "node_modules/brace-expansion",
+          "version": "1.1.14",
+          "dev": true,
+          "affected": false
+        }
+      ],
+      "affected": true,
+      "scope": "development",
+      "ghsa": "GHSA-3jxr-9vmj-r5cp",
+      "summary": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/87"
+    },
+    {
+      "number": 86,
+      "severity": "high",
+      "package": "brace-expansion",
+      "range": "< 1.1.16",
+      "patched": "1.1.16",
+      "instances": [
+        {
+          "path": "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "version": "2.1.0",
+          "dev": true,
+          "affected": false
+        },
+        {
+          "path": "node_modules/brace-expansion",
+          "version": "1.1.14",
+          "dev": true,
+          "affected": true
+        }
+      ],
+      "affected": true,
+      "scope": "development",
+      "ghsa": "GHSA-3jxr-9vmj-r5cp",
+      "summary": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+      "url": "https://github.com/Lesram/intraday/security/dependabot/86"
+    }
+  ],
+  "files": [
+    {
+      "path": "frontend/package.json",
+      "sha256": "1f93fa278e031acefa5fbb275768f33ac13d58406515f8a9de9a2d012f14cc9f",
+      "bytes": 1778
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "sha256": "3450c9614e1a31be12e4866ef3c41de9cc738eaf3b138f0f3382d7bbd376540a",
+      "bytes": 288893
+    },
+    {
+      "path": "frontend/src/App.tsx",
+      "sha256": "bf1c1b74a43dd8851c41d14632caad4440b5ee25d6bbaaf18ecdefdce2f51bbb",
+      "bytes": 2167
+    },
+    {
+      "path": "frontend/src/services/websocketManager.ts",
+      "sha256": "47e8886c7f674b950432fa67442bd0776548c4103e79c9bb6192cb64c81da11a",
+      "bytes": 11378
+    },
+    {
+      "path": "frontend/vite.config.ts",
+      "sha256": "26f8975661d9362947ad7c762b211bc7d63625fcdc59d9e180b89284b5835aca",
+      "bytes": 2653
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "8816b42d06a58d95495401016db93a978bf8eba05af03c42deadefc102e08694",
+      "bytes": 3951
+    },
+    {
+      "path": ".dockerignore",
+      "sha256": "4abe59e5c2105174af1e7fa210a79c570aa6bf86486c8e7c2c36e15e670baffc",
+      "bytes": 1187
+    },
+    {
+      "path": "docker-compose.paper.yml",
+      "sha256": "9d65d48a73253793af8848d7bb65e279f7bb9231f8686086bdb55744b49fa399",
+      "bytes": 11236
+    },
+    {
+      "path": ".github/workflows/paper-readiness.yml",
+      "sha256": "d4a3caa78e4c9daf0b361489d2c8cd5eef53a07d289a42ced6708911610eada3",
+      "bytes": 14410
+    }
+  ],
+  "private_complete_report_sha256": "21bce97336c64443f9dbda4c3e6ef504dc43bf0aa4e4f93d21bc0cacb3ea6fc6"
+}

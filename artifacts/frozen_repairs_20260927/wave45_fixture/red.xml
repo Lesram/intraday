@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="10" time="1.102" timestamp="2026-09-27T13:12:45.895679-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_wave45_fixes" name="test_pp_5_scanner_tracks_consecutive_failures" time="0.971" /><testcase classname="tests.test_wave45_fixes" name="test_pp_5_scanner_alerts_after_threshold" time="0.007" /><testcase classname="tests.test_wave45_fixes" name="test_pp_6_streaming_provider_exposes_stale_symbols" time="0.016" /><testcase classname="tests.test_wave45_fixes" name="test_pp_6_stale_symbols_returns_per_symbol_age" time="0.000"><failure message="AttributeError: 'StreamingDataProvider' object has no attribute '_recovery_enabled'">def test_pp_6_stale_symbols_returns_per_symbol_age():
+        """stale_symbols returns (symbol, age) tuples for symbols past threshold."""
+        from backend.organism.streaming_data_provider import StreamingDataProvider
+        # Build a minimal provider stub.
+        from collections import deque
+        sp = StreamingDataProvider.__new__(StreamingDataProvider)
+        sp._bars = {}
+        sp._quotes = {}
+        sp._last_bar_ts = {"AAA": 100.0, "BBB": 200.0, "CCC": 50.0}
+        sp.last_update_time = 200.0
+        sp._running = True
+        sp._time_fn = lambda: 250.0  # current time
+    
+        # threshold=120, now=250 → AAA (250-100=150) and CCC (250-50=200) stale.
+&gt;       result = sp.stale_symbols(threshold_s=120, now=250.0)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_wave45_fixes.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/organism/streaming_data_provider.py:260: in stale_symbols
+    for sym in sorted(self._freshness_symbols()):
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10a40ce90&gt;
+
+    def _freshness_symbols(self) -&gt; set[str]:
+&gt;       desired = self._desired_symbols if self._recovery_enabled else set()
+                                           ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'StreamingDataProvider' object has no attribute '_recovery_enabled'
+
+backend/organism/streaming_data_provider.py:267: AttributeError</failure></testcase><testcase classname="tests.test_wave45_fixes" name="test_pp_6_live_engine_consults_per_symbol_stale" time="0.000" /><testcase classname="tests.test_wave45_fixes" name="test_p7_stream_health_recovery_appends_activity_event" time="0.001" /><testcase classname="tests.test_wave45_fixes" name="test_p7_stream_health_skips_between_probe_ticks" time="0.000" /><testcase classname="tests.test_wave45_fixes" name="test_p7_staleness_stage_marks_aggregate_stale" time="0.000" /><testcase classname="tests.test_wave45_fixes" name="test_p7_staleness_stage_clears_when_stream_recovers" time="0.000" /><testcase classname="tests.test_wave45_fixes" name="test_p7_staleness_stage_marks_per_symbol_stale_when_aggregate_fresh" time="0.000" /></testsuite></testsuites>

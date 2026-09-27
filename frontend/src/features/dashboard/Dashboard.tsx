@@ -15,10 +15,12 @@ import { formatCurrency, formatPercent } from '../../utils/formatters';
 import { getTimezoneInfo } from '../../utils/timezone';
 import { usePortfolio, useOrders, useStrategies, usePortfolioHistory } from '@/hooks/useData';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { usePortfolioStore, type Position } from '@/store/portfolioStore';
+import { usePortfolioStore } from '@/store/portfolioStore';
 import { useOrdersStore, type OrderSide, type OrderType, type OrderStatus } from '@/store/ordersStore';
 import { useStrategiesStore } from '@/store/strategiesStore';
-import type { PortfolioUpdateMessage, OrderUpdateMessage } from '@/types/websocket';
+import type { OrderUpdateMessage } from '@/types/websocket';
+import { useAuthStore } from '@/store/authStore';
+import { isCurrentPortfolio, newestPortfolio } from '@/utils/portfolioSnapshot';
 import { PageSkeleton } from '@/components/common/LoadingComponents';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
 import { PositionsTable } from '@/components/portfolio/PositionsTable';
@@ -42,7 +44,6 @@ const Dashboard = () => {
   const { data: portfolioHistory, isLoading: historyLoading } = usePortfolioHistory();
 
   // Get data from stores (updated by WebSocket)
-  const portfolio = usePortfolioStore((state) => state.portfolio);
   const orders = useOrdersStore((state) => state.orders);
   const strategies = useStrategiesStore((state) => state.strategies);
   
@@ -52,42 +53,14 @@ const Dashboard = () => {
   const updateStrategy = useStrategiesStore((state) => state.updateStrategy);
 
   // WebSocket handlers - use useMemo to create stable references
-  const handlePortfolioUpdate = useMemo(
-    () => (message: PortfolioUpdateMessage) => {
-      if (message.data) {
-        // API now returns camelCase, map directly to store
-        const data = message.data as {
-          userId?: string;
-          totalEquity?: number;
-          cash?: number;
-          buyingPower?: number;
-          marginUsed?: number;
-          maintenanceMargin?: number;
-          totalPnL?: number;
-          totalPnLPercent?: number;
-          dayPnL?: number;
-          dayPnLPercent?: number;
-          positions?: Position[];
-          lastUpdate?: string;
-        };
-        setPortfolio({
-          userId: data.userId || '',
-          totalEquity: data.totalEquity || 0,
-          cash: data.cash || 0,
-          buyingPower: data.buyingPower || 0,
-          marginUsed: data.marginUsed || 0,
-          maintenanceMargin: data.maintenanceMargin || 0,
-          totalPnL: data.totalPnL || 0,
-          totalPnLPercent: data.totalPnLPercent || 0,
-          dayPnL: data.dayPnL || 0,
-          dayPnLPercent: data.dayPnLPercent || 0,
-          positions: data.positions || [],
-          lastUpdate: data.lastUpdate || new Date().toISOString(),
-        });
-      }
-    },
-    [setPortfolio]
-  );
+  const handlePortfolioUpdate = useCallback((data: unknown) => {
+    // websocketManager dispatches the payload itself, not a second envelope.
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId || !isCurrentPortfolio(data, userId)) return;
+    const previous = usePortfolioStore.getState().portfolio;
+    const latest = newestPortfolio(data, previous, userId);
+    if (latest && latest !== previous) setPortfolio(latest);
+  }, [setPortfolio]);
 
   const handleOrderUpdate = useMemo(
     () => (message: OrderUpdateMessage) => {
@@ -187,7 +160,7 @@ const Dashboard = () => {
   }
 
   // Error state with retry functionality
-  if (portfolioError) {
+  if (portfolioError || !portfolioData) {
     return (
       <div style={{ padding: '24px' }}>
         <Alert
@@ -196,9 +169,7 @@ const Dashboard = () => {
             <div>
               <p>Unable to fetch portfolio data from the server.</p>
               <p style={{ marginBottom: '12px' }}>
-                {portfolioError instanceof Error 
-                  ? portfolioError.message 
-                  : 'Please check your connection and try again.'}
+                Current balances and positions are unavailable. Please retry.
               </p>
               <Button 
                 type="primary" 
@@ -216,14 +187,13 @@ const Dashboard = () => {
     );
   }
 
-  // CRITICAL FIX: Always prefer WebSocket data (store) over API data
-  // WebSocket provides real-time updates, API is just for initial load
-  const currentPortfolio = portfolio || portfolioData;
+  // The hook selects only the newest verified observation for this user.
+  const currentPortfolio = portfolioData;
   
   // Calculate statistics
   const equity = currentPortfolio?.totalEquity || 0;
   const dailyPL = currentPortfolio?.dayPnL || 0;
-  const dailyPLPercent = currentPortfolio?.dayPnLPercent || 0;
+  const dailyPLPercent = currentPortfolio.dayPnLPercent;
   const buyingPower = currentPortfolio?.buyingPower || 0;
   const positionsValue = currentPortfolio?.positions?.reduce(
     (sum, pos) => sum + pos.marketValue, 
@@ -273,7 +243,7 @@ const Dashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card style={{ background: colors.backgrounds.secondary }}>
             <Statistic
-              title="Daily P&L"
+              title="Day Equity Change"
               value={dailyPL}
               precision={2}
               prefix={dailyPL >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
@@ -281,7 +251,7 @@ const Dashboard = () => {
                 color: dailyPL >= 0 ? colors.semantic.profit : colors.semantic.loss,
                 fontFamily: 'monospace',
               }}
-              suffix={formatPercent(dailyPLPercent)}
+              suffix={dailyPLPercent === null ? "N/A (zero prior equity)" : formatPercent(dailyPLPercent)}
               formatter={(value) => formatCurrency(value as number)}
             />
           </Card>
@@ -349,7 +319,7 @@ const Dashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card style={{ background: colors.backgrounds.secondary }}>
             <Statistic
-              title="Total P&L"
+              title="Open P&L"
               value={currentPortfolio?.totalPnL || 0}
               precision={2}
               prefix={<DollarOutlined />}

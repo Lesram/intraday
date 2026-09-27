@@ -1,0 +1,11 @@
+{
+  "private_log": "/private/tmp/intra-hosted-ui-313b.log",
+  "private_log_sha256": "5d1a608f5fc59e173ab4c30a657539d776dcb9f67d6be87eeb4a82240a96aad0",
+  "diagnosis": "Docker requires explicitly configured subnet before --ip old-address holder. Hosted UI build and first three probe groups passed; replacement setup then failed.",
+  "exact_error_excerpt": [
+    {
+      "line": 406,
+      "text": "2026-09-27T00:08:30.0464923Z   \"error\": \"RuntimeError: docker run failed: docker: Error response from daemon: invalid config for network intra-ui-probe-dd21c8eb1273-net: invalid endpoint settings:\\nuser specified IP address is supported only when connecting to networks with user configured subnets\\n\\nRun 'docker run --help' for more information\\n\","
+    }
+  ]
+}

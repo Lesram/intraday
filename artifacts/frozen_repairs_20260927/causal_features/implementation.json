@@ -1,0 +1,395 @@
+{
+  "task_id": "DATA-03-causal-cross-asset-alignment",
+  "at_utc": "2026-09-27T18:36:55.278278+00:00",
+  "status": "IMPLEMENTED_TARGETED_GREEN_PENDING_PARENT_RELEASE_ACCEPTANCE",
+  "baseline_commit": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "working_tree_head_at_report": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "authorization": "Parent relayed Marsel explicit approval of five frozen repairs, with new forward boundary only on later approved paper activation.",
+  "files": [
+    {
+      "path": "backend/organism/ml_features.py",
+      "sha256": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
+      "bytes": 30083
+    },
+    {
+      "path": "tests/test_cross_asset_timestamp_alignment.py",
+      "sha256": "846541f8354468455896a492f6b08e31158f1b823814f5e1b47f1133ed23a684",
+      "bytes": 14900
+    },
+    {
+      "path": "tests/test_cross_asset_alignment_replay.py",
+      "sha256": "46f34f35a4ed34c70808e41e977ed8effa4f54059f680c45469ce7bb6a72335c",
+      "bytes": 10427
+    }
+  ],
+  "plan": {
+    "path": "artifacts/frozen_repairs_20260927/causal_features/plan.json",
+    "sha256": "4ae3b60c0d4fad7d7e3578f8ef986eb60aa9692c19fb21dc731a8d3d27efd8dd",
+    "bytes": 3327
+  },
+  "original_source": {
+    "path": "artifacts/frozen_repairs_20260927/causal_features/ml_features_before.py.txt",
+    "sha256": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "bytes": 24431
+  },
+  "behavior": [
+    "Align benchmark closes by latest actual aware UTC event time no later than each stock event, irrespective of ordinal indexes, lengths or sparse histories.",
+    "Timestamp column takes precedence; aware DatetimeIndex is fallback. Reject invalid, numeric, naive, duplicate or unsorted keys for cross-asset use without sorting, deduplication, inferred timezone or future fill.",
+    "Preserve four feature names and existing return/window formulas; neutral values retain unavailable data rather than removing stock and held-position inputs. A selected malformed/nonfinite/nonpositive/bool/complex benchmark close cannot borrow an older price.",
+    "Attach row-specific matched benchmark times, age and four-feature validity plus unavailable reason in DataFrame attrs. No new freshness threshold, entry tolerance, feature column, cache or risk/ML-policy change.",
+    "Supporting temporal-calendar fallback runs only when the original pandas conversion fails; retain original stock event times and neutralize malformed calendar values. Actual entry freshness still rejects invalid stock time."
+  ],
+  "red": {
+    "path": "artifacts/frozen_repairs_20260927/causal_features/red.xml",
+    "sha256": "1bbda98256cfd93dfdb584cdde841bebc753e5fde1cb4c083a014a09aa741f76",
+    "bytes": 49169,
+    "cases": 22,
+    "passed": 1,
+    "failed": 21,
+    "errors": 0,
+    "skipped": 0
+  },
+  "final": {
+    "path": "artifacts/frozen_repairs_20260927/causal_features/final.xml",
+    "sha256": "b509a9035d320ddea8778d1c9db6a133f2126bccd0ab8fa5aa6409099a3318c8",
+    "bytes": 14015,
+    "cases": 46,
+    "passed": 46,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "retained_prior_runs": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/targeted_01.xml",
+      "sha256": "a6b3f039d4b371d6ce36001f08b79b9661b0581b146f7c32affce3415f34723f",
+      "bytes": 4082,
+      "cases": 22,
+      "passed": 22,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/targeted_02.xml",
+      "sha256": "e082944b734c681d1a20fdf9504a42fc5e2d2cc868f7082324170fe1766e3e74",
+      "bytes": 6447,
+      "cases": 36,
+      "passed": 36,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/replay_01.xml",
+      "sha256": "1f23b8b205156167bb3665c398a1e86f978c6051934bad7c0e717b8cb6e9c24a",
+      "bytes": 6591,
+      "cases": 2,
+      "passed": 2,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/final_01.xml",
+      "sha256": "4d44d2f1dd03ac59960ee854c8d67ed7a8de0a942be364d1d703e2aef31d0c56",
+      "bytes": 13871,
+      "cases": 46,
+      "passed": 46,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "commands": [
+    "/Users/marselkei/VS/intra/venv/bin/python /private/tmp/intra-audit-isolated.py -q tests/test_cross_asset_timestamp_alignment.py tests/test_cross_asset_alignment_replay.py --timeout=300 --tb=short --junitxml=artifacts/frozen_repairs_20260927/causal_features/final.xml",
+    "/Users/marselkei/VS/intra/venv/bin/ruff check --output-format=json backend/organism/ml_features.py tests/test_cross_asset_timestamp_alignment.py tests/test_cross_asset_alignment_replay.py"
+  ],
+  "final_log": {
+    "path": "artifacts/frozen_repairs_20260927/causal_features/final.log",
+    "sha256": "da8bb8c589df1cb599c57576a99c4f3556e60ecb406db7d33370cb3528002861",
+    "bytes": 754
+  },
+  "red_log": {
+    "path": "artifacts/frozen_repairs_20260927/causal_features/red.log",
+    "sha256": "07db6d090e6d28678a6856acb91a923d2188671ddeb04c160bcb72e2ff106731",
+    "bytes": 32286
+  },
+  "static_delta": {
+    "path": "artifacts/frozen_repairs_20260927/causal_features/static_delta.json",
+    "sha256": "8cd602ae532517ed182719273229e1cc19438831cd2325ed7d3022e2c65c0b6f",
+    "bytes": 534
+  },
+  "static_result": {
+    "raw_final_exit": 1,
+    "inherited_findings_retained": 2,
+    "new_findings": 0,
+    "removed_findings": 1
+  },
+  "replay": {
+    "crash": {
+      "artifact": {
+        "path": "artifacts/frozen_repairs_20260927/causal_features/replay_crash.json",
+        "sha256": "848708b69094cee51775b5b4dab911f14b1a21757089390ae34e58293bb2ed7d",
+        "bytes": 29106
+      },
+      "source_unchanged_during_replay": true,
+      "changed_cross_cells_in_executed_rows": {
+        "AAPL": 240,
+        "MSFT": 240,
+        "SPY": 0
+      },
+      "noncross_features_equal": true,
+      "orders_and_accounted_outcomes_equal": true,
+      "arms": {
+        "baseline_ordinal": {
+          "metrics": {
+            "ticks": 60,
+            "signals": 4,
+            "alpha_scanned": 115,
+            "alpha_considered": 115,
+            "alpha_terminal": {
+              "below_exploration_confidence": 21,
+              "candidate_built": 4,
+              "direction_zero": 1,
+              "shared_gate:exit_cooldown": 25,
+              "shared_gate:long_only": 5,
+              "shared_gate:open_position": 55,
+              "shared_gate:pending_entry": 4
+            },
+            "shared_gate_evaluations": 115,
+            "shared_gate_passes": 26,
+            "shared_gate_rejections": {
+              "open_position": 55,
+              "long_only": 5,
+              "exit_cooldown": 25,
+              "pending_entry": 4
+            },
+            "combined_candidates_pre_sizing": 4,
+            "entry_orders": 4,
+            "exit_orders": 4,
+            "accounted_closes": 4,
+            "exit_legs": 4,
+            "exit_mix": {
+              "horizon_timeout": 2,
+              "pyramid_cut_full_at_-6.7R": 1,
+              "pyramid_cut_full_at_-8.5R": 1
+            },
+            "accounting_pending": 0,
+            "tick_errors": 0,
+            "exit_leg_realized_pnl_before_commission": -6055.165719146556,
+            "accounted_position_pnl": -6055.165719146555,
+            "final_equity": 993944.8342808534,
+            "equity_delta_including_open_mark_and_commission": -6055.165719146607,
+            "maximum_equity_drawdown_fraction": 0.009186705957032033,
+            "maximum_gross_exposure": 35836.455471304376,
+            "final_open_positions": 0,
+            "final_cash": 993944.8342808534,
+            "daily_loss_halted_ticks": 0,
+            "freshness_receipts": 4,
+            "commission": 0.0
+          },
+          "safety": {
+            "research_policy_locked": true,
+            "ml_isolated": true,
+            "fixed_atr_risk": true,
+            "empty_initial_brain": true,
+            "no_saved_models": true,
+            "shared_and_final_entry_gates_observed": true
+          }
+        },
+        "causal_timestamp": {
+          "metrics": {
+            "ticks": 60,
+            "signals": 4,
+            "alpha_scanned": 115,
+            "alpha_considered": 115,
+            "alpha_terminal": {
+              "below_exploration_confidence": 21,
+              "candidate_built": 4,
+              "direction_zero": 1,
+              "shared_gate:exit_cooldown": 25,
+              "shared_gate:long_only": 5,
+              "shared_gate:open_position": 55,
+              "shared_gate:pending_entry": 4
+            },
+            "shared_gate_evaluations": 115,
+            "shared_gate_passes": 26,
+            "shared_gate_rejections": {
+              "open_position": 55,
+              "long_only": 5,
+              "exit_cooldown": 25,
+              "pending_entry": 4
+            },
+            "combined_candidates_pre_sizing": 4,
+            "entry_orders": 4,
+            "exit_orders": 4,
+            "accounted_closes": 4,
+            "exit_legs": 4,
+            "exit_mix": {
+              "horizon_timeout": 2,
+              "pyramid_cut_full_at_-6.7R": 1,
+              "pyramid_cut_full_at_-8.5R": 1
+            },
+            "accounting_pending": 0,
+            "tick_errors": 0,
+            "exit_leg_realized_pnl_before_commission": -6055.165719146556,
+            "accounted_position_pnl": -6055.165719146555,
+            "final_equity": 993944.8342808534,
+            "equity_delta_including_open_mark_and_commission": -6055.165719146607,
+            "maximum_equity_drawdown_fraction": 0.009186705957032033,
+            "maximum_gross_exposure": 35836.455471304376,
+            "final_open_positions": 0,
+            "final_cash": 993944.8342808534,
+            "daily_loss_halted_ticks": 0,
+            "freshness_receipts": 4,
+            "commission": 0.0
+          },
+          "safety": {
+            "research_policy_locked": true,
+            "ml_isolated": true,
+            "fixed_atr_risk": true,
+            "empty_initial_brain": true,
+            "no_saved_models": true,
+            "shared_and_final_entry_gates_observed": true
+          }
+        }
+      }
+    },
+    "eod": {
+      "artifact": {
+        "path": "artifacts/frozen_repairs_20260927/causal_features/replay_eod.json",
+        "sha256": "3290f3ae1a9b973ef5f034df5091636b21c122c3fd325328d1f379dccebd43af",
+        "bytes": 13652
+      },
+      "source_unchanged_during_replay": true,
+      "changed_cross_cells_in_executed_rows": {
+        "AAPL": 140,
+        "MSFT": 140,
+        "SPY": 0
+      },
+      "noncross_features_equal": true,
+      "orders_and_accounted_outcomes_equal": true,
+      "arms": {
+        "baseline_ordinal": {
+          "metrics": {
+            "ticks": 35,
+            "signals": 1,
+            "alpha_scanned": 81,
+            "alpha_considered": 8,
+            "alpha_terminal": {
+              "below_exploration_confidence": 4,
+              "candidate_built": 1,
+              "shared_gate:open_position": 3
+            },
+            "shared_gate_evaluations": 8,
+            "shared_gate_passes": 5,
+            "shared_gate_rejections": {
+              "open_position": 3
+            },
+            "combined_candidates_pre_sizing": 1,
+            "entry_orders": 1,
+            "exit_orders": 1,
+            "accounted_closes": 1,
+            "exit_legs": 1,
+            "exit_mix": {
+              "eod_flatten": 1
+            },
+            "accounting_pending": 0,
+            "tick_errors": 0,
+            "exit_leg_realized_pnl_before_commission": -99.48418058653687,
+            "accounted_position_pnl": -99.4841805865374,
+            "final_equity": 999900.5158194135,
+            "equity_delta_including_open_mark_and_commission": -99.48418058652896,
+            "maximum_equity_drawdown_fraction": 0.0006527696647076902,
+            "maximum_gross_exposure": 18610.656816127586,
+            "final_open_positions": 0,
+            "final_cash": 999900.5158194135,
+            "daily_loss_halted_ticks": 0,
+            "freshness_receipts": 1,
+            "commission": 0.0
+          },
+          "safety": {
+            "research_policy_locked": true,
+            "ml_isolated": true,
+            "fixed_atr_risk": true,
+            "empty_initial_brain": true,
+            "no_saved_models": true,
+            "shared_and_final_entry_gates_observed": true
+          }
+        },
+        "causal_timestamp": {
+          "metrics": {
+            "ticks": 35,
+            "signals": 1,
+            "alpha_scanned": 81,
+            "alpha_considered": 8,
+            "alpha_terminal": {
+              "below_exploration_confidence": 4,
+              "candidate_built": 1,
+              "shared_gate:open_position": 3
+            },
+            "shared_gate_evaluations": 8,
+            "shared_gate_passes": 5,
+            "shared_gate_rejections": {
+              "open_position": 3
+            },
+            "combined_candidates_pre_sizing": 1,
+            "entry_orders": 1,
+            "exit_orders": 1,
+            "accounted_closes": 1,
+            "exit_legs": 1,
+            "exit_mix": {
+              "eod_flatten": 1
+            },
+            "accounting_pending": 0,
+            "tick_errors": 0,
+            "exit_leg_realized_pnl_before_commission": -99.48418058653687,
+            "accounted_position_pnl": -99.4841805865374,
+            "final_equity": 999900.5158194135,
+            "equity_delta_including_open_mark_and_commission": -99.48418058652896,
+            "maximum_equity_drawdown_fraction": 0.0006527696647076902,
+            "maximum_gross_exposure": 18610.656816127586,
+            "final_open_positions": 0,
+            "final_cash": 999900.5158194135,
+            "daily_loss_halted_ticks": 0,
+            "freshness_receipts": 1,
+            "commission": 0.0
+          },
+          "safety": {
+            "research_policy_locked": true,
+            "ml_isolated": true,
+            "fixed_atr_risk": true,
+            "empty_initial_brain": true,
+            "no_saved_models": true,
+            "shared_and_final_entry_gates_observed": true
+          }
+        }
+      }
+    }
+  },
+  "metadata_consumer_audit": [
+    {
+      "path": "backend/organism/live_engine_data.py",
+      "finding": "Actual _DataFeederMixin fetch/compute/MTF return retains attrs; covered by direct async integration test."
+    },
+    {
+      "path": "backend/organism/ml_signal.py",
+      "lines": [
+        445,
+        736
+      ],
+      "finding": "Prediction/training converts feature columns to .values NumPy arrays, which discard DataFrame attrs. No model-training quality gate added or automatic historical/export qualification claimed."
+    },
+    {
+      "finding": "Pandas row slices retain attrs verbatim; downstream slices/exports must retain or subset row metadata explicitly. Replay test acceleration does this for its known causal prefixes."
+    }
+  ],
+  "limits": [
+    "Valid ordered aware future-tail values and appended observations cannot alter prefix values or row validity. A malformed/duplicate/unsorted supplied whole frame is explicitly unavailable rather than silently repaired.",
+    "Available metadata status describes matched benchmark prices; trailing-window validity is separately reported by feature_valid. Sparse past prices may have large reported age: this repair adds no age tolerance or trade-admission policy.",
+    "Neutral compatibility values are not a training-data certificate. Existing historical model arrays/CSV exports cannot be assumed to retain coverage metadata.",
+    "Paired replay is seeded synthetic current-learning behavior with fixed ATR risk and main-book ML isolation, immediate simulator fills and configured costs, not live performance or profitability evidence. Losing outcomes are retained.",
+    "Full required safety/replay pack, candidate freeze/runtime snapshot, independent review and approved activation remain parent-owned release gates. No installed source, saved brain, broker state, model, environment, binding or active forward cutoff was changed."
+  ]
+}

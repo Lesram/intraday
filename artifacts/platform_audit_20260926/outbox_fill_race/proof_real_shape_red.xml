@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="0.671" timestamp="2026-09-26T16:32:22.236423-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="test_delayed_ack" name="test_delayed_ack_cannot_overwrite_terminal_fill[None]" time="0.030"><failure message="AssertionError: assert ('submitted',...'100.000000')) == ('filled', De...ecimal('100'))&#10;  &#10;  At index 0 diff: 'submitted' != 'filled'&#10;  Use -v to get more diff">/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:38: in test_delayed_ack_cannot_overwrite_terminal_fill
+    assert (current.status,current.filled_qty,current.avg_fill_price)==('filled',Decimal('10'),Decimal('100'))
+E   AssertionError: assert ('submitted',...'100.000000')) == ('filled', De...ecimal('100'))
+E     
+E     At index 0 diff: 'submitted' != 'filled'
+E     Use -v to get more diff</failure></testcase><testcase classname="test_delayed_ack" name="test_delayed_ack_cannot_overwrite_terminal_fill[details1]" time="0.013"><failure message="AssertionError: assert ('submitted',...'100.000000')) == ('filled', De...ecimal('100'))&#10;  &#10;  At index 0 diff: 'submitted' != 'filled'&#10;  Use -v to get more diff">/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:38: in test_delayed_ack_cannot_overwrite_terminal_fill
+    assert (current.status,current.filled_qty,current.avg_fill_price)==('filled',Decimal('10'),Decimal('100'))
+E   AssertionError: assert ('submitted',...'100.000000')) == ('filled', De...ecimal('100'))
+E     
+E     At index 0 diff: 'submitted' != 'filled'
+E     Use -v to get more diff</failure></testcase><testcase classname="test_delayed_ack" name="test_delayed_ack_cannot_overwrite_terminal_fill[details2]" time="0.013"><failure message="AssertionError: assert ('submitted',...('90.000000')) == ('filled', De...ecimal('100'))&#10;  &#10;  At index 0 diff: 'submitted' != 'filled'&#10;  Use -v to get more diff">/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:38: in test_delayed_ack_cannot_overwrite_terminal_fill
+    assert (current.status,current.filled_qty,current.avg_fill_price)==('filled',Decimal('10'),Decimal('100'))
+E   AssertionError: assert ('submitted',...('90.000000')) == ('filled', De...ecimal('100'))
+E     
+E     At index 0 diff: 'submitted' != 'filled'
+E     Use -v to get more diff</failure></testcase><testcase classname="test_delayed_ack" name="test_real_alpaca_ack_shape_preserves_or_accounts_fill[False]" time="0.009"><failure message="AssertionError: assert ('filled', De...0.000000'), 0) == ('filled', De...Decimal('10'))&#10;  &#10;  At index 1 diff: Decimal('0.000000') != Decimal('10')&#10;  Use -v to get more diff">/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:65: in test_real_alpaca_ack_shape_preserves_or_accounts_fill
+    assert (current.status,current.filled_qty,qty)==('filled',Decimal('10'),Decimal('10'))
+E   AssertionError: assert ('filled', De...0.000000'), 0) == ('filled', De...Decimal('10'))
+E     
+E     At index 1 diff: Decimal('0.000000') != Decimal('10')
+E     Use -v to get more diff</failure></testcase><testcase classname="test_delayed_ack" name="test_real_alpaca_ack_shape_preserves_or_accounts_fill[True]" time="0.012"><failure message="AssertionError: assert ('new', Decim...('10.000000')) == ('filled', De...Decimal('10'))&#10;  &#10;  At index 0 diff: 'new' != 'filled'&#10;  Use -v to get more diff">/private/tmp/intra-delayed-ack-review/test_delayed_ack.py:65: in test_real_alpaca_ack_shape_preserves_or_accounts_fill
+    assert (current.status,current.filled_qty,qty)==('filled',Decimal('10'),Decimal('10'))
+E   AssertionError: assert ('new', Decim...('10.000000')) == ('filled', De...Decimal('10'))
+E     
+E     At index 0 diff: 'new' != 'filled'
+E     Use -v to get more diff</failure></testcase></testsuite></testsuites>

@@ -231,17 +231,23 @@ async def apply_incremental_fill_accounting(
     side-effect-free for duplicate/stale updates and records exactly the
     delta that has not already been represented by execution rows.
     """
-    if status not in ("filled", "partially_filled"):
+    if status not in ("filled", "partially_filled", "canceled", "cancelled", "expired"):
         return {"applied": False, "reason": "non_fill_status"}
 
     cumulative = _decimal_or_none(cumulative_filled_qty)
     previous = _decimal_or_none(previous_filled_qty) or Decimal("0")
     price = _decimal_or_none(avg_fill_price)
-
-    if cumulative is None or cumulative <= 0:
+    if (
+        isinstance(cumulative_filled_qty, bool)
+        or cumulative is None
+        or not cumulative.is_finite()
+        or cumulative < 0
+    ):
+        raise ValueError("Invalid cumulative fill quantity")
+    if cumulative == 0:
         return {"applied": False, "reason": "missing_cumulative_fill_qty"}
-    if price is None or price <= 0:
-        return {"applied": False, "reason": "missing_avg_fill_price"}
+    if isinstance(avg_fill_price, bool) or price is None or not price.is_finite() or price <= 0:
+        raise ValueError("Invalid cumulative fill price")
     if not getattr(order, "id", None):
         return {"applied": False, "reason": "missing_order_id"}
     if not getattr(order, "symbol", None) or not getattr(order, "side", None):
@@ -251,22 +257,39 @@ async def apply_incremental_fill_accounting(
         return {"applied": False, "reason": f"unsupported_side:{order.side}"}
     action = _accounting_action(order, broker_order_data=broker_order_data)
 
-    from backend.infra.schemas import Execution, PositionLot
+    from backend.infra.schemas import Execution, Order, PositionLot
+
+    # Every ingestion path locks the same persisted order before reading its
+    # accounting watermark. Locks remain held until the caller commits all
+    # summary/execution/lot effects together (SQLite fixtures serialize writes).
+    locked = await session.execute(select(Order.id).where(Order.id == order.id).with_for_update())
+    if locked.scalar_one_or_none() is None:
+        raise ValueError("Cannot account a missing order")
 
     existing_stmt = select(func.coalesce(func.sum(Execution.fill_qty), 0)).where(
         Execution.order_id == order.id
     )
     existing_result = await session.execute(existing_stmt)
-    existing_execution_qty = (
-        _decimal_or_none(existing_result.scalar_one_or_none()) or Decimal("0")
+    existing_execution_qty = _decimal_or_none(existing_result.scalar_one_or_none()) or Decimal("0")
+    cash_result = await session.execute(
+        select(func.coalesce(func.sum(Execution.fill_qty * Execution.fill_price), 0)).where(
+            Execution.order_id == order.id
+        )
     )
-    effective_previous = (
-        existing_execution_qty
-        if existing_execution_qty > previous
-        else previous
-    )
-    incremental = cumulative - effective_previous
-    if incremental <= 0:
+    existing_cash = _decimal_or_none(cash_result.scalar_one_or_none()) or Decimal("0")
+    if not existing_execution_qty.is_finite() or not existing_cash.is_finite():
+        raise ValueError("Nonfinite persisted fill cashflow")
+    incremental = cumulative - existing_execution_qty
+    target_cash = cumulative * price
+    cash_delta = target_cash - existing_cash
+    # Stored DECIMAL prices have six decimal places. Permit only the rounding
+    # envelope of that representation, not a material correction to history.
+    tolerance = cumulative * Decimal("0.0000005") + Decimal("0.000001")
+    if incremental < 0:
+        return {"applied": False, "reason": "duplicate_or_stale_fill"}
+    if incremental == 0:
+        if abs(cash_delta) > tolerance:
+            raise ValueError("Fill cashflow correction requires reconciliation")
         return {
             "applied": False,
             "reason": "duplicate_or_stale_fill",
@@ -274,6 +297,10 @@ async def apply_incremental_fill_accounting(
             "existing_execution_qty": str(existing_execution_qty),
             "cumulative_filled_qty": str(cumulative),
         }
+    # The broker price is cumulative VWAP, not the latest leg's price.
+    price = cash_delta / incremental
+    if not price.is_finite() or price <= 0:
+        raise ValueError("Incremental fill cashflow requires reconciliation")
 
     fill_dt = (
         fill_time
@@ -365,6 +392,107 @@ async def apply_incremental_fill_accounting(
     }
 
 
+async def apply_order_fill_snapshot(
+    session: AsyncSession,
+    order: Any,
+    *,
+    status: str,
+    cumulative_filled_qty: Any,
+    avg_fill_price: Any,
+    broker_order_id: str | None = None,
+    broker_order_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Stage one serialized order summary and its accounting; caller commits.
+
+    Identical summaries still repair missing execution/lot rows. Any failure
+    must roll back the complete transaction and remain retryable. Unsupported
+    same-quantity cash corrections are explicit reconciliation errors, never
+    silent changes to lots that may already have realized outcomes.
+    """
+    from backend.infra.schemas import Execution, Order
+
+    result = await session.execute(
+        select(Order)
+        .where(Order.id == order.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    current = result.scalar_one_or_none()
+    if current is None:
+        raise ValueError("Cannot reconcile a missing order")
+    quantity = _decimal_or_none(cumulative_filled_qty)
+    if (
+        isinstance(cumulative_filled_qty, bool)
+        or quantity is None
+        or not quantity.is_finite()
+        or quantity < 0
+    ):
+        raise ValueError("Invalid broker cumulative quantity")
+    previous = _decimal_or_none(current.filled_qty) or Decimal("0")
+    if not previous.is_finite():
+        raise ValueError("Invalid persisted cumulative quantity")
+    accounted = (
+        await session.execute(
+            select(func.coalesce(func.sum(Execution.fill_qty), 0)).where(
+                Execution.order_id == current.id
+            )
+        )
+    ).scalar_one()
+    if quantity < max(previous, Decimal(str(accounted))):
+        return {"applied": False, "reason": "stale_snapshot", "status": current.status}
+    terminal = {"filled", "canceled", "cancelled", "expired", "rejected", "replaced"}
+    if current.status in terminal and status not in terminal and quantity == previous:
+        # A late acknowledgement cannot reopen a broker-terminal summary.
+        status = current.status
+    if quantity > 0 and status in ("rejected", "replaced"):
+        raise ValueError("Unsupported terminal fill lineage requires reconciliation")
+    accounting = await apply_incremental_fill_accounting(
+        session,
+        current,
+        previous_filled_qty=previous,
+        cumulative_filled_qty=quantity,
+        avg_fill_price=avg_fill_price,
+        status=status,
+        broker_order_data=broker_order_data,
+    )
+    if quantity > 0 and accounting.get("reason") in {
+        "non_fill_status",
+        "missing_order_id",
+        "missing_symbol_or_side",
+    }:
+        raise ValueError("Positive fill snapshot cannot be accounted safely")
+    price = _decimal_or_none(avg_fill_price)
+    if quantity > 0 and (price is None or not price.is_finite() or price <= 0):
+        raise ValueError("Invalid broker cumulative price")
+    await OrdersRepo(session).attach_broker_result(
+        current.id,
+        broker_order_id=broker_order_id,
+        status=status,
+        filled_qty=quantity,
+        avg_fill_price=price if quantity > 0 else None,
+    )
+    if accounting["applied"] and accounting["side"] == "sell":
+        # YY-2: ORDER_FILLED remains durable in the same accounting transaction.
+        # Failure must be retryable; a committed execution cannot lose its audit.
+        from backend.services.audit_service import AuditAction, AuditEntity, ComplianceAuditService
+
+        await ComplianceAuditService(session).log(
+            action=AuditAction.ORDER_FILLED,
+            entity=AuditEntity.ORDER,
+            entity_id=str(current.id),
+            actor="system:alpaca_stream",
+            payload={
+                "symbol": current.symbol,
+                "side": current.side,
+                "qty": float(accounting["incremental_qty"]),
+                "price": float(accounting["price"]),
+                "status": status,
+                "broker_order_id": broker_order_id or current.broker_order_id,
+            },
+        )
+    return {**accounting, "status": status}
+
+
 class AlpacaStreamClient:
     """
     WebSocket client for Alpaca trade updates stream.
@@ -421,6 +549,7 @@ class AlpacaStreamClient:
 
         # B2: Track connection timestamps and reconnect count for gap-fill
         self._last_connected_at: float = 0.0
+        self._gap_recovery_anchor: float = 0.0
         self._reconnect_count: int = 0
 
         # Heartbeat configuration
@@ -456,6 +585,10 @@ class AlpacaStreamClient:
 
             self.is_connected = True
             self.reconnect_attempts = 0
+            # Retain the previous connection boundary until gap recovery has
+            # used it. A fresh connect must not erase a long outage's lookback.
+            if not getattr(self, "_gap_recovery_anchor", 0):
+                self._gap_recovery_anchor = self._last_connected_at
             self._last_connected_at = time.time()
 
             logger.info("Connected to Alpaca WebSocket stream")
@@ -789,30 +922,9 @@ class AlpacaStreamClient:
             broker_order_id = order_data.get("id")
             client_order_id = order_data.get("client_order_id")
             status = order_data.get("status")
-            # V7 FF-3 / Wave-25 (2026-05-03): the previous
-            # `float(order_data.get("filled_qty", 0))` raised TypeError
-            # when the broker sent JSON `null` for filled_qty (Python
-            # `None`). The outer `except Exception` swallowed the
-            # message → state divergence (DB never learns about the
-            # update). Coerce explicitly: None / "" / missing → 0.
             _raw_qty = order_data.get("filled_qty")
-            if _raw_qty is None or _raw_qty == "":
-                filled_qty = 0.0
-            else:
-                try:
-                    filled_qty = float(_raw_qty)
-                except (TypeError, ValueError):
-                    logger.warning(
-                        "FF-3: malformed filled_qty in trade update — "
-                        "defaulting to 0; raw=%r broker_oid=%s",
-                        _raw_qty, broker_order_id,
-                    )
-                    filled_qty = 0.0
-            _raw_price = order_data.get("filled_avg_price") or order_data.get("avg_fill_price")
-            try:
-                avg_fill_price = float(_raw_price or 0) or None
-            except (TypeError, ValueError):
-                avg_fill_price = None
+            filled_qty = Decimal("0") if _raw_qty in (None, "") else _raw_qty
+            avg_fill_price = order_data.get("filled_avg_price") or order_data.get("avg_fill_price")
 
             if not broker_order_id or not status:
                 logger.warning("Missing required fields in trade update",
@@ -844,10 +956,6 @@ class AlpacaStreamClient:
                 if not order and client_order_id:
                     order = await orders_repo.get_by_client_key(client_order_id)
                     if order:
-                        # Backfill broker_order_id so future lookups succeed
-                        await orders_repo.attach_broker_result(
-                            order.id, broker_order_id=broker_order_id
-                        )
                         logger.info(
                             "Order matched via client_order_id fallback, backfilled broker_order_id",
                             order_id=order.id,
@@ -860,103 +968,18 @@ class AlpacaStreamClient:
                                  client_order_id=client_order_id)
                     return
 
-                # V9 DD3-2 / Wave-43 (2026-05-03): capture previous cumulative
-                # filled_qty BEFORE updating, so the LotTracker block below
-                # can compute the INCREMENTAL fill (filled_qty is cumulative
-                # in Alpaca's semantics; calling create_lot with the cumulative
-                # value on every partially_filled event creates duplicate
-                # position_lots rows).
-                _prev_filled_qty_raw = getattr(order, "filled_qty", None) or 0
-                try:
-                    _prev_filled_qty = float(_prev_filled_qty_raw)
-                except (TypeError, ValueError):
-                    _prev_filled_qty = 0.0
-
-                # Update order status and fill information
-                from decimal import Decimal
-                await orders_repo.attach_broker_result(
-                    order.id,
-                    status=internal_status,
-                    filled_qty=Decimal(str(filled_qty)) if filled_qty else None,
-                    avg_fill_price=Decimal(str(avg_fill_price)) if avg_fill_price else None,
+                accounting = await apply_order_fill_snapshot(
+                    session, order, status=internal_status,
+                    cumulative_filled_qty=filled_qty, avg_fill_price=avg_fill_price,
+                    broker_order_id=broker_order_id, broker_order_data=order_data,
                 )
                 await session.commit()
-
-                logger.info("Order updated in database",
-                           order_id=order.id,
-                           broker_order_id=broker_order_id,
-                           new_status=internal_status,
-                           filled_qty=filled_qty)
-
-                try:
-                    accounting = await apply_incremental_fill_accounting(
-                        session,
-                        order,
-                        previous_filled_qty=_prev_filled_qty,
-                        cumulative_filled_qty=filled_qty,
-                        avg_fill_price=avg_fill_price,
-                        status=internal_status,
-                        broker_order_data=order_data,
-                    )
-                    if accounting["applied"]:
-                        logger.info(
-                            "BB-8 / DD3-2: fill accounting persisted",
-                            order_id=order.id,
-                            broker_order_id=broker_order_id,
-                            side=accounting["side"],
-                            incremental_qty=accounting["incremental_qty"],
-                            execution_id=accounting["execution_id"],
-                        )
-                        if accounting["side"] == "sell":
-                            # V10 YY-2 / Wave-52 (2026-05-03): emit
-                            # ORDER_FILLED audit row for realized exits.
-                            try:
-                                from backend.services.audit_service import (
-                                    AuditAction, AuditEntity,
-                                    ComplianceAuditService,
-                                )
-                                _audit = ComplianceAuditService(session)
-                                await _audit.log(
-                                    action=AuditAction.ORDER_FILLED,
-                                    entity=AuditEntity.ORDER,
-                                    entity_id=str(order.id),
-                                    actor="system:alpaca_stream",
-                                    payload={
-                                        "symbol": order.symbol,
-                                        "side": order.side,
-                                        "qty": float(accounting["incremental_qty"]),
-                                        "price": float(accounting["price"]),
-                                        "status": internal_status,
-                                        "broker_order_id": broker_order_id,
-                                    },
-                                )
-                            except Exception as _audit_err:
-                                logger.debug(
-                                    "YY-2: ORDER_FILLED audit dispatch "
-                                    "skipped: %s", _audit_err,
-                                )
-                        await session.commit()
-                    elif accounting["reason"] != "non_fill_status":
-                        logger.debug(
-                            "Fill accounting skipped for order %s: %s",
-                            order.id,
-                            accounting,
-                        )
-                except Exception as _accounting_err:
-                    # Don't fail order processing on accounting failure.
-                    logger.warning(
-                        "BB-8: fill accounting failed for order %s: %s",
-                        order.id, _accounting_err,
-                        exc_info=True,
-                    )
-                    try:
-                        await session.rollback()
-                    except Exception as _rb_err:
-                        logger.error(
-                            "UU2-C: db.rollback() after accounting failure "
-                            "also failed for order %s: %s — session may be poisoned",
-                            order.id, _rb_err,
-                        )
+                internal_status = accounting["status"]
+                if accounting.get("reason") == "stale_snapshot":
+                    return
+                logger.info("Order summary and fill accounting committed", order_id=str(order.id),
+                            broker_order_id=broker_order_id, status=internal_status,
+                            accounting_applied=accounting["applied"])
 
                 if internal_status == "filled":
                     await self._sync_positions_after_terminal_fill(
@@ -1040,6 +1063,7 @@ class AlpacaStreamClient:
                         update=update,
                         error=str(e),
                         error_type=type(e).__name__)
+            raise
 
     async def _sync_positions_after_terminal_fill(
         self,
@@ -1103,10 +1127,14 @@ class AlpacaStreamClient:
         """
         try:
             from datetime import timedelta
+            from backend.services.order_recovery_service import recover_persisted_orders
+
+            await recover_persisted_orders(get_session_context)
 
             # B2: Compute actual gap duration
-            if self._last_connected_at > 0:
-                gap_seconds = time.time() - self._last_connected_at
+            anchor = getattr(self, "_gap_recovery_anchor", 0) or self._last_connected_at
+            if anchor > 0:
+                gap_seconds = time.time() - anchor
             else:
                 gap_seconds = 300  # Default 5 minutes if no prior connection
 
@@ -1115,7 +1143,8 @@ class AlpacaStreamClient:
 
             logger.info(
                 "EXEC-002 gap-fill: gap_duration=%.0fs, lookback_window=%.0fs",
-                gap_seconds, lookback_seconds,
+                gap_seconds,
+                lookback_seconds,
             )
 
             cutoff = datetime.now(UTC) - timedelta(seconds=lookback_seconds)
@@ -1128,16 +1157,29 @@ class AlpacaStreamClient:
                     return
 
                 reconciled = 0
-                for order in recent_orders:
-                    if not order.broker_order_id:
+                # Rollback expires ORM instances; keep immutable identities so
+                # one failed order cannot prevent recovery of the next order.
+                identities = [(item.id, item.broker_order_id) for item in recent_orders]
+                for order_id, broker_identity in identities:
+                    if not broker_identity:
                         continue
                     try:
+                        from backend.infra.schemas import Order
+
+                        order = await session.get(Order, order_id)
+                        if order is None:
+                            continue
                         # Query broker for current status
                         import httpx
-                        base_url = "https://paper-api.alpaca.markets" if self.is_paper else "https://api.alpaca.markets"
+
+                        base_url = (
+                            "https://paper-api.alpaca.markets"
+                            if self.is_paper
+                            else "https://api.alpaca.markets"
+                        )
                         async with httpx.AsyncClient() as client:
                             resp = await client.get(
-                                f"{base_url}/v2/orders/{order.broker_order_id}",
+                                f"{base_url}/v2/orders/{broker_identity}",
                                 headers={
                                     "APCA-API-KEY-ID": self.api_key,
                                     "APCA-API-SECRET-KEY": self.api_secret,
@@ -1148,70 +1190,24 @@ class AlpacaStreamClient:
                                 broker_data = resp.json()
                                 broker_status = self._map_alpaca_status(broker_data.get("status", ""))
                                 current_db_status = order.status
-                                previous_filled_qty = _decimal_or_none(
-                                    getattr(order, "filled_qty", None)
-                                ) or Decimal("0")
-                                filled_qty = _decimal_or_none(
-                                    broker_data.get("filled_qty")
-                                ) or Decimal("0")
-                                avg_price = _decimal_or_none(
-                                    broker_data.get("filled_avg_price")
+                                accounting = await apply_order_fill_snapshot(
+                                    session,
+                                    order,
+                                    status=broker_status,
+                                    cumulative_filled_qty=broker_data.get("filled_qty") or "0",
+                                    avg_fill_price=broker_data.get("filled_avg_price"),
+                                    broker_order_data=broker_data,
                                 )
-                                previous_price = _decimal_or_none(
-                                    getattr(order, "avg_fill_price", None)
-                                )
-                                needs_update = (
-                                    broker_status != current_db_status
-                                    or filled_qty != previous_filled_qty
-                                    or (
-                                        avg_price is not None
-                                        and avg_price != previous_price
-                                    )
-                                )
-                                if needs_update:
-                                    await orders_repo.attach_broker_result(
-                                        order.id,
-                                        status=broker_status,
-                                        filled_qty=filled_qty if filled_qty else None,
-                                        avg_fill_price=avg_price,
-                                    )
-                                    await session.commit()
-                                    try:
-                                        accounting = await apply_incremental_fill_accounting(
-                                            session,
-                                            order,
-                                            previous_filled_qty=previous_filled_qty,
-                                            cumulative_filled_qty=filled_qty,
-                                            avg_fill_price=avg_price,
-                                            status=broker_status,
-                                            broker_order_data=broker_data,
-                                        )
-                                        if accounting["applied"]:
-                                            await session.commit()
-                                            logger.warning(
-                                                "EXEC-002 gap-fill: persisted fill accounting for order %s qty=%s execution=%s",
-                                                order.broker_order_id,
-                                                accounting["incremental_qty"],
-                                                accounting["execution_id"],
-                                            )
-                                        elif accounting["reason"] != "non_fill_status":
-                                            logger.debug(
-                                                "EXEC-002 gap-fill: accounting skipped for %s: %s",
-                                                order.broker_order_id,
-                                                accounting,
-                                            )
-                                    except Exception as accounting_error:
-                                        await session.rollback()
-                                        logger.warning(
-                                            "EXEC-002 gap-fill: accounting failed for order %s: %s",
-                                            order.broker_order_id,
-                                            accounting_error,
-                                            exc_info=True,
-                                        )
+                                await session.commit()
+                                broker_status = accounting["status"]
+                                if accounting.get("reason") != "stale_snapshot":
                                     reconciled += 1
-                                    logger.warning(
-                                        "EXEC-002 gap-fill: reconciled order %s: %s -> %s",
-                                        order.broker_order_id, current_db_status, broker_status,
+                                    logger.info(
+                                        "Gap-fill snapshot reconciled atomically",
+                                        order_id=str(order.id),
+                                        previous_status=current_db_status,
+                                        status=broker_status,
+                                        accounting_applied=accounting["applied"],
                                     )
 
                                     # V5 S-WS-GAP-1 / Wave-17c (2026-05-03):
@@ -1229,9 +1225,7 @@ class AlpacaStreamClient:
                                     # regresses across every WS reconnect:
                                     # the symbol stays locked for the full
                                     # 30-tick TTL after a gap-window reject.
-                                    if broker_status in (
-                                        "rejected", "cancelled", "expired"
-                                    ):
+                                    if broker_status in ("rejected", "cancelled", "expired"):
                                         broker_oid = order.broker_order_id
                                         if broker_oid:
                                             self._terminal_order_ids.add(broker_oid)
@@ -1245,15 +1239,22 @@ class AlpacaStreamClient:
                                                 list(self._terminal_order_ids)[-1000:]
                                             )
                     except Exception as e:
-                        logger.warning("EXEC-002 gap-fill: failed to reconcile order %s: %s",
-                                      order.broker_order_id, e)
+                        await session.rollback()
+                        logger.warning(
+                            "EXEC-002 gap-fill: failed to reconcile order %s: %s", broker_identity, e
+                        )
                         continue
 
-                logger.info("EXEC-002 gap-fill complete: %d orders reconciled out of %d checked",
-                           reconciled, len(recent_orders))
+                logger.info(
+                    "EXEC-002 gap-fill complete: %d orders reconciled out of %d checked",
+                    reconciled,
+                    len(recent_orders),
+                )
 
         except Exception as e:
             logger.error("EXEC-002 gap-fill failed (non-fatal): %s", e)
+        finally:
+            self._gap_recovery_anchor = 0.0
 
     def _map_alpaca_status(self, alpaca_status: str) -> str:
         """

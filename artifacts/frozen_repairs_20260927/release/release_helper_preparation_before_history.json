@@ -1,0 +1,83 @@
+{
+  "task_id": "PR32_PRIVATE_RELEASE_PREPARATION",
+  "status": "PREPARED_INERT_FINAL_PINS_AND_HISTORICAL_REVIEW_REQUIRED",
+  "created_at_utc": "2026-09-27T19:00:31.907192+00:00",
+  "helper_and_test_hashes": {
+    "/private/tmp/intra-pr32-rollout.py": "15e3c0d944e1cb2a195ec582b8cb61b8e04d88a3b5bbe1f4bc85bdb1a5c0ae07",
+    "/private/tmp/intra-pr32-runtime-acceptance.py": "563ce203338b7408bd7f87e5d1fb4f8e52057fb4059cd7639ae5ba314c884367",
+    "/private/tmp/intra-pr32-resume-finish.py": "c54e334cee594b7e544e03c71c51d9f5bf53b3c2875ea3e1eb8fd797509e5c8d",
+    "/private/tmp/intra-pr32-rollout-tests.py": "9b8d624f544d2eecf8b3a67e373afaaec381313028db2b91be8d1a8928180872",
+    "/private/tmp/intra-pr32-runtime-tests.py": "73d31f7f7090053637e4f6679c361b17f97edc70f85a8aa14f4229a7d8b2e328",
+    "/private/tmp/intra-pr32-resume-finish-tests.py": "f94327cc04d00cd728fe7e98d4857b8b1ffbf8d2feaed0fd526b3bc4cd72dc94",
+    "/private/tmp/intra-pr32-release-guards-tests.py": "89de7a737bc1bf154e5cc6673163777bcd934917edc129b50f2acfcb5a0355a6"
+  },
+  "predecessors": {
+    "/private/tmp/intra-pr30-rollout.py": "b666ab83d9e8fccc865675b59fef9c5abdee5a8940278da74b5f40ffb50e6e75",
+    "/private/tmp/intra-pr30-runtime-acceptance.py": "6582cf3196fc8cf2c8a4a5d3f34727a2681529dcfeaec9767d8a1986d8b7f2dd",
+    "/private/tmp/intra-pr30-resume-finish.py": "fd51631953ad73b43a57795b222b4b5c3f65e1495b46902b0b13cfd963c75bbf"
+  },
+  "test_result": {
+    "test_functions_passed": 89,
+    "subtests_passed": 127,
+    "junit_case_nodes": 89,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "junit": "artifacts/frozen_repairs_20260927/release/helper_mock_stable.xml",
+    "junit_sha256": "7e2338389a0f38f63cb0168cbd55edd6e4449bfc595226f41cd81a2e1b094642",
+    "log": "artifacts/frozen_repairs_20260927/release/helper_mock_stable.log",
+    "log_sha256": "0184bb0e9b5927b3ead217bfcac49b88a0fb3d4c0d996e8894007e6fc3258726",
+    "isolated_runner": "/private/tmp/intra-audit-isolated.py",
+    "runtime_actions": false
+  },
+  "initial_attempt": "Retained69pass/1fixture date mismatch; only synthetic observation date corrected before final suite. Interim88pass preserved; final adds exact10minute buffer rejection.",
+  "schema": {
+    "name": "intra_pr32_closed_release_v1",
+    "run_id": "release-20260927-[a-z0-9-]{1,48}",
+    "source_head_merge_image": "Final reviewed exact pins; deliberately invalid placeholders now",
+    "image_expectations": "Exact immutable build counts, currently zero and rejected",
+    "approved_surface_paths": "Exact reviewed changed leaves, currently empty and rejected",
+    "window_start": "Fresh approved2026-09-27UTC",
+    "deadline": "strictly less4hours after start and strictly more10minutes before nextopen",
+    "next_open": "2026-09-28T13:30:00+00:00",
+    "pyramiding_enabled": false,
+    "approval_type": "paper_release_platform_frozen_repairs_clock_reset",
+    "output": "PRIVATE/readiness/2026-09-27/pr32-release/rollout",
+    "activation": "ROOT/artifacts/paper_activation/2026-09-27-platform-frozen-repairs"
+  },
+  "approved_delta": [
+    "Prior actual source87/image472/freeze b2b3/binding a827/cutoffSep25 identities",
+    "Private PR32 names and Sunday fresh window; no expired Friday deadline",
+    "Explicit final-pin guard before config/authority use",
+    "Actual container ORGANISM_PYRAMID_ENABLED must be literal false; configfalse",
+    "Preserve strict old deploy.runtime_config_hash equality; snapshot metadata does not change thishash"
+  ],
+  "preserved_contracts": [
+    "Exact backup/restore, preservation, API-only create, transition and failure-hold method ASTs unchanged",
+    "Only stopped API permits official operator writes; no order POST/DELETE or resubmission",
+    "Closedflat+DB aggregate proof repeats before/after hold and before start; unknown positions prevent blind stop",
+    "Source/image/sourcefile proof, held baseline/brain/history/checkpoint proof and bindingCAS unchanged",
+    "Typed closed readiness/startup recovery ownership and noautomaticrollback unchanged",
+    "UI service excluded; root separately owns UI afterAPI acceptance"
+  ],
+  "remaining_blockers": [
+    "Final source/delivery/merge/image/build receipt/counts and exact candidateleaf pins unknown",
+    "Fresh independent historical-five-row inertness disposition must account for changed order/recovery source; existing equalityguard intentionally refuses",
+    "Final required CI, source image proof, artifact scan and reviewer acceptance",
+    "Actual fresh brokerclosed/flat/order inventory and SQL proofs at execution, currentdirtyfileinventory and backups not yetobserved"
+  ],
+  "historical_contract": {
+    "prior_proof_path": "PRIVATE/readiness/2026-09-23/pr28-approval/db_order_reconciliation.json",
+    "prior_proof_sha256": "32278fd0a004ea61636197fbebd217e4d1da36598455706243d0659494cfa121",
+    "outcomes": "UNKNOWN;404 notterminal; no rowchanges/requeue",
+    "existing_guard": "unchanged candidate/installed source equality to prior proof remains failclosed until separately reviewed adaptation"
+  },
+  "not_performed": [
+    "module imports from installed backend",
+    "Docker/Compose/service calls",
+    "API/broker/auth calls",
+    "installedstate reads/writes",
+    "prepare/hold/backup/install/transition/start/resume/bind",
+    "source commit/deployment"
+  ]
+}

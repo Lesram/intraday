@@ -1940,41 +1940,17 @@ class OrganismLiveEngine(
                         len(self._entry_metadata),
                     )
 
-            # REMEDIATION: Restore pending entry order IDs and cancel stale orders
+            # Restore unresolved identities before any broker operation. Startup
+            # cancellation runs only after baseline and position reconstruction.
             saved_pending_ids = self.brain.extra_counters.get("pending_entry_order_ids", {})
-            if saved_pending_ids and isinstance(saved_pending_ids, dict):
-                stale_count = 0
-                for sym, order_id in saved_pending_ids.items():
-                    try:
-                        await self._order_service.cancel_order(order_id)
-                        stale_count += 1
-                        logger.warning(
-                            "Cancelled stale pending entry order for %s: %s",
-                            sym, order_id,
-                        )
-                    except Exception as e:
-                        logger.debug(
-                            "Could not cancel stale order %s for %s (may already be expired): %s",
-                            order_id, sym, e,
-                        )
-                if stale_count:
-                    logger.info(
-                        "Cancelled %d stale pending entry orders from prior session",
-                        stale_count,
-                    )
-
-            # A4 away-mode fix: Restore pending entry cooldowns from brain.
-            # On restart, tick numbers are stale — reset each to current tick
-            # so the symbol gets a fresh cooldown window of _PENDING_ENTRY_TICKS.
-            saved_pending = self.brain.extra_counters.get("pending_entry")
-            if saved_pending and isinstance(saved_pending, dict):
+            if isinstance(saved_pending_ids, dict):
+                self._pending_entry_order_ids.update(saved_pending_ids)
+            saved_pending = self.brain.extra_counters.get("pending_entry", {})
+            if isinstance(saved_pending, dict):
                 for sym in saved_pending:
                     self._pending_entry[sym] = self._tick_count
-                logger.info(
-                    "Restored %d pending entry cooldowns from brain "
-                    "(reset to tick %d for fresh cooldown)",
-                    len(saved_pending), self._tick_count,
-                )
+            for sym in self._pending_entry_order_ids:
+                self._pending_entry.setdefault(sym, self._tick_count)
 
             # Restore regime-stratified Kelly stats
             rk_data = self.brain.extra_counters.get("regime_kelly_stats")
@@ -2220,6 +2196,7 @@ class OrganismLiveEngine(
 
         # Reconstruct live positions → exit levels + pyramid state
         await self._reconstruct_position_state()
+        await self._cancel_pending_entry_orders()
 
         # Start background trainer
         await self._bg_trainer.start()
@@ -2393,44 +2370,15 @@ class OrganismLiveEngine(
     # in isolation. See `docs/architecture/HH_R1_PIPELINE_SPLIT_PLAN.md`
     # for the full 13-step extraction plan.
     def _stage_expire_cooldowns(self) -> None:
-        """Stage 0a: expire cooldowns and pending-entry tracking maps.
-
-        Pure state mutation; no inputs, no return value. Runs at the
-        very top of every tick to drop entries older than their TTL.
-        Extracted from _live_tick_inner for HH R-1 (V7 architecture
-        finding: 2,510-line method with no isolated stages).
-        """
-        # Expire old cooldowns (keep only recent exits)
+        """Expire time-only cooldowns; unresolved order attribution never expires."""
         self._exit_cooldown = {
             sym: tick for sym, tick in self._exit_cooldown.items()
             if self._tick_count - tick < self._EXIT_COOLDOWN_TICKS
         }
-        # Expire old pending entries
-        self._pending_entry = {
-            sym: tick for sym, tick in self._pending_entry.items()
-            if self._tick_count - tick < self._PENDING_ENTRY_TICKS
-        }
-        # CORE-011: expire order ID tracking in sync with pending entries
-        self._pending_entry_order_ids = {
-            sym: oid for sym, oid in self._pending_entry_order_ids.items()
-            if sym in self._pending_entry
-        }
-        # REMEDIATION: Clear pending entries whose orders reached terminal state
-        # (rejected/cancelled/expired) without waiting for 30-tick expiry.
-        try:
-            from backend.integrations.alpaca_stream import get_stream_client
-            _stream = get_stream_client() if get_stream_client is not None else None
-        except Exception:
-            _stream = None
-        if _stream is not None and hasattr(_stream, 'is_order_terminal'):
-            for sym, oid in list(self._pending_entry_order_ids.items()):
-                if _stream.is_order_terminal(oid):
-                    self._pending_entry.pop(sym, None)
-                    self._pending_entry_order_ids.pop(sym, None)
-                    logger.info(
-                        "Cleared pending entry for %s: order %s reached terminal state",
-                        sym, oid,
-                    )
+        # Elapsed time and completed-close summaries cannot prove that a broker
+        # order has no still-open remainder. Resolve through the async adapter.
+        for sym in self._pending_entry_order_ids:
+            self._pending_entry.setdefault(sym, self._tick_count)
         # Expire old pending exits
         self._pending_exit = {
             sym: tick for sym, tick in self._pending_exit.items()
@@ -3879,32 +3827,10 @@ class OrganismLiveEngine(
             result.trades_closed = exits_submitted
 
             # v4 (improve7): EOD FLATTEN — force close all positions at 15:58 ET.
-            # V9 DD3-4 / Wave-44 (2026-05-03): also cancel any pending entry
-            # orders before flattening.  Previously a 15:57 entry could fill
-            # post-16:00 with no exit infrastructure registered for it (the
-            # _exit_levels entry never gets created because the fill arrives
-            # post-flatten loop).  Result: ghost position carries overnight.
-            if _eod_flatten_triggered and self._pending_entry:
-                for _pe_sym, _pe_oid in list(
-                    self._pending_entry_order_ids.items()
-                ):
-                    try:
-                        from backend.integrations.alpaca_stream import (
-                            get_stream_client,
-                        )
-                        _stream = get_stream_client() if get_stream_client else None
-                        if _stream is not None and hasattr(_stream, "cancel_order"):
-                            await _stream.cancel_order(_pe_oid)
-                            logger.info(
-                                "DD3-4: EOD flatten cancelled pending "
-                                "entry %s (order=%s)", _pe_sym, _pe_oid,
-                            )
-                    except Exception as _cancel_err:
-                        logger.warning(
-                            "DD3-4: EOD flatten failed to cancel pending "
-                            "entry %s order=%s: %s",
-                            _pe_sym, _pe_oid, _cancel_err,
-                        )
+            # DD3-4: use the supported broker adapter and retain every unresolved
+            # pending entry ID; stream-cache status is not cancellation authority.
+            if _eod_flatten_triggered and (self._pending_entry or self._pending_entry_order_ids):
+                await self._cancel_pending_entry_orders()
 
             if _eod_flatten_triggered and current_positions:
                 for sym, pos_data in list(current_positions.items()):
@@ -5567,6 +5493,7 @@ class OrganismLiveEngine(
             self._pipeline_diagnostics.stage("accounting_and_persistence")
             # 10. RECORD TRADE OUTCOMES from closed positions
             await self._reconcile_fills(features_by_symbol)
+            await self._reconcile_pending_entry_orders()
 
             # ── Step 11: Retrain/evolve (gated) ────────────────
             if not self._entries_blocked:
@@ -6124,19 +6051,17 @@ class OrganismLiveEngine(
                 )
                 self._bars_since_retrain = self._tick_count
 
-            # INV-4: Detect orphaned pending entries that somehow survived
-            # expiry (should be impossible but guards against logic errors)
+            # INV-4: Surface unresolved attribution; elapsed time is not proof
+            # that a broker order or its fill exposure has disappeared.
             stale_pending = [
                 sym for sym, tick in self._pending_entry.items()
                 if self._tick_count - tick >= self._PENDING_ENTRY_TICKS * 2
             ]
             if stale_pending:
                 logger.warning(
-                    "INVARIANT: stale pending entries detected: %s — clearing",
+                    "INVARIANT: unresolved pending entries retained: %s",
                     stale_pending,
                 )
-                for sym in stale_pending:
-                    del self._pending_entry[sym]
 
             # INV-5: Run continuous diagnostics every 100 ticks
             # Audit-J finding J-2 (2026-05-02): keep a strong reference so
@@ -7862,100 +7787,39 @@ class OrganismLiveEngine(
             logger.error("Failed to persist exit_levels standalone: %s", e)
 
     async def _cancel_pending_entry_orders(self) -> None:
-        """CORE-011: Cancel open entry orders at the broker on drawdown kill.
+        """CORE-011: cancel entries only; never remove uncertain fill identity."""
+        await self._reconcile_pending_entry_orders(cancel=True)
 
-        Iterates ``_pending_entry_order_ids`` and calls
-        ``_order_service.cancel_order()`` for each.  Failures are logged
-        but never crash the tick loop.  Exit/reduce-only orders are not
-        tracked here and are therefore never cancelled.
+    async def _confirm_pending_entry_orders(self, *, cancel: bool = False) -> dict:
+        """Production authority; replay explicitly overrides only its own instance."""
+        from backend.organism.operator_cancellation import confirm_tracked_entries
+        return await confirm_tracked_entries(self, cancel=cancel)
+
+    async def _reconcile_pending_entry_orders(self, *, cancel: bool = False) -> None:
+        """Release only confirmed terminal/accounted entries; preserve exits.
+
+        Ordinary observation retains the original filled-order admission cooldown.
+        Cancellation authority is bounded broker confirmation, never OrderService's
+        local summary status. Task cancellation propagates with all maps retained.
         """
         if not self._pending_entry and not self._pending_entry_order_ids:
             return
-
-        # Audit-H findings H-4 + H-5 (2026-05-02): track cancel-disposition
-        # so we don't blanket-clear local state when broker said the order
-        # was already filled (in which case the position is real and
-        # reconciliation will adopt it). Also: if cancel was deferred
-        # (broker_order_id not yet available), don't clear local state —
-        # caller will retry next tick.
-        cancelled = []
-        failed = []
-        deferred = []
-        filled_during_cancel = []
-        for sym, order_id in list(self._pending_entry_order_ids.items()):
-            try:
-                _result = await self._order_service.cancel_order(order_id)
-                _status = (_result or {}).get("status", "cancelled")
-                if _status == "deferred":
-                    deferred.append(sym)
-                elif _status == "filled_during_cancel":
-                    filled_during_cancel.append(sym)
-                else:
-                    cancelled.append(sym)
-            except Exception as e:
-                failed.append(sym)
-                logger.error(
-                    "Drawdown kill: failed to cancel order %s for %s: %s",
-                    order_id, sym, e,
-                )
-
-        # Clear local bookkeeping ONLY for cancellations that actually
-        # succeeded. Defer / filled-during-cancel symbols stay in the
-        # tracking maps so the next tick handles them correctly.
-        for sym in cancelled + failed:
+        receipt = await self._confirm_pending_entry_orders(cancel=cancel)
+        self._last_pending_entry_resolution = receipt
+        for item in receipt["orders"]:
+            sym, identity = item.get("symbol"), item.get("entry_order_id")
+            if (item.get("release_pending") is not True
+                    or self._pending_entry_order_ids.get(sym) != identity):
+                continue
+            if (item.get("resolution") != "verified_unfilled"
+                    and self._tick_count - self._pending_entry.get(sym, self._tick_count)
+                    < self._PENDING_ENTRY_TICKS):
+                continue
             self._pending_entry.pop(sym, None)
             self._pending_entry_order_ids.pop(sym, None)
-        cleared_symbols = list(cancelled + failed)
-
-        # V4 Wave-16b (2026-05-02): also clear `_pending_entry` symbols
-        # that lack an order_id (submission succeeded but the result
-        # didn't carry one — e.g. an outbox-only path). Without this
-        # cleanup, the symbol stays blocked from re-entry forever after
-        # drawdown-kill: the next tick still sees it in `_pending_entry`
-        # and skips. The early-clear path at line ~1455 only handles
-        # tracked broker IDs; orphaned entries need this catch-all.
-        _orphan_entries = [
-            sym for sym in list(self._pending_entry)
-            if sym not in self._pending_entry_order_ids
-        ]
-        for sym in _orphan_entries:
-            self._pending_entry.pop(sym, None)
-        if _orphan_entries:
-            logger.info(
-                "Drawdown kill: cleared %d orphan pending entries "
-                "(no broker order_id tracked): %s",
-                len(_orphan_entries), _orphan_entries,
-            )
-
-        if cancelled:
-            logger.warning(
-                "Drawdown kill: cancelled %d broker entry orders: %s",
-                len(cancelled), cancelled,
-            )
-        if failed:
-            logger.warning(
-                "Drawdown kill: %d cancel attempts failed: %s "
-                "(local bookkeeping still cleared)",
-                len(failed), failed,
-            )
-        if deferred:
-            logger.warning(
-                "Drawdown kill: %d cancels deferred (broker_order_id not yet "
-                "available — outbox race): %s. Local state preserved for "
-                "next-tick retry.",
-                len(deferred), deferred,
-            )
-        if filled_during_cancel:
-            logger.warning(
-                "Drawdown kill: %d orders filled during cancel attempt: %s. "
-                "Reconciliation will adopt these positions; local state preserved.",
-                len(filled_during_cancel), filled_during_cancel,
-            )
-        if cleared_symbols and not cancelled and not failed:
-            logger.warning(
-                "Drawdown kill: cleared %d pending entries (no order IDs to cancel): %s",
-                len(cleared_symbols), cleared_symbols,
-            )
+        if receipt["issues"]:
+            logger.warning("Pending entry resolution incomplete; attribution retained: %s",
+                           receipt["issues"])
 
     # ═════════════════════════════════════════════════════════════
     #  HELPERS

@@ -1,0 +1,19 @@
+{
+  "task_id": "EOD-01-fairness-regressions",
+  "scope": "New tests only; reviewer identified slow-prefix starvation, EOD author owns production cursor",
+  "owned_files": [
+    "tests/test_eod_cancellation_fairness.py"
+  ],
+  "tests": [
+    "Real SQLite inventory plus mock broker GET timeouts: repeated bounded passes reach healthy tail, preserve uncertain entries",
+    "External task cancellation advances attempted identity before await without clearing maps",
+    "Removed cursor identity wraps; exact row attribution cannot be bypassed by cursor",
+    "Original pre-cursor function negative control, no shared source reversion"
+  ],
+  "runner": "/Users/marselkei/VS/intra/venv/bin/python /private/tmp/intra-audit-isolated.py",
+  "constraints": [
+    "No runtime/broker/network calls",
+    "No source changes beyond owned test",
+    "No commits or active freeze changes"
+  ]
+}

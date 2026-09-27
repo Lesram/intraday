@@ -11,7 +11,7 @@ permissions:
 jobs:
   operational-safety:
     runs-on: ubuntu-latest
-    timeout-minutes: 110
+    timeout-minutes: 125
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       PYTHONPATH: .
@@ -61,7 +61,7 @@ jobs:
           subprocess.run([sys.executable, '-m', 'pip', 'install', pins[0]], check=True)
           PYCODE
       - name: Verify operational fixes and trading safety
-        timeout-minutes: 5
+        timeout-minutes: 10
         shell: bash
         run: |
           set -o pipefail
@@ -86,12 +86,21 @@ jobs:
             tests/test_order_pipeline_e2e.py \
             tests/test_audit_0_4_eod_flatten_escalation.py \
             tests/test_paper_runtime_config.py \
+            tests/test_paper_frontend_deployment.py \
+            tests/test_frontend_container_probe.py \
             tests/test_admin_trading_execution_mode.py \
             tests/test_paper_watchdog.py \
             tests/test_session_logging_contract.py \
             tests/test_api_fixture_isolation.py \
             tests/test_paper_backup_recovery.py \
             tests/test_paper_fill_reconciliation.py \
+            tests/test_fill_accounting_integrity.py \
+            tests/test_order_recovery_service.py \
+            tests/test_outbox_fill_race.py \
+            tests/test_away_mode_wave_b.py \
+            tests/test_portfolio_availability_contract.py \
+            tests/test_portfolio_service_comprehensive.py \
+            tests/test_socketio_topic_authorization.py \
             tests/unit/test_alpaca_data_comprehensive.py \
             tests/unit/test_streaming_data_provider.py \
             tests/unit/test_paper_data_freshness.py \
@@ -139,6 +148,22 @@ jobs:
             tests/test_phase3_attribution_report.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
             2>&1 | tee artifacts/monday_readiness/github_operational.log
+      - name: Verify approved data and cancellation repairs
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/frozen_repairs_20260927
+          python -m pytest -q --timeout=30 --tb=short \
+            tests/test_streaming_subscription_acknowledgement.py \
+            tests/test_cross_asset_timestamp_alignment.py \
+            tests/test_eod_pending_cancellation.py \
+            tests/test_eod_cancellation_fairness.py \
+            tests/unit/test_alpaca_market_data_stream_comprehensive.py \
+            tests/unit/test_streaming_data_provider.py \
+            tests/test_streaming_provider_lifecycle.py \
+            --junitxml=artifacts/frozen_repairs_20260927/github_targeted.xml \
+            2>&1 | tee artifacts/frozen_repairs_20260927/github_targeted.log
       - name: Paired composite-input trading replay
         timeout-minutes: 10
         shell: bash
@@ -148,6 +173,7 @@ jobs:
           rm -f artifacts/composite_indicator_repair/replay/github_replay.xml artifacts/composite_indicator_repair/replay/paired_summary.json
           python -m pytest -q --timeout=30 --tb=short --durations=10 \
             tests/test_composite_correction_replay.py \
+            tests/test_cross_asset_alignment_replay.py \
             --junitxml=artifacts/composite_indicator_repair/replay/github_replay.xml \
             2>&1 | tee artifacts/composite_indicator_repair/replay/github_replay.log
       - name: Verify nightly test harness repairs
@@ -164,6 +190,10 @@ jobs:
           python -m pytest -q --timeout=30 --tb=short --durations=10 \
             tests/test_wave37_fixes.py \
             tests/test_wave48_fixes.py \
+            tests/test_wave51_fixes.py \
+            tests/test_wave52_fixes.py \
+            tests/unit/test_api_routes_mocked_coverage.py \
+            tests/test_nightly_test_contract.py \
             tests/test_wave55_fixes.py \
             tests/test_wave61_fixes.py \
             tests/test_reachability_v8.py \
@@ -216,10 +246,20 @@ jobs:
           set -o pipefail
           npm ci --no-audit --no-fund
           npx --no-install vitest run \
+            src/components/auth/AuthBootstrap.test.tsx \
             src/features/organism/__tests__/OrganismDashboard.test.tsx \
             src/features/auth/LoginPage.test.tsx \
             src/hooks/useScannerWebSocket.test.tsx \
             src/services/marketDataWebSocketService.test.ts \
+            src/components/layout/GlobalStatusBar.test.tsx \
+            src/features/dashboard/Dashboard.test.tsx \
+            src/features/portfolio/PortfolioPage.test.tsx \
+            src/hooks/usePortfolio.test.tsx \
+            src/services/api.test.ts \
+            src/services/originRouting.test.ts \
+            src/services/authService.test.tsx \
+            src/services/websocketManager.test.tsx \
+            src/utils/portfolioSnapshot.test.ts \
             --reporter=junit --outputFile=../artifacts/monday_readiness/github_frontend.xml
           npm run build 2>&1 | tee ../artifacts/monday_readiness/github_frontend_build.log
           npx --yes agent-browser@0.38.1 --version
@@ -237,3 +277,82 @@ jobs:
             artifacts/
             docs/engineering/LIVE_AUDIT_INDEX.md
           if-no-files-found: error
+
+  frontend-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build immutable local operator UI
+        timeout-minutes: 12
+        run: docker build --file frontend/Dockerfile --build-arg VCS_REF="$GITHUB_SHA" --tag intra-operator-ui:ci .
+      - name: Verify proxy, websocket and API replacement behavior
+        timeout-minutes: 5
+        run: python3 scripts/ci/check_frontend_container.py --image intra-operator-ui:ci --output-dir artifacts/frontend_container
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-container-evidence
+          path: artifacts/frontend_container/
+          if-no-files-found: error
+
+  fill-accounting-postgres:
+    runs-on: ubuntu-latest
+    container: python:3.12-bookworm
+    timeout-minutes: 20
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONPATH: .
+      PYTHON_DOTENV_DISABLED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: '-p pytest_asyncio.plugin -p pytest_timeout -p no:cacheprovider'
+      TESTING: 'true'
+      APP_ENVIRONMENT: testing
+      ENVIRONMENT: testing
+      USE_MOCK_BROKER: 'true'
+      USE_MOCK_DATA: 'true'
+      TRADING_EXECUTION_MODE: shadow
+      SECURITY_JWT_SECRET: 'test-jwt-secret-not-for-production'
+      PICKLE_HMAC_SECRET: 'test-pickle-secret-not-for-production'
+      DATABASE_URL: 'sqlite+aiosqlite:///:memory:'
+      INTRA_FILL_TEST_DATABASE_URL: 'postgresql+asyncpg://test_fill_accounting:synthetic@intra-fill-postgres/test_fill_accounting'
+    services:
+      intra-fill-postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: test_fill_accounting
+          POSTGRES_USER: test_fill_accounting
+          POSTGRES_PASSWORD: synthetic
+        options: >-
+          --health-cmd "pg_isready -U test_fill_accounting -d test_fill_accounting"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install pinned dependencies
+        timeout-minutes: 12
+        run: python -m pip install -r requirements.lock
+      - name: Exercise actual PostgreSQL row contention
+        timeout-minutes: 2
+        run: |
+          mkdir -p artifacts/platform_audit_20260926/execution_accounting
+          python -m pytest -q tests/test_fill_accounting_postgres.py --timeout=30 \
+            --junitxml=artifacts/platform_audit_20260926/execution_accounting/postgres_ci.xml
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          path = Path('artifacts/platform_audit_20260926/execution_accounting/postgres_ci.xml')
+          cases = list(ET.parse(path).getroot().iter('testcase'))
+          assert len(cases) >= 12, 'Required contention, recovery and ACK evidence missing'
+          assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in cases), 'All PostgreSQL cases must execute and pass'
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fill-accounting-postgres-evidence
+          path: artifacts/platform_audit_20260926/execution_accounting/postgres_ci.xml
+          if-no-files-found: error
+          retention-days: 14

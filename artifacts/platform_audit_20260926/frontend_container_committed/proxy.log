@@ -1,0 +1,35 @@
+172.22.0.1 GET /ui-health 200
+172.22.0.1 GET /ui-health 200
+172.22.0.1 GET /index.html 200
+172.22.0.1 GET /index.html 200
+172.22.0.1 GET /assets/does-not-exist.js 404
+172.22.0.1 GET /api/v1/probe 200
+172.22.0.1 GET /api/v1/reject 503
+172.22.0.1 GET /api/v1/scanner/ws 101
+172.22.0.1 GET /api/v1/market-data/ws 101
+172.22.0.1 GET /socket.io/ 101
+172.22.0.1 GET /api/v1/probe 502
+172.22.0.1 GET /api/v1/probe 502
+172.22.0.1 GET /api/v1/probe 200
+2026/09/27 00:00:43 [notice] 1#1: using the "epoll" event method
+2026/09/27 00:00:43 [notice] 1#1: nginx/1.30.5
+2026/09/27 00:00:43 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
+2026/09/27 00:00:43 [notice] 1#1: OS: Linux 7.0.12-linuxkit
+2026/09/27 00:00:43 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026/09/27 00:00:43 [notice] 1#1: start worker processes
+2026/09/27 00:00:43 [notice] 1#1: start worker process 7
+2026/09/27 00:00:43 [notice] 1#1: start worker process 8
+2026/09/27 00:00:43 [notice] 1#1: start worker process 9
+2026/09/27 00:00:43 [notice] 1#1: start worker process 10
+2026/09/27 00:00:43 [notice] 1#1: start worker process 11
+2026/09/27 00:00:43 [notice] 1#1: start worker process 12
+2026/09/27 00:00:43 [notice] 1#1: start worker process 13
+2026/09/27 00:00:43 [notice] 1#1: start worker process 14
+2026/09/27 00:00:43 [notice] 1#1: start worker process 15
+2026/09/27 00:00:43 [notice] 1#1: start worker process 16
+2026/09/27 00:00:43 [notice] 1#1: start worker process 17
+2026/09/27 00:00:43 [notice] 1#1: start worker process 18
+2026/09/27 00:00:43 [notice] 1#1: start worker process 19
+2026/09/27 00:00:43 [notice] 1#1: start worker process 20
+2026/09/27 00:00:43 [notice] 1#1: start worker process 21
+2026/09/27 00:00:43 [notice] 1#1: start worker process 22

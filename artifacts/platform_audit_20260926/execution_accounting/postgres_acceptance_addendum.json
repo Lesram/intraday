@@ -1,0 +1,33 @@
+{
+  "status": "ACCEPT_SCOPED_POSTGRES_SUPPLEMENT",
+  "review_method": "read-only source/artifact/hash/XML review; no independent database/runtime execution",
+  "author_receipt_sha256": "0f0231d55591fe27fb8a994135219cb6e112a465bef98a3b474c9b9569353d42",
+  "production_source_sha256": {
+    "backend/integrations/alpaca_stream.py": "fa46735e7848310c7bec651f20ed5939157dce1f193368117521e28bbb9b0373",
+    "backend/api/lifespan.py": "66264fc37295b295f28dc956bad23ac0a08f6c77c2a99853324961cde70a5208"
+  },
+  "test_source_sha256": "67d3774da1549e68070f9f0d2c105e8d8c9f950e8548ef07d811a88e933dcce8",
+  "executed_archive_sha256": "b83959a8c25b4720bfcc90aa458ff8930d75b627991771f1e9fd44bd39f44982",
+  "executed_archive_ast_matches_current_test": true,
+  "tests_passed": 9,
+  "concurrent_transactions_proved_cases": 4,
+  "explicit_url_refusal_cases": 5,
+  "supersedes_only": [
+    "PostgreSQL concurrency-not-executed limitation in original implementation.json and independent_review.json for these four scenarios"
+  ],
+  "preserved_original_receipts": true,
+  "accepted_proof": [
+    "Observed pg_blocking_pids second writer wait on first transaction",
+    "duplicate entry and exit effects once",
+    "cumulative VWAP after waiting refreshes persisted watermark",
+    "rollback unblocks recovery without phantom execution/lot",
+    "durable sell audit once"
+  ],
+  "limits": [
+    "not generalized stress/chaos testing",
+    "isolated ORM schema, no deployed migration certification",
+    "startup/reconnect inventory bounds unchanged",
+    "no historical accounting rewrite",
+    "author performed disposable-container test; this reviewer made no runtime or database calls"
+  ]
+}

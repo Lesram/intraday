@@ -1,0 +1,128 @@
+{
+  "task_id": "pr32_operational_ci_budget",
+  "created_at_utc": "2026-09-27T20:46:16.268282+00:00",
+  "status": "LOCAL_CONTRACTS_PASS_ORIGINAL_HOSTED_FAILURE_UNRESOLVED",
+  "base_sha": "54c1ec1c73683d2bdb4054e07f5600a546a5965e",
+  "summary": "Increase operational aggregate CI allowance5\u219210 minutes and job120\u2192125 minutes; unchanged testcase limits, selection and failure behavior.",
+  "files_changed": {
+    ".github/workflows/paper-readiness.yml": "4fa310a77824fa830d1c391e8434471f9efa1dd2eb5e6a6f0c3b776e1c6e4961",
+    "tests/test_monday_ci_workflows.py": "c7f46d0ab914777042eee62b93ebcbfd0cbec6ceb21431c2320a296c6e36a9f9"
+  },
+  "plan": {
+    "path": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/operational_budget/plan.json",
+    "sha256": "41f6c42b1a0a76c373b02c7ce40c0d22da50cfa1e24c1c5b96e8a285500591d9"
+  },
+  "budgets_minutes": {
+    "old_operational_step": 5,
+    "new_operational_step": 10,
+    "old_job": 120,
+    "new_job": 125,
+    "new_explicit_step_sum": 116,
+    "reporting_reserve": 9,
+    "minimum_required_reserve": 5
+  },
+  "workflow_equivalence": {
+    "all_other_yaml_identical": true,
+    "operational_run_text_byte_identical": true,
+    "selected_test_files": 79,
+    "per_test_timeout_seconds": 30,
+    "pipefail_retained": true,
+    "continue_on_error_not_enabled": true,
+    "no_tests_removed_or_skipped": true
+  },
+  "validation": {
+    "negative_budget_contract": {
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit": {
+        "path": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/operational_budget/red.xml",
+        "sha256": "2c018817a043c8151938931b2ffe0588946d62f24dbcb9e4fdfd50565adf6e05"
+      },
+      "log": {
+        "path": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/operational_budget/red.log",
+        "sha256": "c1c1d779707e19c92654c25e58b1312d9f80c9b40a349b584464032c2c480d7a"
+      },
+      "expected_failure": "5 != 10 in test_readiness_runs_latest_data_and_prefill_regressions"
+    },
+    "focused_workflow_artifact_suites": {
+      "counts": {
+        "passed": 102,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "junit": {
+        "path": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/operational_budget/final.xml",
+        "sha256": "91d1d0e83101af67df17343a574fde8972c3abad895de8bbd7dd21a4f537af17"
+      },
+      "log": {
+        "path": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/operational_budget/final.log",
+        "sha256": "0680dd6391778974d9744cacf2a1e81e93f8e11a8f09a0b0192bf6a0a91fcf61"
+      },
+      "duration_seconds": 9.57,
+      "modules": [
+        "tests/test_monday_ci_workflows.py",
+        "tests/test_artifact_workflow_contract.py",
+        "tests/test_generate_artifacts.py",
+        "tests/test_artifact_change_scope.py"
+      ]
+    },
+    "ruff": {
+      "exit_code": 0,
+      "log": {
+        "path": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/operational_budget/lint.log",
+        "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+      }
+    },
+    "git_diff_check_exit_code": 0
+  },
+  "runtime_unchanged": {
+    "runtime_manifest_files_verified": 583,
+    "build_receipt": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/readiness/2026-09-27/pr32-release/image/54c1ec1c73683d2bdb4054e07f5600a546a5965e/build_result.json",
+      "sha256": "39c41879abaa3be50cd09dc71c5278a17139155ceffd8312b3cfe0c6c80b834d"
+    },
+    "snapshots_and_freezes_exact_final54_git": {
+      "artifacts/phase2/candidate_param_freeze.json": "b56d9285099500d915b5214f3210cab245a25228ff639ea0e40791f387b652cc",
+      "artifacts/phase2/param_freeze.json": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "artifacts/monday_readiness/frozen_surface_reference.json": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "artifacts/runtime_config_snapshot.json": "148eb77213ec05e167174812306d54f8165779565462a424ade1d969f031e672",
+      "artifacts/resolved_config_snapshot.json": "27c8c9e4e10b710165e786c955b3edd1075ee0439405d3019b47e0bc9c209e8e"
+    },
+    "behavior_changed": false,
+    "active_authority_or_cutoff_changed": false
+  },
+  "prior_hosted_observation": {
+    "path": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/operational_budget/hosted_before_repair.json",
+    "sha256": "bf55cee094f7c3c00a657ddcdcf767c5c3830c31ca83c012e8e9e24f1ba34da2"
+  },
+  "before_bytes_private": {
+    "workflow": {
+      "path": "/private/tmp/intra-pr32-operational-budget/paper-readiness.yml.before.txt",
+      "sha256": "46b21b974e7bb1674d4ed3b09304bdfa25c72b1fbdfaf07f0763774570e64958"
+    },
+    "test": {
+      "path": "/private/tmp/intra-pr32-operational-budget/test_monday_ci_workflows.py.before.txt",
+      "sha256": "a55ab6403d47ad7319ebb96243786fdf48c29881595d2ae013e02b3dcc070bad"
+    }
+  },
+  "risks": [
+    "The original hosted failure remains unresolved until terminal logs/artifacts are available.",
+    "The added aggregate allowance must not conceal a testcase assertion or30-second timeout; any such failure needs independent diagnosis.",
+    "No final hosted pass claimed; require a fresh run on the committed corrected head."
+  ],
+  "follow_ups": [
+    "Independent source/evidence review.",
+    "Retain and classify original terminal failure/log/JUnit availability.",
+    "Root candidate verification, final metadata/secret scan, commit and exact-head required CI."
+  ],
+  "not_performed": [
+    "No production edits or tests against installed platform.",
+    "No runtime/API/auth/broker/DB/Docker mutation.",
+    "No commit, workflow dispatch, merge or deployment."
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "task_id": "PR32_WORKFLOW_BUDGET",
+  "status": "TARGETED_VALIDATION_PASSED",
+  "source": ".github/workflows/paper-readiness.yml",
+  "source_sha256": "46b21b974e7bb1674d4ed3b09304bdfa25c72b1fbdfaf07f0763774570e64958",
+  "change": "Only jobs.operational-safety.timeout-minutes110\u2192120;111 declaredstepminutes+9headroom. Allstepbudgets/tests/assertionsunchanged.",
+  "plan_sha256": "c34497726f72bdeb0b2dd11a09612b018ef0b408adb4fe803475a926aabe96d2",
+  "counts": {
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 102
+  },
+  "junit": "/private/tmp/intra-pr32-workflow-budget-tests.xml",
+  "junit_sha256": "20fb8ac94d60f78cfc304b478515195786cbb78844d01c657060d86c09a10d2f",
+  "log": "/private/tmp/intra-pr32-workflow-budget-tests.log",
+  "log_sha256": "92d0c697a8fb1b9a40f8b95db44debc95490c50ab9fb106f5b560613a439d172",
+  "tests": [
+    "test_monday_ci_workflows",
+    "test_artifact_workflow_contract",
+    "test_generate_artifacts",
+    "test_artifact_change_scope"
+  ],
+  "test_method": "Existing isolated runner, deniednetwork/scratchenv",
+  "runtime_or_product_changes": false,
+  "committed_by_author": false,
+  "remaining_gates": "Parent independentreview/candidateverify/finalcommit andhostedrerun"
+}

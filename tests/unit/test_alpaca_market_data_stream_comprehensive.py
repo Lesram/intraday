@@ -26,6 +26,24 @@ def mock_websocket():
     ws.send = AsyncMock()
     ws.recv = AsyncMock()
     ws.close = AsyncMock()
+
+    async def acknowledge(raw):
+        request = json.loads(raw)
+        if request.get("action") not in {"subscribe", "unsubscribe"}:
+            return
+        owner = ws.owner
+        snapshot = {"T": "subscription"}
+        for channel in ("quotes", "trades", "bars"):
+            names = owner._confirmed(channel)
+            if channel in request:
+                if request["action"] == "subscribe":
+                    names.update(request[channel])
+                else:
+                    names.difference_update(request[channel])
+            snapshot[channel] = sorted(names)
+        await owner._handle_message(json.dumps([snapshot]))
+
+    ws.send.side_effect = acknowledge
     return ws
 
 
@@ -182,6 +200,7 @@ class TestAlpacaMarketDataStreamConnect:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.is_connected = True
+        stream.is_authenticated = True
         
         result = await stream.connect()
         
@@ -258,6 +277,7 @@ class TestAlpacaMarketDataStreamAuthentication:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         
         # Success response (array format)
         mock_websocket.recv.return_value = json.dumps([{
@@ -276,6 +296,7 @@ class TestAlpacaMarketDataStreamAuthentication:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.on_error = AsyncMock()
         
         mock_websocket.recv.return_value = json.dumps([{
@@ -294,6 +315,7 @@ class TestAlpacaMarketDataStreamAuthentication:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         
         mock_websocket.recv.side_effect = asyncio.TimeoutError()
         
@@ -308,6 +330,7 @@ class TestAlpacaMarketDataStreamAuthentication:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         
         mock_websocket.recv.side_effect = Exception("Network error")
         
@@ -330,6 +353,7 @@ class TestAlpacaMarketDataStreamSubscription:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         result = await stream.subscribe_quotes(["AAPL", "MSFT"])
@@ -346,6 +370,7 @@ class TestAlpacaMarketDataStreamSubscription:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = False
         
         result = await stream.subscribe_quotes(["AAPL"])
@@ -359,6 +384,7 @@ class TestAlpacaMarketDataStreamSubscription:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         stream.quote_subscriptions = {"AAPL"}
         
@@ -375,6 +401,7 @@ class TestAlpacaMarketDataStreamSubscription:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         await stream.subscribe_quotes(["aapl", "msft"])
@@ -389,6 +416,7 @@ class TestAlpacaMarketDataStreamSubscription:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         result = await stream.subscribe_trades(["TSLA"])
@@ -403,6 +431,7 @@ class TestAlpacaMarketDataStreamSubscription:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         result = await stream.subscribe_bars(["AAPL"], timeframe="1Min")
@@ -417,6 +446,7 @@ class TestAlpacaMarketDataStreamSubscription:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         await stream.subscribe_bars(["AAPL"], timeframe="1Min")
@@ -432,6 +462,7 @@ class TestAlpacaMarketDataStreamSubscription:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         # Pre-populate subscriptions
@@ -675,6 +706,7 @@ class TestAlpacaMarketDataStreamDisconnect:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_connected = True
         stream.is_authenticated = True
         stream.background_tasks = []
@@ -693,6 +725,7 @@ class TestAlpacaMarketDataStreamDisconnect:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_connected = True
         
         # Create a real async task that we can cancel
@@ -713,6 +746,7 @@ class TestAlpacaMarketDataStreamDisconnect:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_connected = True
         stream.background_tasks = []
         
@@ -782,6 +816,7 @@ class TestAlpacaMarketDataStreamResubscribe:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         # Pre-populate subscriptions
@@ -803,6 +838,7 @@ class TestAlpacaMarketDataStreamResubscribe:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         # Empty subscriptions
@@ -891,6 +927,8 @@ class TestAlpacaMarketDataStreamListenLoop:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
+        stream.should_reconnect = False  # Isolate message handling from reconnect policy.
         stream.is_connected = True
         stream.is_authenticated = True
         
@@ -909,6 +947,8 @@ class TestAlpacaMarketDataStreamListenLoop:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
+        stream.should_reconnect = False  # Isolate message handling from reconnect policy.
         stream.is_connected = True
         stream.is_authenticated = True
         
@@ -928,6 +968,7 @@ class TestAlpacaMarketDataStreamListenLoop:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_connected = True
         stream.is_authenticated = True
         stream.should_reconnect = True
@@ -952,6 +993,7 @@ class TestAlpacaMarketDataStreamListenLoop:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_connected = True
         stream.is_authenticated = True
         stream.should_reconnect = True
@@ -975,6 +1017,8 @@ class TestAlpacaMarketDataStreamListenLoop:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
+        stream.should_reconnect = False  # Isolate message handling from reconnect policy.
         stream.is_connected = True
         stream.is_authenticated = True
         
@@ -1041,6 +1085,7 @@ class TestAlpacaMarketDataStreamHandleMessageComplete:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         
         message = json.dumps([
             {"T": "q", "S": "AAPL", "bp": 150.0, "ap": 150.5},
@@ -1061,6 +1106,7 @@ class TestAlpacaMarketDataStreamHandleMessageComplete:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         
         message = json.dumps([
             {"T": "b", "S": "AAPL", "o": 150.0, "h": 151.0, "l": 149.0, "c": 150.5, "v": 1000}
@@ -1082,6 +1128,7 @@ class TestAlpacaMarketDataStreamSubscribeBars:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         await stream.subscribe_bars(["AAPL", "MSFT"], timeframe="5Min")
@@ -1099,7 +1146,7 @@ class TestAlpacaMarketDataStreamDisconnectOnAuthFail:
 
     @pytest.mark.asyncio
     async def test_connect_disconnects_on_auth_failure(self, mock_websocket):
-        """Test connect calls disconnect when authentication fails."""
+        """Failed authentication cleans resources without revoking retry intent."""
         from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
@@ -1108,11 +1155,12 @@ class TestAlpacaMarketDataStreamDisconnectOnAuthFail:
             mock_connect.return_value.__aenter__.return_value = mock_websocket
             
             with patch.object(stream, "_authenticate", return_value=False):
-                with patch.object(stream, "disconnect") as mock_disconnect:
+                with patch.object(stream, "_cleanup_connection", new_callable=AsyncMock) as cleanup:
                     result = await stream.connect()
                     
                     assert result is False
-                    mock_disconnect.assert_called_once()
+                    cleanup.assert_awaited_once()
+                    assert stream.should_reconnect is True
 
 
 class TestAlpacaMarketDataStreamSubscribeNotAuthenticated:
@@ -1165,6 +1213,7 @@ class TestAlpacaMarketDataStreamSubscribeError:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         mock_websocket.send.side_effect = Exception("Send failed")
@@ -1180,6 +1229,7 @@ class TestAlpacaMarketDataStreamSubscribeError:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         mock_websocket.send.side_effect = Exception("Send failed")
@@ -1195,6 +1245,7 @@ class TestAlpacaMarketDataStreamSubscribeError:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         
         mock_websocket.send.side_effect = Exception("Send failed")
@@ -1214,6 +1265,8 @@ class TestAlpacaMarketDataStreamListenErrorProcessing:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
+        stream.should_reconnect = False  # Isolate message handling from reconnect policy.
         stream.is_connected = True
         stream.is_authenticated = True
         
@@ -1251,6 +1304,7 @@ class TestAlpacaMarketDataStreamHandleMessageError:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         
         mock_on_error = AsyncMock()
         stream.on_error = mock_on_error
@@ -1357,6 +1411,7 @@ class TestAlpacaMarketDataStreamBackgroundTasks:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_connected = True
         
         with patch.object(stream, "listen", new_callable=AsyncMock):
@@ -1408,6 +1463,7 @@ class TestAlpacaMarketDataStreamAlreadySubscribed:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         stream.quote_subscriptions = {"AAPL", "MSFT"}
         
@@ -1423,6 +1479,7 @@ class TestAlpacaMarketDataStreamAlreadySubscribed:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         stream.trade_subscriptions = {"AAPL"}
         
@@ -1438,6 +1495,7 @@ class TestAlpacaMarketDataStreamAlreadySubscribed:
         
         stream = AlpacaMarketDataStream(api_key="key", api_secret="secret")
         stream.websocket = mock_websocket
+        mock_websocket.owner = stream
         stream.is_authenticated = True
         stream.bar_subscriptions = {"1Min": {"AAPL"}}
         

@@ -1,0 +1,32 @@
+{
+  "task_id": "PR32_BUILDER_INDEPENDENT_REVIEW",
+  "status": "ACCEPTED_PREPARATION_ONLY",
+  "created_at_utc": "2026-09-27T18:54:39.666761+00:00",
+  "helper_sha256": "7576570bd203658f95918076175b7536bf0a58f36c4e35c4e8d2dc106b00ec34",
+  "implementation_sha256": "dfbcd443380fff5a61016d0f3710de30afe42d0f9213fa39c04fef1e72354330",
+  "tests": {
+    "cases": 53,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "independently_executed": false
+  },
+  "findings": [],
+  "basis": [
+    "Exact predecessor diff only approved constants/test inventories and unique PR32 tag; only prepare function AST changes",
+    "Unresolved final source is rejected before operational calls",
+    "Exact prior runtime identity and separate candidate/active authority retained",
+    "Read-only network-none image validation and ownership cleanup unchanged",
+    "All selected test helper imports are bound; old false-positive dispositions require exact file and span hashes"
+  ],
+  "remaining_gates": [
+    "Replace source placeholder with reviewed final source and bind new helper hash",
+    "Fresh full archive scan and disposition; no unresolved finding",
+    "Actual immutable image build/proof/test receipts",
+    "Separate full CI, PostgreSQL and paired replay; no activation authorization from this receipt"
+  ],
+  "scope_limits": [
+    "Review did not execute helper, Docker, broker or installed runtime",
+    "New fairness regression is separately gated by parent and not one of the twenty image test modules"
+  ]
+}

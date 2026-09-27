@@ -1,0 +1,326 @@
+{
+  "started_at": "2026-09-26T23:30:42.721179+00:00",
+  "resources": {
+    "network": "intra-recovery-proof-1c4de1a3751e",
+    "database_container": "intra-recovery-proof-1c4de1a3751e-db",
+    "test_container": "intra-recovery-proof-1c4de1a3751e-test"
+  },
+  "test_image": "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+  "scope": "Only new internal network and containers, tmpfs PostgreSQL, no host ports, candidate worktree read-only, no installed data mounts.",
+  "commands": [
+    {
+      "argv": [
+        "docker",
+        "network",
+        "create",
+        "--internal",
+        "intra-recovery-proof-1c4de1a3751e"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "-d",
+        "--name",
+        "intra-recovery-proof-1c4de1a3751e-db",
+        "--network",
+        "intra-recovery-proof-1c4de1a3751e",
+        "--network-alias",
+        "intra-fill-postgres",
+        "--read-only",
+        "--tmpfs",
+        "/var/lib/postgresql/data:rw",
+        "--tmpfs",
+        "/var/run/postgresql:rw",
+        "--tmpfs",
+        "/tmp:rw",
+        "-e",
+        "POSTGRES_USER=test_fill_accounting",
+        "-e",
+        "POSTGRES_DB=test_fill_accounting",
+        "-e",
+        "POSTGRES_PASSWORD=synthetic-fill-test-only",
+        "postgres:16-alpine"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "intra-recovery-proof-1c4de1a3751e-db",
+        "pg_isready",
+        "-U",
+        "test_fill_accounting",
+        "-d",
+        "test_fill_accounting"
+      ],
+      "exit_code": 2
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "intra-recovery-proof-1c4de1a3751e-db",
+        "pg_isready",
+        "-U",
+        "test_fill_accounting",
+        "-d",
+        "test_fill_accounting"
+      ],
+      "exit_code": 2
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "intra-recovery-proof-1c4de1a3751e-db",
+        "pg_isready",
+        "-U",
+        "test_fill_accounting",
+        "-d",
+        "test_fill_accounting"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "network",
+        "inspect",
+        "intra-recovery-proof-1c4de1a3751e"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "intra-recovery-proof-1c4de1a3751e-db"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--name",
+        "intra-recovery-proof-1c4de1a3751e-test",
+        "--network",
+        "intra-recovery-proof-1c4de1a3751e",
+        "--read-only",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--tmpfs",
+        "/tmp:rw,mode=1777",
+        "--mount",
+        "type=bind,source=/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra,target=/work,readonly",
+        "--workdir",
+        "/tmp",
+        "--entrypoint",
+        "python",
+        "-e",
+        "PYTHONPATH=/work",
+        "-e",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "-e",
+        "PYTHON_DOTENV_DISABLED=1",
+        "-e",
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1",
+        "-e",
+        "PYTEST_ADDOPTS=-p pytest_asyncio.plugin -p pytest_timeout -p no:cacheprovider",
+        "-e",
+        "TESTING=true",
+        "-e",
+        "APP_ENVIRONMENT=testing",
+        "-e",
+        "ENVIRONMENT=testing",
+        "-e",
+        "USE_MOCK_BROKER=true",
+        "-e",
+        "USE_MOCK_DATA=true",
+        "-e",
+        "TRADING_EXECUTION_MODE=shadow",
+        "-e",
+        "SECURITY_JWT_SECRET=test-jwt-secret-not-for-production",
+        "-e",
+        "SECRET_KEY=test-secret-key-not-for-production",
+        "-e",
+        "PICKLE_HMAC_SECRET=test-pickle-secret-not-for-production",
+        "-e",
+        "ORGANISM_BRAIN_DIR=/tmp/scratch-brain",
+        "-e",
+        "TELEMETRY_DIR=/tmp/telemetry",
+        "-e",
+        "HOME=/tmp",
+        "-e",
+        "INTRA_FILL_TEST_DATABASE_URL=postgresql+asyncpg://test_fill_accounting:synthetic-fill-test-only@intra-fill-postgres:5432/test_fill_accounting",
+        "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+        "-B",
+        "-c",
+        "import base64,pathlib,subprocess,sys; code=subprocess.call([sys.executable]+['-B', '-m', 'pytest', '-q', '-c', '/work/pytest.ini', '--rootdir=/work', '/work/tests/test_fill_accounting_postgres.py', '--timeout=20', '--junitxml=/tmp/postgres_tests.xml']); p=pathlib.Path(\"/tmp/postgres_tests.xml\"); print(\"INTRA_JUNIT_BASE64=\"+base64.b64encode(p.read_bytes()).decode() if p.exists() else \"INTRA_JUNIT_MISSING\"); sys.exit(code)"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "intra-recovery-proof-1c4de1a3751e-test"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "intra-recovery-proof-1c4de1a3751e-test"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "intra-recovery-proof-1c4de1a3751e-db"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "docker",
+        "network",
+        "rm",
+        "intra-recovery-proof-1c4de1a3751e"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "network_inspect": {
+    "Name": "intra-recovery-proof-1c4de1a3751e",
+    "Id": "b0121d5b0e64d68806b6e11ca4537a0da5b643838bef717ebf581264f139b32d",
+    "Created": "2026-09-26T23:30:42.735961755Z",
+    "Scope": "local",
+    "Driver": "bridge",
+    "EnableIPv4": true,
+    "EnableIPv6": false,
+    "IPAM": {
+      "Driver": "default",
+      "Options": {},
+      "Config": [
+        {
+          "Subnet": "172.19.0.0/16",
+          "Gateway": "172.19.0.1"
+        }
+      ]
+    },
+    "Internal": true,
+    "Attachable": false,
+    "Ingress": false,
+    "ConfigFrom": {
+      "Network": ""
+    },
+    "ConfigOnly": false,
+    "Options": {
+      "com.docker.network.enable_ipv4": "true",
+      "com.docker.network.enable_ipv6": "false"
+    },
+    "Labels": {},
+    "Containers": {
+      "d00034394751dd8fb05b86de7df34083f2680d3b6235f34821a55bf7c5b8fff9": {
+        "Name": "intra-recovery-proof-1c4de1a3751e-db",
+        "EndpointID": "5098cdb894b7de6a00d022c81f3cf12b03135ac297d9225e92a050b2f7a1a630",
+        "MacAddress": "c2:75:05:74:d4:de",
+        "IPv4Address": "172.19.0.2/16",
+        "IPv6Address": ""
+      }
+    },
+    "Status": {
+      "IPAM": {
+        "Subnets": {
+          "172.19.0.0/16": {
+            "IPsInUse": 4,
+            "DynamicIPsAvailable": 65532
+          }
+        }
+      }
+    }
+  },
+  "database_isolation": {
+    "image": "sha256:97ff59a4e30e08d1c11bdcd9455e7832368c0572b576c9092cde2df4ae5552a3",
+    "port_bindings": {},
+    "mounts": [],
+    "tmpfs": {
+      "/tmp": "rw",
+      "/var/lib/postgresql/data": "rw",
+      "/var/run/postgresql": "rw"
+    },
+    "readonly_rootfs": true
+  },
+  "source_before": {
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "backend/api/lifespan.py": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef",
+    "tests/test_fill_accounting_postgres.py": "09743dadd3e481c749345e1db14e9a45ee4ce9b8a9676fde7e0d4c765d4f3111",
+    "backend/services/order_recovery_service.py": "9eca5aab6ba19a30cd84976502d3169c136f5483981a49013427d77d605996ae",
+    "backend/infra/repositories/orders.py": "c6e416134e719c8f8694ee926d4b36bca3b89f5e64a8945f049a9d1b70c0adb9",
+    "backend/services/scheduled_reconciliation.py": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5"
+  },
+  "pytest_exit_code": 0,
+  "test_isolation": {
+    "image": "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+    "port_bindings": {},
+    "mounts": [
+      {
+        "Type": "bind",
+        "Source": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra",
+        "Destination": "/work",
+        "Mode": "",
+        "RW": false,
+        "Propagation": "rprivate"
+      }
+    ],
+    "tmpfs": {
+      "/tmp": "rw,mode=1777"
+    },
+    "readonly_rootfs": true,
+    "state": {
+      "Status": "exited",
+      "Running": false,
+      "Paused": false,
+      "Restarting": false,
+      "OOMKilled": false,
+      "Dead": false,
+      "Pid": 0,
+      "ExitCode": 0,
+      "Error": "",
+      "StartedAt": "2026-09-26T23:30:43.566185131Z",
+      "FinishedAt": "2026-09-26T23:30:45.452854548Z",
+      "Health": {
+        "Status": "unhealthy",
+        "FailingStreak": 0,
+        "Log": []
+      }
+    }
+  },
+  "source_after": {
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "backend/api/lifespan.py": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef",
+    "tests/test_fill_accounting_postgres.py": "09743dadd3e481c749345e1db14e9a45ee4ce9b8a9676fde7e0d4c765d4f3111",
+    "backend/services/order_recovery_service.py": "9eca5aab6ba19a30cd84976502d3169c136f5483981a49013427d77d605996ae",
+    "backend/infra/repositories/orders.py": "c6e416134e719c8f8694ee926d4b36bca3b89f5e64a8945f049a9d1b70c0adb9",
+    "backend/services/scheduled_reconciliation.py": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5"
+  },
+  "source_stable": true,
+  "cleanup": {
+    "intra-recovery-proof-1c4de1a3751e-test": 0,
+    "intra-recovery-proof-1c4de1a3751e-db": 0,
+    "intra-recovery-proof-1c4de1a3751e": 0
+  },
+  "finished_at": "2026-09-26T23:30:45.737670+00:00"
+}

@@ -19,6 +19,10 @@ from __future__ import annotations
 
 import inspect
 
+import pytest
+
+from tests.test_fill_accounting_integrity import sessions as sessions
+
 
 def test_ww_1_essential_save_creates_backup():
     """save_essential_state must call _create_backup with cadence."""
@@ -69,16 +73,68 @@ def test_uu2_a_successful_login_rollback_logs_error():
     )
 
 
-def test_uu2_c_lot_tracker_rollback_logs_error():
-    """The LotTracker block in alpaca_stream must log rollback failure
-    at ERROR."""
+@pytest.mark.asyncio
+@pytest.mark.parametrize("rollback_fails", [False, True])
+async def test_uu2_c_lot_tracker_rollback_logs_error(sessions, monkeypatch, caplog, rollback_fails):
+    """Real transaction failures roll back, remain retryable and log at ERROR."""
+    import json
+    import logging
+
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from backend.infra import db
+    from backend.infra.schemas import Execution, Order, PositionLot
     from backend.integrations import alpaca_stream
-    src = inspect.getsource(alpaca_stream)
-    assert "UU2-C" in src, "UU2-C marker missing"
-    # No bare `except Exception: pass` directly after `await session.rollback()`.
-    rollback_idx = src.find("await session.rollback()")
-    assert rollback_idx > 0
-    window = src[rollback_idx:rollback_idx + 400]
-    assert "except Exception:\n                            pass" not in window, (
-        "UU2-C regression: bare except: pass on session.rollback() restored."
-    )
+    from backend.services.lot_tracker_service import LotTracker
+    from tests.test_fill_accounting_integrity import make_order
+
+    row = make_order()
+    async with sessions() as session:
+        session.add(row)
+        await session.commit()
+    monkeypatch.setattr(db, "get_sessionmaker", lambda: sessions)
+    monkeypatch.setattr(alpaca_stream, "get_session_context", db.get_session_context)
+    original_create, original_rollback = LotTracker.create_lot, AsyncSession.rollback
+    lot_error = RuntimeError("synthetic lot persistence failure")
+    rollback_error = RuntimeError("synthetic rollback failure")
+    rollback_attempts = []
+
+    async def fail_after_create(tracker, *args, **kwargs):
+        await original_create(tracker, *args, **kwargs)
+        # Both rows really reached SQLite before the injected failure; merely
+        # discarding unflushed Python objects would not prove rollback.
+        assert (await tracker.session.execute(select(Execution))).scalar_one()
+        assert (await tracker.session.execute(select(PositionLot))).scalar_one()
+        raise lot_error
+
+    async def observed_rollback(session):
+        rollback_attempts.append(session)
+        if rollback_fails:
+            raise rollback_error
+        await original_rollback(session)
+
+    monkeypatch.setattr(LotTracker, "create_lot", fail_after_create)
+    monkeypatch.setattr(AsyncSession, "rollback", observed_rollback)
+    update = {"data": {"event": "fill", "order": {
+        "id": row.broker_order_id, "client_order_id": row.client_idempotency_key,
+        "status": "filled", "filled_qty": "10", "filled_avg_price": "100",
+    }}}
+    client = alpaca_stream.AlpacaStreamClient.__new__(alpaca_stream.AlpacaStreamClient)
+    with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError) as caught:
+        await client._process_trade_update(update)
+    expected = rollback_error if rollback_fails else lot_error
+    assert caught.value is expected and len(rollback_attempts) == 1
+    if rollback_fails:
+        assert caught.value.__context__ is lot_error
+    events = [json.loads(record.getMessage()) for record in caplog.records
+              if record.name == alpaca_stream.__name__ and record.levelno == logging.ERROR]
+    assert any(event.get("event") == "Failed to process trade update"
+               and event.get("error") == str(expected) for event in events)
+    # The shared context rolls back; on rollback failure its session-close
+    # cleanup still removes the uncommitted rows. Neither failure is swallowed.
+    async with sessions() as session:
+        saved = await session.get(Order, row.id)
+        assert saved.status == "accepted" and saved.filled_qty == 0
+        assert not list((await session.execute(select(Execution))).scalars())
+        assert not list((await session.execute(select(PositionLot))).scalars())

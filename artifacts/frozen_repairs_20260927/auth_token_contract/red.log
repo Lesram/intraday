@@ -1,0 +1,239 @@
+
+ RUN  v3.2.6 /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/frontend
+
+(node:36399) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ src/services/authService.test.tsx (50 tests | 20 failed) 82ms
+   ✓ actual backend LoginResponse normalizes principal through auth store and portfolio query 62ms
+   ✓ rejects invalid principal rather than inventing user identity 1ms
+   ✓ rejects invalid principal rather than inventing user identity 0ms
+   ✓ rejects invalid principal rather than inventing user identity 0ms
+   ✓ full login rejects access_token that is missing 0ms
+   ✓ full login rejects access_token that is null 0ms
+   ✓ full login rejects access_token that is number 0ms
+   ✓ full login rejects access_token that is boolean 0ms
+   ✓ full login rejects access_token that is object 0ms
+   ✓ full login rejects access_token that is array 0ms
+   × full login rejects access_token that is empty 5ms
+     → promise resolved "{ access_token: '', …(4) }" instead of rejecting
+   × full login rejects access_token that is whitespace 1ms
+     → promise resolved "{ access_token: ' \t\n ', …(4) }" instead of rejecting
+   ✓ full login rejects refresh_token that is missing 0ms
+   × full login rejects refresh_token that is null 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × full login rejects refresh_token that is number 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × full login rejects refresh_token that is boolean 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × full login rejects refresh_token that is object 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × full login rejects refresh_token that is array 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × full login rejects refresh_token that is empty 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × full login rejects refresh_token that is whitespace 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   ✓ full login preserves valid credentials and principal 0ms
+   ✓ full malformed access_token never authenticates the login hook 2ms
+   × full malformed refresh_token never authenticates the login hook 1ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   ✓ full valid login authenticates and navigates 1ms
+   ✓ backend login rejects access_token that is missing 0ms
+   ✓ backend login rejects access_token that is null 0ms
+   ✓ backend login rejects access_token that is number 0ms
+   ✓ backend login rejects access_token that is boolean 0ms
+   ✓ backend login rejects access_token that is object 0ms
+   ✓ backend login rejects access_token that is array 0ms
+   ✓ backend login rejects access_token that is empty 0ms
+   × backend login rejects access_token that is whitespace 0ms
+     → promise resolved "{ access_token: ' \t\n ', …(4) }" instead of rejecting
+   × backend login rejects refresh_token that is missing 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × backend login rejects refresh_token that is null 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × backend login rejects refresh_token that is number 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × backend login rejects refresh_token that is boolean 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × backend login rejects refresh_token that is object 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × backend login rejects refresh_token that is array 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × backend login rejects refresh_token that is empty 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   × backend login rejects refresh_token that is whitespace 0ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   ✓ backend login preserves valid credentials and principal 0ms
+   ✓ backend malformed access_token never authenticates the login hook 2ms
+   × backend malformed refresh_token never authenticates the login hook 1ms
+     → promise resolved "{ …(5) }" instead of rejecting
+   ✓ backend valid login authenticates and navigates 1ms
+   ✓ preserves valid backend roles ["admin"] as admin 0ms
+   ✓ preserves valid backend roles ["trader"] as trader 0ms
+   ✓ preserves valid backend roles ["risk_manager"] as risk_manager 0ms
+   ✓ preserves valid backend roles ["risk-manager"] as risk_manager 0ms
+   ✓ preserves valid backend roles ["viewer"] as viewer 0ms
+   ✓ preserves valid backend roles ["paper_monitor"] as viewer 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 20 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/authService.test.tsx > full login rejects access_token that is empty
+AssertionError: promise resolved "{ access_token: '', …(4) }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "access_token": "",[39m
+[31m+   "expires_in": 3600,[39m
+[31m+   "refresh_token": "synthetic-refresh",[39m
+[31m+   "token_type": "bearer",[39m
+[31m+   "user": {[39m
+[31m+     "created_at": "2026-09-27T00:00:00Z",[39m
+[31m+     "email": "alice",[39m
+[31m+     "id": "alice",[39m
+[31m+     "is_active": true,[39m
+[31m+     "name": "Alice",[39m
+[31m+     "role": "viewer",[39m
+[31m+   },[39m
+[2m  }[22m
+
+ ❯ src/services/authService.test.tsx:71:83
+     69|       else data[field] = value;
+     70|       vi.mocked(apiClient.post).mockResolvedValue({ data });
+     71|       await expect(authService.login({ username: 'alice', password: 's…
+       |                                                                                   ^
+     72|         .rejects.toThrow('Invalid authenticated user response');
+     73|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/20]⎯
+
+ FAIL  src/services/authService.test.tsx > full login rejects access_token that is whitespace
+ FAIL  src/services/authService.test.tsx > backend login rejects access_token that is whitespace
+AssertionError: promise resolved "{ access_token: ' \t\n ', …(4) }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "access_token": " 	[39m
+[31m+  ",[39m
+[31m+   "expires_in": 3600,[39m
+[31m+   "refresh_token": "synthetic-refresh",[39m
+[31m+   "token_type": "bearer",[39m
+[31m+   "user": {[39m
+[31m+     "created_at": "2026-09-27T00:00:00Z",[39m
+[31m+     "email": "alice",[39m
+[31m+     "id": "alice",[39m
+[31m+     "is_active": true,[39m
+[31m+     "name": "Alice",[39m
+[31m+     "role": "viewer",[39m
+[31m+   },[39m
+[2m  }[22m
+
+ ❯ src/services/authService.test.tsx:71:83
+     69|       else data[field] = value;
+     70|       vi.mocked(apiClient.post).mockResolvedValue({ data });
+     71|       await expect(authService.login({ username: 'alice', password: 's…
+       |                                                                                   ^
+     72|         .rejects.toThrow('Invalid authenticated user response');
+     73|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/20]⎯
+
+ FAIL  src/services/authService.test.tsx > full login rejects refresh_token that is null
+ FAIL  src/services/authService.test.tsx > full login rejects refresh_token that is number
+ FAIL  src/services/authService.test.tsx > full login rejects refresh_token that is boolean
+ FAIL  src/services/authService.test.tsx > full login rejects refresh_token that is object
+ FAIL  src/services/authService.test.tsx > full login rejects refresh_token that is array
+ FAIL  src/services/authService.test.tsx > full login rejects refresh_token that is empty
+ FAIL  src/services/authService.test.tsx > full login rejects refresh_token that is whitespace
+ FAIL  src/services/authService.test.tsx > backend login rejects refresh_token that is missing
+ FAIL  src/services/authService.test.tsx > backend login rejects refresh_token that is null
+ FAIL  src/services/authService.test.tsx > backend login rejects refresh_token that is number
+ FAIL  src/services/authService.test.tsx > backend login rejects refresh_token that is boolean
+ FAIL  src/services/authService.test.tsx > backend login rejects refresh_token that is object
+ FAIL  src/services/authService.test.tsx > backend login rejects refresh_token that is array
+ FAIL  src/services/authService.test.tsx > backend login rejects refresh_token that is empty
+ FAIL  src/services/authService.test.tsx > backend login rejects refresh_token that is whitespace
+AssertionError: promise resolved "{ …(5) }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "access_token": "synthetic-access",[39m
+[31m+   "expires_in": 3600,[39m
+[31m+   "refresh_token": null,[39m
+[31m+   "token_type": "bearer",[39m
+[31m+   "user": {[39m
+[31m+     "created_at": "2026-09-27T00:00:00Z",[39m
+[31m+     "email": "alice",[39m
+[31m+     "id": "alice",[39m
+[31m+     "is_active": true,[39m
+[31m+     "name": "Alice",[39m
+[31m+     "role": "viewer",[39m
+[31m+   },[39m
+[2m  }[22m
+
+ ❯ src/services/authService.test.tsx:71:83
+     69|       else data[field] = value;
+     70|       vi.mocked(apiClient.post).mockResolvedValue({ data });
+     71|       await expect(authService.login({ username: 'alice', password: 's…
+       |                                                                                   ^
+     72|         .rejects.toThrow('Invalid authenticated user response');
+     73|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/20]⎯
+
+ FAIL  src/services/authService.test.tsx > full malformed refresh_token never authenticates the login hook
+ FAIL  src/services/authService.test.tsx > backend malformed refresh_token never authenticates the login hook
+AssertionError: promise resolved "{ …(5) }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "access_token": "synthetic-access",[39m
+[31m+   "expires_in": 3600,[39m
+[31m+   "refresh_token": null,[39m
+[31m+   "token_type": "bearer",[39m
+[31m+   "user": {[39m
+[31m+     "created_at": "2026-09-27T00:00:00Z",[39m
+[31m+     "email": "alice",[39m
+[31m+     "id": "alice",[39m
+[31m+     "is_active": true,[39m
+[31m+     "name": "Alice",[39m
+[31m+     "role": "viewer",[39m
+[31m+   },[39m
+[2m  }[22m
+
+ ❯ src/services/authService.test.tsx:94:94
+     92|     try {
+     93|       await act(async () => {
+     94|         await expect(result.current.mutateAsync({ username: 'alice', p…
+       |                                                                                              ^
+     95|           .rejects.toThrow('Invalid authenticated user response');
+     96|       });
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:48:24
+ ❯ process.env.NODE_ENV.exports.act node_modules/react/cjs/react.development.js:814:22
+ ❯ Proxy.<anonymous> node_modules/@testing-library/react/dist/act-compat.js:47:25
+ ❯ src/services/authService.test.tsx:93:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/20]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  20 failed | 30 passed (50)
+   Start at  12:55:24
+   Duration  820ms (transform 59ms, setup 99ms, collect 115ms, tests 82ms, environment 341ms, prepare 42ms)
+
+JUNIT report written to /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/auth_token_contract/red.xml

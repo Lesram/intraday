@@ -1,0 +1,35 @@
+{
+  "files": {
+    "backend/integrations/alpaca_stream.py": {
+      "before": 0,
+      "after": 0,
+      "new": []
+    },
+    "backend/api/lifespan.py": {
+      "before": 52,
+      "after": 52,
+      "new": []
+    },
+    "tests/test_fill_accounting_integrity.py": {
+      "before": 0,
+      "after": 0,
+      "new": []
+    },
+    "tests/test_wave43_fixes.py": {
+      "before": 0,
+      "after": 0,
+      "new": []
+    },
+    "tests/test_adversarial_inputs_v7.py": {
+      "before": 1,
+      "after": 1,
+      "new": []
+    },
+    "tests/unit/test_alpaca_stream_comprehensive.py": {
+      "before": 6,
+      "after": 6,
+      "new": []
+    }
+  },
+  "new_findings": 0
+}

@@ -1,0 +1,95 @@
+{
+  "task_id": "approved-frozen-repairs-20260927",
+  "recorded_at": "2026-09-27T18:19:36.786029+00:00",
+  "authorization": {
+    "user_statement": "yes I approve everything",
+    "scope_document": "reports/PLATFORM_AUDIT_FROZEN_REPAIR_SCOPE_2026-09-26.md",
+    "approved": [
+      "five scoped correctness repairs",
+      "paper activation after required validation and review",
+      "new forward-evaluation boundary on activation; preserve history"
+    ],
+    "excluded": [
+      "real-money execution",
+      "strategy/risk/feed tuning",
+      "history deletion",
+      "parked refactors"
+    ]
+  },
+  "baseline_head": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "workstreams": [
+    {
+      "id": "streaming",
+      "files": [
+        "backend/integrations/alpaca_market_data_stream.py",
+        "backend/organism/streaming_data_provider.py",
+        "backend/organism/scheduler.py",
+        "scripts/diagnostics/profile_paper_pipeline.py"
+      ],
+      "tests": [
+        "tests/unit/test_alpaca_market_data_stream_comprehensive.py",
+        "tests/unit/test_streaming_data_provider.py",
+        "tests/test_streaming_provider_lifecycle.py",
+        "tests/test_scanner_streaming_integration.py",
+        "tests/test_streaming_subscription_acknowledgement.py",
+        "tests/unit/test_paper_data_freshness.py",
+        "tests/test_pipeline_profile.py"
+      ],
+      "acceptance": "Only current-session provider confirmation establishes active subscriptions; startup/clean-close recover with bounded retries and no relaxed admission or fallback feed."
+    },
+    {
+      "id": "causal-features",
+      "files": [
+        "backend/organism/ml_features.py"
+      ],
+      "tests": [
+        "tests/test_cross_asset_timestamp_alignment.py",
+        "tests/test_cross_asset_alignment_replay.py",
+        "tests/test_composite_indicator_contract.py"
+      ],
+      "acceptance": "Validated timestamp-based backward alignment, order preservation, no future leakage, unchanged non-crossasset features."
+    },
+    {
+      "id": "eod-cancellation",
+      "files": [
+        "backend/organism/live_engine.py",
+        "backend/organism/operator_cancellation.py",
+        "backend/organism/replay_simulator.py"
+      ],
+      "tests": [
+        "tests/test_eod_pending_cancellation.py",
+        "tests/test_audit_0_4_eod_flatten_escalation.py",
+        "tests/test_operator_controls.py",
+        "tests/test_eod_cancellation_fairness.py"
+      ],
+      "acceptance": "Supported cancellation path and terminal confirmation; preserve unresolved identity, close/flatten safety, restart recovery, and no duplicate submission. Explicit simulated ledger confirmation must preserve equivalent requirements in replay; no production no-database fallback."
+    },
+    {
+      "id": "freeze-governance",
+      "files": [
+        "scripts/phase2_freeze.py",
+        "scripts/runtime/write_runtime_snapshot.py",
+        "docs/architecture/mapss.md"
+      ],
+      "tests": [
+        "tests/test_phase2_freeze.py"
+      ],
+      "acceptance": "Hash streaming transport and all changed correctness dependencies; verify candidate without writing active authority; record new approved boundary only at reviewed activation."
+    }
+  ],
+  "required_validation": [
+    "targeted tests",
+    "all six organism minimum suites",
+    "three order/reconciliation suites",
+    "three config/integration suites",
+    "paired replay with adverse outcomes disclosed",
+    "full artifact pack and audit index",
+    "independent review",
+    "secret scan",
+    "exact-source hosted CI",
+    "backup/reconciliation before paper activation",
+    "post-start source/config/freeze/health/operator verification"
+  ],
+  "runtime_changes_before_gates": false,
+  "history_policy": "Preserve previous boundaries, data, models and evidence; never rewrite unknown historical trades as resolved."
+}

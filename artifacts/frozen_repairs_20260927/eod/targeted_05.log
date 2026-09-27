@@ -1,0 +1,50 @@
+Isolated test scratch: /private/tmp/intra-audit-test-yuz6g23f
+...........................................F............................ [ 36%]
+........................................................................ [ 73%]
+...................................................                      [100%]
+=================================== FAILURES ===================================
+___ test_real_eod_tick_uses_supported_cancel_retains_uncertain_and_flattens ____
+
+store = async_sessionmaker(class_='AsyncSession', bind=<sqlalchemy.ext.asyncio.engine.AsyncEngine object at 0x114fdb090>, autoflush=True, expire_on_commit=False)
+tmp_path = PosixPath('/private/tmp/intra-audit-test-yuz6g23f/pytest-of-marselkei/pytest-0/test_real_eod_tick_uses_suppor0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x114ea5940>
+
+    @pytest.mark.asyncio
+    @pytest.mark.timeout(60)
+    async def test_real_eod_tick_uses_supported_cancel_retains_uncertain_and_flattens(store, tmp_path, monkeypatch):
+        from backend.organism.adaptive_exits import ExitLevels
+        from backend.organism.replay_simulator import SimulatedBroker, make_price_df
+        from tests.test_organism_engine_scenarios import MockDataClient, _make_engine
+        _, row, transport = await seeded(store)
+        # Broker accepted DELETE but has not confirmed terminal; this ID must survive.
+        transport.get_order.return_value = observed(row, 'pending_cancel')
+        monkeypatch.setattr('backend.integrations.alpaca_broker.get_alpaca_broker_client', lambda: transport)
+        frames = {symbol: make_price_df(n=250, base=100) for symbol in ('AAPL', 'MSFT', 'SPY')}
+        broker = SimulatedBroker(initial_cash=100_000)
+        engine = _make_engine(broker, MockDataClient(frames), brain_dir=str(tmp_path / 'eod-brain'))
+        now = datetime(2026, 9, 22, 19, 59, tzinfo=UTC)
+        engine._now_fn = lambda: now
+        engine._time_fn = now.timestamp
+        await engine.initialize()
+        engine._sessionmaker = store
+        engine._pending_entry_order_ids = {'AAPL': str(row.id)}
+        engine._pending_entry = {'AAPL': 0}
+        broker.add_position('MSFT', qty=10, avg_entry_price=100)
+        broker.set_price('MSFT', 100)
+        engine._exit_levels['MSFT'] = ExitLevels(symbol='MSFT', direction=1., entry_price=100,
+            stop_loss=90, take_profit=120, trailing_stop=90, atr_at_entry=2,
+            regime_at_entry='unknown', highest_favorable=100)
+        engine._entry_metadata['MSFT'] = {'entry_price': 100., 'entry_tick': 0, 'direction': 1.,
+            'confidence': .6, 'predicted_return': .02, 'filled_shares': 10, 'entry_source': 'alpha'}
+        result = await engine.live_tick()
+>       assert engine._alpha_breakout_late_blocked
+E       assert False
+E        +  where False = <backend.organism.live_engine.OrganismLiveEngine object at 0x11520cc20>._alpha_breakout_late_blocked
+
+tests/test_eod_pending_cancellation.py:327: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['cancellation_not_confirmed']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:37:03.567513Z"}
+=========================== short test summary info ============================
+FAILED tests/test_eod_pending_cancellation.py::test_real_eod_tick_uses_supported_cancel_retains_uncertain_and_flattens
+1 failed, 194 passed in 5.46s

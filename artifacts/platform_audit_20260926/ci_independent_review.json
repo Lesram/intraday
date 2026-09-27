@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "conclusion": "ACCEPT_SCOPED_NIGHTLY_AND_READINESS_DELTA",
+  "blockers": [],
+  "source_sha256": {
+    "scripts/ci/nightly_test_contract.py": "ff7422fd9e767581c9c171170c4ead18c5fd913de96fa24d8442d6e088186ddc",
+    "tests/test_nightly_test_contract.py": "6592cfc0b628bba5febe707b256ee46e8371db0c208a798b6e8ad7b751853906",
+    "tests/test_wave52_fixes.py": "b2a7ddeca22f2db36016a813f1f5aadabe6619f4ba2ce6d10e59ba85656c9c2b",
+    "tests/unit/test_api_routes_mocked_coverage.py": "7965ba0b9a5eeb10835f99f44492db1c00be42dcfcb328b8bd9a7e38b68b4810",
+    ".github/workflows/paper-readiness.yml": "975e1552ff2ec2fb0a14d73fec2a1386d1b92eebf7eca935dc87dffe75af900c",
+    "tests/test_monday_ci_workflows.py": "dd657c00bcc705190186ca5eda52e7a46445b9a859374aafaae8dc04d151500d"
+  },
+  "required_replay_review": {
+    "old_count": 7,
+    "new_count": 22,
+    "old_nodes_removed": [],
+    "paired_fixture_consumers": 6,
+    "manifest_exact_selection": true,
+    "passed_required_node_identity_union": 22,
+    "initial_result": "16 passed +6 paired-fixture errors because offline guard rejected synthetic credentials",
+    "corrected_paired_result": "16-case composite suite passed, including all6 required fixture consumers",
+    "limits": "Passing union across retained runs; not represented as a single fully green22-case run. Test-source timeout markers are unchanged. Moving newly selected cases uses the existing replay-lane120-second default rather than the core30-second default; paired tests retain their existing300-second markers. No required replay case is skipped."
+  },
+  "contract_review": [
+    "Grouped parametrized synthetic fixture emits each scenario exactly once and retains class ownership.",
+    "Missing required nodes fail collection; replay active-coverage fails; after-marker/filter exact selection is persisted then enforced.",
+    "No executable skip/xfail markers found in the six required replay modules.",
+    "External cases remain explicitly UNAVAILABLE in inventory; no new external exclusions or blanket skips.",
+    "Brain/tick health test now exercises unloaded, stale and fresh outcomes; readiness schema fixture supplies typed PostgreSQL/Redis and market-closed diagnostics.",
+    "PostgreSQL job supplies only dedicated synthetic service URL; its container service hostname/database/user match strict test URL validator. General DATABASE_URL stays SQLite.",
+    "Hosted workflow remains pending actual execution; local disposable PostgreSQL evidence is separate."
+  ],
+  "independent_fast_tests": {
+    "passed": 48,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 4.25,
+    "junit": "artifacts/platform_audit_20260926/ci_independent_contract_tests.xml",
+    "sha256": "9c9ef3aa84c60791cda035e710d73f1685b6591fe6675075935acf8647699545",
+    "command": "isolated pytest tests/test_nightly_test_contract.py tests/test_monday_ci_workflows.py --timeout=30"
+  },
+  "actual_workflow_junit_guard_negative_controls": [
+    {
+      "case": "pass",
+      "accepted": true
+    },
+    {
+      "case": "missing_case",
+      "accepted": false
+    },
+    {
+      "case": "skip",
+      "accepted": false
+    },
+    {
+      "case": "error",
+      "accepted": false
+    },
+    {
+      "case": "failure",
+      "accepted": false
+    }
+  ],
+  "read_only": {
+    "production_edits": false,
+    "workflow_edits": false,
+    "broker_or_runtime_calls": false
+  }
+}

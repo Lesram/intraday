@@ -1,0 +1,32 @@
+{
+  "source_sha": "85b2534b3fdc1e72e3a9afb3c8e1a1a45bb0ef89",
+  "scope": "Hosted initial audit source; subsequent uncommitted repairs require new hosted validation",
+  "url": "https://github.com/Lesram/intraday/actions/runs/36278580588",
+  "conclusion": "failure",
+  "lanes": [
+    {
+      "name": "nightly",
+      "passed": 9242,
+      "failed": 2,
+      "errors": 0,
+      "skipped": 550,
+      "seconds": 1215.681,
+      "xml_sha256": "5af7c1b126a576fbffbb8c8570380bc98b32a6755a260d829b49f321959eaa7b",
+      "failures": [
+        "tests.test_reachability_v8::test_bb_8_lot_tracker_wired_inside_trade_update",
+        "tests.test_wave51_fixes::test_uu2_c_lot_tracker_rollback_logs_error"
+      ]
+    },
+    {
+      "name": "replay",
+      "passed": 22,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 957.185,
+      "xml_sha256": "c422c4f77f26b3754051af18b49f5346a4b4df31a95f210f3aa143c48546b459",
+      "failures": []
+    }
+  ],
+  "issues_created": false
+}

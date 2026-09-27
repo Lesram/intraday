@@ -1,0 +1,48 @@
+{
+  "task_id": "persisted-order-recovery",
+  "authorized": true,
+  "scope": "Recover positively attributable, unresolved persisted orders by their existing broker UUID without recency exclusion. Preserve existing atomic accounting, bounded recent-terminal repair, and all frozen strategy behavior.",
+  "owned_files": [
+    "backend/services/order_recovery_service.py",
+    "tests/test_order_recovery_service.py",
+    "backend/infra/repositories/orders.py",
+    "backend/services/scheduled_reconciliation.py",
+    "backend/api/lifespan.py::_sync_orders",
+    "backend/integrations/alpaca_stream.py::reconnect recovery and timing",
+    "tests/test_fill_accounting_postgres.py (two explicitly authorized recovery cases; original nine retained)"
+  ],
+  "candidate_contract": "Existing broker UUID and original client key, nonterminal local status, plus organism source or an exact linked order.submitted outbox identity. Unowned legacy UNKNOWN rows and missing broker identities remain outside automatic recovery.",
+  "limits": {
+    "max_requests_per_pass": 20,
+    "pass_budget_seconds": 10,
+    "lookup_budget_seconds": 2,
+    "progress": "Single-flight process-local immutable-ID keyset cursor; advance on each attempted lookup, including failures. Restart resets cursor.",
+    "history": "Do not enumerate or rewrite arbitrary old terminal history. Existing recent terminal path remains separately bounded."
+  },
+  "safety": [
+    "GET only; no POST, DELETE, cancellation or outbox mutation.",
+    "404, timeout, malformed response and identity mismatch leave accounting unchanged.",
+    "Revalidate row identity and attribution under lock after network lookup, then use existing atomic fill helper.",
+    "No new schema or state file; no active freeze, cutoff, runtime or deployment change."
+  ],
+  "tests": [
+    "Old attributable unresolved order recovery regardless of age.",
+    "Full multi-pass pagination with early failures and wraparound.",
+    "Legacy UNKNOWN and terminal exclusion; outbox linkage exactness.",
+    "Strict identity and fill shape validation; terminal partials; duplicate retry.",
+    "Atomic rollback and broker lookup deadlines; overlapping recovery calls single-flight.",
+    "Startup, reconnect and periodic integration plus long-outage clock regression.",
+    "Existing accounting, order integrity and reconciliation suites.",
+    "Before/after frozen-surface and canonical byte equality.",
+    "Disposable internal-network PostgreSQL: exact JSON lineage and UUID keyset; recovery waits on stream partial then applies only missing cumulative fill increment."
+  ],
+  "authorized_followups": [
+    {
+      "scope": "One additional real PostgreSQL test of the actual outbox ACK updater against an in-flight stream transaction, followed by a stale ACK.",
+      "owned_file": "tests/test_fill_accounting_postgres.py",
+      "tests_after_extension": 12,
+      "runtime_changes": false,
+      "evidence": "artifacts/platform_audit_20260926/order_recovery/postgres_ack_addendum.json"
+    }
+  ]
+}

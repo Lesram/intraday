@@ -1,0 +1,186 @@
+
+ RUN  v3.2.6 /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/frontend
+
+ ✓ src/utils/portfolioSnapshot.test.ts (11 tests) 2ms
+stdout | src/services/websocketManager.test.tsx > logout closes connected session and removes private-delivery callbacks
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+stdout | src/services/websocketManager.test.tsx > logout closes connected session and removes private-delivery callbacks
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 2)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+stdout | src/services/websocketManager.test.tsx > logout closes connected session and removes private-delivery callbacks
+[WebSocket] Disconnecting...
+
+stdout | src/services/websocketManager.test.tsx > token rotation while connected or connecting retires old transport and resubscribes once
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+(node:76017) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | src/services/websocketManager.test.tsx > token rotation while connected or connecting retires old transport and resubscribes once
+[WebSocket] Connecting...
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+[WebSocket] Connected
+[WebSocket] Reconnected (total reconnects: 8)
+[WebSocket] Resubscribed to: portfolio
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+
+stdout | src/services/websocketManager.test.tsx > token rotation while connected or connecting retires old transport and resubscribes once
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+stdout | src/services/websocketManager.test.tsx > an obsolete caller cannot open a socket using a retired token
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+stdout | src/services/websocketManager.test.tsx > an obsolete caller cannot open a socket using a retired token
+[WebSocket] Disconnecting...
+
+stdout | src/services/websocketManager.test.tsx > an obsolete caller cannot open a socket using a retired token
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+ ✓ src/services/websocketManager.test.tsx (3 tests) 12ms
+ ✓ src/services/api.test.ts (4 tests) 113ms
+(node:76019) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/services/authService.test.tsx (4 tests) 64ms
+stdout | src/features/dashboard/Dashboard.test.tsx > actual manager direct payload updates displayed equity, rejects wrong user and malformed data
+[WebSocket] Disconnecting...
+
+ ✓ src/features/portfolio/PortfolioPage.test.tsx (1 test) 68ms
+ ✓ src/components/layout/GlobalStatusBar.test.tsx (7 tests) 196ms
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows the research lock and disables training without blocking the entry halt
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > does not display active operation for an uninitialized engine
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > does not claim entries resumed when another risk block remains
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ ✓ src/hooks/usePortfolio.test.tsx (4 tests) 1110ms
+   ✓ current portfolio hook > refresh replaces existing store and failure hides balances until verified recovery  1050ms
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > does not claim entries resumed when another risk block remains
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > does not claim entries resumed when another risk block remains
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ ✓ src/features/dashboard/Dashboard.test.tsx (2 tests) 1103ms
+   ✓ actual manager direct payload updates displayed equity, rejects wrong user and malformed data  1075ms
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > reports a retained halt from a structured incomplete response
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > reports a retained halt from a structured incomplete response
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > reports a retained halt from a structured incomplete response
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > replaces a previously healthy status with unavailable on poll failure and recovers
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > replaces a previously healthy status with unavailable on poll failure and recovers
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ ✓ src/features/auth/LoginPage.test.tsx (10 tests) 2937ms
+   ✓ LoginPage access contract > does not automatically submit in production even with the bypass flag enabled  1389ms
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > keeps a good primary status available when a secondary panel fails
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > accepts a slow primary without overlapping polls and expires a later hung request
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > accepts a slow primary without overlapping polls and expires a later hung request
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > optional hung panel cannot delay primary failure or restore obsolete healthy state
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > optional hung panel cannot delay primary failure or restore obsolete healthy state
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > renders the dashboard title
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > displays engine performance stats
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows regime tag
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > renders the tabs
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows the position heatmap
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows position symbols in heatmap
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows the P&L waterfall
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+stderr | src/features/organism/__tests__/OrganismDashboard.test.tsx > OrganismDashboard > shows the regime timeline
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ ✓ src/features/organism/__tests__/OrganismDashboard.test.tsx (17 tests) 3960ms
+   ✓ OrganismDashboard > shows the research lock and disables training without blocking the entry halt  463ms
+   ✓ OrganismDashboard > does not claim entries resumed when another risk block remains  346ms
+   ✓ OrganismDashboard > reports a retained halt from a structured incomplete response  310ms
+   ✓ OrganismDashboard > replaces a previously healthy status with unavailable on poll failure and recovers  634ms
+   ✓ OrganismDashboard > accepts a slow primary without overlapping polls and expires a later hung request  484ms
+   ✓ OrganismDashboard > optional hung panel cannot delay primary failure or restore obsolete healthy state  625ms
+
+ Test Files  10 passed (10)
+      Tests  63 passed (63)
+   Start at  15:58:34
+   Duration  5.73s (transform 504ms, setup 876ms, collect 7.09s, tests 9.57s, environment 2.18s, prepare 347ms)
+
+JUNIT report written to /private/tmp/intra-verification-ui-frontend-stable.xml

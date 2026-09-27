@@ -1,0 +1,13 @@
+{
+  "at_utc": "2026-09-27T18:35:50.080531+00:00",
+  "baseline_exit": 1,
+  "final_exit": 1,
+  "baseline_findings": 3,
+  "final_findings": 2,
+  "new_findings": [],
+  "source_sha256": {
+    "backend/organism/ml_features.py": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
+    "tests/test_cross_asset_timestamp_alignment.py": "846541f8354468455896a492f6b08e31158f1b823814f5e1b47f1133ed23a684",
+    "tests/test_cross_asset_alignment_replay.py": "46f34f35a4ed34c70808e41e977ed8effa4f54059f680c45469ce7bb6a72335c"
+  }
+}

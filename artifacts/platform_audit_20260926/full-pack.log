@@ -1,0 +1,12 @@
+Isolated test scratch: /private/tmp/intra-audit-test-1tc3vrb8
+Generating artifacts (mode=full)...
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/task_report.json
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/changed_files.json
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/runtime_snapshot_summary.json
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/grep_assertions.json
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/test_summary.json
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/replay_summary.json
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/semantic_invariants_summary.json
+  -> /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/spec_drift_summary.json
+  -> backfilled task_report: 8 passed, 0 failed
+Done.

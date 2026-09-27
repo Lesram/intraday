@@ -1,0 +1,173 @@
+{
+  "task_id": "outbox-fill-race",
+  "written_at_utc": "2026-09-26T23:53:02.553515+00:00",
+  "status": "SCOPED_IMPLEMENTATION_COMPLETE_PENDING_FINAL_INDEPENDENT_BINDING",
+  "summary": "Broker acknowledgement attachment is serialized with fill accounting and preserves established identity, terminal status and cumulative cashflow; known real acknowledgement followed by local persistence failure retains original-client lookup-only recovery and truthful reconciliation-required exhaustion.",
+  "owned_source_hashes": {
+    "backend/infra/outbox_worker.py": "ac2ccecc3480ac74a4977416b83fae9af765de13bd729e2b92b38180dd753178",
+    "tests/test_outbox_fill_race.py": "f3a77660ca8779ed04e7bc078bfe7491f5025762591b0eedb38e18e9c4332843"
+  },
+  "dependencies": {
+    "backend/services/order_recovery_service.py": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e",
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "tests/test_fill_accounting_integrity.py": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972"
+  },
+  "plan": {
+    "path": "artifacts/platform_audit_20260926/outbox_fill_race/plan.json",
+    "sha256": "22c893657fc6479ffa2d9a0a4c731aa3c63937cb10ae5c59f1f5614065591b46"
+  },
+  "changes": [
+    "SELECT FOR UPDATE and populate_existing before ACK attachment serialize with existing stream/recovery writers; different persisted broker identity is rejected.",
+    "Real Alpaca dispatcher shape contains alpaca_response; original broker/client/symbol/side/requested quantity and fill/status fields validated by shared pure validate_order_snapshot.",
+    "First full/partial/terminal-partial real ACK applies cumulative cashflow through unchanged apply_order_fill_snapshot and commits summary+Execution+PositionLot/RealizedTrade+ORDER_FILLED audit together.",
+    "Stale lower cumulative ACK is ignored; duplicate is idempotent; same-quantity price correction stays explicit rather than rewriting lots.",
+    "Top-level mock/shadow compatibility retained for first ACK; delayed lower fills/partial-state demotions are blocked, and synthetic mode metadata cannot relabel an existing real broker UUID.",
+    "Only _update_order_status, _process_order_submitted and _process_event ASTs changed in this worker; all other worker source AST remains equivalent to base.",
+    "Known real broker acknowledgement is recorded before local accounting awaits; local persistence exception returns existing original-client submission_ambiguous/reconciliation_required contract.",
+    "Successful real broker result also latches the existing lookup-only marker before marking an outbox event sent; a sent-commit failure cannot lose that classification. No retry policy, adapter, submission or cancellation protocol changes."
+  ],
+  "validation": {
+    "expanded_final": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/final.xml",
+      "sha256": "76a171ebae83e38fb1696915c6e19020ea9f53eddcdda37ad969c297ce399abb",
+      "cases": 231,
+      "passed": 231,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "new_ack_cases": 36,
+    "earlier_green": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/targeted_01.xml",
+      "sha256": "c0eac158ca655d40f72dc8ff2798bcafe04c3e65acf0e2328eb92c8cf4365b70",
+      "cases": 27,
+      "passed": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "red_regressions": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/proof_real_shape_red.xml",
+      "sha256": "e10b3e9e492afc4a619242c2d8a37c69c4e915d9853e306fb18546b493a22187",
+      "cases": 5,
+      "passed": 0,
+      "failures": 5,
+      "errors": 0,
+      "skipped": 0
+    },
+    "red_scope": "Five desired-invariant failures: two actual nested real-dispatch cases (late new/zero ACK after filled; first filled ACK without accounted fills), plus three direct updater/top-level variants. The latter are not misrepresented as real dispatcher top-level fill fields.",
+    "test_environment": "Parent isolated runner; fresh scratch HOME/brain, synthetic SQLite, explicit async/timeout plugins, all network denied, installed writes/private runtime reads denied.",
+    "static": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/static_final.json",
+      "sha256": "3abba65d62642bc67b968dcdafd034ef04e85d6e3fc71cc1a1a37224f5fb5311",
+      "new_findings": 0,
+      "removed_findings": 2,
+      "new_tests_clean": true,
+      "only_three_authorized_method_asts_changed": true
+    },
+    "freeze": {
+      "before": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "after": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "byte_equal": true,
+      "candidate_matches": true,
+      "basis": "Recorded candidate nonsecret environment; no actual runtime observation."
+    },
+    "wrapper_red_regressions": {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/wrapper_red.xml",
+      "sha256": "04af26d233c4b6257516034b29bcac8580421dfa933380e75c3a81b3215cdc06",
+      "cases": 3,
+      "passed": 0,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    "wrapper_red_scope": "Three actual dispatcher/wrapper/updater cases fail before extension because local accounting or sent-commit failure does not persist the original-client ambiguity marker; final run proves GET-only recovery or truthful reconciliation-required DLQ.",
+    "postgres_ack": {
+      "path": "artifacts/platform_audit_20260926/order_recovery/postgres_ack_addendum.json",
+      "sha256": "4c0ecd6d19b6f0f665b6ea801d2c80af6b9d47f3151fd09ea5a5bd4a94a405a5",
+      "tests": {
+        "path": "artifacts/platform_audit_20260926/order_recovery/postgres_ack_02/postgres_tests.xml",
+        "sha256": "d14a646d1a4a4abffb015a732b7d5924e9746eb1a8d2b79238c6c850a793967f",
+        "cases": 12,
+        "passed": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "updater_ast_unchanged": true,
+      "updater_ast_sha256": "fff04d2e61d836af49f8f659838996681bd276d2000fa4085abb644424273412",
+      "scope": "Seven actual disposable PostgreSQL cases plus five DSN safety cases; includes direct ACK-versus-stream row-lock contention. Wrapper recovery tests use SQLite and mocked HTTP."
+    },
+    "counts_not_additive": "The earlier, final, peer and PostgreSQL suites overlap; do not sum them as unique platform coverage."
+  },
+  "limits": [
+    "Bounded PostgreSQL lock/rollback cases are not general stress or distributed exactly-once certification.",
+    "A process crash/cancellation or unavailable durable persistence before the ambiguity marker commits remains a broker/local crash window; no atomic broker/database guarantee is claimed.",
+    "No old history rewrite, live broker/order/API call, installed runtime change, credential/model access, active cutoff/reset, or strategy change.",
+    "Full safety artifact pack/CI/docs/commit/PR are parent-owned and remain separate gates."
+  ],
+  "evidence": {
+    "proof_real_shape_red.log": {
+      "sha256": "7738a2ce0cddf860856bfacc61d3adbc29a1289369c543e561c4480a5a1b625a",
+      "bytes": 3412
+    },
+    "proof_test_delayed_ack.py.txt": {
+      "sha256": "2124ed465fd302cdd3b376880854c2fe4a06ba33080e1c9addc81fc3f1ea7cd8",
+      "bytes": 3443
+    },
+    "expanded_final.log": {
+      "sha256": "1fb9abb4695c8c3f45041bacc5b8d11a04c3e7e11d1906659617323707585000",
+      "bytes": 1940
+    },
+    "expanded_final.xml": {
+      "sha256": "9d187d7d303e3697be287e0512660d0e4bde37d6d3536c99c689eadfefc6d663",
+      "bytes": 33661
+    },
+    "frozen_before.json": {
+      "sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "bytes": 12792
+    },
+    "frozen_after.json": {
+      "sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "bytes": 12792
+    },
+    "static_delta.json": {
+      "sha256": "637d56264411a747e405f3d41173004985e56e01bd84afc8fb572ea464fa59d1",
+      "bytes": 366
+    },
+    "final.log": {
+      "sha256": "af6125115435c66bf6cc0fc760ab73bc566cd764425fd55894d45c6857af7f16",
+      "bytes": 1940
+    },
+    "final.xml": {
+      "sha256": "76a171ebae83e38fb1696915c6e19020ea9f53eddcdda37ad969c297ce399abb",
+      "bytes": 34080
+    },
+    "wrapper_red.log": {
+      "sha256": "171c964f235766131ba38189d86def3113ed1b7fbba4b15b7f1d28848bd36e08",
+      "bytes": 6767
+    },
+    "wrapper_red.xml": {
+      "sha256": "04af26d233c4b6257516034b29bcac8580421dfa933380e75c3a81b3215cdc06",
+      "bytes": 3097
+    },
+    "frozen_final.json": {
+      "sha256": "9010bd9fe77ad3689a7428c685cc0d42e9f12c8669d651e4ab9401111871f791",
+      "bytes": 12792
+    },
+    "frozen_final.log": {
+      "sha256": "dc4aebf6e34558838bf451b7c58317fdebebb52fe8139693c1a6951a7d5371fc",
+      "bytes": 105
+    },
+    "static_final.json": {
+      "sha256": "3abba65d62642bc67b968dcdafd034ef04e85d6e3fc71cc1a1a37224f5fb5311",
+      "bytes": 646
+    }
+  },
+  "superseded_component_report": {
+    "path": "artifacts/platform_audit_20260926/outbox_fill_race/implementation_updater_only.json",
+    "sha256": "e7467601ee0e7e50e00a28aaef0c837071905f093df36dca6be58081053484d5",
+    "note": "Immutable earlier updater-only report retained; its wrapper and PostgreSQL limitations are superseded only by the specific later evidence bound here."
+  },
+  "independent_review_path": "artifacts/platform_audit_20260926/outbox_fill_race/independent_review.json"
+}

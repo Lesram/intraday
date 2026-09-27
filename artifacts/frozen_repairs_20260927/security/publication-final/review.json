@@ -1,0 +1,14 @@
+{
+  "status": "ALL_MATCHES_PROVEN_SOURCE_CHECKSUMS_NO_UNRESOLVED_FINDINGS",
+  "raw_scanner_exit_code": 1,
+  "findings": 16,
+  "scanned_files": 229,
+  "matched_artifact_and_finding_inventory_identical": true,
+  "all_scanned_files_still_match": true,
+  "classification": {
+    "path": "artifacts/frozen_repairs_20260927/security/final-evidence/classification.json",
+    "sha256": "9b1fe8d2ebe2e211374f034ddabc9f8c218324be2369e5c0c2c49a4bdb5b363c"
+  },
+  "scan_receipt_sha256": "3e7e53a9520b4acd973489e500e6cf74537700c93c9ce0b8d177a455551ac7d8",
+  "no_scanner_exclusions_added": true
+}

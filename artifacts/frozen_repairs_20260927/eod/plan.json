@@ -1,0 +1,36 @@
+{
+  "task_id": "EOD-01",
+  "baseline": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "approval": "Parent plan / approved frozen repair scope; new boundary only at reviewed activation",
+  "owned_files": [
+    "backend/organism/live_engine.py",
+    "backend/organism/operator_cancellation.py",
+    "tests/test_eod_pending_cancellation.py",
+    "backend/organism/replay_simulator.py"
+  ],
+  "required_fixture_updates": [
+    "tests/test_audit_patch_queue_j6.py",
+    "tests/test_audit_patch_queue_j6b.py"
+  ],
+  "changes": [
+    "Replace missing stream cancellation with bounded exact DB/broker attributed confirmation using supported broker cancel/get",
+    "Restore pending IDs before any startup attempt; cancellation after baseline verification and position reconstruction",
+    "Remove TTL/invariant/cache-only deletion of unresolved attribution",
+    "Only release zero-fill confirmed terminal or fully reconciled fill identities; keep partial/replaced/unknown/timeout/error attribution and protect exits",
+    "Reuse existing strict operator cancellation primitive without OrderService false-terminal writes; no order resubmission",
+    "Parent-approved ReplayEngine-only exact simulated pending confirmation; production always retains strict database/broker authority"
+  ],
+  "tests": [
+    "Original-source negative controls for failed cancel/TTL/restart",
+    "Confirmed zero-fill terminal, filled, partial, replacement, unknown, rejected transport, timeout, cancellation propagation, malformed/foreign IDs",
+    "Actual EOD tick with pending order and protective flatten; saved-brain restart retention",
+    "Existing EOD/operator and real-entry replay tests, relevant legacy fixtures"
+  ],
+  "constraints": [
+    "No risk/feed/strategy tuning",
+    "No production broker/runtime calls",
+    "No active freeze writes or commits",
+    "No other agents source files"
+  ],
+  "open_design": "Fully accounted fill release must avoid permanent blockers; explicit DB execution/lot evidence or finalized close authority, never broker terminal alone."
+}

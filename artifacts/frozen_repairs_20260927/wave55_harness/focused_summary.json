@@ -1,0 +1,17 @@
+{
+  "scope": "Local isolated pytest; not hosted or deployed acceptance",
+  "original_private_junit_basename": "targeted.xml",
+  "original_private_junit_sha256": "784372916db2647d2310ca0ceee5f147eaaddc96dbc5febbc167730eda1e8d62",
+  "original_private_log_sha256": "80a82ca497900f79881e52436d6b61fdc7cc9a3a3120bc88ab3b478a0a55a3f5",
+  "tests": 4,
+  "passed": 4,
+  "failure": 0,
+  "error": 0,
+  "skipped": 0,
+  "case_ids": [
+    "tests.test_wave55_fixes::test_xx_1_ec197_downgrade_uses_if_exists",
+    "tests.test_wave55_fixes::test_xx_2_widen_ck_orders_status_migration_exists",
+    "tests.test_wave55_fixes::test_xx_2_migration_tree_still_single_headed",
+    "tests.test_wave55_fixes::test_bb4_f2_verify_eod_cancel_inline_in_live_engine"
+  ]
+}

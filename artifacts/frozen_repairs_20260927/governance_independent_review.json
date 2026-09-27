@@ -1,0 +1,276 @@
+{
+  "task_id": "frozen-repairs-governance-independent-review-20260927",
+  "status": "ACCEPTED_SOURCE_GOVERNANCE_NOT_RELEASE_ACCEPTANCE",
+  "findings": [],
+  "method": [
+    "Read-only source/diff/AST review against d598ec2 and source-bound JUnit inspection; no repeated slow replay",
+    "Read only explicit installed active JSON; no broker/API/auth/model access",
+    "Recompute changed source hashes directly from UTF8 source and exact AST-bounded method text, without importing application or running services"
+  ],
+  "source_sha256": {
+    "scripts/phase2_freeze.py": "77bc4453b6d287b382af69746ed3d96e61bd89c7250f85d2a4435ad67427e658",
+    "scripts/runtime/write_runtime_snapshot.py": "118fe106106be1570b4d8ebc85136a3def79581253090594a0ca3724afcfcac3",
+    "tests/test_phase2_freeze.py": "c0fc220c79b8677fa0b40e2ee042d1a5d9c75da26ce4df68fbe6cf7d80c9e933",
+    "tests/test_pipeline_snapshot.py": "0646dd2db32690e9f36a9538dbc33fc22d626aeb567a72f9faa9f8aa4cb5a190",
+    "tests/test_eod_cancellation_fairness.py": "1bf41a0c5231244095eee5c9a8da93357f7abb8d79defc5af3e3ad91c9c3930e",
+    ".github/workflows/paper-readiness.yml": "bc193cd1260e67953b4e5251c13291b892b54a38331d07c2b9fd9bfd63d6ddd9",
+    "docs/architecture/mapss.md": "4800aaedc4233b9deea9f1207721d5f412132c284d520386bfeaaacd3bcf2471",
+    "reports/PLATFORM_AUDIT_FROZEN_REPAIR_SCOPE_2026-09-26.md": "41697dda0ab96f40d4c0821eb641d064270ad31527d0d212293c21ab5c92b7bc",
+    "reports/platform_audit_20260926/PLATFORM_REVIEW.md": "36fc7dfa9a343bc733e74d493abc3198e7b035151d20a16587793ac495e5df42",
+    "backend/integrations/alpaca_market_data_stream.py": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead",
+    "backend/organism/streaming_data_provider.py": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535",
+    "backend/organism/scheduler.py": "51b1df5aafc6763a40fe5cba49b0122195a36bfcbe658c8e96ed9438bf6cc203",
+    "backend/organism/ml_features.py": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
+    "backend/organism/live_engine.py": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323",
+    "backend/organism/operator_cancellation.py": "59e69af2c6d40932b039ce477ec746c98e05d1b494ac74d777b5f85f0e61de38",
+    "backend/organism/replay_simulator.py": "deb6563f02636c69e909ad374b27233dc24131d44ce515b8ec80ace9df7ed159"
+  },
+  "active_authority": {
+    "installed_canonical_reference_identical": true,
+    "sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+    "cutoff": "2026-09-25T21:11:46.270521+00:00",
+    "unchanged_by_review": true,
+    "candidate_sha256": "b6546d39c4ded8a6226e84fe662f4d5ba9d710cfee84df3c3dfd2b01b90e7108",
+    "candidate_only": true,
+    "deployment_approved": false,
+    "candidate_has_FROZEN_AT": false,
+    "candidate_source_hashes_match_current_files": true
+  },
+  "frozen_leaf_delta": [
+    {
+      "path": "data_pipeline_sources.alpaca_market_data_stream",
+      "kind": "added",
+      "before": null,
+      "after": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead"
+    },
+    {
+      "path": "data_pipeline_sources.ml_features",
+      "kind": "changed",
+      "before": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+      "after": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4"
+    },
+    {
+      "path": "data_pipeline_sources.streaming_data_provider",
+      "kind": "changed",
+      "before": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+      "after": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535"
+    },
+    {
+      "path": "research_policy_sources.entry_cancellation",
+      "kind": "changed",
+      "before": "682ca48c61f0ce2899048b642be4f552c4ec166ca29afeabef91e528b8935984",
+      "after": "59e69af2c6d40932b039ce477ec746c98e05d1b494ac74d777b5f85f0e61de38"
+    },
+    {
+      "path": "research_policy_sources.pending_entry_lifecycle",
+      "kind": "added",
+      "before": null,
+      "after": "c607dbb5d1d16ddee633d57fd65e8d146c7ff74135936669b895b201c220f3c3"
+    },
+    {
+      "path": "research_policy_sources.scheduler",
+      "kind": "changed",
+      "before": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
+      "after": "51b1df5aafc6763a40fe5cba49b0122195a36bfcbe658c8e96ed9438bf6cc203"
+    },
+    {
+      "path": "research_policy_sources.startup",
+      "kind": "changed",
+      "before": "783c6a324b6eb7edfff6f5835f3b46dc559bc3fa978a25a7b248eec7b76037cf",
+      "after": "d21e13ccfe7babe829008d907f0bb730a1c8b71be288b1534f92c378c5573878"
+    },
+    {
+      "path": "source_hashes.entry_gates_dispatch",
+      "kind": "changed",
+      "before": "2380940f730bcf4c9568dbcffa2e7f4a9d8220666f99214201fe4a90ce6a82a2",
+      "after": "13d5f497b47ae1509d0fbf59da1c371288e22fa5b397fb267b70707d3588212b"
+    }
+  ],
+  "live_engine_changed_method_coverage": {
+    "OrganismLiveEngine._cancel_pending_entry_orders": {
+      "line": 7789,
+      "freeze_leaf": "research_policy_sources.pending_entry_lifecycle"
+    },
+    "OrganismLiveEngine._check_tick_invariants": {
+      "line": 5986,
+      "freeze_leaf": "research_policy_sources.pending_entry_lifecycle"
+    },
+    "OrganismLiveEngine._confirm_pending_entry_orders": {
+      "line": 7793,
+      "freeze_leaf": "research_policy_sources.pending_entry_lifecycle"
+    },
+    "OrganismLiveEngine._live_tick_inner": {
+      "line": 2904,
+      "freeze_leaf": "source_hashes.entry_gates_dispatch"
+    },
+    "OrganismLiveEngine._reconcile_pending_entry_orders": {
+      "line": 7798,
+      "freeze_leaf": "research_policy_sources.pending_entry_lifecycle"
+    },
+    "OrganismLiveEngine._stage_expire_cooldowns": {
+      "line": 2372,
+      "freeze_leaf": "research_policy_sources.pending_entry_lifecycle"
+    },
+    "OrganismLiveEngine.initialize": {
+      "line": 1725,
+      "freeze_leaf": "research_policy_sources.startup"
+    }
+  },
+  "transport_coverage": {
+    "path": "scripts/phase2_freeze.py",
+    "line": 79,
+    "scope": "Entire transport module, including callbacks, generation ownership, reconnect logic and timing constants; existing entire provider and scheduler hashes retain lifecycle coverage"
+  },
+  "unchanged_policy_groups": [
+    "strategy_config",
+    "strategy_config_hash",
+    "regime_policy",
+    "exit_env",
+    "routing_data_env",
+    "research_policy",
+    "effective_policy_baseline",
+    "research_policy_enforcement_env"
+  ],
+  "unchanged_source_contracts": [
+    "entry_direction",
+    "exit_engine",
+    "regime_detector",
+    "kelly_sizer",
+    "selector_routing",
+    "staleness_admission",
+    "streaming_subscription_sync",
+    "entry_freshness",
+    "entry_submission",
+    "ml_isolation",
+    "fixed_risk"
+  ],
+  "runtime_snapshot_review": {
+    "path": "scripts/runtime/write_runtime_snapshot.py",
+    "lines": [
+      78,
+      84,
+      95,
+      423
+    ],
+    "claim": "Code defaults and candidate data-source hashes, not installed process verification",
+    "bounds_from_actual_constants": {
+      "pending_call_seconds": 2.0,
+      "pending_total_seconds": 12.0,
+      "pending_confirmation_attempts": 3,
+      "pending_inventory_limit": 256,
+      "engine_subscription_deadline_seconds": 5.0,
+      "transport_ack_timeout_seconds": 2.0,
+      "transport_subscription_retry_seconds": 5.0,
+      "provider_startup_retry_seconds": 30.0,
+      "provider_startup_timeout_seconds": 25.0
+    },
+    "mutation_negative_tests": "tests/test_pipeline_snapshot.py patches every new bound and requires engine_observed false"
+  },
+  "generator_review": {
+    "generation": "Writes only distinct candidate path with timezone-aware VALIDATED_AT and no FROZEN_AT; active alias rejected",
+    "verification": "Explicit candidate switch; default active load rejects candidate authority; mismatch returns1 without writes",
+    "coverage_tests": "New transport and all five lifecycle method source changes fail verification while active bytes remain unchanged; independent original red receipts retained"
+  },
+  "ci_review": {
+    "workflow": ".github/workflows/paper-readiness.yml",
+    "new_targeted_step_modules": [
+      "tests/test_streaming_subscription_acknowledgement.py",
+      "tests/test_cross_asset_timestamp_alignment.py",
+      "tests/test_eod_pending_cancellation.py",
+      "tests/test_eod_cancellation_fairness.py",
+      "tests/unit/test_alpaca_market_data_stream_comprehensive.py",
+      "tests/unit/test_streaming_data_provider.py",
+      "tests/test_streaming_provider_lifecycle.py"
+    ],
+    "additional_causal_paired_replay": "tests/test_cross_asset_alignment_replay.py",
+    "existing_scanner_replay_and_phase2_snapshot_contracts_retained": true,
+    "new_tests_have_no_skip_or_xfail": true,
+    "future_hosted_acceptance_not_inferred": true
+  },
+  "docs_review": [
+    "mapss describes candidate authority separately from paper activation and preserves old boundaries",
+    "No feed, strategy/risk parameter or sizing change in exact surface delta",
+    "Natural session and strategy edge remain distinct later gates; no profitable-edge claim",
+    "Current learning-mode ML isolation retained; cross-asset metadata does not certify exported rows",
+    "Pyramid close-linkage limitation remains disclosed and installed disabled setting is a separate deployment constraint"
+  ],
+  "proofs_read_not_rerun": {
+    "governance_contracts.xml": {
+      "sha256": "22b4357849ab9dfda23c105b097892f6ff9ffa21140fe4247f0862e7049a532d",
+      "cases": 59,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "freeze_transport_red.xml": {
+      "sha256": "37b9c07e5e686718a02ee8891510a6a11d96a69096859c82303b7fee0bd6509b",
+      "cases": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "freeze_transport_green.xml": {
+      "sha256": "996652598f4ba7f102b04c5751ae8462c4526ea98f56bfb9558c253e53e0bea5",
+      "cases": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "freeze_pending_red.xml": {
+      "sha256": "7b29ccf604e104ab080ed3d57475b79209b655ebeca60d9165f7d6a2530e66fb",
+      "cases": 3,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    "freeze_pending_green.xml": {
+      "sha256": "db05215e9a4e7c2cd6f7db00a1a12744e557aa567598ec22d7b931c3126205bb",
+      "cases": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "freeze_invariant_cleanup_red.xml": {
+      "sha256": "b96e196e2e61e895f2cb8aa9185ce808d58337950cd948afe6b54fad93ab5e08",
+      "cases": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "freeze_confirmation_wrapper_red.xml": {
+      "sha256": "b1be30df3b3881f2492220d95ffd5644a223f9ef68afd31af95abcfb36c931df",
+      "cases": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "freeze_resolution_snapshot_final.xml": {
+      "sha256": "1eadc2d006e2d23d32bf8c2ccd6bf7a65f0baca5a616142e45c60aee5f94f7d4",
+      "cases": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "combined_paired_replay.xml": {
+      "sha256": "bcd2393861c4e6e3ca7c7fd0ee6f8011a57237ea867076bfe0fa605d23b6960a",
+      "cases": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "eod/fairness_green.xml": {
+      "sha256": "dc94b31c2618c39d1a2e5a15053400b1a1fae2400c99c15d270fecf0e9ca05a1",
+      "cases": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "scope_limits": [
+    "Not a repeated behavioral review of EOD implementation; independently reviews governance coverage and stated contracts",
+    "Simulation-only confirmation adapter in ReplayEngine is intentionally not a production frozen leaf; source-bound paired replay remains required",
+    "FROZEN_AT stays Sept25 until separately reviewed held-flat activation; this report cannot create or approve another cutoff",
+    "Earlier active artifact contains legacy candidate wording in note; exact approved active bytes and typed authority are preserved, not rewritten by this review",
+    "Final committed source, secret scan, exact-source hostedCI, image proof, backup/reconciliation and live paper activation still required"
+  ]
+}

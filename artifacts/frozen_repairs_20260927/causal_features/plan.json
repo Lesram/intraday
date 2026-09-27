@@ -1,0 +1,37 @@
+{
+  "task_id": "DATA-03-causal-cross-asset-alignment",
+  "written_at_utc": "2026-09-27T18:21:20.209049+00:00",
+  "authorization": "Marsel explicitly approved scoped five frozen repairs and a new boundary only on later paper activation, relayed by root. This candidate change does not activate or edit a cutoff.",
+  "baseline": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "owned_files": [
+    "backend/organism/ml_features.py",
+    "tests/test_cross_asset_timestamp_alignment.py",
+    "tests/test_cross_asset_alignment_replay.py"
+  ],
+  "source_sha256_before": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+  "design": [
+    "Use actual aware timestamp column (DatetimeIndex fallback when absent), normalize instants to UTC and reject invalid, naive, duplicate or unsorted temporal keys for cross-asset use.",
+    "Backward-only as-of SPY close lookup per stock bar, independent of row index or relative frame lengths; retain stock order and original inputs.",
+    "Keep existing cross-feature return/window formulas, feed and risk/ML isolation; explicitly document incomplete/invalid coverage with a bounded compatible behavior agreed with parent before production edits.",
+    "No silently sorted frames, forward-fill from a future benchmark bar, changed feature formulas, cache, entry/exit source edits, or runtime/freeze mutations."
+  ],
+  "tests": [
+    "Independent timestamp oracle across unequal lengths/gaps/sparse frames and equivalent RangeIndex/DatetimeIndex.",
+    "Same-timestamp dense numerical parity; all noncross columns and input immutability.",
+    "Future-tail adversarial prefix invariance, offset zones, timestamp precedence and invalid/duplicate/unsorted/naive keys.",
+    "No-prior and insufficient coverage explicit, no invented future prices.",
+    "Actual feeder/replay integration as coordinated with root and integration agent; fixed-risk/ML-isolation retained, outcome differences disclosed."
+  ],
+  "validation": [
+    "Write contract tests first and retain old-source red evidence.",
+    "All test execution through /Users/marselkei/VS/intra/venv/bin/python /private/tmp/intra-audit-isolated.py with synthetic inputs, denied network/installed brain/secrets.",
+    "Root owns full safety/replay suite, candidate freeze/snapshot/docs and eventual activation."
+  ],
+  "constraints": [
+    "Shared worktree: preserve others edits, no commits, no runtime or broker actions.",
+    "Historical feature corruption does not prove lost trades or profitability; synthetic replay is software evidence."
+  ],
+  "approved_coverage_behavior": "Neutral existing four-feature defaults on invalid/no prior coverage; explicit in-memory attrs with reason, matched times/age and per-feature validity. No new columns or tolerance.",
+  "approved_supporting_delta": "Only if existing temporal timestamp parsing fails, derive valid per-row calendar values; invalid timestamps remain NaN then existing neutral cleanup. Preserve original timestamp bytes and final freshness rejection. Parent explicitly approved.",
+  "paired_replay_scope": "Parent authorized dedicated replay: explicit old ordinal adapter, actual current locked-learning engine, synthetic stock histories40bars shorter than SPY, crash/EOD nonempty order/accounted-close parity and losses retained. No Git subprocess dependency."
+}

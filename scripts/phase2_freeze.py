@@ -67,12 +67,16 @@ def _h(s: str) -> str:
 
 def compute_data_pipeline_sources() -> dict[str, str]:
     """Pin discovery, computed strategy inputs and data-admission dependencies."""
+    from backend.integrations import alpaca_market_data_stream
     from backend.organism import market_scanner, streaming_data_provider, live_engine_data
     from backend.organism import pipeline_diagnostics
     from backend.organism import ml_features, composite_indicators
     from backend.organism.live_engine import OrganismLiveEngine
 
     return {
+        # Provider acknowledgement and reconnect ownership decide whether a
+        # symbol is admitted as subscribed; the transport is decision surface.
+        "alpaca_market_data_stream": _h(inspect.getsource(alpaca_market_data_stream)),
         "market_scanner": _h(inspect.getsource(market_scanner)),
         "streaming_data_provider": _h(inspect.getsource(streaming_data_provider)),
         "live_engine_data": _h(inspect.getsource(live_engine_data)),
@@ -170,6 +174,14 @@ def compute_surface() -> dict:
             "emergency_stop_api": _h((Path(__file__).resolve().parents[1] / "backend/api/routes/risk.py").read_text()),
             "emergency_stop_service": _h((Path(__file__).resolve().parents[1] / "backend/services/risk_manager.py").read_text()),
             "entry_cancellation": _h((Path(__file__).resolve().parents[1] / "backend/organism/operator_cancellation.py").read_text()),
+            # Pending identity must not disappear through a helper edit while
+            # the top-level EOD dispatch hash remains unchanged.
+            "pending_entry_lifecycle": _h(
+                inspect.getsource(OrganismLiveEngine._stage_expire_cooldowns)
+                + inspect.getsource(OrganismLiveEngine._cancel_pending_entry_orders)
+                + inspect.getsource(OrganismLiveEngine._reconcile_pending_entry_orders)
+                + inspect.getsource(OrganismLiveEngine._confirm_pending_entry_orders)
+                + inspect.getsource(OrganismLiveEngine._check_tick_invariants)),
         },
     }
     # Normalize to the JSON representation so on-disk vs in-memory compare cleanly.

@@ -42,7 +42,6 @@ import {
 import { Tooltip } from 'antd';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { usePortfolio } from '@/hooks/useData';
-import { usePortfolioStore } from '@/store/portfolioStore';
 import { organismApi, type ActivityEvent, type EngineStats, type OrganismRun, type OrganismStatus, type OrganismAnalytics, type ScannerStatus, type UniverseStatus } from './organismApi';
 import ScannerPanel from './ScannerPanel';
 import UniversePanel from './UniversePanel';
@@ -449,13 +448,12 @@ const SystemHealth = ({ engine, runs }: { engine?: EngineStats; runs: OrganismRu
 
 // ── Broker Portfolio Card (same data source as Dashboard) ─────
 const BrokerPortfolio = () => {
-  usePortfolio(); // ensure initial fetch
-  const portfolio = usePortfolioStore((state) => state.portfolio);
+  const { data: portfolio, error, isLoading } = usePortfolio();
 
   if (!portfolio) {
     return (
-      <Card title={<><DollarOutlined /> <Tooltip title="Live broker account data from Alpaca. Same source as the Dashboard tab — updates in real-time via WebSocket.">Broker Portfolio</Tooltip></>} size="small">
-        <Text type="secondary">Loading broker data...</Text>
+      <Card title={<><DollarOutlined /> <Tooltip title="Current portfolio observation from the broker service; refreshed every 10 seconds, with a possible 10-second server cache.">Broker Portfolio</Tooltip></>} size="small">
+        <Text type={error ? "danger" : "secondary"}>{isLoading ? "Loading broker data..." : "Current broker portfolio is unavailable. Positions and balances cannot be confirmed."}</Text>
       </Card>
     );
   }
@@ -466,7 +464,7 @@ const BrokerPortfolio = () => {
   const totalMV = portfolio.positions?.reduce((s, p) => s + (p.marketValue ?? 0), 0) ?? 0;
 
   return (
-    <Card title={<><DollarOutlined /> <Tooltip title="Live broker account data from Alpaca. Same source as the Dashboard tab — updates in real-time via WebSocket.">Broker Portfolio</Tooltip></>} size="small">
+    <Card title={<><DollarOutlined /> <Tooltip title="Current portfolio observation from the broker service; refreshed every 10 seconds, with a possible 10-second server cache.">Broker Portfolio</Tooltip></>} size="small">
       <Row gutter={[12, 12]}>
         <Col span={8}>
           <Tooltip title="Total account value (cash + positions) reported by Alpaca broker">
@@ -480,13 +478,13 @@ const BrokerPortfolio = () => {
           </Tooltip>
         </Col>
         <Col span={8}>
-          <Tooltip title="Today's profit/loss across all positions (broker-calculated)">
+          <Tooltip title="Broker account equity minus prior closing equity; includes realized/unrealized changes and cash movements, not closed-trade P&L.">
             <Statistic
-              title="Day P&L"
+              title="Day Equity Change"
               value={dayPnL}
               precision={2}
               prefix={dayPnL >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-              suffix={portfolio.dayPnLPercent ? `(${portfolio.dayPnLPercent.toFixed(1)}%)` : ''}
+              suffix={portfolio.dayPnLPercent === null ? 'N/A (zero prior equity)' : `(${portfolio.dayPnLPercent.toFixed(1)}%)`}
               valueStyle={{ color: dayPnL >= 0 ? '#3f8600' : '#cf1322', fontSize: 18 }}
             />
           </Tooltip>
@@ -494,7 +492,7 @@ const BrokerPortfolio = () => {
         <Col span={8}>
           <Tooltip title="Total unrealized P&L across all open positions (broker-calculated)">
             <Statistic
-              title="Total P&L"
+              title="Open P&L"
               value={totalPnL}
               precision={2}
               prefix={totalPnL >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
@@ -550,73 +548,69 @@ const OrganismDashboard = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
   const [activityFilter, setActivityFilter] = useState<string>('all');
+  const primaryRequest = useRef<number | null>(null);
+  const secondaryRequest = useRef(false);
+  const lastStatusAt = useRef<number | null>(null);
+  const active = useRef(true);
 
   const fetchAll = useCallback(async (withSpinner = false) => {
+    if (primaryRequest.current !== null) return;
+    const started = Date.now();
+    primaryRequest.current = started;
     if (withSpinner) setLoading(true);
-    try {
-      const [statusResult, runsResult, policyResult, brainResult, attributionResult, scannerResult, universeResult, analyticsResult] = await Promise.allSettled([
-        organismApi.getStatus(),
-        organismApi.getRuns(120),
-        organismApi.getPolicy(),
-        organismApi.getBrain(),
-        organismApi.getAttribution(),
-        organismApi.getScanner(),
-        organismApi.getUniverse(),
-        organismApi.getAnalytics(),
-      ]);
-
-      if (statusResult.status === 'fulfilled') {
-        if (statusResult.value?.enabled === false) {
-          setError('Organism is not enabled in backend configuration.');
-          setStatus(statusResult.value);
-          setRuns([]);
-          return;
-        }
-        setStatus(statusResult.value);
+    const primary = organismApi.getStatus().then((value) => {
+      if (!active.current || primaryRequest.current !== started) return;
+      if (!value || typeof value.enabled !== 'boolean' || Date.now() - started >= 30000) {
+        throw new Error('Unavailable status');
       }
+      lastStatusAt.current = started;
+      setStatus(value);
+      setError(value.enabled ? null : 'Organism is not enabled in backend configuration.');
+      if (!value.enabled) setRuns([]);
+    }).catch(() => {
+      if (!active.current || primaryRequest.current !== started) return;
+      lastStatusAt.current = null;
+      setStatus(null);
+      setError('Current organism status is unavailable. Entry-halt state and position management cannot be confirmed.');
+    }).finally(() => {
+      if (primaryRequest.current === started) primaryRequest.current = null;
+      if (active.current) setLoading(false);
+    });
 
-      if (runsResult.status === 'fulfilled') {
-        setRuns(Array.isArray(runsResult.value?.runs) ? runsResult.value.runs : []);
-      }
-
-      if (policyResult.status === 'fulfilled') {
-        setPolicy(policyResult.value?.weights ?? {});
-      }
-
-      if (brainResult.status === 'fulfilled') {
-        setBrain(brainResult.value);
-      }
-
-      if (attributionResult.status === 'fulfilled') {
-        setAttribution((attributionResult.value?.attribution ?? null) as Record<string, unknown> | null);
-      }
-
-      if (scannerResult.status === 'fulfilled') {
-        setScannerData(scannerResult.value);
-      }
-
-      if (universeResult.status === 'fulfilled') {
-        setUniverseData(universeResult.value);
-      }
-
-      if (analyticsResult.status === 'fulfilled') {
-        setAnalyticsData(analyticsResult.value);
-      }
-
-      setError(null);
-    } catch {
-      setError('Failed to load organism data from backend.');
-    } finally {
-      setLoading(false);
+    // Optional panels never delay, overwrite, or extend the primary status.
+    if (!secondaryRequest.current) {
+      secondaryRequest.current = true;
+      void Promise.allSettled([
+        organismApi.getRuns(120), organismApi.getPolicy(), organismApi.getBrain(),
+        organismApi.getAttribution(), organismApi.getScanner(), organismApi.getUniverse(), organismApi.getAnalytics(),
+      ]).then(([runs, policy, brain, attribution, scanner, universe, analytics]) => {
+        if (!active.current) return;
+        if (runs.status === 'fulfilled') setRuns(Array.isArray(runs.value?.runs) ? runs.value.runs : []);
+        if (policy.status === 'fulfilled') setPolicy(policy.value?.weights ?? {});
+        if (brain.status === 'fulfilled') setBrain(brain.value);
+        if (attribution.status === 'fulfilled') setAttribution((attribution.value?.attribution ?? null) as Record<string, unknown> | null);
+        if (scanner.status === 'fulfilled') setScannerData(scanner.value);
+        if (universe.status === 'fulfilled') setUniverseData(universe.value);
+        if (analytics.status === 'fulfilled') setAnalyticsData(analytics.value);
+      }).finally(() => { secondaryRequest.current = false; });
     }
+    await primary;
   }, []);
 
   useEffect(() => {
-    fetchAll(true);
-    const interval = setInterval(() => {
-      fetchAll(false);
-    }, 10000);
-    return () => clearInterval(interval);
+    active.current = true;
+    void fetchAll(true);
+    const interval = setInterval(() => { void fetchAll(false); }, 10000);
+    const expiry = setInterval(() => {
+      const observed = lastStatusAt.current ?? primaryRequest.current;
+      if (observed !== null && Date.now() - observed >= 30000) {
+        lastStatusAt.current = null;
+        setStatus(null);
+        setLoading(false);
+        setError('Current organism status is unavailable. Entry-halt state and position management cannot be confirmed.');
+      }
+    }, 1000);
+    return () => { active.current = false; clearInterval(interval); clearInterval(expiry); };
   }, [fetchAll]);
 
   const handleTickMessage = useCallback((wsPayload: unknown) => {

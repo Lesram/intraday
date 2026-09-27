@@ -1,0 +1,55 @@
+{
+  "baseline_sha": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "method": "Ruff0.15.12 code/message/source-line multiset, not line numbers",
+  "files": [
+    {
+      "path": "backend/integrations/alpaca_market_data_stream.py",
+      "sha256": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead",
+      "baseline_count": 31,
+      "current_count": 10,
+      "new_findings": []
+    },
+    {
+      "path": "backend/organism/streaming_data_provider.py",
+      "sha256": "5b52ce60683536043df26a3f502fa02f7ff149eb8ce238e1081597c99f6b3fcd",
+      "baseline_count": 2,
+      "current_count": 2,
+      "new_findings": []
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "sha256": "51b1df5aafc6763a40fe5cba49b0122195a36bfcbe658c8e96ed9438bf6cc203",
+      "baseline_count": 11,
+      "current_count": 11,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_streaming_subscription_acknowledgement.py",
+      "sha256": "13f981ca8fea8dc7567c2720f5de9b65ca4f30329911d5cf240ace5305108d22",
+      "baseline_count": 0,
+      "current_count": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/test_scanner_streaming_integration.py",
+      "sha256": "029b5963cb0a8ef0026c4cfb92171373e95ff5f7321e924012b29cecd500290e",
+      "baseline_count": 0,
+      "current_count": 0,
+      "new_findings": []
+    },
+    {
+      "path": "tests/unit/test_alpaca_market_data_stream_comprehensive.py",
+      "sha256": "6f3c5a546edf370d75290b9caadd1e5fe24458793d98b21dbb6ca2eadfe9d0de",
+      "baseline_count": 1,
+      "current_count": 1,
+      "new_findings": []
+    },
+    {
+      "path": "tests/unit/test_streaming_data_provider.py",
+      "sha256": "73520353bd96de68a57dee9a321f3bdd9d294691657302cc8b424f8152f59dda",
+      "baseline_count": 3,
+      "current_count": 3,
+      "new_findings": []
+    }
+  ]
+}

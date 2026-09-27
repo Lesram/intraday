@@ -1,0 +1,8 @@
+{
+  "scope": "Synthetic HTTP/websocket proxy; no trading startup, credentials or installed services",
+  "image": "intra-operator-ui:audit-20260926",
+  "checks": [],
+  "passed": false,
+  "error": "RuntimeError: docker port failed: no public port '8080/tcp' published for intra-ui-probe-81612d63345c-ui\n",
+  "cleanup_errors": []
+}

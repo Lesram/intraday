@@ -1,0 +1,101 @@
+{
+  "status": "ACCEPTED_LOCAL_TEST_REPAIR",
+  "created_at_utc": "2026-09-27T19:44:26.454691+00:00",
+  "base_sha": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+  "owned_change": [
+    "tests/test_wave55_fixes.py"
+  ],
+  "runtime_behavior_changed": false,
+  "source_bindings": {
+    "tests/test_wave55_fixes.py": "3679f2e79f93eaef1faeb47d060286bff404e79451201b145b6a930e07353377",
+    "tests/test_eod_pending_cancellation.py": "02dc2ac817a90a158392f6103977fa1a169d1d18670fa31640f040da94380cd2",
+    "tests/test_eod_cancellation_fairness.py": "1bf41a0c5231244095eee5c9a8da93357f7abb8d79defc5af3e3ad91c9c3930e",
+    "backend/organism/live_engine.py": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323",
+    "backend/organism/operator_cancellation.py": "59e69af2c6d40932b039ce477ec746c98e05d1b494ac74d777b5f85f0e61de38",
+    "backend/organism/replay_simulator.py": "deb6563f02636c69e909ad374b27233dc24131d44ce515b8ec80ace9df7ed159"
+  },
+  "asserted_contract": [
+    "Real engine live_tick crosses EOD cancellation boundary",
+    "Exact original local order attribution remains while broker cancellation is unconfirmed",
+    "Supported fake paper broker cancel targets exact broker UUID",
+    "Real simulated held MSFT position is flattened with eod_flatten activity and exactly one sell order",
+    "EOD late-entry block, learning ML isolation and fixed risk sizing remain enabled"
+  ],
+  "checks": {
+    "ruff": "passed",
+    "git_diff_check_owned_file": "passed",
+    "worktree_diff_paths": [
+      "tests/test_wave55_fixes.py"
+    ]
+  },
+  "execution_limits": [
+    "Only isolated test runner with denied network/scratch brain/synthetic SQLite and broker observations",
+    "No actual broker/runtime/API/auth/production model access, no installed state changes",
+    "No commit or product changes; parent owns final source-equivalence/CI/artifact packaging",
+    "Per-selection counts are overlapping and not summed"
+  ],
+  "publication_schema": "wave55_harness_repair_v1",
+  "public_evidence_prepared_at_utc": "2026-09-27T19:50:12.115536+00:00",
+  "private_author_receipt": {
+    "basename": "implementation.json",
+    "sha256": "8984860ae7b36d2572cc2d8e0c6f5f83dee69da80ae8609fbcc14ffb8727c2f5"
+  },
+  "private_plan_sha256": "9638574f09754299d9dce474d07d6d052404eaa18408e3266c6c9ce0727cd4dc",
+  "private_before_test_sha256": "0e4316d519309fbfd068513e7a7cd7288f4746faa0b37f71ddeb1eb10d0a031a",
+  "public_files": {
+    "adjacent_summary.json": "780f6298bedc01048c35338db726a6f01f8527d451bf1765b3b767ece7c7bc8a",
+    "focused_summary.json": "509900e22d4e5a88f85d8d3a393968f89d27400026a139b539f26b006dfe1d03",
+    "harness.xml": "89bfd0581c7137cb11e46809071c31701c18c701be03ee37984efd05bf7e2c02",
+    "hosted_failure.json": "88f223a73e0501d9ef2de27af1e65a442a955312d180cfcb767a7fafad58b230",
+    "negative_control.json": "0af14be8098bfa7479fa7863cf702da6a21c467b9af16b0ff5e3a9a276b1f156",
+    "negative_control.xml": "deaa61861155b25fd9acb0e2e199f2df5bd51f0eedbb5f9e9f162042c4f1facf",
+    "negative_control_driver.py.txt": "97a7709d4aa49bbf09a59cdd9028671c212aa8acf853f7f37e24047c7d9060c0"
+  },
+  "local_test_results": {
+    "exact_hosted_selection": {
+      "tests": 303,
+      "passed": 303,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "focused_module": {
+      "tests": 4,
+      "passed": 4,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "adjacent_eod_fairness": {
+      "tests": 73,
+      "passed": 73,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    }
+  },
+  "counts_are_not_additive": true,
+  "test_development_note": {
+    "initial_fixture": {
+      "tests": 4,
+      "passed": 3,
+      "failed": 1,
+      "private_junit_sha256": "c6fdbc3af5ec4a6ed6e5a8c9e6ac8b806e693a8217c2ead3e5e377284195713e",
+      "private_log_sha256": "64d1b16552282719c9d583a7fdf186ffac03806595db1da9f9bd401875cb6a2a"
+    },
+    "diagnosis": "Initial synthetic receipt already pending_cancel correctly caused no repeated DELETE. Fixed fixture begins new, changes to pending_cancel only after acknowledged cancellation; production unchanged."
+  },
+  "peer_review": "Daily evidence reviewer independently read exact final test hash and artifacts; no rerun, no remaining blocker reported.",
+  "hosted_after_repair": "pending; root owns fresh final gate",
+  "production_scope": "No production code changed by this repair. This receipt does not approve activation or prove actual broker behavior.",
+  "root_independent_selection": {
+    "path": "root_independent_summary.json",
+    "sha256": "5da98e1ebbfadc6a7a7b6ccd748f7843a9d16e5ab09a8fdc1b48a46c2ca31fe9",
+    "tests": 4,
+    "passed": 4,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "non_additive": true
+  }
+}

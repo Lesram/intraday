@@ -1,0 +1,124 @@
+{
+  "task_id": "EOD-01-independent-review",
+  "reviewed_at_utc": "2026-09-27T18:58:29.758665+00:00",
+  "verdict": "ACCEPTED_WITH_EXPLICIT_LIMITATIONS",
+  "blocking_findings": [],
+  "review_scope": "Independent source and behavior review of approved EOD/startup/ordinary pending-entry confirmation. Reviewer authored only new fairness regression file after identifying bounded retry starvation; did not author production EOD changes.",
+  "author_report": {
+    "path": "artifacts/frozen_repairs_20260927/eod/implementation.json",
+    "sha256": "7b76b14e911735b10fb21cc634685da2c0007c3cf3093057f19d866d7ce19d39"
+  },
+  "reviewed_file_hashes": {
+    "backend/organism/live_engine.py": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323",
+    "backend/organism/operator_cancellation.py": "59e69af2c6d40932b039ce477ec746c98e05d1b494ac74d777b5f85f0e61de38",
+    "backend/organism/replay_simulator.py": "deb6563f02636c69e909ad374b27233dc24131d44ce515b8ec80ace9df7ed159",
+    "tests/test_eod_pending_cancellation.py": "02dc2ac817a90a158392f6103977fa1a169d1d18670fa31640f040da94380cd2",
+    "tests/test_audit_patch_queue_j6.py": "396548a35da57a6087504a7802d01a544b2d8df31df28072b4ab8b4904209c6e",
+    "tests/test_audit_patch_queue_j6b.py": "80b4c69b8ddfa2b1c65823f5500d80c8d82131c6398c40d9672dbc4e18b22de4",
+    "tests/test_eod_cancellation_fairness.py": "1bf41a0c5231244095eee5c9a8da93357f7abb8d79defc5af3e3ad91c9c3930e"
+  },
+  "additional_root_owned_contract_review": {
+    "file_hashes": {
+      "scripts/phase2_freeze.py": "77bc4453b6d287b382af69746ed3d96e61bd89c7250f85d2a4435ad67427e658",
+      "scripts/runtime/write_runtime_snapshot.py": "118fe106106be1570b4d8ebc85136a3def79581253090594a0ca3724afcfcac3",
+      "tests/test_phase2_freeze.py": "c0fc220c79b8677fa0b40e2ee042d1a5d9c75da26ce4df68fbe6cf7d80c9e933",
+      "tests/test_pipeline_snapshot.py": "0646dd2db32690e9f36a9538dbc33fc22d626aeb567a72f9faa9f8aa4cb5a190"
+    },
+    "accepted": [
+      "Snapshot reads actual2-second call/12-second operation/3confirmation-attempt/256identity constants and records resume-after-last-attempted semantics without claiming a live engine observation",
+      "Freeze includes complete cancellation module and all five expiry/cancel/reconcile/confirm/invariant lifecycle methods; existing initialize/top-level tick coverage preserved",
+      "Root new drift test requires each lifecycle edit to fail verify while original active bytes remain identical; candidate generation remains separate from activation"
+    ],
+    "execution": "Source/test inspection only; parent owns root contract test execution and final candidate generation"
+  },
+  "resolved_findings": [
+    {
+      "id": "EOD-REVIEW-01",
+      "severity": "P2",
+      "trigger": "Persistent slow prefix consumes total operation budget on every repeated pass, leaving later healthy entries unobserved/uncancelled",
+      "resolution": "Cursor stores exact last attempted entry ID before awaiting; next bounded pass starts after it. Maps remain unchanged by cursor. Removed cursor wraps to current first identity.",
+      "proof": "Original3failed/1passed; corrected4passed with real SQLite and scaled real async deadlines, cancellation propagation, identity mismatch refusal."
+    }
+  ],
+  "accepted_properties": [
+    "Strict exact DB/broker/client/symbol/side/quantity attribution before GET/DELETE/GET; replacement/linked/unknown/timeout and malformed observations stay unresolved",
+    "A cancel request or terminal flag is not proof of no fills. Zero-fill release requires no DB summary/Execution/lot fill evidence",
+    "Positive terminal release requires exact cumulative summary, Execution and original-lot quantity/cost, plus fresh broker inventory and protected matching remaining exposure or exact completed trade with exhausted lots",
+    "Filled status cannot contradict requested total quantity. Stale completed-ID alone cannot release later filled exposure",
+    "Authoritative broker position GET is used directly; error-swallowing cached PositionsService is not accepted as flat proof",
+    "Initialization restores pending IDs before actions and cancels only after baseline/position reconstruction; TTL/cache/invariant paths retain uncertainty; cancellation exceptions preserve attribution and protective exit state",
+    "Normal filled admission cooldown remains30ticks. Ordinary reconciliation observes without cancelling; EOD/startup/drawdown may cancel only exact attributed entries",
+    "Simulation-specific confirmation is injected only into ReplayEngine instance; production missing DB authority never falls back to simulation",
+    "Fairness cursor does not submit, cancel exits, modify DB status/accounting, or remove tracking"
+  ],
+  "validation_selections_not_additive": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/independent_targeted.xml",
+      "sha256": "6c12c6d663a3f9a1d72b379a6b5a36428d3387a7a589fd720cb97cb5147f379d",
+      "role": "Independent execution of author-written69 EOD accounting/cancellation cases",
+      "passed": 69,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/fairness_final.xml",
+      "sha256": "3a86bc3ebc7181c6cbbfb3fc888a4fdc8604c652defb3b950d5d1cc8198cb981",
+      "role": "Four reviewer-authored fairness regressions",
+      "passed": 4,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/fairness_red.xml",
+      "sha256": "1c0b8241d5229e37b8bd18fd3fc3465c99efbe82a32208a16cc319cdb292336a",
+      "role": "Original pre-cursor function negative control, no shared source reversion",
+      "passed": 1,
+      "failed": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/targeted_fairness_final.xml",
+      "sha256": "b503835dd86b6a5c766fc4a95db770c4cc437fad0716675fd6fb3dc07a5948a2",
+      "role": "Author combined final73; overlaps prior selections",
+      "passed": 73,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/targeted_final.xml",
+      "sha256": "feebb6a6750ba3247c78e93c00d51a06962080fba8d96b462106c2a6194c69f8",
+      "role": "Prior pre-cursor231 safety/EOD/operator/replay selection; not final cursor evidence",
+      "passed": 231,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "supporting_evidence": {
+    "artifacts/frozen_repairs_20260927/eod/independent_targeted.log": "44c03fe8efb37a71ab6cc3cea5a1d0da372885cda22a4942aca497fe9a34a87e",
+    "artifacts/frozen_repairs_20260927/eod/fairness_test_report.json": "73fefd817f6f239719665a1f29c5bdbf50132417aab35c6b0fe6f736c3f25a88",
+    "artifacts/frozen_repairs_20260927/eod/fairness_test_plan.json": "6c6c26f3c880088ca1f93bea13be770652fa6c4b0bac6b1ffc961b77d3329444",
+    "artifacts/frozen_repairs_20260927/eod/fairness_final.log": "0ab7556969f7e1737268d0ca8646caad813b1b10d15508e330f3227f3244fe78",
+    "artifacts/frozen_repairs_20260927/eod/fairness_negative_driver.py.txt": "87dee700c6fc08471a91db674c1a76daa49f2652e4ae5754c1c311ff1686bf39",
+    "artifacts/frozen_repairs_20260927/eod/fairness_pre_cursor_source.py.txt": "97acbedd0bad8b6adef1be99fd2f0df0bd99463f5372b968b6655588df4a852f"
+  },
+  "limits": [
+    "Tests use synthetic SQLite/mock broker and simulation; no real broker cancellation or runtime/API/model access by this reviewer",
+    "Cursor is process-local, resets on restart; persistent unknown orders may remain blocked. Fairness guarantees opportunity across repeated running-process passes, not guaranteed successful reconciliation",
+    "Closed pyramids lack a durable per-add closed-cycle link. Base/add ambiguous closed evidence remains blocked beyond TTL. Parent reports approved installed pyramiding disabled; reviewer did not query runtime",
+    "No universal instantaneous flat guarantee: late/concurrent fills remain subject to broker/fill/position reconciliation. No strategy-edge or session-performance claim",
+    "Full combined safety/replay pack, current source snapshot, final candidate freeze, hosted checks, secret review and any approved activation remain parent-owned gates"
+  ],
+  "documentation_note": "Current mapss candidate contract is correct. Legacy Phase0 pending-entry TTL-removal line was flagged to root for prose correction; no application blocker.",
+  "preservation": {
+    "production_files_changed_by_reviewer": false,
+    "reviewer_authored_test": "tests/test_eod_cancellation_fairness.py",
+    "runtime_or_active_boundary_mutated": false,
+    "orders_or_api_calls": false,
+    "committed": false
+  }
+}

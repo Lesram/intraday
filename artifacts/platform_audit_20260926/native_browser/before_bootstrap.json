@@ -1,0 +1,1368 @@
+{
+  "scope": "synthetic auth/portfolio/socket subset; no installed service or trading startup",
+  "image_id": "sha256:ecba2d7d4972a83961bcae2bd3d6b7289e32f4c35bc86224c3705cb214160e27",
+  "fixture_sha256": "30d78e88e61b75bb7764c146e5878322e45606af9fb854a046047d8e573926f0",
+  "before_repair": {
+    "passed": [
+      "Native Chrome synthetic login -> verified dashboard equity123456 and day equity change3456",
+      "Broker failure -> portfolio unavailable instead of invented balances",
+      "Broker restored -> current portfolio and matching values",
+      "Portfolio page navigation retains verified account"
+    ],
+    "failed": [
+      "Reload /portfolio keeps persisted user label while API requests become401, websocket offline, no token-refresh request observed"
+    ]
+  },
+  "server_status": {
+    "requests": [
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/auth/login",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/history",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 503
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/strategies",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/orders",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio/performance",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      },
+      {
+        "path": "/api/v1/portfolio",
+        "method": "GET",
+        "status": 307
+      },
+      {
+        "path": "/api/v1/portfolio/",
+        "method": "GET",
+        "status": 401
+      }
+    ],
+    "broadcasts": 0,
+    "sessions": 0,
+    "rooms": []
+  }
+}

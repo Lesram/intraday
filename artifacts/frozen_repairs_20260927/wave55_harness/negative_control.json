@@ -1,0 +1,23 @@
+{
+  "status": "EXPECTED_FAILURE_PROVES_REAL_CANCELLATION_ASSERTION",
+  "mutated_source": "backend/organism/live_engine.py::OrganismLiveEngine._live_tick_inner",
+  "mutation": "Exactly one EOD await self._cancel_pending_entry_orders() replaced with pass in an in-memory copy of _live_tick_inner; no repository mutation",
+  "expected_failure": "Broker cancellation await count was zero at exact broker-UUID assertion",
+  "original_private_junit_sha256": "1045f24fae4233002cbde7d1b85df0be447c3139cb0db7a20ea9513bc473d9cf",
+  "original_private_log_sha256": "64634a887d71d0a6a2f20a7fd5404294029a513958ffbfda92b660f1b3c4a9b8",
+  "original_private_driver_sha256": "a95b3cbdca889a8a095c49b1bf645994ad2c9aa9ef80b514f44650358c2eb1b0",
+  "published_junit_sha256": "deaa61861155b25fd9acb0e2e199f2df5bd51f0eedbb5f9e9f162042c4f1facf",
+  "published_driver_sha256": "97a7709d4aa49bbf09a59cdd9028671c212aa8acf853f7f37e24047c7d9060c0",
+  "sanitization": [
+    "Replaced machine-specific user and interpreter path prefixes in failed-control XML; preserved exact testcase/failure message and synthetic order identity.",
+    "Published driver changes only its output XML destination to relative negative_control.xml; original hash retained."
+  ],
+  "tests": 1,
+  "passed": 0,
+  "failure": 1,
+  "error": 0,
+  "skipped": 0,
+  "case_ids": [
+    "tests.test_wave55_fixes::test_bb4_f2_verify_eod_cancel_inline_in_live_engine"
+  ]
+}

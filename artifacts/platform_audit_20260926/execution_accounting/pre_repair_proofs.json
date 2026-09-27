@@ -1,0 +1,12 @@
+{
+  "exit_code": 0,
+  "scratch_cwd": "/var/folders/52/1b3lnm3n5252r2cynmqgzhlc0000gn/T/intra-execution-audit-fzoyzn02",
+  "network_denied": true,
+  "installed_and_audit_source_writes_denied": true,
+  "private_runtime_reads_denied": true,
+  "command": [
+    "/private/tmp/intra-execution-audit-proofs.py"
+  ],
+  "stdout_sha256": "35bd3ff95eac46ed20cc619df56ba7bbd9c6bcfb5f33972732fa4c981fbe09be",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

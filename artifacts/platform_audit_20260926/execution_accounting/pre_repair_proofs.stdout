@@ -1,0 +1,47 @@
+{
+  "network_denied": true,
+  "proofs": {
+    "committed_summary_failed_accounting_retry": {
+      "execution_count": 0,
+      "lot_count": 0,
+      "order_filled_qty": "10.000000",
+      "retry": {
+        "applied": false,
+        "cumulative_filled_qty": "10",
+        "existing_execution_qty": "0",
+        "previous_filled_qty": "10.000000",
+        "reason": "duplicate_or_stale_fill"
+      }
+    },
+    "eod_entry_cancellation": {
+      "actual_stream_has_cancel_order": false,
+      "executed_exact_source_block_line": 3887,
+      "pending_entries_retained": [
+        "SYNTH"
+      ],
+      "service_cancellations": 0
+    },
+    "partial_fill_cashflow": {
+      "actual_execution_cash": "1050.000000000000",
+      "actual_lot_basis": "1050.000000000000",
+      "broker_cumulative_cash": "1100",
+      "difference": "-50",
+      "execution_legs": [
+        [
+          "5.000000",
+          "100.000000"
+        ],
+        [
+          "5.000000",
+          "110.000000"
+        ]
+      ]
+    },
+    "terminal_partial_cancel_skipped": {
+      "applied": false,
+      "reason": "non_fill_status"
+    }
+  },
+  "source_sha": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "synthetic_only": true
+}

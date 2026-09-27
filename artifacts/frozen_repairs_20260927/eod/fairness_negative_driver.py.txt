@@ -1,0 +1,19 @@
+import ast
+import pytest
+from pathlib import Path
+from backend.organism import operator_cancellation as cancellation
+source = Path('/private/tmp/intra-eod-before-fairness.py').read_text()
+node = next(n for n in ast.parse(source).body if isinstance(n, ast.AsyncFunctionDef) and n.name == 'confirm_tracked_entries')
+namespace = dict(cancellation.__dict__)
+exec(compile(ast.Module(body=[node], type_ignores=[]), '<archived-pre-cursor-function>', 'exec'), namespace)
+cancellation.confirm_tracked_entries = namespace['confirm_tracked_entries']
+# Timeout constants must share the current module globals so scaled tests apply.
+cancellation.confirm_tracked_entries.__globals__.update(cancellation.__dict__)
+class ScaleOriginal:
+    def pytest_runtest_call(self, item):
+        # Negative control keeps the same real SQLite/mocked transport pipeline.
+        cancellation.CALL_TIMEOUT = 0.1
+        cancellation.TOTAL_TIMEOUT = 0.27
+        namespace['CALL_TIMEOUT'] = 0.1
+        namespace['TOTAL_TIMEOUT'] = 0.27
+raise SystemExit(pytest.main(['-q', 'tests/test_eod_cancellation_fairness.py', '--timeout=20', '--tb=short', '--junitxml=artifacts/frozen_repairs_20260927/eod/fairness_red.xml'], plugins=[ScaleOriginal()]))

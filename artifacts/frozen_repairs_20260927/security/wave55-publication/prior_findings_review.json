@@ -1,0 +1,8 @@
+{
+  "status": "PRIOR_16_EXACT_MATCHES_PRESERVED_TWO_NEW_MATCHES_AWAIT_SEPARATE_REVIEW",
+  "prior_classification_sha256": "9b1fe8d2ebe2e211374f034ddabc9f8c218324be2369e5c0c2c49a4bdb5b363c",
+  "scan_receipt_sha256": "9024c8593e88810cacd14dd34e10fad2ba69057b1fc0e323bed422eeae9ed3b1",
+  "prior_findings": 16,
+  "new_findings": 2,
+  "all_scanned_files_stable": true
+}

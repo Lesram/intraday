@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-09-27T19:52:36.179541+00:00",
+  "scope": "Exactly the two new hosted_before_repair metadata findings; prior sixteen findings remain outside this review",
+  "scanner_receipt": {
+    "path": "artifacts/frozen_repairs_20260927/security/wave55-publication/receipt.json",
+    "sha256": "9024c8593e88810cacd14dd34e10fad2ba69057b1fc0e323bed422eeae9ed3b1",
+    "raw_exit_code": 1
+  },
+  "raw_redacted_report_sha256": "fc29881b5c3ee41fd184f8dbc5a0be2d5a832219dd44df2cb5878b0346406490",
+  "scanned_source_artifact_sha256": "2a07efd5a2ba0e87bae704de36b52060c81fb255b482e9b2d3bd5418657e2bfe",
+  "scanned_copy_equals_current_artifact": true,
+  "new_findings": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/wave55_harness/hosted_before_repair.json",
+      "rule_id": "generic-api-key",
+      "start_line": 233,
+      "end_line": 233,
+      "start_column": 7,
+      "end_column": 103,
+      "field": "source_checkout_proof.checkout_api_metadata_sha256",
+      "classification": "FALSE_POSITIVE_VERIFIED_GITHUB_METADATA_SHA256",
+      "value_sha256": "15465f64f16348d5fde6756e53d0175da7494f1c5a3d8d673331c9ad8c752a80",
+      "matched_line_sha256": "d3148a6abe9bc0dc2929b7e41ba06145c7d2b3f04df0fa11c4235bae76d7b695",
+      "provenance": {
+        "source_artifact_basename": "checkout.git-commit.json",
+        "recomputed_source_bytes_sha256": "8bcf58c56f15a9e84314cc169b46b80aff122a9e82ad3760171fdcc8daa7e944",
+        "value_equals_recomputed_hash": true,
+        "metadata_commit_sha": "11514675742ee4bf6b4fccbc3a4bf5f76ea6812b",
+        "metadata_tree_sha": "8629b392650f2c179a05738cd219828a6546ba73",
+        "public_metadata_url": "https://api.github.com/repos/Lesram/intraday/git/commits/11514675742ee4bf6b4fccbc3a4bf5f76ea6812b"
+      },
+      "reason": "The finding is a SHA-256 checksum of exact retained read-only GitHub commit metadata bytes. Recomputed bytes match the field; API refers to metadata provenance, not authentication. No secret value, credential acceptance test or length-only assumption was used."
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/wave55_harness/hosted_before_repair.json",
+      "rule_id": "generic-api-key",
+      "start_line": 236,
+      "end_line": 236,
+      "start_column": 7,
+      "end_column": 99,
+      "field": "source_checkout_proof.head_api_metadata_sha256",
+      "classification": "FALSE_POSITIVE_VERIFIED_GITHUB_METADATA_SHA256",
+      "value_sha256": "d04dcd9468da850647d8754062a64a14a0cb71eb6752f0b685d80f3c6af9531a",
+      "matched_line_sha256": "a5e2d72c97bd4603805e0532e6e3f9eb62f5b818424435a1b6429942a4b6f8f3",
+      "provenance": {
+        "source_artifact_basename": "head.git-commit.json",
+        "recomputed_source_bytes_sha256": "1de0f2678ba550294cd5f825e92c019acb8f372ff0cfe9d14cc819f8ffacf413",
+        "value_equals_recomputed_hash": true,
+        "metadata_commit_sha": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+        "metadata_tree_sha": "8629b392650f2c179a05738cd219828a6546ba73",
+        "public_metadata_url": "https://api.github.com/repos/Lesram/intraday/git/commits/c765e685f856d88cb5b30a97628a5045ab9081e8"
+      },
+      "reason": "The finding is a SHA-256 checksum of exact retained read-only GitHub commit metadata bytes. Recomputed bytes match the field; API refers to metadata provenance, not authentication. No secret value, credential acceptance test or length-only assumption was used."
+    }
+  ],
+  "new_findings_count": 2,
+  "confirmed_checksum_false_positives": 2,
+  "unresolved_new_findings": 0,
+  "source_edits": false,
+  "scanner_allowances_or_config_changes": false,
+  "status": "ACCEPT_EXACT_TWO_METADATA_CHECKSUM_FINDINGS",
+  "limits": [
+    "This does not waive other findings or alter raw scanner exit 1.",
+    "No credential authentication or network calls were performed; exact retained artifact bytes establish provenance."
+  ]
+}

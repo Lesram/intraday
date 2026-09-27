@@ -59,20 +59,67 @@ def test_bb_8_lot_tracker_called_from_active_stream_path():
     )
 
 
-def test_bb_8_lot_tracker_wired_inside_trade_update():
-    """The wiring must be inside `_process_trade_update` (the WS
-    fill handler), not in unreachable code. Walk up the AST from the
-    `LotTracker(` call to verify it's nested under `_process_trade_update`."""
+@pytest.mark.asyncio
+@pytest.mark.parametrize("accounting_fails", [False, True])
+async def test_bb_8_lot_tracker_wired_inside_trade_update(monkeypatch, accounting_fails):
+    """The actual WS handler awaits atomic fill accounting before committing.
+
+    LotTracker now lives in the shared accounting transaction, not inline in
+    this handler. Real lot creation, rollback and retry conservation are tested
+    in test_fill_accounting_integrity.py; this test pins the live ingress.
+    """
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
     import backend.integrations.alpaca_stream as live_stream
-    src = inspect.getsource(live_stream._process_trade_update) if hasattr(live_stream, "_process_trade_update") else None
-    if src is None:
-        # Method-style: fetch from the class.
-        cls_src = inspect.getsource(live_stream.AlpacaStreamClient._process_trade_update)
-        assert "LotTracker" in cls_src, (
-            "BB-8 reachability: LotTracker call site is not inside "
-            "AlpacaStreamClient._process_trade_update. Wave-30's BB-8 "
-            "fix must be in the WS fill handler, not adjacent code."
-        )
+
+    observed = []
+    session = SimpleNamespace(commit=AsyncMock(side_effect=lambda: observed.append("commit")))
+    order = SimpleNamespace(
+        id="synthetic-local", user_id="synthetic-user", symbol="SYNTH",
+        side="buy", qty=10, order_type="market", submitted_at=None,
+    )
+    repo = SimpleNamespace(get_by_broker_order_id=AsyncMock(return_value=order))
+
+    @asynccontextmanager
+    async def context():
+        yield session
+
+    async def apply(*args, **kwargs):
+        observed.append("accounting")
+        if accounting_fails:
+            raise RuntimeError("synthetic accounting failure")
+        return {"status": "partially_filled", "applied": True}
+
+    accounting = AsyncMock(side_effect=apply)
+    broadcast = AsyncMock(side_effect=lambda *args: observed.append("broadcast"))
+    monkeypatch.setattr(live_stream, "get_session_context", context)
+    monkeypatch.setattr(live_stream, "OrdersRepo", lambda actual: repo if actual is session else None)
+    monkeypatch.setattr(live_stream, "apply_order_fill_snapshot", accounting)
+    monkeypatch.setattr("backend.api.socketio_server.broadcast_order_update", broadcast)
+    client = live_stream.AlpacaStreamClient.__new__(live_stream.AlpacaStreamClient)
+    broker_order = {
+        "id": "synthetic-broker", "status": "partially_filled",
+        "filled_qty": "4", "filled_avg_price": "100",
+    }
+    event = {"data": {"event": "partial_fill", "order": broker_order}}
+    if accounting_fails:
+        with pytest.raises(RuntimeError, match="synthetic accounting failure"):
+            await client._process_trade_update(event)
+        session.commit.assert_not_awaited()
+        broadcast.assert_not_awaited()
+        assert observed == ["accounting"]
+    else:
+        await client._process_trade_update(event)
+        session.commit.assert_awaited_once_with()
+        broadcast.assert_awaited_once()
+        assert observed == ["accounting", "commit", "broadcast"]
+    repo.get_by_broker_order_id.assert_awaited_once_with("synthetic-broker")
+    accounting.assert_awaited_once_with(
+        session, order, status="partially_filled", cumulative_filled_qty="4",
+        avg_fill_price="100", broker_order_id="synthetic-broker", broker_order_data=broker_order,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────

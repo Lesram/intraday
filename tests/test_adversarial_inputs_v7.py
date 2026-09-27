@@ -360,17 +360,17 @@ async def test_ws_handler_handles_null_filled_qty(monkeypatch):
 
     monkeypatch.setattr(alpaca_stream, "get_session_context", session_context)
     monkeypatch.setattr(alpaca_stream, "OrdersRepo", lambda _: repo)
-    accounting = AsyncMock(return_value={"applied": False, "reason": "non_fill_status"})
-    monkeypatch.setattr(alpaca_stream, "apply_incremental_fill_accounting", accounting)
+    accounting = AsyncMock(return_value={"applied": False, "reason": "non_fill_status", "status": "submitted"})
+    monkeypatch.setattr(alpaca_stream, "apply_order_fill_snapshot", accounting)
     broadcast = AsyncMock()
     monkeypatch.setattr(socketio_server, "broadcast_order_update", broadcast)
     stream = alpaca_stream.AlpacaStreamClient.__new__(alpaca_stream.AlpacaStreamClient)
     await stream._process_trade_update({"data": {"event": "new", "order": {
         "id": "broker-id", "status": "new", "filled_qty": None,
     }}})
-    repo.attach_broker_result.assert_awaited_once()
-    assert repo.attach_broker_result.await_args.kwargs["status"] == stream._map_alpaca_status("new")
-    assert repo.attach_broker_result.await_args.kwargs["filled_qty"] is None
+    accounting.assert_awaited_once()
+    assert accounting.await_args.kwargs["status"] == stream._map_alpaca_status("new")
+    assert accounting.await_args.kwargs["avg_fill_price"] is None
     assert accounting.await_args.kwargs["cumulative_filled_qty"] == 0.0
     session.commit.assert_awaited_once()
     assert broadcast.await_args.args[1]["filled_qty"] == 0.0

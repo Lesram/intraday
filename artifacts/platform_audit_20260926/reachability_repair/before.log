@@ -1,0 +1,11 @@
+Isolated test scratch: /private/tmp/intra-audit-test-od8f0_8z
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_______________ test_bb_8_lot_tracker_wired_inside_trade_update ________________
+tests/test_reachability_v8.py:71: in test_bb_8_lot_tracker_wired_inside_trade_update
+    assert "LotTracker" in cls_src, (
+E   AssertionError: BB-8 reachability: LotTracker call site is not inside AlpacaStreamClient._process_trade_update. Wave-30's BB-8 fix must be in the WS fill handler, not adjacent code.
+E   assert 'LotTracker' in '    async def _process_trade_update(self, update: dict[str, Any]):\n        """\n        Process a single trade updat...ate,\n                        error=str(e),\n                        error_type=type(e).__name__)\n            raise\n'
+=========================== short test summary info ============================
+FAILED tests/test_reachability_v8.py::test_bb_8_lot_tracker_wired_inside_trade_update
+1 failed, 1 passed, 10 deselected in 0.47s

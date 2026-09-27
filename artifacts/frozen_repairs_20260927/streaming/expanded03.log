@@ -1,0 +1,252 @@
+Isolated test scratch: /private/tmp/intra-audit-test-hft43ecs
+........................................................................ [ 54%]
+..........................................................FF             [100%]
+=================================== FAILURES ===================================
+__ test_actual_transport_ack_recovery_replay_keeps_entries_and_eod_safe[None] __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x111ded7c0>
+tmp_path = PosixPath('/private/tmp/intra-audit-test-hft43ecs/pytest-of-marselkei/pytest-0/test_actual_transport_ack_reco0')
+after_entry = None
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("after_entry", [None, "subscription_failure"])
+    async def test_actual_transport_ack_recovery_replay_keeps_entries_and_eod_safe(monkeypatch, tmp_path, after_entry):
+        """Actual transport/provider/engine; synthetic socket controls server snapshots."""
+        from unittest.mock import AsyncMock
+        from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
+        from tests.test_streaming_subscription_acknowledgement import Socket
+        import tests.test_scanner_streaming_integration as this_module
+    
+        sockets = []
+        async def real_provider(_monkeypatch, clock, symbols):
+            socket = Socket()
+            sockets.append(socket)
+            monkeypatch.setattr("backend.integrations.alpaca_market_data_stream.websockets.connect",
+                                AsyncMock(return_value=socket))
+            provider = StreamingDataProvider(time_fn=clock)
+            assert await provider.start(list(symbols), "offline", "offline")
+            stream = provider._stream
+            stream.fail_once = None
+            stream.fail_forever = set()
+            original_send = socket.send
+    
+            async def server(raw):
+                request = json.loads(raw)
+                socket.reject = set(stream.fail_forever)
+                kind = stream.fail_once
+                if kind and "MSFT" in request.get(kind, []):
+                    socket.reject.add("MSFT")
+                    stream.fail_once = None
+                await original_send(raw)
+            socket.send = server
+            return provider, stream
+    
+        monkeypatch.setattr(this_module, "make_provider", real_provider)
+        # Replay advances by whole minutes without real waiting; cadence itself is
+        # covered separately with the real nonzero bound in transport contracts.
+        monkeypatch.setattr(AlpacaMarketDataStream, "SUBSCRIPTION_RETRY_INTERVAL_S", 0.0)
+        result, rows, transport, engines, first_bar = await run_live_provider_replay(
+            monkeypatch, tmp_path, fail_once="bars", after_entry=after_entry,
+        )
+        assert rows[5]["reason"] == "stream_subscription_sync"
+        assert all(row["blocked"] and row["orders"] == 0 for row in rows[5:8])
+        entries = [o for o in result.orders if o["symbol"] == "MSFT" and o["side"] == "buy"]
+        assert len(entries) == 1
+        assert pd.Timestamp(entries[0]["submitted_at"]) >= pd.Timestamp(first_bar)
+        assert all({"AAPL", "SPY", "QQQ"} <= row["subscribed"] for row in rows)
+        if after_entry:
+            held = [r for r in rows if "MSFT" in r["held_before"]]
+            assert any(r["reason"] == "stream_subscription_sync" for r in held)
+            assert any(t["symbol"] == "MSFT" and t["exit_reason"] == "eod_flatten"
+                       for t in result.accounted_trades)
+            assert not await engines[0]._positions_service.get_all_positions()
+            assert not result.accounting_pending
+        ids = [o["order_id"] for o in result.orders]
+        assert len(ids) == len(set(ids))
+>       assert sockets and all(s.closed for s in sockets)
+E       assert ([])
+
+tests/test_scanner_streaming_integration.py:371: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,445
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,968
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-27T18:31:05.054707Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:05.493292Z"}
+WARNING  backend.organism.live_engine:live_engine.py:2691 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (RuntimeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:05.493391Z"}
+WARNING  backend.organism.live_engine:live_engine.py:2645 {"event": "PP-6: 1 symbol(s) stale beyond threshold (aggregate looked fresh): [('MSFT', inf)]", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:05.494184Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:05.837414Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:05.975096Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.064774Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.154552Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.243945Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.371307Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.465232Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.557380Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.699111Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.791546Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:06.883434Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:07.010898Z"}
+_ test_actual_transport_ack_recovery_replay_keeps_entries_and_eod_safe[subscription_failure] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11230ba40>
+tmp_path = PosixPath('/private/tmp/intra-audit-test-hft43ecs/pytest-of-marselkei/pytest-0/test_actual_transport_ack_reco1')
+after_entry = 'subscription_failure'
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("after_entry", [None, "subscription_failure"])
+    async def test_actual_transport_ack_recovery_replay_keeps_entries_and_eod_safe(monkeypatch, tmp_path, after_entry):
+        """Actual transport/provider/engine; synthetic socket controls server snapshots."""
+        from unittest.mock import AsyncMock
+        from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
+        from tests.test_streaming_subscription_acknowledgement import Socket
+        import tests.test_scanner_streaming_integration as this_module
+    
+        sockets = []
+        async def real_provider(_monkeypatch, clock, symbols):
+            socket = Socket()
+            sockets.append(socket)
+            monkeypatch.setattr("backend.integrations.alpaca_market_data_stream.websockets.connect",
+                                AsyncMock(return_value=socket))
+            provider = StreamingDataProvider(time_fn=clock)
+            assert await provider.start(list(symbols), "offline", "offline")
+            stream = provider._stream
+            stream.fail_once = None
+            stream.fail_forever = set()
+            original_send = socket.send
+    
+            async def server(raw):
+                request = json.loads(raw)
+                socket.reject = set(stream.fail_forever)
+                kind = stream.fail_once
+                if kind and "MSFT" in request.get(kind, []):
+                    socket.reject.add("MSFT")
+                    stream.fail_once = None
+                await original_send(raw)
+            socket.send = server
+            return provider, stream
+    
+        monkeypatch.setattr(this_module, "make_provider", real_provider)
+        # Replay advances by whole minutes without real waiting; cadence itself is
+        # covered separately with the real nonzero bound in transport contracts.
+        monkeypatch.setattr(AlpacaMarketDataStream, "SUBSCRIPTION_RETRY_INTERVAL_S", 0.0)
+        result, rows, transport, engines, first_bar = await run_live_provider_replay(
+            monkeypatch, tmp_path, fail_once="bars", after_entry=after_entry,
+        )
+        assert rows[5]["reason"] == "stream_subscription_sync"
+        assert all(row["blocked"] and row["orders"] == 0 for row in rows[5:8])
+        entries = [o for o in result.orders if o["symbol"] == "MSFT" and o["side"] == "buy"]
+        assert len(entries) == 1
+        assert pd.Timestamp(entries[0]["submitted_at"]) >= pd.Timestamp(first_bar)
+        assert all({"AAPL", "SPY", "QQQ"} <= row["subscribed"] for row in rows)
+        if after_entry:
+            held = [r for r in rows if "MSFT" in r["held_before"]]
+            assert any(r["reason"] == "stream_subscription_sync" for r in held)
+            assert any(t["symbol"] == "MSFT" and t["exit_reason"] == "eod_flatten"
+                       for t in result.accounted_trades)
+            assert not await engines[0]._positions_service.get_all_positions()
+            assert not result.accounting_pending
+        ids = [o["order_id"] for o in result.orders]
+        assert len(ids) == len(set(ids))
+>       assert sockets and all(s.closed for s in sockets)
+E       assert ([])
+
+tests/test_scanner_streaming_integration.py:371: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $999,775
+  💾 Brain saved: generation 0, 1 trades, equity $1,000,596
+  💾 Brain saved: generation 0, 1 trades, equity $1,000,039
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-27T18:31:07.450400Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:07.812711Z"}
+WARNING  backend.organism.live_engine:live_engine.py:2691 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (RuntimeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:07.812806Z"}
+WARNING  backend.organism.live_engine:live_engine.py:2645 {"event": "PP-6: 1 symbol(s) stale beyond threshold (aggregate looked fresh): [('MSFT', inf)]", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:07.813536Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.124020Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.196630Z"}
+WARNING  backend.organism.live_engine:live_engine.py:2691 {"event": "Streaming subscription synchronization incomplete \u2014 entries blocked (RuntimeError)", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.196719Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.197210Z"}
+WARNING  backend.organism.live_engine:live_engine.py:2645 {"event": "PP-6: 1 symbol(s) stale beyond threshold (aggregate looked fresh): [('LAG', inf)]", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.197890Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.268445Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.268965Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 180s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.270526Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.340997Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.341498Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 240s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.376144Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.412564Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.413088Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 300s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.447990Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.485132Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.485624Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 360s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.521124Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.553399Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.553889Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 420s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.589326Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.621367Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.621855Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 480s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.656837Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.689197Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.689709Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 540s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.691219Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.758381Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.758870Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 600s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.793659Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.825883Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.826373Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 660s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.861629Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.885770Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.886259Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 720s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.925770Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.949929Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:08.950443Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 780s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:08.985947Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.009925Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:09.010411Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 840s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.045720Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.069683Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:09.070071Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7821 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:31:09.079072Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 900s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.080599Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.139192Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 960s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.140677Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.198550Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1020s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.200046Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.258302Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1080s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.259781Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.318533Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1140s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.320148Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.378081Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1200s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.379562Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.468679Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1260s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.470357Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.528301Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1320s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.529769Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.588280Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1380s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.589792Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.647806Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1440s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.649266Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.707334Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1500s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.708791Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.766662Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:300 {"event": "Streaming bars REJECTED for MSFT: 1560s stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.768129Z"}
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:381 {"event": "Streaming bar subscription failed: 1 symbols", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:31:09.825808Z"}
+=============================== warnings summary ===============================
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+  tests/test_scanner_streaming_integration.py:262: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+  tests/test_scanner_streaming_integration.py:290: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_scanner_streaming_integration.py::test_actual_transport_ack_recovery_replay_keeps_entries_and_eod_safe[None]
+FAILED tests/test_scanner_streaming_integration.py::test_actual_transport_ack_recovery_replay_keeps_entries_and_eod_safe[subscription_failure]
+2 failed, 130 passed, 5 warnings in 19.19s

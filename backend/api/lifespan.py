@@ -801,19 +801,19 @@ async def _sync_orders(app):
     """Sync orders from Alpaca on startup."""
     try:
         from datetime import datetime
-        from decimal import Decimal
 
         from sqlalchemy.exc import SQLAlchemyError
 
         from backend.infra.repositories.orders import OrdersRepo
         from backend.integrations.alpaca_broker import get_alpaca_broker_client
-        from backend.integrations.alpaca_stream import (
-            _decimal_or_none,
-            apply_incremental_fill_accounting,
-        )
+        from backend.integrations.alpaca_stream import apply_order_fill_snapshot
 
         logger.info("Starting initial order sync from Alpaca...")
         broker_client = get_alpaca_broker_client()
+
+        from backend.services.order_recovery_service import recover_persisted_orders
+
+        await recover_persisted_orders(app.state.sessionmaker, broker_client)
 
         url = f"{broker_client.base_url}/v2/orders"
         headers = broker_client._get_auth_headers()
@@ -852,65 +852,45 @@ async def _sync_orders(app):
                     continue
 
                 alpaca_status = status_mapping.get(ao.get("status", ""), ao.get("status", ""))
-                previous_filled = _decimal_or_none(db_order.filled_qty) or Decimal("0")
-                previous_price = _decimal_or_none(db_order.avg_fill_price)
-                alpaca_filled = _decimal_or_none(ao.get("filled_qty")) or Decimal("0")
-                alpaca_price = _decimal_or_none(ao.get("filled_avg_price"))
-
-                needs_update = (
-                    previous_filled != alpaca_filled
-                    or db_order.status != alpaca_status
-                    or (alpaca_price is not None and alpaca_price != previous_price)
-                )
-                if needs_update:
-                    await repo.attach_broker_result(
-                        db_order.id,
+                alpaca_filled = ao.get("filled_qty")
+                if alpaca_filled in (None, ""):
+                    alpaca_filled = "0"
+                alpaca_price = ao.get("filled_avg_price")
+                before = (db_order.status, db_order.filled_qty, db_order.avg_fill_price)
+                try:
+                    accounting = await apply_order_fill_snapshot(
+                        session,
+                        db_order,
                         status=alpaca_status,
-                        filled_qty=alpaca_filled,
+                        cumulative_filled_qty=alpaca_filled,
                         avg_fill_price=alpaca_price,
+                        broker_order_id=broker_id,
+                        broker_order_data=ao,
                     )
                     await session.commit()
-                    try:
-                        accounting = await apply_incremental_fill_accounting(
-                            session,
-                            db_order,
-                            previous_filled_qty=previous_filled,
-                            cumulative_filled_qty=alpaca_filled,
-                            avg_fill_price=alpaca_price,
-                            status=alpaca_status,
-                            broker_order_data=ao,
-                        )
-                        if accounting["applied"]:
-                            await session.commit()
-                            logger.warning(
-                                "Order sync: persisted fill accounting",
-                                order_id=db_order.id,
-                                broker_order_id=broker_id,
-                                side=accounting["side"],
-                                incremental_qty=accounting["incremental_qty"],
-                                execution_id=accounting["execution_id"],
-                            )
-                        elif accounting["reason"] != "non_fill_status":
-                            logger.debug(
-                                "Order sync: accounting skipped for %s: %s",
-                                broker_id,
-                                accounting,
-                            )
-                    except (
-                        AttributeError,
-                        SQLAlchemyError,
-                        TypeError,
-                        ValueError,
-                    ) as accounting_error:
-                        await session.rollback()
-                        logger.warning(
-                            "Order sync: accounting failed for order %s: %s",
-                            broker_id,
-                            accounting_error,
-                            exc_info=True,
-                        )
+                except (
+                    SQLAlchemyError,
+                    ValueError,
+                    TypeError,
+                    AttributeError,
+                    ArithmeticError,
+                    RuntimeError,
+                ) as accounting_error:
+                    await session.rollback()
+                    logger.warning(
+                        "Order sync: atomic reconciliation failed for %s: %s",
+                        broker_id,
+                        accounting_error,
+                        exc_info=True,
+                    )
+                    continue
+                synced += 1
+                if accounting.get("reason") == "stale_snapshot":
+                    continue
+                alpaca_status = accounting["status"]
+                after = (db_order.status, db_order.filled_qty, db_order.avg_fill_price)
+                if accounting["applied"] or before != after:
                     updated += 1
-
                     try:
                         from backend.api.socketio_server import broadcast_order_update
 
@@ -940,7 +920,6 @@ async def _sync_orders(app):
                     except Exception:
                         pass
 
-                synced += 1
             await session.commit()
 
         logger.info(f"Order sync completed: {synced} synced, {updated} updated")

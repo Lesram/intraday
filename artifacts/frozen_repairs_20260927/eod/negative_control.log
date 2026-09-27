@@ -1,0 +1,120 @@
+Isolated test scratch: /private/tmp/intra-audit-test-m_zwrb2z
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_unverified_cancel_never_forgets_entry[broker_confirmation_unavailable] __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10b9fdca0>
+issue = 'broker_confirmation_unavailable'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+>       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:33: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.live_engine:live_engine.py:7931 {"event": "Drawdown kill: cancelled 1 broker entry orders: ['AAPL']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:26:17.238511Z"}
+____ test_unverified_cancel_never_forgets_entry[cancellation_not_confirmed] ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11535f410>
+issue = 'cancellation_not_confirmed'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+>       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:33: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.live_engine:live_engine.py:7931 {"event": "Drawdown kill: cancelled 1 broker entry orders: ['AAPL']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:26:17.300250Z"}
+___ test_unverified_cancel_never_forgets_entry[fill_reconciliation_required] ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x115362f90>
+issue = 'fill_reconciliation_required'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+>       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:33: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.live_engine:live_engine.py:7931 {"event": "Drawdown kill: cancelled 1 broker entry orders: ['AAPL']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:26:17.302020Z"}
+________ test_ttl_and_stream_terminal_boolean_cannot_erase_attribution _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1154421e0>
+
+    def test_ttl_and_stream_terminal_boolean_cannot_erase_attribution(monkeypatch):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        engine._pending_entry['NO_ID'] = 0
+        stream = SimpleNamespace(is_order_terminal=MagicMock(return_value=True))
+        monkeypatch.setattr('backend.integrations.alpaca_stream.get_stream_client', lambda: stream)
+>       engine._stage_expire_cooldowns()
+
+tests/test_eod_pending_cancellation.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <backend.organism.live_engine.OrganismLiveEngine object at 0x115441f70>
+
+    def _stage_expire_cooldowns(self) -> None:
+        """Stage 0a: expire cooldowns and pending-entry tracking maps.
+    
+        Pure state mutation; no inputs, no return value. Runs at the
+        very top of every tick to drop entries older than their TTL.
+        Extracted from _live_tick_inner for HH R-1 (V7 architecture
+        finding: 2,510-line method with no isolated stages).
+        """
+        # Expire old cooldowns (keep only recent exits)
+        self._exit_cooldown = {
+            sym: tick for sym, tick in self._exit_cooldown.items()
+            if self._tick_count - tick < self._EXIT_COOLDOWN_TICKS
+        }
+        # Expire old pending entries
+        self._pending_entry = {
+            sym: tick for sym, tick in self._pending_entry.items()
+>           if self._tick_count - tick < self._PENDING_ENTRY_TICKS
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+        }
+E       AttributeError: 'OrganismLiveEngine' object has no attribute '_PENDING_ENTRY_TICKS'
+
+backend/organism/live_engine.py:2411: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_eod_pending_cancellation.py::test_unverified_cancel_never_forgets_entry[broker_confirmation_unavailable]
+FAILED tests/test_eod_pending_cancellation.py::test_unverified_cancel_never_forgets_entry[cancellation_not_confirmed]
+FAILED tests/test_eod_pending_cancellation.py::test_unverified_cancel_never_forgets_entry[fill_reconciliation_required]
+FAILED tests/test_eod_pending_cancellation.py::test_ttl_and_stream_terminal_boolean_cannot_erase_attribution
+4 failed in 1.35s

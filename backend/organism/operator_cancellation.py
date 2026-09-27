@@ -1,8 +1,9 @@
 """Bounded broker-confirmed cancellation of attributed organism entries.
 
-Caller must first durably latch operator halt and drain the current tick. The
-scope is organism entries, never all account orders. Protective exits, DB order
-statuses, fill evidence and engine tracking are left to their normal owners.
+The emergency endpoint requires durable operator halt and tick drain. The
+engine's tracked-entry reconciliation runs under its tick/startup authority;
+ordinary ticks observe, while EOD/startup/drawdown may cancel exact entries.
+Protective exits, DB order statuses and fill evidence are never mutated here.
 """
 from __future__ import annotations
 
@@ -10,9 +11,9 @@ import asyncio
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
-from backend.infra.schemas import Order
+from backend.infra.schemas import Execution, Order, PositionLot
 
 INVENTORY_LIMIT = 256
 CALL_TIMEOUT = 2.0
@@ -50,12 +51,12 @@ def _validate_order(observed, row):
             or observed.get('status') == 'replaced'):
         raise CancellationUnverified('replacement_or_linked_order_unverified')
     filled, qty = _number(observed.get('filled_qty')), _number(observed.get('qty'))
-    if qty <= 0 or filled > qty:
+    if qty <= 0 or filled > qty or (observed['status'] == 'filled' and filled != qty):
         raise CancellationUnverified('invalid_order_quantity')
     return observed['status'], filled
 
 
-async def _one_order(broker, row):
+async def _one_order(broker, row, *, cancel=True):
     receipt = {'entry_order_id': str(row.id), 'broker_order_id': row.broker_order_id,
                'symbol': row.symbol, 'cancel_requested': False, 'cancel_confirmed': False}
     if row.status == 'replaced':
@@ -71,7 +72,7 @@ async def _one_order(broker, row):
             raise CancellationUnverified('invalid_database_order_identity')
         observed = await asyncio.wait_for(broker.get_order(row.broker_order_id), CALL_TIMEOUT)
         state, filled = _validate_order(observed, row)
-        if state not in CANCELLED | {'expired', 'rejected', 'filled'}:
+        if cancel and state not in CANCELLED | {'expired', 'rejected', 'filled'}:
             if state not in ACTIVE:
                 raise CancellationUnverified('unknown_broker_order_status')
             if state != 'pending_cancel':
@@ -90,6 +91,8 @@ async def _one_order(broker, row):
                 if attempt + 1 < CONFIRM_ATTEMPTS:
                     await asyncio.sleep(0.1)
         receipt.update(broker_status=state, filled_qty=str(filled), cancel_confirmed=state in CANCELLED)
+        if filled > 0 and observed.get('filled_avg_price') is not None:
+            receipt['fill_price'] = str(_number(observed['filled_avg_price']))
         if filled > 0 or state == 'filled':
             receipt['issue'] = 'fill_reconciliation_required'
         elif state not in CANCELLED | {'expired', 'rejected'}:
@@ -99,6 +102,166 @@ async def _one_order(broker, row):
     except Exception:  # noqa: BLE001 - Withhold success; never expose private transport errors.
         receipt['issue'] = 'broker_confirmation_unavailable'
     return receipt
+
+
+async def _accounted_entry_fill(db, row, receipt, engine, broker):
+    """Read-only proof before releasing a filled order's submission blocker.
+
+    Preserve execution/lot identity and the engine's position tracking. A closed
+    lot's original quantity/cost remains evidence after partial or full exits;
+    remaining quantity is deliberately not equated with original fill quantity.
+    """
+    filled, price = _number(receipt['filled_qty']), _number(receipt.get('fill_price'))
+    terminal = CANCELLED | {'expired', 'rejected', 'filled'}
+    if (receipt['broker_status'] not in terminal or row.status not in terminal
+            or filled <= 0 or price <= 0 or _number(row.filled_qty) != filled):
+        return False
+    tolerance = filled * Decimal('0.0000005') + Decimal('0.000001')
+    expected_cash = filled * price
+    if abs(filled * _number(row.avg_fill_price) - expected_cash) > tolerance:
+        return False
+    for quantity, cash, model in (
+        (Execution.fill_qty, Execution.fill_qty * Execution.fill_price, Execution),
+        (PositionLot.qty, PositionLot.qty * PositionLot.cost_basis, PositionLot),
+    ):
+        observed_qty, observed_cash = (await db.execute(select(
+            func.coalesce(func.sum(quantity), 0), func.coalesce(func.sum(cash), 0),
+        ).where(model.order_id == row.id))).one()
+        if (_number(observed_qty) != filled
+                or abs(_number(observed_cash) - expected_cash) > tolerance):
+            return False
+    positions = await asyncio.wait_for(broker.get_positions(), CALL_TIMEOUT)
+    if (not isinstance(positions, list) or len(positions) > INVENTORY_LIMIT
+            or any(not isinstance(item, dict) or not isinstance(item.get('symbol'), str)
+                   for item in positions)
+            or len({item['symbol'] for item in positions}) != len(positions)):
+        return False
+    position = next((item for item in positions if item['symbol'] == row.symbol), None)
+    if position is None:
+        # A stale completed-ID alone may predate later fills. Require the exact
+        # closed trade quantity/cost plus exhausted original lots and fresh flat.
+        completed = getattr(engine, '_accounting_completed_entries', {}).get(str(row.id))
+        remaining = (await db.execute(select(func.coalesce(func.sum(PositionLot.remaining_qty), 0))
+                                      .where(PositionLot.order_id == row.id))).scalar_one()
+        if _number(remaining) != 0:
+            return False
+        return any(
+            trade.entry_order_id == str(row.id) and trade.closed_at == completed
+            and not trade.is_reconciliation_artifact and _number(trade.shares) == filled
+            and abs(_number(trade.entry_price) * filled - expected_cash) <= tolerance
+            for trade in getattr(engine, '_all_trades', [])
+        )
+    meta = getattr(engine, '_entry_metadata', {}).get(row.symbol, {})
+    level = getattr(engine, '_exit_levels', {}).get(row.symbol)
+    direction = 1 if row.side == 'buy' else -1
+    if (level is None or not isinstance(position, dict) or not meta or meta.get('pending_close')
+            or meta.get('direction') != direction or getattr(level, 'direction', None) != direction
+            or getattr(level, 'symbol', None) != row.symbol):
+        return False
+    if str(meta.get('entry_order_id')) != str(row.id):
+        if row.attributes.get('reason') != 'pyramid_add':
+            return False
+        anchor = await db.get(Order, UUID(str(meta.get('entry_order_id'))))
+        if (anchor is None or anchor.symbol != row.symbol or anchor.side != row.side
+                or anchor.user_id != row.user_id or not isinstance(anchor.attributes, dict)
+                or anchor.attributes.get('source') != 'organism'
+                or anchor.attributes.get('reason') != 'organism_entry'
+                or _number(anchor.filled_qty) <= 0):
+            return False
+    quantity = Decimal(str(position.get('qty')))
+    expected_side = 'long' if row.side == 'buy' else 'short'
+    remaining = (await db.execute(select(func.coalesce(func.sum(PositionLot.remaining_qty), 0))
+                                 .where(PositionLot.user_id == row.user_id,
+                                        PositionLot.symbol == row.symbol))).scalar_one()
+    return (quantity.is_finite() and quantity * direction > 0
+            and position.get('side') == expected_side and _number(remaining) == abs(quantity))
+
+
+
+async def confirm_tracked_entries(engine, *, cancel=False, broker=None):
+    """Resolve only exact tracked entry identities, under the engine tick lock.
+
+    EOD/startup/drawdown may request cancellation. Ordinary reconciliation only
+    observes. No DB summary writes, replacement guesses, or order submissions.
+    Uncertain results never authorize removal from the engine's pending maps.
+    """
+    result = {'orders': [], 'issues': [], 'db_modified': False}
+    pending = dict(getattr(engine, '_pending_entry_order_ids', {}))
+    if set(getattr(engine, '_pending_entry', {})) - set(pending):
+        result['issues'].append('pending_entry_identity_missing')
+    if not pending:
+        return result
+    try:
+        async with asyncio.timeout(TOTAL_TIMEOUT):
+            if len(pending) > INVENTORY_LIMIT:
+                raise CancellationUnverified('entry_inventory_limit')
+            ids = [UUID(value) for value in pending.values()]
+            if (len(set(ids)) != len(ids)
+                    or any(str(identity) != value for identity, value in zip(ids, pending.values()))):
+                raise CancellationUnverified('invalid_tracked_entry_identity')
+            factory = getattr(engine, '_sessionmaker', None)
+            if factory is None:
+                raise CancellationUnverified('entry_database_unavailable')
+            if broker is None:
+                from backend.integrations.alpaca_broker import get_alpaca_broker_client
+                broker = get_alpaca_broker_client()
+            if (getattr(broker, 'is_paper', None) is not True
+                    or getattr(broker, 'base_url', '').rstrip('/') != 'https://paper-api.alpaca.markets'):
+                raise CancellationUnverified('verified_paper_broker_required')
+            async with factory() as db:
+                rows = list((await db.execute(select(Order).where(Order.id.in_(ids)))).scalars().all())
+                by_id = {str(row.id): row for row in rows}
+                # A slow prefix must not starve later orders on every bounded
+                # retry. Advance before awaiting so timeouts/cancellation also
+                # yield the next turn; the cursor never removes attribution.
+                entries = list(pending.items())
+                last = getattr(engine, '_pending_entry_confirmation_cursor', None)
+                last_index = next((i for i, (_, identity) in enumerate(entries) if identity == last), -1)
+                start = (last_index + 1) % len(entries)
+                for symbol, identity in entries[start:] + entries[:start]:
+                    engine._pending_entry_confirmation_cursor = identity
+                    row = by_id.get(identity)
+                    attrs = row.attributes if row is not None and isinstance(row.attributes, dict) else {}
+                    if (row is None or row.symbol != symbol or attrs.get('source') != 'organism'
+                            or attrs.get('reason') not in {'organism_entry', 'pyramid_add'}
+                            or not str(row.client_idempotency_key).startswith('organism_')
+                            or str(row.client_idempotency_key).startswith('organism_exit_')):
+                        result['issues'].append('tracked_entry_attribution_unverified')
+                        continue
+                    receipt = await _one_order(broker, row, cancel=cancel)
+                    receipt['release_pending'] = False
+                    state = receipt.get('broker_status')
+                    if state in CANCELLED | {'expired', 'rejected', 'filled'}:
+                        filled = _number(receipt.get('filled_qty'))
+                        if filled == 0 and state != 'filled' and not receipt.get('issue'):
+                            # Contradictory local fill evidence must not disappear
+                            # merely because a broker response currently says zero.
+                            no_fills = _number(row.filled_qty) == 0
+                            for model in (Execution, PositionLot):
+                                count = (await db.execute(select(func.count()).select_from(model)
+                                                         .where(model.order_id == row.id))).scalar_one()
+                                no_fills = no_fills and count == 0
+                            receipt['release_pending'] = no_fills
+                            receipt['resolution'] = 'verified_unfilled' if no_fills else 'unverified'
+                        elif filled > 0:
+                            try:
+                                receipt['release_pending'] = await _accounted_entry_fill(db, row, receipt, engine, broker)
+                                if receipt['release_pending']:
+                                    receipt['resolution'] = 'accounted_fill'
+                                    receipt.pop('issue', None)
+                            except (CancellationUnverified, InvalidOperation, ValueError, TypeError):
+                                pass
+                    result['orders'].append(receipt)
+                    if not receipt['release_pending']:
+                        result['issues'].append(receipt.get('issue', 'entry_resolution_unverified'))
+    except CancellationUnverified as exc:
+        result['issues'].append(str(exc))
+    except TimeoutError:
+        result['issues'].append('cancellation_deadline_exceeded')
+    except Exception:  # noqa: BLE001 - Keep attribution; never expose transport payloads.
+        result['issues'].append('entry_confirmation_unavailable')
+    result['issues'] = sorted(set(result['issues']))
+    return result
 
 
 async def _open_inventory(broker):

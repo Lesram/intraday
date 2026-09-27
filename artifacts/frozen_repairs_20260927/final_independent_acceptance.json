@@ -1,0 +1,595 @@
+{
+  "schema_version": 1,
+  "task_id": "PR32-final-combined-independent-acceptance",
+  "reviewed_at_utc": "2026-09-27T19:10:40.451095+00:00",
+  "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+  "base_installed_release_commit": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "verdict": "LOCAL_SOURCE_AND_EVIDENCE_ACCEPTED_PENDING_PUBLIC_SCAN_CI_IMAGE_AND_ACTIVATION",
+  "blocking_source_findings": [],
+  "scope": {
+    "defect_ids": [
+      "FILL-01",
+      "FILL-02",
+      "FILL-03",
+      "FILL-04",
+      "FILL-05",
+      "UI-01",
+      "UI-02",
+      "UI-03",
+      "AUTH-01",
+      "AUTH-02",
+      "AUTH-03",
+      "AUTH-04",
+      "DEPLOY-01",
+      "CI-01",
+      "CI-02",
+      "DATA-01",
+      "DATA-02",
+      "DATA-03",
+      "EOD-01",
+      "FREEZE-01"
+    ],
+    "defect_count": 20,
+    "review_method": "Bounded combined source/evidence acceptance, preserving earlier peer component reviews. Reviewer authored DATA03 and earlier accounting changes; those components rely on other-agent independent reviews rather than a claim of self-independent authorship.",
+    "current_changed_source_test_workflow_config_files": 86,
+    "current_bytes_equal_commit": true,
+    "runtime_manifest": {
+      "path": "artifacts/frozen_repairs_20260927/final_validation_source.json",
+      "sha256": "a1245926a0c0ad56d1eb9ef19284c87d2622551270cc4373f8e76fb3e7d96f79"
+    },
+    "source_file_sha256": {
+      ".github/workflows/paper-readiness.yml": "bc193cd1260e67953b4e5251c13291b892b54a38331d07c2b9fd9bfd63d6ddd9",
+      "backend/api/lifespan.py": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef",
+      "backend/api/portfolio.py": "8bf365f6edb4b4a861eaf810699400a1b3e202651434df796df6ee83cf3d5511",
+      "backend/api/socketio_server.py": "044f6d4fd76a8d343773dd68ae025b8852136e8068904a1b118b4df45b28e81e",
+      "backend/infra/outbox_worker.py": "ac2ccecc3480ac74a4977416b83fae9af765de13bd729e2b92b38180dd753178",
+      "backend/infra/repositories/orders.py": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b",
+      "backend/integrations/alpaca_market_data_stream.py": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead",
+      "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+      "backend/organism/live_engine.py": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323",
+      "backend/organism/ml_features.py": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
+      "backend/organism/operator_cancellation.py": "59e69af2c6d40932b039ce477ec746c98e05d1b494ac74d777b5f85f0e61de38",
+      "backend/organism/replay_simulator.py": "deb6563f02636c69e909ad374b27233dc24131d44ce515b8ec80ace9df7ed159",
+      "backend/organism/scheduler.py": "51b1df5aafc6763a40fe5cba49b0122195a36bfcbe658c8e96ed9438bf6cc203",
+      "backend/organism/streaming_data_provider.py": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535",
+      "backend/services/order_recovery_service.py": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e",
+      "backend/services/portfolio_service.py": "52fdfb7b932fdf8714ff71f8863fc86081a50c76e122ba4ed5711bfdb01e549c",
+      "backend/services/scheduled_reconciliation.py": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5",
+      "docker-compose.paper.yml": "fc73c8d6db66abd1d3684562118bc219d33e499c3e6834a1ba8771b2c82eb9f9",
+      "frontend/Dockerfile": "46f12eb3ab97edd979217abdac8b289bbbbcbb4914ba34d6c105ca8d9295cc91",
+      "frontend/Dockerfile.dockerignore": "b8fffb9e08dbb16aa470b2655354f11df1eb298880baa10c5a4d5a9924eb7292",
+      "frontend/nginx.conf": "27e14db284ab69b7f49f67698a503adb91181979d8238780f983772d39fe1ea5",
+      "frontend/src/App.tsx": "2e835cd783357e57450347d8f455a995019565fde2ba6139fab94cc143289ab4",
+      "frontend/src/components/auth/AuthBootstrap.test.tsx": "5b97c956db85b2a66e6cb7874504550d695ec8da9ae82bede448ba4ef2c8fc69",
+      "frontend/src/components/auth/AuthBootstrap.tsx": "c28e4385a511f04c39685b1ca7def95f34873d15e0163a377bda554fbd33ed91",
+      "frontend/src/components/auth/ProtectedRoute.tsx": "4e00da40264e5c0a161fbb9d738c15e266c9477e99f705c946e690b41104de34",
+      "frontend/src/components/layout/GlobalStatusBar.test.tsx": "a34e8d67191b9352ad991eadbd7651da382e249af5ec9e710dea980d76da85a7",
+      "frontend/src/components/layout/GlobalStatusBar.tsx": "da91aaa6b9237dce425093c0779bc7318664263f3b5c3baaa6ad36d386987a7f",
+      "frontend/src/features/dashboard/Dashboard.test.tsx": "bf43c0916ae94c14caa58492782bea3671ca949641ea98a53d66e919cabd97f6",
+      "frontend/src/features/dashboard/Dashboard.tsx": "8a4811897da33dd0660070953b8b44c5a90d521018ea6fd10aee52c1dae9c210",
+      "frontend/src/features/organism/OrganismDashboard.tsx": "c3c2a7f2b9124028171a90d21a1a13ed64ce33b74edb2a8e3783ba4c67744877",
+      "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx": "766e984e8d4fa4cc892d0545c45a71b8d651e0fd8992511439613edc32e41fa7",
+      "frontend/src/features/portfolio/PortfolioPage.test.tsx": "c7e8b151316fbcf7c65bc5ab0b1a1a754bf593754c04e6d5c59af143114265dc",
+      "frontend/src/features/portfolio/PortfolioPage.tsx": "d502ec12d4d5e5229185417a938137fe74bed2680f00a3472c3d7d09beff44f3",
+      "frontend/src/hooks/useData.ts": "311330d3e48433cd61894bb1c359243e8a6857252e0fa2eb23f22d7e2418b7c7",
+      "frontend/src/hooks/usePortfolio.test.tsx": "7c52ea39d3975a728e1c465b226f469d031b2ae1efe185c8cd367a48e92a9ee0",
+      "frontend/src/hooks/useWebSocket.ts": "565c2620baba2e4fe448305b8a9e694f42a83d9db11fe0a63ac35b1fd7d060d3",
+      "frontend/src/services/api.test.ts": "225409dcdf9616f6beb8690da28db1ccfb59f7dd0cd17389a32cbdff35951828",
+      "frontend/src/services/api.ts": "aae66087e204ae78cf6add16e28e6c76b0f8a313ae2a0e0278376d7cebae6155",
+      "frontend/src/services/authService.test.tsx": "15f69a72df9a84347c2e4c80244f74ccb12a85b60b019cee9acaf88cea67eda4",
+      "frontend/src/services/authService.ts": "c948b7c16bab7d0c0012eae791b332b0b2740b13e5eccf4e56668f7b606a6446",
+      "frontend/src/services/originRouting.test.ts": "30b6f1b1c1439ce10d6257ddcc3573bfc1888b7b3940104b7cec8fb0941ac3ba",
+      "frontend/src/services/websocketManager.test.tsx": "f5f631ad91e9b6137811796452339d3e62b1d4d51dcc0ea673ce25bf257e1c1f",
+      "frontend/src/services/websocketManager.ts": "af1f4a4201ae2664234cff690ee1d3d9e4ed4e12ba28d0eb0a6ca74f34d60caf",
+      "frontend/src/store/authStore.ts": "8ab239b3e8ef2faed8d7d50e8cf2dc3e0842ea62fdedeac9f45ad94e1f9e3b63",
+      "frontend/src/store/portfolioStore.ts": "04c866c5ba1dae9fd86d51b73a36ad254682a215d434bb51d97f10d104f71fb0",
+      "frontend/src/test/portfolioFixture.ts": "6ffa08b6ae13fe3b327d0beef3f9ad06a62620a8068a99128d781caa50ca002d",
+      "frontend/src/utils/portfolioSnapshot.test.ts": "4c40604c777caa3da4b1785b5f23d96258b4517ac7fa04ea93ccb3f863de9db6",
+      "frontend/src/utils/portfolioSnapshot.ts": "48578b4a821294140afd4b23823315ea661fef0be4964f915072c9a4e640dcd0",
+      "scripts/ci/check_frontend_container.py": "838ea9e9f7c91b2a47408fccb1a4f008a5109a6b1b301892a39e3ca006f26ee8",
+      "scripts/ci/nightly_test_contract.py": "ff7422fd9e767581c9c171170c4ead18c5fd913de96fa24d8442d6e088186ddc",
+      "scripts/diagnostics/profile_paper_pipeline.py": "b5d622d08c86deca7e24f83d415c5435092336547ca7c2123f994832f8490659",
+      "scripts/phase2_freeze.py": "77bc4453b6d287b382af69746ed3d96e61bd89c7250f85d2a4435ad67427e658",
+      "scripts/runtime/write_runtime_snapshot.py": "118fe106106be1570b4d8ebc85136a3def79581253090594a0ca3724afcfcac3",
+      "tests/test_adversarial_inputs_v7.py": "bccc615cf2c37126ee99eefec0ef55ddac79a4c96f576ea7a78f03d64c5ac74f",
+      "tests/test_audit_patch_queue_j6.py": "396548a35da57a6087504a7802d01a544b2d8df31df28072b4ab8b4904209c6e",
+      "tests/test_audit_patch_queue_j6b.py": "80b4c69b8ddfa2b1c65823f5500d80c8d82131c6398c40d9672dbc4e18b22de4",
+      "tests/test_composite_indicator_contract.py": "375d44edd58fd789a6b366a136b4a55fabe91cda05e7244e2197ba39b3f06eb8",
+      "tests/test_cross_asset_alignment_replay.py": "46f34f35a4ed34c70808e41e977ed8effa4f54059f680c45469ce7bb6a72335c",
+      "tests/test_cross_asset_timestamp_alignment.py": "846541f8354468455896a492f6b08e31158f1b823814f5e1b47f1133ed23a684",
+      "tests/test_eod_cancellation_fairness.py": "1bf41a0c5231244095eee5c9a8da93357f7abb8d79defc5af3e3ad91c9c3930e",
+      "tests/test_eod_pending_cancellation.py": "02dc2ac817a90a158392f6103977fa1a169d1d18670fa31640f040da94380cd2",
+      "tests/test_fill_accounting_integrity.py": "d72040e9d2cc923f52a3be4c51491c03ab5ffa1c8947b62d6b8d326053e79972",
+      "tests/test_fill_accounting_postgres.py": "ebd3db4875fbfd28b10b4b260915ac04610338406947cf392a95134f6507407d",
+      "tests/test_frontend_container_probe.py": "b53dd45332bf2c76f3117f6cab97cea8a437b8df16ae7bd75ae3cc71edba15ff",
+      "tests/test_monday_ci_workflows.py": "a55ab6403d47ad7319ebb96243786fdf48c29881595d2ae013e02b3dcc070bad",
+      "tests/test_nightly_test_contract.py": "6592cfc0b628bba5febe707b256ee46e8371db0c208a798b6e8ad7b751853906",
+      "tests/test_order_recovery_service.py": "071de3f7a229462735c8202d20f07915b1b02ebbf26ba74a2081a0581db56208",
+      "tests/test_outbox_fill_race.py": "f3a77660ca8779ed04e7bc078bfe7491f5025762591b0eedb38e18e9c4332843",
+      "tests/test_paper_frontend_deployment.py": "7f9576beabba55f24f274057580447f45cd1feb42c27d1e4f79259196583051b",
+      "tests/test_phase2_freeze.py": "c0fc220c79b8677fa0b40e2ee042d1a5d9c75da26ce4df68fbe6cf7d80c9e933",
+      "tests/test_pipeline_profile.py": "3afec9c580b52bb827f8021042e114dee6888ac3b76a5eb72f792708a52d51f2",
+      "tests/test_pipeline_snapshot.py": "0646dd2db32690e9f36a9538dbc33fc22d626aeb567a72f9faa9f8aa4cb5a190",
+      "tests/test_portfolio_availability_contract.py": "bb4078fda1dc654d160d87146f53a17f58fef5a8ceb53401b72ed20ae533878c",
+      "tests/test_portfolio_service_comprehensive.py": "2a3537686ebee8f01132484ab8336ae51cb78c0d32e89c9b7a327371550d38a3",
+      "tests/test_reachability_v8.py": "a2ee21a87fc574978119ba4dbf6b6625c240720a2b48e75f5ba0c60ccbbad65a",
+      "tests/test_scanner_streaming_integration.py": "029b5963cb0a8ef0026c4cfb92171373e95ff5f7321e924012b29cecd500290e",
+      "tests/test_socketio_topic_authorization.py": "79af2b0af55f34a2c5031f3909a853431e0a115e344a8fcea825d45928aae179",
+      "tests/test_streaming_subscription_acknowledgement.py": "209a7950cdd4e7abb293d1a73ea8dc3d3cb3b61413478d760085b6c820d3a069",
+      "tests/test_wave43_fixes.py": "fee8b3e4873454983b6f58414a071a41a040d6a80f2f6cdc208729a79a56442a",
+      "tests/test_wave51_fixes.py": "5b68d99c6d20fa8283ec0b725a1e4897e1fce1979690b88b0764730f4ab764e9",
+      "tests/test_wave52_fixes.py": "b2a7ddeca22f2db36016a813f1f5aadabe6619f4ba2ce6d10e59ba85656c9c2b",
+      "tests/unit/test_alpaca_market_data_stream_comprehensive.py": "6f3c5a546edf370d75290b9caadd1e5fe24458793d98b21dbb6ca2eadfe9d0de",
+      "tests/unit/test_alpaca_stream_comprehensive.py": "889ff4eca1865cc63a1e88e5f24a197d71d3e0857b881e2af346e149c978eed0",
+      "tests/unit/test_api_routes_mocked_coverage.py": "7965ba0b9a5eeb10835f99f44492db1c00be42dcfcb328b8bd9a7e38b68b4810",
+      "tests/unit/test_paper_data_freshness.py": "069880bec5893f633ee30defc25aba66090353690aeaeb69bf61f542732c260b",
+      "tests/unit/test_streaming_data_provider.py": "73520353bd96de68a57dee9a321f3bdd9d294691657302cc8b424f8152f59dda"
+    }
+  },
+  "policy_comparison": {
+    "approved_reference": {
+      "path": "artifacts/phase2/param_freeze.json",
+      "sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459"
+    },
+    "candidate": {
+      "path": "artifacts/phase2/candidate_param_freeze.json",
+      "sha256": "b56d9285099500d915b5214f3210cab245a25228ff639ea0e40791f387b652cc"
+    },
+    "reference_cutoff_utc": "2026-09-25T21:11:46.270521+00:00",
+    "candidate_has_no_active_cutoff": true,
+    "only_changed_surface_sections_and_keys": {
+      "data_pipeline_sources": [
+        "alpaca_market_data_stream",
+        "ml_features",
+        "streaming_data_provider"
+      ],
+      "research_policy_sources": [
+        "entry_cancellation",
+        "pending_entry_lifecycle",
+        "scheduler",
+        "startup"
+      ],
+      "source_hashes": [
+        "entry_gates_dispatch"
+      ]
+    },
+    "all_non_source_surface_sections_equal": true,
+    "preserved": "Strategy/risk parameters, routing/feed environment, regime policy, research baseline/config enforcement and current ML isolation/fixed-risk policy are unchanged. Correctness/source behavior changes are approved and require a new boundary only on activation.",
+    "observation_limit": "Comparison of retained worktree artifacts; not a new installed process or container probe."
+  },
+  "full_pack": {
+    "status": "pass",
+    "eight_groups": [
+      {
+        "name": "organism_live_engine",
+        "path": "artifacts/organism_live_engine.junit.xml",
+        "sha256": "38f644bd08b3cba1ea31e745195a508ef6fa4299d95bb477a2624f6bbcd8a7b1",
+        "total": 26,
+        "passed": 26,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "skip_reasons": []
+      },
+      {
+        "name": "organism_engine_scenarios",
+        "path": "artifacts/organism_engine_scenarios.junit.xml",
+        "sha256": "b760dd23c2655185e4c475c53a6016695ea158aa56eabdebeff616d54f7efbec",
+        "total": 31,
+        "passed": 31,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "skip_reasons": []
+      },
+      {
+        "name": "multi_tick_state",
+        "path": "artifacts/multi_tick_state.junit.xml",
+        "sha256": "0c29c474e9e89fed8f068ced0ca9c0d2e520d912e7107ff1d4b452ae703bf285",
+        "total": 9,
+        "passed": 9,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "skip_reasons": []
+      },
+      {
+        "name": "safety_invariants",
+        "path": "artifacts/safety_invariants.junit.xml",
+        "sha256": "4846b5f89eca29539b4667d7739e4878ce1a83c357a1d04749a3801d4ee92c71",
+        "total": 29,
+        "passed": 29,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "skip_reasons": []
+      },
+      {
+        "name": "self_evolution",
+        "path": "artifacts/self_evolution.junit.xml",
+        "sha256": "eac573c31f633464f9f20981325cb6664165530306b060fb7c4c13bdbd264047",
+        "total": 15,
+        "passed": 15,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "skip_reasons": []
+      },
+      {
+        "name": "algorithm_improvements",
+        "path": "artifacts/algorithm_improvements.junit.xml",
+        "sha256": "6b551092edfe4f7dbbba7864cd0cecf717dff57d13105e58d6ef6fd4b58c653a",
+        "total": 58,
+        "passed": 58,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "skip_reasons": []
+      },
+      {
+        "name": "replay",
+        "path": "artifacts/replay_simulator.junit.xml",
+        "sha256": "d387372e6e71959996d7ce1fb90d149d2d591364840b50963463a01a9f29ec22",
+        "total": 28,
+        "passed": 28,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "skip_reasons": []
+      },
+      {
+        "name": "semantic",
+        "path": "artifacts/semantic_invariants.junit.xml",
+        "sha256": "399f086c74c959ca870c842ec74a4f93113ab290d7e8c65417b2bb3f068afd3e",
+        "total": 20,
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "duplicate_case_ids": 0,
+        "skip_reasons": []
+      }
+    ],
+    "unique_cases_within_this_pack": 216,
+    "not_to_be_added_to_other_selections": true,
+    "snapshot_grep_spec": {
+      "grep_checks_passed": 15,
+      "spec_core_keys_checked": 9,
+      "spec_differences": 0
+    },
+    "artifacts": [
+      {
+        "path": "artifacts/test_summary.json",
+        "sha256": "309b7f7ff13c6aaaa26ec86fe8fd71604a5b3740fcaabed38217f83a9cbec2c0"
+      },
+      {
+        "path": "artifacts/replay_summary.json",
+        "sha256": "ccb09210ba93cabd388c7f72f84d50888bb7e16bf064726a4215129a2b03bde7"
+      },
+      {
+        "path": "artifacts/semantic_invariants_summary.json",
+        "sha256": "a839c287b3b607513dc34e9d372bf40cd9cf6d664ec83c6f9c0a326337493dda"
+      },
+      {
+        "path": "artifacts/grep_assertions.json",
+        "sha256": "13b217728c525bc2ca429e2653186ccb607591e6f7c756f6be6936bac3f5cb7b"
+      },
+      {
+        "path": "artifacts/spec_drift_summary.json",
+        "sha256": "e5805e6aff8709085cd3c58563e3ba40e2ecd81e216c0249d0f6cd12240b5380"
+      },
+      {
+        "path": "artifacts/runtime_defaults_snapshot.json",
+        "sha256": "4a9bd0232eb59cbdcf82d7ecfb2952a2ccfd69ae12d33fa8c381ed8a42fc6bda"
+      },
+      {
+        "path": "artifacts/resolved_config_snapshot.json",
+        "sha256": "27c8c9e4e10b710165e786c955b3edd1075ee0439405d3019b47e0bc9c209e8e"
+      },
+      {
+        "path": "artifacts/runtime_config_snapshot.json",
+        "sha256": "148eb77213ec05e167174812306d54f8165779565462a424ade1d969f031e672"
+      },
+      {
+        "path": "artifacts/live_process_runtime_snapshot.json",
+        "sha256": "d432710d0a481cf5deaf2ce363cc026e4358e0d18eff55b173ccd476f83debd9"
+      }
+    ]
+  },
+  "additional_final_selections_overlapping_not_additive": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/final_operational_regression.xml",
+      "sha256": "7f0d545bf19fc0ca3ce0e5690b6467d0f844fa2bbf20896dcd1a526375bc4e25",
+      "total": 2102,
+      "passed": 2101,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1,
+      "duplicate_case_ids": 0,
+      "skip_reasons": [
+        {
+          "classname": "tests.test_v12_baseline_invariants",
+          "name": "test_installed_history_has_not_shrunk_from_committed_baseline",
+          "reason": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim"
+        }
+      ]
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/final_targeted.xml",
+      "sha256": "207adf013a691a8a580d37f9ec816e857f83f814d5c465e74c472a1b1e3b22db",
+      "total": 267,
+      "passed": 267,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "duplicate_case_ids": 0,
+      "skip_reasons": []
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/final_paired_replay.xml",
+      "sha256": "46e42df9aaa9c3973520ab0f4ca272cb00e67045a9ba0220f539d0da21bc2ca2",
+      "total": 18,
+      "passed": 18,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "duplicate_case_ids": 0,
+      "skip_reasons": []
+    }
+  ],
+  "installed_history_skip": "The one installed-history test explicitly skipped because INTRA_INSTALLED_HISTORY_CSV was not provided. It is not a passing preservation test; any actual release preservation proof is a separate root-owned read-only receipt.",
+  "paired_causal_replay": {
+    "crash": {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/replay_crash.json",
+      "sha256": "979e128878b4c4bedc753a4caa3016c00ae58a17d71ec0da57c3bb0110c2038a",
+      "source_hashes_match_current": true,
+      "changed_cross_cells_in_executed_rows": {
+        "AAPL": 240,
+        "MSFT": 240,
+        "SPY": 0
+      },
+      "arms": {
+        "baseline_ordinal": {
+          "entry_orders": 4,
+          "accounted_closes": 4,
+          "accounted_position_pnl": -6055.165719146555,
+          "exit_mix": {
+            "horizon_timeout": 2,
+            "pyramid_cut_full_at_-6.7R": 1,
+            "pyramid_cut_full_at_-8.5R": 1
+          },
+          "final_open_positions": 0,
+          "safety": {
+            "research_policy_locked": true,
+            "ml_isolated": true,
+            "fixed_atr_risk": true,
+            "empty_initial_brain": true,
+            "no_saved_models": true,
+            "shared_and_final_entry_gates_observed": true
+          }
+        },
+        "causal_timestamp": {
+          "entry_orders": 4,
+          "accounted_closes": 4,
+          "accounted_position_pnl": -6055.165719146555,
+          "exit_mix": {
+            "horizon_timeout": 2,
+            "pyramid_cut_full_at_-6.7R": 1,
+            "pyramid_cut_full_at_-8.5R": 1
+          },
+          "final_open_positions": 0,
+          "safety": {
+            "research_policy_locked": true,
+            "ml_isolated": true,
+            "fixed_atr_risk": true,
+            "empty_initial_brain": true,
+            "no_saved_models": true,
+            "shared_and_final_entry_gates_observed": true
+          }
+        }
+      },
+      "no_strategy_edge_inference": true
+    },
+    "eod": {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/replay_eod.json",
+      "sha256": "c5be47be67f1a4c6cad5ece44e1c4c6ee64b95c9e42c44f347bb04243c2d2a1c",
+      "source_hashes_match_current": true,
+      "changed_cross_cells_in_executed_rows": {
+        "AAPL": 140,
+        "MSFT": 140,
+        "SPY": 0
+      },
+      "arms": {
+        "baseline_ordinal": {
+          "entry_orders": 1,
+          "accounted_closes": 1,
+          "accounted_position_pnl": -99.4841805865374,
+          "exit_mix": {
+            "eod_flatten": 1
+          },
+          "final_open_positions": 0,
+          "safety": {
+            "research_policy_locked": true,
+            "ml_isolated": true,
+            "fixed_atr_risk": true,
+            "empty_initial_brain": true,
+            "no_saved_models": true,
+            "shared_and_final_entry_gates_observed": true
+          }
+        },
+        "causal_timestamp": {
+          "entry_orders": 1,
+          "accounted_closes": 1,
+          "accounted_position_pnl": -99.4841805865374,
+          "exit_mix": {
+            "eod_flatten": 1
+          },
+          "final_open_positions": 0,
+          "safety": {
+            "research_policy_locked": true,
+            "ml_isolated": true,
+            "fixed_atr_risk": true,
+            "empty_initial_brain": true,
+            "no_saved_models": true,
+            "shared_and_final_entry_gates_observed": true
+          }
+        }
+      },
+      "no_strategy_edge_inference": true
+    }
+  },
+  "historical_replay_preservation": [
+    {
+      "original_scoped_report": "artifacts/frozen_repairs_20260927/causal_features/replay_crash.json",
+      "retained_original": {
+        "path": "artifacts/frozen_repairs_20260927/causal_features/scoped_pre_combined/replay_crash.json",
+        "sha256": "848708b69094cee51775b5b4dab911f14b1a21757089390ae34e58293bb2ed7d"
+      },
+      "current_combined_receipt": {
+        "path": "artifacts/frozen_repairs_20260927/causal_features/replay_crash.json",
+        "sha256": "979e128878b4c4bedc753a4caa3016c00ae58a17d71ec0da57c3bb0110c2038a"
+      },
+      "scope": "Original report remains historical; current final combined replay is separately source-bound"
+    },
+    {
+      "original_scoped_report": "artifacts/frozen_repairs_20260927/causal_features/replay_eod.json",
+      "retained_original": {
+        "path": "artifacts/frozen_repairs_20260927/causal_features/scoped_pre_combined/replay_eod.json",
+        "sha256": "3290f3ae1a9b973ef5f034df5091636b21c122c3fd325328d1f379dccebd43af"
+      },
+      "current_combined_receipt": {
+        "path": "artifacts/frozen_repairs_20260927/causal_features/replay_eod.json",
+        "sha256": "c5be47be67f1a4c6cad5ece44e1c4c6ee64b95c9e42c44f347bb04243c2d2a1c"
+      },
+      "scope": "Original report remains historical; current final combined replay is separately source-bound"
+    }
+  ],
+  "peer_and_component_reviews": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/streaming/independent_review.json",
+      "sha256": "89c8d44d6bb5d3e7eb5ee49bade4743b5ba767d3b248a93f77251bd35a1ba5a5"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/independent_review.json",
+      "sha256": "1e8c7f4753442d2f391124261fc2face1b5974f0409a742abe4bdfcda4f378cc"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/independent_review.json",
+      "sha256": "f2cd12895f0fdc3fcab52692d369262211c36f178c4348d6ba537f45df842a26"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/fixture_contracts/independent_review.json",
+      "sha256": "237ca132a4783152d57c0a66202ba7fd3f02e74396a4d176689361392a2d46b3"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/execution_accounting/independent_review.json",
+      "sha256": "8e3fb9816bce1514a6457625face3dfb29880a8aabb57f0077bbdd57ff983759"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/order_recovery/independent_review.json",
+      "sha256": "ed4ca439f5f64b3b077c0adb776d9ce294a0267eac40f96eabadcaf6a70476a9"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/outbox_fill_race/independent_review.json",
+      "sha256": "d2df4f3be236e0995958129e2c4d2b0925e645dd789fe866d747968450825335"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/verification_ui_independent_review.json",
+      "sha256": "0ff782e592b52204da7ae42aa0bb2cfbb06273f3f96d75677d31ee6786cd9024"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/auth_bootstrap/independent_review.json",
+      "sha256": "6457e86e9e072277a3060af76b16172ef09aa4b7cfd6bdfb93fb08bd1c2a3fef"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/frontend_deployment/independent_final_review.json",
+      "sha256": "664c71d1b9e634306f735b14b6519aa04bb4140f48c7201177eecd00912a378d"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/frontend_probe_network_repair/independent_review.json",
+      "sha256": "5286a8c11d57e2b70766435cd4f9a30a608b70bb4c288cad5aad45501d721cf5"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/ci_independent_review.json",
+      "sha256": "f6e3f81e0edb0fffaeb26374a09175033b2d1bedd919d4a6e654f1314dfeeef7"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/reachability_repair/independent_review.json",
+      "sha256": "437c56a10dcc74636d2865cfd94dd0c9342000c4f3bd593ab6647534dc5143b8"
+    },
+    {
+      "path": "artifacts/platform_audit_20260926/wave51_contract/independent_review.json",
+      "sha256": "ca9da66d22eebf150535064e9cc71cf4f2a3d0cf084769fda6db14ee4f414d26"
+    }
+  ],
+  "original_failures_retained": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/operational_regression.xml",
+      "sha256": "3cb59c5277d93a388aad706b7c2c72dead9d9d60dc4b5461886293937622a483"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/fixture_contracts/red.xml",
+      "sha256": "32bf79d203bd96a47dc3852789961cde5cdf26df603e3a678a702b0ccbf092ea"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_red.xml",
+      "sha256": "55dc124651e8accf6d69703218fe6730a109d935dd395a73064095926bc466e1"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/fairness_red.xml",
+      "sha256": "1c0b8241d5229e37b8bd18fd3fc3465c99efbe82a32208a16cc319cdb292336a"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/negative_control_corrected.xml",
+      "sha256": "42e7c368110d8aecbc19870ebba0c22734bc6e484576b359d79c9db3a60de916"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/freeze_transport_red.xml",
+      "sha256": "37b9c07e5e686718a02ee8891510a6a11d96a69096859c82303b7fee0bd6509b"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/freeze_pending_red.xml",
+      "sha256": "7b29ccf604e104ab080ed3d57475b79209b655ebeca60d9165f7d6a2530e66fb"
+    }
+  ],
+  "snapshot_truth": "Defaults/resolved/legacy snapshots are local isolated source/config evidence, explicitly offline and unverified with engine_observed=false. Live-process snapshot remains unreachable. These do not replace separately verified installed source/env/freeze/binding or certify an activated release.",
+  "historical_unknowns": {
+    "source_review": {
+      "path": "artifacts/frozen_repairs_20260927/release/historical_source_review.json",
+      "sha256": "0e196a75022de914cff1d68644c2a61b8f7a372cfed048caee55fcb30fbb490c"
+    },
+    "scope": "Five historical UNKNOWN rows remain unknown. Null broker ID is sufficient exclusion from the new automatic recovery path; some organism-source metadata exists. Root owns fresh exact-row/outbox/accounting and broker-flat proof; no404 or localstatus reclassification permitted."
+  },
+  "known_limits": [
+    "Pyramiding must remain disabled for this release. Ambiguous closed base/add lineage deliberately retains unresolved identity; no guessed linkage or universal pyramid liveness claim.",
+    "Cross-asset availability attrs are in-memory provenance, lost by existing NumPy/model exports; consumers/research exports must retain/check metadata explicitly.",
+    "Bounded recovery/cancellation cursors are process-local. Unknown/replaced/missing/unaccounted work remains unresolved; repeated process restarts can delay progress.",
+    "Synthetic replays preserve actual losing results and exercise entries/accounted exits under ML isolation and fixed ATR risk. They do not establish historical lost opportunities, profitability, or a deployable edge.",
+    "Natural-session provider ACK recovery, partial fills, EOD and restart observations remain future operating evidence; no active process changed during this review.",
+    "Inherited dependency/security limitations remain disclosed, including unresolved Socket.IO parser runtime advisory and Redis revocation fallback. This is not a whole-platform security certification; parked cleanup remains outside scope."
+  ],
+  "remaining_release_gates": [
+    "Final public evidence/changed-range secret scan and disposition",
+    "Exact-head hosted CI and reviewed immutable API/frontend image/source proof",
+    "Root final task_report/audit-index/prose enrichment and exact evidence-delivery identity",
+    "Approved paper activation with fresh held-flat/no-open-order proof, backups, exact config/source/image/policy/binding verification, preserved history and an explicit new UTC forward boundary",
+    "Post-start acceptance and complete natural-session evidence; strategy gate remains separate"
+  ],
+  "metadata_not_hash_bound_while_parent_enriches": [
+    "artifacts/task_report.json",
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
+    "reports/platform_audit_20260926/PLATFORM_REVIEW.md"
+  ],
+  "reviewer_actions": {
+    "new_tests_or_runtime_calls_in_final_review": false,
+    "source_or_pack_metadata_edits": false,
+    "output_only": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json"
+  }
+}

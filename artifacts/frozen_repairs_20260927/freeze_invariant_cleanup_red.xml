@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.099" timestamp="2026-09-27T11:44:30.662579-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_phase2_freeze" name="test_pending_entry_lifecycle_drift_preserves_active_boundary[_check_tick_invariants]" time="0.989"><failure message="assert 0 == 1&#10; +  where 0 = verify()">tmp_path = PosixPath('/private/tmp/intra-audit-test-i4a5pf5y/pytest-of-marselkei/pytest-0/test_pending_entry_lifecycle_d0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x10a24a990&gt;
+method_name = '_check_tick_invariants'
+
+    @pytest.mark.parametrize("method_name", [
+        "_stage_expire_cooldowns", "_cancel_pending_entry_orders",
+        "_reconcile_pending_entry_orders", "_confirm_pending_entry_orders",
+        "_check_tick_invariants",
+    ])
+    def test_pending_entry_lifecycle_drift_preserves_active_boundary(tmp_path, monkeypatch, method_name):
+        from backend.organism.live_engine import OrganismLiveEngine
+    
+        method = getattr(OrganismLiveEngine, method_name)
+        surface = compute_surface()
+        artifact = tmp_path / "active.json"
+        artifact.write_text(json.dumps({"FROZEN_AT": "2026-09-25T21:11:46.270521+00:00", "surface": surface}))
+        before = artifact.read_bytes()
+        monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", artifact)
+        assert verify() == 0
+        original_getsource = phase2_freeze.inspect.getsource
+    
+        def changed_source(obj):
+            source = original_getsource(obj)
+            return source + "\n# changed pending-entry lifetime dependency\n" if obj is method else source
+    
+        monkeypatch.setattr(phase2_freeze.inspect, "getsource", changed_source)
+&gt;       assert verify() == 1
+E       assert 0 == 1
+E        +  where 0 = verify()
+
+tests/test_phase2_freeze.py:387: AssertionError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,374 @@
+{
+  "status": "IMPLEMENTED_AND_TARGETED_VALIDATION_PASSED_PENDING_PARENT_RELEASE_GATES",
+  "created_at_utc": "2026-09-26T23:00:49.298186+00:00",
+  "base_sha": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "current_parent_head": "6633bf35f59c58d7f42699d84f77c8dc91fc1f78",
+  "owned_changes_uncommitted": true,
+  "plan_sha256": "bf4cdd6f94eb7a56a9ceccb8a89837987f6d71ee8825982143869802fbd452b4",
+  "files": [
+    {
+      "path": "backend/api/portfolio.py",
+      "sha256": "8bf365f6edb4b4a861eaf810699400a1b3e202651434df796df6ee83cf3d5511"
+    },
+    {
+      "path": "backend/api/socketio_server.py",
+      "sha256": "044f6d4fd76a8d343773dd68ae025b8852136e8068904a1b118b4df45b28e81e"
+    },
+    {
+      "path": "backend/services/portfolio_service.py",
+      "sha256": "52fdfb7b932fdf8714ff71f8863fc86081a50c76e122ba4ed5711bfdb01e549c"
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.test.tsx",
+      "sha256": "a34e8d67191b9352ad991eadbd7651da382e249af5ec9e710dea980d76da85a7"
+    },
+    {
+      "path": "frontend/src/components/layout/GlobalStatusBar.tsx",
+      "sha256": "da91aaa6b9237dce425093c0779bc7318664263f3b5c3baaa6ad36d386987a7f"
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.test.tsx",
+      "sha256": "bf43c0916ae94c14caa58492782bea3671ca949641ea98a53d66e919cabd97f6"
+    },
+    {
+      "path": "frontend/src/features/dashboard/Dashboard.tsx",
+      "sha256": "8a4811897da33dd0660070953b8b44c5a90d521018ea6fd10aee52c1dae9c210"
+    },
+    {
+      "path": "frontend/src/features/organism/OrganismDashboard.tsx",
+      "sha256": "c3c2a7f2b9124028171a90d21a1a13ed64ce33b74edb2a8e3783ba4c67744877"
+    },
+    {
+      "path": "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx",
+      "sha256": "766e984e8d4fa4cc892d0545c45a71b8d651e0fd8992511439613edc32e41fa7"
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.test.tsx",
+      "sha256": "c7e8b151316fbcf7c65bc5ab0b1a1a754bf593754c04e6d5c59af143114265dc"
+    },
+    {
+      "path": "frontend/src/features/portfolio/PortfolioPage.tsx",
+      "sha256": "d502ec12d4d5e5229185417a938137fe74bed2680f00a3472c3d7d09beff44f3"
+    },
+    {
+      "path": "frontend/src/hooks/useData.ts",
+      "sha256": "311330d3e48433cd61894bb1c359243e8a6857252e0fa2eb23f22d7e2418b7c7"
+    },
+    {
+      "path": "frontend/src/hooks/usePortfolio.test.tsx",
+      "sha256": "7c52ea39d3975a728e1c465b226f469d031b2ae1efe185c8cd367a48e92a9ee0"
+    },
+    {
+      "path": "frontend/src/hooks/useWebSocket.ts",
+      "sha256": "565c2620baba2e4fe448305b8a9e694f42a83d9db11fe0a63ac35b1fd7d060d3"
+    },
+    {
+      "path": "frontend/src/services/api.test.ts",
+      "sha256": "225409dcdf9616f6beb8690da28db1ccfb59f7dd0cd17389a32cbdff35951828"
+    },
+    {
+      "path": "frontend/src/services/api.ts",
+      "sha256": "8a1f9fea46a4919b774d974e42e5b56a06ffc1219220d4d64100e38ed0e32c06"
+    },
+    {
+      "path": "frontend/src/services/authService.test.tsx",
+      "sha256": "15f69a72df9a84347c2e4c80244f74ccb12a85b60b019cee9acaf88cea67eda4"
+    },
+    {
+      "path": "frontend/src/services/authService.ts",
+      "sha256": "fea1c9628e531996f45cac4f10bd336148fdf81ea42f518005ef4ddedbe69e59"
+    },
+    {
+      "path": "frontend/src/services/websocketManager.test.tsx",
+      "sha256": "f5f631ad91e9b6137811796452339d3e62b1d4d51dcc0ea673ce25bf257e1c1f"
+    },
+    {
+      "path": "frontend/src/services/websocketManager.ts",
+      "sha256": "47e8886c7f674b950432fa67442bd0776548c4103e79c9bb6192cb64c81da11a"
+    },
+    {
+      "path": "frontend/src/store/portfolioStore.ts",
+      "sha256": "04c866c5ba1dae9fd86d51b73a36ad254682a215d434bb51d97f10d104f71fb0"
+    },
+    {
+      "path": "frontend/src/test/portfolioFixture.ts",
+      "sha256": "6ffa08b6ae13fe3b327d0beef3f9ad06a62620a8068a99128d781caa50ca002d"
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.test.ts",
+      "sha256": "4c40604c777caa3da4b1785b5f23d96258b4517ac7fa04ea93ccb3f863de9db6"
+    },
+    {
+      "path": "frontend/src/utils/portfolioSnapshot.ts",
+      "sha256": "48578b4a821294140afd4b23823315ea661fef0be4964f915072c9a4e640dcd0"
+    },
+    {
+      "path": "tests/test_portfolio_availability_contract.py",
+      "sha256": "bb4078fda1dc654d160d87146f53a17f58fef5a8ceb53401b72ed20ae533878c"
+    },
+    {
+      "path": "tests/test_portfolio_service_comprehensive.py",
+      "sha256": "2a3537686ebee8f01132484ab8336ae51cb78c0d32e89c9b7a327371550d38a3"
+    },
+    {
+      "path": "tests/test_socketio_topic_authorization.py",
+      "sha256": "79af2b0af55f34a2c5031f3909a853431e0a115e344a8fcea825d45928aae179"
+    }
+  ],
+  "changes": [
+    "Portfolio dependency failure returns sanitized HTTP503, never100000 synthetic balance/empty inventory.",
+    "Broker and local nonzero inventory must agree on exact symbols and quantities; broker valuation fields must be present/finite. Failed sync cannot produce a flat snapshot while broker positions exist.",
+    "Day equity change is broker equity minus last_equity; percent null for zero prior equity. Missing/nonfinite prior equity is unavailable. Existing unrealized sum is labeled Open P&L.",
+    "Current portfolio selectors validate full payload, principal, timestamp and finite values; refresh every10s, expire after30s, select latest HTTP/WS observation. Dashboard consumes actual direct WebSocket payload; organism/portfolio pages no longer override unavailable state with old store.",
+    "Primary organism status is independent of optional panel completion; no overlapping primary request; observation expires30s from request start, including hanging requests; unavailable hides control claims.",
+    "Global indicator explicitly describes possibly cached portfolio observation and checks request generation/current credentials after await; no broker-connectivity assertion.",
+    "Socket subscriptions validate entire topic batch, reject foreign private rooms and preserve monitor denial; private events cannot emit on public channels. Session expiry/revocation is checked at connect and delivery.",
+    "Socket logout/token/principal replacement tears down retired socket/listeners; active subscriptions reauthenticate. API refresh denial settles queue, stale completion cannot alter replacement login, retry dispatch rechecks pinned credential, raw refresh request uses30s timeout.",
+    "Actual backend username/roles LoginResponse normalizes real principal into frontend User.id; malformed/mismatched identity rejected."
+  ],
+  "validation": {
+    "backend": {
+      "cases": 91,
+      "passed": 91,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "frontend": {
+      "cases": 63,
+      "passed": 63,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "typescript_exit_code": 0,
+    "production_build_exit_code": 0,
+    "diff_check_exit_code": 0,
+    "static_delta": {
+      "ruff": [
+        {
+          "path": "backend/services/portfolio_service.py",
+          "baseline_findings": 19,
+          "current_findings": 15,
+          "new_findings": []
+        },
+        {
+          "path": "backend/api/portfolio.py",
+          "baseline_findings": 26,
+          "current_findings": 26,
+          "new_findings": []
+        },
+        {
+          "path": "backend/api/socketio_server.py",
+          "baseline_findings": 2,
+          "current_findings": 2,
+          "new_findings": []
+        },
+        {
+          "path": "tests/test_portfolio_service_comprehensive.py",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "tests/test_portfolio_availability_contract.py",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "tests/test_socketio_topic_authorization.py",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        }
+      ],
+      "eslint": [
+        {
+          "path": "frontend/src/features/organism/OrganismDashboard.tsx",
+          "baseline_findings": 4,
+          "current_findings": 4,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/components/layout/GlobalStatusBar.tsx",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/features/organism/__tests__/OrganismDashboard.test.tsx",
+          "baseline_findings": 1,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/components/layout/GlobalStatusBar.test.tsx",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/hooks/useData.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/hooks/usePortfolio.test.tsx",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/features/dashboard/Dashboard.tsx",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/features/dashboard/Dashboard.test.tsx",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/utils/portfolioSnapshot.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/utils/portfolioSnapshot.test.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/test/portfolioFixture.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/hooks/useWebSocket.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/services/websocketManager.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/services/websocketManager.test.tsx",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/services/api.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/services/api.test.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/services/authService.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/services/authService.test.tsx",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/store/portfolioStore.ts",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/features/portfolio/PortfolioPage.tsx",
+          "baseline_findings": 1,
+          "current_findings": 1,
+          "new_findings": []
+        },
+        {
+          "path": "frontend/src/features/portfolio/PortfolioPage.test.tsx",
+          "baseline_findings": 0,
+          "current_findings": 0,
+          "new_findings": []
+        }
+      ]
+    },
+    "isolation": "Backend parent runner: scratchHOME/brain, synthetic env, network denied, installed state and private runtime evidence denied. Frontend sandbox network denied, mocked transports, no server/browser started.",
+    "frozen_organism_entire_directory_equals_base": true,
+    "react_skill_review": "Reviewed effect cleanup, request races, stale-state expiry, shared query/store precedence, conditional render and types; no strategy or sizing edits."
+  },
+  "evidence": {
+    "backend_final.xml": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/backend_final.xml",
+      "sha256": "071d987e3b2c1062777fc81320f17ccf06ddf610d1f1ccc69b1b356c060c54e4"
+    },
+    "backend_final.log": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/backend_final.log",
+      "sha256": "8a469aa05466aa6319ff9020f288d2a2859ba0ae5e731e8aa5dbd0df117d40a1"
+    },
+    "frontend_final.xml": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/frontend_final.xml",
+      "sha256": "752a80ec2876d57669ed89c2fffd6a5911c3e260a3911d0f466184df9527642f"
+    },
+    "frontend_final.log": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/frontend_final.log",
+      "sha256": "e7509db8cb38ab82068ad063384e05adfb01347e79b3753642ddd5e8a6f80d87"
+    },
+    "frontend_build.log": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/frontend_build.log",
+      "sha256": "5a62c03f6971743cc348e4588a9a66205115391c6a34f802947b178b035cc80a"
+    },
+    "frontend_typecheck.log": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/frontend_typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ruff_final.json": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/ruff_final.json",
+      "sha256": "784ff7a5778e2332e96f50e19604dc3b88986f7752895fc41b2aaae602cd7bd1"
+    },
+    "eslint_intermediate.json": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/eslint_intermediate.json",
+      "sha256": "0a485fb90566fd12bf6785170452dc817d9f17d9f7c296e6a20f457e329475ed"
+    },
+    "offline_probes.py": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/offline_probes.py",
+      "sha256": "1f37760b838da1615425b41729298a71478a0d295c530e7e01beb6dae86477b3"
+    },
+    "offline_probes.json": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/offline_probes.json",
+      "sha256": "b2a36125634d8ddbe2aad6f01c97f000af51336829fd8d072097ee91ed634bfd"
+    },
+    "static_delta.json": {
+      "path": "/Users/marselkei/Library/Application Support/Intra/audits/2026-09-26/verification-ui/static_delta.json",
+      "sha256": "7afb71cf8b003b6f0ac3426ee96628684b3b7cffeb378e74f6ac741dd34ef953"
+    }
+  },
+  "limitations": [
+    "No deployment, authenticated browser handshake, real user data, broker calls or runtime writes performed. UI was not started or claimed deployed.",
+    "Repository security.is_token_blacklisted falls back to local memory on Redis outage; cross-process revocation availability remains inherited. Socket check failures that actually raise are denied, but this is not universal revocation certification.",
+    "Portfolio backend still represents the configured shared broker account and existing local synchronization; this is not a new multi-tenant account isolation design.",
+    "Full existing safety/replay/artifact generation and hostedCI are parent-owned and required before release; this report claims only its scoped tests/build.",
+    "Canvas drawing is not exercised by jsdom; existing canvas-unimplemented diagnostics remain in frontend log. Production build still warns about pre-existing chunks over500kB.",
+    "Legacy generic backend.websocket path and separate frontend ancillary performance/history endpoints are not certified by this Socket.IO/current-portfolio delta.",
+    "Raw lint commands retain existing findings: Ruff43 current vs47 baseline; ESLint5 current vs6 baseline; exact code/message delta0new. ParkedCI cleanup was not performed."
+  ]
+}

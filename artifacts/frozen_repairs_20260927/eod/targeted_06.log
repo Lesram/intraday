@@ -1,0 +1,125 @@
+Isolated test scratch: /private/tmp/intra-audit-test-ww91e0ai
+........................................................................ [ 34%]
+........................................................................ [ 68%]
+........................................................F........        [100%]
+=================================== FAILURES ===================================
+________ test_w100_position_management_loop_produces_exits_on_downturn _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1195b3e00>
+tmp_path = PosixPath('/private/tmp/intra-audit-test-ww91e0ai/pytest-of-marselkei/pytest-0/test_w100_position_management_0')
+record_property = <function record_property.<locals>.append_property at 0x1195ab420>
+
+    @pytest.mark.timeout(60)
+    @pytest.mark.asyncio
+    async def test_w100_position_management_loop_produces_exits_on_downturn(monkeypatch, tmp_path, record_property):
+        """Real entries must produce protective exits and reconciled outcomes."""
+        bars = _minute_bars()
+        # After 40 valid minutes, force a real price shock in subsequent provider
+        # bars. Existing exits see that market path; no exit decision is mocked.
+        for frame in bars.values():
+            frame.loc[240:, ["open", "high", "low", "close"]] *= .75
+        replay, engines, _ = _replay(monkeypatch, tmp_path, bars)
+        result = await replay.run(max_ticks=60)
+        _assert_real_ticks(result, 60)
+        assert any(order["side"] == "buy" for order in result.orders)
+        assert any(order["side"] == "sell" for order in result.orders)
+        assert result.trades and result.accounted_trades
+        assert sum(tick["exits_checked"] for tick in result.tick_results) > 0
+        assert not result.accounting_pending
+        assert engines[0].learner.state.total_trades == len(result.accounted_trades)
+        assert all(trade["price_source"] == "simulated_position_fills"
+                   and not trade["is_reconciliation_artifact"]
+                   for trade in result.accounted_trades)
+        shock_at = bars["AAPL"]["timestamp"].iloc[240]
+        protected = [trade for trade in result.accounted_trades
+                     if pd.Timestamp(trade["closed_at"]) >= shock_at and trade["pnl"] < 0
+                     and (trade["exit_reason"] in {"stop_loss", "max_loss_limit"}
+                          or trade["exit_reason"].startswith("pyramid_cut_full"))]
+>       assert protected, "The injected downturn must close an actual losing position"
+E       AssertionError: The injected downturn must close an actual losing position
+E       assert []
+
+tests/test_v13_w100_live_tick_coverage.py:248: AssertionError
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $1,000,125
+  💾 Brain saved: generation 0, 1 trades, equity $1,000,922
+  💾 Brain saved: generation 0, 2 trades, equity $1,001,530
+  💾 Brain saved: generation 0, 3 trades, equity $1,001,633
+  💾 Brain saved: generation 0, 3 trades, equity $1,001,393
+  💾 Brain saved: generation 0, 3 trades, equity $1,001,393
+  💾 Brain saved: generation 0, 3 trades, equity $1,001,393
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.replay_simulator:replay_simulator.py:710 {"event": "OPTIMISTIC FILL MODE: same_bar_fills=True half_spread=None slippage_bps=5 \u2014 results overstate performance and are NOT valid promotion evidence (use cost_profile='realistic').", "logger": "backend.organism.replay_simulator", "level": "warning", "timestamp": "2026-09-27T18:38:23.579341Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.035664Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.100672Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.163092Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.261352Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.414205Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.478951Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.542460Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.606758Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.671676Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.735379Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.799971Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.864147Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:24.977616Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.044353Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.108579Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.178805Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.243764Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.308337Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.380912Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.445829Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.508768Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.573102Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.646438Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.710878Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.774581Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.838760Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.903742Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:25.968510Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.034613Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.099352Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.162899Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.236680Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.299927Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.363666Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.428124Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.500332Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.565002Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.628988Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.692790Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.756520Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.821711Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.885243Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:26.949183Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.011283Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.074702Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.138033Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.202294Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.265845Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.329353Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.391874Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.454891Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.518851Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.581766Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.647137Z"}
+WARNING  backend.organism.live_engine:live_engine.py:7817 {"event": "Pending entry resolution incomplete; attribution retained: ['entry_database_unavailable']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:38:27.710964Z"}
+=============================== warnings summary ===============================
+tests/test_v13_w100_live_tick_coverage.py::test_w100_entries_gate_produces_orders_on_uptrend
+  tests/test_v13_w100_live_tick_coverage.py:195: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn
+  tests/test_v13_w100_live_tick_coverage.py:222: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_v13_w100_live_tick_coverage.py::test_w100_eod_flattens_real_entered_position
+  tests/test_v13_w100_live_tick_coverage.py:263: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_v13_w100_live_tick_coverage.py::test_w100_position_management_loop_produces_exits_on_downturn
+1 failed, 208 passed, 3 warnings in 24.71s

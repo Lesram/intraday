@@ -16,7 +16,7 @@ from backend.infra.security import (
     get_authenticated_user,
     get_user_id,
 )
-from backend.services.portfolio_service import get_portfolio_service
+from backend.services.portfolio_service import PortfolioUnavailableError, get_portfolio_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -37,7 +37,7 @@ class PortfolioSummary(BaseModel):
     totalPnL: float
     totalPnLPercent: float = 0.0
     dayPnL: float
-    dayPnLPercent: float = 0.0
+    dayPnLPercent: float | None = None
 
     # Position summary
     positions: list = []
@@ -81,6 +81,11 @@ async def get_portfolio(
             userId=portfolio_data['userId'],
             lastUpdate=portfolio_data['lastUpdate']
         )
+    except PortfolioUnavailableError:
+        raise HTTPException(status_code=503, detail={
+            "code": "portfolio_unavailable",
+            "message": "Current portfolio could not be verified. Positions and balances are unavailable.",
+        }) from None
     except Exception as e:
         logger.error(f"[PORTFOLIO] ERROR: {type(e).__name__}: {str(e)}")
         logger.error(f"[PORTFOLIO] Traceback:\n{traceback.format_exc()}")
@@ -374,5 +379,4 @@ async def sync_portfolio_from_alpaca(
             status_code=500,
             detail="Failed to sync portfolio"
         )
-
 

@@ -170,7 +170,7 @@ class TestPrefillFailureDoesntCrash:
 
 
 class TestGetBarsAfterPrefill:
-    """get_bars() should return pre-filled data as a DataFrame."""
+    """Historical buffers are readable only after a genuine fresh stream bar."""
 
     @pytest.mark.asyncio
     async def test_get_bars_returns_prefilled_data(self):
@@ -189,6 +189,10 @@ class TestGetBarsAfterPrefill:
                 data_client=client,
             )
 
+        assert provider.get_bars("AAPL", lookback=10).empty
+        assert provider.get_bar_age("AAPL") == float("inf")
+        await provider._on_bar("AAPL", {**df.iloc[-1].to_dict(),
+                                       "timestamp": pd.Timestamp.now(tz="UTC").isoformat()})
         result = provider.get_bars("AAPL", lookback=10)
         assert len(result) == 10
         assert list(result.columns) >= ["timestamp", "open", "high", "low", "close", "volume"]
@@ -210,8 +214,12 @@ class TestGetBarsAfterPrefill:
                 data_client=client,
             )
 
+        assert provider.get_bars("AAPL", lookback=200).empty
+        assert provider.bar_count("AAPL") == 5
+        await provider._on_bar("AAPL", {**df.iloc[-1].to_dict(),
+                                       "timestamp": pd.Timestamp.now(tz="UTC").isoformat()})
         result = provider.get_bars("AAPL", lookback=200)
-        assert len(result) == 5
+        assert len(result) == 6
 
 
 class TestStreamingBarsAppendAfterPrefill:

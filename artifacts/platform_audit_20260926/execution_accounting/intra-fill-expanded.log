@@ -1,0 +1,136 @@
+Isolated test scratch: /private/tmp/intra-audit-test-yjfdm2z7
+........................................................................ [ 34%]
+........................................................................ [ 68%]
+................FF...............FFFF.............................F      [100%]
+=================================== FAILURES ===================================
+_ TestAlpacaStreamProcessTradeUpdateBroadcast.test_process_trade_update_broadcasts_to_user _
+tests/unit/test_alpaca_stream_comprehensive.py:1096: in test_process_trade_update_broadcasts_to_user
+    await client._process_trade_update(update)
+backend/integrations/alpaca_stream.py:920: in _process_trade_update
+    accounting = await apply_order_fill_snapshot(
+backend/integrations/alpaca_stream.py:409: in apply_order_fill_snapshot
+    previous = _decimal_or_none(current.filled_qty) or Decimal("0")
+                                ^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'coroutine' object has no attribute 'filled_qty'
+------------------------------ Captured log call -------------------------------
+ERROR    backend.integrations.alpaca_stream:alpaca_stream.py:1011 {"update": {"data": {"order": {"id": "broker-123", "status": "filled", "filled_qty": "100", "filled_avg_price": "150.50"}}}, "error": "'coroutine' object has no attribute 'filled_qty'", "error_type": "AttributeError", "event": "Failed to process trade update", "logger": "backend.integrations.alpaca_stream", "level": "error", "timestamp": "2026-09-26T22:43:45.494013Z"}
+_ TestAlpacaStreamProcessTradeUpdateBroadcast.test_process_trade_update_broadcast_failure_doesnt_break _
+tests/unit/test_alpaca_stream_comprehensive.py:1145: in test_process_trade_update_broadcast_failure_doesnt_break
+    await client._process_trade_update(update)
+backend/integrations/alpaca_stream.py:920: in _process_trade_update
+    accounting = await apply_order_fill_snapshot(
+backend/integrations/alpaca_stream.py:409: in apply_order_fill_snapshot
+    previous = _decimal_or_none(current.filled_qty) or Decimal("0")
+                                ^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'coroutine' object has no attribute 'filled_qty'
+------------------------------ Captured log call -------------------------------
+ERROR    backend.integrations.alpaca_stream:alpaca_stream.py:1011 {"update": {"data": {"order": {"id": "broker-123", "status": "filled", "filled_qty": "100"}}}, "error": "'coroutine' object has no attribute 'filled_qty'", "error_type": "AttributeError", "event": "Failed to process trade update", "logger": "backend.integrations.alpaca_stream", "level": "error", "timestamp": "2026-09-26T22:43:45.595358Z"}
+_ TestAlpacaStreamProcessTradeUpdateComplete.test_process_trade_update_with_avg_fill_price _
+tests/unit/test_alpaca_stream_comprehensive.py:1585: in test_process_trade_update_with_avg_fill_price
+    await client._process_trade_update(update)
+backend/integrations/alpaca_stream.py:920: in _process_trade_update
+    accounting = await apply_order_fill_snapshot(
+backend/integrations/alpaca_stream.py:401: in apply_order_fill_snapshot
+    result = await session.execute(select(Order).where(Order.id == order.id)
+E   TypeError: object MagicMock can't be used in 'await' expression
+------------------------------ Captured log call -------------------------------
+ERROR    backend.integrations.alpaca_stream:alpaca_stream.py:1011 {"update": {"data": {"order": {"id": "broker-123", "status": "filled", "filled_qty": "100", "filled_avg_price": "150.50"}}, "event": "fill"}, "error": "object MagicMock can't be used in 'await' expression", "error_type": "TypeError", "event": "Failed to process trade update", "logger": "backend.integrations.alpaca_stream", "level": "error", "timestamp": "2026-09-26T22:43:46.185075Z"}
+_ TestAlpacaStreamProcessTradeUpdateComplete.test_filled_trade_update_syncs_local_positions _
+tests/unit/test_alpaca_stream_comprehensive.py:1664: in test_filled_trade_update_syncs_local_positions
+    await client._process_trade_update(update)
+backend/integrations/alpaca_stream.py:920: in _process_trade_update
+    accounting = await apply_order_fill_snapshot(
+backend/integrations/alpaca_stream.py:401: in apply_order_fill_snapshot
+    result = await session.execute(select(Order).where(Order.id == order.id)
+E   TypeError: object MagicMock can't be used in 'await' expression
+------------------------------ Captured log call -------------------------------
+ERROR    backend.integrations.alpaca_stream:alpaca_stream.py:1011 {"update": {"data": {"order": {"id": "broker-123", "client_order_id": "client-123", "status": "filled", "filled_qty": "3", "filled_avg_price": "416.31"}}, "event": "fill"}, "error": "object MagicMock can't be used in 'await' expression", "error_type": "TypeError", "event": "Failed to process trade update", "logger": "backend.integrations.alpaca_stream", "level": "error", "timestamp": "2026-09-26T22:43:46.202135Z"}
+________________ test_dd3_2_alpaca_stream_uses_incremental_qty _________________
+tests/test_wave43_fixes.py:32: in test_dd3_2_alpaca_stream_uses_incremental_qty
+    assert "DD3-2" in src, "DD3-2 marker missing from alpaca_stream"
+E   AssertionError: DD3-2 marker missing from alpaca_stream
+E   assert 'DD3-2' in '"""\nAlpaca WebSocket Stream Integration for Real-time Order Updates\n\nThis module provides real-time order status u...   global _stream_client\n    if _stream_client:\n        await _stream_client.stop()\n        _stream_client = None\n'
+__________ test_dd3_2_zero_or_negative_increment_skipped_behaviorally __________
+tests/test_wave43_fixes.py:64: in test_dd3_2_zero_or_negative_increment_skipped_behaviorally
+    result = await apply_incremental_fill_accounting(
+backend/integrations/alpaca_stream.py:286: in apply_incremental_fill_accounting
+    raise ValueError("Fill cashflow correction requires reconciliation")
+E   ValueError: Fill cashflow correction requires reconciliation
+___________________ test_ws_handler_handles_null_filled_qty ____________________
+tests/test_adversarial_inputs_v7.py:368: in test_ws_handler_handles_null_filled_qty
+    await stream._process_trade_update({"data": {"event": "new", "order": {
+backend/integrations/alpaca_stream.py:920: in _process_trade_update
+    accounting = await apply_order_fill_snapshot(
+backend/integrations/alpaca_stream.py:401: in apply_order_fill_snapshot
+    result = await session.execute(select(Order).where(Order.id == order.id)
+                   ^^^^^^^^^^^^^^^
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'execute'
+------------------------------ Captured log call -------------------------------
+ERROR    backend.integrations.alpaca_stream:alpaca_stream.py:1011 {"update": {"data": {"event": "new", "order": {"id": "broker-id", "status": "new", "filled_qty": null}}}, "error": "'types.SimpleNamespace' object has no attribute 'execute'", "error_type": "AttributeError", "event": "Failed to process trade update", "logger": "backend.integrations.alpaca_stream", "level": "error", "timestamp": "2026-09-26T22:43:47.947231Z"}
+=============================== warnings summary ===============================
+backend/models/order_integrity.py:62
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/models/order_integrity.py:62: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend/models/order_integrity.py:258
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/models/order_integrity.py:258: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("schema_version")
+
+backend/models/order_integrity.py:265
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/models/order_integrity.py:265: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("event_data")
+
+tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamClientListenLoop::test_listen_handles_connection_closed
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py:702: RuntimeWarning: coroutine 'TestAlpacaStreamClientListenLoop.test_listen_handles_connection_closed.<locals>.mock_iter' was never awaited
+    async for message in self.websocket:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamProcessTradeUpdateBroadcast::test_process_trade_update_broadcast_failure_doesnt_break
+  /opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/mock.py:2217: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    def __init__(self, name, parent):
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamListenWebSocketException::test_listen_handles_websocket_exception
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py:702: RuntimeWarning: coroutine 'TestAlpacaStreamListenWebSocketException.test_listen_handles_websocket_exception.<locals>.mock_iter' was never awaited
+    async for message in self.websocket:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamListenWebSocketException::test_listen_handles_unexpected_exception
+  /Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/integrations/alpaca_stream.py:702: RuntimeWarning: coroutine 'TestAlpacaStreamListenWebSocketException.test_listen_handles_unexpected_exception.<locals>.mock_iter' was never awaited
+    async for message in self.websocket:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_wave43_fixes.py::test_dd3_3_exit_path_consults_exit_cooldown
+  /opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/inspect.py:2549: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    pass
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+tests/test_adversarial_inputs_v7.py::test_bar_negative_volume_silently_accepted
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log1p
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+tests/test_adversarial_inputs_v7.py::test_bar_negative_price_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: invalid value encountered in log
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+tests/test_adversarial_inputs_v7.py::test_bar_single_row_does_not_crash
+  /Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/core/arraylike.py:402: RuntimeWarning: divide by zero encountered in log10
+    result = getattr(ufunc, method)(*inputs, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamProcessTradeUpdateBroadcast::test_process_trade_update_broadcasts_to_user
+FAILED tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamProcessTradeUpdateBroadcast::test_process_trade_update_broadcast_failure_doesnt_break
+FAILED tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamProcessTradeUpdateComplete::test_process_trade_update_with_avg_fill_price
+FAILED tests/unit/test_alpaca_stream_comprehensive.py::TestAlpacaStreamProcessTradeUpdateComplete::test_filled_trade_update_syncs_local_positions
+FAILED tests/test_wave43_fixes.py::test_dd3_2_alpaca_stream_uses_incremental_qty
+FAILED tests/test_wave43_fixes.py::test_dd3_2_zero_or_negative_increment_skipped_behaviorally
+FAILED tests/test_adversarial_inputs_v7.py::test_ws_handler_handles_null_filled_qty
+7 failed, 204 passed, 13 warnings in 3.97s

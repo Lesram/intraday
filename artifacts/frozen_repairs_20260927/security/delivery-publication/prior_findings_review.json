@@ -1,0 +1,17 @@
+{
+  "status": "PRIOR_18_EXACT_MATCHES_PRESERVED_NEW_MATCHES_REQUIRE_SEPARATE_REVIEW",
+  "prior_classifications": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/security/final-evidence/classification.json",
+      "sha256": "9b1fe8d2ebe2e211374f034ddabc9f8c218324be2369e5c0c2c49a4bdb5b363c"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/security/wave55-publication/new_findings_review.json",
+      "sha256": "0dde173b45c578170755c6bddd1230c41a650e8f88f8f75bc7023a9fd2fe837d"
+    }
+  ],
+  "scan_receipt_sha256": "f238d6fc7d6b1400beeca0320841fb0e9112cf29e9f72086321b0286c9211813",
+  "prior_findings": 18,
+  "new_findings": 6,
+  "all_scanned_files_stable": true
+}

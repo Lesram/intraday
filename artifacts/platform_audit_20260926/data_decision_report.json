@@ -1,0 +1,275 @@
+{
+  "application_head": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+  "audit_scope": "Read-only data discovery to final entry admission; no runtime/provider/account access, model deserialization, or source/config/freeze edits",
+  "authorization": "Investigation only. The user broad audit request does not itself establish approval of this concrete changed frozen surface or new active cutoff. Root will request scoped approval; do not implement or activate from this report.",
+  "findings": [
+    {
+      "acceptance": [
+        "Actual transport plus provider: send success is insufficient; matching acknowledgement completes only matching channels/current generation.",
+        "Server rejection/provider-limit error, partial bars/quotes response, omitted fields, timeout and lost acknowledgement remain incomplete and retry on bounded cadence without busy loop.",
+        "Unsubscribe failure retains old buffer/health until server-confirmed removal; stale old-connection acknowledgements cannot satisfy a new session.",
+        "Reconnect must start its reader early enough that _resubscribe_all confirmation cannot deadlock before listener startup.",
+        "Integrated replay with one healthy SPY and one refused NEW blocks all entries yet manages held protective/EOD exits; subsequent genuine acknowledgement and advancing fresh bar restore eligibility without duplicate orders."
+      ],
+      "evidence_status": "reproduced in real transport/provider classes with fake socket",
+      "freeze": "Underlying transport module is absent from compute_data_pipeline_sources; adding it is required. Provider module and synchronization are already frozen. Availability behavior changes require explicit approved candidate surface and a new forward activation boundary.",
+      "id": "DATA-01",
+      "locations": [
+        {
+          "line": 372,
+          "path": "backend/integrations/alpaca_market_data_stream.py"
+        },
+        {
+          "line": 534,
+          "path": "backend/integrations/alpaca_market_data_stream.py"
+        },
+        {
+          "line": 305,
+          "path": "backend/organism/streaming_data_provider.py"
+        },
+        {
+          "line": 538,
+          "path": "backend/organism/streaming_data_provider.py"
+        }
+      ],
+      "negative_control": "A socket.send exception correctly returns False and sends both subscriptions on retry.",
+      "observed": "Both initial and next synchronization return True; local maps retain NEW; next synchronization sends zero requests; NEW remains infinitely stale, globally blocking entries; all-stale recovery returns False while SPY is fresh.",
+      "priority": "P1",
+      "repair": "Separate desired, pending and server-confirmed bar/quote subscriptions per connection generation. Only current-session confirmation establishes completion; omissions/errors/timeouts preserve explicit incomplete state and bounded retries. Retain required symbols and entry block rather than deleting quota-rejected symbols to force availability. Confirm unsubscribe before removing active state. Do not conflate absent response fields with explicit empty channel lists.",
+      "title": "Server-rejected subscriptions become permanent local successes",
+      "trigger": "Socket send succeeds, then a server error or supplied subscription snapshot excludes newly requested NEW while SPY continues receiving fresh bars."
+    },
+    {
+      "acceptance": [
+        "Initial connect/bars/quotes refusal, timeout and exception lead to visible degraded state and bounded successful later retry without converting configured streaming to unrestricted REST.",
+        "No-bar startup plus graceful socket close recovers; deliberate stop does not reconnect.",
+        "Normal closure, exception closure and reconnect failure all clear connected/authenticated state; one listener per generation, desired subscriptions retained.",
+        "Scheduler/provider integrated fixture validates eventual resumed bars and truthful readiness while existing positions remain managed."
+      ],
+      "evidence_status": "three failed-start cases plus clean-close case reproduced",
+      "freeze": "Scheduler and provider source are already frozen. Transport must be added to explicit coverage. No startup/recovery source implementation before scoped approval.",
+      "id": "DATA-02",
+      "locations": [
+        {
+          "line": 115,
+          "path": "backend/organism/streaming_data_provider.py"
+        },
+        {
+          "line": 143,
+          "path": "backend/organism/streaming_data_provider.py"
+        },
+        {
+          "line": 528,
+          "path": "backend/organism/streaming_data_provider.py"
+        },
+        {
+          "line": 164,
+          "path": "backend/organism/scheduler.py"
+        },
+        {
+          "line": 171,
+          "path": "backend/organism/scheduler.py"
+        },
+        {
+          "line": 461,
+          "path": "backend/integrations/alpaca_market_data_stream.py"
+        }
+      ],
+      "observed": "Failed start returns normally after setting provider stopped and clearing stream; scheduler has no is_running check and retains it. Repeated sync/recovery return False with no reconnect; explicit restart is needed. Normal iterator exhaustion returns from listen while connected/authenticated stay True and no reconnect runs. Existing all-stale recovery is only every30ticks and requires prior bars/running state.",
+      "priority": "P1",
+      "repair": "Make startup outcome explicit and provide bounded retry for the configured streaming session while preserving entry block and position management. Treat unexpected normal listener termination as disconnection/reconnect, while explicit stop remains final; avoid duplicate listeners, stale-generation callbacks and resurrected stop state.",
+      "title": "Failed streaming startup cannot recover, and normal socket closure remains falsely connected",
+      "trigger": "Initial connect or bars/quotes subscription returns False, or authenticated websocket async iterator ends normally."
+    },
+    {
+      "acceptance": [
+        "Equivalent RangeIndex and DatetimeIndex representations produce identical cross-asset values.",
+        "Different-length/gapped/sparse frames use only SPY bars at or before each stock timestamp; correct values verified against independent explicit timestamp oracle.",
+        "Future-tail changes cannot alter earlier prefix features.",
+        "Timezone offsets, duplicate/unsorted/naive/invalid timestamps and insufficient/no prior SPY coverage have explicit consistent behavior.",
+        "Unchanged all-non-crossasset values, same-timestamp dense-input parity, fixed-risk/ML-isolated paired replay with actual submissions/exits and adverse outcomes disclosed."
+      ],
+      "current_scope_limit": "These four columns feed ML/analysis. Current research-locked main-book routing excludes ML influence; this proof does not establish a changed current trade or lost profit. The data values remain incorrect and should not be treated as valid training/research evidence.",
+      "evidence_status": "actual compute_ml_features reproduction with live-shaped RangeIndex frames and timestamp oracle",
+      "freeze": "ml_features module is already under data_pipeline_sources. Correcting derived inputs requires explicit frozen-surface approval/replay/new forward activation, even though current main-book ML is isolated.",
+      "id": "DATA-03",
+      "locations": [
+        {
+          "line": 208,
+          "path": "backend/integrations/alpaca_data.py"
+        },
+        {
+          "line": 268,
+          "path": "backend/organism/streaming_data_provider.py"
+        },
+        {
+          "line": 65,
+          "path": "backend/organism/live_engine_data.py"
+        },
+        {
+          "line": 269,
+          "path": "backend/organism/ml_features.py"
+        },
+        {
+          "line": 277,
+          "path": "backend/organism/ml_features.py"
+        }
+      ],
+      "observed": {
+        "actual_live_input_index_type": "RangeIndex",
+        "all_non_cross_asset_columns_equal": true,
+        "correct_spy_time": "2026-09-24 15:29:00+00:00",
+        "incorrect_spy_time_selected_by_range_index": "2026-09-24 14:49:00+00:00",
+        "last_stock_bar_time": "2026-09-24 15:29:00+00:00",
+        "latest_feature_values": {
+          "beta_20d": {
+            "range_index": -0.4083180628208294,
+            "timestamp_index": 6.811539868930299
+          },
+          "corr_to_market": {
+            "range_index": -0.12915567442181713,
+            "timestamp_index": 0.8697679314813102
+          },
+          "idio_vol": {
+            "range_index": 0.49174773419498186,
+            "timestamp_index": 0.07353934880504867
+          },
+          "rel_strength_spy": {
+            "range_index": -0.10677735660194188,
+            "timestamp_index": -0.1366438530992098
+          }
+        },
+        "oracle_relative_strength": -0.1366438530992098,
+        "proof_limit": "Timestamp-index arm is an alignment oracle only, not a patched trading replay or profitability claim.",
+        "same_latest_timestamp": true,
+        "spy_rows": 120,
+        "stock_rows": 80
+      },
+      "priority": "P2",
+      "repair": "Align SPY to each stock bar using validated aware timestamps and backward-only lookup, preserving output row order and all non-cross-asset features. Remove ordinal-index dependence and avoid requiring SPY row count >= stock row count when actual temporal coverage is sufficient. Reject/mark unavailable invalid temporal coverage rather than fabricate future values.",
+      "title": "SPY-relative features use ordinal indexes rather than actual bar timestamps",
+      "trigger": "Stock and SPY OHLCV frames have different lengths or timestamp coverage (normal with sparse stock bars) and each has a RangeIndex, as both real data providers construct."
+    }
+  ],
+  "known_fixed_verified_by_source": [
+    "Scanner asymmetric discovery schemas now enrich before price/volume qualification; invalid/partial outcomes remain degraded; genuine empty success clears pool and failure count.",
+    "PR30 synchronizes base/benchmark/current/held symbols each tick with5s bound and rechecks global freshness.",
+    "Ordered advancing bar freshness rejects future/duplicate/stale clock laundering; actual final feature-bar age checked after quote selection.",
+    "Scalar composite producer corrected and covered by real paired synthetic replay; cache remains excluded."
+  ],
+  "proofs": {
+    "probe_data_decisions.py": {
+      "bytes": 6868,
+      "sha256": "2d6ccc352bc7f63d58f5ffcc9985b94e621d27d0fa53407bc370fdd8b1067da4"
+    },
+    "probe_startup.py": {
+      "bytes": 1773,
+      "sha256": "217a4fe44e5b2cba6e270f4b98a15f6d7b142285a97f1727cd9032e2050ec48e"
+    },
+    "proof.json": {
+      "bytes": 3275,
+      "sha256": "421c1577df0142baa695deeca918aeb36a4aefa56ae6dccb832dc46fa3ea4063"
+    },
+    "proof02.log": {
+      "bytes": 1099,
+      "sha256": "56c455051c4a185183b15b8a22ee8ed276797271aa05e3efcb54e1733048d48c"
+    },
+    "proof_run02.json": {
+      "bytes": 442,
+      "sha256": "c8a21a230f1473e6a4caadbe74107ae7f1928432b38c1c3f0dbe7d320b90098d"
+    },
+    "startup-proof-run.json": {
+      "bytes": 189,
+      "sha256": "32d8a749d6d86e835905f268f8dbf249bb7603dbc073249dcfd5ed89265b591d"
+    },
+    "startup-proof.json": {
+      "bytes": 1427,
+      "sha256": "d700bd260e183e60b755cd683a6d586796b9844fbfb47e617f52027e183821ad"
+    },
+    "startup-proof.log": {
+      "bytes": 2209,
+      "sha256": "73b359c2a4cce58012868c3224d14ae4abee9c7bbef64421d7385a288bcc0313"
+    }
+  },
+  "proposed_bounded_files": [
+    "backend/integrations/alpaca_market_data_stream.py",
+    "backend/organism/streaming_data_provider.py",
+    "backend/organism/scheduler.py",
+    "backend/organism/ml_features.py",
+    "scripts/phase2_freeze.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/unit/test_alpaca_market_data_stream_comprehensive.py",
+    "tests/test_streaming_provider_lifecycle.py",
+    "tests/test_scanner_streaming_integration.py",
+    "NEW tests/test_streaming_subscription_acknowledgement.py",
+    "NEW tests/test_cross_asset_timestamp_alignment.py",
+    "docs/architecture/mapss.md"
+  ],
+  "recorded_at_utc": "2026-09-26T22:37:48.171625+00:00",
+  "remaining_policy_and_coverage_limits": [
+    {
+      "classification": "Source-confirmed bounded-universe/policy integration limitation; changing selection/lifetime or relaxing global safety is separate approval, not silently included in acknowledgment fix.",
+      "fact": "Scanner additions append to _universe, but its only regular rotate path is inside research-locked early-return retrain method. Each accumulated name now enters global freshness. Sparse names can therefore impose prolonged global blocks and increase feature cost.",
+      "id": "LIMIT-01",
+      "locations": [
+        "backend/organism/live_engine.py:3066",
+        "backend/organism/live_engine.py:7364",
+        "backend/organism/live_engine.py:7444"
+      ]
+    },
+    {
+      "classification": "Known measured cost in prior profiling, not a new benchmark or a claim that optimization is safe; cache excluded because fallback semantics require care.",
+      "fact": "Full features are recomputed for all universe names, with semaphore10 and to_thread when streaming; scheduler has60s tick timeout and adds configured sleep after completion. Slow ticks reduce the usable20s streaming-receipt window.",
+      "id": "LIMIT-02",
+      "locations": [
+        "backend/organism/live_engine_data.py:50",
+        "backend/organism/live_engine_data.py:111",
+        "backend/organism/scheduler.py:345"
+      ]
+    },
+    {
+      "classification": "Source-confirmed uncovered quote-provenance boundary; separate scoped age/fallback policy and regression required before claiming full marketability/slippage protection; no quote-derived order reproduced in this audit.",
+      "fact": "Latest quote storage and limit-price selection do not validate quote timestamp/age; final120s gate validates bars only.",
+      "id": "LIMIT-03",
+      "locations": [
+        "backend/organism/streaming_data_provider.py:492",
+        "backend/organism/live_engine.py:6465",
+        "backend/organism/kelly_sizer.py:147"
+      ]
+    }
+  ],
+  "required_invariants_preserved": [
+    "Current feed and strategy/risk parameters",
+    "Global120s any-stale subscription gate",
+    "Alpha20s receipt-age policy",
+    "Final0..120s actual feature-bar gate",
+    "ML isolation/fixed-risk sizing and no live exploration",
+    "Protective/EOD exits, no duplicate order submission",
+    "No drop of base/benchmark/held or failed subscription symbols to manufacture readiness"
+  ],
+  "schema": "platform_data_decision_audit_v1",
+  "source_hashes": {
+    "backend/integrations/alpaca_market_data_stream.py": "95a3331ca9cb5df5df5116abd07fc0c7113a943f5c780fc7461b8a9bf9be59ad",
+    "backend/organism/live_engine.py": "f419ee6e02b0bbddf0a2b9ed1abed86b42df5f00ebe20c27b5d3965943df7e35",
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "backend/organism/ml_features.py": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "backend/organism/scheduler.py": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "scripts/phase2_freeze.py": "ae2502fe6d1be049cfca3023fe0fbd5d4573b70c53f18714d94b4a9210363fa6"
+  },
+  "source_sha": "bf533a43d01a4c2e7428ea9589159d9c7d242319",
+  "test_gap_examples": [
+    "tests/unit/test_alpaca_market_data_stream_comprehensive.py:400 equates send success to subscription and:532 only checks server subscription message does not raise; no state reconciliation assertion.",
+    "Existing exception-close test:924 does not cover normal iterator exhaustion.",
+    "Repository test search for rel_strength_spy only found confidence fixtures, not live RangeIndex-vs-timestamp alignment oracle."
+  ],
+  "validation_summary": {
+    "elapsed_seconds": 0.938,
+    "initial_harness_failure": "An import-side audit log attempted a denied worktree write; execution was moved to private scratch and rerun. No source write occurred.",
+    "network_denied": true,
+    "real_credentials_or_models_accessed": false,
+    "reproduced": 8,
+    "source_and_production_writes_denied": true,
+    "synthetic_observation_cases": 8
+  }
+}

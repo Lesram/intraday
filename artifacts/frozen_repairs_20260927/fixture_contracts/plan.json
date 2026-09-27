@@ -1,0 +1,32 @@
+{
+  "task_id": "history-versus-live-profiler-fixture-alignment",
+  "scope": "Repair stale offline fixtures and synthetic profiler following approved current-session receipt contract; production streaming unchanged.",
+  "affected_files": [
+    "tests/unit/test_paper_data_freshness.py",
+    "scripts/diagnostics/profile_paper_pipeline.py",
+    "tests/test_pipeline_profile.py"
+  ],
+  "before_sha256": {
+    "tests/unit/test_paper_data_freshness.py": "c8669905ad4282c0dde9ef1c128566459ac161fc30f2b6c343bffbee1ff11d84",
+    "scripts/diagnostics/profile_paper_pipeline.py": "4d3717ecc32b4d3c7e62e80d699f8db418a56a99726b27f387f65442b0ae8ed4",
+    "tests/test_pipeline_profile.py": "fe50479a6c054fe4a2f43f3f1f8877af5e65d04c7f84d53c1ac53a9f90afd9bc"
+  },
+  "tests": [
+    "tests/unit/test_paper_data_freshness.py",
+    "tests/test_pipeline_profile.py",
+    "tests/test_streaming_subscription_acknowledgement.py"
+  ],
+  "changes": [
+    "Retain chronological and event-age history assertions directly on buffers, then deliver explicit advancing synthetic live callbacks before asserting freshness",
+    "Seed profiler history excluding final bar and deliver final bar through fake transport registered production callback, never write receipt metadata",
+    "Keep actual feature feeder/noREST/nonempty/equaloutput proofs, add explicit history-not-fresh and livebar delivery proof fields"
+  ],
+  "required_negative_control": "Preserve parent operational_regression.xml and create focused pre-edit failure receipt",
+  "excluded": [
+    "production streaming edits",
+    "entry or freshness gate weakening",
+    "runtime calls",
+    "installed writes",
+    "commit/deploy"
+  ]
+}

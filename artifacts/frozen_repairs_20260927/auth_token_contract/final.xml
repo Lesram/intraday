@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="84" failures="0" errors="0" time="2.809955541">
+    <testsuite name="src/services/api.test.ts" timestamp="2026-09-27T19:57:08.372Z" hostname="Marsels-MacBook-Pro.local" tests="4" failures="0" errors="0" skipped="0" time="0.111673958">
+        <testcase classname="src/services/api.test.ts" name="concurrent 401 without refresh settle, and later login can refresh and retry" time="0.004175083">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh success cannot overwrite or clear replacement login" time="0.05270375">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="old refresh failure cannot overwrite or clear replacement login" time="0.052950875">
+        </testcase>
+        <testcase classname="src/services/api.test.ts" name="queued retry cannot dispatch old work as a replacement principal" time="0.001266">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/services/authService.test.tsx" timestamp="2026-09-27T19:57:08.373Z" hostname="Marsels-MacBook-Pro.local" tests="50" failures="0" errors="0" skipped="0" time="0.07251325">
+        <testcase classname="src/services/authService.test.tsx" name="actual backend LoginResponse normalizes principal through auth store and portfolio query" time="0.062072667">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000585708">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000123167">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="rejects invalid principal rather than inventing user identity" time="0.000111333">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is missing" time="0.000146291">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is null" time="0.000104709">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is number" time="0.000089584">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is boolean" time="0.000096167">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is object" time="0.000118">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is array" time="0.000137959">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is empty" time="0.000102084">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects access_token that is whitespace" time="0.0000915">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is missing" time="0.000076042">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is null" time="0.000071625">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is number" time="0.000074584">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is boolean" time="0.000064709">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is object" time="0.000065791">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is array" time="0.000061917">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is empty" time="0.0000595">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login rejects refresh_token that is whitespace" time="0.000066458">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full login preserves valid credentials and principal" time="0.000087417">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full malformed access_token never authenticates the login hook" time="0.00224925">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full malformed refresh_token never authenticates the login hook" time="0.000848208">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="full valid login authenticates and navigates" time="0.000911708">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is missing" time="0.000096708">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is null" time="0.000065958">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is number" time="0.000065958">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is boolean" time="0.000074375">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is object" time="0.000068625">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is array" time="0.000059833">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is empty" time="0.000063375">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects access_token that is whitespace" time="0.000058625">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is missing" time="0.000066458">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is null" time="0.000060709">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is number" time="0.000057167">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is boolean" time="0.000057375">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is object" time="0.000056333">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is array" time="0.000076375">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is empty" time="0.000056375">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login rejects refresh_token that is whitespace" time="0.000056334">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend login preserves valid credentials and principal" time="0.000078333">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend malformed access_token never authenticates the login hook" time="0.000754334">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend malformed refresh_token never authenticates the login hook" time="0.000617667">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="backend valid login authenticates and navigates" time="0.000543792">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;admin&quot;] as admin" time="0.000105209">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;trader&quot;] as trader" time="0.000061208">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;risk_manager&quot;] as risk_manager" time="0.000054">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;risk-manager&quot;] as risk_manager" time="0.000063625">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;viewer&quot;] as viewer" time="0.000056917">
+        </testcase>
+        <testcase classname="src/services/authService.test.tsx" name="preserves valid backend roles [&quot;paper_monitor&quot;] as viewer" time="0.000057791">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/components/auth/AuthBootstrap.test.tsx" timestamp="2026-09-27T19:57:08.375Z" hostname="Marsels-MacBook-Pro.local" tests="20" failures="0" errors="0" skipped="0" time="0.331792958">
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="reload restores once under StrictMode before protected HTTP/socket traffic" time="0.065608667">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Connecting...
+[WebSocket] Disconnecting...
+[WebSocket] Connecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration missing-refresh clears and redirects without mounting protected content" time="0.00685125">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration refresh-rejected clears and redirects without mounting protected content" time="0.007103167">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration malformed-refresh clears and redirects without mounting protected content" time="0.00565475">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration me-rejected clears and redirects without mounting protected content" time="0.003957625">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration wrong-principal clears and redirects without mounting protected content" time="0.0049345">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration inactive clears and redirects without mounting protected content" time="0.005454542">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="restoration malformed-roles clears and redirects without mounting protected content" time="0.005056459">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;success&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.0024475">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;failure&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.0017925">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;success&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.053969875">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;failure&apos; after &apos;logout&apos; cannot resurrect or clear a session" time="0.053930584">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;success&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.00168675">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;refresh&apos; &apos;failure&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.001580833">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;success&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.05394575">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="stale &apos;me&apos; &apos;failure&apos; after &apos;new-login&apos; cannot resurrect or clear a session" time="0.0539165">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="a nonresponding refresh is aborted at the whole-session deadline" time="0.001694417">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="anonymous startup finishes without network and explicit API origin is honored on reload" time="0.000667917">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="deadline clears the captured session even if refresh resolves after abort" time="0.00051325">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+        <testcase classname="src/components/auth/AuthBootstrap.test.tsx" name="deadline clears the captured session even if me resolves after abort" time="0.000371083">
+            <system-out>
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+[WebSocket] Disconnecting...
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="src/features/auth/LoginPage.test.tsx" timestamp="2026-09-27T19:57:08.378Z" hostname="Marsels-MacBook-Pro.local" tests="10" failures="0" errors="0" skipped="0" time="2.293975375">
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in production even with the bypass flag enabled" time="0.9131985">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; does not automatically submit in development without explicit opt-in" time="0.031647084">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; retains the explicit development opt-in and only attempts once under StrictMode" time="0.026674167">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed plain username without changing the password" time="0.214307417">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; submits a trimmed email without changing the password" time="0.183178667">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;&quot;)" time="0.218657">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; rejects an empty or whitespace-only username (&quot;   &quot;)" time="0.208081208">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;&quot;)" time="0.21292275">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; preserves existing password validation (&quot;short&quot;)" time="0.207826167">
+        </testcase>
+        <testcase classname="src/features/auth/LoginPage.test.tsx" name="LoginPage access contract &gt; provides honest recovery guidance without a dead recovery link" time="0.076871125">
+        </testcase>
+    </testsuite>
+</testsuites>

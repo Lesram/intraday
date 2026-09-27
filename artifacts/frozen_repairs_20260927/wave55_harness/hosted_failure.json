@@ -1,0 +1,37 @@
+{
+  "source_sha": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+  "run_id": 36344234541,
+  "run_url": "https://github.com/Lesram/intraday/actions/runs/36344234541",
+  "job_id": 108690099771,
+  "job_url": "https://github.com/Lesram/intraday/actions/runs/36344234541/job/108690099771",
+  "step": {
+    "completedAt": "2026-09-27T19:35:06Z",
+    "conclusion": "failure",
+    "name": "Verify nightly test harness repairs",
+    "number": 9,
+    "startedAt": "2026-09-27T19:33:50Z",
+    "status": "completed"
+  },
+  "artifact_member": "artifacts/nightly_test_harness/github_targeted.xml",
+  "artifact_junit_sha256": "979062fa256eb8854038d70c9a69cfd0fba527a966cf55e868a7cc3f689b1a21",
+  "run_metadata_sha256": "4f047fdd4befe7534be039dbd42d4b02ae017e341066c24720462cb2aa0d8056",
+  "job_log_sha256": "35c4d6eddef15b6cd43cc3f360b0fafce6d813b992bbbf0e7c2d2ba0895d7b2d",
+  "tests": 303,
+  "passed": 302,
+  "failed": 1,
+  "errors": 0,
+  "skipped": 0,
+  "failed_case": "tests.test_wave55_fixes::test_bb4_f2_verify_eod_cancel_inline_in_live_engine",
+  "failure_text": "tests/test_wave55_fixes.py:87: in test_bb4_f2_verify_eod_cancel_inline_in_live_engine\n    assert \"EOD flatten cancelled pending\" in src, (\nE   AssertionError: BB4-F2 false-positive: DD3-4 inline cancel block removed.\nE   assert 'EOD flatten cancelled pending' in '    async def _live_tick_inner(self) -> LiveTickResult:\\n        \"\"\"Inner tick logic \u2014 always called under _tick_lock...lt)\\n        except Exception:\\n            pass  # Watchdog must never break the tick loop\\n\\n        return result\\n'",
+  "root_cause": "Obsolete source-log-string assertion after approved EOD cancellation adapter repair; this test did not execute the cancellation boundary.",
+  "separate_local_reproduction": {
+    "path": "private source retained; basename intra-pr32-c765-harness-local.xml",
+    "sha256": "4428c2cc4ebe15183bf314408e0e660b7f81f6faf3de8a44768d4778b0f9df5f",
+    "tests": 303,
+    "passed": 302,
+    "failure": 1,
+    "error": 0,
+    "skipped": 0
+  },
+  "limitation": "This retained hosted run failed; the published green 303-case JUnit is a subsequent LOCAL isolated selection. A fresh hosted gate remains separate."
+}

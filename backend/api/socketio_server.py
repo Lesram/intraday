@@ -10,14 +10,15 @@ Handles WebSocket connections from frontend clients with:
 
 from datetime import UTC, datetime
 import logging
+import math
+import time
 import os
-import traceback
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 import socketio
 
-from backend.infra.security import decode_token
+from backend.infra.security import decode_token, is_token_blacklisted
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,27 @@ sio = socketio.AsyncServer(
 # Track client subscriptions
 client_subscriptions: dict[str, set[str]] = {}  # {sid: {topic1, topic2, ...}}
 topic_subscribers: dict[str, set[str]] = {}      # {topic: {sid1, sid2, ...}}
+
+# Public dashboard channels; personal events use only the authenticated user's
+# server-derived room. Never accept arbitrary Socket.IO room names from clients.
+DASHBOARD_TOPICS = frozenset({
+    'orders', 'positions', 'portfolio', 'market_data', 'signals',
+    'strategies', 'alerts', 'risk', 'organism',
+})
+
+
+def _subscription_topics(data: dict, user_id: str) -> list[str]:
+    if not isinstance(data, dict) or not isinstance(user_id, str) or not user_id:
+        raise ValueError('Invalid subscription')
+    if ('topic' in data) == ('topics' in data):
+        raise ValueError('Invalid subscription')
+    topics = [data['topic']] if 'topic' in data else data['topics']
+    if (not isinstance(topics, list) or not 1 <= len(topics) <= len(DASHBOARD_TOPICS) + 1
+            or any(not isinstance(topic, str) or
+                   (topic not in DASHBOARD_TOPICS and topic != f'user_{user_id}')
+                   for topic in topics)):
+        raise ValueError('Unauthorized subscription')
+    return list(dict.fromkeys(topics))
 
 
 @sio.event
@@ -71,10 +93,17 @@ async def connect(sid: str, environ: dict, auth: dict | None):
             claims = decode_token(token)
             user_id = claims.get('sub')
             roles = claims.get('roles', [])
-            if "paper_monitor" in roles:
+            if (not isinstance(user_id, str) or not user_id
+                    or not isinstance(roles, list) or any(not isinstance(role, str) for role in roles)
+                    or "paper_monitor" in roles):
                 return False  # Scoped monitoring tokens cannot open Socket.IO sessions.
 
-            logger.info(f"[AUTH] JWT decoded - user_id: '{user_id}', roles: {roles}")
+            expiry, token_id = claims.get('exp'), claims.get('jti')
+            if (type(expiry) not in (int, float) or not math.isfinite(expiry)
+                    or expiry <= time.time() or not isinstance(token_id, str) or not token_id
+                    or await is_token_blacklisted(token_id)):
+                return False
+            logger.info("Socket.IO principal verified")
             logger.info(f"Client connected: {sid} (user: {user_id}, roles: {roles})")
 
             # Store user info in session
@@ -82,6 +111,8 @@ async def connect(sid: str, environ: dict, auth: dict | None):
                 session['user_id'] = user_id
                 session['roles'] = roles
                 session['authenticated'] = True
+                session['expires_at'] = expiry
+                session['token_id'] = token_id
 
             # Initialize subscription tracking
             client_subscriptions[sid] = set()
@@ -150,6 +181,28 @@ async def disconnect(sid: str):
         logger.error(f"Disconnect cleanup error for {sid}: {e}")
 
 
+async def _session_authorized(sid: str, user_id: str | None = None) -> bool:
+    """Recheck bounded session claims before delivering data, including revocation."""
+    try:
+        async with sio.session(sid) as session:
+            expiry = session.get('expires_at')
+            token_id = session.get('token_id')
+            principal = session.get('user_id')
+            valid = (session.get('authenticated') is True and sid in client_subscriptions
+                     and isinstance(principal, str) and bool(principal)
+                     and (user_id is None or principal == user_id)
+                     and 'paper_monitor' not in session.get('roles', [])
+                     and type(expiry) in (int, float) and math.isfinite(expiry)
+                     and expiry > time.time() and isinstance(token_id, str) and bool(token_id))
+        if valid and not await is_token_blacklisted(token_id):
+            return True
+    except Exception:
+        pass  # Failure to verify a session never authorizes delivery.
+    await disconnect(sid)
+    await sio.disconnect(sid)
+    return False
+
+
 @sio.event
 async def subscribe(sid: str, data: dict):
     """
@@ -160,20 +213,20 @@ async def subscribe(sid: str, data: dict):
         data: {'topic': 'portfolio'} or {'topics': ['orders', 'positions']}
     """
     try:
-        # Check authentication
+        # Check authentication, expiry and revocation before room changes.
+        if not await _session_authorized(sid):
+            return
         async with sio.session(sid) as session:
-            if not session.get('authenticated'):
+            if (session.get('authenticated') is not True
+                    or 'paper_monitor' in session.get('roles', [])
+                    or sid not in client_subscriptions):
                 await sio.emit('error', {'message': 'Not authenticated'}, to=sid)
                 return
 
             user_id = session.get('user_id')
 
-        # Handle single topic or multiple topics
-        topics = []
-        if 'topic' in data:
-            topics = [data['topic']]
-        elif 'topics' in data:
-            topics = data['topics']
+        # Validate the whole batch before entering any room or mutating tracking.
+        topics = _subscription_topics(data, user_id)
 
         for topic in topics:
             # Add to tracking
@@ -193,8 +246,8 @@ async def subscribe(sid: str, data: dict):
             'message': f'Subscribed to {len(topics)} topic(s)'
         }, to=sid)
 
-    except Exception as e:
-        logger.error(f"Subscribe error for {sid}: {e}")
+    except Exception:
+        logger.warning("Socket.IO subscription refused")
         await sio.emit('error', {'message': 'Subscription failed'}, to=sid)
 
 
@@ -249,6 +302,8 @@ async def heartbeat(sid: str, data: dict | None = None):
         data: Optional heartbeat data
     """
     try:
+        if not await _session_authorized(sid):
+            return
         await sio.emit('heartbeat_ack', {'timestamp': data.get('timestamp') if data else None}, to=sid)
     except Exception as e:
         logger.error(f"Heartbeat error for {sid}: {e}")
@@ -260,7 +315,7 @@ async def broadcast_to_topic(topic: str, event: str, data: Any):
     """
     Broadcast message to all clients subscribed to a topic using Socket.IO rooms.
 
-    Uses room-based broadcasting for O(1) performance instead of O(n) iteration.
+    Each subscribed session is revalidated before delivery.
 
     Args:
         topic: Topic name (e.g., 'portfolio', 'orders')
@@ -268,14 +323,16 @@ async def broadcast_to_topic(topic: str, event: str, data: Any):
         data: Data to broadcast
     """
     try:
-        # Use Socket.IO room for O(1) broadcasting
-        subscriber_count = len(topic_subscribers.get(topic, set()))
-        logger.debug(f"Broadcasting '{event}' to room '{topic}' ({subscriber_count} subscribers)")
-
-        await sio.emit(event, data, room=topic)
-
-    except Exception as e:
-        logger.error(f"Broadcast error for topic '{topic}': {e}")
+        private_events = {'portfolio_update', 'position_update', 'order_update', 'order_filled'}
+        if event in private_events and not topic.startswith('user_'):
+            logger.warning("Private Socket.IO event refused on public channel")
+            return
+        expected_user = topic[5:] if topic.startswith('user_') else None
+        for sid in tuple(topic_subscribers.get(topic, ())):
+            if await _session_authorized(sid, expected_user):
+                await sio.emit(event, data, to=sid)
+    except Exception:
+        logger.warning("Socket.IO topic delivery unavailable")
 
 
 async def broadcast_to_user(user_id: str, event: str, data: Any):
@@ -287,22 +344,12 @@ async def broadcast_to_user(user_id: str, event: str, data: Any):
         event: Event name
         data: Data to broadcast
     """
-    try:
-        sent_count = 0
-        for sid in client_subscriptions:
-            try:
-                async with sio.session(sid) as session:
-                    if session.get('user_id') == user_id:
-                        await sio.emit(event, data, to=sid)
-                        sent_count += 1
-            except Exception as e:
-                logger.error(f"Failed to send to user {user_id} session {sid}: {e}")
-
-        if sent_count > 0:
-            logger.debug(f"Sent '{event}' to user '{user_id}' ({sent_count} session(s))")
-
-    except Exception as e:
-        logger.error(f"Broadcast error for user '{user_id}': {e}")
+    for sid in tuple(topic_subscribers.get(f'user_{user_id}', ())):
+        try:
+            if await _session_authorized(sid, user_id):
+                await sio.emit(event, data, to=sid)
+        except Exception:
+            logger.warning("Socket.IO private delivery unavailable")
 
 
 async def broadcast_to_all(event: str, data: Any):
@@ -313,11 +360,15 @@ async def broadcast_to_all(event: str, data: Any):
         event: Event name
         data: Data to broadcast
     """
-    try:
-        await sio.emit(event, data)
-        logger.debug(f"Broadcasted '{event}' to all clients")
-    except Exception as e:
-        logger.error(f"Broadcast to all error: {e}")
+    if event in {'portfolio_update', 'position_update', 'order_update', 'order_filled'}:
+        logger.warning("Private Socket.IO broadcast refused")
+        return
+    for sid in tuple(client_subscriptions):
+        try:
+            if await _session_authorized(sid):
+                await sio.emit(event, data, to=sid)
+        except Exception:
+            logger.warning("Socket.IO broadcast unavailable")
 
 
 async def broadcast_portfolio_update(user_id: str, portfolio_data: dict[str, Any]) -> None:
@@ -328,31 +379,7 @@ async def broadcast_portfolio_update(user_id: str, portfolio_data: dict[str, Any
         user_id: User ID to broadcast to
         portfolio_data: Portfolio data to broadcast
     """
-    try:
-        # Find all sessions for this user
-        user_topic = f"user_{user_id}"
-
-        if user_topic in topic_subscribers:
-            subscriber_count = len(topic_subscribers[user_topic])
-            subscribers = topic_subscribers[user_topic]
-
-            logger.info(f"🎯 Broadcasting portfolio update to user {user_id} ({subscriber_count} clients)")
-
-            # FIXED: Emit to each subscriber's session directly
-            for sid in subscribers:
-                try:
-                    # Emit the portfolio_update event directly to this client
-                    await sio.emit('portfolio_update', portfolio_data, to=sid)
-                    logger.info(f"✅ Sent portfolio_update to client {sid}")
-                except Exception as e:
-                    logger.error(f"❌ Failed to send to client {sid}: {e}")
-
-            logger.info(f"Broadcasted portfolio update to {subscriber_count} clients for user {user_id}")
-        else:
-            logger.warning(f"⚠️ No connected clients for user {user_id}")
-    except Exception as e:
-        logger.error(f"❌ Error broadcasting portfolio update: {e}")
-        logger.error(traceback.format_exc())
+    await broadcast_to_user(user_id, 'portfolio_update', portfolio_data)
 
 
 async def broadcast_order_update(user_id: str, order_data: dict[str, Any]) -> None:

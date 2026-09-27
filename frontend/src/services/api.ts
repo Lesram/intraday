@@ -6,7 +6,7 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosError } from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 // Create axios instance with base configuration
 export const apiClient: AxiosInstance = axios.create({
@@ -24,12 +24,12 @@ let failedQueue: Array<{
   reject: (reason?: unknown) => void;
 }> = [];
 
-const processQueue = (error: AxiosError | null = null) => {
+const processQueue = (error: AxiosError | null = null, token?: string) => {
   failedQueue.forEach(prom => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve();
+      prom.resolve(token);
     }
   });
   failedQueue = [];
@@ -39,7 +39,12 @@ const processQueue = (error: AxiosError | null = null) => {
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().accessToken;
-    
+    // Recheck at dispatch, after asynchronous refresh/queue continuations.
+    if ((config as InternalAxiosRequestConfig & { _retry?: boolean })._retry
+        && config.headers.Authorization !== `Bearer ${token}`) {
+      return Promise.reject(new Error('Authenticated session changed before retry'));
+    }
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -58,13 +63,25 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      const owner = useAuthStore.getState();
+      // A response from an older login may neither refresh nor clear a new one.
+      if (originalRequest.headers?.Authorization !== `Bearer ${owner.accessToken}`) return Promise.reject(error);
+      const sameSession = () => {
+        const current = useAuthStore.getState();
+        return current.isAuthenticated === owner.isAuthenticated && current.user?.id === owner.user?.id
+          && current.accessToken === owner.accessToken && current.refreshToken === owner.refreshToken;
+      };
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(() => {
+          .then((token) => {
+            const current = useAuthStore.getState();
+            if (!current.isAuthenticated || current.user?.id !== owner.user?.id || current.accessToken !== token) throw error;
+            originalRequest._retry = true;
+            originalRequest.headers.Authorization = `Bearer ${token}`;
             return apiClient(originalRequest);
           })
           .catch((err) => {
@@ -75,9 +92,12 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = useAuthStore.getState().refreshToken;
+      const refreshToken = owner.refreshToken;
 
       if (!refreshToken) {
+        // Settle any queued requests and release the refresh lock on denial.
+        isRefreshing = false;
+        processQueue(error);
         // No refresh token — clearing auth will trigger ProtectedRoute redirect
         useAuthStore.getState().clearAuth();
         return Promise.reject(error);
@@ -87,8 +107,9 @@ apiClient.interceptors.response.use(
         // Attempt to refresh the token
         const response = await axios.post(`${BASE_URL}/api/v1/auth/token/refresh`, {
           refresh_token: refreshToken,
-        });
+        }, { timeout: 30000 });
 
+        if (!sameSession()) throw error;
         const { access_token, refresh_token: new_refresh_token } = response.data;
 
         // Update tokens in store (backend rotates refresh_token)
@@ -103,14 +124,14 @@ apiClient.interceptors.response.use(
         }
 
         // Process all queued requests
-        processQueue(null);
+        processQueue(null, access_token);
 
         // Retry the original request
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed — clearing auth triggers ProtectedRoute redirect
         processQueue(refreshError as AxiosError);
-        useAuthStore.getState().clearAuth();
+        if (sameSession()) useAuthStore.getState().clearAuth();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

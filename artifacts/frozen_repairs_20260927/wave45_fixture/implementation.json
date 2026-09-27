@@ -1,0 +1,116 @@
+{
+  "task_id": "PR32-wave45-provider-fixture",
+  "status": "LOCAL_TEST_FIX_ACCEPTED_PENDING_PARENT_HOSTED_GATES",
+  "created_at_utc": "2026-09-27T20:15:27.188704+00:00",
+  "base_sha": "9d18832bbda687d9d2d81a63c1d5e45a0b28d634",
+  "files_changed": [
+    "tests/test_wave45_fixes.py"
+  ],
+  "source_hashes": {
+    "tests/test_wave45_fixes.py": "f2a90f9856b089f44efb16ed4c5ffeeabee4f703dcbe005a9ea3f7fe8e6823ab",
+    "backend/organism/streaming_data_provider.py": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535"
+  },
+  "plan_sha256": "067ed9d146edc8cc916129b087acdb8a2d06fd555dd2c7131bf748d383a0714b",
+  "diagnosis": {
+    "confirmed": "The previous test bypassed __init__ using __new__, omitting lifecycle/recovery fields now required by stale_symbols. Real construction initializes them before any reads.",
+    "fixture_before_sha256": "49900daaf57c853fbbdfd4f43f27a5580445fc251fc2ccf5e4a6f009cc46954e",
+    "source_references": {
+      "constructor": "backend/organism/streaming_data_provider.py:52-86",
+      "stale_symbols_and_inventory": "backend/organism/streaming_data_provider.py:243-282",
+      "old_fixture": "tests/test_wave45_fixes.py:88-97"
+    },
+    "production_defect_found": false
+  },
+  "repair": [
+    "Use real inert constructor and injected clock; no stream is started by repaired unit test",
+    "Preserve AAA and CCC stale identity and assert exact150/200-second ages",
+    "Verify fresh BBB50 and inclusive120-second boundary, then EDGE121 becomes stale",
+    "Verify subscribed unseen COLD remains infinite-age stale despite fresh aggregate receipt",
+    "Remove unused deque import and redundant hand-built initialization; no production getattr fallback or relaxed guards"
+  ],
+  "red": {
+    "summary": {
+      "tests": 10,
+      "passed": 9,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "module_cases": {
+        "tests.test_wave45_fixes": 10
+      },
+      "failed_cases": [
+        "tests.test_wave45_fixes::test_pp_6_stale_symbols_returns_per_symbol_age"
+      ]
+    },
+    "junit_sha256": "567704b29d066aa6c55e153179ca7612e6d0146c50d8d0696aa23fb80621aacc",
+    "log_sha256": "f572cad7cfbd27044f306d5d7cae359bd3292edf2b2c9826aec08653be78718e",
+    "expected_failure": "AttributeError: StreamingDataProvider has no attribute _recovery_enabled"
+  },
+  "final": {
+    "summary": {
+      "tests": 88,
+      "passed": 88,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "module_cases": {
+        "tests.test_wave45_fixes": 10,
+        "tests.unit.test_streaming_data_provider.TestPrefillSeedsRingBuffer": 2,
+        "tests.unit.test_streaming_data_provider.TestPrefillFailureDoesntCrash": 3,
+        "tests.unit.test_streaming_data_provider.TestGetBarsAfterPrefill": 2,
+        "tests.unit.test_streaming_data_provider.TestStreamingBarsAppendAfterPrefill": 1,
+        "tests.unit.test_streaming_data_provider.TestStartWithoutDataClient": 1,
+        "tests.test_streaming_provider_lifecycle": 19,
+        "tests.test_pipeline_freshness_recovery": 27,
+        "tests.unit.test_paper_data_freshness": 23
+      },
+      "failed_cases": []
+    },
+    "junit_sha256": "29a303b1dc6521d743b6716279738397c6c48aab12a76f26e864025504f16462",
+    "log_sha256": "0187ff75bb7b3ac3ca4ba5a32e74b21691446dd5a5d4ffe1c25346ae71a402cd",
+    "selection": [
+      "tests/test_wave45_fixes.py",
+      "tests/unit/test_streaming_data_provider.py",
+      "tests/test_streaming_provider_lifecycle.py",
+      "tests/test_pipeline_freshness_recovery.py",
+      "tests/unit/test_paper_data_freshness.py"
+    ],
+    "existing_warning": "One pytest record_property/xunit2 compatibility warning in real EOD freshness test; no test failure or skip."
+  },
+  "hosted_failure_reference": {
+    "head_sha": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+    "run_id": 36344271215,
+    "run_url": "https://github.com/Lesram/intraday/actions/runs/36344271215",
+    "job_id": 108690208833,
+    "private_log_sha256": "979d910707934f447083ffcf69d1be6776152f0c5cabd61e9cedd30ae66c9050",
+    "failed_case": "tests/test_wave45_fixes.py::test_pp_6_stale_symbols_returns_per_symbol_age",
+    "scope": "This is one of two c765 nightly failures. Wave55 has separate repaired evidence; no whole-nightly green claim."
+  },
+  "checks": {
+    "scoped_ruff_exit": 0,
+    "lint_log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "owned_diff_check_exit": 0,
+    "backend_git_and_current_bytes_equal": true,
+    "backend_diff_paths": []
+  },
+  "runtime_behavior_changed": false,
+  "frozen_surface_changed": false,
+  "isolation": "Existing OS network-denied isolated pytest runner; synthetic provider transports and temporary state only. No actual API, broker, stream, model or installed state access.",
+  "limits": [
+    "Repaired unit test directly supplies controlled last-receipt metadata; it is not a live streaming receipt/ACK proof.",
+    "Adjacent tests cover constructor/start/stop/recovery using in-memory transports, including cold-symbol and stale-entry/EOD behavior.",
+    "No production source/config, active freeze/history, commit, or runtime mutation by this repair.",
+    "Parent owns final hosted rerun, full delivery evidence, merge and release gates."
+  ],
+  "root_independent_targeted": {
+    "private_junit_basename": "intra-pr32-wave45-root.xml",
+    "sha256": "8c416e7783db23b79ec24d51674bbb9002b4bc93a748b36a4e2f27fad1ab5a17",
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "case": "tests.test_wave45_fixes::test_pp_6_stale_symbols_returns_per_symbol_age",
+    "non_additive": true
+  }
+}

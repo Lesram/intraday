@@ -1,0 +1,60 @@
+{
+  "task_id": "pr32_operational_ci_budget_original_failure_confirmation",
+  "status": "CONFIRMED_AGGREGATE_STEP_TIMEOUT_WITH_PASSING_PYTEST_RESULTS",
+  "created_at_utc": "2026-09-27T20:53:37.413924+00:00",
+  "source_sha": "54c1ec1c73683d2bdb4054e07f5600a546a5965e",
+  "run_id": 36347889730,
+  "job_id": 108700712782,
+  "url": "https://github.com/Lesram/intraday/actions/runs/36347889730/job/108700712782",
+  "step": "Verify operational fixes and trading safety",
+  "workflow_conclusion": "failure",
+  "step_conclusion": "failure",
+  "cause": "The existing5-minute aggregate CI step limit expired after pytest completed in303.69seconds. All completed testcase results passed or were explicitly skipped; no product assertion failure is present in the fresh operational JUnit.",
+  "terminal_log": {
+    "path": "/private/tmp/intra-pr32-hosted-review-54c1/readiness.job-108700712782.log",
+    "sha256": "fef5563ae652bb0eb54824d66d506376f99901be5642f6ec86c41b20762d0e91"
+  },
+  "exact_log_evidence": [
+    {
+      "line": 1163,
+      "text": "2026-09-27T20:32:10.0122801Z 2101 passed, 1 skipped, 72 warnings in 303.69s (0:05:03)"
+    },
+    {
+      "line": 1164,
+      "text": "2026-09-27T20:32:11.0981343Z ##[error]The action 'Verify operational fixes and trading safety' has timed out after 5 minutes."
+    }
+  ],
+  "run_metadata": {
+    "path": "/private/tmp/intra-pr32-hosted-review-54c1/readiness.final.json",
+    "sha256": "556cedb90e0443b74ebda2782190eef04e717125eddddc536c82815d7ee9d645"
+  },
+  "fresh_operational_junit": {
+    "path": "/private/tmp/intra-pr32-hosted-review-54c1/readiness-artifact/artifacts/monday_readiness/github_operational.xml",
+    "sha256": "c3c4937989d09e36216267130b5fc65c08e0208b3a359bcd3fc8628b526a552d"
+  },
+  "test_results": {
+    "cases": 2102,
+    "passed": 2101,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "warnings_reported_in_log": 72,
+    "pytest_seconds": 303.69
+  },
+  "skip": {
+    "classname": "tests.test_v12_baseline_invariants",
+    "name": "test_installed_history_has_not_shrunk_from_committed_baseline",
+    "reason": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim"
+  },
+  "relationship_to_prior_receipts": {
+    "implementation": {
+      "path": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/artifacts/frozen_repairs_20260927/operational_budget/implementation.json",
+      "sha256": "63a72d18319f0e1d3e9650dc4b9cfaf0768baa8dd12049ccb2ba8ee8235098cf"
+    },
+    "supersedes_only": "The earlier contemporaneous uncertainty about original54 failure cause and JUnit availability. Source/test bindings and original failure remain unchanged.",
+    "prior_receipts_not_rewritten": true
+  },
+  "correction": "Operational step10minutes; job125minutes covers116 declared step minutes plus9-minute reserve. All selected tests,30-second per-test timeout and failure propagation unchanged.",
+  "remaining_gate": "A successful fresh run on the corrected committed head is still required; passing pytest alone does not turn the failed original workflow green.",
+  "no_production_changes_or_runtime_operations": true
+}

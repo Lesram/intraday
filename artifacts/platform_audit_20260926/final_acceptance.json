@@ -1,0 +1,37 @@
+{
+  "validated_source_sha": "22c324abb7f8ae991d29b5765796d2bb5225de73",
+  "observed_at_utc": "2026-09-27T00:06:35.754822+00:00",
+  "local_verdict": "PASS for bounded non-frozen repairs; not whole-platform trading readiness",
+  "active_freeze_verification": {
+    "command": "isolated runner --verify-active",
+    "exit_code": 0,
+    "boundary": "2026-09-25T21:11:46.270521+00:00",
+    "read_only": true
+  },
+  "installed_runtime_unchanged": {
+    "container_id": "517f96ec73cd78141ea57542a5d49961866cb7153b178581cb959a43670ee747",
+    "image": "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+    "started_at": "2026-09-25T21:15:48.02942321Z",
+    "health": "healthy",
+    "restart_count": 0
+  },
+  "checks": {
+    "source_secret_scan": "pass; no detector exclusions; final source/evidence delta scanned before delivery",
+    "artifact_secret_scan": "pass;losslesslyexported verified hash maps;noexclusions",
+    "full_artifact_pack": "pass",
+    "full_frontend_selection": "104passed",
+    "actual_postgres": "12passed",
+    "native_browser": "pass;syntheticonly;cleanupcomplete",
+    "final_image_proxy": "pass;cleanupcomplete",
+    "portable_container_probe": "22focusedtests+53combinedworkflowtests+actual5groups pass; independently reviewed"
+  },
+  "unresolved": [
+    "5frozen correctness repairs awaiting explicit approval/new forward boundary",
+    "currentPRhosted acceptance and paper activation",
+    "fullnaturalmarket-session acceptance",
+    "strategyedge evidence insufficient",
+    "parked dependency/legacycleanup and documentedauth/history/crash limitations"
+  ],
+  "application_source_sha": "efa2972de8b6d04d87ce07a17067efbd3274a015",
+  "inventory_boundary_note": "Generated source inventory uses immutable base\u202622c324abb7f8ae991d29b5765796d2bb5225de73; following evidence-only commit excluded."
+}

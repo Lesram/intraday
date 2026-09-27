@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import inspect
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -23,33 +23,36 @@ from unittest.mock import AsyncMock
 # ─────────────────────────────────────────────────────────────────────
 
 
-def test_dd3_2_alpaca_stream_uses_incremental_qty():
-    """alpaca_stream._process_trade_update must capture
-    `_prev_filled_qty` BEFORE updating, then pass `_incremental` to
-    LotTracker.create_lot, NOT the cumulative filled_qty."""
-    from backend.integrations import alpaca_stream
-    src = inspect.getsource(alpaca_stream)
-    assert "DD3-2" in src, "DD3-2 marker missing from alpaca_stream"
-    assert "_prev_filled_qty" in src, (
-        "DD3-2 regression: alpaca_stream no longer captures previous "
-        "cumulative filled_qty before updating."
-    )
-    assert "_incremental" in src, (
-        "DD3-2 regression: alpaca_stream no longer computes incremental "
-        "fill quantity — duplicates would resurface on multi-event fills."
-    )
+async def test_dd3_2_alpaca_stream_uses_incremental_qty():
+    """A prior cumulative summary must not masquerade as accounted executions."""
+    from decimal import Decimal
+    from unittest.mock import patch
+    from backend.integrations.alpaca_stream import apply_incremental_fill_accounting
+
+    results = [SimpleNamespace(scalar_one_or_none=lambda: "order-1"),
+               SimpleNamespace(scalar_one_or_none=lambda: 5),
+               SimpleNamespace(scalar_one_or_none=lambda: 500)]
+    session = SimpleNamespace(execute=AsyncMock(side_effect=results), add=MagicMock(), flush=AsyncMock())
+    order = SimpleNamespace(id="order-1", symbol="AAPL", side="buy", submitted_at=None,
+                            filled_at=None, user_id="test", attributes={})
+    with patch("backend.services.lot_tracker_service.LotTracker.create_lot", new_callable=AsyncMock) as lot:
+        result = await apply_incremental_fill_accounting(session, order, previous_filled_qty=10,
+            cumulative_filled_qty=10, avg_fill_price=110, status="filled")
+    assert result["applied"] and lot.await_args.kwargs["qty"] == Decimal(5)
+    assert lot.await_args.kwargs["cost_basis"] == Decimal(120)
+    execution = session.add.call_args.args[0]
+    assert execution.fill_qty == 5 and execution.fill_price == 120
 
 
 async def test_dd3_2_zero_or_negative_increment_skipped_behaviorally():
     """Duplicate/stale cumulative fills must not create lots or executions."""
     from backend.integrations.alpaca_stream import apply_incremental_fill_accounting
 
-    class ExistingQtyResult:
-        def scalar_one_or_none(self):
-            return 10
-
+    results = [SimpleNamespace(scalar_one_or_none=lambda: "order-1"),
+               SimpleNamespace(scalar_one_or_none=lambda: 10),
+               SimpleNamespace(scalar_one_or_none=lambda: 1000)]
     session = SimpleNamespace(
-        execute=AsyncMock(return_value=ExistingQtyResult()),
+        execute=AsyncMock(side_effect=results),
         add=AsyncMock(),
         flush=AsyncMock(),
     )

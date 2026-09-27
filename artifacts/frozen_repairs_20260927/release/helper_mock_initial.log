@@ -1,0 +1,31 @@
+Isolated test scratch: /private/tmp/intra-audit-test-49_1h73q
+.................. [ 25%]
+.................................F..................                    [100%]
+=================================== FAILURES ===================================
+__ ClosedReadinessTests.test_accepts_no_completed_tick_but_recent_closed_loop __
+
+self = <intra-pr32-runtime-tests.ClosedReadinessTests testMethod=test_accepts_no_completed_tick_but_recent_closed_loop>
+
+    def test_accepts_no_completed_tick_but_recent_closed_loop(self):
+>    d=ready_payload();r=m.verify_closed_readiness(d,datetime(2026,9,25,21,0,1,tzinfo=timezone.utc))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/private/tmp/intra-pr32-runtime-tests.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/private/tmp/intra-pr32-runtime-acceptance.py:116: in verify_closed_readiness
+    recent(payload.get('timestamp'))
+/private/tmp/intra-pr32-runtime-acceptance.py:106: in recent
+    require(stamp.tzinfo is not None and 0 <= (observed_at - stamp).total_seconds() <= 60,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = False, reason = 'readiness_timestamp_stale_or_future'
+
+    def require(value, reason):
+        if not value:
+>           raise ValueError(reason)
+E           ValueError: readiness_timestamp_stale_or_future
+
+/private/tmp/intra-pr32-runtime-acceptance.py:98: ValueError
+=========================== short test summary info ============================
+FAILED ../../../../../../private/tmp/intra-pr32-runtime-tests.py::ClosedReadinessTests::test_accepts_no_completed_tick_but_recent_closed_loop
+1 failed, 69 passed, 127 subtests passed in 0.24s

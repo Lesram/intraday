@@ -1,0 +1,78 @@
+Isolated test scratch: /private/tmp/intra-audit-test-j690uo24
+...........FF..................................                          [100%]
+=================================== FAILURES ===================================
+_________ TestGetBarsAfterPrefill.test_get_bars_returns_prefilled_data _________
+
+self = <unit.test_streaming_data_provider.TestGetBarsAfterPrefill object at 0x10a4f3da0>
+
+    @pytest.mark.asyncio
+    async def test_get_bars_returns_prefilled_data(self):
+        provider = StreamingDataProvider()
+        df = _make_bars_df(20)
+        client = _mock_data_client(df)
+    
+        with patch(
+            "backend.organism.streaming_data_provider.AlpacaMarketDataStream",
+            return_value=_mock_stream(),
+        ):
+            await provider.start(
+                symbols=["AAPL"],
+                api_key="k",
+                api_secret="s",
+                data_client=client,
+            )
+    
+        result = provider.get_bars("AAPL", lookback=10)
+>       assert len(result) == 10
+E       assert 0 == 10
+E        +  where 0 = len(Empty DataFrame\nColumns: []\nIndex: [])
+
+tests/unit/test_streaming_data_provider.py:193: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:293 {"event": "Streaming bars REJECTED for AAPL: infs stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:25:41.809230Z"}
+______ TestGetBarsAfterPrefill.test_get_bars_lookback_larger_than_buffer _______
+
+self = <unit.test_streaming_data_provider.TestGetBarsAfterPrefill object at 0x10a538fe0>
+
+    @pytest.mark.asyncio
+    async def test_get_bars_lookback_larger_than_buffer(self):
+        provider = StreamingDataProvider()
+        df = _make_bars_df(5)
+        client = _mock_data_client(df)
+    
+        with patch(
+            "backend.organism.streaming_data_provider.AlpacaMarketDataStream",
+            return_value=_mock_stream(),
+        ):
+            await provider.start(
+                symbols=["AAPL"],
+                api_key="k",
+                api_secret="s",
+                data_client=client,
+            )
+    
+        result = provider.get_bars("AAPL", lookback=200)
+>       assert len(result) == 5
+E       assert 0 == 5
+E        +  where 0 = len(Empty DataFrame\nColumns: []\nIndex: [])
+
+tests/unit/test_streaming_data_provider.py:214: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.streaming_data_provider:streaming_data_provider.py:293 {"event": "Streaming bars REJECTED for AAPL: infs stale (> 120s threshold) \u2014 caller will fall through to REST", "logger": "backend.organism.streaming_data_provider", "level": "warning", "timestamp": "2026-09-27T18:25:41.870604Z"}
+=============================== warnings summary ===============================
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[None]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[bars]
+tests/test_scanner_streaming_integration.py::test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order[quotes]
+  tests/test_scanner_streaming_integration.py:262: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[stale]
+tests/test_scanner_streaming_integration.py::test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit[subscription_failure]
+  tests/test_scanner_streaming_integration.py:290: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    @pytest.mark.timeout(60)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_streaming_data_provider.py::TestGetBarsAfterPrefill::test_get_bars_returns_prefilled_data
+FAILED tests/unit/test_streaming_data_provider.py::TestGetBarsAfterPrefill::test_get_bars_lookback_larger_than_buffer
+2 failed, 45 passed, 5 warnings in 8.97s

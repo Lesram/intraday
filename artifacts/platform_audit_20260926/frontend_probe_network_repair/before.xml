@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.060" timestamp="2026-09-26T17:14:07.524155-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_frontend_container_probe" name="test_main_preserves_replacement_proof_isolation_and_owned_cleanup[success]" time="0.003"><failure message="assert (1 == 0)">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x107fa7170&gt;
+tmp_path = PosixPath('/private/tmp/intra-audit-test-v_xy_lh_/pytest-of-marselkei/pytest-0/test_main_preserves_replacemen0')
+mode = 'success'
+
+    @pytest.mark.parametrize("mode", ["success", "overlap_race", "same_ip"])
+    def test_main_preserves_replacement_proof_isolation_and_owned_cleanup(monkeypatch, tmp_path, mode):
+        """Exercise actual orchestration, including Linux's static-IP requirement."""
+        calls, created_networks, containers, removed = [], [], set(), []
+        state = {"api_up": False, "starts": 0, "explicit": False}
+        old_ip, new_ip = "10.241.0.2", "10.241.0.4"
+    
+        def docker(*args, **kwargs):
+            calls.append(args)
+            if args[:2] == ("network", "ls"):
+                return "a" * 64
+            if args[:2] == ("network", "inspect"):
+                return json.dumps([network("a" * 64, "10.240.0.0/16")])
+            if args[:2] == ("network", "create"):
+                if "--internal" in args:
+                    assert "--subnet" in args
+                    assert args[args.index("--subnet") + 1] == "10.241.0.0/24"
+                    if mode == "overlap_race":
+                        raise RuntimeError("Pool overlaps concurrent network")
+                    state["explicit"] = True
+                created_networks.append(args[-1])
+            elif args[0] == "run":
+                name = args[args.index("--name") + 1]
+                assert name.startswith("intra-ui-probe-")
+                assert "--read-only" in args and "--cap-drop" in args
+                containers.add(name)
+                if name.endswith("-api"):
+                    assert args[args.index("--network") + 1].endswith("-net")
+                    assert "-p" not in args
+                    state["api_up"] = True
+                    state["starts"] += 1
+                elif name.endswith("-holder"):
+                    assert state["explicit"], "Linux refuses --ip without explicit subnet"
+                    assert args[args.index("--ip") + 1] == old_ip
+                else:
+                    assert args[args.index("-p") + 1] == "127.0.0.1::8080"
+            elif args[0] == "port":
+                return "127.0.0.1:65432"
+            elif args[0] == "inspect":
+                internal = next(name for name in created_networks if name.endswith("-net"))
+                address = old_ip if state["starts"] == 1 or mode == "same_ip" else new_ip
+                return json.dumps([{"NetworkSettings": {"Networks": {internal: {"IPAddress": address}}}}])
+            elif args[0] == "rm":
+                assert args[-1] in containers
+                containers.remove(args[-1])
+                removed.append(args[-1])
+                if args[-1].endswith("-api"):
+                    state["api_up"] = False
+            elif args[:2] == ("network", "rm"):
+                assert args[-1] in created_networks
+                assert not containers
+                created_networks.remove(args[-1])
+                removed.append(args[-1])
+            elif args[:2] == ("image", "inspect"):
+                return "sha256:synthetic-owned-image"
+            return ""
+    
+        def fetch(base, path):
+            if path == "/ui-health":
+                return 200, b'{"scope":"frontend"}', {}
+            if path in ("/", "/portfolio"):
+                return 200, b'&lt;div id="root"&gt;', {}
+            if path.startswith("/assets"):
+                return 404, b"not found", {}
+            if not state["api_up"]:
+                return 502, b"upstream unavailable", {}
+            body = json.dumps({"path": path, "authorization": "Bearer synthetic-ui-probe", "host": "127.0.0.1:65432"}).encode()
+            return 503 if path.endswith("/reject") else 200, body, {}
+    
+        echoes = []
+        monkeypatch.setattr(probe, "docker", docker)
+        monkeypatch.setattr(probe, "fetch", fetch)
+        monkeypatch.setattr(probe, "websocket_echo", lambda port, path: echoes.append(path))
+        monkeypatch.setattr(sys, "argv", ["probe", "--image", "synthetic-owned-ui", "--output-dir", str(tmp_path)])
+        code = probe.main()
+        receipt = json.loads((tmp_path / "result.json").read_text())
+        assert not containers and not created_networks
+        assert receipt["cleanup_errors"] == []
+        if mode == "success":
+&gt;           assert code == 0 and receipt["passed"] is True
+E           assert (1 == 0)
+
+tests/test_frontend_container_probe.py:162: AssertionError</failure></testcase></testsuite></testsuites>
