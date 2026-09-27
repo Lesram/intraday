@@ -410,6 +410,93 @@ class SimulatedBroker:
         )
         return replace(result, price_source="simulated_position_fills") if result else None
 
+    async def confirm_pending_entries(self, engine, *, cancel: bool = False) -> dict:
+        """Replay-only resolution from executed receipts and inventory conservation.
+
+        This synchronous-fill simulator has no live pending transport and never
+        invents a cancellation. Unknown/open/partial/replaced records are held.
+        Production does not call this method or fall back to simulated evidence.
+        """
+        from decimal import Decimal
+        from backend.organism.operator_cancellation import _number, INVENTORY_LIMIT, CancellationUnverified
+
+        result = {"orders": [], "issues": [], "db_modified": False,
+                  "execution_environment": "simulation"}
+        pending = dict(engine._pending_entry_order_ids)
+        if set(engine._pending_entry) - set(pending):
+            result["issues"].append("pending_entry_identity_missing")
+        if len(pending) > INVENTORY_LIMIT:
+            result["issues"].append("entry_inventory_limit")
+            return result
+        for symbol, identity in pending.items():
+            item = {"symbol": symbol, "entry_order_id": identity, "release_pending": False,
+                    "cancel_requested": False, "cancel_confirmed": False}
+            try:
+                rows = [row for row in self.filled_orders + self.rejected_orders
+                        if row.get("id") == identity]
+                if len(rows) != 1 or str(uuid.UUID(identity)) != identity:
+                    raise ValueError("identity")
+                row = rows[0]
+                attrs = row.get("attributes", {})
+                if (row.get("symbol") != symbol or row.get("side") != "buy"
+                        or attrs.get("source") != "organism"
+                        or attrs.get("reason") not in {"organism_entry", "pyramid_add"}
+                        or attrs.get("execution_environment") != "simulation"):
+                    raise ValueError("attribution")
+                if await self.entry_verified_unfilled(symbol, {"entry_order_id": identity}):
+                    item.update(release_pending=True, resolution="verified_unfilled", filled_qty="0")
+                else:
+                    quantity, price = _number(row["filled_qty"]), _number(row["avg_fill_price"])
+                    if (row["status"] != "filled" or quantity <= 0 or price <= 0
+                            or quantity != _number(row["qty"])
+                            or row["broker_order_id"] != f"simulated-{identity}"):
+                        raise ValueError("terminal_fill")
+                    inventory, seen = Decimal(0), set()
+                    for fill in self.filled_orders:
+                        if fill.get("symbol") != symbol:
+                            continue
+                        if (fill["id"] in seen or fill["status"] != "filled"
+                                or _number(fill["filled_qty"]) != _number(fill["qty"])
+                                or fill["side"] not in {"buy", "sell"}):
+                            raise ValueError("execution_inventory")
+                        seen.add(fill["id"])
+                        inventory += _number(fill["filled_qty"]) * (1 if fill["side"] == "buy" else -1)
+                    position = self._positions.get(symbol)
+                    current_qty = _number(position["qty"]) if position else Decimal(0)
+                    if inventory != current_qty:
+                        raise ValueError("position_inventory")
+                    if current_qty > 0:
+                        meta = engine._entry_metadata.get(symbol, {})
+                        level = engine._exit_levels.get(symbol)
+                        anchors = [fill for fill in self.filled_orders
+                                   if fill["id"] == str(meta.get("entry_order_id"))]
+                        anchor_valid = (len(anchors) == 1 and anchors[0]["symbol"] == symbol
+                                        and anchors[0]["side"] == "buy"
+                                        and anchors[0]["attributes"].get("reason") == "organism_entry")
+                        protected = (position["side"] == "long" and level is not None
+                                     and level.symbol == symbol and level.direction == 1
+                                     and meta.get("direction") == 1 and not meta.get("pending_close")
+                                     and (meta.get("entry_order_id") == identity
+                                          or (attrs["reason"] == "pyramid_add" and anchor_valid)))
+                    else:
+                        completed = engine._accounting_completed_entries.get(identity)
+                        tolerance = quantity * Decimal("0.0000005") + Decimal("0.000001")
+                        protected = any(
+                            trade.entry_order_id == identity and trade.closed_at == completed
+                            and not trade.is_reconciliation_artifact and _number(trade.shares) == quantity
+                            and abs(_number(trade.entry_price) * quantity - price * quantity) <= tolerance
+                            for trade in engine._all_trades)
+                    if not protected:
+                        raise ValueError("accounting_or_protection")
+                    item.update(release_pending=True, resolution="accounted_fill",
+                                filled_qty=str(quantity), broker_status="filled")
+            except (KeyError, TypeError, ValueError, ArithmeticError, CancellationUnverified):
+                item["issue"] = "simulated_entry_resolution_unverified"
+                result["issues"].append(item["issue"])
+            result["orders"].append(item)
+        result["issues"] = sorted(set(result["issues"]))
+        return result
+
     async def entry_verified_unfilled(self, symbol: str, meta: dict[str, Any]) -> bool:
         """A simulator rejection is definitive only for its unexecuted ID."""
         identity = str(meta.get("entry_order_id") or "")
@@ -754,6 +841,8 @@ class ReplayEngine:
         broker._now_fn = _replay_now
         engine._lookup_closed_position_fills_from_db = broker.lookup_closed_position_fills
         engine._entry_verified_unfilled = broker.entry_verified_unfilled
+        from functools import partial
+        engine._confirm_pending_entry_orders = partial(broker.confirm_pending_entries, engine)
 
         _now_fn_components = (
             "regime_detector",

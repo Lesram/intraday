@@ -125,17 +125,29 @@ def frame(timestamps):
 
 
 @pytest.mark.asyncio
-async def test_stale_prefill_uses_event_age_and_forces_rest_fallback():
+async def test_stale_prefill_retains_event_age_but_requires_actual_live_receipt():
     provider = StreamingDataProvider(time_fn=lambda: NOW.timestamp())
     latest = NOW - timedelta(days=2)
     data = AsyncMock()
     data.get_historical_bars_df.return_value = frame([latest-timedelta(minutes=1), latest])
     await provider._prefill(["AAPL"], data)
     assert provider.bar_count("AAPL") == 2
-    assert provider.get_bar_age("AAPL") == 2*86400
-    assert provider.last_update_time == latest.timestamp()
+    buffered = pd.DataFrame(provider._bars["AAPL"])
+    assert (NOW - pd.Timestamp(buffered.iloc[-1].timestamp)).total_seconds() == 2 * 86400
+    assert provider.get_bar_age("AAPL") == float("inf")
+    assert provider.last_update_time is None
     assert provider.get_bars("AAPL").empty
-    assert provider.stale_symbols(120) == [("AAPL", 2*86400)]
+    # Even an advancing delayed callback retains its event age, not a fresh
+    # delivery receipt. Only the genuinely current callback permits stream use.
+    delayed = latest + timedelta(minutes=1)
+    await provider._on_bar("AAPL", {"timestamp": delayed.isoformat(), "close": 123})
+    assert provider.get_bar_age("AAPL") == (NOW - delayed).total_seconds()
+    assert provider.stale_symbols(120) == [("AAPL", (NOW - delayed).total_seconds())]
+    assert provider.get_bars("AAPL").empty
+    await provider._on_bar("AAPL", {"timestamp": (NOW - timedelta(seconds=40)).isoformat(), "close": 777})
+    assert provider.get_bar_age("AAPL") == 0
+    assert provider.last_update_time == NOW.timestamp()
+    assert provider.get_bars("AAPL").iloc[-1].close == 777
 
 
 @pytest.mark.asyncio
@@ -146,8 +158,15 @@ async def test_unsorted_prefill_is_chronological_and_uses_newest_not_last_row():
         NOW-timedelta(seconds=30), NOW-timedelta(seconds=150), NOW-timedelta(seconds=90),
     ])
     await provider._prefill(["AAPL"], data)
-    assert provider.get_bar_age("AAPL") == 30
-    assert provider.get_bars("AAPL").close.tolist() == [2, 0]
+    buffered = pd.DataFrame(provider._bars["AAPL"])
+    assert pd.to_datetime(buffered.timestamp, utc=True).is_monotonic_increasing
+    assert buffered.close.tolist() == [2, 0]
+    assert (NOW - pd.Timestamp(buffered.iloc[-1].timestamp)).total_seconds() == 30
+    assert provider.get_bar_age("AAPL") == float("inf")
+    assert provider.get_bars("AAPL").empty
+    await provider._on_bar("AAPL", {"timestamp": (NOW - timedelta(seconds=10)).isoformat(), "close": 777})
+    assert provider.get_bar_age("AAPL") == 0
+    assert provider.get_bars("AAPL").close.tolist() == [0, 777]
 
 
 @pytest.mark.asyncio
@@ -177,15 +196,21 @@ async def test_prefill_preserves_stream_bar_received_during_request():
 
 
 @pytest.mark.asyncio
-async def test_stale_second_symbol_does_not_lower_global_event_time():
+async def test_stale_second_symbol_prefill_cannot_lower_actual_live_receipt():
     provider = StreamingDataProvider(time_fn=lambda: NOW.timestamp())
     data = AsyncMock(); data.get_historical_bars_df.side_effect = [
         frame([NOW-timedelta(seconds=30)]), frame([NOW-timedelta(days=2)]),
     ]
-    await provider._prefill(["AAPL", "MSFT"], data)
-    assert provider.last_update_time == NOW.timestamp()-30
+    await provider._prefill(["AAPL"], data)
+    assert provider.last_update_time is None
+    assert provider.get_bars("AAPL").empty
+    await provider._on_bar("AAPL", {"timestamp": (NOW - timedelta(seconds=10)).isoformat(), "close": 777})
+    await provider._prefill(["MSFT"], data)
+    assert provider.last_update_time == NOW.timestamp()
     assert not provider.get_bars("AAPL").empty
     assert provider.get_bars("MSFT").empty
+    assert provider.get_bar_age("MSFT") == float("inf")
+    assert (NOW - pd.Timestamp(provider._bars["MSFT"][-1]["timestamp"])).total_seconds() == 2 * 86400
 
 
 @pytest.mark.asyncio

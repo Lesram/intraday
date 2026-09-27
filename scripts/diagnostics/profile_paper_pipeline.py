@@ -82,6 +82,7 @@ class MemoryTransport:
 
     def __init__(self, **_kwargs):
         self.is_authenticated = True
+        self.connection_generation = 1
         self.bar_subscriptions = {"1Min": set()}
         self.quote_subscriptions = set()
 
@@ -98,6 +99,15 @@ class MemoryTransport:
     async def subscribe_quotes(self, symbols):
         self.quote_subscriptions.update(symbols)
         return True
+
+    async def emit_bar(self, symbol, row):
+        """Deliver an explicitly synthetic bar through the registered callback."""
+        if (not self.is_authenticated or symbol not in self.bar_subscriptions["1Min"]
+                or symbol not in self.quote_subscriptions):
+            raise AssertionError("Synthetic bar requires confirmed current membership")
+        data = dict(row)
+        data["timestamp"] = pd.Timestamp(data["timestamp"]).isoformat()
+        await self.on_bar(symbol, data)
 
 
 class SyntheticHistory:
@@ -196,7 +206,10 @@ async def measure_load(symbol_count: int, rows: int, repeats: int, *, profiles: 
     frames = {symbol: synthetic_bars(i, rows) for i, symbol in enumerate(requested)}
     # The fixed clock is 15 seconds after the last causal bar, independently of CPU duration.
     clock = frames["SPY"]["timestamp"].iloc[-1].timestamp() + 15
-    history, fallback = SyntheticHistory(frames), ForbiddenFallback()
+    # Reserve each final bar for an actual callback. Same-bar history delivery
+    # cannot establish a live receipt; the complete causal input stays unchanged.
+    history = SyntheticHistory({symbol: frame.iloc[:-1].copy(deep=True) for symbol, frame in frames.items()})
+    fallback = ForbiddenFallback()
     provider = StreamingDataProvider(time_fn=lambda: clock)
     store = VersionedFeatureStore() if feature_store else None
 
@@ -220,8 +233,21 @@ async def measure_load(symbol_count: int, rows: int, repeats: int, *, profiles: 
     with patch("backend.organism.streaming_data_provider.AlpacaMarketDataStream", MemoryTransport):
         await provider.start(requested, "synthetic-only", "synthetic-only", feed="iex", data_client=history)
         try:
-            if not provider.is_running or provider.stale_symbols(120):
-                raise AssertionError("Synthetic streaming prefill was not complete/fresh")
+            history_only_unavailable = [symbol for symbol in requested if provider.get_bars(symbol).empty]
+            if (not provider.is_running or set(history_only_unavailable) != set(requested)
+                    or provider.last_update_time is not None):
+                raise AssertionError("Synthetic historical warmup must not establish live freshness")
+            for symbol in requested:
+                await provider._stream.emit_bar(symbol, frames[symbol].iloc[-1].to_dict())
+            if (provider.stale_symbols(120)
+                    or any(provider.get_bar_age(symbol) != 0 for symbol in requested)):
+                raise AssertionError("Synthetic advancing live callbacks did not establish freshness")
+            for symbol in requested:
+                observed = provider.get_bars(symbol, lookback=rows)
+                # Provider stores ISO event times; compare their exact UTC
+                # values in the input unit without altering buffered features.
+                observed["timestamp"] = pd.to_datetime(observed["timestamp"], utc=True).astype(frames[symbol].timestamp.dtype)
+                pd.testing.assert_frame_equal(observed, frames[symbol])
             for number in range(repeats + int(profiles)):
                 profiled = number == repeats
                 measurements = StageMeasurements(profiled)
@@ -252,6 +278,9 @@ async def measure_load(symbol_count: int, rows: int, repeats: int, *, profiles: 
     timed = [p for p in passes if p["kind"] == "timed"]
     return {"universe_count": symbol_count, "held_only_count": int(held_symbol),
             "synthetic_input_hashes": input_hashes, "history_prefill_calls": history.calls,
+            "history_only_unavailable_symbols": history_only_unavailable,
+            "synthetic_live_bar_callbacks": requested,
+            "freshness_setup": "history excludes final bar; confirmed fake transport delivers advancing final bar through production callback",
             "rest_fallback_calls": fallback.calls, "input_unchanged": True, "outputs_identical": True,
             "feature_store_enabled": feature_store,
             "feature_store_config": store._config if store else None,

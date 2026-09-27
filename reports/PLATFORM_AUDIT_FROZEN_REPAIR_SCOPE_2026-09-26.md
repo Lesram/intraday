@@ -1,6 +1,6 @@
 # Proposed frozen-surface repairs — 26 September 2026
 
-Status: proposed, awaiting Marsel's explicit approval. No frozen implementation or new forward boundary has been applied.
+Status: explicitly approved by Marsel on September 27, 2026: “yes I approve everything,” in response to the five repairs and new forward-evaluation period described here. Implementation and validation are in progress. No new active boundary is published until the reviewed paper activation; previous history and boundaries remain preserved.
 
 The running paper process is healthy while the market is closed. That observation does not disprove the following failures, reproduced with synthetic inputs and denied network access against the deployed source tree.
 
@@ -16,4 +16,4 @@ These are correctness repairs. This scope does not change the market-data feed, 
 
 Approval authorizes implementation and paper validation of this scope, with tests, replay, runtime snapshot, independent review and PR gates. Activation must establish a new explicitly recorded forward-evidence boundary; existing history and the prior boundary remain preserved. A new boundary means fresh forward observations are needed before judging the repaired system's strategy performance.
 
-Non-frozen accounting, display/authentication and nightly-verification repairs proceed separately under the current request.
+The already reviewed non-frozen accounting, display/authentication and nightly-verification repairs remain part of PR32. The approved frozen repairs extend that candidate; the combined source must pass release checks and independent review before paper activation.

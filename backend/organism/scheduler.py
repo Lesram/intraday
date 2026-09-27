@@ -161,17 +161,19 @@ class OrganismScheduler:
                     ).split(",")
                     if s.strip()
                 ]
-                await self._streaming_provider.start(
+                streaming_started = await self._streaming_provider.start(
                     symbols=universe,
                     api_key=self._alpaca_api_key,
                     api_secret=self._alpaca_api_secret,
                     feed=self._alpaca_feed,
                     data_client=self._data_client,
                 )
-                logger.info("Streaming data provider started for scheduler")
+                if streaming_started is True:
+                    logger.info("Streaming data provider started for scheduler")
+                else:
+                    logger.warning("Streaming provider degraded; retained for bounded retry and entry blocking")
             except Exception as e:
-                logger.warning("Streaming provider failed, continuing without: %s", e)
-                self._streaming_provider = None
+                logger.warning("Streaming provider startup failed; retained for bounded retry: %s", e)
 
         kwargs: dict[str, Any] = {
             "data_client": self._data_client,

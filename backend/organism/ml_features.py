@@ -112,6 +112,101 @@ def _adx(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) ->
     return _ema(dx, period)
 
 
+def _cross_asset_times(frame: pd.DataFrame, label: str) -> tuple[pd.DatetimeIndex | None, str | None, list[int]]:
+    """Validate event times without assuming an integer index is a clock.
+
+    A timestamp column is authoritative. Never sort, deduplicate or assign a
+    timezone to an ambiguous input; that would conceal unavailable evidence.
+    """
+    if "timestamp" in frame.columns:
+        values = frame["timestamp"]
+    elif isinstance(frame.index, pd.DatetimeIndex):
+        values = frame.index
+    else:
+        return None, f"{label}_missing_timestamps", list(range(len(frame)))
+    parsed, invalid = [], []
+    for i, value in enumerate(values):
+        try:
+            # Numeric epochs lack an explicit unit/timezone contract.
+            if isinstance(value, (int, float, bool, np.number)):
+                raise ValueError("numeric event time")
+            stamp = pd.Timestamp(value)
+            if pd.isna(stamp) or stamp.tzinfo is None:
+                raise ValueError("event time must be aware")
+            parsed.append(stamp.tz_convert("UTC"))
+        except (ValueError, TypeError, OverflowError):
+            invalid.append(i)
+    if invalid:
+        return None, f"{label}_invalid_or_naive_timestamps", invalid
+    try:
+        times = pd.DatetimeIndex(parsed).as_unit("ns")
+    except (ValueError, TypeError, OverflowError):
+        return None, f"{label}_invalid_timestamps", list(range(len(frame)))
+    if times.has_duplicates:
+        return None, f"{label}_duplicate_timestamps", np.flatnonzero(times.duplicated(keep=False)).tolist()
+    if not times.is_monotonic_increasing:
+        return None, f"{label}_unsorted_timestamps", np.flatnonzero(np.diff(times.asi8) < 0).tolist()
+    return times, None, []
+
+
+def _cross_asset_alignment(df: pd.DataFrame, spy_df: pd.DataFrame | None) -> tuple[np.ndarray | None, dict[str, Any]]:
+    """Backward-only benchmark observations plus explicit coverage evidence.
+
+    Metadata is in-memory, not a persisted data-quality certificate. Consumers
+    exporting these neutral-compatible numeric features must retain/check it.
+    No benchmark age threshold or decision/admission policy is added here.
+    """
+    n = len(df)
+    meta: dict[str, Any] = {
+        "version": 1, "status": "unavailable", "reason": None,
+        "stock_rows": n, "benchmark_rows": 0 if spy_df is None else len(spy_df),
+        "matched": [False] * n, "matched_timestamps": [None] * n,
+        "age_seconds": [None] * n,
+        "invalid_timestamp_rows": {"stock": [], "spy": []},
+        "feature_valid": {name: [False] * n for name in
+                          ("rel_strength_spy", "beta_20d", "corr_to_market", "idio_vol")},
+    }
+    if spy_df is None:
+        meta.update(status="not_requested", reason="benchmark_not_supplied")
+        return None, meta
+    stock_times, reason, invalid = _cross_asset_times(df, "stock")
+    meta["invalid_timestamp_rows"]["stock"] = invalid
+    if reason:
+        meta["reason"] = reason
+        return None, meta
+    spy_times, reason, invalid = _cross_asset_times(spy_df, "spy")
+    meta["invalid_timestamp_rows"]["spy"] = invalid
+    if reason:
+        meta["reason"] = reason
+        return None, meta
+    if spy_df.empty or "close" not in spy_df.columns:
+        meta["reason"] = "benchmark_prices_missing"
+        return None, meta
+    # Search instants, never ordinal DataFrame labels. A missing leading
+    # observation remains missing; a future price cannot be borrowed.
+    positions = spy_times.searchsorted(stock_times, side="right") - 1
+    source_prices = spy_df["close"].mask(spy_df["close"].map(
+        lambda value: isinstance(value, (bool, np.bool_, complex, np.complexfloating))
+    ))
+    prices = pd.to_numeric(source_prices, errors="coerce").to_numpy(dtype=float)
+    aligned = np.full(n, np.nan)
+    for i, pos in enumerate(positions):
+        if pos < 0:
+            continue
+        meta["matched_timestamps"][i] = spy_times[pos].isoformat()
+        meta["age_seconds"][i] = (stock_times[i] - spy_times[pos]).total_seconds()
+        # An invalid supplied latest price is not permission to use an older one.
+        if np.isfinite(prices[pos]) and prices[pos] > 0:
+            aligned[i] = prices[pos]
+            meta["matched"][i] = True
+    count = sum(meta["matched"])
+    meta["status"] = "available" if count == n and n else "partial" if count else "unavailable"
+    meta["reason"] = None if count == n and n else (
+        "no_prior_benchmark" if not np.any(positions >= 0) else "incomplete_benchmark_coverage"
+    )
+    return aligned, meta
+
+
 # ─── Main Feature Computation ──────────────────────────────────────
 
 def compute_ml_features(
@@ -266,32 +361,26 @@ def compute_ml_features(
     # ═══════════════════════════════════════════════════════
     # CROSS-SECTIONAL (5) — relative to SPY/market
     # ═══════════════════════════════════════════════════════
-    if spy_df is not None and "close" in spy_df.columns and len(spy_df) >= len(df):
-        # V7 DD-3 / Wave-24 (2026-05-03): align SPY to the stock's
-        # DataFrame on the timestamp INDEX rather than positional
-        # tail-slicing. The previous `iloc[-len(df):]` silently
-        # mis-aligned when SPY and stock had different lengths
-        # (e.g. trading halt in the stock; SPY trades through). Now:
-        # reindex SPY to the stock's index using forward-fill so
-        # gaps in stock data don't shift SPY values to wrong rows.
-        spy_close_aligned = spy_df["close"].reindex(df.index, method="ffill")
-        spy_c = spy_close_aligned.values
-        spy_ret = pd.Series(spy_c, index=f.index).pct_change().values
+    spy_c, cross_meta = _cross_asset_alignment(df, spy_df)
+    if spy_c is not None:
+        spy_ret = pd.Series(spy_c, index=f.index).pct_change(fill_method=None).values
 
         # Relative strength vs SPY
         stock_ret_20 = f["ret_20d"].values
-        spy_ret_20 = pd.Series(spy_c, index=f.index).pct_change(20).values
-        f["rel_strength_spy"] = pd.Series(
-            stock_ret_20 - spy_ret_20, index=f.index
-        )
+        spy_ret_20 = pd.Series(spy_c, index=f.index).pct_change(20, fill_method=None).values
+        relative = stock_ret_20 - spy_ret_20
+        relative_valid = np.isfinite(relative)
+        cross_meta["feature_valid"]["rel_strength_spy"] = relative_valid.tolist()
+        # Preserve ordinary warm-up NaNs; uncovered observations use the
+        # established neutral default and are explicitly unavailable in attrs.
+        covered = np.isfinite(spy_c)
+        covered_20 = np.r_[np.zeros(min(20, len(df)), dtype=bool), covered[:-20]]
+        relative[~(covered & covered_20) & (np.arange(len(df)) >= 20)] = 0.0
+        relative[~covered] = 0.0
+        f["rel_strength_spy"] = pd.Series(relative, index=f.index)
 
-        # Beta (rolling 20-day).
-        # V7 DD-3 / Wave-24 (2026-05-03): with `spy_ret` now reindexed
-        # to `f.index`, both arrays are length-aligned by *timestamp*
-        # not position; the previous off-by-end positional slice
-        # (`max(0, len(spy_ret)-len(stock_rets)+i-...)`) is unnecessary
-        # and was the misalignment vector when stock had gaps. Direct
-        # `[i-20:i]` slicing on aligned arrays is correct.
+        # Existing 20-observation trailing return windows are unchanged;
+        # benchmark returns now span the same stock observation intervals.
         stock_rets = f["ret_1d"].values
         betas = []
         for i in range(len(stock_rets)):
@@ -308,11 +397,12 @@ def compute_ml_features(
                 ):
                     val = float(np.corrcoef(sr, mr)[0, 1] * np.std(sr) / np.std(mr))
                     betas.append(val if np.isfinite(val) else 1.0)
+                    cross_meta["feature_valid"]["beta_20d"][i] = bool(np.isfinite(val))
                 else:
                     betas.append(1.0)
         f["beta_20d"] = betas
 
-        # Correlation to market — same DD-3 alignment as beta above.
+        # Correlation to market uses the same causal interval alignment.
         corrs = []
         for i in range(len(stock_rets)):
             if i < 20:
@@ -329,12 +419,17 @@ def compute_ml_features(
                 ):
                     val = float(np.corrcoef(sr, mr)[0, 1])
                     corrs.append(val if np.isfinite(val) else 0.0)
+                    cross_meta["feature_valid"]["corr_to_market"][i] = bool(np.isfinite(val))
                 else:
                     corrs.append(0.0)
         f["corr_to_market"] = corrs
 
         # Idiosyncratic vol
         f["idio_vol"] = f["realized_vol_20"] * (1 - pd.Series(corrs, index=f.index).abs())
+        cross_meta["feature_valid"]["idio_vol"] = (
+            np.asarray(cross_meta["feature_valid"]["corr_to_market"])
+            & np.isfinite(f["idio_vol"].to_numpy())
+        ).tolist()
     else:
         f["rel_strength_spy"] = 0.0
         f["beta_20d"] = 1.0
@@ -357,10 +452,29 @@ def compute_ml_features(
     # TEMPORAL (5)
     # ═══════════════════════════════════════════════════════
     if "timestamp" in f.columns:
-        ts = pd.to_datetime(f["timestamp"])
-        f["day_of_week"] = ts.dt.dayofweek / 4.0  # Normalize [0,1]
-        f["month_sin"] = np.sin(2 * math.pi * ts.dt.month / 12)
-        f["month_cos"] = np.cos(2 * math.pi * ts.dt.month / 12)
+        try:
+            ts = pd.to_datetime(f["timestamp"])
+            days, months = ts.dt.dayofweek, ts.dt.month
+        except (ValueError, TypeError, AttributeError, OverflowError):
+            # Preserve valid-input wall-clock calendar semantics. A malformed
+            # or mixed-offset stock column must not discard held-exit inputs;
+            # retain its original timestamps and neutralize only invalid rows.
+            days, months = [], []
+            for value in f["timestamp"]:
+                try:
+                    if isinstance(value, (int, float, bool, np.number)):
+                        raise ValueError("numeric event time")
+                    stamp = pd.Timestamp(value)
+                    days.append(stamp.dayofweek)
+                    months.append(stamp.month)
+                except (ValueError, TypeError, OverflowError):
+                    days.append(np.nan)
+                    months.append(np.nan)
+            days = pd.Series(days, index=f.index)
+            months = pd.Series(months, index=f.index)
+        f["day_of_week"] = days / 4.0  # Normalize [0,1]
+        f["month_sin"] = np.sin(2 * math.pi * months / 12)
+        f["month_cos"] = np.cos(2 * math.pi * months / 12)
     else:
         f["day_of_week"] = 0.0
         f["month_sin"] = 0.0
@@ -474,6 +588,7 @@ def compute_ml_features(
     # Store missingness as a feature so the engine can gate entries
     f["_nan_missingness"] = missingness_ratio  # constant per call
 
+    f.attrs["cross_asset_alignment"] = cross_meta
     return f
 
 

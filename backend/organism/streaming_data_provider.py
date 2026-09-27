@@ -46,6 +46,9 @@ _STALENESS_REJECT_S = float(os.getenv("ORGANISM_STREAMING_STALENESS_REJECT_S", "
 class StreamingDataProvider:
     """In-memory streaming data provider backed by Alpaca WebSocket."""
 
+    STARTUP_RETRY_INTERVAL_S = 30.0
+    STARTUP_TIMEOUT_S = 25.0
+
     def __init__(
         self,
         buffer_size: int = _DEFAULT_BUFFER_SIZE,
@@ -76,6 +79,11 @@ class StreamingDataProvider:
         self._running = False
         self._session_generation = 0
         self._lifecycle_lock = asyncio.Lock()
+        self._start_config: dict[str, Any] | None = None
+        self._desired_symbols: set[str] = set()
+        self._recovery_enabled = False
+        self._recovery_due_at = 0.0
+        self._transport_generation: int | None = None
 
     # ── Lifecycle ─────────────────────────────────────────────────
 
@@ -86,17 +94,22 @@ class StreamingDataProvider:
         api_secret: str,
         feed: str = "sip",
         data_client: Any | None = None,
-    ) -> None:
+        *,
+        _prefill_history: bool = True,
+    ) -> bool:
         """Connect to Alpaca WebSocket and subscribe to bars + quotes.
 
         If *data_client* is provided, the ring buffers are pre-filled with
-        historical bars via REST so the engine can trade on the very first tick
-        instead of waiting for ``MIN_BARS`` streaming bars to arrive.
+        historical bars via REST for feature warmup. A genuine advancing bar
+        in the confirmed current session is still required for stream freshness.
         """
+        self._start_config = dict(api_key=api_key, api_secret=api_secret, feed=feed, data_client=data_client)
+        self._desired_symbols = {s.upper() for s in symbols}
+        self._recovery_enabled = True
         async with self._lifecycle_lock:
-            if self._running:
-                logger.warning("StreamingDataProvider already running")
-                return
+            if self._running and self._stream and self._stream.is_authenticated:
+                return True
+            self._recovery_due_at = time.monotonic() + self.STARTUP_RETRY_INTERVAL_S
 
             # Keep a failed disconnect's reference until cleanup succeeds.
             await self._disconnect_stream(self._stream)
@@ -109,45 +122,51 @@ class StreamingDataProvider:
             self._wire_callbacks(stream, generation)
             started = False
             try:
-                connected = await stream.connect()
-                if not self._is_current_session(stream, generation):
-                    return
-                if connected is not True:
-                    logger.error("StreamingDataProvider failed to connect")
-                    return
+                async with asyncio.timeout(self.STARTUP_TIMEOUT_S):
+                    connected = await stream.connect()
+                    if not self._is_current_session(stream, generation):
+                        return False
+                    if connected is not True:
+                        logger.error("StreamingDataProvider failed to connect")
+                        return False
 
-                symbols_upper = [s.upper() for s in symbols]
-                bars_ok = await stream.subscribe_bars(symbols_upper)
-                if not self._is_current_session(stream, generation):
-                    return
-                if bars_ok is not True:
-                    logger.error("StreamingDataProvider bar subscription failed")
-                    return
-                self._subscribed_symbols.update(symbols_upper)
-                quotes_ok = await stream.subscribe_quotes(symbols_upper)
-                if not self._is_current_session(stream, generation):
-                    return
-                if quotes_ok is not True:
-                    logger.error("StreamingDataProvider quote subscription failed")
-                    return
+                    symbols_upper = [s.upper() for s in symbols]
+                    bars_ok = await stream.subscribe_bars(symbols_upper)
+                    if not self._is_current_session(stream, generation):
+                        return False
+                    if bars_ok is not True:
+                        logger.error("StreamingDataProvider bar subscription failed")
+                        return False
+                    self._subscribed_symbols.update(symbols_upper)
+                    quotes_ok = await stream.subscribe_quotes(symbols_upper)
+                    if not self._is_current_session(stream, generation):
+                        return False
+                    if quotes_ok is not True:
+                        logger.error("StreamingDataProvider quote subscription failed")
+                        return False
 
-                if data_client is not None:
-                    await self._prefill(symbols_upper, data_client)
-                if not self._is_current_session(stream, generation):
-                    return
-                self._running = started = True
-                logger.info(
-                    "StreamingDataProvider started: %d symbols, feed=%s",
-                    len(symbols_upper), feed,
-                )
+                    if data_client is not None and _prefill_history:
+                        await self._prefill(symbols_upper, data_client)
+                    if not self._is_current_session(stream, generation):
+                        return False
+                    self._running = started = True
+                    logger.info(
+                        "StreamingDataProvider started: %d symbols, feed=%s",
+                        len(symbols_upper), feed,
+                    )
             finally:
                 if not started:
                     if self._is_current_session(stream, generation):
                         self._invalidate_session()
                     await self._disconnect_stream(stream)
 
+            return started
+
     async def stop(self) -> None:
         """Disconnect from Alpaca WebSocket cleanly."""
+        self._recovery_enabled = False
+        self._start_config = None
+        self._desired_symbols.clear()
         # Invalidate before waiting for an in-flight connect/prefill/rotation.
         # Their continuations and callbacks must not restore stopped state.
         self._invalidate_session()
@@ -167,6 +186,7 @@ class StreamingDataProvider:
         self._quotes.clear()
         self._last_bar_ts.clear()
         self.last_update_time = None
+        self._transport_generation = None
 
     async def _disconnect_stream(self, stream) -> None:
         if stream is not None:
@@ -181,6 +201,7 @@ class StreamingDataProvider:
         async def on_bar(symbol, data):
             if (self._is_current_session(stream, generation)
                     and symbol.upper() in self._subscribed_symbols):
+                self._observe_transport_generation(stream)
                 await self._on_bar(symbol, data)
 
         async def on_quote(symbol, data):
@@ -191,9 +212,33 @@ class StreamingDataProvider:
         stream.on_bar = on_bar
         stream.on_quote = on_quote
 
+    def _observe_transport_generation(self, stream) -> None:
+        generation = getattr(stream, "connection_generation", None)
+        if isinstance(generation, int) and generation != self._transport_generation:
+            self._transport_generation = generation
+            self._last_bar_ts.clear()
+            self.last_update_time = None
+
+    async def _retry_start(self) -> bool:
+        if not self._recovery_enabled or not self._start_config:
+            return False
+        if time.monotonic() < self._recovery_due_at:
+            return False
+        config = dict(self._start_config)
+        symbols = sorted(self._desired_symbols)
+        try:
+            # Retry runs inside the engine's shorter subscription-sync bound.
+            # Restore confirmations promptly; the ordinary feeder supplies REST
+            # history while this live buffer warms up. Preserve the client for
+            # an explicit future start without manufacturing live provenance.
+            return await self.start(symbols, **config, _prefill_history=False)
+        except Exception:
+            logger.exception("Streaming startup retry failed; entries remain blocked")
+            return False
+
     @property
     def is_running(self) -> bool:
-        return self._running
+        return bool(self._running and self._stream and self._stream.is_authenticated)
 
     def stale_symbols(
         self, threshold_s: float, now: float | None = None,
@@ -219,9 +264,17 @@ class StreamingDataProvider:
         return out
 
     def _freshness_symbols(self) -> set[str]:
-        return set(self._last_bar_ts) | getattr(self, "_subscribed_symbols", set())
+        desired = self._desired_symbols if self._recovery_enabled else set()
+        return set(self._last_bar_ts) | self._subscribed_symbols | desired
 
     def _bar_receipt_age(self, symbol: str, now: float) -> float:
+        if self._recovery_enabled:
+            stream = self._stream
+            if stream is None or not stream.is_authenticated:
+                return float("inf")
+            generation = getattr(stream, "connection_generation", None)
+            if isinstance(generation, int) and generation != self._transport_generation:
+                return float("inf")
         ts = self._last_bar_ts.get(symbol)
         if ts is None or not math.isfinite(now) or not math.isfinite(ts) or now < ts:
             return float("inf")
@@ -299,6 +352,11 @@ class StreamingDataProvider:
         stale until an advancing, timely streaming bar arrives. No REST seed
         is performed here. Partial failures retain state for the next retry.
         """
+        if self._recovery_enabled:
+            self._desired_symbols = {s.upper() for s in symbols}
+            if not self._running or not self._stream or not self._stream.is_authenticated:
+                if not await self._retry_start():
+                    return False
         async with self._lifecycle_lock:
             return await self._update_subscriptions(symbols)
 
@@ -307,6 +365,7 @@ class StreamingDataProvider:
             logger.warning("Cannot update subscriptions — not connected")
             return False
         stream, generation = self._stream, self._session_generation
+        self._observe_transport_generation(stream)
 
         new_set = {s.upper() for s in symbols}
         current_quotes = set(self._stream.quote_subscriptions)
@@ -402,7 +461,6 @@ class StreamingDataProvider:
                         "close": row.get("close"),
                         "volume": row.get("volume"),
                     }
-                newest_historical = max(rows_by_time).timestamp()
                 # Subscription callbacks can run while REST is awaited. Keep
                 # their newer data (and any same-minute stream correction).
                 existing = self._bars.get(symbol, ())
@@ -418,12 +476,8 @@ class StreamingDataProvider:
                     (rows_by_time[timestamp] for timestamp in sorted(rows_by_time)),
                     maxlen=self._buffer_size,
                 )
-                # Existing streaming receipt timestamps keep their established
-                # semantics; historical-only state uses the actual bar time.
-                self._last_bar_ts[symbol] = max(
-                    self._last_bar_ts.get(symbol, float("-inf")), newest_historical,
-                )
-                self.last_update_time = max(self._last_bar_ts.values())
+                # REST supports warmup history, never current-session stream
+                # provenance. Only advancing live callbacks establish receipts.
                 filled += 1
             except Exception as e:
                 logger.warning("Pre-fill failed for %s: %s", symbol, e)
@@ -521,6 +575,10 @@ class StreamingDataProvider:
         Only triggers when *every* tracked symbol is stale (avoids false
         positives from a single missing symbol).
         """
+        if self._recovery_enabled and (
+            not self._running or not self._stream or not self._stream.is_authenticated
+        ):
+            return await self._retry_start()
         async with self._lifecycle_lock:
             return await self._recover_stale_stream(stale_threshold)
 
@@ -576,14 +634,28 @@ class StreamingDataProvider:
     def get_stats(self) -> dict[str, Any]:
         """Return provider statistics."""
         now = self._time_fn()
-        max_staleness = 0.0
-        if self._last_bar_ts:
-            max_staleness = max(now - ts for ts in self._last_bar_ts.values())
+        ages = {symbol: self._bar_receipt_age(symbol, now) for symbol in self._freshness_symbols()}
+        max_staleness = max(ages.values(), default=0.0)
+        confirmed_bars = set()
+        confirmed_quotes = set()
+        if self._stream:
+            for names in self._stream.bar_subscriptions.values():
+                confirmed_bars.update(names)
+            confirmed_quotes.update(self._stream.quote_subscriptions)
+        complete = (self.is_running and self._desired_symbols <= confirmed_bars
+                    and self._desired_symbols <= confirmed_quotes
+                    and (confirmed_bars | confirmed_quotes | self._subscribed_symbols)
+                    == self._desired_symbols)
         return {
-            "running": self._running,
+            "running": self.is_running,
+            "recovery_enabled": self._recovery_enabled,
+            "desired_symbols": len(self._desired_symbols),
+            "startup_retry_pending": self._recovery_enabled and not self.is_running,
             "symbols_with_bars": len(self._bars),
             "symbols_with_quotes": len(self._quotes),
             "total_bars": sum(len(b) for b in self._bars.values()),
-            "max_staleness_s": round(max_staleness, 1),
+            "max_staleness_s": round(max_staleness, 1) if math.isfinite(max_staleness) else None,
+            "subscriptions_complete": complete,
+            "unseen_or_unconfirmed_symbols": sorted(s for s, age in ages.items() if not math.isfinite(age)),
             "stream_stats": self._stream.get_stats() if self._stream else None,
         }

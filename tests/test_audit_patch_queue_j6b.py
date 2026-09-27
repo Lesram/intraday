@@ -1,150 +1,112 @@
+"""CORE-011 cancellation dispatch retains identity unless strict proof succeeds.
+
+Broker transport + actual SQL proof are covered by test_eod_pending_cancellation.
+These regressions pin the engine boundary and leave protective exits unchanged.
 """
-Tests for J6b — CORE-011 complete: cancel broker entry orders on drawdown kill.
-
-Verifies that the drawdown kill switch actually cancels open organism entry
-orders via the order service, not just clears local bookkeeping.
-"""
-
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-
+from unittest.mock import AsyncMock, MagicMock
 import pytest
+from backend.organism import operator_cancellation
 
 
 def _make_engine():
-    """Create a minimal OrganismLiveEngine for unit testing."""
     from backend.organism.live_engine import OrganismLiveEngine
-
     engine = object.__new__(OrganismLiveEngine)
     engine._pending_entry = {}
     engine._pending_entry_order_ids = {}
     engine._order_service = MagicMock()
-    engine._order_service.cancel_order = AsyncMock(return_value={"status": "cancelled"})
     return engine
 
 
-class TestDrawdownKillCancelBrokerOrders:
-    """CORE-011: drawdown kill must cancel open entry orders at the broker."""
+def confirmed(monkeypatch, engine, unresolved=()):
+    callback = AsyncMock(return_value={"orders": [
+        {"symbol": symbol, "entry_order_id": identity,
+         "release_pending": symbol not in unresolved, "resolution": "verified_unfilled"}
+        for symbol, identity in engine._pending_entry_order_ids.items()
+    ], "issues": ["broker_confirmation_unavailable"] if unresolved else []})
+    monkeypatch.setattr(operator_cancellation, "confirm_tracked_entries", callback)
+    return callback
 
+
+class TestDrawdownKillCancelBrokerOrders:
     @pytest.mark.asyncio
-    async def test_cancel_called_for_each_pending_order(self):
-        """Each tracked order_id triggers an order service cancel call."""
+    async def test_cancel_called_for_each_pending_order(self, monkeypatch):
         engine = _make_engine()
         engine._pending_entry = {"AAPL": 10, "MSFT": 12}
-        engine._pending_entry_order_ids = {
-            "AAPL": "order-aaa",
-            "MSFT": "order-bbb",
-        }
-
+        engine._pending_entry_order_ids = {"AAPL": "order-aaa", "MSFT": "order-bbb"}
+        callback = confirmed(monkeypatch, engine)
         await engine._cancel_pending_entry_orders()
-
-        assert engine._order_service.cancel_order.call_count == 2
-        called_ids = {
-            call.args[0]
-            for call in engine._order_service.cancel_order.call_args_list
-        }
-        assert called_ids == {"order-aaa", "order-bbb"}
+        callback.assert_awaited_once_with(engine, cancel=True)
+        assert not engine._pending_entry_order_ids
+        engine._order_service.cancel_order.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_local_bookkeeping_cleared_after_cancel(self):
-        """Both _pending_entry and _pending_entry_order_ids are emptied."""
+    async def test_local_bookkeeping_cleared_after_cancel(self, monkeypatch):
         engine = _make_engine()
         engine._pending_entry = {"NVDA": 5}
-        engine._pending_entry_order_ids = {"NVDA": "order-nnn"}
-
+        engine._pending_entry_order_ids = {"NVDA": "original"}
+        confirmed(monkeypatch, engine)
         await engine._cancel_pending_entry_orders()
-
-        assert engine._pending_entry == {}
-        assert engine._pending_entry_order_ids == {}
+        assert not engine._pending_entry and not engine._pending_entry_order_ids
 
     @pytest.mark.asyncio
-    async def test_no_open_orders_is_noop(self):
-        """When no pending entries exist, nothing is cancelled."""
+    async def test_no_open_orders_is_noop(self, monkeypatch):
         engine = _make_engine()
-
+        callback = confirmed(monkeypatch, engine)
         await engine._cancel_pending_entry_orders()
-
+        callback.assert_not_awaited()
         engine._order_service.cancel_order.assert_not_called()
-        assert engine._pending_entry == {}
-        assert engine._pending_entry_order_ids == {}
 
     @pytest.mark.asyncio
-    async def test_pending_entry_without_order_id_still_cleared(self):
-        """Entries in _pending_entry but not in _pending_entry_order_ids
-        (e.g. order submission returned no ID) are still cleared."""
+    async def test_pending_entry_without_order_id_is_retained(self, monkeypatch):
         engine = _make_engine()
         engine._pending_entry = {"TSLA": 7}
-        # No order ID tracked for TSLA
-
+        confirmed(monkeypatch, engine)
         await engine._cancel_pending_entry_orders()
-
-        engine._order_service.cancel_order.assert_not_called()
-        assert engine._pending_entry == {}
+        assert engine._pending_entry == {"TSLA": 7}
 
     @pytest.mark.asyncio
-    async def test_cancel_failure_does_not_crash(self):
-        """If cancel_order raises, the tick loop must not crash."""
+    async def test_cancel_failure_does_not_crash_or_clear(self, monkeypatch):
         engine = _make_engine()
         engine._pending_entry = {"AAPL": 10, "GOOGL": 11}
-        engine._pending_entry_order_ids = {
-            "AAPL": "order-aaa",
-            "GOOGL": "order-ggg",
-        }
-        engine._order_service.cancel_order = AsyncMock(
-            side_effect=Exception("broker timeout")
-        )
-
-        # Must not raise
+        engine._pending_entry_order_ids = {"AAPL": "a", "GOOGL": "g"}
+        confirmed(monkeypatch, engine, unresolved=("AAPL", "GOOGL"))
         await engine._cancel_pending_entry_orders()
-
-        # Local bookkeeping still cleared despite failures
-        assert engine._pending_entry == {}
-        assert engine._pending_entry_order_ids == {}
+        assert engine._pending_entry == {"AAPL": 10, "GOOGL": 11}
+        assert engine._pending_entry_order_ids == {"AAPL": "a", "GOOGL": "g"}
 
     @pytest.mark.asyncio
-    async def test_partial_cancel_failure(self):
-        """One cancel succeeds, another fails — both cleared from bookkeeping."""
+    async def test_partial_cancel_failure_retains_only_unresolved(self, monkeypatch):
         engine = _make_engine()
         engine._pending_entry = {"AAPL": 10, "GOOGL": 11}
-        engine._pending_entry_order_ids = {
-            "AAPL": "order-aaa",
-            "GOOGL": "order-ggg",
-        }
-
-        async def _side_effect(order_id):
-            if order_id == "order-ggg":
-                raise Exception("already filled")
-            return {"status": "cancelled"}
-
-        engine._order_service.cancel_order = AsyncMock(side_effect=_side_effect)
-
+        engine._pending_entry_order_ids = {"AAPL": "a", "GOOGL": "g"}
+        confirmed(monkeypatch, engine, unresolved=("GOOGL",))
         await engine._cancel_pending_entry_orders()
+        assert engine._pending_entry == {"GOOGL": 11}
+        assert engine._pending_entry_order_ids == {"GOOGL": "g"}
 
-        assert engine._pending_entry == {}
-        assert engine._pending_entry_order_ids == {}
-        assert engine._order_service.cancel_order.call_count == 2
+    @pytest.mark.asyncio
+    async def test_stale_confirmation_cannot_clear_a_new_identity(self, monkeypatch):
+        engine = _make_engine()
+        engine._pending_entry = {"AAPL": 10}
+        engine._pending_entry_order_ids = {"AAPL": "old"}
+        confirmed(monkeypatch, engine)
+        engine._pending_entry_order_ids["AAPL"] = "new"
+        await engine._cancel_pending_entry_orders()
+        assert engine._pending_entry_order_ids == {"AAPL": "new"}
 
 
 class TestExitOrdersNotCancelled:
-    """Exit/reduce-only orders must never be cancelled by drawdown kill."""
-
     @pytest.mark.asyncio
-    async def test_exit_orders_not_in_pending_entry(self):
-        """_pending_exit orders are not tracked in _pending_entry_order_ids
-        and therefore cannot be cancelled by _cancel_pending_entry_orders."""
+    async def test_exit_orders_not_in_pending_entry(self, monkeypatch):
         engine = _make_engine()
-        # Simulate: exit order pending for AAPL, entry order for MSFT
         engine._pending_entry = {"MSFT": 10}
-        engine._pending_entry_order_ids = {"MSFT": "order-entry-msft"}
-        # _pending_exit is a separate dict — not touched by the cancel method
+        engine._pending_entry_order_ids = {"MSFT": "entry-msft"}
         engine._pending_exit = {"AAPL": 8}
-
+        confirmed(monkeypatch, engine)
         await engine._cancel_pending_entry_orders()
-
-        # Only MSFT entry order cancelled
-        engine._order_service.cancel_order.assert_called_once_with("order-entry-msft")
-        # _pending_exit untouched
         assert engine._pending_exit == {"AAPL": 8}
+        assert not engine._pending_entry_order_ids
+        engine._order_service.cancel_order.assert_not_called()
 
 
 class TestOrderIdTracking:
@@ -158,13 +120,18 @@ class TestOrderIdTracking:
         assert "_pending_entry_order_ids" in source
 
     def test_order_id_expiry_synced_with_pending_entry(self):
-        """_pending_entry_order_ids cleanup is tied to _pending_entry expiry."""
-        import inspect
-        from backend.organism.live_engine import OrganismLiveEngine
-        source = inspect.getsource(OrganismLiveEngine)
-        # The expiry code should reference both dicts
-        assert "self._pending_entry_order_ids = {" in source
-        assert "if sym in self._pending_entry" in source
+        """Expired clocks cannot erase unresolved IDs or missing-ID blockers."""
+        engine = _make_engine()
+        engine._tick_count = 10000
+        engine._pending_entry = {"NO_ID": 0}
+        engine._pending_entry_order_ids = {"AAPL": "original-id"}
+        engine._pending_exit = {}
+        engine._exit_cooldown = {}
+        engine._EXIT_COOLDOWN_TICKS = 10
+        engine._PENDING_EXIT_TICKS = 3
+        engine._stage_expire_cooldowns()
+        assert engine._pending_entry == {"NO_ID": 0, "AAPL": 10000}
+        assert engine._pending_entry_order_ids == {"AAPL": "original-id"}
 
     def test_order_id_captured_on_entry_submission(self):
         """Entry submission code captures order_id into _pending_entry_order_ids."""

@@ -148,6 +148,22 @@ jobs:
             tests/test_phase3_attribution_report.py \
             --junitxml=artifacts/monday_readiness/github_operational.xml \
             2>&1 | tee artifacts/monday_readiness/github_operational.log
+      - name: Verify approved data and cancellation repairs
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/frozen_repairs_20260927
+          python -m pytest -q --timeout=30 --tb=short \
+            tests/test_streaming_subscription_acknowledgement.py \
+            tests/test_cross_asset_timestamp_alignment.py \
+            tests/test_eod_pending_cancellation.py \
+            tests/test_eod_cancellation_fairness.py \
+            tests/unit/test_alpaca_market_data_stream_comprehensive.py \
+            tests/unit/test_streaming_data_provider.py \
+            tests/test_streaming_provider_lifecycle.py \
+            --junitxml=artifacts/frozen_repairs_20260927/github_targeted.xml \
+            2>&1 | tee artifacts/frozen_repairs_20260927/github_targeted.log
       - name: Paired composite-input trading replay
         timeout-minutes: 10
         shell: bash
@@ -157,6 +173,7 @@ jobs:
           rm -f artifacts/composite_indicator_repair/replay/github_replay.xml artifacts/composite_indicator_repair/replay/paired_summary.json
           python -m pytest -q --timeout=30 --tb=short --durations=10 \
             tests/test_composite_correction_replay.py \
+            tests/test_cross_asset_alignment_replay.py \
             --junitxml=artifacts/composite_indicator_repair/replay/github_replay.xml \
             2>&1 | tee artifacts/composite_indicator_repair/replay/github_replay.log
       - name: Verify nightly test harness repairs

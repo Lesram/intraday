@@ -68,7 +68,7 @@ def test_freeze_covers_full_decision_surface(freeze):
         "staleness_admission",
         "streaming_universe_initialization", "streaming_subscription_sync",
         "streaming_subscription_timeout", "pipeline_diagnostics",
-        "ml_features", "composite_indicators",
+        "ml_features", "composite_indicators", "alpaca_market_data_stream",
     }
     assert freeze["surface"]["research_policy"]["locked"] is True
     assert freeze["surface"]["research_policy"]["qualified_trade_count"] is None
@@ -80,6 +80,7 @@ def test_freeze_covers_full_decision_surface(freeze):
         "operator_controls", "governance", "entry_admission", "operator_api",
         "entry_frame_capture", "entry_evidence", "entry_freshness", "entry_submission",
         "emergency_stop_api", "emergency_stop_service", "entry_cancellation",
+        "pending_entry_lifecycle",
     }
     rde = freeze["surface"]["routing_data_env"]
     assert set(rde) >= {"ALPACA_DATA_FEED", "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
@@ -210,7 +211,7 @@ def test_verify_detects_freshness_dependency_drift(tmp_path, monkeypatch, module
 @pytest.mark.parametrize("module_name", [
     "market_scanner", "streaming_data_provider", "live_engine_data", "staleness_admission",
     "pipeline_diagnostics", "streaming_universe_initialization", "streaming_subscription_sync",
-    "ml_features", "composite_indicators",
+    "ml_features", "composite_indicators", "alpaca_market_data_stream",
 ])
 def test_pipeline_source_drift_invalidates_freeze_without_reset(tmp_path, monkeypatch, module_name):
     """Discovery/data changes must not evade the original six-function guard."""
@@ -223,6 +224,8 @@ def test_pipeline_source_drift_invalidates_freeze_without_reset(tmp_path, monkey
             "streaming_universe_initialization": "__init__",
             "streaming_subscription_sync": "_sync_streaming_subscriptions",
         }[module_name])
+    elif module_name == "alpaca_market_data_stream":
+        module = importlib.import_module("backend.integrations." + module_name)
     else:
         module = importlib.import_module("backend.organism." + module_name)
     artifact = tmp_path / "param_freeze.json"
@@ -357,3 +360,31 @@ def test_absent_active_reference_generates_only_nonactive_candidate(isolated_ref
     assert "FROZEN_AT" not in record
     assert not active.exists()
     assert phase2_freeze.verify() == 2
+
+
+@pytest.mark.parametrize("method_name", [
+    "_stage_expire_cooldowns", "_cancel_pending_entry_orders",
+    "_reconcile_pending_entry_orders", "_confirm_pending_entry_orders",
+    "_check_tick_invariants",
+])
+def test_pending_entry_lifecycle_drift_preserves_active_boundary(tmp_path, monkeypatch, method_name):
+    from backend.organism.live_engine import OrganismLiveEngine
+
+    method = getattr(OrganismLiveEngine, method_name)
+    surface = compute_surface()
+    artifact = tmp_path / "active.json"
+    artifact.write_text(json.dumps({"FROZEN_AT": "2026-09-25T21:11:46.270521+00:00", "surface": surface}))
+    before = artifact.read_bytes()
+    monkeypatch.setattr(phase2_freeze, "FREEZE_PATH", artifact)
+    assert verify() == 0
+    original_getsource = phase2_freeze.inspect.getsource
+
+    def changed_source(obj):
+        source = original_getsource(obj)
+        return source + "\n# changed pending-entry lifetime dependency\n" if obj is method else source
+
+    monkeypatch.setattr(phase2_freeze.inspect, "getsource", changed_source)
+    assert verify() == 1
+    changed = compute_surface()
+    assert changed["source_hashes"] == surface["source_hashes"]
+    assert artifact.read_bytes() == before

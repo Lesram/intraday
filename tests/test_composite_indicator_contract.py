@@ -188,7 +188,13 @@ def test_actual_ml_path_completes_composites_without_changing_other_features(mon
     # missingness metadata, dtype/order, index, timestamps and frame attrs.
     other_columns = [column for column in actual if column not in indicators.COMPOSITE_COLUMNS]
     assert_frame_equal(actual[other_columns], old[other_columns], check_exact=True)
-    assert actual.attrs == old.attrs == bars.attrs
+    assert actual.attrs == old.attrs
+    # The timestamp repair adds explicit availability metadata. Preserve every
+    # input attribute and require that this is the only new attribute, equally
+    # present with the old and repaired composite division helper.
+    assert {key: actual.attrs[key] for key in bars.attrs} == bars.attrs
+    assert set(actual.attrs) - set(bars.attrs) == {"cross_asset_alignment"}
+    assert bars.attrs == before.attrs and spy.attrs == spy_before.attrs
     assert actual.columns.equals(old.columns)
     assert_frame_equal(bars, before, check_exact=True)
     assert_frame_equal(spy, spy_before, check_exact=True)

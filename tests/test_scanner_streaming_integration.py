@@ -310,3 +310,62 @@ async def test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit(monkeypa
     ids = [order["order_id"] for order in result.orders]
     assert len(ids) == len(set(ids))
     record_property("actual_eod_closes_during_entry_block", len(closes))
+
+
+@pytest.mark.timeout(60)
+@pytest.mark.asyncio
+@pytest.mark.parametrize("after_entry", [None, "subscription_failure"])
+async def test_actual_transport_ack_recovery_replay_keeps_entries_and_eod_safe(monkeypatch, tmp_path, after_entry):
+    """Actual transport/provider/engine; synthetic socket controls server snapshots."""
+    from unittest.mock import AsyncMock
+    from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
+    from tests.test_streaming_subscription_acknowledgement import Socket
+
+    sockets = []
+    async def real_provider(_monkeypatch, clock, symbols):
+        socket = Socket()
+        sockets.append(socket)
+        monkeypatch.setattr("backend.integrations.alpaca_market_data_stream.websockets.connect",
+                            AsyncMock(return_value=socket))
+        provider = StreamingDataProvider(time_fn=clock)
+        assert await provider.start(list(symbols), "offline", "offline")
+        stream = provider._stream
+        stream.fail_once = None
+        stream.fail_forever = set()
+        original_send = socket.send
+
+        async def server(raw):
+            request = json.loads(raw)
+            socket.reject = set(stream.fail_forever)
+            kind = stream.fail_once
+            if kind and "MSFT" in request.get(kind, []):
+                socket.reject.add("MSFT")
+                stream.fail_once = None
+            await original_send(raw)
+        socket.send = server
+        return provider, stream
+
+    monkeypatch.setitem(run_live_provider_replay.__globals__, "make_provider", real_provider)
+    # Replay advances by whole minutes without real waiting; cadence itself is
+    # covered separately with the real nonzero bound in transport contracts.
+    monkeypatch.setattr(AlpacaMarketDataStream, "SUBSCRIPTION_RETRY_INTERVAL_S", 0.0)
+    result, rows, transport, engines, first_bar = await run_live_provider_replay(
+        monkeypatch, tmp_path, fail_once="bars", after_entry=after_entry,
+    )
+    assert rows[5]["reason"] == "stream_subscription_sync"
+    assert all(row["blocked"] and row["orders"] == 0 for row in rows[5:8])
+    entries = [o for o in result.orders if o["symbol"] == "MSFT" and o["side"] == "buy"]
+    assert len(entries) == 1
+    assert pd.Timestamp(entries[0]["submitted_at"]) >= pd.Timestamp(first_bar)
+    assert all({"AAPL", "SPY", "QQQ"} <= row["subscribed"] for row in rows)
+    if after_entry:
+        held = [r for r in rows if "MSFT" in r["held_before"]]
+        assert any(r["reason"] == "stream_subscription_sync" for r in held)
+        assert any(t["symbol"] == "MSFT" and t["exit_reason"] == "eod_flatten"
+                   for t in result.accounted_trades)
+        assert not await engines[0]._positions_service.get_all_positions()
+        assert not result.accounting_pending
+    ids = [o["order_id"] for o in result.orders]
+    assert len(ids) == len(set(ids))
+    assert sockets and all(s.closed for s in sockets)
+    assert not [t for t in transport.background_tasks if not t.done()]

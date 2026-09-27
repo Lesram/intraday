@@ -253,29 +253,26 @@ class TestDrawdownKillCancelOrders:
     """
 
     @pytest.mark.asyncio
-    async def test_pending_entries_cleared_on_drawdown_kill(self):
-        """When drawdown kill triggers, _pending_entry must be cleared."""
+    async def test_pending_entries_cleared_on_drawdown_kill(self, monkeypatch):
+        """Drawdown cancellation clears only strictly confirmed identities."""
         from unittest.mock import AsyncMock, MagicMock
         from backend.organism.live_engine import OrganismLiveEngine
+        from backend.organism import operator_cancellation
 
         engine = object.__new__(OrganismLiveEngine)
         engine._pending_entry = {"AAPL": 10, "MSFT": 12}
-        engine._pending_entry_order_ids = {
-            "AAPL": "order-aaa",
-            "MSFT": "order-bbb",
-        }
+        engine._pending_entry_order_ids = {"AAPL": "order-aaa", "MSFT": "order-bbb"}
         engine._order_service = MagicMock()
-        engine._order_service.cancel_order = AsyncMock(
-            return_value={"status": "cancelled"}
-        )
-
+        confirmed = AsyncMock(return_value={"orders": [
+            {"symbol": sym, "entry_order_id": identity, "release_pending": True,
+             "resolution": "verified_unfilled"}
+            for sym, identity in engine._pending_entry_order_ids.items()
+        ], "issues": []})
+        monkeypatch.setattr(operator_cancellation, "confirm_tracked_entries", confirmed)
         await engine._cancel_pending_entry_orders()
-
-        # Bookkeeping cleared.
-        assert engine._pending_entry == {}
-        assert engine._pending_entry_order_ids == {}
-        # Broker cancel was called for each tracked order.
-        assert engine._order_service.cancel_order.call_count == 2
+        assert engine._pending_entry == {} and engine._pending_entry_order_ids == {}
+        confirmed.assert_awaited_once_with(engine, cancel=True)
+        engine._order_service.cancel_order.assert_not_called()
 
     def test_drawdown_kill_marker_present(self):
         """The CORE-011 audit marker must remain in the engine source so

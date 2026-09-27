@@ -4,6 +4,62 @@
 
 ---
 
+## Approved operational correctness repairs (candidate 2026-09-27)
+
+Marsel explicitly approved the five audited frozen repairs and a new forward
+period on activation: “yes I approve everything.” The approval and bounded
+implementation plan are recorded in `artifacts/frozen_repairs_20260927/plan.json`.
+This section describes the candidate contract; the installed active boundary
+remains authoritative until reviewed paper activation publishes its receipt.
+Previous boundaries, models, learner history and broker/ledger evidence remain
+preserved. No strategy parameters, feed, risk thresholds or sizing policy change.
+
+Streaming membership requires the provider's current-connection confirmation for
+both bars and quotes. Sending a request is not confirmation. Desired membership
+survives rejection, partial acknowledgement and reconnect; retry is bounded.
+Unsubscribe retains tracked state until the server confirms removal. Old-session
+messages cannot complete current requests. Failed startup and unexpected normal
+socket closure retain a recoverable configured streaming path; deliberate stop
+remains final. Historical warmup bars never manufacture live receipt freshness.
+The existing global 120-second, alpha 20-second and final feature-bar 120-second
+admission policies remain in force, including position/exit management during
+entry stand-down. Runtime snapshots read acknowledgement and retry bounds from
+the actual transport/provider constants and identify checked-out source only.
+
+SPY-relative inputs align validated timezone-aware timestamps with backward-only
+lookup. Ordinal DataFrame indexes cannot select a different benchmark period.
+Stock output order and previously valid non-cross-asset features remain intact.
+Missing/invalid temporal coverage retains the existing neutral cross-feature
+values with explicit in-memory availability metadata; it does not invent event
+time or certify exported research rows. The final entry timestamp gate continues
+to reject invalid stock event times. Main-book ML isolation and fixed ATR-dollar
+risk remain unchanged; replay must exercise real synthetic orders and closes.
+
+Pending-entry cancellation uses the supported broker path and terminal-state
+confirmation. Failure, timeout and uncertain attribution must retain pending
+identity across cleanup and restart. Terminal status with filled quantity needs
+accounting/exposure evidence; it cannot be represented as a zero-fill cancellation.
+EOD entry block and flatten remain active. No replacement or retry path may submit
+a new order as a consequence of cancellation uncertainty.
+The adapter retains its two-second per-call, twelve-second total, three-attempt
+and 256-order bounds. Ordinary observation follows fill accounting; filled-entry
+admission retains its 30-tick cooldown, while unresolved identity never expires
+by elapsed ticks alone. A retry starts after the last attempted identity so a
+slow prefix cannot indefinitely starve later orders. Runtime snapshots read the
+adapter limits from the source.
+
+The complete market-data transport is included in `data_pipeline_sources`, along
+with the already covered provider, scheduler and feature producers. Pending-entry
+expiry, cancellation, confirmation and resolution helpers are explicitly covered by
+`research_policy_sources.pending_entry_lifecycle`; initialization, EOD dispatch
+and the cancellation adapter retain their existing source coverage. Deliberate
+changes to these helpers must fail drift verification without rewriting any
+active artifact. Candidate generation/verification remains separate from activation.
+The approved paper transition requires fresh flat/no-open-order evidence, verified
+recoverable backups, exact source/image/config identity, and a new explicitly
+recorded UTC forward boundary under a maintenance hold. A complete natural paper
+session and qualified strategy evidence are later acceptance gates.
+
 ## Approved composite-input correction (candidate 2026-09-25)
 
 Marsel explicitly approved adding the indicator correction and replay validation
@@ -470,7 +526,8 @@ START TICK
   │
   ├── Expire cooldowns:
   │   ├── _exit_cooldown:   symbols older than 10 ticks removed
-  │   ├── _pending_entry:   symbols older than 30 ticks removed
+  │   ├── _pending_entry:   unresolved identities retained regardless of age
+  │   │                    confirmed/accounted entries cleared after reconciliation
   │   └── _pending_exit:    symbols older than 3 ticks removed
   │
   └── Stream health check (every 30 ticks ≈ 5 min):

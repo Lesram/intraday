@@ -57,6 +57,8 @@ class AlpacaMarketDataStream:
     MAX_BACKOFF = 300.0  # Max reconnect delay (5 minutes)
     BACKOFF_MULTIPLIER = 1.5  # Exponential backoff multiplier
     HEARTBEAT_INTERVAL = 30  # Seconds between heartbeats
+    SUBSCRIPTION_ACK_TIMEOUT_S = 2.0
+    SUBSCRIPTION_RETRY_INTERVAL_S = 5.0
 
     def __init__(
         self,
@@ -98,6 +100,19 @@ class AlpacaMarketDataStream:
         self.trade_subscriptions: set[str] = set()  # Symbols subscribed to trades
         self.bar_subscriptions: dict[str, set[str]] = {}  # {timeframe: {symbols}}
 
+        # Desired state survives reconnect; public subscription sets contain only
+        # server-confirmed state from this connection generation.
+        self._desired = {channel: set() for channel in ("quotes", "trades", "bars")}
+        self._desired_bar_timeframes: set[str] = set()
+        self.connection_generation = 0
+        self._channel_versions = {channel: 0 for channel in self._desired}
+        self._subscription_error = 0
+        self._subscription_changed = asyncio.Event()
+        self._subscription_lock = asyncio.Lock()
+        self._connect_lock = asyncio.Lock()
+        self._retry_after: dict[tuple, float] = {}
+        self._listener: asyncio.Task | None = None
+
         # Callbacks
         self.on_quote: Callable[[str, dict], Any] | None = None
         self.on_trade: Callable[[str, dict], Any] | None = None
@@ -118,51 +133,55 @@ class AlpacaMarketDataStream:
         )
 
     async def connect(self) -> bool:
-        """
-        Connect to Alpaca market data stream.
-
-        Returns:
-            bool: True if connected successfully
-        """
-        if self.is_connected:
-            logger.warning("Already connected")
-            return True
-
-        try:
-            logger.info(f"Connecting to Alpaca market data stream: {self.base_url}")
-
-            # Connect to WebSocket
-            self.websocket = await websockets.connect(
-                self.base_url,
-                ping_interval=20,
-                ping_timeout=10,
-                close_timeout=10
-            )
-
-            self.is_connected = True
-            self.connection_count += 1
-            self.reconnect_attempts = 0
-            self.current_backoff = self.INITIAL_BACKOFF
-
-            logger.info(f"Connected to Alpaca (connection #{self.connection_count})")
-
-            # Authenticate
-            if await self._authenticate():
-                # Resubscribe to symbols (if reconnecting)
-                await self._resubscribe_all()
-
-                # Start background tasks
-                self._start_background_tasks()
-
+        """Open one authenticated generation and start its reader before ACK waits."""
+        async with self._connect_lock:
+            if self.is_connected and self.is_authenticated:
                 return True
-            else:
-                await self.disconnect()
+            if not self.should_reconnect:
+                return False
+            generation = self.connection_generation
+            try:
+                socket = await websockets.connect(
+                    self.base_url, ping_interval=20, ping_timeout=10, close_timeout=10,
+                )
+                if not self.should_reconnect or generation != self.connection_generation:
+                    await socket.close()
+                    return False
+                self.websocket = socket
+                self.connection_generation += 1
+                generation = self.connection_generation
+                self._clear_confirmations()
+                self.is_connected = True
+                if not await self._authenticate():
+                    await self._cleanup_connection()
+                    return False
+                if not self.should_reconnect or generation != self.connection_generation:
+                    return False
+                self.connection_count += 1
+                self._start_background_tasks()
+                await self._resubscribe_all()
+                if (generation != self.connection_generation or not self.is_authenticated
+                        or not self.should_reconnect):
+                    return False
+                self.reconnect_attempts = 0
+                self.current_backoff = self.INITIAL_BACKOFF
+                return True
+            except asyncio.CancelledError:
+                await self._cleanup_connection()
+                raise
+            except Exception:
+                logger.exception("Failed to connect to Alpaca market data")
+                await self._cleanup_connection()
                 return False
 
-        except Exception as e:
-            logger.error(f"Failed to connect to Alpaca: {e}", exc_info=True)
-            self.is_connected = False
-            return False
+    def _clear_confirmations(self) -> None:
+        self.quote_subscriptions.clear()
+        self.trade_subscriptions.clear()
+        for names in self.bar_subscriptions.values():
+            names.clear()
+        self._channel_versions = {channel: 0 for channel in self._desired}
+        self._retry_after.clear()
+        self._subscription_changed.set()
 
     async def _cleanup_connection(self) -> None:
         """Clean up connection resources without changing reconnect intent.
@@ -172,6 +191,8 @@ class AlpacaMarketDataStream:
         """
         self.is_connected = False
         self.is_authenticated = False
+        self.connection_generation += 1
+        self._clear_confirmations()
 
         # Cancel background tasks (skip the current task if called from within)
         current = asyncio.current_task()
@@ -206,6 +227,7 @@ class AlpacaMarketDataStream:
         Returns:
             bool: True if authenticated successfully
         """
+        socket, generation = self.websocket, self.connection_generation
         try:
             auth_message = {
                 "action": "auth",
@@ -241,6 +263,9 @@ class AlpacaMarketDataStream:
                 auth_data = auth_data[0] if auth_data else {}
 
             if auth_data.get("T") == "success" and auth_data.get("msg") == "authenticated":
+                if (socket is not self.websocket or generation != self.connection_generation
+                        or not self.should_reconnect):
+                    return False
                 self.is_authenticated = True
                 logger.info("Authenticated with Alpaca successfully")
                 return True
@@ -257,246 +282,118 @@ class AlpacaMarketDataStream:
             logger.error(f"Authentication error: {e}", exc_info=True)
             return False
 
+    def _confirmed(self, channel: str) -> set[str]:
+        if channel == "quotes":
+            return set(self.quote_subscriptions)
+        if channel == "trades":
+            return set(self.trade_subscriptions)
+        return set().union(*self.bar_subscriptions.values()) if self.bar_subscriptions else set()
+
+    async def _change_subscriptions(self, action: str, channels: dict[str, set[str]]) -> bool:
+        """A send is only a request. Await supplied channel snapshots in this session."""
+        async with self._subscription_lock:
+            if not self.is_authenticated or self.websocket is None:
+                return False
+            generation = self.connection_generation
+            socket = self.websocket
+            if action == "subscribe":
+                for channel, names in channels.items():
+                    self._desired[channel].update(names)
+                channels = {channel: names - self._confirmed(channel)
+                            for channel, names in channels.items()}
+                channels = {channel: names for channel, names in channels.items() if names}
+                if not channels:
+                    return True
+            key = (action, tuple(sorted(channels)))
+            loop = asyncio.get_running_loop()
+            if loop.time() < self._retry_after.get(key, 0):
+                return False
+            versions = dict(self._channel_versions)
+            error = self._subscription_error
+            self._retry_after[key] = loop.time() + self.SUBSCRIPTION_RETRY_INTERVAL_S
+            self._subscription_changed.clear()
+            deadline = loop.time() + self.SUBSCRIPTION_ACK_TIMEOUT_S
+            try:
+                await asyncio.wait_for(socket.send(json.dumps({"action": action, **{
+                    channel: sorted(names) for channel, names in channels.items()
+                }})), timeout=self.SUBSCRIPTION_ACK_TIMEOUT_S)
+                while (generation == self.connection_generation and self.is_authenticated
+                       and self.should_reconnect and error == self._subscription_error):
+                    supplied = all(self._channel_versions[c] > versions[c] for c in channels)
+                    matched = all(
+                        names <= self._confirmed(channel) if action == "subscribe"
+                        else not names.intersection(self._confirmed(channel))
+                        for channel, names in channels.items()
+                    )
+                    if supplied:
+                        if matched:
+                            if action == "unsubscribe":
+                                for channel, names in channels.items():
+                                    self._desired[channel].difference_update(names)
+                            self._retry_after.pop(key, None)
+                            return True
+                        # A complete but partial/rejected snapshot is not success.
+                        return False
+                    remaining = deadline - loop.time()
+                    if remaining <= 0:
+                        break
+                    await asyncio.wait_for(self._subscription_changed.wait(), timeout=remaining)
+                    self._subscription_changed.clear()
+            except (TimeoutError, WebSocketException, OSError):
+                logger.warning("Market-data subscription %s incomplete", action)
+            except Exception:
+                logger.exception("Market-data subscription request failed")
+            return False
+
     async def subscribe_quotes(self, symbols: list[str]) -> bool:
-        """
-        Subscribe to real-time quote updates for symbols.
-
-        Args:
-            symbols: List of stock symbols (e.g., ["AAPL", "TSLA"])
-
-        Returns:
-            bool: True if subscribed successfully
-        """
-        if not self.is_authenticated:
-            logger.error("Not authenticated, cannot subscribe")
-            return False
-
-        # Normalize symbols (uppercase)
-        symbols = [s.upper() for s in symbols]
-
-        # Filter out already subscribed symbols
-        new_symbols = [s for s in symbols if s not in self.quote_subscriptions]
-
-        if not new_symbols:
-            logger.debug(f"Already subscribed to quotes for: {symbols}")
-            return True
-
-        try:
-            subscribe_message = {
-                "action": "subscribe",
-                "quotes": new_symbols
-            }
-
-            await self.websocket.send(json.dumps(subscribe_message))
-
-            # Add to subscriptions
-            self.quote_subscriptions.update(new_symbols)
-
-            logger.info(f"Subscribed to quotes for: {new_symbols}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to subscribe to quotes: {e}", exc_info=True)
-            return False
+        return await self._change_subscriptions("subscribe", {"quotes": {s.upper() for s in symbols}})
 
     async def subscribe_trades(self, symbols: list[str]) -> bool:
-        """
-        Subscribe to real-time trade updates for symbols.
-
-        Args:
-            symbols: List of stock symbols
-
-        Returns:
-            bool: True if subscribed successfully
-        """
-        if not self.is_authenticated:
-            logger.error("Not authenticated, cannot subscribe")
-            return False
-
-        symbols = [s.upper() for s in symbols]
-        new_symbols = [s for s in symbols if s not in self.trade_subscriptions]
-
-        if not new_symbols:
-            return True
-
-        try:
-            subscribe_message = {
-                "action": "subscribe",
-                "trades": new_symbols
-            }
-
-            await self.websocket.send(json.dumps(subscribe_message))
-
-            self.trade_subscriptions.update(new_symbols)
-
-            logger.info(f"Subscribed to trades for: {new_symbols}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to subscribe to trades: {e}", exc_info=True)
-            return False
+        return await self._change_subscriptions("subscribe", {"trades": {s.upper() for s in symbols}})
 
     async def subscribe_bars(self, symbols: list[str], timeframe: str = "1Min") -> bool:
-        """
-        Subscribe to real-time bar (candlestick) updates for symbols.
-
-        Args:
-            symbols: List of stock symbols
-            timeframe: Bar timeframe (e.g., "1Min", "5Min", "15Min", "1Hour", "1Day")
-
-        Returns:
-            bool: True if subscribed successfully
-        """
-        if not self.is_authenticated:
-            logger.error("Not authenticated, cannot subscribe")
-            return False
-
-        symbols = [s.upper() for s in symbols]
-
-        # Initialize timeframe set if needed
-        if timeframe not in self.bar_subscriptions:
-            self.bar_subscriptions[timeframe] = set()
-
-        # Filter out already subscribed symbols
-        new_symbols = [s for s in symbols if s not in self.bar_subscriptions[timeframe]]
-
-        if not new_symbols:
-            return True
-
-        try:
-            subscribe_message = {
-                "action": "subscribe",
-                "bars": new_symbols
-            }
-
-            await self.websocket.send(json.dumps(subscribe_message))
-
-            self.bar_subscriptions[timeframe].update(new_symbols)
-
-            logger.info(f"Subscribed to {timeframe} bars for: {new_symbols}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to subscribe to bars: {e}", exc_info=True)
-            return False
+        self._desired_bar_timeframes.add(timeframe)
+        self.bar_subscriptions.setdefault(timeframe, self._confirmed("bars"))
+        return await self._change_subscriptions("subscribe", {"bars": {s.upper() for s in symbols}})
 
     async def unsubscribe(self, symbols: list[str]) -> bool:
-        """
-        Unsubscribe from all data types for symbols.
-
-        Args:
-            symbols: List of stock symbols to unsubscribe from
-
-        Returns:
-            bool: True if unsubscribed successfully
-        """
-        if not self.is_authenticated:
-            return False
-
-        symbols = [s.upper() for s in symbols]
-
-        try:
-            unsubscribe_message = {
-                "action": "unsubscribe",
-                "quotes": symbols,
-                "trades": symbols,
-                "bars": symbols
-            }
-
-            await self.websocket.send(json.dumps(unsubscribe_message))
-
-            # Remove from subscriptions
-            for symbol in symbols:
-                self.quote_subscriptions.discard(symbol)
-                self.trade_subscriptions.discard(symbol)
-                for timeframe_subs in self.bar_subscriptions.values():
-                    timeframe_subs.discard(symbol)
-
-            logger.info(f"Unsubscribed from: {symbols}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to unsubscribe: {e}", exc_info=True)
-            return False
+        names = {s.upper() for s in symbols}
+        return await self._change_subscriptions("unsubscribe", {c: names for c in self._desired})
 
     async def _resubscribe_all(self):
-        """Resubscribe to all symbols after reconnection.
-
-        The subscribe_*() methods deduplicate against their tracking sets,
-        so we snapshot and clear before re-subscribing.  This ensures the
-        subscribe messages actually reach the new WebSocket connection.
-        """
-        # Snapshot desired subscriptions before clearing tracking
-        saved_quotes = list(self.quote_subscriptions)
-        saved_trades = list(self.trade_subscriptions)
-        saved_bars = {tf: list(syms) for tf, syms in self.bar_subscriptions.items()}
-
-        # Clear tracking so subscribe_*() won't filter them as "already subscribed"
-        self.quote_subscriptions.clear()
-        self.trade_subscriptions.clear()
-        for sym_set in self.bar_subscriptions.values():
-            sym_set.clear()
-
-        if saved_quotes:
-            await self.subscribe_quotes(saved_quotes)
-
-        if saved_trades:
-            await self.subscribe_trades(saved_trades)
-
-        for timeframe, symbols in saved_bars.items():
-            if symbols:
-                await self.subscribe_bars(list(symbols), timeframe)
+        # The reader is already active, so these confirmation waits cannot deadlock.
+        for channel, names in self._desired.items():
+            if names:
+                await self._change_subscriptions("subscribe", {channel: set(names)})
 
     async def listen(self):
-        """
-        Main listening loop for processing messages.
-        This should be run as a background task.
-        """
+        """Read exactly one socket generation; normal closure is a disconnect too."""
         if not self.is_connected or not self.is_authenticated:
-            logger.error("Cannot listen - not connected or authenticated")
             return
-
-        logger.info("Starting to listen for market data")
-
+        socket, generation = self.websocket, self.connection_generation
         try:
-            async for message in self.websocket:
+            async for message in socket:
+                if socket is not self.websocket or generation != self.connection_generation:
+                    return
                 try:
-                    await self._handle_message(message)
+                    await self._handle_message(message, generation=generation)
+                except json.JSONDecodeError:
+                    logger.warning("Invalid JSON received from market data stream")
+                except Exception:
+                    logger.exception("Error processing market data message")
+        except (ConnectionClosed, WebSocketException):
+            logger.warning("Market data websocket disconnected")
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Unexpected error in market data listener")
+        finally:
+            if socket is self.websocket and generation == self.connection_generation:
+                await self._cleanup_connection()
+                if self.should_reconnect:
+                    await self._reconnect()
 
-                except json.JSONDecodeError as e:
-                    logger.warning("Invalid JSON received: %s error=%s", message[:200], e)
-                    continue
-
-                except Exception as e:
-                    logger.error(
-                        f"Error processing message: {e}",
-                        message=message[:200],
-                        exc_info=True
-                    )
-                    continue
-
-        except ConnectionClosed as e:
-            logger.warning(f"WebSocket connection closed: {e}")
-            self.is_connected = False
-            self.is_authenticated = False
-
-            if self.should_reconnect:
-                await self._reconnect()
-
-        except WebSocketException as e:
-            logger.error(f"WebSocket error: {e}", exc_info=True)
-            self.is_connected = False
-            self.is_authenticated = False
-
-            if self.should_reconnect:
-                await self._reconnect()
-
-        except Exception as e:
-            logger.error(f"Unexpected error in listen loop: {e}", exc_info=True)
-            self.is_connected = False
-            self.is_authenticated = False
-
-    async def _handle_message(self, raw_message: str):
+    async def _handle_message(self, raw_message: str, *, generation: int | None = None):
         """
         Handle incoming message from Alpaca.
 
@@ -515,6 +412,8 @@ class AlpacaMarketDataStream:
             }
         ]
         """
+        if generation is not None and generation != self.connection_generation:
+            return
         messages = json.loads(raw_message)
 
         # Messages are always in an array
@@ -522,6 +421,10 @@ class AlpacaMarketDataStream:
             messages = [messages]
 
         for message in messages:
+            if generation is not None and generation != self.connection_generation:
+                return
+            if not isinstance(message, dict):
+                continue
             self.total_messages_received += 1
 
             msg_type = message.get("T")
@@ -532,12 +435,31 @@ class AlpacaMarketDataStream:
                 continue
 
             elif msg_type == "subscription":
-                # Subscription status update
-                logger.debug(f"Subscription update: {message}")
+                for channel in self._desired:
+                    if channel not in message:
+                        continue  # Omitted is not an empty channel snapshot.
+                    names = message[channel]
+                    if not isinstance(names, list) or any(
+                        not isinstance(name, str) or not name for name in names
+                    ):
+                        self._subscription_error += 1
+                        continue
+                    confirmed = {name.upper() for name in names}
+                    if channel == "quotes":
+                        self.quote_subscriptions = confirmed
+                    elif channel == "trades":
+                        self.trade_subscriptions = confirmed
+                    else:
+                        for timeframe in self._desired_bar_timeframes or {"1Min"}:
+                            self.bar_subscriptions[timeframe] = set(confirmed)
+                    self._channel_versions[channel] += 1
+                self._subscription_changed.set()
                 continue
 
             elif msg_type == "error":
                 # Error message
+                self._subscription_error += 1
+                self._subscription_changed.set()
                 error_msg = message.get("msg", "Unknown error")
                 logger.error(f"Alpaca error: {error_msg}")
                 if self.on_error:
@@ -631,66 +553,30 @@ class AlpacaMarketDataStream:
             logger.error(f"Error handling bar: {e}", exc_info=True)
 
     async def _reconnect(self):
-        """Reconnect with exponential backoff.
-
-        Called from within listen() when the connection drops.
-        Cleans up the old connection, then calls connect() which
-        starts a fresh listen() task via _start_background_tasks().
-        The calling listen() task exits naturally after this returns.
-        """
-        if self.reconnect_attempts >= self.MAX_RECONNECT_ATTEMPTS:
-            logger.error(f"Max reconnect attempts ({self.MAX_RECONNECT_ATTEMPTS}) reached, giving up")
-            if self.on_error:
-                await self.on_error("Max reconnect attempts reached")
-            return
-
-        self.reconnect_attempts += 1
-
-        # Calculate backoff with jitter
-        jitter = random.uniform(-0.1, 0.1)
-        delay = self.current_backoff * (1 + jitter)
-
-        logger.info(
-            f"Reconnecting in {delay:.1f}s (attempt {self.reconnect_attempts}/{self.MAX_RECONNECT_ATTEMPTS})"
-        )
-
-        await asyncio.sleep(delay)
-
-        # Increase backoff for next attempt
-        self.current_backoff = min(
-            self.current_backoff * self.BACKOFF_MULTIPLIER,
-            self.MAX_BACKOFF
-        )
-
-        # Clean up old connection (closes websocket, cancels heartbeat)
-        await self._cleanup_connection()
-
-        # Attempt reconnection — connect() starts fresh listen() + heartbeat
-        try:
-            success = await self.connect()
-        except Exception as e:
-            logger.error(f"Reconnection attempt raised exception: {e}")
-            success = False
-
-        if success:
-            logger.info("Reconnected successfully")
-            # NOTE: Do NOT create another listen() task here.
-            # connect() → _start_background_tasks() already started one.
-        elif self.reconnect_attempts < self.MAX_RECONNECT_ATTEMPTS:
-            await self._reconnect()
-        else:
-            logger.error("Max reconnect attempts exhausted")
+        """Bounded backoff, preserving explicit-stop intent across every await."""
+        while self.should_reconnect and self.reconnect_attempts < self.MAX_RECONNECT_ATTEMPTS:
+            self.reconnect_attempts += 1
+            delay = self.current_backoff * (1 + random.uniform(-0.1, 0.1))
+            await asyncio.sleep(delay)
+            if not self.should_reconnect:
+                return
+            self.current_backoff = min(self.current_backoff * self.BACKOFF_MULTIPLIER, self.MAX_BACKOFF)
+            await self._cleanup_connection()
+            if not self.should_reconnect:
+                return
+            if await self.connect():
+                return
+        if self.should_reconnect and self.on_error:
+            await self.on_error("Max reconnect attempts reached")
 
     def _start_background_tasks(self):
-        """Start background tasks for listening and heartbeat monitoring."""
-        # Prune completed/cancelled tasks to prevent accumulation
+        """At most one listener for the current generation."""
         self.background_tasks = [t for t in self.background_tasks if not t.done()]
-
-        listen_task = asyncio.create_task(self.listen())
-        self.background_tasks.append(listen_task)
-
-        heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-        self.background_tasks.append(heartbeat_task)
+        if self._listener is not None and not self._listener.done() and self._listener is not asyncio.current_task():
+            return
+        self._listener = asyncio.create_task(self.listen())
+        self.background_tasks.append(self._listener)
+        self.background_tasks.append(asyncio.create_task(self._heartbeat_loop()))
 
     async def _heartbeat_loop(self):
         """Send periodic heartbeat to track connection health"""
@@ -703,6 +589,9 @@ class AlpacaMarketDataStream:
         """Get stream statistics"""
         return {
             "connected": self.is_connected,
+            "connection_generation": self.connection_generation,
+            "subscriptions_confirmed": all(names <= self._confirmed(c) for c, names in self._desired.items()),
+            "desired_subscriptions": {c: len(names) for c, names in self._desired.items()},
             "authenticated": self.is_authenticated,
             "connection_count": self.connection_count,
             "total_messages": self.total_messages_received,
