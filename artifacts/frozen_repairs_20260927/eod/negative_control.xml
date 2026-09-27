@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="4" time="1.346" timestamp="2026-09-27T11:26:16.125035-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_eod_pending_cancellation" name="test_unverified_cancel_never_forgets_entry[broker_confirmation_unavailable]" time="0.001"><failure message="AssertionError: assert {} == {'AAPL': 1}&#10;  &#10;  Right contains 1 more item:&#10;  {'AAPL': 1}&#10;  Use -v to get more diff">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x10b9fdca0&gt;
+issue = 'broker_confirmation_unavailable'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+&gt;       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:33: AssertionError</failure></testcase><testcase classname="tests.test_eod_pending_cancellation" name="test_unverified_cancel_never_forgets_entry[cancellation_not_confirmed]" time="0.001"><failure message="AssertionError: assert {} == {'AAPL': 1}&#10;  &#10;  Right contains 1 more item:&#10;  {'AAPL': 1}&#10;  Use -v to get more diff">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x11535f410&gt;
+issue = 'cancellation_not_confirmed'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+&gt;       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:33: AssertionError</failure></testcase><testcase classname="tests.test_eod_pending_cancellation" name="test_unverified_cancel_never_forgets_entry[fill_reconciliation_required]" time="0.001"><failure message="AssertionError: assert {} == {'AAPL': 1}&#10;  &#10;  Right contains 1 more item:&#10;  {'AAPL': 1}&#10;  Use -v to get more diff">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x115362f90&gt;
+issue = 'fill_reconciliation_required'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+&gt;       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:33: AssertionError</failure></testcase><testcase classname="tests.test_eod_pending_cancellation" name="test_ttl_and_stream_terminal_boolean_cannot_erase_attribution" time="0.127"><failure message="AttributeError: 'OrganismLiveEngine' object has no attribute '_PENDING_ENTRY_TICKS'">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x1154421e0&gt;
+
+    def test_ttl_and_stream_terminal_boolean_cannot_erase_attribution(monkeypatch):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        engine._pending_entry['NO_ID'] = 0
+        stream = SimpleNamespace(is_order_terminal=MagicMock(return_value=True))
+        monkeypatch.setattr('backend.integrations.alpaca_stream.get_stream_client', lambda: stream)
+&gt;       engine._stage_expire_cooldowns()
+
+tests/test_eod_pending_cancellation.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;backend.organism.live_engine.OrganismLiveEngine object at 0x115441f70&gt;
+
+    def _stage_expire_cooldowns(self) -&gt; None:
+        """Stage 0a: expire cooldowns and pending-entry tracking maps.
+    
+        Pure state mutation; no inputs, no return value. Runs at the
+        very top of every tick to drop entries older than their TTL.
+        Extracted from _live_tick_inner for HH R-1 (V7 architecture
+        finding: 2,510-line method with no isolated stages).
+        """
+        # Expire old cooldowns (keep only recent exits)
+        self._exit_cooldown = {
+            sym: tick for sym, tick in self._exit_cooldown.items()
+            if self._tick_count - tick &lt; self._EXIT_COOLDOWN_TICKS
+        }
+        # Expire old pending entries
+        self._pending_entry = {
+            sym: tick for sym, tick in self._pending_entry.items()
+&gt;           if self._tick_count - tick &lt; self._PENDING_ENTRY_TICKS
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+        }
+E       AttributeError: 'OrganismLiveEngine' object has no attribute '_PENDING_ENTRY_TICKS'
+
+backend/organism/live_engine.py:2411: AttributeError</failure></testcase></testsuite></testsuites>

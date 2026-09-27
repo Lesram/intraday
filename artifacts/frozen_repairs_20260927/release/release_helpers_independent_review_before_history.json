@@ -1,0 +1,182 @@
+{
+  "task_id": "pr32-private-release-helper-independent-review",
+  "status": "ACCEPTED_INERT_PREPARATION_ONLY_FINAL_PIN_AND_HISTORICAL_ADAPTATION_REVIEW_REQUIRED",
+  "helper_sha256": {
+    "/private/tmp/intra-pr32-rollout.py": "15e3c0d944e1cb2a195ec582b8cb61b8e04d88a3b5bbe1f4bc85bdb1a5c0ae07",
+    "/private/tmp/intra-pr32-runtime-acceptance.py": "563ce203338b7408bd7f87e5d1fb4f8e52057fb4059cd7639ae5ba314c884367",
+    "/private/tmp/intra-pr32-resume-finish.py": "c54e334cee594b7e544e03c71c51d9f5bf53b3c2875ea3e1eb8fd797509e5c8d"
+  },
+  "test_sha256": {
+    "/private/tmp/intra-pr32-rollout-tests.py": "9b8d624f544d2eecf8b3a67e373afaaec381313028db2b91be8d1a8928180872",
+    "/private/tmp/intra-pr32-runtime-tests.py": "73d31f7f7090053637e4f6679c361b17f97edc70f85a8aa14f4229a7d8b2e328",
+    "/private/tmp/intra-pr32-resume-finish-tests.py": "f94327cc04d00cd728fe7e98d4857b8b1ffbf8d2feaed0fd526b3bc4cd72dc94",
+    "/private/tmp/intra-pr32-release-guards-tests.py": "89de7a737bc1bf154e5cc6673163777bcd934917edc129b50f2acfcb5a0355a6"
+  },
+  "author_report_sha256": "90e061395458dceb7c5563c4a071d576b1b1f4ea4e683138faec98b4fdf62e64",
+  "predecessor_sha256": {
+    "/private/tmp/intra-pr30-rollout.py": "b666ab83d9e8fccc865675b59fef9c5abdee5a8940278da74b5f40ffb50e6e75",
+    "/private/tmp/intra-pr30-runtime-acceptance.py": "6582cf3196fc8cf2c8a4a5d3f34727a2681529dcfeaec9767d8a1986d8b7f2dd",
+    "/private/tmp/intra-pr30-resume-finish.py": "fd51631953ad73b43a57795b222b4b5c3f65e1495b46902b0b13cfd963c75bbf"
+  },
+  "ast_changed_methods": {
+    "rollout": [
+      "Rollout.__init__",
+      "Rollout.durable_operator_hold",
+      "Rollout.paper_env",
+      "deadline_guard",
+      "make_active_freeze",
+      "require_final_pins",
+      "validate_release_config"
+    ],
+    "runtime-acceptance": [
+      "Acceptance.__init__",
+      "Acceptance.write",
+      "load_util"
+    ],
+    "resume-finish": [
+      "ResumeFinish.__init__",
+      "ResumeFinish.controls",
+      "ResumeFinish.resume_prepare"
+    ]
+  },
+  "findings": [
+    {
+      "priority": "P3",
+      "status": "AUTHOR_NOTIFIED_NONBLOCKING_FOR_INERT_PREPARATION",
+      "file": "/private/tmp/intra-pr32-runtime-acceptance.py",
+      "line": 421,
+      "issue": "The native_runtime_snapshot receipt still names ten pipeline source hashes even though transport coverage added a key. No operational check relies on this text.",
+      "requested_correction": "Use actual-manifest wording or a derived count and rebind final helper digest before execution."
+    }
+  ],
+  "contracts_reviewed": [
+    {
+      "area": "Inert preparation and unknown pins",
+      "references": [
+        "rollout:296",
+        "rollout:345",
+        "rollout:1071",
+        "runtime:167",
+        "runtime:447",
+        "resume:44",
+        "resume:245"
+      ],
+      "assessment": "Default command paths never construct operational classes; invalid source/image/merge/count/leaf pins refuse before config or authority use. Independent pure negative guards passed."
+    },
+    {
+      "area": "Fresh closed-market paper window",
+      "references": [
+        "rollout:288",
+        "rollout:303",
+        "rollout:568"
+      ],
+      "assessment": "Sep27 window strictly under 4 hours and deadline strictly more than 10 minutes before pinned broker next-open; fresh paper GET verifies actually closed, flat and unblocked and current clock, no broker mutation methods."
+    },
+    {
+      "area": "Exact source/image/config identity",
+      "references": [
+        "rollout:253",
+        "rollout:345",
+        "rollout:550",
+        "rollout:892",
+        "runtime:221",
+        "runtime:299"
+      ],
+      "assessment": "Merged PR exact head, required checks and tree, build manifest counts and source identity, before/after container environment changes restricted to GIT_SHA, IMAGE_SHA and BUILD_TIME, unchanged ports/mounts and strict prior runtime_config_hash preserved; no policy/feed/risk parameter relaxation."
+    },
+    {
+      "area": "Preservation and recovery backup",
+      "references": [
+        "rollout:705",
+        "rollout:766",
+        "rollout:845",
+        "rollout:872"
+      ],
+      "assessment": "All archived user bytes and modes verified before checkout; exact generated-evidence exceptions exclude image source; supported untracked symlinks remain in place. Held DB backup requires isolated restore cleanup; brain copy checksum verification, ledger/model bytes and operator state preserved. Reviewer did not execute any backup."
+    },
+    {
+      "area": "Stopped-only controls and API-only service change",
+      "references": [
+        "rollout:652",
+        "rollout:818",
+        "rollout:892",
+        "resume:98",
+        "resume:132"
+      ],
+      "assessment": "Official writer requires exact stopped API, owned pause and startup quiescence, stable control hash and repeated broker and DB clearance. Compose target only api --no-start --no-build --no-deps --pull never; other service IDs/start times preserved; no direct order POST/DELETE."
+    },
+    {
+      "area": "Fresh boundary and binding authority",
+      "references": [
+        "rollout:319",
+        "rollout:954",
+        "runtime:424"
+      ],
+      "assessment": "Exact approved leaf difference required; active boundary usesfresh UTC while held and flat rather than candidate VALIDATED_AT. Old freeze/activation/binding/history archived; active freeze CAS and binding CAS remain distinct held phases. Failure between files leaves the API stopped and the old binding failing closed."
+    },
+    {
+      "area": "Failure containment",
+      "references": [
+        "rollout:1014",
+        "runtime:447",
+        "resume:245"
+      ],
+      "assessment": "Owned maintenance/recovery holds retained; fail_hold stops an owned running API only after fresh flat and DB clearance. Unknown positions prevent automatic stop. Runtime/resume failure does not auto-stop protective process or roll back state. Operator review is required for incomplete containment; no universal automatic recovery claim."
+    },
+    {
+      "area": "Resume and natural-session limitation",
+      "references": [
+        "runtime:376",
+        "runtime:390",
+        "resume:177",
+        "resume:196"
+      ],
+      "assessment": "Runtime first accepted under durable operator hold, original false intent restored by official writer while stopped, same container/image restarted. Startup enabled/loaded intent restored; only the owned pause inode+bytes removed. Closed readiness is typed scheduler liveness, not live feed, order or edge proof."
+    }
+  ],
+  "historical_gate": {
+    "status": "INTENTIONALLY_BLOCKED_PENDING_NEW_SOURCE_REVIEW",
+    "reference": "rollout:597",
+    "assessment": "Old prior proof/code-equality check still rejects changed accounting/recovery source; this review explicitly does not authorize bypass. Fresh disposition must bind the exact five full-row hashes and no executable or related work without claiming historical outcomes resolved. Any narrow guard adaptation needs subsequent review."
+  },
+  "test_evidence": {
+    "helper_mock_stable.xml": {
+      "sha256": "7e2338389a0f38f63cb0168cbd55edd6e4449bfc595226f41cd81a2e1b094642",
+      "cases": 89,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "executed_by_reviewer": false
+    },
+    "helper_independent_guards.xml": {
+      "sha256": "bc6074302fb3b26bbe66d1f8eb463ee38758475f68299c6e32bff6eabcb29454",
+      "cases": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "executed_by_reviewer": true
+    }
+  },
+  "test_quality_limits": [
+    "Author 89 functions include 127 unittest subtests, not 216 independent test nodes; JUnit 89 retained",
+    "Independent 19 guard cases ran with network denied, subprocess mocked and no installed backend imports",
+    "Mock image counts 581/610/515 are synthetic fixture values; actual IMAGE_EXPECTATIONS are 0 and refused",
+    "Full stage integration and real backup/runtime verification remain future approved execution gates",
+    "Existing resume writer fixture references prior candidate operator_controls; bytes equal current candidate SHA 1542fa02cfd5d755fc4f9a3360595d8b8f0227cc023d80432cc1633816083da3, so method proof applies"
+  ],
+  "not_performed": [
+    "helper operational stage execution",
+    "Docker/Compose/launchctl",
+    "broker/API/login",
+    "installed backend module imports",
+    "private authority reads or writes",
+    "source changes or commits"
+  ],
+  "remaining_release_gates": [
+    "Pin final validated source, merge, image, build receipt, counts and exact approved surface leaves consistently across all helpers",
+    "Refresh historical inertness disposition and review its narrow guard adaptation",
+    "Review new helper digests and current config/approval/authority inputs",
+    "Require full CI/image/source/scan acceptance and fresh closed, flat broker and DB clearance",
+    "Perform and verify restore-tested backups, held activation, runtime/binding/resume acceptances and a later natural market session"
+  ]
+}

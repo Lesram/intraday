@@ -1,0 +1,43 @@
+{
+  "recorded_at": "2026-09-27T18:46:44.316467+00:00",
+  "head": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "worktree_dirty": true,
+  "files": [
+    {
+      "path": "backend/integrations/alpaca_market_data_stream.py",
+      "sha256": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead"
+    },
+    {
+      "path": "backend/organism/streaming_data_provider.py",
+      "sha256": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535"
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "sha256": "51b1df5aafc6763a40fe5cba49b0122195a36bfcbe658c8e96ed9438bf6cc203"
+    },
+    {
+      "path": "backend/organism/ml_features.py",
+      "sha256": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4"
+    },
+    {
+      "path": "backend/organism/live_engine.py",
+      "sha256": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323"
+    },
+    {
+      "path": "backend/organism/operator_cancellation.py",
+      "sha256": "97acbedd0bad8b6adef1be99fd2f0df0bd99463f5372b968b6655588df4a852f"
+    },
+    {
+      "path": "backend/organism/replay_simulator.py",
+      "sha256": "deb6563f02636c69e909ad374b27233dc24131d44ce515b8ec80ace9df7ed159"
+    },
+    {
+      "path": "scripts/phase2_freeze.py",
+      "sha256": "77bc4453b6d287b382af69746ed3d96e61bd89c7250f85d2a4435ad67427e658"
+    },
+    {
+      "path": "scripts/runtime/write_runtime_snapshot.py",
+      "sha256": "f9386d38e30ff604248551fd6ee577fbb9acec2df51657c50b255255b4d3d7a2"
+    }
+  ]
+}

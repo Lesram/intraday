@@ -1,0 +1,102 @@
+{
+  "task_id": "PR32_PRIVATE_RELEASE_PREPARATION",
+  "status": "PREPARED_INERT_FINAL_PINS_AND_HISTORICAL_REVIEW_REQUIRED",
+  "created_at_utc": "2026-09-27T19:08:35.624609+00:00",
+  "helper_and_test_hashes": {
+    "/private/tmp/intra-pr32-rollout.py": "c192cf21754c6939b27192936f04b9bc59fa0c3811f854654e98beb84542bdf9",
+    "/private/tmp/intra-pr32-runtime-acceptance.py": "d5cd6641d6fc9c635b89efb13ee7c1d7ad86b0bb0acc50c0cb1369cc17a7d8c9",
+    "/private/tmp/intra-pr32-resume-finish.py": "c54e334cee594b7e544e03c71c51d9f5bf53b3c2875ea3e1eb8fd797509e5c8d",
+    "/private/tmp/intra-pr32-rollout-tests.py": "fda9e18e3975ad4438c0bd67b134e0ecd57260c55def3fd2039e2d863546cb7e",
+    "/private/tmp/intra-pr32-runtime-tests.py": "73d31f7f7090053637e4f6679c361b17f97edc70f85a8aa14f4229a7d8b2e328",
+    "/private/tmp/intra-pr32-resume-finish-tests.py": "989d307bd4778a7ebd5c8bcfcd53261cb7949e6ae37da95f46004bea11eb9ee6",
+    "/private/tmp/intra-pr32-release-guards-tests.py": "8a7a11899229794b71c73f859f68f8e071b70480210f5da4e5a2f534c01538aa",
+    "/private/tmp/intra-pr32-historical-phase-tests.py": "cdb23eb34772a42c2cad9e36f9c0da2a0fd8df42f647cc17391e0b3d32ca438b"
+  },
+  "predecessors": {
+    "/private/tmp/intra-pr30-rollout.py": "b666ab83d9e8fccc865675b59fef9c5abdee5a8940278da74b5f40ffb50e6e75",
+    "/private/tmp/intra-pr30-runtime-acceptance.py": "6582cf3196fc8cf2c8a4a5d3f34727a2681529dcfeaec9767d8a1986d8b7f2dd",
+    "/private/tmp/intra-pr30-resume-finish.py": "fd51631953ad73b43a57795b222b4b5c3f65e1495b46902b0b13cfd963c75bbf"
+  },
+  "test_result": {
+    "test_functions_passed": 118,
+    "subtests_passed": 127,
+    "junit_case_nodes": 118,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "junit": "artifacts/frozen_repairs_20260927/release/helper_historical_final.xml",
+    "junit_sha256": "8cf640390ab7f0fe51accead1223b3853868df4368e047a6b9aba4e2811560f2",
+    "log": "artifacts/frozen_repairs_20260927/release/helper_historical_final.log",
+    "log_sha256": "59846105bc0f83b0fd3e5b33e8b190c26d9d3614a00e1530581752bd145524be",
+    "isolated_runner": "/private/tmp/intra-audit-isolated.py",
+    "runtime_actions": false
+  },
+  "initial_attempt": "Retained69pass/1fixture date mismatch; only synthetic observation date corrected before final suite. Interim88pass preserved; final adds exact10minute buffer rejection.",
+  "schema": {
+    "name": "intra_pr32_closed_release_v1",
+    "run_id": "release-20260927-[a-z0-9-]{1,48}",
+    "source_head_merge_image": "Final reviewed exact pins; deliberately invalid placeholders now",
+    "image_expectations": "Exact immutable build counts, currently zero and rejected",
+    "approved_surface_paths": "Exact reviewed changed leaves, currently empty and rejected",
+    "window_start": "Fresh approved2026-09-27UTC",
+    "deadline": "strictly less4hours after start and strictly more10minutes before nextopen",
+    "next_open": "2026-09-28T13:30:00+00:00",
+    "pyramiding_enabled": false,
+    "approval_type": "paper_release_platform_frozen_repairs_clock_reset",
+    "output": "PRIVATE/readiness/2026-09-27/pr32-release/rollout",
+    "activation": "ROOT/artifacts/paper_activation/2026-09-27-platform-frozen-repairs"
+  },
+  "approved_delta": [
+    "Prior actual source87/image472/freeze b2b3/binding a827/cutoffSep25 identities",
+    "Private PR32 names and Sunday fresh window; no expired Friday deadline",
+    "Explicit final-pin guard before config/authority use",
+    "Actual container ORGANISM_PYRAMID_ENABLED must be literal false; configfalse",
+    "Preserve strict old deploy.runtime_config_hash equality; snapshot metadata does not change thishash"
+  ],
+  "preserved_contracts": [
+    "Exact backup/restore, preservation, API-only create, transition and failure-hold method ASTs unchanged; database codephase and persistedpending guards explicitly added",
+    "Only stopped API permits official operator writes; no order POST/DELETE or resubmission",
+    "Closedflat+DB aggregate proof repeats before/after hold and before start; unknown positions prevent blind stop",
+    "Source/image/sourcefile proof, held baseline/brain/history/checkpoint proof and bindingCAS unchanged",
+    "Typed closed readiness/startup recovery ownership and noautomaticrollback unchanged",
+    "UI service excluded; root separately owns UI afterAPI acceptance"
+  ],
+  "remaining_blockers": [
+    "Final source/delivery/merge/image/build receipt/counts and exact candidateleaf pins unknown",
+    "Root must publish/hashbind finalprivate five-row disposition with old/new9-file hashes and freshobservations; sourcephase adapter independentlyreviewed beforeexecution",
+    "Final required CI, source image proof, artifact scan and reviewer acceptance",
+    "Actual fresh brokerclosed/flat/order inventory and SQL proofs at execution, currentdirtyfileinventory and backups not yetobserved"
+  ],
+  "historical_contract": {
+    "prior_proof_path": "PRIVATE/readiness/2026-09-23/pr28-approval/db_order_reconciliation.json",
+    "prior_proof_sha256": "32278fd0a004ea61636197fbebd217e4d1da36598455706243d0659494cfa121",
+    "outcomes": "UNKNOWN;404 notterminal; no rowchanges/requeue",
+    "existing_guard": "Final private disposition hash remains invalid untilroot publishes; fresh9-file phase guard plus unchanged row/query/count authority"
+  },
+  "not_performed": [
+    "module imports from installed backend",
+    "Docker/Compose/service calls",
+    "API/broker/auth calls",
+    "installedstate reads/writes",
+    "prepare/hold/backup/install/transition/start/resume/bind",
+    "source commit/deployment"
+  ],
+  "historical_delta": {
+    "superseded_preparation": {
+      "path": "artifacts/frozen_repairs_20260927/release/release_helper_preparation_before_history.json",
+      "sha256": "90e061395458dceb7c5563c4a071d576b1b1f4ea4e683138faec98b4fdf62e64"
+    },
+    "source_review": {
+      "path": "artifacts/frozen_repairs_20260927/release/historical_source_review.json",
+      "sha256": "0e196a75022de914cff1d68644c2a61b8f7a372cfed048caee55fcb30fbb490c"
+    },
+    "schema": "intra_pr32_historical_inertness_v1",
+    "private_disposition_sha": "HISTORICAL_DISPOSITION_PENDING_REVIEW",
+    "guard": "Exact known ROOT HEAD+API image+GIT_SHA/IMAGE_SHA choose prior or candidate; all9files must match that one phase. Old absence only if explicitnull proof; unknown/mixed bytes rejected.",
+    "row_queries": "Exact original5fullrows and prior8global/related READONLYcounts retained unchanged;404never terminal",
+    "pending": "Every database_clear also stable-reads extra_counters and requires3present exactemptydict maps; receipt explicitly persisted_json_only, notlivecache",
+    "precision": "Some historical rows have sourceorganism; mandatoryNULLbrokerID exclusion is authoritative automatic-recovery reasoning",
+    "prose": "Native runtime receipt now refers to actual composite contract/exact candidate manifest instead ofstale hardcodedsourcecount",
+    "fixture": "Stopped officialoperatorwriter fixture now currentcandidateworktree rather than previousworktree"
+  }
+}

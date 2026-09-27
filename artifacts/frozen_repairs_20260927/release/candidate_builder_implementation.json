@@ -1,0 +1,102 @@
+{
+  "task_id": "pr32-private-candidate-builder",
+  "status": "HELPER_TESTED_NOT_PREPARED_BUILT_OR_DEPLOYED",
+  "source_pin_status": "INVALID_PLACEHOLDER_UNTIL_ROOT_FINAL_VALIDATION",
+  "base_helper": {
+    "path": "/private/tmp/intra-pr30-candidate-build.py",
+    "sha256": "3e73c88ceb1a256ef2317c72916ab765cb63c782303939ab5c42e3183f024355"
+  },
+  "helper": {
+    "path": "/private/tmp/intra-pr32-candidate-build.py",
+    "sha256": "7576570bd203658f95918076175b7536bf0a58f36c4e35c4e8d2dc106b00ec34"
+  },
+  "tests": {
+    "path": "/private/tmp/intra-pr32-candidate-build-tests.py",
+    "sha256": "5195234e8ff0def4783ab0df9a15d169aa079d2d3780a5f1d83c5a4e967070c8",
+    "result": {
+      "cases": 53,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "junit": "artifacts/frozen_repairs_20260927/release/candidate_builder_tests.xml",
+    "junit_sha256": "42574ceec572076d13eaf8a359b807bb3d0630da4cbf1a4e1fad824677c1691a",
+    "log": "artifacts/frozen_repairs_20260927/release/candidate_builder_tests.log",
+    "log_sha256": "28cf49769d2d51da47182668f6cd16eaee4179cbd1f3b360a8f50e6b9cce26db",
+    "runner": "/private/tmp/intra-audit-isolated.py",
+    "operational_functions_mocked": true,
+    "sandbox_network_denied": true
+  },
+  "release_pins_and_selected_tests": {
+    "EXPECTED_SOURCE": "SOURCE_PENDING_VALIDATION",
+    "EXPECTED_ACTIVE_SOURCE": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+    "EXPECTED_ACTIVE_IMAGE": "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+    "ACTIVE_FREEZE_SHA": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+    "ACTIVE_CUTOFF": "2026-09-25T21:11:46.270521+00:00",
+    "DEFAULT_TESTS": [
+      "tests/test_composite_indicator_contract.py",
+      "tests/test_readiness_contract.py",
+      "tests/test_paper_watchdog.py",
+      "tests/test_scanner_streaming_integration.py",
+      "tests/test_pipeline_diagnostics.py",
+      "tests/test_pipeline_snapshot.py",
+      "tests/test_streaming_provider_lifecycle.py",
+      "tests/unit/test_streaming_data_provider.py",
+      "tests/unit/test_alpaca_market_data_stream_comprehensive.py",
+      "tests/test_streaming_subscription_acknowledgement.py",
+      "tests/test_cross_asset_timestamp_alignment.py",
+      "tests/test_eod_pending_cancellation.py",
+      "tests/test_operator_controls.py",
+      "tests/test_entry_freshness.py",
+      "tests/test_phase2_freeze.py",
+      "tests/test_active_freeze_contract.py",
+      "tests/test_fill_accounting_integrity.py",
+      "tests/test_order_recovery_service.py",
+      "tests/test_outbox_fill_race.py",
+      "tests/test_research_policy_lock.py"
+    ],
+    "TEST_SUPPORT_FILES": [
+      "pytest.ini",
+      "tests/conftest.py",
+      "tests/test_paper_daily_evidence.py",
+      "tests/test_paper_daily_host.py",
+      "tests/test_v13_w100_live_tick_coverage.py",
+      "tests/test_organism_engine_scenarios.py",
+      "tests/test_broker_ack_reconciliation.py"
+    ]
+  },
+  "scope_delta": [
+    "Candidate worktree, private PR32 image directory and unique PR32 image tag",
+    "Pin approved prior PR30 actual source/image/freeze/cutoff",
+    "Invalid final source placeholder refuses prepare before any host/Docker call",
+    "Twenty image test modules and seven fixture-support files; all imports from tests within their union are bound",
+    "Every original function AST unchanged except prepare image tag literal"
+  ],
+  "unchanged_guards": [
+    "Archive only exact final committed source and require current HEAD",
+    "Scanner/.dockerignore/exact prior classification receipts retain hash checks",
+    "Whole archive scan retains all findings; changed bytes or spans invalidate prior false-positive classification",
+    "No ignored source findings or invented scan success",
+    "Candidate source/surface proof in network-none read-only disposable Python container with no host mounts",
+    "Exact freeze/reference bytes and old cutoff, candidate-only metadata and no activation",
+    "Original container/start/restart/image/freeze/binding equality before/after",
+    "Exact owned disposable cleanup; daemon errors are not absence",
+    "Counts derived from actual manifest/JUnit; zero failures/errors/skips required"
+  ],
+  "not_executed": [
+    "prepare",
+    "build",
+    "Docker",
+    "broker/runtime API",
+    "installed file writes",
+    "active freeze/binding writes"
+  ],
+  "limits": [
+    "Image not built or validated by these helper unit tests",
+    "Root must replace source placeholder only after final reviewed source validation, then record new helper digest before prepare",
+    "Causal paired replay writes reports under source artifacts; it remains mandatory in separate CI/local tests and is not in read-only image test selection",
+    "PostgreSQL proof needs its isolated dedicated network lane and is not part of network-none image tests",
+    "Full required CI, final secret finding review, artifact pack and activation remain separately gated"
+  ],
+  "review_status": "PENDING_INDEPENDENT_READ"
+}

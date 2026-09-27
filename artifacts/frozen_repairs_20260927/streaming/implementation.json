@@ -1,0 +1,302 @@
+{
+  "task_id": "DATA-01-DATA-02-confirmed-streaming-recovery",
+  "status": "IMPLEMENTED_TARGETED_VALIDATION_PASSED_PENDING_INDEPENDENT_AND_PARENT_GATES",
+  "recorded_at_utc": "2026-09-27T18:45:22.913103+00:00",
+  "baseline_sha": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "authorization": "Marsel explicitly approved five scoped frozen corrections and new boundary on later paper activation. This implementation did not activate, reset, generate freeze, or touch installed runtime.",
+  "source_and_test_files": [
+    {
+      "path": "backend/integrations/alpaca_market_data_stream.py",
+      "sha256": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead"
+    },
+    {
+      "path": "backend/organism/streaming_data_provider.py",
+      "sha256": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535"
+    },
+    {
+      "path": "backend/organism/scheduler.py",
+      "sha256": "51b1df5aafc6763a40fe5cba49b0122195a36bfcbe658c8e96ed9438bf6cc203"
+    },
+    {
+      "path": "tests/test_streaming_subscription_acknowledgement.py",
+      "sha256": "209a7950cdd4e7abb293d1a73ea8dc3d3cb3b61413478d760085b6c820d3a069"
+    },
+    {
+      "path": "tests/test_scanner_streaming_integration.py",
+      "sha256": "029b5963cb0a8ef0026c4cfb92171373e95ff5f7321e924012b29cecd500290e"
+    },
+    {
+      "path": "tests/unit/test_alpaca_market_data_stream_comprehensive.py",
+      "sha256": "6f3c5a546edf370d75290b9caadd1e5fe24458793d98b21dbb6ca2eadfe9d0de"
+    },
+    {
+      "path": "tests/unit/test_streaming_data_provider.py",
+      "sha256": "73520353bd96de68a57dee9a321f3bdd9d294691657302cc8b424f8152f59dda"
+    }
+  ],
+  "production_changes": [
+    "Transport desired state is separate from server-confirmed bars/quotes/trades. Only supplied valid channel lists confirm current generation; omitted channels are untouched. Explicit empty clears channel. Successful send alone never establishes completion.",
+    "Serialized subscription changes wait at most2s including send/ACK, with5s minimum retry cadence per operation/channel. Partial responses, provider errors, malformed channels, lost ACK, cancellation and stale generations stay incomplete. Desired subscriptions remain available for retry/reconnect.",
+    "Current-generation reader starts before resubscription waits. Unexpected graceful/exceptional closure revokes state and uses bounded reconnect attempts/backoff. Deliberate disconnect cancels owned tasks and revokes intent; late authentication/messages cannot restore stale state.",
+    "Provider retains configured startup failure and retries via existing per-tick subscription sync on30s cadence. Whole startup including history has25s timeout, additionally subject to existing engine5s sync deadline. Scheduler retains degraded configured provider so entries remain blocked rather than falling back to provider=None.",
+    "Historical prefill keeps feature history but cannot seed receipt freshness. New connection generation clears prior live receipts; an advancing fresh bar is required. Existing duplicate/future/out-of-order/stale-bar and all entry/exit thresholds remain intact.",
+    "Unsubscribe requires explicit all-channel confirmation before provider buffers and membership retire. Status includes exact subscription completeness; fresh SPY cannot hide unconfirmed NEW, and unknown age is null rather than0.",
+    "Startup retries skip historical prefill inside the shorter sync deadline, retaining configured client and normal feeder history fallback. Initial startup prefill remains unchanged; neither history path establishes live freshness."
+  ],
+  "constants": {
+    "AlpacaMarketDataStream.SUBSCRIPTION_ACK_TIMEOUT_S": 2.0,
+    "AlpacaMarketDataStream.SUBSCRIPTION_RETRY_INTERVAL_S": 5.0,
+    "StreamingDataProvider.STARTUP_RETRY_INTERVAL_S": 30.0,
+    "StreamingDataProvider.STARTUP_TIMEOUT_S": 25.0
+  },
+  "red_to_green": {
+    "initial_reproductions": 6,
+    "initial_failures": 6,
+    "final_cases": 165,
+    "final_passed": 165,
+    "final_failed": 0,
+    "final_errors": 0,
+    "final_skipped": 0
+  },
+  "runs": [
+    {
+      "label": "red",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/red.xml",
+      "junit_sha256": "4c551f760b09d51a471582a759911aab7da480bcfd3f8efdfb77388bb5339ab2",
+      "log": "artifacts/frozen_repairs_20260927/streaming/red.log",
+      "log_sha256": "c263034fbe766d286d66e095fa189ddcb7770a808231d7f1de974ddbc5209944",
+      "cases": 6,
+      "failures": 6,
+      "errors": 0,
+      "skips": 0,
+      "passed": 0
+    },
+    {
+      "label": "green01",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/green01.xml",
+      "junit_sha256": "0c1417e27673a81af2b16025958a6c17236dc29e762471b65377bec44e88e5d0",
+      "log": "artifacts/frozen_repairs_20260927/streaming/green01.log",
+      "log_sha256": "d13212bec3d34cce216c9d4c0c2c8fc9aab44809b47aef36c625936cd38bb3b8",
+      "cases": 6,
+      "failures": 1,
+      "errors": 0,
+      "skips": 0,
+      "passed": 5
+    },
+    {
+      "label": "expanded01",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/expanded01.xml",
+      "junit_sha256": "c4d15f0ba72b1602dd158a5f19d832dfa9d1d1f94a969f89e88fca373b62a54e",
+      "log": "artifacts/frozen_repairs_20260927/streaming/expanded01.log",
+      "log_sha256": "9ec033e065a8118ba2189f361e86a9038fc7c6287a813f86e2e88920729e442e",
+      "cases": 47,
+      "failures": 2,
+      "errors": 0,
+      "skips": 0,
+      "passed": 45
+    },
+    {
+      "label": "transport01",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/transport01.xml",
+      "junit_sha256": "6c46ed771b9d6879883b495cdd2f5d243b358f0550affb9f5698c10a8988292f",
+      "log": "artifacts/frozen_repairs_20260927/streaming/transport01.log",
+      "log_sha256": "d861b41bf239d865752e608930ee7ab2435c98bfe62582f45f63708c83a849cd",
+      "cases": 73,
+      "failures": 2,
+      "errors": 0,
+      "skips": 0,
+      "passed": 71
+    },
+    {
+      "label": "expanded02",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/expanded02.xml",
+      "junit_sha256": "bd69cb357816345e5671b6a8a2db107198981d168ee0058a0e437d97155cef3b",
+      "log": "artifacts/frozen_repairs_20260927/streaming/expanded02.log",
+      "log_sha256": "3651b92ab5109ead2ba663a5bb6984fe96565a1883a92bfd5aca41ea756be6cd",
+      "cases": 116,
+      "failures": 2,
+      "errors": 0,
+      "skips": 0,
+      "passed": 114
+    },
+    {
+      "label": "expanded03",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/expanded03.xml",
+      "junit_sha256": "2f62935e0d31fa5bd463dec9c6e55af072c5fca0527b1270ba769dff86582abf",
+      "log": "artifacts/frozen_repairs_20260927/streaming/expanded03.log",
+      "log_sha256": "fb28e616fab0c5e64098cc01dbd63ae6930cba1a084bf6978367a9d5720b90bd",
+      "cases": 132,
+      "failures": 2,
+      "errors": 0,
+      "skips": 0,
+      "passed": 130
+    },
+    {
+      "label": "expanded04",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/expanded04.xml",
+      "junit_sha256": "eaa485fcb66d04ee293ff38258a6fe53cf99e705d7d84f64d97896165beca39d",
+      "log": "artifacts/frozen_repairs_20260927/streaming/expanded04.log",
+      "log_sha256": "9227aa6bbffa634cd5de39cbe9aa006999f0b1f4ce243d52365907a48ab3b7f6",
+      "cases": 133,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "passed": 133
+    },
+    {
+      "label": "transport_final",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/transport_final.xml",
+      "junit_sha256": "cd1986ca3c3901bda78933dc3b9c7ab20772621e80cf5554da622ef6940b0df0",
+      "log": "artifacts/frozen_repairs_20260927/streaming/transport_final.log",
+      "log_sha256": "16e9d7f508db7855a9099a9b2cc5280018db0c0200b7ec00d198dcef722d1f03",
+      "cases": 73,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "passed": 73
+    },
+    {
+      "label": "final_targeted",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/final_targeted.xml",
+      "junit_sha256": "8b12da1d10cde51b5ffa53fbc6b43e40ddbb8c1e0f473e951a2e88f2efedebb5",
+      "log": "artifacts/frozen_repairs_20260927/streaming/final_targeted.log",
+      "log_sha256": "d3a514671bbc51266bc220eb43c42ea1375c327d9d70d81c53e61bf6844bf5f7",
+      "cases": 164,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "passed": 164
+    },
+    {
+      "label": "retry_prefill_red",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_red.xml",
+      "junit_sha256": "55dc124651e8accf6d69703218fe6730a109d935dd395a73064095926bc466e1",
+      "log": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_red.log",
+      "log_sha256": "07c9fc3818b4a956fd3677f783ba02197ca066e2f4fa044e2490b1312fcfe87b",
+      "cases": 1,
+      "passed": 0,
+      "failures": 1,
+      "errors": 0,
+      "skips": 0
+    },
+    {
+      "label": "retry_prefill_green",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_green.xml",
+      "junit_sha256": "0a5c289359dc9281909a7260755db72155238191c9f83a14e980c12901b08641",
+      "log": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_green.log",
+      "log_sha256": "2d34306fcca8cbac79866739c13ba0a21bd8ade67f6501be25783062bae053c2",
+      "cases": 1,
+      "passed": 1,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0
+    },
+    {
+      "label": "final_targeted02",
+      "junit": "artifacts/frozen_repairs_20260927/streaming/final_targeted02.xml",
+      "junit_sha256": "a1f1994221c73be67160d8130782d6fe114da1b0ffd5944e98d034054831bcb6",
+      "log": "artifacts/frozen_repairs_20260927/streaming/final_targeted02.log",
+      "log_sha256": "69e56b7e551040b03820c6386786e330fd7baddcbcbe42a9881b46bd9a6d2f79",
+      "cases": 165,
+      "passed": 165,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0
+    }
+  ],
+  "final_case_groups": {
+    "tests.test_streaming_subscription_acknowledgement": 22,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamInit": 6,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamConnect": 4,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamAuthentication": 4,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamSubscription": 9,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamMessageHandling": 9,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamReconnection": 3,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamDisconnect": 3,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamStats": 2,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamResubscribe": 2,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamListen": 2,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamHeartbeat": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamListenLoop": 5,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamReconnect": 2,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamHandleMessageComplete": 2,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamSubscribeBars": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamDisconnectOnAuthFail": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamSubscribeNotAuthenticated": 3,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamSubscribeError": 3,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamListenErrorProcessing": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamHandleMessageError": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamHandleQuoteError": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamHandleTradeError": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamHandleBarError": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamReconnectChain": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamBackgroundTasks": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamGetStats": 1,
+    "tests.unit.test_alpaca_market_data_stream_comprehensive.TestAlpacaMarketDataStreamAlreadySubscribed": 3,
+    "tests.unit.test_streaming_data_provider.TestPrefillSeedsRingBuffer": 2,
+    "tests.unit.test_streaming_data_provider.TestPrefillFailureDoesntCrash": 3,
+    "tests.unit.test_streaming_data_provider.TestGetBarsAfterPrefill": 2,
+    "tests.unit.test_streaming_data_provider.TestStreamingBarsAppendAfterPrefill": 1,
+    "tests.unit.test_streaming_data_provider.TestStartWithoutDataClient": 1,
+    "tests.test_streaming_provider_lifecycle": 19,
+    "tests.test_scanner_streaming_integration": 15,
+    "tests.test_pipeline_freshness_recovery": 27
+  },
+  "integrated_proofs": [
+    "Actual scheduler retains failed real provider/transport and later confirms SPY; no bar means infinite age until actual queued bar, stop prevents recovery.",
+    "Actual transport+provider+ReplayEngine pair: one transient refused MSFT subscription,180s without actual MSFT bars, one admitted MSFT buy only after confirmation+freshbar, base/benchmark retention, unique orderIDs.",
+    "Second actual-transport replay adds permanently refused LAG after MSFT entry: global entry block remains, held MSFT retained, real EOD close and flat/accounting-clear outcomes.",
+    "Existing stale/provider EOD and30+ freshness/lifecycle tests continue to pass."
+  ],
+  "test_fixture_adjustments": [
+    "Legacy transport send mocks now feed explicit channel snapshots through the real message handler. Connected means authenticated; failed auth cleans without permanently revoking retry. Message-handler-only fixtures deliberately disable reconnect.",
+    "Two prefill read tests now require a genuine advancing live bar, retaining prior historical rows/columns/lookback assertions.",
+    "Initial real-transport replay injection accidentally patched a duplicate imported test module; explicit socket-count assertion exposed it. expanded03 retains that2fail receipt; corrected globals injection passes actual socket-backed cases."
+  ],
+  "static": {
+    "path": "artifacts/frozen_repairs_20260927/streaming/static_delta.json",
+    "sha256": "ab008e0229a821dff662dda8d039b2cc845046f3f8569395ae596c1683214282",
+    "new_ruff_findings": 0,
+    "preexisting_findings_preserved": true,
+    "git_diff_check_exit_code": 0
+  },
+  "commands": [
+    "/Users/marselkei/VS/intra/venv/bin/python /private/tmp/intra-audit-isolated.py -q tests/test_streaming_subscription_acknowledgement.py tests/unit/test_alpaca_market_data_stream_comprehensive.py tests/unit/test_streaming_data_provider.py tests/test_streaming_provider_lifecycle.py tests/test_scanner_streaming_integration.py tests/test_pipeline_freshness_recovery.py --timeout=30 --junitxml=artifacts/frozen_repairs_20260927/streaming/final_targeted02.xml"
+  ],
+  "isolation": {
+    "network_denied": true,
+    "production_state_reads_writes_denied": true,
+    "real_credentials_or_models_used": false,
+    "runtime_mutations": false,
+    "commits": false
+  },
+  "limits": [
+    "No real provider or paper runtime validation; fake sockets reproduce provider messages, quotas and closures.",
+    "Replay accelerates the transport retry interval to0 for virtual-minute progression; nonzero cadence is independently exercised by transport tests. Other gates, feed, risk and strategy are unchanged.",
+    "Single any-stale global gate can still block all entries indefinitely for sparse/unavailable required symbols. No symbol is dropped or feed/threshold relaxed to manufacture availability.",
+    "Quote timestamp/age policy and universe accumulation/per-feature computation cost are unchanged and remain separate disclosed limitations.",
+    "Timeout cancellation performs required socket/task cleanup; it is a cooperative asyncio bound, not a hard process-kill guarantee.",
+    "Parent owns combined-source full regression/replay, candidate freeze/snapshot/docs, independent review, secret scan, hosted CI and later approved activation. Active forward boundary unchanged here."
+  ],
+  "review_followup": {
+    "finding": "Slow repeated prefill during per-tick recovery can exceed engine5s sync bound and cancel otherwise healthy retry. Separate30tick health recovery may eventually succeed, so no permanent-outage claim.",
+    "resolution": "Initial start retains bounded historical prefill. Retry explicitly skips only prefill, retaining original data_client; existing feeder still fetches REST when live history<MIN_BARS. Actual freshbar remains mandatory.",
+    "private_keyword": "StreamingDataProvider.start(...,_prefill_history=True), retry passesFalse",
+    "red": {
+      "path": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_red.xml",
+      "sha256": "55dc124651e8accf6d69703218fe6730a109d935dd395a73064095926bc466e1",
+      "failed": 1,
+      "cause": "TimeoutError at scaled caller sync deadline during repeated slow history"
+    },
+    "green": {
+      "path": "artifacts/frozen_repairs_20260927/streaming/retry_prefill_green.xml",
+      "sha256": "0a5c289359dc9281909a7260755db72155238191c9f83a14e980c12901b08641",
+      "passed": 1
+    },
+    "prior_report": {
+      "path": "artifacts/frozen_repairs_20260927/streaming/before_retry_prefill_implementation.json",
+      "sha256": "cd77c4580ceb0a2e39d501a853724fa8c2e6420a306802dbf14116e88181a171"
+    },
+    "independent_reviewer": "daily_evidence_contract; final receipt separate, not self-acceptance"
+  }
+}

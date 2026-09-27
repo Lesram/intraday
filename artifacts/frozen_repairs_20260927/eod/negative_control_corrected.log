@@ -1,0 +1,100 @@
+Isolated test scratch: /private/tmp/intra-audit-test-armdwj3q
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_unverified_cancel_never_forgets_entry[broker_confirmation_unavailable] __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1132df5f0>
+issue = 'broker_confirmation_unavailable'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+>       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:36: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.live_engine:live_engine.py:7931 {"event": "Drawdown kill: cancelled 1 broker entry orders: ['AAPL']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:29:11.330277Z"}
+____ test_unverified_cancel_never_forgets_entry[cancellation_not_confirmed] ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x113567020>
+issue = 'cancellation_not_confirmed'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+>       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:36: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.live_engine:live_engine.py:7931 {"event": "Drawdown kill: cancelled 1 broker entry orders: ['AAPL']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:29:11.393468Z"}
+___ test_unverified_cancel_never_forgets_entry[fill_reconciliation_required] ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11356aa80>
+issue = 'fill_reconciliation_required'
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('issue', ['broker_confirmation_unavailable', 'cancellation_not_confirmed', 'fill_reconciliation_required'])
+    async def test_unverified_cancel_never_forgets_entry(monkeypatch, issue):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        confirm = AsyncMock(return_value={'orders': [{'symbol': 'AAPL', 'entry_order_id': identity,
+                                                    'release_pending': False, 'issue': issue}], 'issues': [issue]})
+        monkeypatch.setattr(cancellation, 'confirm_tracked_entries', confirm)
+        await engine._cancel_pending_entry_orders()
+>       assert engine._pending_entry == {'AAPL': 1}
+E       AssertionError: assert {} == {'AAPL': 1}
+E         
+E         Right contains 1 more item:
+E         {'AAPL': 1}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:36: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.live_engine:live_engine.py:7931 {"event": "Drawdown kill: cancelled 1 broker entry orders: ['AAPL']", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-09-27T18:29:11.395250Z"}
+________ test_ttl_and_stream_terminal_boolean_cannot_erase_attribution _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11364dd60>
+
+    def test_ttl_and_stream_terminal_boolean_cannot_erase_attribution(monkeypatch):
+        engine = bare_engine()
+        identity = engine._pending_entry_order_ids['AAPL']
+        engine._pending_entry['NO_ID'] = 0
+        stream = SimpleNamespace(is_order_terminal=MagicMock(return_value=True))
+        monkeypatch.setattr('backend.integrations.alpaca_stream.get_stream_client', lambda: stream)
+        engine._stage_expire_cooldowns()
+>       assert engine._pending_entry == {'AAPL': 1, 'NO_ID': 0}
+E       AssertionError: assert {} == {'AAPL': 1, 'NO_ID': 0}
+E         
+E         Right contains 2 more items:
+E         {'AAPL': 1, 'NO_ID': 0}
+E         Use -v to get more diff
+
+tests/test_eod_pending_cancellation.py:50: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_eod_pending_cancellation.py::test_unverified_cancel_never_forgets_entry[broker_confirmation_unavailable]
+FAILED tests/test_eod_pending_cancellation.py::test_unverified_cancel_never_forgets_entry[cancellation_not_confirmed]
+FAILED tests/test_eod_pending_cancellation.py::test_unverified_cancel_never_forgets_entry[fill_reconciliation_required]
+FAILED tests/test_eod_pending_cancellation.py::test_ttl_and_stream_terminal_boolean_cannot_erase_attribution
+4 failed in 1.31s

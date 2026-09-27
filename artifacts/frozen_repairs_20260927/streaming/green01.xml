@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="6" time="0.487" timestamp="2026-09-27T11:24:51.753250-07:00" hostname="Marsels-MacBook-Pro.local"><testcase classname="tests.test_streaming_subscription_acknowledgement" name="test_send_success_without_server_ack_is_incomplete_and_retries" time="0.068"><failure message="AssertionError: assert 3 == 2&#10; +  where 3 = len([{'action': 'auth', 'key': 'offline-key', 'secret': 'offline-secret'}, {'action': 'subscribe', 'bars': ['NEW']}, {'action': 'subscribe', 'bars': ['NEW']}])&#10; +    where [{'action': 'auth', 'key': 'offline-key', 'secret': 'offline-secret'}, {'action': 'subscribe', 'bars': ['NEW']}, {'action': 'subscribe', 'bars': ['NEW']}] = &lt;test_streaming_subscription_acknowledgement.Socket object at 0x10f06f530&gt;.sent">stream = (&lt;backend.integrations.alpaca_market_data_stream.AlpacaMarketDataStream object at 0x10f06f8f0&gt;, &lt;test_streaming_subscription_acknowledgement.Socket object at 0x10f06f530&gt;)
+
+    @pytest.mark.asyncio
+    async def test_send_success_without_server_ack_is_incomplete_and_retries(stream):
+        value, socket = stream
+        socket.respond = False
+        assert await value.subscribe_bars(['NEW']) is False
+        assert 'NEW' not in value.bar_subscriptions.get('1Min', set())
+        count = len(socket.sent)
+        assert await value.subscribe_bars(['NEW']) is False
+&gt;       assert len(socket.sent) == count  # bounded cadence, not a busy loop
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert 3 == 2
+E        +  where 3 = len([{'action': 'auth', 'key': 'offline-key', 'secret': 'offline-secret'}, {'action': 'subscribe', 'bars': ['NEW']}, {'action': 'subscribe', 'bars': ['NEW']}])
+E        +    where [{'action': 'auth', 'key': 'offline-key', 'secret': 'offline-secret'}, {'action': 'subscribe', 'bars': ['NEW']}, {'action': 'subscribe', 'bars': ['NEW']}] = &lt;test_streaming_subscription_acknowledgement.Socket object at 0x10f06f530&gt;.sent
+
+tests/test_streaming_subscription_acknowledgement.py:80: AssertionError</failure></testcase><testcase classname="tests.test_streaming_subscription_acknowledgement" name="test_partial_subscription_does_not_launder_missing_symbol" time="0.028" /><testcase classname="tests.test_streaming_subscription_acknowledgement" name="test_channel_omission_is_not_empty_or_ack_for_another_channel" time="0.039" /><testcase classname="tests.test_streaming_subscription_acknowledgement" name="test_unsubscribe_waits_for_explicit_all_channel_confirmation" time="0.061" /><testcase classname="tests.test_streaming_subscription_acknowledgement" name="test_clean_close_clears_state_and_reconnects_once" time="0.007" /><testcase classname="tests.test_streaming_subscription_acknowledgement" name="test_provider_failed_start_retries_without_rest_freshness" time="0.008" /></testsuite></testsuites>

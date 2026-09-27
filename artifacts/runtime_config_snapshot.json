@@ -1,15 +1,16 @@
 {
   "close_accounting_policy": "exact_position_fills_or_pending_v1",
   "candidate_data_pipeline_sources": {
+    "alpaca_market_data_stream": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead",
     "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
-    "streaming_data_provider": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "streaming_data_provider": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535",
     "live_engine_data": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
     "staleness_admission": "6cbb82f794c6fd63edfa750e70b4116ce8b2117af4b05d23fff60fe3e56e5b0b",
     "streaming_universe_initialization": "e3c0cc8f1d0c554138d4bdedc810474badfa0ed19f6681b6c69c774411c39f85",
     "streaming_subscription_sync": "ce1d1d94393813783d8458c10b4c508b25f9b5a6329d9d6e04daffc0c75f3da0",
     "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
     "pipeline_diagnostics": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
-    "ml_features": "359b8d59f799927aeafa21919ec02048737586fba122b6bd0cc7ad16b71048d1",
+    "ml_features": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
     "composite_indicators": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85"
   },
   "composite_feature_columns": [
@@ -23,11 +24,29 @@
   ],
   "streaming_subscription_sync": {
     "timeout_seconds": 5.0,
+    "ack_timeout_seconds": 2.0,
+    "subscription_retry_interval_seconds": 5.0,
+    "startup_retry_interval_seconds": 30.0,
+    "startup_timeout_seconds": 25.0,
+    "completion": "provider_confirmed_bars_and_quotes_current_connection",
+    "unsubscribe": "retain_until_provider_confirmed_removal",
+    "historical_prefill": "history_only_never_a_live_receipt",
     "universe": "constructor_base_plus_SPY_QQQ_current_universe_and_held_positions",
     "checked_at": "after_fresh_position_query_before_entry_dispatch",
     "failure": "block_entries_retry_next_tick_preserve_exits",
     "new_symbols": "wait_for_actual_bars_no_REST_prefill",
     "global_staleness_policy": "any_subscribed_symbol_stale_blocks_entries"
+  },
+  "pending_entry_resolution": {
+    "call_timeout_seconds": 2.0,
+    "total_timeout_seconds": 12.0,
+    "confirmation_attempts": 3,
+    "inventory_limit": 256,
+    "filled_entry_cooldown": "preserve_engine_pending_entry_ticks",
+    "expiry": "unresolved_identity_never_expires_by_time",
+    "release": "broker_terminal_and_exact_accounting_exposure_confirmation",
+    "ordinary_reconciliation": "read_only_after_fill_accounting",
+    "retry_order": "resume_after_last_attempted_identity"
   },
   "entry_freshness": {
     "required_timeframe": "1Min",

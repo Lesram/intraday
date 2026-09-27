@@ -1,0 +1,88 @@
+[
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 23,
+      "row": 13
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/organism/ml_features.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 14
+          },
+          "location": {
+            "column": 1,
+            "row": 13
+          }
+        }
+      ],
+      "message": "Remove unused import: `typing.Any`"
+    },
+    "location": {
+      "column": 20,
+      "row": 13
+    },
+    "message": "`typing.Any` imported but unused",
+    "noqa_row": 13,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 30,
+      "row": 446
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/organism/ml_features.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from backend.organism.composite_indicators import (\n            compute_composite_indicators,\n        )",
+          "end_location": {
+            "column": 10,
+            "row": 447
+          },
+          "location": {
+            "column": 9,
+            "row": 444
+          }
+        }
+      ],
+      "message": "Remove unused import: `backend.organism.composite_indicators.COMPOSITE_COLUMNS`"
+    },
+    "location": {
+      "column": 13,
+      "row": 446
+    },
+    "message": "`backend.organism.composite_indicators.COMPOSITE_COLUMNS` imported but unused",
+    "noqa_row": 446,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 449
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/organism/ml_features.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 449
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 449,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  }
+]

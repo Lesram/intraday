@@ -1,0 +1,37 @@
+{
+  "task_id": "PR32_PRIVATE_RELEASE_PREPARATION",
+  "execute": false,
+  "owned_paths": [
+    "/private/tmp/intra-pr32-rollout.py",
+    "/private/tmp/intra-pr32-runtime-acceptance.py",
+    "/private/tmp/intra-pr32-resume-finish.py",
+    "/private/tmp/intra-pr32-*-tests.py"
+  ],
+  "approval": "Parent confirmed explicit user approval for five repairs, combined paper release and new forward boundary only at activation; all history retained.",
+  "unknown_required_pins": [
+    "source",
+    "delivery_head",
+    "merge",
+    "image",
+    "image_counts",
+    "exact_candidate_surface_leaf_diffs",
+    "fresh historical-five-row code-inertness disposition"
+  ],
+  "constraints": [
+    "Inert default and invalid placeholders until final review",
+    "No operational execution/import of installed backend",
+    "API-only creation, preserve DB/Redis/network/UI untouched",
+    "Existing dirty files/history preserved",
+    "Stop-only operator writes; no order mutation",
+    "Fresh closed window less than4hours, at least10minutes before2026-09-28T13:30Z",
+    "Backup+restore and binding CAS; no automated rollback",
+    "Retain strict old deployment runtime_config_hash equality; parent verified hash inputs unchanged",
+    "Explicit config false and actual ORGANISM_PYRAMID_ENABLED=false mandatory"
+  ],
+  "test_method": "Pure mocked predecessor tests plus date/identity/config/unknown-pin/adversarial guards; no Docker/API/broker/process service calls.",
+  "old_source": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+  "old_image": "sha256:472e4e4bf017600c558292a8b36b1a57ff8009d01756b277d39db9b72afb6cf5",
+  "old_freeze_sha": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+  "old_binding_sha": "a827348a77d28e7c04bc0e4bd783d477338e794bff788c496b16f979ef0de0a1",
+  "old_cutoff": "2026-09-25T21:11:46.270521+00:00"
+}

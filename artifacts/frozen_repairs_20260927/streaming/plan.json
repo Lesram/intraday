@@ -1,0 +1,45 @@
+{
+  "task_id": "DATA-01-DATA-02-confirmed-streaming-recovery",
+  "authorization": "Parent relayed explicit approval of five frozen repairs and new forward boundary only at reviewed paper activation. No active changes in this subtask.",
+  "baseline_sha": "d598ec2a8c369b3b45009e2717c8c9ccb2d7fa05",
+  "files": [
+    "backend/integrations/alpaca_market_data_stream.py",
+    "backend/organism/streaming_data_provider.py",
+    "backend/organism/scheduler.py"
+  ],
+  "tests": [
+    "tests/test_streaming_subscription_acknowledgement.py",
+    "tests/unit/test_alpaca_market_data_stream_comprehensive.py",
+    "tests/unit/test_streaming_data_provider.py",
+    "tests/test_streaming_provider_lifecycle.py",
+    "tests/test_scanner_streaming_integration.py"
+  ],
+  "behavior": [
+    "Separate desired subscriptions from per-connection server-confirmed channels. Missing fields do not clear channels; supplied empty lists do. Send alone never acknowledges.",
+    "Serialize changes; bounded acknowledgement wait and retry cadence; timeout/error/partial response remains incomplete. Confirm all requested removal channels before provider state removal.",
+    "Start authenticated listener before resubscription; generation ownership rejects obsolete messages; intentional disconnect revokes reconnect intent. Unexpected clean close retries with bounded backoff.",
+    "Retain configured provider through failed startup and retry from next tick with bounded cadence; no unrestricted REST fallback. Preserve desired base/current/held symbols.",
+    "Historical prefill supports feature history but never establishes live bar receipt provenance; reconnect clears old receipt eligibility."
+  ],
+  "invariants_preserved": [
+    "configured feed",
+    "global 120s any-stale rule",
+    "alpha20s receipt rule",
+    "final120s actualfeaturebar rule",
+    "protective/EOD exits",
+    "fixed risk and ML isolation",
+    "no live exploration/no strategy tuning"
+  ],
+  "test_method": "Only isolated runner /private/tmp/intra-audit-isolated.py with denied network and installed state; fake sockets drive real transport/provider/scheduler classes. Red receipt before implementation and green expanded contracts after.",
+  "parent_owned": [
+    "broad required suites/replay",
+    "candidate freeze and runtime snapshot",
+    "docs/full artifact pack",
+    "review/commit/merge/deployment"
+  ],
+  "baseline_source_sha256": {
+    "backend/integrations/alpaca_market_data_stream.py": "95a3331ca9cb5df5df5116abd07fc0c7113a943f5c780fc7461b8a9bf9be59ad",
+    "backend/organism/streaming_data_provider.py": "1d096dba67e42ef232a63dbd3e1d9b0a0e371b669f7dbe265c71fea627f208e8",
+    "backend/organism/scheduler.py": "f20f30719a58b407accf75d60217e93a057b49ecbaebae6ecd4de87a9b812fca"
+  }
+}

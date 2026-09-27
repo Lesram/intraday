@@ -1,0 +1,28 @@
+Isolated test scratch: /private/tmp/intra-audit-test-daj4sere
+F.....                                                                   [100%]
+=================================== FAILURES ===================================
+________ test_send_success_without_server_ack_is_incomplete_and_retries ________
+
+stream = (<backend.integrations.alpaca_market_data_stream.AlpacaMarketDataStream object at 0x10f06f8f0>, <test_streaming_subscription_acknowledgement.Socket object at 0x10f06f530>)
+
+    @pytest.mark.asyncio
+    async def test_send_success_without_server_ack_is_incomplete_and_retries(stream):
+        value, socket = stream
+        socket.respond = False
+        assert await value.subscribe_bars(['NEW']) is False
+        assert 'NEW' not in value.bar_subscriptions.get('1Min', set())
+        count = len(socket.sent)
+        assert await value.subscribe_bars(['NEW']) is False
+>       assert len(socket.sent) == count  # bounded cadence, not a busy loop
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert 3 == 2
+E        +  where 3 = len([{'action': 'auth', 'key': 'offline-key', 'secret': 'offline-secret'}, {'action': 'subscribe', 'bars': ['NEW']}, {'action': 'subscribe', 'bars': ['NEW']}])
+E        +    where [{'action': 'auth', 'key': 'offline-key', 'secret': 'offline-secret'}, {'action': 'subscribe', 'bars': ['NEW']}, {'action': 'subscribe', 'bars': ['NEW']}] = <test_streaming_subscription_acknowledgement.Socket object at 0x10f06f530>.sent
+
+tests/test_streaming_subscription_acknowledgement.py:80: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.integrations.alpaca_market_data_stream:alpaca_market_data_stream.py:339 Market-data subscription subscribe incomplete
+WARNING  backend.integrations.alpaca_market_data_stream:alpaca_market_data_stream.py:339 Market-data subscription subscribe incomplete
+=========================== short test summary info ============================
+FAILED tests/test_streaming_subscription_acknowledgement.py::test_send_success_without_server_ack_is_incomplete_and_retries
+1 failed, 5 passed in 0.49s

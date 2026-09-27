@@ -1,0 +1,834 @@
+{
+  "scenario": "crash",
+  "scope": "Synthetic causal-feature mechanism; no strategy edge or historical lost-PnL inference",
+  "config": {
+    "seed": 42,
+    "rows": 320,
+    "lookback": 240,
+    "timeframe": "1Min",
+    "initial_cash": 1000000,
+    "max_entries_per_hour": 20,
+    "cost_profile": "realistic",
+    "slippage_bps": 5,
+    "half_spread_bps": "auto",
+    "commission_per_share": 0
+  },
+  "stock_history_trim": 40,
+  "changed_cross_cells_after_warmup": {
+    "AAPL": 320,
+    "MSFT": 320,
+    "SPY": 0
+  },
+  "changed_cross_cells_in_executed_rows": {
+    "AAPL": 240,
+    "MSFT": 240,
+    "SPY": 0
+  },
+  "noncross_features_equal": true,
+  "orders_and_accounted_outcomes_equal": true,
+  "direct_prefix_proofs": {
+    "baseline_ordinal": [
+      {
+        "symbol": "AAPL",
+        "rows": 201,
+        "hash": "d646f50af6d30af5ee96624a8a124b8d8f911b862442f1e3a89498100067a12b"
+      },
+      {
+        "symbol": "MSFT",
+        "rows": 201,
+        "hash": "eef1872d3f659a6cf74532adaa10e7e85e79b5e545cb75b1022749102013c365"
+      },
+      {
+        "symbol": "SPY",
+        "rows": 241,
+        "hash": "0f35353927e2e7c15ba5be309384514a76e2ecc7e16f94ecaeae19ea26353e9d"
+      },
+      {
+        "symbol": "AAPL",
+        "rows": 230,
+        "hash": "8da180bc4716dd32a31347076b90444bf21e22f176975fa8efaed18d99645ec4"
+      },
+      {
+        "symbol": "MSFT",
+        "rows": 230,
+        "hash": "f0c3fb9624a98d6df231376326e4ac0e111889173cba1802dbcc30fd69d9b5bd"
+      },
+      {
+        "symbol": "SPY",
+        "rows": 270,
+        "hash": "a014c1b429925f82c3ec23fd5b698aba0f9ab35e07c4bcb19db227a103a3a90a"
+      },
+      {
+        "symbol": "AAPL",
+        "rows": 260,
+        "hash": "a6bf917bd60bfb6ea3456f9931865366bb7aa155f80936abc6b8f21b4efc0653"
+      },
+      {
+        "symbol": "MSFT",
+        "rows": 260,
+        "hash": "de3491d669ed7d81bda4d23087f614c7d50c35c6a39f9492684bee988f543bd6"
+      },
+      {
+        "symbol": "SPY",
+        "rows": 300,
+        "hash": "ab22821aada9f0dbc9b58deecd6b0041a7182e192b8fc1a1a09dc442a583f5ec"
+      }
+    ],
+    "causal_timestamp": [
+      {
+        "symbol": "AAPL",
+        "rows": 201,
+        "hash": "895b06a5e8d85297e81950c7671a5889ca002bbd6c8bf108bff1b5effc4a6675"
+      },
+      {
+        "symbol": "MSFT",
+        "rows": 201,
+        "hash": "3b78c44a32e6f74873071764002dff696c0fe8380d53bc97b63625b15d4476d1"
+      },
+      {
+        "symbol": "SPY",
+        "rows": 241,
+        "hash": "0f35353927e2e7c15ba5be309384514a76e2ecc7e16f94ecaeae19ea26353e9d"
+      },
+      {
+        "symbol": "AAPL",
+        "rows": 230,
+        "hash": "67a7a107e6d73bff8711bbb3894ef6294af5bc1fcac48eee941343c8bcbfc77c"
+      },
+      {
+        "symbol": "MSFT",
+        "rows": 230,
+        "hash": "d3b5c2cbe130a2ddc055c6f2114df111880a8c6627417e4334948b83624d5f25"
+      },
+      {
+        "symbol": "SPY",
+        "rows": 270,
+        "hash": "a014c1b429925f82c3ec23fd5b698aba0f9ab35e07c4bcb19db227a103a3a90a"
+      },
+      {
+        "symbol": "AAPL",
+        "rows": 260,
+        "hash": "07f9d7ae4d7341dce7492b6658265288e4dc02799299776f525fc0ad3760bee5"
+      },
+      {
+        "symbol": "MSFT",
+        "rows": 260,
+        "hash": "24f958b5938abfa90866177c346cd1a630bf0e3236d2504d266cd31afbd69ca6"
+      },
+      {
+        "symbol": "SPY",
+        "rows": 300,
+        "hash": "ab22821aada9f0dbc9b58deecd6b0041a7182e192b8fc1a1a09dc442a583f5ec"
+      }
+    ]
+  },
+  "source_sha256": {
+    "backend/organism/composite_indicators.py": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
+    "backend/organism/ml_features.py": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
+    "backend/organism/live_engine.py": "50f93b35538d8857690c82c8f52aa79c5c5ec6b9fe89087513334d7f930e5d28",
+    "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "backend/organism/replay_simulator.py": "d991bcca5e65021fee059d2c41aa9df6e2a762f4f29c6a8857a67d00f868b763",
+    "backend/organism/alpha_scanner.py": "8bed20281f02ad3fd95953aa7c981a2e8c0393e4b29c38f808d3a570b6c19490",
+    "backend/organism/entry_freshness.py": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
+    "backend/organism/entry_evidence.py": "e5c303a49974d8a14a0d54ab8488dc67427ae194a21cd5b675ee8df769e229e9",
+    "backend/organism/adaptive_exits.py": "350b0e58415531ce563b0b74b52a33d1d04c62c41bc624102ff73ed919ccc46d",
+    "backend/organism/research_policy.py": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
+    "scripts/diagnostics/replay_composite_correction.py": "21e3b9924344a0cca84dacdc97f5421e84d3876bafc1b8a1c9cca71c4a667dee",
+    "tests/test_cross_asset_alignment_replay.py": "46f34f35a4ed34c70808e41e977ed8effa4f54059f680c45469ce7bb6a72335c"
+  },
+  "source_unchanged_during_replay": true,
+  "input_sha256": {
+    "AAPL": "e2968fbd412d67a50368595d051ee556d908d1f468a6b8d68dd04a7122c4ce38",
+    "MSFT": "524969549c8b0c2d9fada6b4d69be173d02925d9002ce85341ab8975ec7eba38",
+    "SPY": "370a816d4f868b3812fda6b7fa25c364bfc0e0482f498bbbcc407d463adf886d"
+  },
+  "arms": {
+    "baseline_ordinal": {
+      "metrics": {
+        "ticks": 60,
+        "signals": 4,
+        "alpha_scanned": 115,
+        "alpha_considered": 115,
+        "alpha_terminal": {
+          "below_exploration_confidence": 21,
+          "candidate_built": 4,
+          "direction_zero": 1,
+          "shared_gate:exit_cooldown": 25,
+          "shared_gate:long_only": 5,
+          "shared_gate:open_position": 55,
+          "shared_gate:pending_entry": 4
+        },
+        "shared_gate_evaluations": 115,
+        "shared_gate_passes": 26,
+        "shared_gate_rejections": {
+          "open_position": 55,
+          "long_only": 5,
+          "exit_cooldown": 25,
+          "pending_entry": 4
+        },
+        "combined_candidates_pre_sizing": 4,
+        "entry_orders": 4,
+        "exit_orders": 4,
+        "accounted_closes": 4,
+        "exit_legs": 4,
+        "exit_mix": {
+          "horizon_timeout": 2,
+          "pyramid_cut_full_at_-6.7R": 1,
+          "pyramid_cut_full_at_-8.5R": 1
+        },
+        "accounting_pending": 0,
+        "tick_errors": 0,
+        "exit_leg_realized_pnl_before_commission": -6055.165719146556,
+        "accounted_position_pnl": -6055.165719146555,
+        "final_equity": 993944.8342808534,
+        "equity_delta_including_open_mark_and_commission": -6055.165719146607,
+        "maximum_equity_drawdown_fraction": 0.009186705957032033,
+        "maximum_gross_exposure": 35836.455471304376,
+        "final_open_positions": 0,
+        "final_cash": 993944.8342808534,
+        "daily_loss_halted_ticks": 0,
+        "freshness_receipts": 4,
+        "commission": 0.0
+      },
+      "safety": {
+        "research_policy_locked": true,
+        "ml_isolated": true,
+        "fixed_atr_risk": true,
+        "empty_initial_brain": true,
+        "no_saved_models": true,
+        "shared_and_final_entry_gates_observed": true
+      },
+      "orders": [
+        {
+          "symbol": "SPY",
+          "side": "buy",
+          "qty": "90",
+          "filled_qty": "90",
+          "status": "filled",
+          "avg_fill_price": "203.89957881820786",
+          "submitted_at": "2026-09-22T14:05:00+00:00",
+          "execution_sequence": 1,
+          "attributes": {
+            "source": "organism",
+            "reason": "organism_entry",
+            "confidence": 0.2589,
+            "tick": 6,
+            "entry_source": "alpha",
+            "strategy_id": "alpha_baseline",
+            "evidence_tier": 0,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_SPY_20260922_SESSION_t6_organism_entry_buy_q90"
+        },
+        {
+          "symbol": "MSFT",
+          "side": "buy",
+          "qty": "137",
+          "filled_qty": "137",
+          "status": "filled",
+          "avg_fill_price": "113.07354092087546",
+          "submitted_at": "2026-09-22T14:09:00+00:00",
+          "execution_sequence": 2,
+          "attributes": {
+            "source": "organism",
+            "reason": "organism_entry",
+            "confidence": 0.2538,
+            "tick": 10,
+            "entry_source": "alpha",
+            "strategy_id": "alpha_baseline",
+            "evidence_tier": 0,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_MSFT_20260922_SESSION_t10_organism_entry_buy_q137"
+        },
+        {
+          "symbol": "SPY",
+          "side": "sell",
+          "qty": "90",
+          "filled_qty": "90",
+          "status": "filled",
+          "avg_fill_price": "204.78135480772409",
+          "submitted_at": "2026-09-22T14:23:00+00:00",
+          "execution_sequence": 3,
+          "attributes": {
+            "source": "organism",
+            "reason": "horizon_timeout",
+            "tick": 24,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_exit_SPY_20260922_SESSION_t24_horizon_timeout_q90"
+        },
+        {
+          "symbol": "AAPL",
+          "side": "buy",
+          "qty": "153",
+          "filled_qty": "153",
+          "status": "filled",
+          "avg_fill_price": "104.98806159367707",
+          "submitted_at": "2026-09-22T14:23:00+00:00",
+          "execution_sequence": 4,
+          "attributes": {
+            "source": "organism",
+            "reason": "organism_entry",
+            "confidence": 0.3093,
+            "tick": 24,
+            "entry_source": "alpha",
+            "strategy_id": "alpha_baseline",
+            "evidence_tier": 0,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_AAPL_20260922_SESSION_t24_organism_entry_buy_q153"
+        },
+        {
+          "symbol": "MSFT",
+          "side": "sell",
+          "qty": "137",
+          "filled_qty": "137",
+          "status": "filled",
+          "avg_fill_price": "123.98270995884793",
+          "submitted_at": "2026-09-22T14:27:00+00:00",
+          "execution_sequence": 5,
+          "attributes": {
+            "source": "organism",
+            "reason": "horizon_timeout",
+            "tick": 28,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_exit_MSFT_20260922_SESSION_t28_horizon_timeout_q137"
+        },
+        {
+          "symbol": "SPY",
+          "side": "buy",
+          "qty": "82",
+          "filled_qty": "82",
+          "status": "filled",
+          "avg_fill_price": "211.06247836959426",
+          "submitted_at": "2026-09-22T14:37:00+00:00",
+          "execution_sequence": 6,
+          "attributes": {
+            "source": "organism",
+            "reason": "organism_entry",
+            "confidence": 0.3035,
+            "tick": 38,
+            "entry_source": "alpha",
+            "strategy_id": "alpha_baseline",
+            "evidence_tier": 0,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_SPY_20260922_SESSION_t38_organism_entry_buy_q82"
+        },
+        {
+          "symbol": "AAPL",
+          "side": "sell",
+          "qty": "153",
+          "filled_qty": "153",
+          "status": "filled",
+          "avg_fill_price": "84.10216738401505",
+          "submitted_at": "2026-09-22T14:40:00+00:00",
+          "execution_sequence": 7,
+          "attributes": {
+            "source": "organism",
+            "reason": "max_loss_limit",
+            "tick": 41,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_exit_AAPL_20260922_SESSION_t41_max_loss_limit_q153"
+        },
+        {
+          "symbol": "SPY",
+          "side": "sell",
+          "qty": "82",
+          "filled_qty": "82",
+          "status": "filled",
+          "avg_fill_price": "156.9949185851192",
+          "submitted_at": "2026-09-22T14:40:00+00:00",
+          "execution_sequence": 8,
+          "attributes": {
+            "source": "organism",
+            "reason": "max_loss_limit",
+            "tick": 41,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_exit_SPY_20260922_SESSION_t41_max_loss_limit_q82"
+        }
+      ],
+      "accounted_trades": [
+        {
+          "symbol": "SPY",
+          "direction": 1.0,
+          "entry_price": 203.89957881820786,
+          "exit_price": 204.78135480772409,
+          "entry_bar": 6,
+          "exit_bar": 24,
+          "shares": 90,
+          "pnl": 79.3598390564607,
+          "exit_reason": "horizon_timeout",
+          "predicted_return": 0.01,
+          "actual_return": 0.0043245601321344525,
+          "confidence": 0.2589491102713591,
+          "is_exploration": false,
+          "entry_source": "alpha",
+          "strategy_id": "alpha_baseline",
+          "regime_at_entry": "trending_up",
+          "regime_at_exit": "trending_up",
+          "mfe": 259.69,
+          "mae": 393.24,
+          "bars_held_at_exit": 18,
+          "time_in_trade_seconds": 1080.0,
+          "closed_at": "2026-09-22T14:23:00+00:00",
+          "is_reconciliation_artifact": false,
+          "predicted_return_signed": null,
+          "ml_spoke": false,
+          "price_source": "simulated_position_fills",
+          "had_partial_exits": false,
+          "entry_order_id": 0
+        },
+        {
+          "symbol": "MSFT",
+          "direction": 1.0,
+          "entry_price": 113.07354092087546,
+          "exit_price": 123.98270995884793,
+          "entry_bar": 10,
+          "exit_bar": 28,
+          "shares": 137,
+          "pnl": 1494.5561582022283,
+          "exit_reason": "horizon_timeout",
+          "predicted_return": 0.01,
+          "actual_return": 0.0964785302479056,
+          "confidence": 0.25384780421084246,
+          "is_exploration": false,
+          "entry_source": "alpha",
+          "strategy_id": "alpha_baseline",
+          "regime_at_entry": "trending_up",
+          "regime_at_exit": "trending_up",
+          "mfe": 2092.25,
+          "mae": 99.79,
+          "bars_held_at_exit": 18,
+          "time_in_trade_seconds": 1080.0,
+          "closed_at": "2026-09-22T14:27:00+00:00",
+          "is_reconciliation_artifact": false,
+          "predicted_return_signed": null,
+          "ml_spoke": false,
+          "price_source": "simulated_position_fills",
+          "had_partial_exits": false,
+          "entry_order_id": 1
+        },
+        {
+          "symbol": "AAPL",
+          "direction": 1.0,
+          "entry_price": 104.98806159367707,
+          "exit_price": 84.10216738401505,
+          "entry_bar": 24,
+          "exit_bar": 41,
+          "shares": 153,
+          "pnl": -3195.541814078289,
+          "exit_reason": "pyramid_cut_full_at_-6.7R",
+          "predicted_return": 0.01,
+          "actual_return": -0.19893589702126555,
+          "confidence": 0.30926503024658125,
+          "is_exploration": false,
+          "entry_source": "alpha",
+          "strategy_id": "alpha_baseline",
+          "regime_at_entry": "trending_up",
+          "regime_at_exit": "high_vol",
+          "mfe": 1454.89,
+          "mae": 2852.46,
+          "bars_held_at_exit": 16,
+          "time_in_trade_seconds": 1020.0,
+          "closed_at": "2026-09-22T14:40:00+00:00",
+          "is_reconciliation_artifact": false,
+          "predicted_return_signed": null,
+          "ml_spoke": false,
+          "price_source": "simulated_position_fills",
+          "had_partial_exits": false,
+          "entry_order_id": 3
+        },
+        {
+          "symbol": "SPY",
+          "direction": 1.0,
+          "entry_price": 211.06247836959426,
+          "exit_price": 156.9949185851192,
+          "entry_bar": 38,
+          "exit_bar": 41,
+          "shares": 82,
+          "pnl": -4433.539902326955,
+          "exit_reason": "pyramid_cut_full_at_-8.5R",
+          "predicted_return": 0.01,
+          "actual_return": -0.25616850613208786,
+          "confidence": 0.30345311677891307,
+          "is_exploration": false,
+          "entry_source": "alpha",
+          "strategy_id": "alpha_baseline",
+          "regime_at_entry": "trending_up",
+          "regime_at_exit": "high_vol",
+          "mfe": 178.84,
+          "mae": 4173.45,
+          "bars_held_at_exit": 2,
+          "time_in_trade_seconds": 180.0,
+          "closed_at": "2026-09-22T14:40:00+00:00",
+          "is_reconciliation_artifact": false,
+          "predicted_return_signed": null,
+          "ml_spoke": false,
+          "price_source": "simulated_position_fills",
+          "had_partial_exits": false,
+          "entry_order_id": 5
+        }
+      ],
+      "feature_prefix_calls": 180
+    },
+    "causal_timestamp": {
+      "metrics": {
+        "ticks": 60,
+        "signals": 4,
+        "alpha_scanned": 115,
+        "alpha_considered": 115,
+        "alpha_terminal": {
+          "below_exploration_confidence": 21,
+          "candidate_built": 4,
+          "direction_zero": 1,
+          "shared_gate:exit_cooldown": 25,
+          "shared_gate:long_only": 5,
+          "shared_gate:open_position": 55,
+          "shared_gate:pending_entry": 4
+        },
+        "shared_gate_evaluations": 115,
+        "shared_gate_passes": 26,
+        "shared_gate_rejections": {
+          "open_position": 55,
+          "long_only": 5,
+          "exit_cooldown": 25,
+          "pending_entry": 4
+        },
+        "combined_candidates_pre_sizing": 4,
+        "entry_orders": 4,
+        "exit_orders": 4,
+        "accounted_closes": 4,
+        "exit_legs": 4,
+        "exit_mix": {
+          "horizon_timeout": 2,
+          "pyramid_cut_full_at_-6.7R": 1,
+          "pyramid_cut_full_at_-8.5R": 1
+        },
+        "accounting_pending": 0,
+        "tick_errors": 0,
+        "exit_leg_realized_pnl_before_commission": -6055.165719146556,
+        "accounted_position_pnl": -6055.165719146555,
+        "final_equity": 993944.8342808534,
+        "equity_delta_including_open_mark_and_commission": -6055.165719146607,
+        "maximum_equity_drawdown_fraction": 0.009186705957032033,
+        "maximum_gross_exposure": 35836.455471304376,
+        "final_open_positions": 0,
+        "final_cash": 993944.8342808534,
+        "daily_loss_halted_ticks": 0,
+        "freshness_receipts": 4,
+        "commission": 0.0
+      },
+      "safety": {
+        "research_policy_locked": true,
+        "ml_isolated": true,
+        "fixed_atr_risk": true,
+        "empty_initial_brain": true,
+        "no_saved_models": true,
+        "shared_and_final_entry_gates_observed": true
+      },
+      "orders": [
+        {
+          "symbol": "SPY",
+          "side": "buy",
+          "qty": "90",
+          "filled_qty": "90",
+          "status": "filled",
+          "avg_fill_price": "203.89957881820786",
+          "submitted_at": "2026-09-22T14:05:00+00:00",
+          "execution_sequence": 1,
+          "attributes": {
+            "source": "organism",
+            "reason": "organism_entry",
+            "confidence": 0.2589,
+            "tick": 6,
+            "entry_source": "alpha",
+            "strategy_id": "alpha_baseline",
+            "evidence_tier": 0,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_SPY_20260922_SESSION_t6_organism_entry_buy_q90"
+        },
+        {
+          "symbol": "MSFT",
+          "side": "buy",
+          "qty": "137",
+          "filled_qty": "137",
+          "status": "filled",
+          "avg_fill_price": "113.07354092087546",
+          "submitted_at": "2026-09-22T14:09:00+00:00",
+          "execution_sequence": 2,
+          "attributes": {
+            "source": "organism",
+            "reason": "organism_entry",
+            "confidence": 0.2538,
+            "tick": 10,
+            "entry_source": "alpha",
+            "strategy_id": "alpha_baseline",
+            "evidence_tier": 0,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_MSFT_20260922_SESSION_t10_organism_entry_buy_q137"
+        },
+        {
+          "symbol": "SPY",
+          "side": "sell",
+          "qty": "90",
+          "filled_qty": "90",
+          "status": "filled",
+          "avg_fill_price": "204.78135480772409",
+          "submitted_at": "2026-09-22T14:23:00+00:00",
+          "execution_sequence": 3,
+          "attributes": {
+            "source": "organism",
+            "reason": "horizon_timeout",
+            "tick": 24,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_exit_SPY_20260922_SESSION_t24_horizon_timeout_q90"
+        },
+        {
+          "symbol": "AAPL",
+          "side": "buy",
+          "qty": "153",
+          "filled_qty": "153",
+          "status": "filled",
+          "avg_fill_price": "104.98806159367707",
+          "submitted_at": "2026-09-22T14:23:00+00:00",
+          "execution_sequence": 4,
+          "attributes": {
+            "source": "organism",
+            "reason": "organism_entry",
+            "confidence": 0.3093,
+            "tick": 24,
+            "entry_source": "alpha",
+            "strategy_id": "alpha_baseline",
+            "evidence_tier": 0,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_AAPL_20260922_SESSION_t24_organism_entry_buy_q153"
+        },
+        {
+          "symbol": "MSFT",
+          "side": "sell",
+          "qty": "137",
+          "filled_qty": "137",
+          "status": "filled",
+          "avg_fill_price": "123.98270995884793",
+          "submitted_at": "2026-09-22T14:27:00+00:00",
+          "execution_sequence": 5,
+          "attributes": {
+            "source": "organism",
+            "reason": "horizon_timeout",
+            "tick": 28,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_exit_MSFT_20260922_SESSION_t28_horizon_timeout_q137"
+        },
+        {
+          "symbol": "SPY",
+          "side": "buy",
+          "qty": "82",
+          "filled_qty": "82",
+          "status": "filled",
+          "avg_fill_price": "211.06247836959426",
+          "submitted_at": "2026-09-22T14:37:00+00:00",
+          "execution_sequence": 6,
+          "attributes": {
+            "source": "organism",
+            "reason": "organism_entry",
+            "confidence": 0.3035,
+            "tick": 38,
+            "entry_source": "alpha",
+            "strategy_id": "alpha_baseline",
+            "evidence_tier": 0,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_SPY_20260922_SESSION_t38_organism_entry_buy_q82"
+        },
+        {
+          "symbol": "AAPL",
+          "side": "sell",
+          "qty": "153",
+          "filled_qty": "153",
+          "status": "filled",
+          "avg_fill_price": "84.10216738401505",
+          "submitted_at": "2026-09-22T14:40:00+00:00",
+          "execution_sequence": 7,
+          "attributes": {
+            "source": "organism",
+            "reason": "max_loss_limit",
+            "tick": 41,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_exit_AAPL_20260922_SESSION_t41_max_loss_limit_q153"
+        },
+        {
+          "symbol": "SPY",
+          "side": "sell",
+          "qty": "82",
+          "filled_qty": "82",
+          "status": "filled",
+          "avg_fill_price": "156.9949185851192",
+          "submitted_at": "2026-09-22T14:40:00+00:00",
+          "execution_sequence": 8,
+          "attributes": {
+            "source": "organism",
+            "reason": "max_loss_limit",
+            "tick": 41,
+            "execution_environment": "simulation"
+          },
+          "commission": 0.0,
+          "normalized_client_order_id": "organism_exit_SPY_20260922_SESSION_t41_max_loss_limit_q82"
+        }
+      ],
+      "accounted_trades": [
+        {
+          "symbol": "SPY",
+          "direction": 1.0,
+          "entry_price": 203.89957881820786,
+          "exit_price": 204.78135480772409,
+          "entry_bar": 6,
+          "exit_bar": 24,
+          "shares": 90,
+          "pnl": 79.3598390564607,
+          "exit_reason": "horizon_timeout",
+          "predicted_return": 0.01,
+          "actual_return": 0.0043245601321344525,
+          "confidence": 0.2589491102713591,
+          "is_exploration": false,
+          "entry_source": "alpha",
+          "strategy_id": "alpha_baseline",
+          "regime_at_entry": "trending_up",
+          "regime_at_exit": "trending_up",
+          "mfe": 259.69,
+          "mae": 393.24,
+          "bars_held_at_exit": 18,
+          "time_in_trade_seconds": 1080.0,
+          "closed_at": "2026-09-22T14:23:00+00:00",
+          "is_reconciliation_artifact": false,
+          "predicted_return_signed": null,
+          "ml_spoke": false,
+          "price_source": "simulated_position_fills",
+          "had_partial_exits": false,
+          "entry_order_id": 0
+        },
+        {
+          "symbol": "MSFT",
+          "direction": 1.0,
+          "entry_price": 113.07354092087546,
+          "exit_price": 123.98270995884793,
+          "entry_bar": 10,
+          "exit_bar": 28,
+          "shares": 137,
+          "pnl": 1494.5561582022283,
+          "exit_reason": "horizon_timeout",
+          "predicted_return": 0.01,
+          "actual_return": 0.0964785302479056,
+          "confidence": 0.25384780421084246,
+          "is_exploration": false,
+          "entry_source": "alpha",
+          "strategy_id": "alpha_baseline",
+          "regime_at_entry": "trending_up",
+          "regime_at_exit": "trending_up",
+          "mfe": 2092.25,
+          "mae": 99.79,
+          "bars_held_at_exit": 18,
+          "time_in_trade_seconds": 1080.0,
+          "closed_at": "2026-09-22T14:27:00+00:00",
+          "is_reconciliation_artifact": false,
+          "predicted_return_signed": null,
+          "ml_spoke": false,
+          "price_source": "simulated_position_fills",
+          "had_partial_exits": false,
+          "entry_order_id": 1
+        },
+        {
+          "symbol": "AAPL",
+          "direction": 1.0,
+          "entry_price": 104.98806159367707,
+          "exit_price": 84.10216738401505,
+          "entry_bar": 24,
+          "exit_bar": 41,
+          "shares": 153,
+          "pnl": -3195.541814078289,
+          "exit_reason": "pyramid_cut_full_at_-6.7R",
+          "predicted_return": 0.01,
+          "actual_return": -0.19893589702126555,
+          "confidence": 0.30926503024658125,
+          "is_exploration": false,
+          "entry_source": "alpha",
+          "strategy_id": "alpha_baseline",
+          "regime_at_entry": "trending_up",
+          "regime_at_exit": "high_vol",
+          "mfe": 1454.89,
+          "mae": 2852.46,
+          "bars_held_at_exit": 16,
+          "time_in_trade_seconds": 1020.0,
+          "closed_at": "2026-09-22T14:40:00+00:00",
+          "is_reconciliation_artifact": false,
+          "predicted_return_signed": null,
+          "ml_spoke": false,
+          "price_source": "simulated_position_fills",
+          "had_partial_exits": false,
+          "entry_order_id": 3
+        },
+        {
+          "symbol": "SPY",
+          "direction": 1.0,
+          "entry_price": 211.06247836959426,
+          "exit_price": 156.9949185851192,
+          "entry_bar": 38,
+          "exit_bar": 41,
+          "shares": 82,
+          "pnl": -4433.539902326955,
+          "exit_reason": "pyramid_cut_full_at_-8.5R",
+          "predicted_return": 0.01,
+          "actual_return": -0.25616850613208786,
+          "confidence": 0.30345311677891307,
+          "is_exploration": false,
+          "entry_source": "alpha",
+          "strategy_id": "alpha_baseline",
+          "regime_at_entry": "trending_up",
+          "regime_at_exit": "high_vol",
+          "mfe": 178.84,
+          "mae": 4173.45,
+          "bars_held_at_exit": 2,
+          "time_in_trade_seconds": 180.0,
+          "closed_at": "2026-09-22T14:40:00+00:00",
+          "is_reconciliation_artifact": false,
+          "predicted_return_signed": null,
+          "ml_spoke": false,
+          "price_source": "simulated_position_fills",
+          "had_partial_exits": false,
+          "entry_order_id": 5
+        }
+      ],
+      "feature_prefix_calls": 180
+    }
+  },
+  "limitations": [
+    "Synthetic immediate next-open simulator with fixed5bp slippage and automatic half-spread; no live queue/latency/partial-fill model.",
+    "Bar history transport is test-only; final actual engine/gates/positions/exits/accounting are observed unchanged.",
+    "Repeated per-tick funnel counts are not unique opportunities; neutral placeholders do not qualify exported training data."
+  ]
+}

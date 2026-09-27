@@ -88,9 +88,9 @@ Those explanations identify test gaps; they do not excuse the previous unconditi
 
 None of these gates authorizes real-money trading or promises profitability.
 
-## Repair validation
+## Prior scoped validation (before the September 27 frozen repairs)
 
-The validated product source is `efa2972de8b6d04d87ce07a17067efbd3274a015`. Independent accounting, recovery, acknowledgement, UI/authentication, deployment and CI reviews are preserved with source hashes. The current manifest binds 61 changed product/test/workflow files. Backend, frontend and deployment product bytes still match this browser-tested source; the later source revision only corrects the Docker test harness and its CI coverage. Inventory ranges name the immutable generation commit, excluding the following evidence-only delivery.
+The prior validated product source was `efa2972de8b6d04d87ce07a17067efbd3274a015`. Independent accounting, recovery, acknowledgement, UI/authentication, deployment and CI reviews are preserved with source hashes. That scoped manifest bound 61 changed product/test/workflow files. At the earlier delivery, backend, frontend and deployment product bytes matched this browser-tested source; its subsequent source revision corrected the Docker test harness and CI coverage. The September 27 backend repairs supersede that backend identity and require the combined acceptance below. Inventory ranges name their immutable generation commit, excluding the following evidence-only delivery.
 
 Recovery/accounting regression selection: 261 passed. Acknowledgement/accounting selection: 231 passed, including 36 new acknowledgement cases. Disposable PostgreSQL: 12 passed without skips, comprising six actual concurrent database scenarios, one persisted-lineage/UUID-keyset database case, and five isolation guards. Portfolio/private-room backend selection: 91 passed. Configuration/integration: 72 passed; final workflow/configuration contract: 31 passed. These selections overlap and must not be summed as unique platform coverage.
 
@@ -107,3 +107,42 @@ The first hosted container check built successfully and passed its first three g
 The September 27 approval extends PR32 with all five frozen correctness repairs and permits a new forward boundary at reviewed paper activation. Combined validation is in progress under `artifacts/frozen_repairs_20260927/`; earlier scoped counts above are not final combined-release evidence. No audit repair has yet been activated on the installed platform. Hosted acceptance, reviewed paper activation and complete natural-session evidence remain distinct gates. The current strategy evidence still does not demonstrate a deployable profitable edge.
 
 The stricter cancellation proof deliberately retains a closed pyramid-add identity when only an anchor-level completed trade survives: there is no explicit durable base-to-add linkage to justify releasing it. The installed `ORGANISM_PYRAMID_ENABLED=false` setting was rechecked on September 27 and remains a release constraint. This repair does not enable pyramiding. Cross-asset availability metadata survives the feature feeder but is lost by existing NumPy/model exports, so exported research rows are not automatically qualified by this change.
+
+
+## Combined local acceptance — September 27
+
+The combined runtime source is `fed6dcbcdbb5c936aafd63711a0332a980c6835f`.
+The final operational selection passed 2,101 cases with no failures and one
+explicit unavailable installed-history test. The final focused selection passed
+267 cases; paired trading replay passed 18. The full required artifact pack
+passed 168 state/risk/sizing cases, 28 replay cases and 20 semantic invariants.
+All 15 grep checks passed; the specification comparison found zero differences
+across its nine core keys. These selections overlap and must not be summed.
+
+Independent streaming, feature, cancellation, fixture and governance reviews
+accepted the source. The broader run's original 12 failures remain recorded:
+three outdated historical-prefill assertions, two synthetic profiler setup
+failures, and seven assertions that predated explicit alignment metadata. The
+repaired fixtures deliver a real synthetic bar through the registered production
+callback and retain input/metadata equivalence checks. They do not relax live
+freshness. The profiler also rejects a dropped callback.
+
+Provider recovery now survives rejection, partial acknowledgement, clean closure
+and failed startup without manufacturing freshness. Pending cancellation requires
+terminal broker evidence plus exact accounting/exposure proof; timeout, restart
+and expired cooldowns retain uncertain identities. Bounded retries advance past
+slow orders. Negative controls preserve the failures these repairs address.
+
+Both timestamp-alignment replay scenarios have actual entries and accounted
+closes. Candidate and ordinal-baseline orders/equity remain identical under the
+synthetic learning-mode configuration; the crash case lost 6,055.17 and the EOD
+case lost 99.48. These are synthetic mechanism checks, not paper trading returns
+or evidence of strategy profitability, and do not reproduce every installed
+configuration setting. The existing strategy verdict remains insufficient.
+
+Source, tests and review receipts are indexed by
+`artifacts/frozen_repairs_20260927/local_acceptance.json`. Generated snapshots are
+explicitly offline source/default evidence. Hosted checks, the immutable image,
+controlled activation, the persistent UI and a complete natural session remain
+separate gates. The frontend source is byte-identical to the earlier browser-tested
+`efa2972` tree; the backend identity is now the combined source above.

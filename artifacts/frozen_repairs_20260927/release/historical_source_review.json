@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "task_id": "PR32-historical-source-reachability-review",
+  "reviewed_at_utc": "2026-09-27T19:02:29.554033+00:00",
+  "verdict": "CONDITIONAL_SOURCE_INERTNESS_SUPPORTED_NOT_HISTORICAL_RESOLUTION",
+  "blocking_source_findings": [],
+  "source_checkout_head": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+  "identity_scope": "Current reviewed working-tree bytes; final commit/source binding must match these file hashes. This is not a deployed-runtime observation.",
+  "source_files": {
+    "backend/api/lifespan.py": "508bdb5547d96056f79c4ef19e1fc05e24c56697884f5d1edb3b91e5013f4bef",
+    "backend/infra/outbox.py": "9c83b31166d272e1a91f7b87278c32904482b8025b900d0f6ad1a323efb6ab8e",
+    "backend/infra/outbox_worker.py": "ac2ccecc3480ac74a4977416b83fae9af765de13bd729e2b92b38180dd753178",
+    "backend/infra/repositories/orders.py": "89e0e9f2fc80d268aa61251dc4b6d84d7411573d760661a0d0090d4f47cd834b",
+    "backend/integrations/alpaca_stream.py": "46190703208f4cfbc7631a96e605eb3022f578e09ccf32bf6a3ebbdb3f81ef43",
+    "backend/services/scheduled_reconciliation.py": "aabd6d42b00d7f7bd7a359ff549efe8ace1a021cfe9c83bd9fe55ea17facd0d5",
+    "backend/services/position_reconciliation_service.py": "4ce887fced1cd365ecfe98c8efa4bf554b9345bff7d07bcb3cf934f684274b57",
+    "backend/infra/order_guardrails.py": "0d20fd81cbdd5b786de49e8c400d93304d664b7e3eb978086da9fe88db2b9a57",
+    "backend/services/order_recovery_service.py": "f5898f4beb3f5f416f3f195492662b0a95722f35d4b922df9df78e998961302e"
+  },
+  "prior_code_hashes_not_reused": true,
+  "prior_receipt": {
+    "sha256": "32278fd0a004ea61636197fbebd217e4d1da36598455706243d0659494cfa121",
+    "role": "Prior private evidence only; exact raw rows remain private. Not freshness evidence for the new release."
+  },
+  "prior_sanitized_shape": {
+    "row_count": 5,
+    "all_broker_order_ids_null": true,
+    "all_filled_qty_zero": true,
+    "status_counts": {
+      "failed": 4,
+      "accepted": 1
+    },
+    "all_sell": true,
+    "some_have_organism_source": true,
+    "all_broker_historical_outcomes_unknown": true,
+    "none_proven_terminal_or_absent": true
+  },
+  "scope_precision": "Not all five are excluded for lacking ownership. Mandatory nonempty broker identity is the sufficient exclusion in the new recovery service. Local failed/accepted labels and historical404s do not prove actual broker outcome.",
+  "reachability_findings": [
+    {
+      "id": "startup_outbox",
+      "path": "backend/api/lifespan.py",
+      "lines": [
+        307,
+        313
+      ],
+      "finding": "Startup starts OutboxWorker; it does not enqueue or enumerate legacy Orders for submission."
+    },
+    {
+      "id": "pending_delivery_only",
+      "path": "backend/infra/outbox_worker.py",
+      "lines": [
+        334,
+        363
+      ],
+      "finding": "Dispatch work comes from OutboxRepo.claim_batch and retains existing payload/last_error. No Orders-table fallback creates delivery work."
+    },
+    {
+      "id": "pending_event_filter",
+      "path": "backend/infra/outbox.py",
+      "lines": [
+        150,
+        183
+      ],
+      "finding": "Only due pending OutboxEvent rows are claimed. Sent/failed delivery records and bare Orders rows are not executable work. Enqueue requires an explicit caller."
+    },
+    {
+      "id": "new_recovery_eligibility",
+      "path": "backend/infra/repositories/orders.py",
+      "lines": [
+        375,
+        411
+      ],
+      "finding": "Every recovery page and under-lock recheck requires nonempty broker_order_id plus client key, unresolved lifecycle and organism-source or exact order.submitted/client-key lineage. NULL broker IDs exclude all five historical rows even when organism-source exists."
+    },
+    {
+      "id": "read_only_broker_recovery",
+      "path": "backend/services/order_recovery_service.py",
+      "lines": [
+        117,
+        159
+      ],
+      "finding": "Max20 attempts/pass,10s total,2s lookup. Validate original broker UUID before GET; recheck exact identity and eligibility under lock, then atomic fill application. No submit/enqueue/client-only search."
+    },
+    {
+      "id": "http_failure_not_resolution",
+      "path": "backend/services/order_recovery_service.py",
+      "lines": [
+        192,
+        216
+      ],
+      "finding": "Exact broker-ID GET only. Any non200 including404 raises before local accounting; no inference of canceled/absent and no replacement POST."
+    },
+    {
+      "id": "startup_recovery_hook",
+      "path": "backend/api/lifespan.py",
+      "lines": [
+        800,
+        870
+      ],
+      "finding": "Startup invokes the new filtered recovery, then reads latest500 broker orders and matches by broker_order_id. Bare historical NULL-ID rows do not match valid broker UUID records and are never resubmitted."
+    },
+    {
+      "id": "reconnect_hook",
+      "path": "backend/integrations/alpaca_stream.py",
+      "lines": [
+        1122,
+        1188
+      ],
+      "finding": "Reconnect calls the filtered recovery; legacy recent-order path remains capped100/one-hour maximum and explicitly skips missing broker IDs. No submit/enqueue operation in this path."
+    },
+    {
+      "id": "periodic_hook",
+      "path": "backend/services/scheduled_reconciliation.py",
+      "lines": [
+        40,
+        66
+      ],
+      "finding": "Periodic job invokes the same filtered recovery, then aggregate position reconciliation; it does not manufacture OutboxEvents."
+    },
+    {
+      "id": "aggregate_summary",
+      "path": "backend/services/position_reconciliation_service.py",
+      "lines": [
+        164,
+        190
+      ],
+      "finding": "Aggregate summary begins with filled buy rows. The five prior sell/failed-or-accepted/zero-fill rows are not that input; summary is not a retry/submit authority."
+    },
+    {
+      "id": "authentic_future_event",
+      "path": "backend/integrations/alpaca_stream.py",
+      "lines": [
+        948,
+        976
+      ],
+      "finding": "A new genuine stream event may match the exact original client identity and update accounting. That is new broker evidence, not automatic historical resubmission; any affected-row/evidence change invalidates a held maintenance exception."
+    },
+    {
+      "id": "manual_cleanup_excluded",
+      "path": "backend/infra/order_guardrails.py",
+      "lines": [
+        223,
+        385
+      ],
+      "finding": "Standalone stale cleanup can rewrite statuses, but repo-wide backend search found no automatic caller outside its own manual main path. Do not invoke it during this transition."
+    },
+    {
+      "id": "ack_reconciliation_not_legacy_queue",
+      "path": "backend/infra/outbox_worker.py",
+      "lines": [
+        376,
+        461
+      ],
+      "finding": "Durable ACK lookup-only state applies only to already claimed events; corrupt marker is held/reconciliation-required. This is not an implicit migration of legacy Orders."
+    }
+  ],
+  "required_fresh_release_guards": [
+    "Root independently captures same exact five row identities and canonical row bytes/hashes in read-only transaction; any delta invalidates exception",
+    "All five broker_order_id values remain NULL and zero-fill summaries unchanged; status-only classification is insufficient",
+    "No matching OrderEvent/Execution/lot/OutboxEvent by exact order/client identity; no unresolved pending/failed/DLQ delivery or INTRA_BROKER_ACK state elsewhere eligible to act; fresh counts/rows required",
+    "Fresh broker flat/no-open-order and local position/lot/outbox/accounting consistency proof; this source review supplies none of these live observations",
+    "Legacy IDs absent from active engine pending-entry/exit attribution. If tracked, retain unresolved and re-evaluate rather than treating this exception as cancellation authority",
+    "Do not run standalone stale cleanup, manual cleanup-orders endpoint, ad hoc retry/requeue or any historical status rewrite",
+    "Bind final candidate commit/image and all nine reviewed code-file hashes to the new private release proof; old eight-file source-equality receipt is superseded for code reachability",
+    "If genuine new stream evidence arrives for an exact legacy client identity, stop relying on this exception and reconcile that evidence without inventing a historical terminal outcome"
+  ],
+  "existing_synthetic_contracts_inspected": {
+    "path": "tests/test_order_recovery_service.py",
+    "sha256": "071de3f7a229462735c8202d20f07915b1b02ebbf26ba74a2081a0581db56208",
+    "cases": [
+      "test_unowned_legacy_and_old_terminal_are_not_migrated",
+      "test_outbox_lineage_requires_matching_order_and_client_key",
+      "test_exact_get_errors_never_infer_cancel_or_submit",
+      "test_missing_or_unsafe_broker_identity_is_never_looked_up"
+    ],
+    "execution": "Not rerun in this read-only subtask; root owns current source-bound regression evidence"
+  },
+  "limitations": [
+    "Conditional automatic-path analysis, not broker historical reconstruction or proof404meansabsent",
+    "No new runtime/database/API/auth/broker calls, no historical data or source edits",
+    "Does not authorize deployment or waive fresh preservation/flat/outbox gates",
+    "Manual API/maintenance paths and genuine new broker events can change rows; this report is not a claim of immutable history under arbitrary actions"
+  ],
+  "raw_row_payloads_exported": false,
+  "historical_rewrite_performed": false,
+  "deployment_approval_granted_by_report": false
+}

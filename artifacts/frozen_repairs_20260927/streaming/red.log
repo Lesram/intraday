@@ -1,0 +1,103 @@
+Isolated test scratch: /private/tmp/intra-audit-test-7rx7_8d_
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+________ test_send_success_without_server_ack_is_incomplete_and_retries ________
+
+stream = (<backend.integrations.alpaca_market_data_stream.AlpacaMarketDataStream object at 0x10c67b290>, <test_streaming_subscription_acknowledgement.Socket object at 0x10c67af90>)
+
+    @pytest.mark.asyncio
+    async def test_send_success_without_server_ack_is_incomplete_and_retries(stream):
+        value, socket = stream
+        socket.respond = False
+>       assert await value.subscribe_bars(['NEW']) is False
+E       assert True is False
+
+tests/test_streaming_subscription_acknowledgement.py:76: AssertionError
+__________ test_partial_subscription_does_not_launder_missing_symbol ___________
+
+stream = (<backend.integrations.alpaca_market_data_stream.AlpacaMarketDataStream object at 0x10c6ca0c0>, <test_streaming_subscription_acknowledgement.Socket object at 0x10c6c8b90>)
+
+    @pytest.mark.asyncio
+    async def test_partial_subscription_does_not_launder_missing_symbol(stream):
+        value, socket = stream
+        socket.reject = {'NEW'}
+>       assert await value.subscribe_bars(['SPY', 'NEW']) is False
+E       assert True is False
+
+tests/test_streaming_subscription_acknowledgement.py:91: AssertionError
+________ test_channel_omission_is_not_empty_or_ack_for_another_channel _________
+
+stream = (<backend.integrations.alpaca_market_data_stream.AlpacaMarketDataStream object at 0x10c6cbce0>, <test_streaming_subscription_acknowledgement.Socket object at 0x10c6798b0>)
+
+    @pytest.mark.asyncio
+    async def test_channel_omission_is_not_empty_or_ack_for_another_channel(stream):
+        value, socket = stream
+        assert await value.subscribe_quotes(['SPY'])
+        socket.respond = False
+        task = asyncio.create_task(value.subscribe_bars(['SPY']))
+        await asyncio.sleep(0)
+        await socket.push({'T': 'subscription', 'trades': []})
+>       assert await task is False
+E       assert True is False
+
+tests/test_streaming_subscription_acknowledgement.py:106: AssertionError
+_________ test_unsubscribe_waits_for_explicit_all_channel_confirmation _________
+
+stream = (<backend.integrations.alpaca_market_data_stream.AlpacaMarketDataStream object at 0x10c6cf410>, <test_streaming_subscription_acknowledgement.Socket object at 0x10c6cb170>)
+
+    @pytest.mark.asyncio
+    async def test_unsubscribe_waits_for_explicit_all_channel_confirmation(stream):
+        value, socket = stream
+        assert await value.subscribe_bars(['OLD'])
+        assert await value.subscribe_quotes(['OLD'])
+        socket.respond = False
+        task = asyncio.create_task(value.unsubscribe(['OLD']))
+        await asyncio.sleep(0)
+        await socket.push({'T': 'subscription', 'quotes': [], 'trades': []})
+>       assert await task is False
+E       assert True is False
+
+tests/test_streaming_subscription_acknowledgement.py:122: AssertionError
+______________ test_clean_close_clears_state_and_reconnects_once _______________
+
+stream = (<backend.integrations.alpaca_market_data_stream.AlpacaMarketDataStream object at 0x10c6ce630>, <test_streaming_subscription_acknowledgement.Socket object at 0x10c6cc8c0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c6ce600>
+
+    @pytest.mark.asyncio
+    async def test_clean_close_clears_state_and_reconnects_once(stream, monkeypatch):
+        value, socket = stream
+        reconnect = AsyncMock()
+        monkeypatch.setattr(value, '_reconnect', reconnect)
+        await socket.close()
+        await asyncio.sleep(.005)
+>       assert not value.is_connected and not value.is_authenticated
+E       assert (not True)
+E        +  where True = <backend.integrations.alpaca_market_data_stream.AlpacaMarketDataStream object at 0x10c6ce630>.is_connected
+
+tests/test_streaming_subscription_acknowledgement.py:137: AssertionError
+__________ test_provider_failed_start_retries_without_rest_freshness ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10c6d3980>
+
+    @pytest.mark.asyncio
+    async def test_provider_failed_start_retries_without_rest_freshness(monkeypatch):
+        sockets = [Socket(), Socket()]
+        sockets[0].reject = {'SPY'}
+        make_socket = AsyncMock(side_effect=sockets)
+        monkeypatch.setattr('backend.integrations.alpaca_market_data_stream.websockets.connect', make_socket)
+        monkeypatch.setattr(AlpacaMarketDataStream, 'SUBSCRIPTION_ACK_TIMEOUT_S', .02, raising=False)
+        now = pd.Timestamp('2026-09-27T15:00:00Z').timestamp()
+        provider = StreamingDataProvider(time_fn=lambda: now)
+        try:
+>           assert await provider.start(['SPY'], 'offline', 'offline') is False
+E           assert None is False
+
+tests/test_streaming_subscription_acknowledgement.py:151: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_streaming_subscription_acknowledgement.py::test_send_success_without_server_ack_is_incomplete_and_retries
+FAILED tests/test_streaming_subscription_acknowledgement.py::test_partial_subscription_does_not_launder_missing_symbol
+FAILED tests/test_streaming_subscription_acknowledgement.py::test_channel_omission_is_not_empty_or_ack_for_another_channel
+FAILED tests/test_streaming_subscription_acknowledgement.py::test_unsubscribe_waits_for_explicit_all_channel_confirmation
+FAILED tests/test_streaming_subscription_acknowledgement.py::test_clean_close_clears_state_and_reconnects_once
+FAILED tests/test_streaming_subscription_acknowledgement.py::test_provider_failed_start_retries_without_rest_freshness
+6 failed in 0.29s

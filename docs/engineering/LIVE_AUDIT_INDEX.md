@@ -1,33 +1,33 @@
 # Live Audit Index
 
-Generated: 2026-09-27T00:21:52Z
+Generated: 2026-09-27T19:19:29Z
 PR: n/a
-SHA: `22c324abb7`
+SHA: `fed6dcbcdb`
 Branch: `codex/platform-audit-20260926`
 Scope: **backend_logic**
-Change scope: `base` (`bf533a43d01a4c2e7428ea9589159d9c7d242319...22c324abb7f8ae991d29b5765796d2bb5225de73`)
+Change scope: `base` (`bf533a43d01a4c2e7428ea9589159d9c7d242319...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **298**
+Total distinct changed files: **340**
 
-Category counts below partition that total. File previews show at most ten paths per category; the full list for that immutable source boundary follows.
+Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 9 | `backend/api/lifespan.py`, `backend/api/portfolio.py`, `backend/api/socketio_server.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_stream.py`, `backend/services/order_recovery_service.py`, `backend/services/portfolio_service.py`, `backend/services/scheduled_reconciliation.py` |
-| Scripts | 2 | `scripts/ci/check_frontend_container.py`, `scripts/ci/nightly_test_contract.py` |
+| Backend | 16 | `backend/api/lifespan.py`, `backend/api/portfolio.py`, `backend/api/socketio_server.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_market_data_stream.py`, `backend/integrations/alpaca_stream.py`, `backend/organism/live_engine.py`, `backend/organism/ml_features.py`, `backend/organism/operator_cancellation.py` |
+| Scripts | 5 | `scripts/ci/check_frontend_container.py`, `scripts/ci/nightly_test_contract.py`, `scripts/diagnostics/profile_paper_pipeline.py`, `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 18 | `tests/test_adversarial_inputs_v7.py`, `tests/test_fill_accounting_integrity.py`, `tests/test_fill_accounting_postgres.py`, `tests/test_frontend_container_probe.py`, `tests/test_monday_ci_workflows.py`, `tests/test_nightly_test_contract.py`, `tests/test_order_recovery_service.py`, `tests/test_outbox_fill_race.py`, `tests/test_paper_frontend_deployment.py`, `tests/test_portfolio_availability_contract.py` |
-| Docs | 3 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/MONDAY_CI_READINESS.md`, `docs/engineering/PAPER_OPERATOR_UI.md` |
-| Artifacts/evidence | 230 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
+| Tests | 33 | `tests/test_adversarial_inputs_v7.py`, `tests/test_audit_patch_queue_j6.py`, `tests/test_audit_patch_queue_j6b.py`, `tests/test_composite_indicator_contract.py`, `tests/test_cross_asset_alignment_replay.py`, `tests/test_cross_asset_timestamp_alignment.py`, `tests/test_eod_cancellation_fairness.py`, `tests/test_eod_pending_cancellation.py`, `tests/test_fill_accounting_integrity.py`, `tests/test_fill_accounting_postgres.py` |
+| Docs | 4 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/MONDAY_CI_READINESS.md`, `docs/engineering/PAPER_OPERATOR_UI.md` |
+| Artifacts/evidence | 246 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 4 | `reports/PLATFORM_AUDIT_FROZEN_REPAIR_SCOPE_2026-09-26.md`, `reports/platform_audit_20260926/PLATFORM_REVIEW.md`, `reports/platform_audit_20260926/research_readiness.md`, `reports/platform_audit_20260926/research_readiness_sources.json` |
 | Configuration | 1 | `docker-compose.paper.yml` |
 | Other | 30 | `frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`, `frontend/nginx.conf`, `frontend/src/App.tsx`, `frontend/src/components/auth/AuthBootstrap.test.tsx`, `frontend/src/components/auth/AuthBootstrap.tsx`, `frontend/src/components/auth/ProtectedRoute.tsx`, `frontend/src/components/layout/GlobalStatusBar.test.tsx`, `frontend/src/components/layout/GlobalStatusBar.tsx`, `frontend/src/features/dashboard/Dashboard.test.tsx` |
 
-Organism subset of Backend: **0** file(s).
+Organism subset of Backend: **6** file(s).
 
-### Full changed-file list at the immutable source boundary
+### Full changed-file list
 
 - `.github/workflows/paper-readiness.yml`
 - `artifacts/algorithm_improvements.junit.xml`
@@ -58,6 +58,7 @@ Organism subset of Backend: **0** file(s).
 - `artifacts/platform_audit_20260926/composite-replay.xml`
 - `artifacts/platform_audit_20260926/config-ci-regression.log`
 - `artifacts/platform_audit_20260926/config-ci-regression.xml`
+- `artifacts/platform_audit_20260926/cross_artifact_review_313b.json`
 - `artifacts/platform_audit_20260926/data_decision_proof.json`
 - `artifacts/platform_audit_20260926/data_decision_report.json`
 - `artifacts/platform_audit_20260926/data_decision_startup-proof.json`
@@ -106,6 +107,7 @@ Organism subset of Backend: **0** file(s).
 - `artifacts/platform_audit_20260926/final_acceptance.json`
 - `artifacts/platform_audit_20260926/final_config_ci.xml`
 - `artifacts/platform_audit_20260926/final_frontend.xml`
+- `artifacts/platform_audit_20260926/final_probe_workflow.xml`
 - `artifacts/platform_audit_20260926/final_workflow_contract.xml`
 - `artifacts/platform_audit_20260926/frontend_browser/login.png`
 - `artifacts/platform_audit_20260926/frontend_browser/preview.log`
@@ -122,6 +124,20 @@ Organism subset of Backend: **0** file(s).
 - `artifacts/platform_audit_20260926/frontend_deployment/independent_final_review.json`
 - `artifacts/platform_audit_20260926/frontend_deployment/independent_source_review.json`
 - `artifacts/platform_audit_20260926/frontend_deployment_plan.json`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/before.json`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/before.log`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/before.xml`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/disposable.log`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/disposable/proxy.log`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/disposable/result.json`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/hosted_failure.json`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/implementation.json`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/independent_review.json`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/plan.json`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/preservation.json`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/ruff.log`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/targeted.log`
+- `artifacts/platform_audit_20260926/frontend_probe_network_repair/targeted.xml`
 - `artifacts/platform_audit_20260926/full-pack.log`
 - `artifacts/platform_audit_20260926/gitleaks-source.json`
 - `artifacts/platform_audit_20260926/gitleaks-source.log`
@@ -265,11 +281,19 @@ Organism subset of Backend: **0** file(s).
 - `backend/api/socketio_server.py`
 - `backend/infra/outbox_worker.py`
 - `backend/infra/repositories/orders.py`
+- `backend/integrations/alpaca_market_data_stream.py`
 - `backend/integrations/alpaca_stream.py`
+- `backend/organism/live_engine.py`
+- `backend/organism/ml_features.py`
+- `backend/organism/operator_cancellation.py`
+- `backend/organism/replay_simulator.py`
+- `backend/organism/scheduler.py`
+- `backend/organism/streaming_data_provider.py`
 - `backend/services/order_recovery_service.py`
 - `backend/services/portfolio_service.py`
 - `backend/services/scheduled_reconciliation.py`
 - `docker-compose.paper.yml`
+- `docs/architecture/mapss.md`
 - `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `docs/engineering/MONDAY_CI_READINESS.md`
 - `docs/engineering/PAPER_OPERATOR_UI.md`
@@ -309,7 +333,17 @@ Organism subset of Backend: **0** file(s).
 - `reports/platform_audit_20260926/research_readiness_sources.json`
 - `scripts/ci/check_frontend_container.py`
 - `scripts/ci/nightly_test_contract.py`
+- `scripts/diagnostics/profile_paper_pipeline.py`
+- `scripts/phase2_freeze.py`
+- `scripts/runtime/write_runtime_snapshot.py`
 - `tests/test_adversarial_inputs_v7.py`
+- `tests/test_audit_patch_queue_j6.py`
+- `tests/test_audit_patch_queue_j6b.py`
+- `tests/test_composite_indicator_contract.py`
+- `tests/test_cross_asset_alignment_replay.py`
+- `tests/test_cross_asset_timestamp_alignment.py`
+- `tests/test_eod_cancellation_fairness.py`
+- `tests/test_eod_pending_cancellation.py`
 - `tests/test_fill_accounting_integrity.py`
 - `tests/test_fill_accounting_postgres.py`
 - `tests/test_frontend_container_probe.py`
@@ -318,15 +352,23 @@ Organism subset of Backend: **0** file(s).
 - `tests/test_order_recovery_service.py`
 - `tests/test_outbox_fill_race.py`
 - `tests/test_paper_frontend_deployment.py`
+- `tests/test_phase2_freeze.py`
+- `tests/test_pipeline_profile.py`
+- `tests/test_pipeline_snapshot.py`
 - `tests/test_portfolio_availability_contract.py`
 - `tests/test_portfolio_service_comprehensive.py`
 - `tests/test_reachability_v8.py`
+- `tests/test_scanner_streaming_integration.py`
 - `tests/test_socketio_topic_authorization.py`
+- `tests/test_streaming_subscription_acknowledgement.py`
 - `tests/test_wave43_fixes.py`
 - `tests/test_wave51_fixes.py`
 - `tests/test_wave52_fixes.py`
+- `tests/unit/test_alpaca_market_data_stream_comprehensive.py`
 - `tests/unit/test_alpaca_stream_comprehensive.py`
 - `tests/unit/test_api_routes_mocked_coverage.py`
+- `tests/unit/test_paper_data_freshness.py`
+- `tests/unit/test_streaming_data_provider.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -367,6 +409,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 9 backend runtime file(s) changed — require targeted verification
-
-Inventory boundary: this generated list ends at source `22c324abb7f8ae991d29b5765796d2bb5225de73`. Reports and evidence attached by the following delivery commit are outside this range; it is not a claim to enumerate its own later delivery files.
+- 6 organism file(s) changed — require replay verification

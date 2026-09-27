@@ -1,0 +1,135 @@
+Isolated test scratch: /private/tmp/intra-audit-test-c1qceavd
+...........................FF........................                    [100%]
+=================================== FAILURES ===================================
+__ test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True] __
+
+tmp_path = PosixPath('/private/tmp/intra-audit-test-c1qceavd/pytest-of-marselkei/pytest-0/test_real_streaming_feeder_rec0')
+feature_store = True
+
+    @pytest.mark.parametrize("feature_store", [True, False])
+    @pytest.mark.timeout(120)
+    def test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol(tmp_path, feature_store):
+        output = tmp_path / "profile.json"
+        env = {**os.environ, "TESTING": "true", "USE_MOCK_DATA": "true", "USE_MOCK_BROKER": "true",
+               "ORGANISM_LIVE_TIMEFRAME": "1Min", "ORGANISM_LIVE_LOOKBACK": "80", "ORGANISM_MIN_BARS": "50",
+               "PYTHONPATH": str(ROOT), "PYTHONDONTWRITEBYTECODE": "1"}
+        command = [sys.executable, "-B", str(SCRIPT), "--loads", "2", "--rows", "80", "--repeats", "2",
+                   "--profile", "--held-symbol", "--output", str(output)]
+        if not feature_store:
+            command.append("--no-feature-store")
+        process = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=110)
+>       assert process.returncode == 0, process.stdout[-3000:] + process.stderr[-3000:]
+E       AssertionError: estamp": "2026-09-27T18:59:03.245789Z"}
+E         Traceback (most recent call last):
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 347, in <module>
+E             raise SystemExit(main())
+E                              ^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 337, in main
+E             report = asyncio.run(experiment(args))
+E                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
+E             return runner.run(main)
+E                    ^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+E             return self._loop.run_until_complete(task)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+E             return future.result()
+E                    ^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 293, in experiment
+E             runs = [await measure_load(count, args.rows, args.repeats, profiles=args.profile,
+E                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 246, in measure_load
+E             pd.testing.assert_frame_equal(provider.get_bars(symbol, lookback=rows), frames[symbol])
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/util/_decorators.py", line 220, in wrapper
+E             return func(*args, **kwargs)
+E                    ^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/_testing/asserters.py", line 1347, in assert_frame_equal
+E             assert_series_equal(
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/util/_decorators.py", line 193, in wrapper
+E             return func(*args, **kwargs)
+E                    ^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/_testing/asserters.py", line 1029, in assert_series_equal
+E             assert_attr_equal("dtype", left, right, obj=f"Attributes of {obj}")
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/_testing/asserters.py", line 448, in assert_attr_equal
+E             raise_assert_detail(obj, msg, left_attr, right_attr)
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/_testing/asserters.py", line 619, in raise_assert_detail
+E             raise AssertionError(msg)
+E         AssertionError: Attributes of DataFrame.iloc[:, 0] (column name="timestamp") are different
+E         
+E         Attribute "dtype" are different
+E         [left]:  <StringDtype(storage='python', na_value=nan)>
+E         [right]: datetime64[us, UTC]
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/marselkei/VS/intra/venv/bin/python', '-B', '/Users/marselkei/.codex/worktrees/platform-...ibute "dtype" are different\n[left]:  <StringDtype(storage=\'python\', na_value=nan)>\n[right]: datetime64[us, UTC]\n').returncode
+
+tests/test_pipeline_profile.py:55: AssertionError
+_ test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False] __
+
+tmp_path = PosixPath('/private/tmp/intra-audit-test-c1qceavd/pytest-of-marselkei/pytest-0/test_real_streaming_feeder_rec1')
+feature_store = False
+
+    @pytest.mark.parametrize("feature_store", [True, False])
+    @pytest.mark.timeout(120)
+    def test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol(tmp_path, feature_store):
+        output = tmp_path / "profile.json"
+        env = {**os.environ, "TESTING": "true", "USE_MOCK_DATA": "true", "USE_MOCK_BROKER": "true",
+               "ORGANISM_LIVE_TIMEFRAME": "1Min", "ORGANISM_LIVE_LOOKBACK": "80", "ORGANISM_MIN_BARS": "50",
+               "PYTHONPATH": str(ROOT), "PYTHONDONTWRITEBYTECODE": "1"}
+        command = [sys.executable, "-B", str(SCRIPT), "--loads", "2", "--rows", "80", "--repeats", "2",
+                   "--profile", "--held-symbol", "--output", str(output)]
+        if not feature_store:
+            command.append("--no-feature-store")
+        process = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=110)
+>       assert process.returncode == 0, process.stdout[-3000:] + process.stderr[-3000:]
+E       AssertionError: estamp": "2026-09-27T18:59:04.529263Z"}
+E         Traceback (most recent call last):
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 347, in <module>
+E             raise SystemExit(main())
+E                              ^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 337, in main
+E             report = asyncio.run(experiment(args))
+E                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
+E             return runner.run(main)
+E                    ^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+E             return self._loop.run_until_complete(task)
+E                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/opt/homebrew/Cellar/python@3.12/3.12.12_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+E             return future.result()
+E                    ^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 293, in experiment
+E             runs = [await measure_load(count, args.rows, args.repeats, profiles=args.profile,
+E                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/scripts/diagnostics/profile_paper_pipeline.py", line 246, in measure_load
+E             pd.testing.assert_frame_equal(provider.get_bars(symbol, lookback=rows), frames[symbol])
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/util/_decorators.py", line 220, in wrapper
+E             return func(*args, **kwargs)
+E                    ^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/_testing/asserters.py", line 1347, in assert_frame_equal
+E             assert_series_equal(
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/util/_decorators.py", line 193, in wrapper
+E             return func(*args, **kwargs)
+E                    ^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/_testing/asserters.py", line 1029, in assert_series_equal
+E             assert_attr_equal("dtype", left, right, obj=f"Attributes of {obj}")
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/_testing/asserters.py", line 448, in assert_attr_equal
+E             raise_assert_detail(obj, msg, left_attr, right_attr)
+E           File "/Users/marselkei/VS/intra/venv/lib/python3.12/site-packages/pandas/_testing/asserters.py", line 619, in raise_assert_detail
+E             raise AssertionError(msg)
+E         AssertionError: Attributes of DataFrame.iloc[:, 0] (column name="timestamp") are different
+E         
+E         Attribute "dtype" are different
+E         [left]:  <StringDtype(storage='python', na_value=nan)>
+E         [right]: datetime64[us, UTC]
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/marselkei/VS/intra/venv/bin/python', '-B', '/Users/marselkei/.codex/worktrees/platform-...ibute "dtype" are different\n[left]:  <StringDtype(storage=\'python\', na_value=nan)>\n[right]: datetime64[us, UTC]\n').returncode
+
+tests/test_pipeline_profile.py:55: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]
+FAILED tests/test_pipeline_profile.py::test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]
+2 failed, 51 passed in 5.90s

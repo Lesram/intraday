@@ -1,0 +1,160 @@
+{
+  "status": "ACCEPTED_DATA03_SOURCE_AND_SUPPLIED_PAIRED_REPLAY_PENDING_FINAL_COMBINED_SOURCE_REPLAY",
+  "reviewer": "session_contract_explorer",
+  "reviewed_at_utc": "2026-09-27T18:42:58.141627+00:00",
+  "scope": "Independent source, contract, temporal-fallback and paired-replay method review. No production/source edits, runtime/auth/broker calls, models, commits or freeze activation.",
+  "implementation": {
+    "path": "artifacts/frozen_repairs_20260927/causal_features/implementation.json",
+    "sha256": "389d0eef52fc1fd2d1220c9c57eab8363aef62cfc3e8711f35d3599753c92e9a"
+  },
+  "files": [
+    {
+      "path": "backend/organism/ml_features.py",
+      "sha256": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4"
+    },
+    {
+      "path": "tests/test_cross_asset_timestamp_alignment.py",
+      "sha256": "846541f8354468455896a492f6b08e31158f1b823814f5e1b47f1133ed23a684"
+    },
+    {
+      "path": "tests/test_cross_asset_alignment_replay.py",
+      "sha256": "46f34f35a4ed34c70808e41e977ed8effa4f54059f680c45469ce7bb6a72335c"
+    }
+  ],
+  "blockers": [],
+  "verified_contracts": [
+    {
+      "path": "backend/organism/ml_features.py",
+      "lines": [
+        115,
+        149
+      ],
+      "finding": "Timestamp column is authoritative; aware DatetimeIndex fallback only when absent; explicit UTC instants; numeric/naive/invalid/duplicate/unsorted clocks yield unavailable without sorting, deduplication or invented timezone."
+    },
+    {
+      "path": "backend/organism/ml_features.py",
+      "lines": [
+        185,
+        207
+      ],
+      "finding": "searchsorted(right)-1 uses latest benchmark instant no later than stock; no future substitution, ordinal dependency or length shortcut. Supplied invalid latest price yields uncovered row and cannot borrow an older price."
+    },
+    {
+      "path": "backend/organism/ml_features.py",
+      "lines": [
+        364,
+        438
+      ],
+      "finding": "Existing20-observation return/beta/correlation/idio-vol formulas retained; fill_method=None prevents absent price from being silently filled. Independent oracle checks unequal/gapped/short benchmark cases. Dense valid-input math and non-cross features retained."
+    },
+    {
+      "path": "backend/organism/ml_features.py",
+      "lines": [
+        455,
+        477
+      ],
+      "finding": "Calendar fallback is conditional on old pandas conversion failure; computes per-row calendar values without changing original stock timestamps. Actual final frame-admission test rejects malformed/naive stock timing."
+    },
+    {
+      "path": "tests/test_cross_asset_alignment_replay.py",
+      "lines": [
+        24,
+        213
+      ],
+      "finding": "Old ordinal alignment is isolated as the single valid-input counterfactual. Same seed/data/cost/engine policy; direct prefixes and shocked future-tail equivalence tested in both arms before acceleration. Actual nonempty buys, exact freshness receipt joins, fixed-risk/ML isolation, accounted exits and losses observed."
+    }
+  ],
+  "independent_validation": {
+    "junit": {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/independent_contracts.xml",
+      "sha256": "46826f696ed2f7764d906e5dbf2b43ad9399e3bf149f74dbd6e7f63251f48d60"
+    },
+    "log": {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/independent_contracts.log",
+      "sha256": "1d7320c8b26a2f9961eef57b8b30bb233f2ad7d8a8034cfb2f47475950a2b638"
+    },
+    "passed": 15,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "deselected": 29,
+    "selection": "provider_range_index or future_benchmark or invalid_latest or temporal_fallback",
+    "runner": "/private/tmp/intra-audit-isolated.py; denied network/installed state, synthetic fixtures",
+    "duplicate_slow_replay_run": false
+  },
+  "author_validation": {
+    "junit": {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/final.xml",
+      "sha256": "b509a9035d320ddea8778d1c9db6a133f2126bccd0ab8fa5aa6409099a3318c8"
+    },
+    "cases": 46,
+    "passed": 46,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "contract_cases": 44,
+    "paired_replay_cases": 2
+  },
+  "paired_evidence": [
+    {
+      "scenario": "crash",
+      "artifact": {
+        "path": "artifacts/frozen_repairs_20260927/causal_features/replay_crash.json",
+        "sha256": "848708b69094cee51775b5b4dab911f14b1a21757089390ae34e58293bb2ed7d"
+      },
+      "nonempty_outcomes_equal": true,
+      "adverse_outcome_retained": true,
+      "changed_since_run": [
+        "backend/organism/live_engine.py"
+      ],
+      "qualification": "Source was stable during author run. EOD implementation later changed engine; these are scoped method/producer receipts, not final combined-head acceptance."
+    },
+    {
+      "scenario": "eod",
+      "artifact": {
+        "path": "artifacts/frozen_repairs_20260927/causal_features/replay_eod.json",
+        "sha256": "3290f3ae1a9b973ef5f034df5091636b21c122c3fd325328d1f379dccebd43af"
+      },
+      "nonempty_outcomes_equal": true,
+      "adverse_outcome_retained": true,
+      "changed_since_run": [
+        "backend/organism/live_engine.py"
+      ],
+      "qualification": "Source was stable during author run. EOD implementation later changed engine; these are scoped method/producer receipts, not final combined-head acceptance."
+    }
+  ],
+  "freeze_snapshot_review": {
+    "files": [
+      {
+        "path": "scripts/phase2_freeze.py",
+        "sha256": "0c2937a60c24e928fee00dff696c1f2adcae9fbf74ab3a3200b24199b9f4fe0e"
+      },
+      {
+        "path": "scripts/runtime/write_runtime_snapshot.py",
+        "sha256": "51d8bcc0ae3285ba0fa2d4399aab8edc171fb622ed1f049677a38ea6bae8e452"
+      },
+      {
+        "path": "tests/test_phase2_freeze.py",
+        "sha256": "eecc81d8316b91984c7390b0ee23002631ca4b2d6621b5f94fb4bf7ec3388bae"
+      },
+      {
+        "path": "tests/test_pipeline_snapshot.py",
+        "sha256": "592948eb97c618e25195613ebda251eea5b152d97ee44742b00819c21acff7ec"
+      }
+    ],
+    "accepted": [
+      "Whole transport, provider and ML module hashes protect new helpers/constants; scheduler whole-file pin already exists.",
+      "Pending lifecycle pin concatenates exact stage-expiration, cancellation and reconciliation methods; independent drift tests assert active boundary bytes unchanged.",
+      "Snapshot imports actual four timing constants with monkeypatched-value tests and explicit non-runtime-observation assertions. Root corrected startup_timeout_seconds to match whole-startup semantics."
+    ],
+    "limitation": "Root owns candidate generation/final boundary and final combined gate execution; this is bounded delta inspection only."
+  },
+  "limits": [
+    "Available means matched benchmark price, not fresh-enough or every rolling feature valid. Sparse old prices can remain matched with large reported age; no new age policy was introduced.",
+    "Malformed whole-frame clocks make all cross features unavailable even if malformed rows are in a future tail; tested causal-prefix guarantee is for valid ordered input.",
+    "DataFrame attrs are in-memory metadata. Pandas slices retain attrs verbatim; NumPy/CSV training/export paths may discard it. This change does not certify historical research/model inputs or add training-quality enforcement.",
+    "Replay acceleration subsets row metadata but whole-frame stock_rows/benchmark_rows counts remain descriptive of prepared input; no production admission depends on attrs.",
+    "Paired synthetic immediate next-open fills with5bp slippage/automatic half-spread and0commission are mechanics evidence. Actual losses are retained; no edge/profitability or historical lost-profit attribution.",
+    "Final combined-source replay must rerun after the concurrent EOD source stabilizes; author scoped producer/test hashes remain exact."
+  ]
+}

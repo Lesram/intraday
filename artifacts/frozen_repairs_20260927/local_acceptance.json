@@ -1,0 +1,144 @@
+{
+  "task_id": "approved-frozen-repairs-20260927",
+  "source_sha": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+  "recorded_at": "2026-09-27T19:08:42.648774+00:00",
+  "status": "LOCAL_SOURCE_VALIDATED_NOT_DEPLOYED",
+  "authorization_reference": "artifacts/frozen_repairs_20260927/plan.json",
+  "tests": {
+    "operational": {
+      "path": "artifacts/frozen_repairs_20260927/final_operational_regression.xml",
+      "sha256": "7f0d545bf19fc0ca3ce0e5690b6467d0f844fa2bbf20896dcd1a526375bc4e25",
+      "cases": 2102,
+      "passed": 2101,
+      "failure": 0,
+      "error": 0,
+      "skipped": 1
+    },
+    "targeted": {
+      "path": "artifacts/frozen_repairs_20260927/final_targeted.xml",
+      "sha256": "207adf013a691a8a580d37f9ec816e857f83f814d5c465e74c472a1b1e3b22db",
+      "cases": 267,
+      "passed": 267,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "paired_replay": {
+      "path": "artifacts/frozen_repairs_20260927/final_paired_replay.xml",
+      "sha256": "46e42df9aaa9c3973520ab0f4ca272cb00e67045a9ba0220f539d0da21bc2ca2",
+      "cases": 18,
+      "passed": 18,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    }
+  },
+  "full_artifact_suites": {
+    "organism_live_engine": {
+      "passed": 26,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "organism_engine_scenarios": {
+      "passed": 31,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "multi_tick_state": {
+      "passed": 9,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "safety_invariants": {
+      "passed": 29,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "self_evolution": {
+      "passed": 15,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "algorithm_improvements": {
+      "passed": 58,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "replay": {
+      "passed": 28,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "semantic": {
+      "passed": 20,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "counting": "Suites overlap; counts are not summed as unique platform tests.",
+  "unavailable_test": "Installed history is not mounted into isolated tests; one explicit skip is not a preservation proof. Real history preservation is a separate controlled-release gate.",
+  "invariants": {
+    "grep_assertions.json": "pass",
+    "runtime_snapshot_summary.json": "pass",
+    "spec_drift_summary.json": "pass"
+  },
+  "independent_reviews": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/streaming/independent_review.json",
+      "sha256": "89c8d44d6bb5d3e7eb5ee49bade4743b5ba767d3b248a93f77251bd35a1ba5a5"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/causal_features/independent_review.json",
+      "sha256": "1e8c7f4753442d2f391124261fc2face1b5974f0409a742abe4bdfcda4f378cc"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/eod/independent_review.json",
+      "sha256": "f2cd12895f0fdc3fcab52692d369262211c36f178c4348d6ba537f45df842a26"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/fixture_contracts/independent_review.json",
+      "sha256": "237ca132a4783152d57c0a66202ba7fd3f02e74396a4d176689361392a2d46b3"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/governance_independent_review.json",
+      "sha256": "90890615b176c6caf8bbca312015324693576f730d2446226822b831a2bd3738"
+    }
+  ],
+  "runtime_source_manifest": "artifacts/frozen_repairs_20260927/final_validation_source.json",
+  "active_authority_changed": false,
+  "historical_paper_mutations": false,
+  "strategy_tuning": false,
+  "paper_orders_submitted_by_validation": 0,
+  "validation_boundary": "Candidate-only; actual forward period starts only at separately approved held paper activation.",
+  "limits": [
+    "Hosted checks and exact-source image proof remain required before release.",
+    "Snapshots generated under denied network access describe source/defaults; they do not certify the installed process.",
+    "Synthetic paired replays test mechanisms/current learning-mode isolation, not a complete reproduction of the installed paper configuration or profitability.",
+    "Timestamp availability metadata is not automatically preserved by NumPy/model exports.",
+    "Closed pyramid-add ambiguity remains unresolved; paper release must retain pyramiding disabled.",
+    "Five exact historical broker outcomes remain UNKNOWN; fresh read-only source/state clearance is separate.",
+    "A complete natural paper session and qualified forward strategy evidence remain necessary."
+  ],
+  "original_failures_retained": [
+    "operational_regression.xml:2088passed,12failed,1skip before fixture updates",
+    "fixture_contracts/ original5-failure proof",
+    "streaming/ and eod/ negative controls",
+    "freeze_*_red.xml and the initial snapshot integration failure"
+  ],
+  "next_gates": [
+    "final public evidence scan",
+    "exact-source hosted readiness and full nightly checks",
+    "reviewed image build and disposable runtime verification",
+    "merge PR32",
+    "fresh held/flat/backup/source-config-history verification",
+    "new forward boundary, paper restart and operator UI verification"
+  ]
+}

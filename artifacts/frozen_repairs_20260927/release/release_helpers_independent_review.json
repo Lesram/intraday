@@ -1,0 +1,237 @@
+{
+  "task_id": "pr32-private-release-helper-independent-review",
+  "status": "ACCEPTED_INERT_PREPARATION_WITH_HISTORICAL_PHASE_GUARD_FINAL_RELEASE_INPUTS_REQUIRED",
+  "helper_sha256": {
+    "/private/tmp/intra-pr32-rollout.py": "c192cf21754c6939b27192936f04b9bc59fa0c3811f854654e98beb84542bdf9",
+    "/private/tmp/intra-pr32-runtime-acceptance.py": "d5cd6641d6fc9c635b89efb13ee7c1d7ad86b0bb0acc50c0cb1369cc17a7d8c9",
+    "/private/tmp/intra-pr32-resume-finish.py": "c54e334cee594b7e544e03c71c51d9f5bf53b3c2875ea3e1eb8fd797509e5c8d"
+  },
+  "test_sha256": {
+    "/private/tmp/intra-pr32-rollout-tests.py": "fda9e18e3975ad4438c0bd67b134e0ecd57260c55def3fd2039e2d863546cb7e",
+    "/private/tmp/intra-pr32-runtime-tests.py": "73d31f7f7090053637e4f6679c361b17f97edc70f85a8aa14f4229a7d8b2e328",
+    "/private/tmp/intra-pr32-resume-finish-tests.py": "989d307bd4778a7ebd5c8bcfcd53261cb7949e6ae37da95f46004bea11eb9ee6",
+    "/private/tmp/intra-pr32-release-guards-tests.py": "8a7a11899229794b71c73f859f68f8e071b70480210f5da4e5a2f534c01538aa",
+    "/private/tmp/intra-pr32-historical-phase-tests.py": "cdb23eb34772a42c2cad9e36f9c0da2a0fd8df42f647cc17391e0b3d32ca438b"
+  },
+  "author_report_sha256": "b4bcaf0d2bdd7828ce99501ee4709ce7d8bdef0bf522e94c3a8e4a3a42cb2e8f",
+  "predecessor_sha256": {
+    "/private/tmp/intra-pr30-rollout.py": "b666ab83d9e8fccc865675b59fef9c5abdee5a8940278da74b5f40ffb50e6e75",
+    "/private/tmp/intra-pr30-runtime-acceptance.py": "6582cf3196fc8cf2c8a4a5d3f34727a2681529dcfeaec9767d8a1986d8b7f2dd",
+    "/private/tmp/intra-pr30-resume-finish.py": "fd51631953ad73b43a57795b222b4b5c3f65e1495b46902b0b13cfd963c75bbf"
+  },
+  "ast_changed_methods": {
+    "rollout": [
+      {
+        "name": "verify_historical_phase",
+        "line": 280
+      },
+      {
+        "name": "verify_persisted_pending_maps",
+        "line": 314
+      },
+      {
+        "name": "deadline_guard",
+        "line": 332
+      },
+      {
+        "name": "require_final_pins",
+        "line": 340
+      },
+      {
+        "name": "validate_release_config",
+        "line": 348
+      },
+      {
+        "name": "make_active_freeze",
+        "line": 365
+      },
+      {
+        "name": "Rollout.__init__",
+        "line": 390
+      },
+      {
+        "name": "Rollout.paper_env",
+        "line": 516
+      },
+      {
+        "name": "Rollout.historical_source_phase",
+        "line": 642
+      },
+      {
+        "name": "Rollout.database_clear",
+        "line": 655
+      },
+      {
+        "name": "Rollout.durable_operator_hold",
+        "line": 712
+      }
+    ],
+    "runtime-acceptance": [
+      {
+        "name": "load_util",
+        "line": 156
+      },
+      {
+        "name": "Acceptance.__init__",
+        "line": 167
+      },
+      {
+        "name": "Acceptance.write",
+        "line": 208
+      },
+      {
+        "name": "Acceptance.accept_held",
+        "line": 389
+      }
+    ],
+    "resume-finish": [
+      {
+        "name": "ResumeFinish.__init__",
+        "line": 44
+      },
+      {
+        "name": "ResumeFinish.controls",
+        "line": 82
+      },
+      {
+        "name": "ResumeFinish.resume_prepare",
+        "line": 98
+      }
+    ]
+  },
+  "findings": [
+    {
+      "priority": "P3",
+      "status": "RESOLVED",
+      "file": "/private/tmp/intra-pr32-runtime-acceptance.py",
+      "line": 421,
+      "issue": "The native_runtime_snapshot receipt still names ten pipeline source hashes even though transport coverage added a key. No operational check relies on this text.",
+      "requested_correction": "Use actual-manifest wording or a derived count and rebind final helper digest before execution.",
+      "resolution": "Final runtime receipt describes actual composite contract and exact candidate manifest instead of stale hardcoded count; exact final source digest bound above."
+    }
+  ],
+  "contracts_reviewed": [
+    {
+      "area": "Inert preparation and unknown pins",
+      "assessment": "Default command paths never construct operational classes; invalid source/image/merge/count/leaf pins refuse before config or authority use. Independent pure negative guards passed.",
+      "source_binding": "Final helper SHA256 map; prior draft references superseded by current AST method line map"
+    },
+    {
+      "area": "Fresh closed-market paper window",
+      "assessment": "Sep27 window strictly under 4 hours and deadline strictly more than 10 minutes before pinned broker next-open; fresh paper GET verifies actually closed, flat and unblocked and current clock, no broker mutation methods.",
+      "source_binding": "Final helper SHA256 map; prior draft references superseded by current AST method line map"
+    },
+    {
+      "area": "Exact source/image/config identity",
+      "assessment": "Merged PR exact head, required checks and tree, build manifest counts and source identity, before/after container environment changes restricted to GIT_SHA, IMAGE_SHA and BUILD_TIME, unchanged ports/mounts and strict prior runtime_config_hash preserved; no policy/feed/risk parameter relaxation.",
+      "source_binding": "Final helper SHA256 map; prior draft references superseded by current AST method line map"
+    },
+    {
+      "area": "Preservation and recovery backup",
+      "assessment": "All archived user bytes and modes verified before checkout; exact generated-evidence exceptions exclude image source; supported untracked symlinks remain in place. Held DB backup requires isolated restore cleanup; brain copy checksum verification, ledger/model bytes and operator state preserved. Reviewer did not execute any backup.",
+      "source_binding": "Final helper SHA256 map; prior draft references superseded by current AST method line map"
+    },
+    {
+      "area": "Stopped-only controls and API-only service change",
+      "assessment": "Official writer requires exact stopped API, owned pause and startup quiescence, stable control hash and repeated broker and DB clearance. Compose target only api --no-start --no-build --no-deps --pull never; other service IDs/start times preserved; no direct order POST/DELETE.",
+      "source_binding": "Final helper SHA256 map; prior draft references superseded by current AST method line map"
+    },
+    {
+      "area": "Fresh boundary and binding authority",
+      "assessment": "Exact approved leaf difference required; active boundary usesfresh UTC while held and flat rather than candidate VALIDATED_AT. Old freeze/activation/binding/history archived; active freeze CAS and binding CAS remain distinct held phases. Failure between files leaves the API stopped and the old binding failing closed.",
+      "source_binding": "Final helper SHA256 map; prior draft references superseded by current AST method line map"
+    },
+    {
+      "area": "Failure containment",
+      "assessment": "Owned maintenance/recovery holds retained; fail_hold stops an owned running API only after fresh flat and DB clearance. Unknown positions prevent automatic stop. Runtime/resume failure does not auto-stop protective process or roll back state. Operator review is required for incomplete containment; no universal automatic recovery claim.",
+      "source_binding": "Final helper SHA256 map; prior draft references superseded by current AST method line map"
+    },
+    {
+      "area": "Resume and natural-session limitation",
+      "assessment": "Runtime first accepted under durable operator hold, original false intent restored by official writer while stopped, same container/image restarted. Startup enabled/loaded intent restored; only the owned pause inode+bytes removed. Closed readiness is typed scheduler liveness, not live feed, order or edge proof.",
+      "source_binding": "Final helper SHA256 map; prior draft references superseded by current AST method line map"
+    },
+    {
+      "area": "Historical nine-file single-phase identity and persisted pending attribution",
+      "references": [
+        "/private/tmp/intra-pr32-rollout.py:280",
+        "/private/tmp/intra-pr32-rollout.py:314",
+        "/private/tmp/intra-pr32-rollout.py:642",
+        "/private/tmp/intra-pr32-rollout.py:655"
+      ],
+      "assessment": "Exact ROOT HEAD, API image and equal GIT_SHA/IMAGE_SHA choose only old or candidate phase. All nine source bytes must match that phase, with old-file absence only explicitly null and actual absent. Pinned public review and final private disposition bind source evidence. Mixed phase, foreign identity, source drift, missing candidate file, incomplete map and malformed/nonempty persisted pending maps refuse. Every database_clear stable-reads pending_entry, pending_entry_order_ids and pending_exit from extra_counters; this is explicitly persisted JSON, not in-memory observation."
+    }
+  ],
+  "historical_gate": {
+    "status": "SOURCE_PHASE_ADAPTATION_ACCEPTED_FINAL_PRIVATE_DISPOSITION_AND_FRESH_STATE_REQUIRED",
+    "source_review": {
+      "path": "artifacts/frozen_repairs_20260927/release/historical_source_review.json",
+      "sha256": "0e196a75022de914cff1d68644c2a61b8f7a372cfed048caee55fcb30fbb490c",
+      "all_nine_current_source_hashes_verified": true
+    },
+    "assessment": "Exact old five full-row hash, original related SELECTs, counts and READ ONLY transaction retained. No historical row is marked terminal/resolved or requeued. New private disposition SHA remains invalid until root supplies final source-bound fresh proof. Persisted maps plus separate observer close-accounting pending/error and held checkpoint preservation supplement the existing broker/DB clearance. Source check confirms close_accounting.TRACKING_FIELDS does not contain a second pending-entry/exit map; live_engine restores these maps from extra_counters.",
+    "limitations": [
+      "Does not prove historical broker outcomes;404 remains UNKNOWN",
+      "Persisted empty maps are not a live in-memory pending-entry snapshot",
+      "Fresh actual broker/DB/authority checks are execution-stage requirements and were not performed by this reviewer"
+    ]
+  },
+  "test_evidence": {
+    "helper_historical_final.xml": {
+      "sha256": "8cf640390ab7f0fe51accead1223b3853868df4368e047a6b9aba4e2811560f2",
+      "cases": 118,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "executed_by_reviewer": false,
+      "source_scope": "Final historical-phase helper"
+    },
+    "helper_independent_guards.xml": {
+      "sha256": "bc6074302fb3b26bbe66d1f8eb463ee38758475f68299c6e32bff6eabcb29454",
+      "cases": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "executed_by_reviewer": true,
+      "source_scope": "Prior inert guard draft; final author suite repeats these unchanged contract cases"
+    },
+    "helper_independent_historical.xml": {
+      "sha256": "f06aba0068bc020b6b46eecb0f2a65ba9f14ee8c119438980a0d7555d4580956",
+      "cases": 29,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "executed_by_reviewer": true,
+      "source_scope": "Final historical-phase helper"
+    }
+  },
+  "test_quality_limits": [
+    "Author118testcase nodes include127unittest subtests, not245independentcases",
+    "Independent29new historical/phase/map cases executed with denied network and no operational subprocess calls; prior19inert guards retained and all repeated in final author suite",
+    "All tests are synthetic and do not supply real image, backup, broker or runtime proof",
+    "Mock image counts581/610/515 are fixture values; actual final IMAGE_EXPECTATIONS remain zero and refused",
+    "Resume official-writer fixture now points current candidate worktree; no installed backend import"
+  ],
+  "not_performed": [
+    "helper operational stage execution",
+    "Docker/Compose/launchctl",
+    "broker/API/login",
+    "installed backend module imports",
+    "private authority reads or writes",
+    "source changes or commits"
+  ],
+  "remaining_release_gates": [
+    "Pin and independently verify final validated source, merge, image, exact build receipt/counts and approved surface leaves across all helpers",
+    "Root must publish final hash-pinned private historical disposition with exact five rows, original related queries and old/new nine-file hash sets",
+    "Rebind and review final helper digests and current config/approval/authority inputs after pin-only changes",
+    "Require full CI/image/source/scan acceptance and repeated fresh actual closed/flat broker and DB clearance",
+    "Perform and verify restore-tested backups, held activation, runtime/binding/resume acceptance and a later natural market session"
+  ],
+  "reviewed_at_utc": "2026-09-27T19:11:28.875065+00:00",
+  "blocking_findings": [],
+  "superseded_review": {
+    "path": "artifacts/frozen_repairs_20260927/release/release_helpers_independent_review_before_history.json",
+    "sha256": "1708ff87acf47eb2ce055aef4cdef1efda36fe1ccbdede057edd730e19cf4d0e",
+    "scope": "Initial helper draft before authorized historical-source phase adaptation; retained verbatim"
+  }
+}

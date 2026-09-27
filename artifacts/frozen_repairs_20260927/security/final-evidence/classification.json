@@ -1,0 +1,571 @@
+{
+  "classification_counts": {
+    "candidate_acceptance_source_file_occurrences": 7,
+    "candidate_surface_occurrences": 3,
+    "distinct_proven_source_digests": 10,
+    "proven_source_checksums": 16,
+    "retained_installed_reference_occurrences": 6,
+    "unresolved": 0
+  },
+  "findings": [
+    {
+      "artifact": "artifacts/phase2/candidate_param_freeze.json",
+      "artifact_bytes": 13315,
+      "artifact_sha256": "b56d9285099500d915b5214f3210cab245a25228ff639ea0e40791f387b652cc",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 93,
+        "line": 211,
+        "start_column": 30
+      },
+      "finding_index": 1,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 174,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/emergency_stop_api",
+      "matched_span_sha256": "519c98a0b6bb131d51240a72b6125a1edec814e4dcccfda125765d84ca2868fc",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 95,
+        "EndLine": 211,
+        "StartColumn": 9,
+        "StartLine": 211
+      },
+      "source_bytes": 15260,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "dbf5e8e1b58e61c648e9cd7690c4439d6c58718fe63b7af9b941987dab623d77",
+      "source_path": "backend/api/routes/risk.py",
+      "value_role": "candidate_surface_not_deployment_approved",
+      "verified_source_sha256": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab"
+    },
+    {
+      "artifact": "artifacts/phase2/candidate_param_freeze.json",
+      "artifact_bytes": 13315,
+      "artifact_sha256": "b56d9285099500d915b5214f3210cab245a25228ff639ea0e40791f387b652cc",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 87,
+        "line": 223,
+        "start_column": 24
+      },
+      "finding_index": 2,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 173,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/operator_api",
+      "matched_span_sha256": "723757bcfc0af725113c29b7248a6c48d3c760a0c60edb4d571e0108afa530c5",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 89,
+        "EndLine": 223,
+        "StartColumn": 9,
+        "StartLine": 223
+      },
+      "source_bytes": 34468,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "8638b1d113df4b16e12898f32d184f3c5edb25ae83ac43bb0fc59315e0d92eec",
+      "source_path": "backend/organism/routes.py",
+      "value_role": "candidate_surface_not_deployment_approved",
+      "verified_source_sha256": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710"
+    },
+    {
+      "artifact": "artifacts/phase2/candidate_param_freeze.json",
+      "artifact_bytes": 13315,
+      "artifact_sha256": "b56d9285099500d915b5214f3210cab245a25228ff639ea0e40791f387b652cc",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 87,
+        "line": 231,
+        "start_column": 24
+      },
+      "finding_index": 3,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 162,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/settings_api",
+      "matched_span_sha256": "f18239165da33e448a222e9c41a6903cd936a42401411d84a9f3f598bdfc7756",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 89,
+        "EndLine": 231,
+        "StartColumn": 9,
+        "StartLine": 231
+      },
+      "source_bytes": 12995,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "90939b218ffcc3d14707b4be8e013fc521adc28c08ed82b9fd99d5ce15319595",
+      "source_path": "backend/api/routes/settings.py",
+      "value_role": "candidate_surface_not_deployment_approved",
+      "verified_source_sha256": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020"
+    },
+    {
+      "artifact": "artifacts/phase2/param_freeze.json",
+      "artifact_bytes": 14575,
+      "artifact_sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 93,
+        "line": 236,
+        "start_column": 30
+      },
+      "finding_index": 4,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 174,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/emergency_stop_api",
+      "matched_span_sha256": "519c98a0b6bb131d51240a72b6125a1edec814e4dcccfda125765d84ca2868fc",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 95,
+        "EndLine": 236,
+        "StartColumn": 9,
+        "StartLine": 236
+      },
+      "source_bytes": 15260,
+      "source_commit": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+      "source_line_sha256": "dbf5e8e1b58e61c648e9cd7690c4439d6c58718fe63b7af9b941987dab623d77",
+      "source_path": "backend/api/routes/risk.py",
+      "value_role": "retained_installed_approved_surface_reference",
+      "verified_source_sha256": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab"
+    },
+    {
+      "artifact": "artifacts/phase2/param_freeze.json",
+      "artifact_bytes": 14575,
+      "artifact_sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 87,
+        "line": 248,
+        "start_column": 24
+      },
+      "finding_index": 5,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 173,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/operator_api",
+      "matched_span_sha256": "723757bcfc0af725113c29b7248a6c48d3c760a0c60edb4d571e0108afa530c5",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 89,
+        "EndLine": 248,
+        "StartColumn": 9,
+        "StartLine": 248
+      },
+      "source_bytes": 34468,
+      "source_commit": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+      "source_line_sha256": "8638b1d113df4b16e12898f32d184f3c5edb25ae83ac43bb0fc59315e0d92eec",
+      "source_path": "backend/organism/routes.py",
+      "value_role": "retained_installed_approved_surface_reference",
+      "verified_source_sha256": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710"
+    },
+    {
+      "artifact": "artifacts/phase2/param_freeze.json",
+      "artifact_bytes": 14575,
+      "artifact_sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 87,
+        "line": 255,
+        "start_column": 24
+      },
+      "finding_index": 6,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 162,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/settings_api",
+      "matched_span_sha256": "f18239165da33e448a222e9c41a6903cd936a42401411d84a9f3f598bdfc7756",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 89,
+        "EndLine": 255,
+        "StartColumn": 9,
+        "StartLine": 255
+      },
+      "source_bytes": 12995,
+      "source_commit": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+      "source_line_sha256": "90939b218ffcc3d14707b4be8e013fc521adc28c08ed82b9fd99d5ce15319595",
+      "source_path": "backend/api/routes/settings.py",
+      "value_role": "retained_installed_approved_surface_reference",
+      "verified_source_sha256": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020"
+    },
+    {
+      "artifact": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "artifact_bytes": 14575,
+      "artifact_sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 93,
+        "line": 236,
+        "start_column": 30
+      },
+      "finding_index": 7,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 174,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/emergency_stop_api",
+      "matched_span_sha256": "519c98a0b6bb131d51240a72b6125a1edec814e4dcccfda125765d84ca2868fc",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 95,
+        "EndLine": 236,
+        "StartColumn": 9,
+        "StartLine": 236
+      },
+      "source_bytes": 15260,
+      "source_commit": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+      "source_line_sha256": "dbf5e8e1b58e61c648e9cd7690c4439d6c58718fe63b7af9b941987dab623d77",
+      "source_path": "backend/api/routes/risk.py",
+      "value_role": "retained_installed_approved_surface_reference",
+      "verified_source_sha256": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab"
+    },
+    {
+      "artifact": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "artifact_bytes": 14575,
+      "artifact_sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 87,
+        "line": 248,
+        "start_column": 24
+      },
+      "finding_index": 8,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 173,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/operator_api",
+      "matched_span_sha256": "723757bcfc0af725113c29b7248a6c48d3c760a0c60edb4d571e0108afa530c5",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 89,
+        "EndLine": 248,
+        "StartColumn": 9,
+        "StartLine": 248
+      },
+      "source_bytes": 34468,
+      "source_commit": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+      "source_line_sha256": "8638b1d113df4b16e12898f32d184f3c5edb25ae83ac43bb0fc59315e0d92eec",
+      "source_path": "backend/organism/routes.py",
+      "value_role": "retained_installed_approved_surface_reference",
+      "verified_source_sha256": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710"
+    },
+    {
+      "artifact": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "artifact_bytes": 14575,
+      "artifact_sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 87,
+        "line": 255,
+        "start_column": 24
+      },
+      "finding_index": 9,
+      "generator": {
+        "algorithm": "SHA256 of UTF-8 source text (_h, line 64); matched source bytes are UTF-8 with no newline normalization difference",
+        "line": 162,
+        "path": "scripts/phase2_freeze.py"
+      },
+      "json_pointer": "/surface/research_policy_sources/settings_api",
+      "matched_span_sha256": "f18239165da33e448a222e9c41a6903cd936a42401411d84a9f3f598bdfc7756",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 89,
+        "EndLine": 255,
+        "StartColumn": 9,
+        "StartLine": 255
+      },
+      "source_bytes": 12995,
+      "source_commit": "87c1addb39321e4f3a628041d8fb68a6e848255d",
+      "source_line_sha256": "90939b218ffcc3d14707b4be8e013fc521adc28c08ed82b9fd99d5ce15319595",
+      "source_path": "backend/api/routes/settings.py",
+      "value_role": "retained_installed_approved_surface_reference",
+      "verified_source_sha256": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020"
+    },
+    {
+      "artifact": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json",
+      "artifact_bytes": 30545,
+      "artifact_sha256": "9bc9522c453930b79c078f6d5b66fb198787417b53e2126d9579039c8abcf963",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 126,
+        "line": 63,
+        "start_column": 63
+      },
+      "finding_index": 10,
+      "generator": {
+        "algorithm": "SHA256 of complete source file bytes"
+      },
+      "json_pointer": "/scope/source_file_sha256/frontend~1src~1components~1auth~1AuthBootstrap.test.tsx",
+      "matched_span_sha256": "58457c712ca89ec0728b2e18ee9b237f3c454e66a13f67d4c73c785141e98eba",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 128,
+        "EndLine": 63,
+        "StartColumn": 38,
+        "StartLine": 63
+      },
+      "source_bytes": 10618,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "3c2ba25828a52ca08143c16360c08e3af61d0e39c39a3f6d872888e45ecb7e6d",
+      "source_path": "frontend/src/components/auth/AuthBootstrap.test.tsx",
+      "value_role": "candidate_source_file_acceptance_manifest",
+      "verified_source_sha256": "5b97c956db85b2a66e6cb7874504550d695ec8da9ae82bede448ba4ef2c8fc69"
+    },
+    {
+      "artifact": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json",
+      "artifact_bytes": 30545,
+      "artifact_sha256": "9bc9522c453930b79c078f6d5b66fb198787417b53e2126d9579039c8abcf963",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 121,
+        "line": 64,
+        "start_column": 58
+      },
+      "finding_index": 11,
+      "generator": {
+        "algorithm": "SHA256 of complete source file bytes"
+      },
+      "json_pointer": "/scope/source_file_sha256/frontend~1src~1components~1auth~1AuthBootstrap.tsx",
+      "matched_span_sha256": "50dc1e87ba1c57b31f4ca44da48421b7d48f4cb5b8b339345f0a5ed04fb5aef3",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 123,
+        "EndLine": 64,
+        "StartColumn": 38,
+        "StartLine": 64
+      },
+      "source_bytes": 572,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "ed052bb95fe925b31cd1e1bb7aa18401b0d41856581d65546fe9b7dabc0f6ae3",
+      "source_path": "frontend/src/components/auth/AuthBootstrap.tsx",
+      "value_role": "candidate_source_file_acceptance_manifest",
+      "verified_source_sha256": "c28e4385a511f04c39685b1ca7def95f34873d15e0163a377bda554fbd33ed91"
+    },
+    {
+      "artifact": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json",
+      "artifact_bytes": 30545,
+      "artifact_sha256": "9bc9522c453930b79c078f6d5b66fb198787417b53e2126d9579039c8abcf963",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 108,
+        "line": 77,
+        "start_column": 45
+      },
+      "finding_index": 12,
+      "generator": {
+        "algorithm": "SHA256 of complete source file bytes"
+      },
+      "json_pointer": "/scope/source_file_sha256/frontend~1src~1services~1api.test.ts",
+      "matched_span_sha256": "0184802620e2440f9be3c2c22cde969055e6c55375bb3c15cd94526ffe4446c8",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 110,
+        "EndLine": 77,
+        "StartColumn": 31,
+        "StartLine": 77
+      },
+      "source_bytes": 4455,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "edd1feb1a2ff2ca728d1ec7e9ba863ab50327b77937bc3e0017816d0ba4b8a15",
+      "source_path": "frontend/src/services/api.test.ts",
+      "value_role": "candidate_source_file_acceptance_manifest",
+      "verified_source_sha256": "225409dcdf9616f6beb8690da28db1ccfb59f7dd0cd17389a32cbdff35951828"
+    },
+    {
+      "artifact": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json",
+      "artifact_bytes": 30545,
+      "artifact_sha256": "9bc9522c453930b79c078f6d5b66fb198787417b53e2126d9579039c8abcf963",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 103,
+        "line": 78,
+        "start_column": 40
+      },
+      "finding_index": 13,
+      "generator": {
+        "algorithm": "SHA256 of complete source file bytes"
+      },
+      "json_pointer": "/scope/source_file_sha256/frontend~1src~1services~1api.ts",
+      "matched_span_sha256": "cbf3db6c3f4d15bf2aaaf07cd175d23f90eaf09ebf9b366d8973c1a002c084f9",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 105,
+        "EndLine": 78,
+        "StartColumn": 31,
+        "StartLine": 78
+      },
+      "source_bytes": 6915,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "743520745561d495bb640ef2f832615305c0f88ab3a403e91441c868dc342736",
+      "source_path": "frontend/src/services/api.ts",
+      "value_role": "candidate_source_file_acceptance_manifest",
+      "verified_source_sha256": "aae66087e204ae78cf6add16e28e6c76b0f8a313ae2a0e0278376d7cebae6155"
+    },
+    {
+      "artifact": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json",
+      "artifact_bytes": 30545,
+      "artifact_sha256": "9bc9522c453930b79c078f6d5b66fb198787417b53e2126d9579039c8abcf963",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 117,
+        "line": 79,
+        "start_column": 54
+      },
+      "finding_index": 14,
+      "generator": {
+        "algorithm": "SHA256 of complete source file bytes"
+      },
+      "json_pointer": "/scope/source_file_sha256/frontend~1src~1services~1authService.test.tsx",
+      "matched_span_sha256": "63a04144087bf3730d64b622813df6c01160a7599824adc0255690fa7f094979",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 119,
+        "EndLine": 79,
+        "StartColumn": 31,
+        "StartLine": 79
+      },
+      "source_bytes": 2440,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "892cd224eddf46361a7a91fbc6d4583abe093d07912974f338589fd1c2a7a7c2",
+      "source_path": "frontend/src/services/authService.test.tsx",
+      "value_role": "candidate_source_file_acceptance_manifest",
+      "verified_source_sha256": "15f69a72df9a84347c2e4c80244f74ccb12a85b60b019cee9acaf88cea67eda4"
+    },
+    {
+      "artifact": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json",
+      "artifact_bytes": 30545,
+      "artifact_sha256": "9bc9522c453930b79c078f6d5b66fb198787417b53e2126d9579039c8abcf963",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 111,
+        "line": 80,
+        "start_column": 48
+      },
+      "finding_index": 15,
+      "generator": {
+        "algorithm": "SHA256 of complete source file bytes"
+      },
+      "json_pointer": "/scope/source_file_sha256/frontend~1src~1services~1authService.ts",
+      "matched_span_sha256": "6d60fcf8fd15fe68cc04301067fec2962adb0ae8506d462acec6ab4036afbd9b",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 113,
+        "EndLine": 80,
+        "StartColumn": 31,
+        "StartLine": 80
+      },
+      "source_bytes": 5008,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "6db869e4d309a35c4a85bcfac6448c946e5ec6b281786ff526898efbc69458be",
+      "source_path": "frontend/src/services/authService.ts",
+      "value_role": "candidate_source_file_acceptance_manifest",
+      "verified_source_sha256": "c948b7c16bab7d0c0012eae791b332b0b2740b13e5eccf4e56668f7b606a6446"
+    },
+    {
+      "artifact": "artifacts/frozen_repairs_20260927/final_independent_acceptance.json",
+      "artifact_bytes": 30545,
+      "artifact_sha256": "9bc9522c453930b79c078f6d5b66fb198787417b53e2126d9579039c8abcf963",
+      "classification": "PROVEN_SOURCE_SHA256_METADATA",
+      "current_checkout_equals_immutable_source": true,
+      "digest_span": {
+        "end_column": 106,
+        "line": 84,
+        "start_column": 43
+      },
+      "finding_index": 16,
+      "generator": {
+        "algorithm": "SHA256 of complete source file bytes"
+      },
+      "json_pointer": "/scope/source_file_sha256/frontend~1src~1store~1authStore.ts",
+      "matched_span_sha256": "78136f3ee3f8bc1506500a6603cedbcb7f1d51d2760d81307e8bdc92e0171ae2",
+      "rule_id": "generic-api-key",
+      "scanned_copy_equals_artifact": true,
+      "scanner_span": {
+        "EndColumn": 108,
+        "EndLine": 84,
+        "StartColumn": 28,
+        "StartLine": 84
+      },
+      "source_bytes": 8525,
+      "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+      "source_line_sha256": "36caf6d1256e7a4254474488974311d7380e961614b51e8dbdaec5d80f15372e",
+      "source_path": "frontend/src/store/authStore.ts",
+      "value_role": "candidate_source_file_acceptance_manifest",
+      "verified_source_sha256": "8ab239b3e8ef2faed8d7d50e8cf2dc3e0842ea62fdedeac9f45ad94e1f9e3b63"
+    }
+  ],
+  "limitations": [
+    "This disposition covers exactly the 16 findings and matched artifact bytes in the bound scan, not the entire platform, Git history, or unseen secrets.",
+    "Raw scanner exit 1 and finding records remain unchanged. No allowlist, masking, suppression, credential authentication, source/manifests edits, or runtime calls were used.",
+    "A later publication scan requires an exact comparison of finding locations and matched artifact hashes; changed or additional findings require their own review.",
+    "No CI, image, deployment, active-cutoff, or trading qualification follows from checksum classification."
+  ],
+  "method": [
+    "Verified receipt and private report SHA256, then matched all 16 private findings one-to-one with public path/line/column/rule metadata.",
+    "Verified each exact scanned artifact and private copied file against the scan manifest; parsed the exact JSON field at each reported line and proved the scanner span includes the entire 64-character value.",
+    "Recomputed each value from immutable git source bytes: candidate fed6 or retained installed source87. Current checkout copies equal those source bytes for these ten specific files.",
+    "Kept installed approved reference authority distinct from candidate-only metadata, even where these three unchanged API sources have identical digests. No installed-runtime observation was performed."
+  ],
+  "publication_blocker_from_reviewed_findings": false,
+  "reviewed_at_utc": "2026-09-27T19:18:56.984994+00:00",
+  "scan": {
+    "original_scan_and_matched_artifacts_unmodified": true,
+    "private_redacted_report_sha256": "067098170f961b1f7b1bcffb86c95701afec391f11269796303359b6ec90b37d",
+    "raw_exit_code": 1,
+    "raw_finding_count": 16,
+    "receipt_path": "artifacts/frozen_repairs_20260927/security/final-evidence/receipt.json",
+    "receipt_sha256": "f10e5129f9bc1c646c973fe4121daf44988973fb7daa05ae2b9ca82cc66c7d55",
+    "scanned_file_count": 228,
+    "scanner_config": "built-in default; copied files only; inline allowances ignored",
+    "scanner_sha256": "ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f",
+    "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f"
+  },
+  "schema_version": 1,
+  "task_id": "frozen-repairs-final-evidence-secret-disposition",
+  "verdict": "ALL_16_REPORTED_MATCHES_PROVEN_SOURCE_CHECKSUMS"
+}

@@ -1,0 +1,54 @@
+[
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 30,
+      "row": 560
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/organism/ml_features.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from backend.organism.composite_indicators import (\n            compute_composite_indicators,\n        )",
+          "end_location": {
+            "column": 10,
+            "row": 561
+          },
+          "location": {
+            "column": 9,
+            "row": 558
+          }
+        }
+      ],
+      "message": "Remove unused import: `backend.organism.composite_indicators.COMPOSITE_COLUMNS`"
+    },
+    "location": {
+      "column": 13,
+      "row": 560
+    },
+    "message": "`backend.organism.composite_indicators.COMPOSITE_COLUMNS` imported but unused",
+    "noqa_row": 560,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "BLE001",
+    "end_location": {
+      "column": 21,
+      "row": 563
+    },
+    "filename": "/Users/marselkei/.codex/worktrees/platform-audit-20260926/intra/backend/organism/ml_features.py",
+    "fix": null,
+    "location": {
+      "column": 12,
+      "row": 563
+    },
+    "message": "Do not catch blind exception: `Exception`",
+    "noqa_row": 563,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/blind-except"
+  }
+]

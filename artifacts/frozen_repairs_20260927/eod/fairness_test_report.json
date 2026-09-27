@@ -1,0 +1,70 @@
+{
+  "task_id": "EOD-01-fairness-tests",
+  "status": "PASS",
+  "scope": "Four reviewer-authored regression cases, actual SQLite and supported mock broker calls; production cursor authored separately",
+  "source_hashes": {
+    "tests/test_eod_cancellation_fairness.py": "1bf41a0c5231244095eee5c9a8da93357f7abb8d79defc5af3e3ad91c9c3930e",
+    "backend/organism/operator_cancellation.py": "59e69af2c6d40932b039ce477ec746c98e05d1b494ac74d777b5f85f0e61de38"
+  },
+  "plan_sha256": "6c6c26f3c880088ca1f93bea13be770652fa6c4b0bac6b1ffc961b77d3329444",
+  "validation_selections_not_additive": {
+    "fairness_red.xml": {
+      "sha256": "1c0b8241d5229e37b8bd18fd3fc3465c99efbe82a32208a16cc319cdb292336a",
+      "tests": 4,
+      "passed": 1,
+      "failed": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    "fairness_green.xml": {
+      "sha256": "dc94b31c2618c39d1a2e5a15053400b1a1fae2400c99c15d270fecf0e9ca05a1",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "fairness_final.xml": {
+      "sha256": "3a86bc3ebc7181c6cbbfb3fc888a4fdc8604c652defb3b950d5d1cc8198cb981",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "negative_control": {
+    "original_module_sha256": "97acbedd0bad8b6adef1be99fd2f0df0bd99463f5372b968b6655588df4a852f",
+    "mechanism": "Compile only archived confirm_tracked_entries into current module namespace, preserving real SQLite and broker primitive; explicit identical scaled timeout constants. No shared source reversion.",
+    "test_before_lint_sha256": "066acdfb26429f2be48f5e9027371cba62a05c6506cec4f9c69814e41b24ccd6",
+    "post_red_change": "Fixture import alias only to avoid Ruff F811; behavior unchanged"
+  },
+  "proof": [
+    "Original persistent slow-prefix never reaches healthy fifth order across three bounded passes",
+    "Final reaches every original identity and releases only exact zero-fill terminal tail; four uncertain identities and original DB statuses retained",
+    "External cancellation advances cursor before awaiting broker; maps preserved; next pass begins after interrupted ID",
+    "Removed cursor wraps over remaining identities; wrong-symbol ID remains unresolved and never sent to broker"
+  ],
+  "bounds": "Test scales CALL_TIMEOUT to0.1s/TOTAL_TIMEOUT0.27s; production remains2s/12s. Progress is per running process, not durable restart fairness.",
+  "static": {
+    "ruff_exit": 0,
+    "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+  },
+  "limitations": [
+    "Synthetic transports; no actual cancellation, API, live DB, model or runtime access",
+    "No claim that all unresolved orders resolve; invalid, missing or unaccounted identities intentionally remain blocked"
+  ],
+  "evidence_hashes": {
+    "fairness_green.xml": "dc94b31c2618c39d1a2e5a15053400b1a1fae2400c99c15d270fecf0e9ca05a1",
+    "fairness_red.log": "20d6cb9030201aa41f6ba1b1b0b033444c9fbfdda968efbff7ce7f7e5afff848",
+    "fairness_final.log": "0ab7556969f7e1737268d0ca8646caad813b1b10d15508e330f3227f3244fe78",
+    "fairness_final.xml": "3a86bc3ebc7181c6cbbfb3fc888a4fdc8604c652defb3b950d5d1cc8198cb981",
+    "fairness_test_plan.json": "6c6c26f3c880088ca1f93bea13be770652fa6c4b0bac6b1ffc961b77d3329444",
+    "fairness_test_before_lint.py.txt": "066acdfb26429f2be48f5e9027371cba62a05c6506cec4f9c69814e41b24ccd6",
+    "fairness_lint.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "fairness_green.log": "5b7c39c44997a6c6b24c9c61719abbc4b41666b89e5a41ae4e8bce5504dad4c5",
+    "fairness_negative_driver.py.txt": "87dee700c6fc08471a91db674c1a76daa49f2652e4ae5754c1c311ff1686bf39",
+    "fairness_pre_cursor_source.py.txt": "97acbedd0bad8b6adef1be99fd2f0df0bd99463f5372b968b6655588df4a852f",
+    "fairness_red.xml": "1c0b8241d5229e37b8bd18fd3fc3465c99efbe82a32208a16cc319cdb292336a"
+  }
+}

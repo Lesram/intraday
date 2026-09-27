@@ -1,0 +1,18 @@
+{
+  "recorded_at": "2026-09-27T18:31:50.552368+00:00",
+  "action": "Align candidate checkout test references to existing installed approved September25 authority; no new clock or activation",
+  "installed_boundary": "2026-09-25T21:11:46.270521+00:00",
+  "installed_reference_unchanged": true,
+  "references": [
+    {
+      "path": "artifacts/phase2/param_freeze.json",
+      "prior_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+      "current_sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459"
+    },
+    {
+      "path": "artifacts/monday_readiness/frozen_surface_reference.json",
+      "prior_sha256": "2a3f60521468e6bf956513ac29ba2487faf41d8cbafe36be4725cda32b640010",
+      "current_sha256": "b2b3fef562b12a7fb6e4969cb68981e40a3bfa8cdb0a79ef350505a4a7456459"
+    }
+  ]
+}

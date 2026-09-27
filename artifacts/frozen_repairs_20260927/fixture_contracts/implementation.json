@@ -1,0 +1,75 @@
+{
+  "task_id": "history-versus-live-profiler-fixture-alignment",
+  "status": "TARGETED_ACCEPTED_PENDING_INDEPENDENT_REVIEW",
+  "source_sha256": {
+    "tests/unit/test_paper_data_freshness.py": "069880bec5893f633ee30defc25aba66090353690aeaeb69bf61f542732c260b",
+    "scripts/diagnostics/profile_paper_pipeline.py": "b5d622d08c86deca7e24f83d415c5435092336547ca7c2123f994832f8490659",
+    "tests/test_pipeline_profile.py": "3afec9c580b52bb827f8021042e114dee6888ac3b76a5eb72f792708a52d51f2"
+  },
+  "production_provider_sha256": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535",
+  "production_provider_unchanged_from_accepted_streaming_review": true,
+  "tests": {
+    "red.xml": {
+      "sha256": "32bf79d203bd96a47dc3852789961cde5cdf26df603e3a678a702b0ccbf092ea",
+      "cases": 52,
+      "failures": 5,
+      "errors": 0,
+      "skipped": 0,
+      "failure_nodes": [
+        "tests.unit.test_paper_data_freshness.test_stale_prefill_uses_event_age_and_forces_rest_fallback",
+        "tests.unit.test_paper_data_freshness.test_unsorted_prefill_is_chronological_and_uses_newest_not_last_row",
+        "tests.unit.test_paper_data_freshness.test_stale_second_symbol_does_not_lower_global_event_time",
+        "tests.test_pipeline_profile.test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]",
+        "tests.test_pipeline_profile.test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]"
+      ]
+    },
+    "green01.xml": {
+      "sha256": "5b55eee4e9aa19f4fc4b522f1249e3348202efb438a182a11084b47d2bf34042",
+      "cases": 53,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0,
+      "failure_nodes": [
+        "tests.test_pipeline_profile.test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[True]",
+        "tests.test_pipeline_profile.test_real_streaming_feeder_recomputes_unchanged_bars_and_held_symbol[False]"
+      ]
+    },
+    "green02.xml": {
+      "sha256": "7e2dbc8977d8423eda64087b32a6a00f2391ba6dab68fd27c3cee0a620f37a26",
+      "cases": 53,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "failure_nodes": []
+    }
+  },
+  "ruff": {
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "findings": 0
+  },
+  "old_freshness_test_AST_delta": [
+    "test_stale_prefill_retains_event_age_but_requires_actual_live_receipt",
+    "test_stale_prefill_uses_event_age_and_forces_rest_fallback",
+    "test_stale_second_symbol_does_not_lower_global_event_time",
+    "test_stale_second_symbol_prefill_cannot_lower_actual_live_receipt",
+    "test_unsorted_prefill_is_chronological_and_uses_newest_not_last_row"
+  ],
+  "behavior": [
+    "Three stale fixtures now distinguish buffered event timestamps from advancing live receipt time; sorting/newest-row and delayed-stale-event assertions retained",
+    "Profiler keeps rows-1 past bars in REST warmup and delivers final unchanged synthetic bar through MemoryTransport.on_bar wired by production provider",
+    "No writes to receipt timestamps, stale thresholds, global gates or provider internals; explicit zero receipts after warmup and noREST after real callback",
+    "Exact normalized timestamp/OHLCV input parity is checked before real feature computation; provider ISO serialization normalization applies only to comparison copy",
+    "Missing-callback negative control refuses profile; held symbol and feature-store on/off computation assertions remain"
+  ],
+  "negative_control_explanation": [
+    "Parent operational_regression.xml remains unchanged with original12 failures",
+    "Focused old source52 cases reproduces exactly5 failures:3 outdated prefill receipt assumptions and2 profiler cases",
+    "First adaptation51pass2fail exposed strict comparison of provider ISO timestamp dtype versus synthetic datetime dtype; fixed explicit UTC comparison conversion, no production/frame mutation",
+    "Final53 cases pass, including22new streaming contracts and missing callback refusal"
+  ],
+  "remaining_limits": [
+    "Synthetic continuous bars and fixed clock still exclude market sparsity and elapsed CPU freshness; no live performance or profitability claim",
+    "No runtime/API/broker/image activity; no active freeze or installed source mutation",
+    "Broad fullpack/hosted validation and publication remain root-owned"
+  ]
+}

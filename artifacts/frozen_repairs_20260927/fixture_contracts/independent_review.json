@@ -1,0 +1,79 @@
+{
+  "task_id": "fixture-profiler-and-composite-metadata-independent-review",
+  "reviewed_at_utc": "2026-09-27T19:04:26.898183+00:00",
+  "verdict": "ACCEPTED",
+  "blocking_findings": [],
+  "source_commit": "fed6dcbcdbb5c936aafd63711a0332a980c6835f",
+  "author_report": {
+    "path": "artifacts/frozen_repairs_20260927/fixture_contracts/implementation.json",
+    "sha256": "39927ddf9c9d2c28c1ffa89a4a3f9d2a410a80cd4b3033a91ece07d9b5d62f0c"
+  },
+  "reviewed_file_hashes": {
+    "tests/unit/test_paper_data_freshness.py": "069880bec5893f633ee30defc25aba66090353690aeaeb69bf61f542732c260b",
+    "scripts/diagnostics/profile_paper_pipeline.py": "b5d622d08c86deca7e24f83d415c5435092336547ca7c2123f994832f8490659",
+    "tests/test_pipeline_profile.py": "3afec9c580b52bb827f8021042e114dee6888ac3b76a5eb72f792708a52d51f2",
+    "tests/test_composite_indicator_contract.py": "375d44edd58fd789a6b366a136b4a55fabe91cda05e7244e2197ba39b3f06eb8"
+  },
+  "provider_sha256": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535",
+  "provider_equals_previously_accepted_streaming_source": true,
+  "scope": "Read-only review of three author-owned diagnostic/fixture changes and root-owned composite attrs assertion; no trading source edit or independent rerun.",
+  "accepted_properties": [
+    "Profiler seeds only rows-1 history, asserts historical buffers grant no live receipt, then delivers the actual remaining bar through MemoryTransport.on_bar registered by production provider",
+    "Fake transport has current confirmed bar/quote membership and generation; callback path alone establishes freshness. Missing callback test refuses qualification",
+    "Normalized UTC timestamps/OHLCV match full original synthetic frames before actual feature computation; normalization changes comparison copy only, not provider data",
+    "Actual feeder still computes real ML/feature-store/MTF outputs per tick with held symbol; forbidden REST fallback remains tripwire; source stability and output hashes remain checked",
+    "Three freshness fixtures preserve stale event ages, chronological newest-row behavior and global receipt monotonicity while correctly distinguishing REST history from live receipt",
+    "Composite old/new helper comparison still requires all noncomposite values/dtypes/index/columns equal and all actual composite master outputs successful; old fallback zeros remain asserted",
+    "New cross_asset_alignment attrs must match across old/new composite helper, preserve every input attribute, and be the only additional attribute. Input bars/SPY attrs and frames remain unchanged"
+  ],
+  "author_test_artifacts_inspected_not_rerun": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/fixture_contracts/red.xml",
+      "sha256": "32bf79d203bd96a47dc3852789961cde5cdf26df603e3a678a702b0ccbf092ea",
+      "tests": 52,
+      "passed": 47,
+      "failed": 5,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/fixture_contracts/green01.xml",
+      "sha256": "5b55eee4e9aa19f4fc4b522f1249e3348202efb438a182a11084b47d2bf34042",
+      "tests": 53,
+      "passed": 51,
+      "failed": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/fixture_contracts/green02.xml",
+      "sha256": "7e2dbc8977d8423eda64087b32a6a00f2391ba6dab68fd27c3cee0a620f37a26",
+      "tests": 53,
+      "passed": 53,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/composite_metadata_compatibility.xml",
+      "sha256": "36407187033dacbe87bb3ec108a67cb709e31c1c62bbd5a56c80dda8f44f9f05",
+      "tests": 41,
+      "passed": 41,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "test_counts_not_additive": true,
+  "static": {
+    "ruff_artifact": "artifacts/frozen_repairs_20260927/fixture_contracts/ruff.json",
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "findings": 0
+  },
+  "limitations": [
+    "These are fixture/diagnostic compatibility corrections, not new performance improvement or actual live freshness certification",
+    "Final53 selection exercises small synthetic load and22 existing ACK cases; no new20/69 benchmark run claimed",
+    "No new provider, feature formulas, receipt fields, broker behavior or production timestamps changed by these four file edits",
+    "Full current-source safety/replay/hosted validations remain root-owned"
+  ]
+}

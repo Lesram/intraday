@@ -1,0 +1,35 @@
+{
+  "task_id": "pr32-private-candidate-builder",
+  "scope": "Adapt reviewed PR30 candidate-only builder; prepare/build/deploy are not executed by this task.",
+  "base_helper": "/private/tmp/intra-pr30-candidate-build.py",
+  "base_helper_sha256": "3e73c88ceb1a256ef2317c72916ab765cb63c782303939ab5c42e3183f024355",
+  "owned_files": [
+    "/private/tmp/intra-pr32-candidate-build.py",
+    "/private/tmp/intra-pr32-candidate-build-tests.py",
+    "artifacts/frozen_repairs_20260927/release/candidate_builder_plan.json",
+    "artifacts/frozen_repairs_20260927/release/candidate_builder_implementation.json"
+  ],
+  "changes": [
+    "Candidate worktree and private Sept27 PR32 image output path",
+    "Invalid source placeholder pending root validation",
+    "Pin unchanged actual PR30 image/source/freeze/cutoff",
+    "Twenty deterministic image test modules and exact imported fixture manifests",
+    "Retain original archive, whole-context redacted scanning, exact prior dispositions, active equality, constrained image proof and no-deploy behavior"
+  ],
+  "tests": [
+    "Inert default plan; invalid source before any calls",
+    "Pinned reference identity and candidate-only authority negatives",
+    "Changed source/span secret findings remain unresolved",
+    "Constrained Docker arguments and exact cleanup ownership",
+    "Archive/path/test selection adversarial guards",
+    "Manifest support and default modules present; no static counts"
+  ],
+  "limits": [
+    "No image prepared or built; no operational readiness claim",
+    "Paired causal replay writes to source artifacts and runs in required hosted/local suite, not read-only image proof",
+    "Final root-supplied source pin requires updated helper digest/review before prepare",
+    "Full artifact pack, exact-source hosted CI and deployment are parent-owned"
+  ],
+  "source_placeholder": "SOURCE_PENDING_VALIDATION",
+  "runtime_mutation_authorized_for_this_task": false
+}
