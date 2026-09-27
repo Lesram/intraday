@@ -1,0 +1,125 @@
+{
+  "archived_before_test": {
+    "path": "artifacts/frozen_repairs_20260927/wave45_fixture/test_wave45_before.py.txt",
+    "sha256": "49900daaf57c853fbbdfd4f43f27a5580445fc251fc2ccf5e4a6f009cc46954e"
+  },
+  "baseline_source_sha": "9d18832bbda687d9d2d81a63c1d5e45a0b28d634",
+  "behavior_review": [
+    {
+      "finding": "Real constructor initializes lifecycle/recovery state and accepts injected clock; constructor body performs no connect/start/network work, and test verifies stream remains None.",
+      "line": 89,
+      "path": "tests/test_wave45_fixes.py"
+    },
+    {
+      "finding": "Exact AAA150/CCC200 stale ages are asserted with both explicit now and injected default clock; BBB50 remains fresh.",
+      "line": 95,
+      "path": "tests/test_wave45_fixes.py"
+    },
+    {
+      "finding": "EDGE at exactly120 seconds is absent from stale results; clock advance produces EDGE121, preserving strict greater-than threshold.",
+      "line": 98,
+      "path": "tests/test_wave45_fixes.py"
+    },
+    {
+      "finding": "Subscribed unseen COLD has infinite receipt age even though aggregate last_update_time remains fresh; no aggregate fallback masks this symbol.",
+      "line": 101,
+      "path": "tests/test_wave45_fixes.py"
+    },
+    {
+      "finding": "Production current-session guards are unchanged. This unit test uses an inert, never-started provider to isolate receipt-age arithmetic and inventory; it does not claim live ACK/session proof.",
+      "line": 270,
+      "path": "backend/organism/streaming_data_provider.py"
+    }
+  ],
+  "blocking_findings": [],
+  "implementation": {
+    "path": "artifacts/frozen_repairs_20260927/wave45_fixture/implementation.json",
+    "sha256": "3e443bb3c90b440e575abaddb1e111bfe54e338632435703f3257bb77f9ed206"
+  },
+  "limits": [
+    "The original c765 hosted nightly remains failed; this review establishes the focused repair and local adjacent regression outcome, not final full-hosted success.",
+    "The repaired unit test supplies controlled receipt metadata directly. It does not start a broker/stream or establish actual live-bar provenance.",
+    "No strategy/freshness threshold, production recovery guard, active freeze, configuration or runtime behavior was changed.",
+    "Reviewer parsed existing red/green and separate root proof without duplicating test execution."
+  ],
+  "parsed_evidence": {
+    "final": {
+      "cases": 88,
+      "errors": 0,
+      "failures": 0,
+      "junit": {
+        "path": "artifacts/frozen_repairs_20260927/wave45_fixture/final.xml",
+        "sha256": "29a303b1dc6521d743b6716279738397c6c48aab12a76f26e864025504f16462"
+      },
+      "log": {
+        "path": "artifacts/frozen_repairs_20260927/wave45_fixture/final.log",
+        "sha256": "0187ff75bb7b3ac3ca4ba5a32e74b21691446dd5a5d4ffe1c25346ae71a402cd"
+      },
+      "modules": {
+        "tests.test_pipeline_freshness_recovery": 27,
+        "tests.test_streaming_provider_lifecycle": 19,
+        "tests.test_wave45_fixes": 10,
+        "tests.unit.test_paper_data_freshness": 23,
+        "tests.unit.test_streaming_data_provider": 9
+      },
+      "passed": 88,
+      "skipped": 0
+    },
+    "red": {
+      "cases": 10,
+      "errors": 0,
+      "failures": 1,
+      "junit": {
+        "path": "artifacts/frozen_repairs_20260927/wave45_fixture/red.xml",
+        "sha256": "567704b29d066aa6c55e153179ca7612e6d0146c50d8d0696aa23fb80621aacc"
+      },
+      "log": {
+        "path": "artifacts/frozen_repairs_20260927/wave45_fixture/red.log",
+        "sha256": "f572cad7cfbd27044f306d5d7cae359bd3292edf2b2c9826aec08653be78718e"
+      },
+      "passed": 9,
+      "skipped": 0
+    }
+  },
+  "plan": {
+    "path": "artifacts/frozen_repairs_20260927/wave45_fixture/plan.json",
+    "sha256": "067ed9d146edc8cc916129b087acdb8a2d06fd555dd2c7131bf748d383a0714b"
+  },
+  "reviewed_at_utc": "2026-09-27T20:17:45.597134+00:00",
+  "root_separate_targeted_evidence": {
+    "non_additive_to_author_selection": true,
+    "passed": 1,
+    "reference": {
+      "path": "/private/tmp/intra-pr32-wave45-root.xml",
+      "sha256": "8c416e7783db23b79ec24d51674bbb9002b4bc93a748b36a4e2f27fad1ab5a17"
+    }
+  },
+  "schema_version": 1,
+  "scope_checks": {
+    "all_other_test_and_module_ast_unchanged": true,
+    "archived_before_bytes_equal_exact_git_revision": true,
+    "only_changed_test_function": "test_pp_6_stale_symbols_returns_per_symbol_age",
+    "production_bytes_equal_exact_git_revision": true,
+    "reviewer_source_runtime_or_author_evidence_changes": false
+  },
+  "task_id": "PR32-wave45-provider-fixture-independent-review",
+  "test": {
+    "path": "tests/test_wave45_fixes.py",
+    "sha256": "f2a90f9856b089f44efb16ed4c5ffeeabee4f703dcbe005a9ea3f7fe8e6823ab"
+  },
+  "unchanged_production_files": [
+    {
+      "path": "backend/organism/streaming_data_provider.py",
+      "sha256": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535"
+    },
+    {
+      "path": "backend/integrations/alpaca_market_data_stream.py",
+      "sha256": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead"
+    },
+    {
+      "path": "backend/organism/live_engine.py",
+      "sha256": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323"
+    }
+  ],
+  "verdict": "ACCEPTED_TEST_ONLY_FIXTURE_REPAIR"
+}

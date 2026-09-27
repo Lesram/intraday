@@ -1,0 +1,40 @@
+Isolated test scratch: /private/tmp/intra-audit-test-wvlofr50
+...F......                                                               [100%]
+=================================== FAILURES ===================================
+________________ test_pp_6_stale_symbols_returns_per_symbol_age ________________
+
+    def test_pp_6_stale_symbols_returns_per_symbol_age():
+        """stale_symbols returns (symbol, age) tuples for symbols past threshold."""
+        from backend.organism.streaming_data_provider import StreamingDataProvider
+        # Build a minimal provider stub.
+        from collections import deque
+        sp = StreamingDataProvider.__new__(StreamingDataProvider)
+        sp._bars = {}
+        sp._quotes = {}
+        sp._last_bar_ts = {"AAA": 100.0, "BBB": 200.0, "CCC": 50.0}
+        sp.last_update_time = 200.0
+        sp._running = True
+        sp._time_fn = lambda: 250.0  # current time
+    
+        # threshold=120, now=250 → AAA (250-100=150) and CCC (250-50=200) stale.
+>       result = sp.stale_symbols(threshold_s=120, now=250.0)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_wave45_fixes.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/organism/streaming_data_provider.py:260: in stale_symbols
+    for sym in sorted(self._freshness_symbols()):
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <backend.organism.streaming_data_provider.StreamingDataProvider object at 0x10a40ce90>
+
+    def _freshness_symbols(self) -> set[str]:
+>       desired = self._desired_symbols if self._recovery_enabled else set()
+                                           ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'StreamingDataProvider' object has no attribute '_recovery_enabled'
+
+backend/organism/streaming_data_provider.py:267: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_wave45_fixes.py::test_pp_6_stale_symbols_returns_per_symbol_age
+1 failed, 9 passed in 1.10s

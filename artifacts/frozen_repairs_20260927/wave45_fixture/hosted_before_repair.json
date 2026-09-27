@@ -1,0 +1,159 @@
+{
+  "caller_source_sha": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+  "conclusion": "failure",
+  "evidence": [
+    {
+      "path": "artifacts/ci_run_provenance.json",
+      "sha256": "6801e280a83d7239ea17d1cbdf723f2100cf9a3f3610f7e75856edccedca1d56"
+    },
+    {
+      "path": "nightly.final.json",
+      "sha256": "01d6859a110f0f075997c4598e2d5bca184943f20040da1e8b14e5d28db6dbea"
+    },
+    {
+      "path": "nightly.artifacts.final.json",
+      "sha256": "423f6f6cafe9fbbd2dadfd2d1c2051088c2e85f11c72dccf9ee672a7eb79f21f"
+    },
+    {
+      "path": "nightly.job-108690208833.log",
+      "sha256": "979d910707934f447083ffcf69d1be6776152f0c5cabd61e9cedd30ae66c9050"
+    }
+  ],
+  "failed_step": "Run isolated core suite and declare unavailable integrations",
+  "failure_disposition": [
+    {
+      "classification": "obsolete_inline_source_string_assertion",
+      "status": "Behavioral replacement already included in later9d188 source; this original c765 failure is preserved.",
+      "test": "tests/test_wave55_fixes.py::test_bb4_f2_verify_eod_cancel_inline_in_live_engine"
+    },
+    {
+      "classification": "incomplete_legacy_constructor_bypassing_fixture",
+      "exception": "AttributeError: StreamingDataProvider object has no attribute _recovery_enabled",
+      "failure_location": "backend/organism/streaming_data_provider.py:267 in _freshness_symbols",
+      "status": "Root-assigned author is preparing a narrow fixture repair; no production workaround or repaired-result claim in this report.",
+      "test": "tests/test_wave45_fixes.py::test_pp_6_stale_symbols_returns_per_symbol_age",
+      "trigger": "Test constructs StreamingDataProvider.__new__ and supplies only receipt timestamps, without current lifecycle/active-universe and actual-bar state."
+    }
+  ],
+  "lanes": {
+    "core": {
+      "cases": 10051,
+      "deselected_as_reported_by_pytest": 159,
+      "elapsed_seconds": 1532.53,
+      "errors": 0,
+      "evidence": [
+        {
+          "path": "test_reports/nightly.xml",
+          "sha256": "db6b4e84c70a0935dac71a425b565a5af7db92b666ef2b6a89b67859d32ddd8e"
+        },
+        {
+          "path": "test_reports/core-selection.json",
+          "sha256": "0152f2dc910f8a2d3c0afbd3c537f8c19e43e3fbd4866587bde1e62571a25bfc"
+        }
+      ],
+      "external_modules_withheld_before_import": 10,
+      "external_reason": "Dedicated API and disposable broker/data credentials not provisioned",
+      "external_test_manifest_entries": 168,
+      "external_verification": "UNAVAILABLE",
+      "failed": 2,
+      "failures": [
+        {
+          "class": "tests.test_wave55_fixes",
+          "message": "AssertionError: BB4-F2 false-positive: DD3-4 inline cancel block removed.\nassert 'EOD flatten cancelled pending' in '    async def _live_tick_inner(self) -> LiveTickResult:\\n        \"\"\"Inner tick logic \u2014 always called under _tick_lock.\"\"\"\\n        # V6 X-2 / Wave-20b (2026-05-03): use injected clock so tick\\n        # duration is replay-deterministic. Wall-clock `time.time()`\\n        # polluted every per-tick hash in replay.\\n        t0 = self._time_fn()\\n        result = LiveTickResult(\\n            timestamp=self._now_fn().isoformat(),\\n        )\\n        self._tick_count += 1\\n        self._pipeline_diagnostics = PipelineDiagnostics()\\n        # Gate-level rejection telemetry (reset each tick)\\n        self._last_gate_rejections: dict[str, int] = {}\\n        self._last_entries_blocked_reason: str = \"\"\\n        self._last_live_candidates_pre_sizing: int = 0\\n        self._last_no_order_reason: str = \"\"\\n        # V8 HH R-1 prep / Wave-39 (2026-05-03): uplift `entries_blocked`\\n        # from local var to instance attribute so it\\'s shareable with\\n        # extracted stage helpers (waves 39-40 stage 0.5 / 1 / 1.1 / 1.2).\\n        # Reset per tick to default False; gates set True as they fire.\\n        self._entries_blocked: bool = False\\n\\n        # V8 HH R-1 partial / Wave-29 (2026-05-03):... capture (non-fatal) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\\n        try:\\n            snapshot = self._build_decision_snapshot(result)\\n            self._telemetry.append(snapshot)\\n            # Persist to DB every 6th tick (~1/min)\\n            if self._tick_count % 6 == 0:\\n                await self._persist_telemetry_to_db()\\n            # Daily cleanup (every ~2160 ticks \u2248 6 hours at 10s/tick)\\n            if self._tick_count % 2160 == 0:\\n                await self._cleanup_old_telemetry()\\n        except Exception:\\n            pass  # Telemetry must never break the tick loop\\n\\n        # \u2500\u2500 Production invariant checks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\\n        # These catch state inconsistencies before they compound into\\n        # silent bugs.  Violations are logged as warnings (not exceptions)\\n        # so the tick loop keeps running.\\n        self._check_tick_invariants(\\n            broker_positions=getattr(self, \"_last_positions\", None),\\n        )\\n\\n        # \u2500\u2500 C1-C5: Away-mode watchdog checks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\\n        try:\\n            self._update_watchdog_state(result)\\n        except Exception:\\n            pass  # Watchdog must never break the tick loop\\n\\n        return result\\n'",
+          "name": "test_bb4_f2_verify_eod_cancel_inline_in_live_engine"
+        },
+        {
+          "class": "tests.test_wave45_fixes",
+          "message": "AttributeError: 'StreamingDataProvider' object has no attribute '_recovery_enabled'",
+          "name": "test_pp_6_stale_symbols_returns_per_symbol_age"
+        }
+      ],
+      "passed": 9496,
+      "required_replay_nodes": 22,
+      "selected_after_marker_filter": 10051,
+      "selected_before_marker_filter": 10061,
+      "skipped": 553
+    },
+    "replay": {
+      "cases": 22,
+      "deselected_as_reported_by_pytest": 10188,
+      "elapsed_seconds": 921.05,
+      "errors": 0,
+      "evidence": [
+        {
+          "path": "test_reports/replay.xml",
+          "sha256": "9b4986c95fc351a5be2990f9c9e1094afd3ce69f4feae694f0614990a4f2f557"
+        },
+        {
+          "path": "test_reports/replay-selection.json",
+          "sha256": "813e16f5a5f6350b53d0cb89dd2e93cb93052be48ed2aca7fcd5afe1f357bac9"
+        }
+      ],
+      "external_modules_withheld_before_import": 10,
+      "external_reason": "Dedicated API and disposable broker/data credentials not provisioned",
+      "external_test_manifest_entries": 168,
+      "external_verification": "UNAVAILABLE",
+      "failed": 0,
+      "failures": [],
+      "passed": 22,
+      "required_replay_nodes": 22,
+      "required_replay_selection": {
+        "missing_nodes": [],
+        "status": "PASS",
+        "unexpected_nodes": []
+      },
+      "selected_after_marker_filter": 22,
+      "selected_before_marker_filter": 22,
+      "skipped": 0
+    }
+  },
+  "limits": [
+    "Original full log, downloaded artifacts, individual skipped-test inventory and hashes are retained privately; public report contains only sanitized failure and count metadata.",
+    "Core/replay selections, marker deselections and external pre-import inventory have different denominators and must not be summed into a repository-wide pass rate.",
+    "Separate readiness PostgreSQL12-pass proof exists; nightly skips of those unprovisioned cases are not silently replaced or counted as nightly passes.",
+    "This c765 run remains failed. Later Wave55/auth changes and the pending Wave45 fixture repair require their own final source checks.",
+    "Hosted isolated software validation does not prove live subscription traffic, broker execution, installed history preservation, deployment readiness, or profitable behavior.",
+    "Reviewer made no workflow rerun/cancellation, external message, source/runtime modification or test execution."
+  ],
+  "provenance_scope": "secret-free CI; not live broker/runtime verification",
+  "reviewed_at_utc": "2026-09-27T20:14:07.693015+00:00",
+  "run_id": 36344271215,
+  "schema_version": 1,
+  "skip_disclosure": {
+    "complete_per_test_skip_inventory_retained_privately": true,
+    "distinct_reasons": 414,
+    "inventory_sha256": "aec2065be31ff6f72fe6ba4fc3c575304783e0d7790e202388fa3e45ddbcfa8d",
+    "other_skipped_cases": 496,
+    "scope": "The553 skips include unavailable modules/dependencies/fixtures and deliberately disabled live integration probes; they are not passed checks. The168 external manifest entries were separately withheld before import and remain UNAVAILABLE, not certified.",
+    "selected_explicit_reasons": [
+      {
+        "count": 36,
+        "reason": "Tests require async client fixture infrastructure - see TODO"
+      },
+      {
+        "count": 7,
+        "reason": "Dedicated disposable PostgreSQL not supplied (INTRA_FILL_TEST_DATABASE_URL)"
+      },
+      {
+        "count": 1,
+        "reason": "Installed-history audit unavailable: INTRA_INSTALLED_HISTORY_CSV was not provided; no deployed-history preservation claim"
+      },
+      {
+        "count": 5,
+        "reason": "Live real-data integration tests are disabled by default. Set RUN_LIVE_REALDATA_TESTS=1 and provide Alpaca credentials to enable."
+      },
+      {
+        "count": 4,
+        "reason": "API/DB integration tests are disabled by default. Set RUN_DB_INTEGRATION_TESTS=1 and ensure a live DB + admin user exist."
+      },
+      {
+        "count": 4,
+        "reason": "live probes require V13_LIVE_PROBES=1 + running container"
+      }
+    ],
+    "total": 553
+  },
+  "task_id": "PR32_HOSTED_NIGHTLY_BEFORE_WAVE45_FIXTURE_REPAIR",
+  "tested_source_sha": "c765e685f856d88cb5b30a97628a5045ab9081e8",
+  "url": "https://github.com/Lesram/intraday/actions/runs/36344271215"
+}

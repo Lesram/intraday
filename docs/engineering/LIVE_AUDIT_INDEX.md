@@ -1,15 +1,15 @@
 # Live Audit Index
 
-Generated: 2026-09-27T20:01:26Z
+Generated: 2026-09-27T20:18:32Z
 PR: n/a
-SHA: `c765e685f8`
+SHA: `9d18832bbd`
 Branch: `codex/platform-audit-20260926`
 Scope: **backend_logic**
 Change scope: `base` (`bf533a43d01a4c2e7428ea9589159d9c7d242319...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **522**
+Total distinct changed files: **552**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
@@ -18,9 +18,9 @@ Category counts below partition that total. File previews show at most ten paths
 | Backend | 16 | `backend/api/lifespan.py`, `backend/api/portfolio.py`, `backend/api/socketio_server.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_market_data_stream.py`, `backend/integrations/alpaca_stream.py`, `backend/organism/live_engine.py`, `backend/organism/ml_features.py`, `backend/organism/operator_cancellation.py` |
 | Scripts | 5 | `scripts/ci/check_frontend_container.py`, `scripts/ci/nightly_test_contract.py`, `scripts/diagnostics/profile_paper_pipeline.py`, `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 1 | `.github/workflows/paper-readiness.yml` |
-| Tests | 33 | `tests/test_adversarial_inputs_v7.py`, `tests/test_audit_patch_queue_j6.py`, `tests/test_audit_patch_queue_j6b.py`, `tests/test_composite_indicator_contract.py`, `tests/test_cross_asset_alignment_replay.py`, `tests/test_cross_asset_timestamp_alignment.py`, `tests/test_eod_cancellation_fairness.py`, `tests/test_eod_pending_cancellation.py`, `tests/test_fill_accounting_integrity.py`, `tests/test_fill_accounting_postgres.py` |
+| Tests | 34 | `tests/test_adversarial_inputs_v7.py`, `tests/test_audit_patch_queue_j6.py`, `tests/test_audit_patch_queue_j6b.py`, `tests/test_composite_indicator_contract.py`, `tests/test_cross_asset_alignment_replay.py`, `tests/test_cross_asset_timestamp_alignment.py`, `tests/test_eod_cancellation_fairness.py`, `tests/test_eod_pending_cancellation.py`, `tests/test_fill_accounting_integrity.py`, `tests/test_fill_accounting_postgres.py` |
 | Docs | 4 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/MONDAY_CI_READINESS.md`, `docs/engineering/PAPER_OPERATOR_UI.md` |
-| Artifacts/evidence | 428 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/composite_indicator_repair/replay/paired_summary.json`, `artifacts/frozen_repairs_20260927/active_reference_alignment.json`, `artifacts/frozen_repairs_20260927/causal_features/final.log`, `artifacts/frozen_repairs_20260927/causal_features/final.xml`, `artifacts/frozen_repairs_20260927/causal_features/final_01.log`, `artifacts/frozen_repairs_20260927/causal_features/final_01.xml`, `artifacts/frozen_repairs_20260927/causal_features/implementation.json` |
+| Artifacts/evidence | 457 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/composite_indicator_repair/replay/paired_summary.json`, `artifacts/frozen_repairs_20260927/active_reference_alignment.json`, `artifacts/frozen_repairs_20260927/auth_token_contract/final.log`, `artifacts/frozen_repairs_20260927/auth_token_contract/final.xml`, `artifacts/frozen_repairs_20260927/auth_token_contract/implementation.json`, `artifacts/frozen_repairs_20260927/auth_token_contract/independent_review.json`, `artifacts/frozen_repairs_20260927/auth_token_contract/lint.log` |
 | Reports | 4 | `reports/PLATFORM_AUDIT_FROZEN_REPAIR_SCOPE_2026-09-26.md`, `reports/platform_audit_20260926/PLATFORM_REVIEW.md`, `reports/platform_audit_20260926/research_readiness.md`, `reports/platform_audit_20260926/research_readiness_sources.json` |
 | Configuration | 1 | `docker-compose.paper.yml` |
 | Other | 30 | `frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`, `frontend/nginx.conf`, `frontend/src/App.tsx`, `frontend/src/components/auth/AuthBootstrap.test.tsx`, `frontend/src/components/auth/AuthBootstrap.tsx`, `frontend/src/components/auth/ProtectedRoute.tsx`, `frontend/src/components/layout/GlobalStatusBar.test.tsx`, `frontend/src/components/layout/GlobalStatusBar.tsx`, `frontend/src/features/dashboard/Dashboard.test.tsx` |
@@ -35,6 +35,15 @@ Organism subset of Backend: **6** file(s).
 - `artifacts/changed_files.json`
 - `artifacts/composite_indicator_repair/replay/paired_summary.json`
 - `artifacts/frozen_repairs_20260927/active_reference_alignment.json`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/final.log`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/final.xml`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/implementation.json`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/independent_review.json`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/lint.log`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/plan.json`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/red.log`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/red.xml`
+- `artifacts/frozen_repairs_20260927/auth_token_contract/typecheck.log`
 - `artifacts/frozen_repairs_20260927/causal_features/final.log`
 - `artifacts/frozen_repairs_20260927/causal_features/final.xml`
 - `artifacts/frozen_repairs_20260927/causal_features/final_01.log`
@@ -65,6 +74,7 @@ Organism subset of Backend: **6** file(s).
 - `artifacts/frozen_repairs_20260927/combined_targeted.xml`
 - `artifacts/frozen_repairs_20260927/combined_validation_source.json`
 - `artifacts/frozen_repairs_20260927/composite_metadata_compatibility.xml`
+- `artifacts/frozen_repairs_20260927/delivery_acceptance.json`
 - `artifacts/frozen_repairs_20260927/eod/fairness_final.log`
 - `artifacts/frozen_repairs_20260927/eod/fairness_final.xml`
 - `artifacts/frozen_repairs_20260927/eod/fairness_green.log`
@@ -166,11 +176,18 @@ Organism subset of Backend: **6** file(s).
 - `artifacts/frozen_repairs_20260927/release/release_helpers_independent_review.json`
 - `artifacts/frozen_repairs_20260927/release/release_helpers_independent_review_before_history.json`
 - `artifacts/frozen_repairs_20260927/required_regression.xml`
+- `artifacts/frozen_repairs_20260927/security/delivery-publication/acceptance.json`
+- `artifacts/frozen_repairs_20260927/security/delivery-publication/new_auth_findings_review.json`
+- `artifacts/frozen_repairs_20260927/security/delivery-publication/prior_findings_review.json`
+- `artifacts/frozen_repairs_20260927/security/delivery-publication/receipt.json`
 - `artifacts/frozen_repairs_20260927/security/final-evidence/classification.json`
 - `artifacts/frozen_repairs_20260927/security/final-evidence/receipt.json`
 - `artifacts/frozen_repairs_20260927/security/final-publication/receipt.json`
 - `artifacts/frozen_repairs_20260927/security/publication-final/receipt.json`
 - `artifacts/frozen_repairs_20260927/security/publication-final/review.json`
+- `artifacts/frozen_repairs_20260927/security/wave55-publication/new_findings_review.json`
+- `artifacts/frozen_repairs_20260927/security/wave55-publication/prior_findings_review.json`
+- `artifacts/frozen_repairs_20260927/security/wave55-publication/receipt.json`
 - `artifacts/frozen_repairs_20260927/snapshot_targeted.xml`
 - `artifacts/frozen_repairs_20260927/streaming/before_retry_prefill_implementation.json`
 - `artifacts/frozen_repairs_20260927/streaming/before_retry_prefill_static_delta.json`
@@ -206,6 +223,18 @@ Organism subset of Backend: **6** file(s).
 - `artifacts/frozen_repairs_20260927/streaming/transport01.xml`
 - `artifacts/frozen_repairs_20260927/streaming/transport_final.log`
 - `artifacts/frozen_repairs_20260927/streaming/transport_final.xml`
+- `artifacts/frozen_repairs_20260927/wave55_harness/README.md`
+- `artifacts/frozen_repairs_20260927/wave55_harness/adjacent_summary.json`
+- `artifacts/frozen_repairs_20260927/wave55_harness/focused_summary.json`
+- `artifacts/frozen_repairs_20260927/wave55_harness/harness.xml`
+- `artifacts/frozen_repairs_20260927/wave55_harness/hosted_before_repair.json`
+- `artifacts/frozen_repairs_20260927/wave55_harness/hosted_failure.json`
+- `artifacts/frozen_repairs_20260927/wave55_harness/implementation.json`
+- `artifacts/frozen_repairs_20260927/wave55_harness/negative_control.json`
+- `artifacts/frozen_repairs_20260927/wave55_harness/negative_control.xml`
+- `artifacts/frozen_repairs_20260927/wave55_harness/negative_control_driver.py.txt`
+- `artifacts/frozen_repairs_20260927/wave55_harness/publication_review.json`
+- `artifacts/frozen_repairs_20260927/wave55_harness/root_independent_summary.json`
 - `artifacts/frozen_repairs_20260927/workflow_budget/acceptance.json`
 - `artifacts/frozen_repairs_20260927/workflow_budget/hosted_failure.json`
 - `artifacts/frozen_repairs_20260927/workflow_budget/implementation.json`
@@ -546,6 +575,7 @@ Organism subset of Backend: **6** file(s).
 - `tests/test_wave43_fixes.py`
 - `tests/test_wave51_fixes.py`
 - `tests/test_wave52_fixes.py`
+- `tests/test_wave55_fixes.py`
 - `tests/unit/test_alpaca_market_data_stream_comprehensive.py`
 - `tests/unit/test_alpaca_stream_comprehensive.py`
 - `tests/unit/test_api_routes_mocked_coverage.py`

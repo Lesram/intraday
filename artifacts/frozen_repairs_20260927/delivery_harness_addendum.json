@@ -1,0 +1,30 @@
+{
+  "status": "LOCAL_FINAL_HARNESS_CORRECTION_ACCEPTED_HOSTED_RERUN_PENDING",
+  "created_at_utc": "2026-09-27T20:18:32.741926+00:00",
+  "delivery_parent": "9d18832bbda687d9d2d81a63c1d5e45a0b28d634",
+  "only_non_evidence_delta": [
+    {
+      "path": "tests/test_wave45_fixes.py",
+      "sha256": "f2a90f9856b089f44efb16ed4c5ffeeabee4f703dcbe005a9ea3f7fe8e6823ab"
+    }
+  ],
+  "runtime_frontend_scripts_deployment_dependencies_unchanged": true,
+  "evidence": [
+    {
+      "path": "artifacts/frozen_repairs_20260927/wave45_fixture/implementation.json",
+      "sha256": "3e443bb3c90b440e575abaddb1e111bfe54e338632435703f3257bb77f9ed206"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/wave45_fixture/independent_review.json",
+      "sha256": "659c5d8f4fecc5839383f946b77da7f15264417d205363bf4d7535499f82c1c0"
+    },
+    {
+      "path": "artifacts/frozen_repairs_20260927/wave45_fixture/hosted_before_repair.json",
+      "sha256": "8f9eb1284faf1719dd7e8c93901f8499019c05fd63fe7f48db30f20354208103"
+    }
+  ],
+  "limits": [
+    "Existing9d candidate images remain correctly scoped to9d; final commit requires its own images and hosted run.",
+    "No active measurement cutoff or historical records changed; installed paper runtime remains previous release."
+  ]
+}

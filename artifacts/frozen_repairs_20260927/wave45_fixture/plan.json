@@ -1,0 +1,24 @@
+{
+  "task": "Repair incomplete Wave45 provider fixture while preserving PP-6 per-symbol staleness contract",
+  "created_at_utc": "2026-09-27T20:12:45.586938+00:00",
+  "owned_files": [
+    "tests/test_wave45_fixes.py"
+  ],
+  "before_test_sha256": "49900daaf57c853fbbdfd4f43f27a5580445fc251fc2ccf5e4a6f009cc46954e",
+  "reported_failure": "test_pp_6_stale_symbols_returns_per_symbol_age: missing _recovery_enabled on manually constructed __new__ provider",
+  "diagnosis_to_verify": "Real constructor initializes lifecycle/recovery/inventory. Replace partial stub with constructor and explicit controlled timestamp inventory; do not loosen production fail-closed guards.",
+  "tests": [
+    "Preserve initial failure from full Wave45 module before editing",
+    "Verify exact stale per-symbol ages and inclusive120-second freshness boundary using injected clock",
+    "Verify subscribed but unseen cold-feed symbol stays infinite-age stale despite aggregate fresh symbol",
+    "Run adjacent streaming provider/freshness/lifecycle suites under existing isolated runner"
+  ],
+  "excluded": [
+    "No production or frozen surface edits",
+    "No real provider start/stream/network/credentials",
+    "No runtime state/config/broker mutations or commits"
+  ],
+  "parent_owns": [
+    "Final hosted nightly and aggregate artifact/PR delivery"
+  ]
+}

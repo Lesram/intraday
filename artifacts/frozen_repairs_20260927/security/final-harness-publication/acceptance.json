@@ -1,0 +1,17 @@
+{
+  "status": "PUBLICATION_ACCEPTED_NO_UNRESOLVED_SECRET_FINDINGS",
+  "scanned_files": 269,
+  "raw_scanner_exit": 1,
+  "findings": 24,
+  "exact_verified_metadata_matches": 24,
+  "new_findings": 0,
+  "same_finding_coordinates_and_file_hashes_as_prior": true,
+  "all_scanned_files_still_match": true,
+  "scanner_allowances_added": false,
+  "scan_receipt_sha256": "728ac24b0e66bfef36e3dc2be68af003319860e27f5ad2b0f15fe850f2d85ccc",
+  "prior_acceptance": {
+    "path": "artifacts/frozen_repairs_20260927/security/delivery-publication/acceptance.json",
+    "sha256": "820a71a91c24a9a8f8585bcd641c23282e14c7e0a8096a4c69d54075cd0bd1f7"
+  },
+  "prior_scan_sha256": "f238d6fc7d6b1400beeca0320841fb0e9112cf29e9f72086321b0286c9211813"
+}
