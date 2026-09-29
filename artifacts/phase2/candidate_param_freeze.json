@@ -1,10 +1,10 @@
 {
-  "VALIDATED_AT": "2026-09-29T13:09:42.686655+00:00",
+  "VALIDATED_AT": "2026-09-29T14:08:32.385935+00:00",
   "_note_status": "new candidate validation boundary; no active clock change",
   "active_forward_cutoff": "2026-09-25T21:11:46.270521+00:00",
   "candidate_only": true,
   "deployment_approved": false,
-  "git_sha": "dded459726a0521adee526d418cdfedd5d6ec78f",
+  "git_sha": "3d9af01a705fa271cb03aefe54480e362374f96f",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -14,16 +14,16 @@
   "provenance": "no reconstructable fit-date; all pre-cutoff data contaminated by construction",
   "surface": {
     "data_pipeline_sources": {
-      "alpaca_market_data_stream": "b04a64557068bbdc7247f32e9fd4dbeac56ca37febb0040c75f8d217ffe04826",
+      "alpaca_market_data_stream": "f99338fab383d483e49f80a675cf4062f572554762f44557ffbf5a7470a49a57",
       "composite_indicators": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
       "live_engine_data": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
       "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
       "ml_features": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
       "pipeline_diagnostics": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
       "staleness_admission": "e1253bf45b09091d7d99688a5dad690a4ac42ba40afcbcc3201271278dec6ca5",
-      "stream_admission": "38b74aa631cc5975d022774bced15b26b656b712d3d85600a8668658b75a11fb",
-      "streaming_data_provider": "b9a7057faa8025b8b052ea1b64c2465a8232b6c694d1ef450644eb170b8df307",
-      "streaming_subscription_sync": "ee90d73f9426b2c6d565d862369be89f452f1195eaa3dfc00a1d5686838fb1fb",
+      "stream_admission": "6237ed67852fef001c6ffa719e0eeec9c5101f983fe09dccd5c94210e0c4638a",
+      "streaming_data_provider": "c01cf2f9f26137dbcf53add4a3afdb079359e89dd9ea94002e8f53b61d4a82c7",
+      "streaming_subscription_sync": "0ec60c1f27c1e044f33d3ade4cb1db19ce22927ef0da8e5f4625d12f9434113b",
       "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
       "streaming_universe_initialization": "0f1f4b84fa17cd93cf1e17edc070e7cbf4fd7dfd569cbea9a33a289f3ef26855"
     },
@@ -217,6 +217,7 @@
       "entry_frame_capture": "52f8f40f798e1b37655cd121db4fedd12ed89c42372f83ff7b34ae32b32b8c7d",
       "entry_freshness": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
       "entry_submission": "434cb6e6ee14d8ad5008334cc60ba7c6931faa001e0bdebb65a7ae76b99a2714",
+      "eod_escalation": "a5be9bfb884098999f71b5840db8053da6d51af57ec2182df435b2723cc9e6af",
       "fixed_risk": "532fdc8c66146c410718456bcd6e7a13c5b7310cde443ad00b6a13652faab78b",
       "governance": "68a47b4a76f832e69ef1c9972b847598c92ed59c75f3531209f961aeedc8075d",
       "ml_isolation": "5c90eaa7ba8353747f0d960a43dfa4f52bb9203429048f29ecf3eb64da928b83",
