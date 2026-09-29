@@ -31,101 +31,101 @@
       {
         "symbol": "AAPL",
         "rows": 201,
-        "hash": "d646f50af6d30af5ee96624a8a124b8d8f911b862442f1e3a89498100067a12b"
+        "hash": "168736685d53ccbb12c4eee7a14dafbd94b1a5d44099d3b8552c14ad0ceadbbd"
       },
       {
         "symbol": "MSFT",
         "rows": 201,
-        "hash": "eef1872d3f659a6cf74532adaa10e7e85e79b5e545cb75b1022749102013c365"
+        "hash": "fdabbc1b22be0ba886d3cac0d454918fc101f91aec01adcfc3bad54b72a7e5b4"
       },
       {
         "symbol": "SPY",
         "rows": 241,
-        "hash": "0f35353927e2e7c15ba5be309384514a76e2ecc7e16f94ecaeae19ea26353e9d"
+        "hash": "6dcfb1126fbda104e70c197186fe17d6037f636eed55430dc6b3130e5261c089"
       },
       {
         "symbol": "AAPL",
         "rows": 230,
-        "hash": "8da180bc4716dd32a31347076b90444bf21e22f176975fa8efaed18d99645ec4"
+        "hash": "a1ccf9f5d664e5669c280b74940be9f8bc40f6d7a0bb57ec608a2fc467bfacb4"
       },
       {
         "symbol": "MSFT",
         "rows": 230,
-        "hash": "f0c3fb9624a98d6df231376326e4ac0e111889173cba1802dbcc30fd69d9b5bd"
+        "hash": "71a79b7259c7f053226676089a82c87f61c90c4b781f842eb29192b16575d75f"
       },
       {
         "symbol": "SPY",
         "rows": 270,
-        "hash": "a014c1b429925f82c3ec23fd5b698aba0f9ab35e07c4bcb19db227a103a3a90a"
+        "hash": "afc4d29b047b83ea7ad425824a4668ef6fa33b51e5eae5e45cc0b12b6be57a8f"
       },
       {
         "symbol": "AAPL",
         "rows": 260,
-        "hash": "a6bf917bd60bfb6ea3456f9931865366bb7aa155f80936abc6b8f21b4efc0653"
+        "hash": "33351c27c3f70a3f5d0817cd1a05a351fd55b663883aa9aa5adf10679a8c50ae"
       },
       {
         "symbol": "MSFT",
         "rows": 260,
-        "hash": "de3491d669ed7d81bda4d23087f614c7d50c35c6a39f9492684bee988f543bd6"
+        "hash": "b192a0b5cc64b930f4c6e41e5caf69d607ac8dabb5c2dec83d52b20fe342abd1"
       },
       {
         "symbol": "SPY",
         "rows": 300,
-        "hash": "ab22821aada9f0dbc9b58deecd6b0041a7182e192b8fc1a1a09dc442a583f5ec"
+        "hash": "eb25ce622c92b0228dde5d05a976d44a6343d628715a6d9d26fb9aa1ec995a10"
       }
     ],
     "causal_timestamp": [
       {
         "symbol": "AAPL",
         "rows": 201,
-        "hash": "895b06a5e8d85297e81950c7671a5889ca002bbd6c8bf108bff1b5effc4a6675"
+        "hash": "0ee8ecae70b0afb69b7edb25d691d73fbfce8459414953aaa7c34ffcdd41d553"
       },
       {
         "symbol": "MSFT",
         "rows": 201,
-        "hash": "3b78c44a32e6f74873071764002dff696c0fe8380d53bc97b63625b15d4476d1"
+        "hash": "855503a1126601806b69323499460693bc6b28722f8b9761deba9fe5d6b9d981"
       },
       {
         "symbol": "SPY",
         "rows": 241,
-        "hash": "0f35353927e2e7c15ba5be309384514a76e2ecc7e16f94ecaeae19ea26353e9d"
+        "hash": "6dcfb1126fbda104e70c197186fe17d6037f636eed55430dc6b3130e5261c089"
       },
       {
         "symbol": "AAPL",
         "rows": 230,
-        "hash": "67a7a107e6d73bff8711bbb3894ef6294af5bc1fcac48eee941343c8bcbfc77c"
+        "hash": "8d0cacdd896171e7fced5c9a0ea871d9a5862415fec255cba9d2765abb0430e6"
       },
       {
         "symbol": "MSFT",
         "rows": 230,
-        "hash": "d3b5c2cbe130a2ddc055c6f2114df111880a8c6627417e4334948b83624d5f25"
+        "hash": "192bfe9bbf5316c822b1a4fd9861d3e9329f8047f6ab250e9a100605f202012e"
       },
       {
         "symbol": "SPY",
         "rows": 270,
-        "hash": "a014c1b429925f82c3ec23fd5b698aba0f9ab35e07c4bcb19db227a103a3a90a"
+        "hash": "afc4d29b047b83ea7ad425824a4668ef6fa33b51e5eae5e45cc0b12b6be57a8f"
       },
       {
         "symbol": "AAPL",
         "rows": 260,
-        "hash": "07f9d7ae4d7341dce7492b6658265288e4dc02799299776f525fc0ad3760bee5"
+        "hash": "15c93b4752fd6e784a552c9fa245862b287e4aa11b5382ad9eddb862452c01de"
       },
       {
         "symbol": "MSFT",
         "rows": 260,
-        "hash": "24f958b5938abfa90866177c346cd1a630bf0e3236d2504d266cd31afbd69ca6"
+        "hash": "cd91d644dd0f929baf965be5bce3776d59f0b10327be79ccbe7f38fb34607ab0"
       },
       {
         "symbol": "SPY",
         "rows": 300,
-        "hash": "ab22821aada9f0dbc9b58deecd6b0041a7182e192b8fc1a1a09dc442a583f5ec"
+        "hash": "eb25ce622c92b0228dde5d05a976d44a6343d628715a6d9d26fb9aa1ec995a10"
       }
     ]
   },
   "source_sha256": {
     "backend/organism/composite_indicators.py": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
     "backend/organism/ml_features.py": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
-    "backend/organism/live_engine.py": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323",
+    "backend/organism/live_engine.py": "1e78ba5ce6e551933455511489b323dd344b650c3c90f596feeda7682d946879",
     "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
     "backend/organism/replay_simulator.py": "deb6563f02636c69e909ad374b27233dc24131d44ce515b8ec80ace9df7ed159",
     "backend/organism/alpha_scanner.py": "8bed20281f02ad3fd95953aa7c981a2e8c0393e4b29c38f808d3a570b6c19490",
@@ -138,9 +138,9 @@
   },
   "source_unchanged_during_replay": true,
   "input_sha256": {
-    "AAPL": "e2968fbd412d67a50368595d051ee556d908d1f468a6b8d68dd04a7122c4ce38",
-    "MSFT": "524969549c8b0c2d9fada6b4d69be173d02925d9002ce85341ab8975ec7eba38",
-    "SPY": "370a816d4f868b3812fda6b7fa25c364bfc0e0482f498bbbcc407d463adf886d"
+    "AAPL": "e8c181746f2cc8480ef8014db340a474d04027a4fd5c403912d9ca9c18f1f42a",
+    "MSFT": "9fca70dc3757c531462fd213305b2ed3677161b76fcb6e734ef50d54c259c833",
+    "SPY": "f4f94d3c5084b859deef8436d7ceee8031b91d26b4f0d0bf51a4cbf581eb4109"
   },
   "arms": {
     "baseline_ordinal": {
@@ -178,8 +178,8 @@
         },
         "accounting_pending": 0,
         "tick_errors": 0,
-        "exit_leg_realized_pnl_before_commission": -6055.165719146556,
-        "accounted_position_pnl": -6055.165719146555,
+        "exit_leg_realized_pnl_before_commission": -6055.1657191465565,
+        "accounted_position_pnl": -6055.165719146556,
         "final_equity": 993944.8342808534,
         "equity_delta_including_open_mark_and_commission": -6055.165719146607,
         "maximum_equity_drawdown_fraction": 0.009186705957032033,
@@ -227,7 +227,7 @@
           "qty": "137",
           "filled_qty": "137",
           "status": "filled",
-          "avg_fill_price": "113.07354092087546",
+          "avg_fill_price": "113.07354092087547",
           "submitted_at": "2026-09-22T14:09:00+00:00",
           "execution_sequence": 2,
           "attributes": {
@@ -267,7 +267,7 @@
           "qty": "153",
           "filled_qty": "153",
           "status": "filled",
-          "avg_fill_price": "104.98806159367707",
+          "avg_fill_price": "104.9880615936771",
           "submitted_at": "2026-09-22T14:23:00+00:00",
           "execution_sequence": 4,
           "attributes": {
@@ -289,7 +289,7 @@
           "qty": "137",
           "filled_qty": "137",
           "status": "filled",
-          "avg_fill_price": "123.98270995884793",
+          "avg_fill_price": "123.98270995884796",
           "submitted_at": "2026-09-22T14:27:00+00:00",
           "execution_sequence": 5,
           "attributes": {
@@ -329,7 +329,7 @@
           "qty": "153",
           "filled_qty": "153",
           "status": "filled",
-          "avg_fill_price": "84.10216738401505",
+          "avg_fill_price": "84.10216738401506",
           "submitted_at": "2026-09-22T14:40:00+00:00",
           "execution_sequence": 7,
           "attributes": {
@@ -394,15 +394,15 @@
         {
           "symbol": "MSFT",
           "direction": 1.0,
-          "entry_price": 113.07354092087546,
-          "exit_price": 123.98270995884793,
+          "entry_price": 113.07354092087547,
+          "exit_price": 123.98270995884796,
           "entry_bar": 10,
           "exit_bar": 28,
           "shares": 137,
-          "pnl": 1494.5561582022283,
+          "pnl": 1494.556158202231,
           "exit_reason": "horizon_timeout",
           "predicted_return": 0.01,
-          "actual_return": 0.0964785302479056,
+          "actual_return": 0.09647853024790572,
           "confidence": 0.25384780421084246,
           "is_exploration": false,
           "entry_source": "alpha",
@@ -424,16 +424,16 @@
         {
           "symbol": "AAPL",
           "direction": 1.0,
-          "entry_price": 104.98806159367707,
-          "exit_price": 84.10216738401505,
+          "entry_price": 104.9880615936771,
+          "exit_price": 84.10216738401506,
           "entry_bar": 24,
           "exit_bar": 41,
           "shares": 153,
-          "pnl": -3195.541814078289,
+          "pnl": -3195.541814078292,
           "exit_reason": "pyramid_cut_full_at_-6.7R",
           "predicted_return": 0.01,
-          "actual_return": -0.19893589702126555,
-          "confidence": 0.30926503024658125,
+          "actual_return": -0.19893589702126563,
+          "confidence": 0.3092650302465805,
           "is_exploration": false,
           "entry_source": "alpha",
           "strategy_id": "alpha_baseline",
@@ -519,8 +519,8 @@
         },
         "accounting_pending": 0,
         "tick_errors": 0,
-        "exit_leg_realized_pnl_before_commission": -6055.165719146556,
-        "accounted_position_pnl": -6055.165719146555,
+        "exit_leg_realized_pnl_before_commission": -6055.1657191465565,
+        "accounted_position_pnl": -6055.165719146556,
         "final_equity": 993944.8342808534,
         "equity_delta_including_open_mark_and_commission": -6055.165719146607,
         "maximum_equity_drawdown_fraction": 0.009186705957032033,
@@ -568,7 +568,7 @@
           "qty": "137",
           "filled_qty": "137",
           "status": "filled",
-          "avg_fill_price": "113.07354092087546",
+          "avg_fill_price": "113.07354092087547",
           "submitted_at": "2026-09-22T14:09:00+00:00",
           "execution_sequence": 2,
           "attributes": {
@@ -608,7 +608,7 @@
           "qty": "153",
           "filled_qty": "153",
           "status": "filled",
-          "avg_fill_price": "104.98806159367707",
+          "avg_fill_price": "104.9880615936771",
           "submitted_at": "2026-09-22T14:23:00+00:00",
           "execution_sequence": 4,
           "attributes": {
@@ -630,7 +630,7 @@
           "qty": "137",
           "filled_qty": "137",
           "status": "filled",
-          "avg_fill_price": "123.98270995884793",
+          "avg_fill_price": "123.98270995884796",
           "submitted_at": "2026-09-22T14:27:00+00:00",
           "execution_sequence": 5,
           "attributes": {
@@ -670,7 +670,7 @@
           "qty": "153",
           "filled_qty": "153",
           "status": "filled",
-          "avg_fill_price": "84.10216738401505",
+          "avg_fill_price": "84.10216738401506",
           "submitted_at": "2026-09-22T14:40:00+00:00",
           "execution_sequence": 7,
           "attributes": {
@@ -735,15 +735,15 @@
         {
           "symbol": "MSFT",
           "direction": 1.0,
-          "entry_price": 113.07354092087546,
-          "exit_price": 123.98270995884793,
+          "entry_price": 113.07354092087547,
+          "exit_price": 123.98270995884796,
           "entry_bar": 10,
           "exit_bar": 28,
           "shares": 137,
-          "pnl": 1494.5561582022283,
+          "pnl": 1494.556158202231,
           "exit_reason": "horizon_timeout",
           "predicted_return": 0.01,
-          "actual_return": 0.0964785302479056,
+          "actual_return": 0.09647853024790572,
           "confidence": 0.25384780421084246,
           "is_exploration": false,
           "entry_source": "alpha",
@@ -765,16 +765,16 @@
         {
           "symbol": "AAPL",
           "direction": 1.0,
-          "entry_price": 104.98806159367707,
-          "exit_price": 84.10216738401505,
+          "entry_price": 104.9880615936771,
+          "exit_price": 84.10216738401506,
           "entry_bar": 24,
           "exit_bar": 41,
           "shares": 153,
-          "pnl": -3195.541814078289,
+          "pnl": -3195.541814078292,
           "exit_reason": "pyramid_cut_full_at_-6.7R",
           "predicted_return": 0.01,
-          "actual_return": -0.19893589702126555,
-          "confidence": 0.30926503024658125,
+          "actual_return": -0.19893589702126563,
+          "confidence": 0.3092650302465805,
           "is_exploration": false,
           "entry_source": "alpha",
           "strategy_id": "alpha_baseline",

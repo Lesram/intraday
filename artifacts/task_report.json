@@ -1,12 +1,17 @@
 {
   "task_id": "audit-2026-09-29-stream-admission",
   "summary": "Audit 2026-09-29: bounded stream admission, per-symbol staleness, state/ops repairs R1-R11 (PR #34)",
-  "sha": "86c386bc320ba4e91e97c81fdf686a92d59e6893",
+  "sha": "e8e615375f0320f4d57a7856c773a1c7d96741ce",
   "branch": "codex/audit-20260929-stream-repair",
   "change_scope": "task",
   "change_ref": "HEAD",
   "files_changed": [
-    "tests/test_replay_simulator.py"
+    "artifacts/phase2/candidate_param_freeze.json",
+    "backend/organism/live_engine.py",
+    "backend/organism/streaming_data_provider.py",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "scripts/phase2_freeze.py",
+    "tests/test_stream_capacity_admission.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -25,10 +30,15 @@
     "replay_simulator"
   ],
   "tests_failed": [],
-  "runtime_behavior_changed": [],
-  "docs_updated": [],
+  "runtime_behavior_changed": [
+    "backend/organism/live_engine.py",
+    "backend/organism/streaming_data_provider.py"
+  ],
+  "docs_updated": [
+    "docs/runbooks/PAPER_UPTIME.md"
+  ],
   "risks": [
-    "Evidence/tooling changes only \u2014 low risk, verify artifact completeness"
+    "2 organism file(s) changed \u2014 replay verification required"
   ],
   "follow_ups": [],
   "artifact_pack_status": "pass",

@@ -1,35 +1,40 @@
 # Live Audit Index
 
-Generated: 2026-09-29T16:59:08Z
+Generated: 2026-09-29T17:56:52Z
 PR: n/a
-SHA: `86c386bc32`
+SHA: `e8e615375f`
 Branch: `codex/audit-20260929-stream-repair`
-Scope: **tooling/evidence_only**
+Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **1**
+Total distinct changed files: **6**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 0 | none |
-| Scripts | 0 | none |
+| Backend | 2 | `backend/organism/live_engine.py`, `backend/organism/streaming_data_provider.py` |
+| Scripts | 1 | `scripts/phase2_freeze.py` |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_replay_simulator.py` |
-| Docs | 0 | none |
-| Artifacts/evidence | 0 | none |
+| Tests | 1 | `tests/test_stream_capacity_admission.py` |
+| Docs | 1 | `docs/runbooks/PAPER_UPTIME.md` |
+| Artifacts/evidence | 1 | `artifacts/phase2/candidate_param_freeze.json` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **0** file(s).
+Organism subset of Backend: **2** file(s).
 
 ### Full changed-file list
 
-- `tests/test_replay_simulator.py`
+- `artifacts/phase2/candidate_param_freeze.json`
+- `backend/organism/live_engine.py`
+- `backend/organism/streaming_data_provider.py`
+- `docs/runbooks/PAPER_UPTIME.md`
+- `scripts/phase2_freeze.py`
+- `tests/test_stream_capacity_admission.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -70,3 +75,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
+- 2 organism file(s) changed — require replay verification

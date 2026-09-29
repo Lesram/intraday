@@ -1,15 +1,28 @@
 {
   "scope": "task",
   "ref": "HEAD",
-  "total": 1,
+  "total": 6,
   "all": [
-    "tests/test_replay_simulator.py"
+    "artifacts/phase2/candidate_param_freeze.json",
+    "backend/organism/live_engine.py",
+    "backend/organism/streaming_data_provider.py",
+    "docs/runbooks/PAPER_UPTIME.md",
+    "scripts/phase2_freeze.py",
+    "tests/test_stream_capacity_admission.py"
   ],
-  "backend": [],
-  "organism": [],
+  "backend": [
+    "backend/organism/live_engine.py",
+    "backend/organism/streaming_data_provider.py"
+  ],
+  "organism": [
+    "backend/organism/live_engine.py",
+    "backend/organism/streaming_data_provider.py"
+  ],
   "tests": [
-    "tests/test_replay_simulator.py"
+    "tests/test_stream_capacity_admission.py"
   ],
   "config": [],
-  "docs": []
+  "docs": [
+    "docs/runbooks/PAPER_UPTIME.md"
+  ]
 }
