@@ -250,17 +250,104 @@ def test_session_reset_restores_core_universe():
     assert engine._universe == CORE and engine._scanner_window == {}
 
 
-def test_post_close_escalation_reads_live_position_cache():
+class _Positions:
+    def __init__(self, snapshot):
+        self.snapshot = snapshot
+
+    async def get_all_positions(self):
+        if isinstance(self.snapshot, Exception):
+            raise self.snapshot
+        return dict(self.snapshot)
+
+
+@pytest.mark.asyncio
+async def test_post_close_escalation_uses_a_fresh_broker_snapshot():
+    """Copilot review on PR #34: the escalation runs before the tick's own
+    broker query, so the previous-tick cache is absent after a restart."""
     engine = core_engine(None, [0.0], CORE)
     calls = []
     engine._record_unflattened_positions = lambda syms, day, ts: calls.append((syms, day, ts))
     now_et = pd.Timestamp("2026-09-28T16:02:00", tz="America/New_York")
+    stamp = "2026-09-28T20:02:00+00:00"
+    # First post-close tick after a restart: no cache, the broker still shows AAPL.
+    engine._positions_service = _Positions({"AAPL": {"qty": 5}})
+    await engine._stage_post_close_escalation(now_et, stamp)
+    assert calls == [(["AAPL"], "2026-09-28", stamp)]
+    assert engine._last_positions == {"AAPL": {"qty": 5}}
+    # Flat at the broker and in the cache: nothing to escalate.
+    calls.clear()
     engine._last_positions = {}
-    engine._stage_post_close_escalation(now_et, "2026-09-28T20:02:00+00:00")
+    engine._positions_service = _Positions({})
+    await engine._stage_post_close_escalation(now_et, stamp)
     assert calls == []
-    engine._last_positions = {"AAPL": {"qty": 5}}
-    engine._stage_post_close_escalation(now_et, "2026-09-28T20:02:00+00:00")
-    assert calls == [(["AAPL"], "2026-09-28", "2026-09-28T20:02:00+00:00")]
+    # A failed broker read falls back to the last known positions.
+    engine._last_positions = {"MSFT": {"qty": 3}}
+    engine._positions_service = _Positions(RuntimeError("broker down"))
+    await engine._stage_post_close_escalation(now_et, stamp)
+    assert calls == [(["MSFT"], "2026-09-28", stamp)]
+    # An empty read is ambiguous (the service returns {} on failure), so the
+    # cache still escalates rather than silently dropping exposure.
+    calls.clear()
+    engine._positions_service = _Positions({})
+    await engine._stage_post_close_escalation(now_et, stamp)
+    assert calls == [(["MSFT"], "2026-09-28", stamp)]
+
+
+def test_unadmitted_symbol_outranks_stale_symbol():
+    """A refused/unconfirmed symbol has no bars either; report the refusal."""
+    engine = core_engine(object(), [0.0], CORE + ["D00"])
+    engine._stale_entry_symbols = frozenset({"D00", "LLY"})
+    engine._stream_admitted = frozenset(CORE)
+    engine._tick_count = 1
+    assert engine._passes_entry_gates(
+        "D00", 1.0, {}, set(), set(), fitness_gate=0.45, min_trades_for_fitness=10,
+    ) == (False, "unadmitted_symbol")
+    assert engine._passes_entry_gates(
+        "LLY", 1.0, {}, set(), set(), fitness_gate=0.45, min_trades_for_fitness=10,
+    ) == (False, "stale_symbol")
+
+
+def test_successful_empty_scans_age_the_window():
+    """Copilot review on PR #34: empty scans never advanced the TTL."""
+    import inspect
+    from backend.organism.live_engine import OrganismLiveEngine, SCANNER_WINDOW_TTL_SCANS
+
+    engine = core_engine(object(), [0.0], CORE)
+    engine._last_positions = {}
+    engine._scanner_window = {}
+    engine._scanner_scan_seq = 0
+    engine._refresh_scanner_window(DISCOVERED[:3])
+    engine._scanner_candidates = []
+    for _ in range(SCANNER_WINDOW_TTL_SCANS - 1):
+        engine._age_scanner_window_after_empty_scan()
+        assert set(DISCOVERED[:3]) <= set(engine._universe)
+    engine._age_scanner_window_after_empty_scan()
+    assert engine._universe == CORE and engine._scanner_window == {}
+    # A scan with picks already refreshed the window; the helper does nothing.
+    engine._refresh_scanner_window(DISCOVERED[3:4])
+    engine._scanner_candidates = DISCOVERED[3:4]
+    seq = engine._scanner_scan_seq
+    engine._age_scanner_window_after_empty_scan()
+    assert engine._scanner_scan_seq == seq
+    # The tick ages the window only on the successful-scan branch.
+    tick = inspect.getsource(OrganismLiveEngine._live_tick_inner)
+    success = tick.index("self._scanner_consecutive_failures = 0")
+    assert tick.index("self._age_scanner_window_after_empty_scan()", success) < tick.index(
+        "Market scan failed or degraded", success)
+
+
+@pytest.mark.asyncio
+async def test_provider_start_is_bounded_with_benchmarks_first(monkeypatch):
+    """Copilot review on PR #34: the cap now covers startup too."""
+    now = [pd.Timestamp("2026-09-28T14:00:00Z").timestamp()]
+    oversized = DISCOVERED[:20] + CORE  # benchmarks sit past the cap in input order
+    provider, socket = await real_capped_provider(monkeypatch, lambda: now[0], oversized, cap=30)
+    try:
+        assert socket.refusals == 0
+        assert len(provider._desired_symbols) == 28
+        assert {"SPY", "QQQ"} <= provider.confirmed_symbols()
+    finally:
+        await provider.stop()
 
 
 def test_unadmitted_symbol_is_rejected_for_every_entry_path():

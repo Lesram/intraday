@@ -1583,8 +1583,8 @@ class OrganismLiveEngine(
         blocking the whole book. The final submission freshness gate
         (``entry_freshness.require_fresh_entry``) remains the backstop.
         """
-        if symbol in getattr(self, "_stale_entry_symbols", ()):
-            return False, "stale_symbol"
+        # Admission first: an unconfirmed/refused symbol also has no fresh
+        # bar, and reporting it as merely stale would hide the refusal.
         _admitted = getattr(self, "_stream_admitted", None)
         if (
             _admitted is not None
@@ -1592,6 +1592,8 @@ class OrganismLiveEngine(
             and symbol not in _admitted
         ):
             return False, "unadmitted_symbol"
+        if symbol in getattr(self, "_stale_entry_symbols", ()):
+            return False, "stale_symbol"
         if not for_pyramid_add:
             if symbol in open_symbols:
                 return False, "open_position"
@@ -2918,6 +2920,16 @@ class OrganismLiveEngine(
             logger.info("Scanner window evicted %d symbols: %s", len(evicted), evicted[:10])
         return [s for s in self._universe if s not in before]
 
+    def _age_scanner_window_after_empty_scan(self) -> None:
+        """A successful scan with no picks still ages the window.
+
+        Without this, repeated empty scans never advanced the scan counter
+        and old discoveries stayed subscribed indefinitely. A failed scan is
+        not evidence that names went away, so it does not age the window.
+        """
+        if not getattr(self, "_scanner_candidates", None):
+            self._refresh_scanner_window([])
+
     def _reset_discovery_for_session(self) -> None:
         """Start a session from the core universe; drop yesterday's discoveries.
 
@@ -2927,14 +2939,24 @@ class OrganismLiveEngine(
         self._universe = list(getattr(self, "_core_universe", None) or self._universe)
         self._scanner_window = {}
 
-    def _stage_post_close_escalation(self, now_et, now_iso: str) -> None:
+    async def _stage_post_close_escalation(self, now_et, now_iso: str) -> None:
         """Escalate positions still open after 16:00 ET (audit 2026-06-09 3.4).
 
-        Audit 2026-09-29 (X-02): reads the per-tick broker position cache
-        ``_last_positions``; the former ``_last_known_positions`` attribute
-        was never assigned, so this escalation could never fire.
+        Audit 2026-09-29 (X-02): this branch runs before the tick's own
+        broker query, and the scheduler stops shortly after the close, so it
+        takes a fresh broker snapshot rather than trusting the previous
+        tick's ``_last_positions`` cache (absent on the first tick after a
+        restart). The cache is the fallback only when the fresh snapshot is
+        empty, because a failed broker read also comes back empty.
         """
-        _open = getattr(self, "_last_positions", None) or {}
+        try:
+            fresh = await self._positions_service.get_all_positions()
+        except Exception as exc:  # noqa: BLE001 - escalation must not break the tick
+            logger.warning("Post-close position check failed: %s", exc)
+            fresh = None
+        if fresh:
+            self._last_positions = fresh
+        _open = fresh or getattr(self, "_last_positions", None) or {}
         if _open:
             logger.warning(
                 "EOD flatten window passed (now=%d ET); positions still open: %s",
@@ -3235,7 +3257,7 @@ class OrganismLiveEngine(
                         # Past close — don't keep retrying rejecting submits.
                         # Audit 2026-06-09 finding 3.4: escalate (CRITICAL
                         # alert + overnight flag → next-open forced exit).
-                        self._stage_post_close_escalation(_now_et, now_iso)
+                        await self._stage_post_close_escalation(_now_et, now_iso)
                 except Exception as exc:
                     # V8 DD2-9 / Wave-35: zoneinfo / clock failures previously
                     # silently disabled EOD flatten globally via bare `pass`.
@@ -3289,6 +3311,7 @@ class OrganismLiveEngine(
                 if _scanner_error is None:
                     self._scanner_last_success_tick = self._tick_count
                     self._scanner_consecutive_failures = 0
+                    self._age_scanner_window_after_empty_scan()
                 else:
                     logger.warning("Market scan failed or degraded: %s", _scanner_error)
                     # V9 PP-5: track consecutive failures + alert at threshold.

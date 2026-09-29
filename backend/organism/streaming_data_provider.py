@@ -110,7 +110,13 @@ class StreamingDataProvider:
         in the confirmed current session is still required for stream freshness.
         """
         self._start_config = dict(api_key=api_key, api_secret=api_secret, feed=feed, data_client=data_client)
-        self._desired_symbols = {s.upper() for s in symbols}
+        # Audit 2026-09-29: the provider cap applies at startup too (benchmarks
+        # first), so an oversized configured universe is never requested and
+        # recovery retries never replay one.
+        critical = [c.strip().upper() for c in os.getenv("ORGANISM_STREAM_CRITICAL_SYMBOLS", "SPY,QQQ").split(",") if c.strip()]
+        upper = [str(s).upper() for s in symbols]
+        symbols = self._bounded([s for s in critical if s in upper] + upper)
+        self._desired_symbols = set(symbols)
         self._recovery_enabled = True
         async with self._lifecycle_lock:
             if self._running and self._stream and self._stream.is_authenticated:

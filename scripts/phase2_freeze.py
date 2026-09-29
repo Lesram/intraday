@@ -92,6 +92,7 @@ def compute_data_pipeline_sources() -> dict[str, str]:
             + inspect.getsource(OrganismLiveEngine._confirmed_stream_symbols)
             + inspect.getsource(OrganismLiveEngine._scanner_window_capacity)
             + inspect.getsource(OrganismLiveEngine._refresh_scanner_window)
+            + inspect.getsource(OrganismLiveEngine._age_scanner_window_after_empty_scan)
             + inspect.getsource(OrganismLiveEngine._reset_discovery_for_session)
             + repr((live_engine.STREAM_MAX_SYMBOLS, live_engine.STREAM_CRITICAL_SYMBOLS,
                     live_engine.SCANNER_WINDOW_MAX, live_engine.SCANNER_WINDOW_TTL_SCANS,

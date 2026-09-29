@@ -119,15 +119,22 @@ The same verified status read also feeds a trading-liveness check (audit
 2026-09-29 R10): an engine can stay up and healthy while every entry is blocked.
 During the regular session minus its first and last ten minutes (NYSE calendar
 from `backend/utils/market_hours.py`, including holidays and early closes;
-weekdays 09:40-15:50 ET if unavailable), a run whose engine reports
-`data_stale` or a non-empty `pipeline_diagnostics.entries_blocked_reason`
-extends a streak persisted as `trading_liveness` in the status file. Three
-consecutive blocked runs (about 15 minutes) add `entries_blocked:<reason>` to
-`problems`, which uses the existing notification dedup and retry. The
-by-design 09:30-10:00 `opening_block` does not count; runs outside the window,
-without a verified engine status, or with entries allowed reset the streak.
-Reasons are reduced to fixed codes (`unclassified` otherwise). This is
-attention only: it never starts or restarts a container.
+weekdays 09:40-15:50 ET if unavailable), a run whose engine is blocked by a
+**fault** extends a streak persisted as `trading_liveness` in the status file.
+Faults are `data_stale`, `stale_data`, `stream_subscription_sync`,
+`insufficient_data`, `equity_zero`, `unclassified` and any reason not listed
+below; a failed stream sync or zero admitted non-benchmark symbols in
+`status.stream_admission` counts as a fault even when a policy reason is shown.
+**Risk halts** (`daily_max_loss`, `drawdown_kill`, `governance_halt`) extend the
+same streak. Three consecutive such runs (about 15 minutes) add
+`entries_blocked:<reason>` or `risk_halt:<reason>` to `problems`, which uses
+the existing notification dedup and retry. **Scheduled** blocks
+(`opening_block`, `warmup`) and **policy** blocks (`regime_sitout`,
+`spy_ma_filter`, `throttle`, `burst_cap`) are reported as the run's state but
+reset the streak, so a regime sit-out that lasts all day does not alert. Runs
+outside the window or without a verified engine status also reset it. Reasons
+are reduced to fixed codes (`unclassified` otherwise). This is attention only:
+it never starts or restarts a container.
 
 Install the reviewed private binding and observer credentials before enabling
 the updated agent. The probe rechecks the binding after collection; a concurrent
