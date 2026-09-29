@@ -34,6 +34,8 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
         from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
         from backend.organism.streaming_data_provider import StreamingDataProvider
+        from backend.organism import streaming_data_provider as _provider_module
+        from backend.organism import live_engine as _engine_module
         from backend.organism import operator_cancellation
         from scripts.phase2_freeze import compute_data_pipeline_sources
         from backend.organism.research_policy import policy_status
@@ -101,11 +103,23 @@ def _build_defaults_snapshot() -> dict:
                 "completion": "provider_confirmed_bars_and_quotes_current_connection",
                 "unsubscribe": "retain_until_provider_confirmed_removal",
                 "historical_prefill": "history_only_never_a_live_receipt",
-                "universe": "constructor_base_plus_SPY_QQQ_current_universe_and_held_positions",
+                "universe": "critical_then_held_then_pending_within_cap_then_core_then_scanner_window_then_base_bounded_by_cap",
+                "scanner_window_order": "current_scan_existing_members_first_then_newcomers_by_rank_then_older_by_recency",
+                "stream_max_symbols": _engine_module.STREAM_MAX_SYMBOLS,
+                "provider_max_symbols": _provider_module.MAX_STREAM_SYMBOLS,
+                "critical_symbols": list(_engine_module.STREAM_CRITICAL_SYMBOLS),
+                "scanner_window_max": _engine_module.SCANNER_WINDOW_MAX,
+                "scanner_window_ttl_scans": _engine_module.SCANNER_WINDOW_TTL_SCANS,
+                "admission": "desired_intersect_provider_confirmed_current_connection",
                 "checked_at": "after_fresh_position_query_before_entry_dispatch",
                 "failure": "block_entries_retry_next_tick_preserve_exits",
+                "partial": "unconfirmed_non_critical_symbols_excluded_individually",
+                "required_confirmed": "critical_and_held_symbols_else_block_all_entries",
+                "provider_symbol_limit": "refused_symbols_dropped_from_desired_never_replayed_not_resent_until_capacity_freed",
+                "protected_request": "benchmarks_and_held_requested_first_on_their_own_never_skipped_as_refused",
                 "new_symbols": "wait_for_actual_bars_no_REST_prefill",
-                "global_staleness_policy": "any_subscribed_symbol_stale_blocks_entries",
+                "global_staleness_policy": "aggregate_stream_loss_or_critical_symbol_stale_blocks_entries",
+                "per_symbol_staleness_policy": "stale_or_unadmitted_symbol_rejected_by_shared_entry_gate",
             },
             "entry_freshness": {
                 "required_timeframe": ENTRY_TIMEFRAME,

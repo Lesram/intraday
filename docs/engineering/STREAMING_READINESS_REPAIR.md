@@ -75,8 +75,10 @@ reconciliation and configuration suites plus the complete artifact pack must
 pass; a separately verified candidate freeze records the deliberate source
 changes while the active host cutoff remains unchanged until release.
 
-The global any-stale-symbol policy remains a material limitation: subscribing a
-larger universe can cause more stand-down cycles on sparse feeds. This candidate
+The global any-stale-symbol policy was a material limitation: subscribing a
+larger universe caused more stand-down cycles on sparse feeds. (Superseded by
+the 2026-09-29 audit repair: bounded stream admission and per-symbol
+staleness; see `docs/architecture/mapss.md`.) This candidate
 does not certify actual feed capacity, an optimal 20-second rule, or strategy
 profitability. Natural fills, uncertain acknowledgments and active exits still
 need forward paper evidence. Strategy tuning, feed changes and the parked engine

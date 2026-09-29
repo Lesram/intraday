@@ -183,7 +183,61 @@ async def test_server_error_or_malformed_channel_never_confirms(stream, reply):
     await socket.push(reply)
     assert await pending is False
     assert value.bar_subscriptions['1Min'] == set()
-    assert value._desired['bars'] == {'NEW'}
+    if reply.get('code') == 405:
+        # Audit 2026-09-29 (MDP-04a): a provider symbol-cap refusal is a
+        # refusal. The name is dropped from the desired set so it is neither
+        # retried forever nor replayed (and refused wholesale) on reconnect.
+        assert value._desired['bars'] == set()
+        assert value.symbol_limit_exceeded and value.last_error_code == 405
+        assert value.get_stats()['symbol_limit_exceeded'] is True
+    else:
+        # Malformed snapshots are not refusals: keep retrying the request.
+        assert value._desired['bars'] == {'NEW'}
+        assert not value.symbol_limit_exceeded
+
+
+class CappedSocket(Socket):
+    """Synthetic provider that enforces a per-channel symbol cap like Alpaca IEX."""
+
+    def __init__(self, cap):
+        super().__init__()
+        self.cap = cap
+
+    async def send(self, raw):
+        msg = json.loads(raw)
+        if msg['action'] == 'subscribe':
+            for channel, current in self.channels.items():
+                if channel in msg and len(current | set(msg[channel])) > self.cap:
+                    self.sent.append(msg)
+                    await self.push({'T': 'error', 'code': 405, 'msg': 'symbol limit exceeded'})
+                    return
+        await super().send(raw)
+
+
+@pytest.mark.asyncio
+async def test_cap_refusal_is_not_replayed_on_reconnect(monkeypatch):
+    socket = CappedSocket(cap=3)
+    monkeypatch.setattr('backend.integrations.alpaca_market_data_stream.websockets.connect',
+                        AsyncMock(return_value=socket))
+    value = AlpacaMarketDataStream('offline-key', 'offline-secret')
+    value.SUBSCRIPTION_ACK_TIMEOUT_S = .05
+    value.SUBSCRIPTION_RETRY_INTERVAL_S = 0.0
+    assert await value.connect()
+    try:
+        assert await value.subscribe_quotes(['SPY', 'QQQ']) is True
+        assert await value.subscribe_quotes(['A1', 'A2']) is False  # 4 > cap 3
+        assert value.quote_subscriptions == {'SPY', 'QQQ'}
+        assert value._desired['quotes'] == {'SPY', 'QQQ'}
+        # A reconnect replays only what is still desired, so the confirmed
+        # core survives instead of the whole replay being refused.
+        socket2 = CappedSocket(cap=3)
+        monkeypatch.setattr('backend.integrations.alpaca_market_data_stream.websockets.connect',
+                            AsyncMock(return_value=socket2))
+        await value._cleanup_connection()
+        assert await value.connect()
+        assert value.quote_subscriptions == {'SPY', 'QQQ'}
+    finally:
+        await value.disconnect()
 
 
 @pytest.mark.asyncio

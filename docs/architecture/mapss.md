@@ -21,9 +21,10 @@ Unsubscribe retains tracked state until the server confirms removal. Old-session
 messages cannot complete current requests. Failed startup and unexpected normal
 socket closure retain a recoverable configured streaming path; deliberate stop
 remains final. Historical warmup bars never manufacture live receipt freshness.
-The existing global 120-second, alpha 20-second and final feature-bar 120-second
-admission policies remain in force, including position/exit management during
-entry stand-down. Runtime snapshots read acknowledgement and retry bounds from
+The 120-second streaming-health gate (global only for aggregate loss or a stale
+critical benchmark, per symbol otherwise — see below), the alpha 20-second and
+final feature-bar 120-second admission policies remain in force, including
+position/exit management during entry stand-down. Runtime snapshots read acknowledgement and retry bounds from
 the actual transport/provider constants and identify checked-out source only.
 
 SPY-relative inputs align validated timezone-aware timestamps with backward-only
@@ -99,16 +100,40 @@ activate a replacement cutoff; an approved paper release must bind the exact
 new image and establish its forward boundary at activation.
 
 After scanner discovery and the existing fresh broker-position query, the engine
-synchronizes streaming subscriptions to the union of constructor base symbols,
-SPY/QQQ benchmarks, current feature universe and held-position symbols. The
-operation has a **5-second** deadline and retries next tick on incomplete/failed
-subscription. Failed changes retain provider state and block new entries;
-protective exits still execute. New subscriptions do not seed REST bars or claim
-freshness. The existing global 120-second any-stale-symbol gate is rechecked
-before entry dispatch, and earlier same-tick blocks remain sticky. A newly
-subscribed sparse symbol can therefore increase global stand-down time. This
-repair changes integration, not that policy, the alpha 20-second receipt-age
-rule, final 120-second feature-bar admission, feed, strategy or risk settings.
+synchronizes streaming subscriptions to a **bounded, priority-ordered** desired
+set (audit 2026-09-29, MDP-01): critical benchmarks (`ORGANISM_STREAM_CRITICAL_SYMBOLS`,
+default SPY,QQQ), then held symbols, then pending-entry symbols, then the core
+universe, then the scanner window, then remaining constructor base symbols,
+truncated at `ORGANISM_STREAM_MAX_SYMBOLS` (default **28**, headroom under the
+IEX plan's 30-symbol websocket limit). Benchmarks and held symbols are never
+dropped by the engine (the set grows to fit them; if they ever exceed the
+provider cap the provider truncates and the sync fails closed). Pending-entry
+symbols are protected only within the cap.
+Scanner discoveries live in a bounded window (`ORGANISM_SCANNER_WINDOW_MAX`,
+default 8, and never more than the cap leaves free) and are evicted after
+`ORGANISM_SCANNER_WINDOW_TTL_SCANS` scans without re-observation unless held or
+pending; among names seen in the current scan, existing window members are
+kept ahead of newcomers to limit subscription churn; each session starts from
+the core universe. The operation has a
+**5-second** deadline and retries next tick. Entry admission is the desired set
+intersected with the symbols the current connection has confirmed for bars and
+quotes. A provider refusal (code 405 "symbol limit exceeded") drops the refused
+names from the transport's desired set (never replayed on reconnect) and leaves
+them out of later requests on that connection until a confirmed removal frees
+capacity, so a refusal cannot drag newly requested names down with it.
+Benchmarks and held symbols are requested on their own, ahead of everything
+else, and are never skipped as previously refused (a 405 refuses a whole
+request). A sync is reported `complete` only when every desired symbol is
+admitted. An unconfirmed non-critical symbol is excluded individually
+(`unadmitted_symbol`); provider loss or an unconfirmed critical/held symbol
+blocks every new entry (`stream_subscription_sync`); protective exits still
+execute. New subscriptions do not seed REST bars or claim freshness.
+
+Staleness is per symbol (MDP-03): aggregate stream loss or a stale critical
+benchmark blocks every entry (`stale_data`); any other stale symbol is rejected
+by the shared entry gate for every entry path (`stale_symbol`). Earlier same-tick
+blocks remain sticky. The alpha 20-second receipt-age rule, final 120-second
+feature-bar admission, feed, strategy and risk settings are unchanged.
 
 `paper_pipeline_diagnostics_v1` records nonoverlapping wall-time segments and
 mutually exclusive terminal reasons within the alpha candidate-build phase.
@@ -165,11 +190,13 @@ are unchanged. An empty/failed scan clears the scanner candidate caches and the
 engine's scanner candidate pool; the current/base/held universe is retained.
 
 Streaming health cannot be refreshed by duplicate, out-of-order, invalid,
-future-dated or delayed historical bars. Successful unsubscription retires that
-symbol's obsolete buffers/health; failed unsubscription retains state for retry.
-Every currently subscribed symbol still participates in the global 120-second
-streaming-health gate. REST fallback and quote updates do not clear that gate.
-Recovery logging reflects the final aggregate and per-symbol decision.
+future-dated or delayed historical bars. Retirement runs before additions so
+changes fit under the cap; successful unsubscription retires that symbol's
+obsolete buffers/health; failed unsubscription retains state for retry. Only
+critical benchmarks (and aggregate stream loss) participate in the global
+120-second streaming-health gate; other stale symbols are excluded per symbol.
+REST fallback and quote updates do not clear either gate. Recovery logging
+reflects the final aggregate and per-symbol decision.
 
 The final passed-feature-bar admission limit remains **0 through 120 seconds**,
 with its existing one-minute timestamp contract. Protective exits and EOD rules,

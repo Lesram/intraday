@@ -31,101 +31,101 @@
       {
         "symbol": "AAPL",
         "rows": 201,
-        "hash": "e12b52190abdbee9dfdeed226d47f4223cc9efefec64ad2962fe4f99a7dc2ba7"
+        "hash": "b8291786e193f9aa57aa3763b3ed871aac1eddf82c0701b073e7af7500eb8bfd"
       },
       {
         "symbol": "MSFT",
         "rows": 201,
-        "hash": "356323ea40c031fcbe612e8cec5b4c01bcc9185f072f2be8b7fabaa09ac2e306"
+        "hash": "e3da4b3cb14bdbc11ce16a2f4f3bc11b2a5ab2ba02489a84dd9612caccc95b8a"
       },
       {
         "symbol": "SPY",
         "rows": 241,
-        "hash": "cb78a967d229efb99843737de8a3384b17215900f334b8fed44a1929e21c9c59"
+        "hash": "a77f7b3eb70242de6ac157e3f15188aec3b9d07b7edf4ce33b8a1b5cd5aad7d8"
       },
       {
         "symbol": "AAPL",
         "rows": 230,
-        "hash": "6e354069ef1c4deaf92ce39d05462b55657981b8a5b83e80f5c2e82ff7d54992"
+        "hash": "b5fa9f9141ef1f462fee48d3c58330ba4358ae878ee2f6f0f173f58b7fb89493"
       },
       {
         "symbol": "MSFT",
         "rows": 230,
-        "hash": "5600491d2d00ff7246370e0833de9fce6e02b136409f8ae016ef124a74ac528d"
+        "hash": "58ef9d12b011a4dd978ea4288a5592c87d2022dd4fee0b072f17f4823d93febc"
       },
       {
         "symbol": "SPY",
         "rows": 270,
-        "hash": "5279d4aca1c4f322dd36f0fc54c441f884020744e33c4efbe625f6d145fc6fcb"
+        "hash": "bdba5fd7807d56b80502998aa2cf0dcc033534790e4e6a44861062c737c5d73c"
       },
       {
         "symbol": "AAPL",
         "rows": 260,
-        "hash": "5db7443c686b52783f1c246dc724c24d3891781177cbde8d0fa68b1b182d8585"
+        "hash": "1ba7376c58c2939a724c16dea0b56b7eddc2ef876a2dadab4798f534cff89576"
       },
       {
         "symbol": "MSFT",
         "rows": 260,
-        "hash": "10d0fd7f68f62d7e9f4eec43a4490b00dcc04611726bfeaf03d1850ce5bbcc41"
+        "hash": "5e87c0da456bd15d3db06fd24671c5b8fcee213c8f7bf40e6589065da8bdbaf8"
       },
       {
         "symbol": "SPY",
         "rows": 300,
-        "hash": "cc148b2d48c4aad9f65b413a689c4a137a916aa28372df599c57165ae077d15c"
+        "hash": "45d33ff87c06010d9c4a06317eeb8920b1b5fb98f468eb0a23795f8ea509b2e2"
       }
     ],
     "causal_timestamp": [
       {
         "symbol": "AAPL",
         "rows": 201,
-        "hash": "bdc515f4fb2986d434c819dbefece6c956dcbfdf5988513018cbbbc14afe5c3d"
+        "hash": "46865398b7f26bd7e44edcb4e99fd13ac800584b24540523676d2080c89ab4a2"
       },
       {
         "symbol": "MSFT",
         "rows": 201,
-        "hash": "d9e6795ce17333b075bfc317ba11689a20a4df123bf1100dfc2e653fcb84671a"
+        "hash": "50c0fc4512c010e87ee1110aed57c41c39e0fa2eeb2f3b23f3a9388ed9e01fb8"
       },
       {
         "symbol": "SPY",
         "rows": 241,
-        "hash": "cb78a967d229efb99843737de8a3384b17215900f334b8fed44a1929e21c9c59"
+        "hash": "a77f7b3eb70242de6ac157e3f15188aec3b9d07b7edf4ce33b8a1b5cd5aad7d8"
       },
       {
         "symbol": "AAPL",
         "rows": 230,
-        "hash": "99c21507c609aa0cce4a674bae098e98df12bc15bff9a68dca8cabf6b56dca9f"
+        "hash": "dd7fcfb993197367003b84aec08f2e2d001e776fee7fe15664eba846d956c0d4"
       },
       {
         "symbol": "MSFT",
         "rows": 230,
-        "hash": "6de7c2defb97ce671e854a67ffcdc2e51eb7725d6e4eade37cde256f1dd6c4b4"
+        "hash": "4f8ca052d2c3e95c9fd5e85dcbca8a0e1a564b75fb7f0a39dce80b54ade9d79e"
       },
       {
         "symbol": "SPY",
         "rows": 270,
-        "hash": "5279d4aca1c4f322dd36f0fc54c441f884020744e33c4efbe625f6d145fc6fcb"
+        "hash": "bdba5fd7807d56b80502998aa2cf0dcc033534790e4e6a44861062c737c5d73c"
       },
       {
         "symbol": "AAPL",
         "rows": 260,
-        "hash": "e5352af4f1798a606d962d81565b78abae18e93d68f95f2c44d29c9bd69511c3"
+        "hash": "3bfff4593b5f1e252542e2bb27322361c76b286d63c190c88e3aa49986fc0830"
       },
       {
         "symbol": "MSFT",
         "rows": 260,
-        "hash": "df4d44c7d7a59934eda7f1d9151c3c7f62bdba47840107e1381ded880ead9240"
+        "hash": "9a382d7500c69fd25fbae6101f2b19d33f5ed1b3208823302125dc9132adc822"
       },
       {
         "symbol": "SPY",
         "rows": 300,
-        "hash": "cc148b2d48c4aad9f65b413a689c4a137a916aa28372df599c57165ae077d15c"
+        "hash": "45d33ff87c06010d9c4a06317eeb8920b1b5fb98f468eb0a23795f8ea509b2e2"
       }
     ]
   },
   "source_sha256": {
     "backend/organism/composite_indicators.py": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
     "backend/organism/ml_features.py": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
-    "backend/organism/live_engine.py": "f15c7ccc2da1f2a00a70c347499b4883b3e0fc3908c4b268eebf14a6542ab323",
+    "backend/organism/live_engine.py": "1e78ba5ce6e551933455511489b323dd344b650c3c90f596feeda7682d946879",
     "backend/organism/live_engine_data.py": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
     "backend/organism/replay_simulator.py": "deb6563f02636c69e909ad374b27233dc24131d44ce515b8ec80ace9df7ed159",
     "backend/organism/alpha_scanner.py": "8bed20281f02ad3fd95953aa7c981a2e8c0393e4b29c38f808d3a570b6c19490",
@@ -138,9 +138,9 @@
   },
   "source_unchanged_during_replay": true,
   "input_sha256": {
-    "AAPL": "39c6840e325b9ad465f4df21ec999354bbf7d0957087ed6927c92911f1c7cc19",
-    "MSFT": "50ae315334af51321737d92f98f5288efe82be969bec91835258378c2ce07250",
-    "SPY": "d839b4171ec763dd135f38ba34847a3e0cca0eb26cfd56d37c76590a7bb109f5"
+    "AAPL": "24c444bfe26709dca071d26009ba0cca5ff4fa7769fb3ec8be05508bdaba3ec0",
+    "MSFT": "afc8057b81325c032a508a11caf4f750e25edbdd7d84393d334fd59b7e18ce9f",
+    "SPY": "eed0462de7fc49902c105e7b8562384bc7b170cbb2fca07067ef289f7b15acb6"
   },
   "arms": {
     "baseline_ordinal": {

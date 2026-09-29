@@ -98,31 +98,62 @@ async def test_desired_subscriptions_retain_base_benchmarks_and_held_until_flat(
     await engine._sync_streaming_subscriptions({"HELD": {"qty": 2}})
     assert provider._subscribed_symbols == {"BASE", "SPY", "QQQ", "NEW", "HELD"}
     assert provider.get_bar_age("NEW") == float("inf")
-    assert engine._entries_blocked and engine._data_stale
-    assert engine._last_entries_blocked_reason == "stale_data"
+    # Audit 2026-09-29 (MDP-03): an unseen discovery is excluded on its own;
+    # it no longer blocks entries for every other symbol.
+    assert not engine._entries_blocked and not engine._data_stale
+    assert engine._stale_entry_symbols == frozenset({"NEW"})
     assert not provider.has_data("NEW")  # Subscribing never seeds REST data.
     now[0] += 131
     for symbol in provider._subscribed_symbols - {"NEW"}:
         await transport.on_bar(symbol, bar(now[0]))
     await transport.on_quote("NEW", {"bid": 99, "ask": 101,
                                       "timestamp": pd.Timestamp(now[0], unit="s", tz="UTC").isoformat()})
-    engine._entries_blocked = False
-    engine._last_entries_blocked_reason = ""
     await engine._sync_streaming_subscriptions({"HELD": {"qty": 2}})
-    assert engine._entries_blocked and engine._data_stale
+    assert not engine._entries_blocked and not engine._data_stale
+    assert engine._stale_entry_symbols == frozenset({"NEW"})  # A quote is not bar health.
     assert provider.stale_symbols(120) == [("NEW", float("inf"))]
     await transport.on_bar("NEW", bar(now[0]))
-    engine._entries_blocked = False
-    engine._last_entries_blocked_reason = ""
     await engine._sync_streaming_subscriptions({})
     assert "HELD" not in provider._subscribed_symbols
     assert not engine._entries_blocked and not engine._data_stale
+    assert engine._stale_entry_symbols == frozenset()
     assert all(symbol in provider._subscribed_symbols for symbol in ["BASE", "SPY", "QQQ"])
     await provider.stop()
 
 
 @pytest.mark.asyncio
-async def test_failed_unsubscribe_blocks_then_retries_without_discarding_prior_state(monkeypatch):
+async def test_stale_benchmark_still_blocks_every_entry(monkeypatch):
+    now = [pd.Timestamp("2026-09-24T15:00:00Z").timestamp()]
+    provider, transport = await make_provider(monkeypatch, lambda: now[0], ["BASE", "SPY", "QQQ"])
+    engine = helper_engine(provider, now, [])
+    for symbol in provider._subscribed_symbols:
+        await transport.on_bar(symbol, bar(now[0]))
+    now[0] += 131
+    for symbol in provider._subscribed_symbols - {"SPY"}:
+        await transport.on_bar(symbol, bar(now[0]))
+    await engine._sync_streaming_subscriptions({})
+    assert engine._entries_blocked and engine._data_stale
+    assert engine._last_entries_blocked_reason == "stale_data"
+    await provider.stop()
+
+
+@pytest.mark.asyncio
+async def test_desired_set_is_capped_by_priority_and_never_drops_held(monkeypatch):
+    monkeypatch.setattr("backend.organism.live_engine.STREAM_MAX_SYMBOLS", 5)
+    now = [pd.Timestamp("2026-09-24T15:00:00Z").timestamp()]
+    provider, transport = await make_provider(monkeypatch, lambda: now[0], ["BASE", "SPY", "QQQ"])
+    engine = helper_engine(provider, now, ["CORE1", "CORE2", "CORE3"])
+    engine._core_universe = ["CORE1", "CORE2"]
+    desired = engine._bounded_stream_symbols({"HELD": {"qty": 1}})
+    assert desired == ["SPY", "QQQ", "HELD", "CORE1", "CORE2"]
+    # Held + benchmarks are never truncated even beyond the cap.
+    many = {f"H{i}": {} for i in range(6)}
+    assert set(many) | {"SPY", "QQQ"} <= set(engine._bounded_stream_symbols(many))
+    await provider.stop()
+
+
+@pytest.mark.asyncio
+async def test_failed_unsubscribe_is_partial_then_retries_without_discarding_prior_state(monkeypatch):
     now = [pd.Timestamp("2026-09-24T15:00:00Z").timestamp()]
     provider, transport = await make_provider(monkeypatch, lambda: now[0], ["BASE", "SPY", "QQQ", "OLD"])
     engine = helper_engine(provider, now, [])
@@ -130,15 +161,29 @@ async def test_failed_unsubscribe_blocks_then_retries_without_discarding_prior_s
         await transport.on_bar(symbol, bar(now[0]))
     transport.fail_unsubscribe = True
     await engine._sync_streaming_subscriptions({})
-    assert engine._entries_blocked and engine._last_entries_blocked_reason == "stream_subscription_sync"
+    # Benchmarks are confirmed, so a failed retirement is a partial sync:
+    # entries stay admitted for confirmed symbols and nothing is discarded.
+    assert not engine._entries_blocked
+    assert engine._stream_sync_status["status"] == "partial"
     assert provider.has_data("OLD") and "OLD" in provider._subscribed_symbols
     transport.fail_unsubscribe = False
-    engine._entries_blocked = False
-    engine._last_entries_blocked_reason = ""
     await engine._sync_streaming_subscriptions({})
     assert not engine._entries_blocked
+    assert engine._stream_sync_status["status"] == "complete"
     assert not provider.has_data("OLD") and "OLD" not in provider._subscribed_symbols
     assert not engine._stream_subscription_sync_failed
+    await provider.stop()
+
+
+@pytest.mark.asyncio
+async def test_refused_benchmark_still_blocks_every_entry(monkeypatch):
+    now = [pd.Timestamp("2026-09-24T15:00:00Z").timestamp()]
+    provider, transport = await make_provider(monkeypatch, lambda: now[0], ["BASE"])
+    engine = helper_engine(provider, now, [])
+    transport.fail_forever.add("SPY")
+    await engine._sync_streaming_subscriptions({})
+    assert engine._entries_blocked
+    assert engine._last_entries_blocked_reason == "stream_subscription_sync"
     await provider.stop()
 
 
@@ -168,26 +213,36 @@ async def test_no_streaming_provider_leaves_historical_replay_unchanged():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("result", [False, None, "true"])
 async def test_incomplete_subscription_result_cannot_admit_entries(result):
-    async def incomplete(symbols):
+    calls = []
+
+    async def incomplete(symbols, protected=0):
+        calls.append((list(symbols), protected))
         return result
     engine = helper_engine(SimpleNamespace(update_subscriptions=incomplete), [1.0], [])
     await engine._sync_streaming_subscriptions({})
+    # The double was actually called (benchmarks lead as protected symbols)
+    # and its incomplete result, not a call error, blocked entries.
+    assert calls and calls[0][1] == 2 and calls[0][0][:2] == ["SPY", "QQQ"]
     assert engine._entries_blocked
     assert engine._last_entries_blocked_reason == "stream_subscription_sync"
+    assert engine._stream_sync_status["error"] == "RuntimeError"
 
 
 @pytest.mark.asyncio
 async def test_subscription_wait_has_bounded_deadline_and_fails_closed(monkeypatch):
-    async def stalled(symbols):
+    async def stalled(symbols, protected=0):
         await asyncio.Event().wait()
     wait_for = asyncio.wait_for
+    seen = []
     async def bounded(awaitable, timeout):
-        assert timeout == 5.0
+        seen.append(timeout)
         return await wait_for(awaitable, timeout=0.01)
     monkeypatch.setattr("backend.organism.live_engine.asyncio.wait_for", bounded)
     engine = helper_engine(SimpleNamespace(update_subscriptions=stalled), [1.0], [])
     await engine._sync_streaming_subscriptions({})
+    assert seen == [5.0]
     assert engine._entries_blocked and engine._stream_subscription_sync_failed
+    assert engine._stream_sync_status["error"] == "TimeoutError"
 
 
 async def run_live_provider_replay(monkeypatch, tmp_path, *, fail_once=None, after_entry=None):
@@ -245,6 +300,9 @@ async def run_live_provider_replay(monkeypatch, tmp_path, *, fail_once=None, aft
                              "blocked": engine._entries_blocked, "reason": engine._last_entries_blocked_reason,
                              "data_stale": engine._data_stale, "msft_age": provider.get_bar_age("MSFT"),
                              "subscribed": set(provider._subscribed_symbols), "held_before": set(held),
+                             "excluded": set(getattr(engine, "_stale_entry_symbols", ()) or ()),
+                             "admitted": set(getattr(engine, "_stream_admitted", None) or ()),
+                             "sync": dict(getattr(engine, "_stream_sync_status", {}) or {}).get("status"),
                              "orders": result.orders_submitted})
         return result
     monkeypatch.setattr(OrganismLiveEngine, "live_tick", feed_and_observe)
@@ -265,8 +323,12 @@ async def run_live_provider_replay(monkeypatch, tmp_path, *, fail_once=None, aft
 async def test_scanner_addition_waits_for_live_bar_retries_then_places_actual_order(monkeypatch, tmp_path, record_property, fail_once):
     result, seen, transport, engines, first_bar = await run_live_provider_replay(monkeypatch, tmp_path, fail_once=fail_once)
     added_tick = seen[5]
-    assert added_tick["blocked"] and added_tick["orders"] == 0
-    assert all(row["blocked"] and row["orders"] == 0 for row in seen[5:8])
+    # Audit 2026-09-29 (MDP-03): the new, still-unseen discovery is excluded
+    # individually (stale or unconfirmed) rather than blocking every entry;
+    # other fresh symbols may still be entered meanwhile.
+    assert not any(row["blocked"] and row["reason"] in {"stale_data", "stream_subscription_sync"}
+                   for row in seen[5:8])
+    assert all(("MSFT" in row["excluded"]) or ("MSFT" not in row["admitted"]) for row in seen[5:8])
     assert all(row["msft_age"] == float("inf") for row in seen[:8])
     assert first_bar == seen[8]["timestamp"]
     assert (pd.Timestamp(first_bar) - pd.Timestamp(added_tick["timestamp"])).total_seconds() == 180
@@ -276,7 +338,9 @@ async def test_scanner_addition_waits_for_live_bar_retries_then_places_actual_or
     assert all({"AAPL", "SPY", "QQQ"} <= row["subscribed"] for row in seen)
     assert any(row["msft_age"] == 0 and not row["blocked"] for row in seen[8:])
     if fail_once:
-        assert added_tick["reason"] == "stream_subscription_sync"
+        # Benchmarks stay confirmed, so a refused discovery is a partial sync.
+        assert added_tick["sync"] == "partial" and "MSFT" not in added_tick["admitted"]
+        assert not added_tick["blocked"]
         assert sum(kind == fail_once and "MSFT" in symbols for kind, symbols in transport.calls) == 2
     ids = [order["order_id"] for order in result.orders]
     assert len(ids) == len(set(ids))
@@ -295,16 +359,19 @@ async def test_stale_or_failed_sync_keeps_held_symbol_and_real_eod_exit(monkeypa
     assert first_bar is not None
     held_rows = [row for row in seen if "MSFT" in row["held_before"]]
     assert held_rows and all("MSFT" in row["subscribed"] for row in held_rows)
-    blocked = [row for row in held_rows if row["blocked"]]
-    assert blocked
+    # Audit 2026-09-29 (MDP-03): the faulted held symbol is excluded from new
+    # entries individually; its protective/EOD management keeps running.
+    faulted = [row for row in held_rows if "MSFT" in row["excluded"] or "MSFT" not in row["admitted"]]
+    assert faulted
     if after_entry == "subscription_failure":
-        assert any(row["reason"] == "stream_subscription_sync" for row in blocked)
-    else:
-        assert any(row["data_stale"] for row in blocked)
-    first_blocked = pd.Timestamp(blocked[0]["timestamp"])
-    assert all(pd.Timestamp(order["submitted_at"]) < first_blocked for order in result.orders if order["side"] == "buy")
+        lag_rows = [row for row in held_rows if row["sync"] == "partial"]
+        assert lag_rows and all("LAG" not in row["admitted"] for row in lag_rows)
+        assert not [order for order in result.orders if order["symbol"] == "LAG"]
+    first_fault = pd.Timestamp(faulted[0]["timestamp"])
+    assert all(pd.Timestamp(order["submitted_at"]) < first_fault
+               for order in result.orders if order["side"] == "buy" and order["symbol"] == "MSFT")
     closes = [trade for trade in result.accounted_trades if trade["symbol"] == "MSFT" and trade["exit_reason"] == "eod_flatten"]
-    assert closes and all(pd.Timestamp(trade["closed_at"]) >= first_blocked for trade in closes)
+    assert closes and all(pd.Timestamp(trade["closed_at"]) >= first_fault for trade in closes)
     assert not await engines[0]._positions_service.get_all_positions()
     assert not result.accounting_pending
     ids = [order["order_id"] for order in result.orders]
@@ -352,15 +419,16 @@ async def test_actual_transport_ack_recovery_replay_keeps_entries_and_eod_safe(m
     result, rows, transport, engines, first_bar = await run_live_provider_replay(
         monkeypatch, tmp_path, fail_once="bars", after_entry=after_entry,
     )
-    assert rows[5]["reason"] == "stream_subscription_sync"
-    assert all(row["blocked"] and row["orders"] == 0 for row in rows[5:8])
+    # Audit 2026-09-29: a refused discovery is a partial, per-symbol exclusion.
+    assert rows[5]["sync"] == "partial" and "MSFT" not in rows[5]["admitted"]
+    assert all(("MSFT" in row["excluded"]) or ("MSFT" not in row["admitted"]) for row in rows[5:8])
     entries = [o for o in result.orders if o["symbol"] == "MSFT" and o["side"] == "buy"]
     assert len(entries) == 1
     assert pd.Timestamp(entries[0]["submitted_at"]) >= pd.Timestamp(first_bar)
     assert all({"AAPL", "SPY", "QQQ"} <= row["subscribed"] for row in rows)
     if after_entry:
         held = [r for r in rows if "MSFT" in r["held_before"]]
-        assert any(r["reason"] == "stream_subscription_sync" for r in held)
+        assert any(r["sync"] == "partial" and "LAG" not in r["admitted"] for r in held)
         assert any(t["symbol"] == "MSFT" and t["exit_reason"] == "eod_flatten"
                    for t in result.accounted_trades)
         assert not await engines[0]._positions_service.get_all_positions()

@@ -184,12 +184,14 @@ def test_p7_staleness_stage_clears_when_stream_recovers():
 
 
 def test_p7_staleness_stage_marks_per_symbol_stale_when_aggregate_fresh():
-    """PP-6: per-symbol stalls still block entries behind fresh aggregate data."""
+    """PP-6 (audit 2026-09-29): per-symbol stalls behind fresh aggregate data
+    exclude only that symbol; a stale critical benchmark still blocks all."""
     calls = []
+    stale = [("AAA", 150.0)]
 
     def stale_symbols(*, threshold_s, now):
         calls.append((threshold_s, now))
-        return [("AAA", 150.0)]
+        return list(stale)
 
     provider = SimpleNamespace(
         last_update_time=240.0,
@@ -199,5 +201,11 @@ def test_p7_staleness_stage_marks_per_symbol_stale_when_aggregate_fresh():
 
     engine._stage_update_data_staleness()
 
-    assert engine._data_stale is True
+    assert engine._data_stale is False
+    assert engine._stale_entry_symbols == frozenset({"AAA"})
     assert calls == [(120.0, 250.0)]
+
+    stale.append(("SPY", 150.0))
+    engine._stage_update_data_staleness()
+    assert engine._data_stale is True
+    assert engine._stale_entry_symbols == frozenset({"AAA", "SPY"})

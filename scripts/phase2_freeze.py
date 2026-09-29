@@ -71,6 +71,7 @@ def compute_data_pipeline_sources() -> dict[str, str]:
     from backend.organism import market_scanner, streaming_data_provider, live_engine_data
     from backend.organism import pipeline_diagnostics
     from backend.organism import ml_features, composite_indicators
+    from backend.organism import live_engine
     from backend.organism.live_engine import OrganismLiveEngine
 
     return {
@@ -83,6 +84,19 @@ def compute_data_pipeline_sources() -> dict[str, str]:
         "staleness_admission": _h(inspect.getsource(OrganismLiveEngine._stage_update_data_staleness)),
         "streaming_universe_initialization": _h(inspect.getsource(OrganismLiveEngine.__init__)),
         "streaming_subscription_sync": _h(inspect.getsource(OrganismLiveEngine._sync_streaming_subscriptions)),
+        # Audit 2026-09-29: bounded stream admission decides which symbols can
+        # be entered at all (cap, priority order, scanner window, confirmation).
+        "stream_admission": _h(
+            inspect.getsource(OrganismLiveEngine._bounded_stream_symbols)
+            + inspect.getsource(OrganismLiveEngine._protected_stream_symbols)
+            + inspect.getsource(OrganismLiveEngine._confirmed_stream_symbols)
+            + inspect.getsource(OrganismLiveEngine._scanner_window_capacity)
+            + inspect.getsource(OrganismLiveEngine._refresh_scanner_window)
+            + inspect.getsource(OrganismLiveEngine._age_scanner_window_after_empty_scan)
+            + inspect.getsource(OrganismLiveEngine._reset_discovery_for_session)
+            + repr((live_engine.STREAM_MAX_SYMBOLS, live_engine.STREAM_CRITICAL_SYMBOLS,
+                    live_engine.SCANNER_WINDOW_MAX, live_engine.SCANNER_WINDOW_TTL_SCANS,
+                    streaming_data_provider.MAX_STREAM_SYMBOLS))),
         "streaming_subscription_timeout": _h(repr(OrganismLiveEngine._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S)),
         "pipeline_diagnostics": _h(inspect.getsource(pipeline_diagnostics)),
         "ml_features": _h(inspect.getsource(ml_features)),
@@ -174,6 +188,12 @@ def compute_surface() -> dict:
             "emergency_stop_api": _h((Path(__file__).resolve().parents[1] / "backend/api/routes/risk.py").read_text()),
             "emergency_stop_service": _h((Path(__file__).resolve().parents[1] / "backend/services/risk_manager.py").read_text()),
             "entry_cancellation": _h((Path(__file__).resolve().parents[1] / "backend/organism/operator_cancellation.py").read_text()),
+            # Audit 2026-09-29: the >=16:00 escalation and the next-session
+            # forced exit live in helpers outside the hashed tick.
+            "eod_escalation": _h(
+                inspect.getsource(OrganismLiveEngine._stage_post_close_escalation)
+                + inspect.getsource(OrganismLiveEngine._record_unflattened_positions)
+                + inspect.getsource(OrganismLiveEngine._force_exit_overnight_stragglers)),
             # Pending identity must not disappear through a helper edit while
             # the top-level EOD dispatch hash remains unchanged.
             "pending_entry_lifecycle": _h(

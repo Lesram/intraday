@@ -140,13 +140,18 @@ The `paper-postclose-audit` workflow runs daily at 22:15 UTC and automatically o
 ## FROZEN-SURFACE REGIME (from 2026-07-29)
 
 The platform is DONE and the repo is **research-only**. The decision surface is
-FROZEN at `FROZEN_AT=2026-07-07T20:36:49Z` (`artifacts/phase2/param_freeze.json`;
-check with `python scripts/phase2_freeze.py --verify` — run it after ANY change,
-it must exit 0). Any change to the six hashed functions (entry direction, exit
-engine, regime detector, Kelly sizer, `_live_tick_inner`, selector routing),
-`exit_env`, `regime_policy`, `routing_data_env` (including the data feed), or
-`strategy_config` RESETS the forward verdict clock and requires **Marsel's
-explicit sign-off first** — never as a side effect.
+FROZEN at the `FROZEN_AT` recorded in `artifacts/phase2/param_freeze.json` (do not
+hardcode it here — it has moved with each approved activation, and the installed
+host's active freeze can be newer than the committed file; check the host
+binding). Verify with `python scripts/phase2_freeze.py --verify` — run it after
+ANY change, it must exit 0. A pending release carries its regenerated surface in
+`artifacts/phase2/candidate_param_freeze.json` until activation. Any change to
+the hashed functions/modules listed in the freeze file (entry direction, exit
+engine, regime detector, Kelly sizer, `_live_tick_inner`, selector routing, the
+streaming/data-admission pipeline, ...), `exit_env`, `regime_policy`,
+`routing_data_env` (including the data feed), or `strategy_config` RESETS the
+forward verdict clock and requires **Marsel's explicit sign-off first** — never
+as a side effect.
 
 Allowed WITHOUT sign-off:
 - Session rows for the stand-down table, generated at session close only:

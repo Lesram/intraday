@@ -41,6 +41,12 @@ _DEFAULT_BUFFER_SIZE = 2000
 # staleness exceeds threshold, return empty DataFrame so callers fall
 # through to REST. Default 120s = 2-bar tolerance for 1Min bars.
 _STALENESS_REJECT_S = float(os.getenv("ORGANISM_STREAMING_STALENESS_REJECT_S", "120"))
+# Audit 2026-09-29 (MDP-01): provider websocket symbol cap (Alpaca IEX
+# Basic refuses >~30 symbols with "symbol limit exceeded"). The engine
+# already sends a prioritised bounded list; this is defence in depth.
+# Default leaves headroom under the documented 30-symbol IEX plan limit;
+# keep in sync with live_engine.STREAM_MAX_SYMBOLS (same env var).
+MAX_STREAM_SYMBOLS = max(1, int(os.getenv("ORGANISM_STREAM_MAX_SYMBOLS", "28")))
 
 
 class StreamingDataProvider:
@@ -104,7 +110,13 @@ class StreamingDataProvider:
         in the confirmed current session is still required for stream freshness.
         """
         self._start_config = dict(api_key=api_key, api_secret=api_secret, feed=feed, data_client=data_client)
-        self._desired_symbols = {s.upper() for s in symbols}
+        # Audit 2026-09-29: the provider cap applies at startup too (benchmarks
+        # first), so an oversized configured universe is never requested and
+        # recovery retries never replay one.
+        critical = [c.strip().upper() for c in os.getenv("ORGANISM_STREAM_CRITICAL_SYMBOLS", "SPY,QQQ").split(",") if c.strip()]
+        upper = [str(s).upper() for s in symbols]
+        symbols = self._bounded([s for s in critical if s in upper] + upper)
+        self._desired_symbols = set(symbols)
         self._recovery_enabled = True
         async with self._lifecycle_lock:
             if self._running and self._stream and self._stream.is_authenticated:
@@ -345,77 +357,137 @@ class StreamingDataProvider:
 
     # ── Subscription Management ───────────────────────────────────
 
-    async def update_subscriptions(self, symbols: list[str]) -> bool:
+    async def update_subscriptions(self, symbols: list[str], protected: int = 0) -> bool:
         """Synchronize requested bar/quote subscriptions; True means complete.
+
+        ``protected``: the first N symbols (benchmarks, held positions) are
+        requested on their own, before the rest, and are never skipped as
+        previously refused, so a refusal of lower-priority names cannot take
+        them down with it.
 
         A successful transport update is not bar freshness. New symbols remain
         stale until an advancing, timely streaming bar arrives. No REST seed
         is performed here. Partial failures retain state for the next retry.
         """
+        ordered = self._bounded(symbols)
         if self._recovery_enabled:
-            self._desired_symbols = {s.upper() for s in symbols}
+            self._desired_symbols = set(ordered)
             if not self._running or not self._stream or not self._stream.is_authenticated:
+                if self._transport_reconnecting():
+                    # The transport's own bounded reconnect owns recovery; a
+                    # provider restart here would kill it and wipe buffers.
+                    return False
                 if not await self._retry_start():
                     return False
         async with self._lifecycle_lock:
-            return await self._update_subscriptions(symbols)
+            return await self._update_subscriptions(ordered, protected)
 
-    async def _update_subscriptions(self, symbols: list[str]) -> bool:
+    @staticmethod
+    def _bounded(symbols: list[str]) -> list[str]:
+        """Priority-ordered, de-duplicated, capped at MAX_STREAM_SYMBOLS."""
+        ordered = list(dict.fromkeys(str(s).upper() for s in symbols))
+        if len(ordered) > MAX_STREAM_SYMBOLS:
+            logger.warning(
+                "Streaming desired set %d exceeds provider cap %d; truncating by priority",
+                len(ordered), MAX_STREAM_SYMBOLS,
+            )
+            ordered = ordered[:MAX_STREAM_SYMBOLS]
+        return ordered
+
+    def _transport_reconnecting(self) -> bool:
+        stream = self._stream
+        return bool(stream is not None and getattr(stream, "reconnecting", False))
+
+    def confirmed_symbols(self) -> set[str]:
+        """Symbols the current connection has confirmed for bars AND quotes."""
+        stream = self._stream
+        if stream is None or not stream.is_authenticated:
+            return set()
+        bars: set[str] = set()
+        for names in stream.bar_subscriptions.values():
+            bars.update(names)
+        return bars & set(stream.quote_subscriptions)
+
+    async def _update_subscriptions(self, symbols: list[str], protected: int = 0) -> bool:
         if not self._stream or not self._stream.is_authenticated:
             logger.warning("Cannot update subscriptions — not connected")
             return False
         stream, generation = self._stream, self._session_generation
         self._observe_transport_generation(stream)
 
-        new_set = {s.upper() for s in symbols}
+        ordered = self._bounded(symbols)
+        new_set = set(ordered)
         current_quotes = set(self._stream.quote_subscriptions)
         current_bars = set()
         for tf_set in self._stream.bar_subscriptions.values():
             current_bars.update(tf_set)
+        # Names the transport still wants (e.g. refused) must be retired too,
+        # otherwise a reconnect replays them and can exceed the provider cap.
+        transport_desired = set(getattr(self._stream, "desired_symbols", set()) or set())
 
         current_set = current_quotes | current_bars | self._subscribed_symbols
-        self._subscribed_symbols.update(current_set)
+        self._subscribed_symbols.update(current_quotes | current_bars)
 
-        bars_to_add = list(new_set - current_bars)
-        quotes_to_add = list(new_set - current_quotes)
-        to_remove = list(current_set - new_set)
+        to_remove = sorted((current_set | transport_desired) - new_set)
+        complete = True
 
-        if bars_to_add:
-            added = await stream.subscribe_bars(bars_to_add)
-            if not self._is_current_session(stream, generation):
-                return False
-            if added is not True:
-                logger.warning("Streaming bar subscription failed: %d symbols", len(bars_to_add))
-                return False
-            self._subscribed_symbols.update(bars_to_add)
-            self._retired_symbols.difference_update(bars_to_add)
-        if quotes_to_add:
-            added = await stream.subscribe_quotes(quotes_to_add)
-            if not self._is_current_session(stream, generation):
-                return False
-            if added is not True:
-                logger.warning("Streaming quote subscription failed: %d symbols", len(quotes_to_add))
-                return False
-        if bars_to_add or quotes_to_add:
-            logger.info("Streaming subscribed: +%d symbols", len(set(bars_to_add) | set(quotes_to_add)))
-
+        # Audit 2026-09-29 (MDP-10): retire first so additions fit under the
+        # cap, and never let a failed addition skip the retirement.
         if to_remove:
             removed = await stream.unsubscribe(to_remove)
             if not self._is_current_session(stream, generation):
                 return False
-            if removed is not True:
+            if removed is True:
+                self._subscribed_symbols.difference_update(to_remove)
+                self._retired_symbols.update(to_remove)
+                forget = getattr(stream, "forget_refusals", None)
+                if callable(forget):
+                    forget()  # capacity freed: refused names may be retried
+                for symbol in to_remove:
+                    self._bars.pop(symbol, None)
+                    self._quotes.pop(symbol, None)
+                    self._last_bar_ts.pop(symbol, None)
+                self.last_update_time = max(self._last_bar_ts.values(), default=None)
+                logger.info("Streaming unsubscribed: -%d symbols", len(to_remove))
+            else:
                 logger.warning("Streaming unsubscribe failed: %d symbols retained", len(to_remove))
-                return False
-            self._subscribed_symbols.difference_update(to_remove)
-            self._retired_symbols.update(to_remove)
-            for symbol in to_remove:
-                self._bars.pop(symbol, None)
-                self._quotes.pop(symbol, None)
-                self._last_bar_ts.pop(symbol, None)
-            self.last_update_time = max(self._last_bar_ts.values(), default=None)
-            logger.info("Streaming unsubscribed: -%d symbols", len(to_remove))
+                complete = False
 
-        return True
+        # Names refused (symbol limit) on this connection are not re-sent: a
+        # refusal rejects the whole request, which would take new names with it.
+        first = set(ordered[:max(0, protected)])
+        refused = set(getattr(stream, "refused_names", ()) or ()) - first
+        if refused & new_set:
+            complete = False
+        bars_to_add = [s for s in ordered if s not in current_bars and s not in refused]
+        quotes_to_add = [s for s in ordered if s not in current_quotes and s not in refused]
+        # Protected names go in their own first request (a 405 refuses a whole
+        # request), then everything else.
+        for bars, quotes in (
+            ([s for s in bars_to_add if s in first], [s for s in quotes_to_add if s in first]),
+            ([s for s in bars_to_add if s not in first], [s for s in quotes_to_add if s not in first]),
+        ):
+            if bars:
+                added = await stream.subscribe_bars(bars)
+                if not self._is_current_session(stream, generation):
+                    return False
+                if added is not True:
+                    logger.warning("Streaming bar subscription failed: %d symbols", len(bars))
+                    complete = False
+                else:
+                    self._subscribed_symbols.update(bars)
+                    self._retired_symbols.difference_update(bars)
+            if quotes:
+                added = await stream.subscribe_quotes(quotes)
+                if not self._is_current_session(stream, generation):
+                    return False
+                if added is not True:
+                    logger.warning("Streaming quote subscription failed: %d symbols", len(quotes))
+                    complete = False
+        if complete and (bars_to_add or quotes_to_add):
+            logger.info("Streaming subscribed: +%d symbols", len(set(bars_to_add) | set(quotes_to_add)))
+
+        return complete
 
     # ── Pre-fill ──────────────────────────────────────────────────
 
@@ -578,6 +650,8 @@ class StreamingDataProvider:
         if self._recovery_enabled and (
             not self._running or not self._stream or not self._stream.is_authenticated
         ):
+            if self._transport_reconnecting():
+                return False
             return await self._retry_start()
         async with self._lifecycle_lock:
             return await self._recover_stale_stream(stale_threshold)
