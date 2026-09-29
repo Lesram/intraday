@@ -116,6 +116,7 @@ def _build_defaults_snapshot() -> dict:
                 "partial": "unconfirmed_non_critical_symbols_excluded_individually",
                 "required_confirmed": "critical_and_held_symbols_else_block_all_entries",
                 "provider_symbol_limit": "refused_symbols_dropped_from_desired_never_replayed_not_resent_until_capacity_freed",
+                "protected_request": "benchmarks_and_held_requested_first_on_their_own_never_skipped_as_refused",
                 "new_symbols": "wait_for_actual_bars_no_REST_prefill",
                 "global_staleness_policy": "aggregate_stream_loss_or_critical_symbol_stale_blocks_entries",
                 "per_symbol_staleness_policy": "stale_or_unadmitted_symbol_rejected_by_shared_entry_gate",

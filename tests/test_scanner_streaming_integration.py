@@ -213,26 +213,36 @@ async def test_no_streaming_provider_leaves_historical_replay_unchanged():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("result", [False, None, "true"])
 async def test_incomplete_subscription_result_cannot_admit_entries(result):
-    async def incomplete(symbols):
+    calls = []
+
+    async def incomplete(symbols, protected=0):
+        calls.append((list(symbols), protected))
         return result
     engine = helper_engine(SimpleNamespace(update_subscriptions=incomplete), [1.0], [])
     await engine._sync_streaming_subscriptions({})
+    # The double was actually called (benchmarks lead as protected symbols)
+    # and its incomplete result, not a call error, blocked entries.
+    assert calls and calls[0][1] == 2 and calls[0][0][:2] == ["SPY", "QQQ"]
     assert engine._entries_blocked
     assert engine._last_entries_blocked_reason == "stream_subscription_sync"
+    assert engine._stream_sync_status["error"] == "RuntimeError"
 
 
 @pytest.mark.asyncio
 async def test_subscription_wait_has_bounded_deadline_and_fails_closed(monkeypatch):
-    async def stalled(symbols):
+    async def stalled(symbols, protected=0):
         await asyncio.Event().wait()
     wait_for = asyncio.wait_for
+    seen = []
     async def bounded(awaitable, timeout):
-        assert timeout == 5.0
+        seen.append(timeout)
         return await wait_for(awaitable, timeout=0.01)
     monkeypatch.setattr("backend.organism.live_engine.asyncio.wait_for", bounded)
     engine = helper_engine(SimpleNamespace(update_subscriptions=stalled), [1.0], [])
     await engine._sync_streaming_subscriptions({})
+    assert seen == [5.0]
     assert engine._entries_blocked and engine._stream_subscription_sync_failed
+    assert engine._stream_sync_status["error"] == "TimeoutError"
 
 
 async def run_live_provider_replay(monkeypatch, tmp_path, *, fail_once=None, after_entry=None):

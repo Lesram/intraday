@@ -120,8 +120,11 @@ intersected with the symbols the current connection has confirmed for bars and
 quotes. A provider refusal (code 405 "symbol limit exceeded") drops the refused
 names from the transport's desired set (never replayed on reconnect) and leaves
 them out of later requests on that connection until a confirmed removal frees
-capacity, so a refusal cannot drag newly requested names down with it. A sync
-is reported `complete` only when every desired symbol is admitted. An unconfirmed non-critical symbol is excluded individually
+capacity, so a refusal cannot drag newly requested names down with it.
+Benchmarks and held symbols are requested on their own, ahead of everything
+else, and are never skipped as previously refused (a 405 refuses a whole
+request). A sync is reported `complete` only when every desired symbol is
+admitted. An unconfirmed non-critical symbol is excluded individually
 (`unadmitted_symbol`); provider loss or an unconfirmed critical/held symbol
 blocks every new entry (`stream_subscription_sync`); protective exits still
 execute. New subscriptions do not seed REST bars or claim freshness.
