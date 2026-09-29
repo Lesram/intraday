@@ -2740,8 +2740,15 @@ class OrganismLiveEngine(
             # Audit 2026-09-29 (MDP-01): the desired set is bounded by the
             # provider cap and ordered by what must never lose data.
             desired = self._bounded_stream_symbols(current_positions)
+            required = set(STREAM_CRITICAL_SYMBOLS) | {
+                str(s).upper() for s in (current_positions or {})
+            }
+            # Benchmarks + held lead the desired list; the provider requests
+            # them on their own so a refusal of other names cannot take them down.
+            protected = sum(1 for s in desired if s in required)
             synchronized = await asyncio.wait_for(
-                provider.update_subscriptions(desired), timeout=self._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S,
+                provider.update_subscriptions(desired, protected=protected),
+                timeout=self._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S,
             )
             # Admission is what the current connection has confirmed. A refusal
             # of a non-critical symbol is a per-symbol exclusion; provider loss
@@ -2756,9 +2763,6 @@ class OrganismLiveEngine(
                 admitted = set(desired) & confirmed
             else:
                 raise RuntimeError("subscription_update_incomplete")
-            required = set(STREAM_CRITICAL_SYMBOLS) | {
-                str(s).upper() for s in (current_positions or {})
-            }
             if confirmed is not None and not required <= confirmed:
                 raise RuntimeError("required_symbols_unconfirmed")
             self._stream_admitted = frozenset(admitted)

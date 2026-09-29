@@ -401,3 +401,45 @@ async def test_refused_names_do_not_drag_new_held_symbol_down(monkeypatch):
         assert not engine._entries_blocked, engine._last_entries_blocked_reason
     finally:
         await provider.stop()
+
+
+@pytest.mark.asyncio
+async def test_held_symbol_arriving_with_window_names_is_requested_first(monkeypatch):
+    """Provider limit 22 with 20 core: a new held symbol and three window names
+    arrive together; the held symbol is requested on its own and subscribes,
+    the window names are refused and excluded, entries stay allowed."""
+    now = [pd.Timestamp("2026-09-28T14:00:00Z").timestamp()]
+    provider, socket = await real_capped_provider(monkeypatch, lambda: now[0], CORE, cap=22)
+    try:
+        engine = core_engine(provider, now, CORE + ["W1", "W2", "W3"])
+        await feed_all(provider, now[0])
+        await engine._sync_streaming_subscriptions({"H0": {"qty": 1}})
+        assert "H0" in provider.confirmed_symbols()
+        assert "H0" in engine._stream_admitted
+        assert not engine._entries_blocked, engine._last_entries_blocked_reason
+        assert engine._stream_sync_status["status"] == "partial"
+        assert {"W1", "W2", "W3"} <= provider._stream.refused_names
+        assert not ({"W1", "W2", "W3"} & engine._stream_admitted)
+    finally:
+        await provider.stop()
+
+
+@pytest.mark.asyncio
+async def test_refused_protected_symbol_is_retried_not_remembered(monkeypatch):
+    """A held symbol refused while the connection is full is retried on the
+    next sync (never excluded as refused) once capacity exists."""
+    now = [pd.Timestamp("2026-09-28T14:00:00Z").timestamp()]
+    provider, socket = await real_capped_provider(monkeypatch, lambda: now[0], CORE, cap=20)
+    try:
+        engine = core_engine(provider, now, CORE)
+        await feed_all(provider, now[0])
+        await engine._sync_streaming_subscriptions({"H0": {"qty": 1}})
+        assert engine._entries_blocked and engine._stream_admitted == frozenset()
+        socket.cap = 21  # capacity becomes available
+        engine._entries_blocked = False
+        engine._last_entries_blocked_reason = ""
+        await engine._sync_streaming_subscriptions({"H0": {"qty": 1}})
+        assert "H0" in engine._stream_admitted
+        assert not engine._entries_blocked, engine._last_entries_blocked_reason
+    finally:
+        await provider.stop()

@@ -351,8 +351,13 @@ class StreamingDataProvider:
 
     # ── Subscription Management ───────────────────────────────────
 
-    async def update_subscriptions(self, symbols: list[str]) -> bool:
+    async def update_subscriptions(self, symbols: list[str], protected: int = 0) -> bool:
         """Synchronize requested bar/quote subscriptions; True means complete.
+
+        ``protected``: the first N symbols (benchmarks, held positions) are
+        requested on their own, before the rest, and are never skipped as
+        previously refused, so a refusal of lower-priority names cannot take
+        them down with it.
 
         A successful transport update is not bar freshness. New symbols remain
         stale until an advancing, timely streaming bar arrives. No REST seed
@@ -369,7 +374,7 @@ class StreamingDataProvider:
                 if not await self._retry_start():
                     return False
         async with self._lifecycle_lock:
-            return await self._update_subscriptions(ordered)
+            return await self._update_subscriptions(ordered, protected)
 
     @staticmethod
     def _bounded(symbols: list[str]) -> list[str]:
@@ -397,7 +402,7 @@ class StreamingDataProvider:
             bars.update(names)
         return bars & set(stream.quote_subscriptions)
 
-    async def _update_subscriptions(self, symbols: list[str]) -> bool:
+    async def _update_subscriptions(self, symbols: list[str], protected: int = 0) -> bool:
         if not self._stream or not self._stream.is_authenticated:
             logger.warning("Cannot update subscriptions — not connected")
             return False
@@ -444,28 +449,35 @@ class StreamingDataProvider:
 
         # Names refused (symbol limit) on this connection are not re-sent: a
         # refusal rejects the whole request, which would take new names with it.
-        refused = set(getattr(stream, "refused_names", ()) or ())
+        first = set(ordered[:max(0, protected)])
+        refused = set(getattr(stream, "refused_names", ()) or ()) - first
         if refused & new_set:
             complete = False
         bars_to_add = [s for s in ordered if s not in current_bars and s not in refused]
         quotes_to_add = [s for s in ordered if s not in current_quotes and s not in refused]
-        if bars_to_add:
-            added = await stream.subscribe_bars(bars_to_add)
-            if not self._is_current_session(stream, generation):
-                return False
-            if added is not True:
-                logger.warning("Streaming bar subscription failed: %d symbols", len(bars_to_add))
-                complete = False
-            else:
-                self._subscribed_symbols.update(bars_to_add)
-                self._retired_symbols.difference_update(bars_to_add)
-        if quotes_to_add:
-            added = await stream.subscribe_quotes(quotes_to_add)
-            if not self._is_current_session(stream, generation):
-                return False
-            if added is not True:
-                logger.warning("Streaming quote subscription failed: %d symbols", len(quotes_to_add))
-                complete = False
+        # Protected names go in their own first request (a 405 refuses a whole
+        # request), then everything else.
+        for bars, quotes in (
+            ([s for s in bars_to_add if s in first], [s for s in quotes_to_add if s in first]),
+            ([s for s in bars_to_add if s not in first], [s for s in quotes_to_add if s not in first]),
+        ):
+            if bars:
+                added = await stream.subscribe_bars(bars)
+                if not self._is_current_session(stream, generation):
+                    return False
+                if added is not True:
+                    logger.warning("Streaming bar subscription failed: %d symbols", len(bars))
+                    complete = False
+                else:
+                    self._subscribed_symbols.update(bars)
+                    self._retired_symbols.difference_update(bars)
+            if quotes:
+                added = await stream.subscribe_quotes(quotes)
+                if not self._is_current_session(stream, generation):
+                    return False
+                if added is not True:
+                    logger.warning("Streaming quote subscription failed: %d symbols", len(quotes))
+                    complete = False
         if complete and (bars_to_add or quotes_to_add):
             logger.info("Streaming subscribed: +%d symbols", len(set(bars_to_add) | set(quotes_to_add)))
 
