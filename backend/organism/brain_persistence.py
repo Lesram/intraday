@@ -92,6 +92,23 @@ SIDECAR_TELEMETRY_NAMES = frozenset({
     MODEL_SWAP_AUDIT_FILE,
     PREVIOUS_MODEL_DIR,
 })
+# Audit 2026-09-29 R7 — head entries written by OTHER components, never by the
+# _save_* helpers into tmp_dir. The swap moved them to .brain_old and rmtree'd
+# them on every full save:
+#   diagnostics/             DiagnosticReportStore history.json + edge tracker
+#   overnight_positions.json EOD-flatten-failure flag -> forced next-open exit
+#   transfer_knowledge.json  TransferLearningEngine store (_save_brain rewrote
+#                            it after the swap; force_save_brain never did)
+#   *_quarantined.jsonl      reversible quarantine (clean_brain_sidecars.py)
+# They stay in place across the swap. Brain-state files the save owns (models,
+# evolved_params, trade history, ...) are still swapped out even when a save
+# omits them, so a break-glass reset cannot resurrect stale state.
+EXTERNAL_HEAD_ENTRIES = frozenset({
+    "diagnostics",
+    "overnight_positions.json",
+    "transfer_knowledge.json",
+})
+QUARANTINED_SIDECAR_SUFFIX = "_quarantined.jsonl"
 
 
 def _float_or_none(value: Any) -> "float | None":
@@ -668,19 +685,21 @@ class OrganismBrain:
             # (2026-07-23): SIDECAR_TELEMETRY_NAMES now covers ALL append-only
             # sidecars (shadow-exit / model-swap-audit / previous_model dir),
             # not just the two that happened to be listed — these are the files
-            # the swap kept deleting on every full save.
+            # the swap kept deleting on every full save. R7 (2026-09-29): plus
+            # EXTERNAL_HEAD_ENTRIES and *_quarantined.jsonl.
             preserved_names = {
                 ".tmp_save",
                 ".brain_old",
                 LOCK_FILE,
                 "backups",
-            } | set(SIDECAR_TELEMETRY_NAMES)
+            } | set(SIDECAR_TELEMETRY_NAMES) | set(EXTERNAL_HEAD_ENTRIES)
 
             def _preserve_during_swap(path: Path) -> bool:
                 return (
                     path.name in preserved_names
                     or path.name.startswith("corrupt_head_")
                     or path.name.startswith(ARCHIVE_PREFIX)
+                    or path.name.endswith(QUARANTINED_SIDECAR_SUFFIX)
                 )
 
             has_existing = any(
@@ -705,9 +724,19 @@ class OrganismBrain:
                             continue
                         shutil.move(str(f), str(old_dir / f.name))
 
-                # Move new files from tmp to brain dir
+                # Move new files from tmp to brain dir. Only a preserved name
+                # can still exist here; the regenerated copy replaces it (R7):
+                # a file atomically via os.replace, a directory by moving the
+                # old one aside first so shutil.move cannot nest the new tree.
                 for f in tmp_dir.iterdir():
-                    shutil.move(str(f), str(self.brain_dir / f.name))
+                    dest = self.brain_dir / f.name
+                    if f.is_dir() or dest.is_dir():
+                        if os.path.lexists(dest):
+                            old_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.move(str(dest), str(old_dir / f.name))
+                        shutil.move(str(f), str(dest))
+                    else:
+                        os.replace(f, dest)
                 self.backup_dir.mkdir(parents=True, exist_ok=True)
             except Exception:
                 # Restore from old if anything went wrong

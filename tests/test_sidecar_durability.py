@@ -68,10 +68,10 @@ class _StubLearner:
         self._reference_features = None
 
 
-def _do_full_save(brain: OrganismBrain) -> None:
+def _do_full_save(brain: OrganismBrain, learner: _StubLearner | None = None) -> None:
     brain.save(
         signal_gen=_StubSignalGenerator(),
-        learner=_StubLearner(),
+        learner=learner or _StubLearner(),
         equity_curve=[100000.0, 100010.0],
         all_trades=[TradeRecord(
             symbol="AAPL", direction=1.0, entry_price=100.0, exit_price=101.0,
@@ -143,6 +143,121 @@ class TestSwapPreservesSidecars:
         assert (brain_dir / PREVIOUS_MODEL_DIR).is_dir()
         # A clean save/reload must not have quarantined anything.
         assert not list(brain_dir.glob("corrupt_head_*"))
+
+
+# ── Audit 2026-09-29 R7: head entries owned by OTHER components ──
+# The swap preserved only an explicit list, so every full save deleted the
+# diagnostics store, the EOD overnight-position flag (which forces the next-open
+# exit), the reversible *_quarantined.jsonl sidecars and — on force_save_brain,
+# which never rewrites it — the transfer-learning store.
+
+_EXTERNAL_ENTRIES = {
+    "diagnostics/history.json": b'[{"trigger":"pre_open","report":{"n":1}}]',
+    "diagnostics/daily_edge_tracker.jsonl": b'{"session":"2026-09-28","edge":0.1}\n',
+    "overnight_positions.json": b'{"session_date":"2026-09-28","symbols":["AAPL"]}',
+    "shadow_exit_telemetry_quarantined.jsonl": b'{"symbol":"X","qty":0.0}\n',
+    "model_swap_audit_quarantined.jsonl": b'{"swap":1}\n',
+    "transfer_knowledge.json": b'{"version":1,"runs":[{"run_id":7}]}',
+}
+
+
+def _plant_external_entries(brain_dir: Path) -> None:
+    for relative, content in _EXTERNAL_ENTRIES.items():
+        path = brain_dir / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+
+
+def _learning_total_trades(brain_dir: Path) -> int:
+    import json
+    return json.loads((brain_dir / "learning_state.json").read_text())["total_trades"]
+
+
+class TestSwapPreservesExternalHeadEntries:
+    def test_full_save_keeps_entries_it_does_not_regenerate(self, tmp_path):
+        brain_dir = tmp_path / "brain"
+        brain = OrganismBrain(brain_dir=brain_dir)
+        _do_full_save(brain)
+        _plant_external_entries(brain_dir)
+        assert _learning_total_trades(brain_dir) == 5
+        learner = _StubLearner()
+        learner.state.total_trades = 6
+        _do_full_save(brain, learner)   # the swap that used to delete them
+
+        for relative, content in _EXTERNAL_ENTRIES.items():
+            assert (brain_dir / relative).read_bytes() == content, relative
+        assert sorted(p.name for p in (brain_dir / "diagnostics").iterdir()) == [
+            "daily_edge_tracker.jsonl", "history.json",
+        ]
+        # Regenerated files are still replaced by the new save.
+        assert _learning_total_trades(brain_dir) == 6
+        assert (brain_dir / ".save_complete").is_file()
+        assert not (tmp_path / ".brain_old").exists()
+        assert not (brain_dir / ".tmp_save").exists()
+        reloaded = OrganismBrain(brain_dir=brain_dir)
+        assert reloaded.load() is True
+        assert reloaded.learning_state["total_trades"] == 6
+
+    def test_regenerated_copy_replaces_preserved_entry_without_nesting(self, tmp_path, monkeypatch):
+        brain_dir = tmp_path / "brain"
+        brain = OrganismBrain(brain_dir=brain_dir)
+        _do_full_save(brain)
+        _plant_external_entries(brain_dir)
+        original = OrganismBrain._save_regime_state
+
+        def regenerate_external(self, target, regime_detector):
+            # A future save that DOES write these names into tmp_dir.
+            original(self, target, regime_detector)
+            (target / "transfer_knowledge.json").write_bytes(b'{"version":2}')
+            (target / "diagnostics").mkdir()
+            (target / "diagnostics" / "history.json").write_bytes(b"[]")
+
+        monkeypatch.setattr(OrganismBrain, "_save_regime_state", regenerate_external)
+        _do_full_save(brain)
+
+        assert (brain_dir / "transfer_knowledge.json").read_bytes() == b'{"version":2}'
+        assert sorted(p.name for p in (brain_dir / "diagnostics").iterdir()) == ["history.json"]
+        assert (brain_dir / "diagnostics" / "history.json").read_bytes() == b"[]"
+        assert not (brain_dir / "diagnostics" / "diagnostics").exists()
+        assert (brain_dir / "overnight_positions.json").read_bytes() == \
+            _EXTERNAL_ENTRIES["overnight_positions.json"]
+        assert (brain_dir / ".save_complete").is_file()
+
+    def test_failed_swap_restores_moved_aside_entry_and_drops_sentinel(self, tmp_path, monkeypatch):
+        import shutil as _shutil
+        from backend.organism import brain_persistence
+
+        brain_dir = tmp_path / "brain"
+        brain = OrganismBrain(brain_dir=brain_dir)
+        _do_full_save(brain)
+        _plant_external_entries(brain_dir)
+        original = OrganismBrain._save_regime_state
+
+        def regenerate_diagnostics(self, target, regime_detector):
+            original(self, target, regime_detector)
+            (target / "diagnostics").mkdir()
+            (target / "diagnostics" / "history.json").write_bytes(b"[]")
+
+        real_move = _shutil.move
+
+        def failing_move(src, dst, *args, **kwargs):
+            if Path(src).parent.name == ".tmp_save" and Path(src).name == "diagnostics":
+                raise OSError("injected swap failure")
+            return real_move(src, dst, *args, **kwargs)
+
+        monkeypatch.setattr(OrganismBrain, "_save_regime_state", regenerate_diagnostics)
+        monkeypatch.setattr(brain_persistence.shutil, "move", failing_move)
+        import pytest
+        with pytest.raises(OSError, match="injected swap failure"):
+            _do_full_save(brain)
+
+        # The preserved directory moved aside for replacement is restored, the
+        # other external entries never moved, and the missing sentinel marks an
+        # interrupted swap for the next load().
+        for relative, content in _EXTERNAL_ENTRIES.items():
+            assert (brain_dir / relative).read_bytes() == content, relative
+        assert not (brain_dir / ".save_complete").exists()
+        assert (brain_dir / "manifest.json").is_file()
 
 
 # ── Real-close guard on the shadow-exit recorder ──
