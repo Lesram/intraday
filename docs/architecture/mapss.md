@@ -102,19 +102,26 @@ new image and establish its forward boundary at activation.
 After scanner discovery and the existing fresh broker-position query, the engine
 synchronizes streaming subscriptions to a **bounded, priority-ordered** desired
 set (audit 2026-09-29, MDP-01): critical benchmarks (`ORGANISM_STREAM_CRITICAL_SYMBOLS`,
-default SPY,QQQ), then held and pending-entry symbols, then the core universe,
-then the scanner window, then remaining constructor base symbols, truncated at
-`ORGANISM_STREAM_MAX_SYMBOLS` (default **28**, headroom under the IEX plan's
-30-symbol websocket limit). Critical and held/pending symbols are never dropped.
+default SPY,QQQ), then held symbols, then pending-entry symbols, then the core
+universe, then the scanner window, then remaining constructor base symbols,
+truncated at `ORGANISM_STREAM_MAX_SYMBOLS` (default **28**, headroom under the
+IEX plan's 30-symbol websocket limit). Benchmarks and held symbols are never
+dropped by the engine (the set grows to fit them; if they ever exceed the
+provider cap the provider truncates and the sync fails closed). Pending-entry
+symbols are protected only within the cap.
 Scanner discoveries live in a bounded window (`ORGANISM_SCANNER_WINDOW_MAX`,
 default 8, and never more than the cap leaves free) and are evicted after
 `ORGANISM_SCANNER_WINDOW_TTL_SCANS` scans without re-observation unless held or
-pending; each session starts from the core universe. The operation has a
+pending; among names seen in the current scan, existing window members are
+kept ahead of newcomers to limit subscription churn; each session starts from
+the core universe. The operation has a
 **5-second** deadline and retries next tick. Entry admission is the desired set
 intersected with the symbols the current connection has confirmed for bars and
 quotes. A provider refusal (code 405 "symbol limit exceeded") drops the refused
-names from the transport's desired set so they are neither retried nor replayed
-on reconnect. An unconfirmed non-critical symbol is excluded individually
+names from the transport's desired set (never replayed on reconnect) and leaves
+them out of later requests on that connection until a confirmed removal frees
+capacity, so a refusal cannot drag newly requested names down with it. A sync
+is reported `complete` only when every desired symbol is admitted. An unconfirmed non-critical symbol is excluded individually
 (`unadmitted_symbol`); provider loss or an unconfirmed critical/held symbol
 blocks every new entry (`stream_subscription_sync`); protective exits still
 execute. New subscriptions do not seed REST bars or claim freshness.

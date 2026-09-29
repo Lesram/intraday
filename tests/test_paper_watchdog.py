@@ -1224,10 +1224,18 @@ def test_policy_reason_cannot_mask_a_failed_stream_sync(watchdog, monkeypatch, t
 
 
 def test_zero_admitted_symbols_is_a_data_plane_fault(watchdog, monkeypatch, tmp_path, policy_probe):
-    policy_probe['engine']['stream_admission'] = {'cap': 28, 'admitted_count': 0,
+    # A successful sync always admits the benchmarks, so only SPY/QQQ admitted
+    # (nothing tradeable beyond them) is the realistic fault state.
+    policy_probe['engine']['stream_admission'] = {'cap': 28, 'admitted_count': 2,
+                                                  'admitted_non_critical_count': 0,
                                                   'sync': {'status': 'partial'}}
     results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(False, '')] * 3)
     assert results[-1]['problems'] == ['entries_blocked:no_admitted_symbols']
+    policy_probe['engine']['stream_admission'] = {'cap': 28, 'admitted_count': 20,
+                                                  'admitted_non_critical_count': 18,
+                                                  'sync': {'status': 'partial'}}
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(False, '')] * 3)
+    assert streaks(results) == [0, 0, 0]
     # REST mode (no stream admission state) is judged by the reason alone.
     policy_probe['engine']['stream_admission'] = {'cap': 28, 'admitted_count': None, 'sync': {}}
     results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(False, '')] * 3)

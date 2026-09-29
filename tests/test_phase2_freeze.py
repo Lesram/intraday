@@ -81,7 +81,7 @@ def test_freeze_covers_full_decision_surface(freeze):
         "operator_controls", "governance", "entry_admission", "operator_api",
         "entry_frame_capture", "entry_evidence", "entry_freshness", "entry_submission",
         "emergency_stop_api", "emergency_stop_service", "entry_cancellation",
-        "pending_entry_lifecycle",
+        "pending_entry_lifecycle", "eod_escalation",
     }
     rde = freeze["surface"]["routing_data_env"]
     assert set(rde) >= {"ALPACA_DATA_FEED", "ORGANISM_MIN_AVG_DOLLAR_VOLUME",

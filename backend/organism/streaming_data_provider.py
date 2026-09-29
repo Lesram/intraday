@@ -429,6 +429,9 @@ class StreamingDataProvider:
             if removed is True:
                 self._subscribed_symbols.difference_update(to_remove)
                 self._retired_symbols.update(to_remove)
+                forget = getattr(stream, "forget_refusals", None)
+                if callable(forget):
+                    forget()  # capacity freed: refused names may be retried
                 for symbol in to_remove:
                     self._bars.pop(symbol, None)
                     self._quotes.pop(symbol, None)
@@ -439,8 +442,13 @@ class StreamingDataProvider:
                 logger.warning("Streaming unsubscribe failed: %d symbols retained", len(to_remove))
                 complete = False
 
-        bars_to_add = [s for s in ordered if s not in current_bars]
-        quotes_to_add = [s for s in ordered if s not in current_quotes]
+        # Names refused (symbol limit) on this connection are not re-sent: a
+        # refusal rejects the whole request, which would take new names with it.
+        refused = set(getattr(stream, "refused_names", ()) or ())
+        if refused & new_set:
+            complete = False
+        bars_to_add = [s for s in ordered if s not in current_bars and s not in refused]
+        quotes_to_add = [s for s in ordered if s not in current_quotes and s not in refused]
         if bars_to_add:
             added = await stream.subscribe_bars(bars_to_add)
             if not self._is_current_session(stream, generation):

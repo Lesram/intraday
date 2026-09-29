@@ -2749,8 +2749,8 @@ class OrganismLiveEngine(
             # keep their own data path).
             confirmed = self._confirmed_stream_symbols(provider)
             if synchronized is True:
-                status = "complete"
                 admitted = set(desired) if confirmed is None else set(desired) & confirmed
+                status = "complete" if admitted == set(desired) else "partial"
             elif confirmed is not None:
                 status = "partial"
                 admitted = set(desired) & confirmed
@@ -2766,6 +2766,7 @@ class OrganismLiveEngine(
                 "status": status,
                 "desired": len(desired),
                 "admitted": len(self._stream_admitted),
+                "admitted_non_critical": len(self._stream_admitted - set(STREAM_CRITICAL_SYMBOLS)),
                 "cap": STREAM_MAX_SYMBOLS,
             }
             self._stage_update_data_staleness()
@@ -2800,46 +2801,61 @@ class OrganismLiveEngine(
 
     @staticmethod
     def _confirmed_stream_symbols(provider) -> "set[str] | None":
-        """Symbols the provider has confirmed for bars and quotes, or None.
+        """Symbols the provider has confirmed for bars and quotes.
 
-        None means the provider does not expose confirmation (or returned
-        something other than a symbol collection); the caller then relies
-        on the provider's own completion result.
+        None only when the provider type does not implement confirmation
+        (test doubles, shims); the caller then relies on the provider's own
+        completion result. A provider that implements it but is not running,
+        raises, or returns something other than a symbol collection confirms
+        nothing (fail closed).
         """
-        confirmed = getattr(provider, "confirmed_symbols", None)
-        if not callable(confirmed) or not getattr(provider, "is_running", False):
+        if not callable(getattr(type(provider), "confirmed_symbols", None)):
             return None
+        if not getattr(provider, "is_running", False):
+            return set()
         try:
-            symbols = confirmed()
-            if not isinstance(symbols, (set, frozenset, list, tuple)):
-                return None
-            return {str(s).upper() for s in symbols}
+            symbols = provider.confirmed_symbols()
         except Exception:
-            return None
+            return set()
+        if not isinstance(symbols, (set, frozenset, list, tuple)):
+            return set()
+        return {str(s).upper() for s in symbols}
 
     def _protected_stream_symbols(self, current_positions) -> list[str]:
-        """Held positions plus symbols with an unresolved pending entry."""
-        held = {str(s).upper() for s in (current_positions or {})}
+        """Held positions first, then symbols with an unresolved pending entry."""
+        held = sorted({str(s).upper() for s in (current_positions or {})})
         pending = {str(s).upper() for s in (getattr(self, "_pending_entry", None) or {})}
         pending |= {str(s).upper() for s in (getattr(self, "_pending_entry_order_ids", None) or {})}
-        return sorted(held | pending)
+        return held + sorted(pending - set(held))
 
     def _bounded_stream_symbols(self, current_positions) -> list[str]:
-        """Desired stream set: benchmarks > held/pending > core > window > base.
+        """Desired stream set: benchmarks > held > pending > core > window > base.
 
-        Benchmarks and held/pending symbols are never dropped, even if
-        together they exceed the configured cap; everything else is
-        truncated in priority order so the provider cap is respected.
+        Benchmarks and held symbols are never dropped (the cap grows to fit
+        them; if they exceed the provider cap the provider truncates and the
+        sync fails closed). Pending-entry symbols are protected only within
+        the cap; everything else is truncated in priority order.
         """
-        protected = self._protected_stream_symbols(current_positions)
+        held = sorted({str(s).upper() for s in (current_positions or {})})
+        must = list(dict.fromkeys([*STREAM_CRITICAL_SYMBOLS, *held]))
+        must_set = set(must)
+        cap = max(STREAM_MAX_SYMBOLS, len(must))
+        if (len(must) > STREAM_MAX_SYMBOLS
+                and not getattr(self, "_warned_required_exceeds_stream_cap", False)):
+            self._warned_required_exceeds_stream_cap = True
+            logger.warning(
+                "Benchmarks + held symbols (%d) exceed stream cap %d; new entries "
+                "stay blocked until exposure falls under the cap",
+                len(must), STREAM_MAX_SYMBOLS,
+            )
+        pending = [
+            s for s in self._protected_stream_symbols(current_positions) if s not in must_set
+        ][: max(0, cap - len(must))]
         core = list(getattr(self, "_core_universe", None) or self._universe)
         core_set = set(core)
         window = [s for s in self._universe if s not in core_set]
         base_rest = sorted(set(self._streaming_base_symbols) - core_set)
-        ordered = list(dict.fromkeys(
-            [*STREAM_CRITICAL_SYMBOLS, *protected, *core, *window, *base_rest]
-        ))
-        cap = max(STREAM_MAX_SYMBOLS, len(set(protected) | set(STREAM_CRITICAL_SYMBOLS)))
+        ordered = list(dict.fromkeys([*must, *pending, *core, *window, *base_rest]))
         if (len(core_set | set(STREAM_CRITICAL_SYMBOLS)) > cap
                 and not getattr(self, "_warned_core_exceeds_stream_cap", False)):
             self._warned_core_exceeds_stream_cap = True
@@ -8269,6 +8285,10 @@ class OrganismLiveEngine(
                 "scanner_window": sorted(getattr(self, "_scanner_window", {}) or {}),
                 "admitted_count": (
                     len(self._stream_admitted)
+                    if getattr(self, "_stream_admitted", None) is not None else None
+                ),
+                "admitted_non_critical_count": (
+                    len(self._stream_admitted - set(STREAM_CRITICAL_SYMBOLS))
                     if getattr(self, "_stream_admitted", None) is not None else None
                 ),
                 "stale_symbols_excluded": sorted(

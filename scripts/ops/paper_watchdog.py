@@ -690,7 +690,9 @@ def _stream_data_plane_fault(engine: dict) -> str | None:
     status = sync.get("status") if isinstance(sync, dict) else None
     if status == "failed":
         return "stream_subscription_sync"
-    admitted = admission.get("admitted_count")
+    # Benchmarks are always admitted when a sync succeeds, so judge the
+    # symbols that can actually be traded (older engines: total count).
+    admitted = admission.get("admitted_non_critical_count", admission.get("admitted_count"))
     if status in {"complete", "partial"} and type(admitted) is int and admitted <= 0:
         return "no_admitted_symbols"
     return None

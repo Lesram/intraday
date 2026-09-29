@@ -86,7 +86,7 @@ async def test_monday_state_68_symbols_is_bounded_and_does_not_block(monkeypatch
         assert not engine._data_stale
         assert engine._stream_sync_status["status"] in {"complete", "partial"}
         # Symbols beyond the cap are never admitted for entries.
-        assert len(engine._stream_admitted) <= 30
+        assert len(engine._stream_admitted) <= 28
         assert set(CORE) <= engine._stream_admitted
         # A reconnect replays only the bounded desired set: core quotes survive.
         stream = provider._stream
@@ -351,5 +351,53 @@ async def test_update_subscriptions_defers_to_transport_reconnect(monkeypatch):
         assert await provider.update_subscriptions(list(CORE)) is False
         retry.assert_not_awaited()
         assert provider.confirmed_symbols() == set()
+    finally:
+        await provider.stop()
+
+
+def test_held_symbols_outrank_pending_and_pending_stays_within_cap(monkeypatch):
+    monkeypatch.setattr("backend.organism.live_engine.STREAM_MAX_SYMBOLS", 5)
+    engine = core_engine(None, [0.0], CORE)
+    engine._pending_entry = {f"P{i}": 1 for i in range(5)}
+    engine._pending_entry_order_ids = {}
+    desired = engine._bounded_stream_symbols({"ZHELD": {"qty": 1}})
+    # A held name sorting after the pending ones still comes first; pending
+    # protection never grows the set past the cap.
+    assert desired == ["SPY", "QQQ", "ZHELD", "P0", "P1"]
+    # Benchmarks + held beyond the cap: the set grows to fit exactly them.
+    held = {f"H{i}": {"qty": 1} for i in range(6)}
+    desired = engine._bounded_stream_symbols(held)
+    assert desired == ["SPY", "QQQ", "H0", "H1", "H2", "H3", "H4", "H5"]
+
+
+def test_confirmation_capability_is_judged_by_provider_type():
+    from unittest.mock import MagicMock
+    from backend.organism.live_engine import OrganismLiveEngine
+    # A test double without the capability falls back to the provider result.
+    assert OrganismLiveEngine._confirmed_stream_symbols(MagicMock()) is None
+    # A real provider that is not running confirms nothing (fail closed).
+    assert OrganismLiveEngine._confirmed_stream_symbols(StreamingDataProvider()) == set()
+
+
+@pytest.mark.asyncio
+async def test_refused_names_do_not_drag_new_held_symbol_down(monkeypatch):
+    """A provider limit below the configured cap refuses window names once;
+    later requests leave them out, so a newly held symbol still subscribes."""
+    now = [pd.Timestamp("2026-09-28T14:00:00Z").timestamp()]
+    provider, socket = await real_capped_provider(monkeypatch, lambda: now[0], CORE, cap=22)
+    try:
+        engine = core_engine(provider, now, CORE + ["W1", "W2", "W3"])
+        await feed_all(provider, now[0])
+        await engine._sync_streaming_subscriptions({})
+        assert socket.refusals >= 1
+        assert not engine._entries_blocked, engine._last_entries_blocked_reason
+        assert engine._stream_sync_status["status"] == "partial"
+        assert {"W1", "W2", "W3"} <= provider._stream.refused_names
+        refusals = socket.refusals
+        await engine._sync_streaming_subscriptions({"H1": {"qty": 1}})
+        assert socket.refusals == refusals  # refused names were not re-sent
+        assert "H1" in provider.confirmed_symbols()
+        assert "H1" in engine._stream_admitted
+        assert not engine._entries_blocked, engine._last_entries_blocked_reason
     finally:
         await provider.stop()

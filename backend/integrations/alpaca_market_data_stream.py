@@ -116,6 +116,10 @@ class AlpacaMarketDataStream:
         self._request_error_code: int | None = None
         self.symbol_limit_exceeded = False
         self.refused_symbols = 0
+        # Names refused (405) on the current connection. Callers leave them out
+        # of later requests until capacity is freed or the connection changes,
+        # so one refusal cannot drag newly requested names down with it.
+        self._refused_names: set[str] = set()
         self._subscription_changed = asyncio.Event()
         self._subscription_lock = asyncio.Lock()
         self._connect_lock = asyncio.Lock()
@@ -184,6 +188,7 @@ class AlpacaMarketDataStream:
                 return False
 
     def _clear_confirmations(self) -> None:
+        self._refused_names.clear()
         self.quote_subscriptions.clear()
         self.trade_subscriptions.clear()
         for names in self.bar_subscriptions.values():
@@ -292,6 +297,15 @@ class AlpacaMarketDataStream:
             return False
 
     @property
+    def refused_names(self) -> frozenset[str]:
+        """Names the provider refused on this connection (symbol limit)."""
+        return frozenset(self._refused_names)
+
+    def forget_refusals(self) -> None:
+        """Capacity was freed (a confirmed removal): refused names may retry."""
+        self._refused_names.clear()
+
+    @property
     def desired_symbols(self) -> set[str]:
         """Union of symbols this client wants across channels (may be unconfirmed)."""
         return set().union(*self._desired.values())
@@ -376,6 +390,7 @@ class AlpacaMarketDataStream:
                     for channel, names in channels.items():
                         rejected = names - self._confirmed(channel)
                         self._desired[channel].difference_update(rejected)
+                        self._refused_names.update(rejected)
                         refused += len(rejected)
                     self.symbol_limit_exceeded = True
                     self.refused_symbols += refused
