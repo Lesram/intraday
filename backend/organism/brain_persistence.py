@@ -2564,6 +2564,30 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
         raise
 
 
+def _write_text_atomic(path: Path, text: str) -> None:
+    """Replace ``path`` with ``text`` atomically (audit 2026-09-29 R11).
+
+    Same mechanics as ``_write_json`` (same-directory temp file, flush, fsync,
+    ``os.replace``) for callers that must keep their own serialization. The
+    temp name is unique per call and ends in ``.tmp`` so an orphan left by a
+    SIGKILL is swept by save() (PP2-3). On any failure the temp file is
+    removed and the previous ``path`` is untouched.
+    """
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.{os.urandom(6).hex()}.tmp")
+    try:
+        with open(tmp_path, "x", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            tmp_path.unlink()
+        except OSError:
+            pass
+        raise
+
+
 def _write_csv_atomic(df: "pd.DataFrame", path: Path) -> None:
     """V9 PP-1 / Wave-41 (2026-05-03): atomic write-then-rename for CSVs.
 

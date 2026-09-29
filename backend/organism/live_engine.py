@@ -7834,8 +7834,14 @@ class OrganismLiveEngine(
 
         Called before the walk-forward gate so these safety-critical fields
         survive even when the gate blocks the full brain save.
+
+        Audit 2026-09-29 R11: serialize first, then replace the file
+        atomically. The previous in-place ``open(path, "w")`` left truncated,
+        invalid JSON on a crash or serializer error mid-write (a forced backup
+        restore on the next start). Serialization is unchanged.
         """
         import json
+        from backend.organism.brain_persistence import _write_text_atomic
         try:
             ec_path = self.brain.brain_dir / "extra_counters.json"
             if ec_path.is_file():
@@ -7846,8 +7852,7 @@ class OrganismLiveEngine(
             data["exit_levels"] = exit_levels
             data["entry_metadata"] = entry_metadata
             data["pending_entry_order_ids"] = dict(getattr(self, "_pending_entry_order_ids", {}))
-            with open(ec_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, default=str)
+            _write_text_atomic(ec_path, json.dumps(data, indent=2, default=str))
         except Exception as e:
             logger.error("Failed to persist exit_levels standalone: %s", e)
 
