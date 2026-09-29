@@ -1118,3 +1118,120 @@ def test_present_malformed_monitor_never_bootstraps_over_unread_history(watchdog
         assert not result["available"]
         assert "private" not in json.dumps(result)
         assert result["pending_events"] == (2 if monitor == {"pending_events": 2} else 0)
+
+
+# ── Audit 2026-09-29 R10: trading liveness ("engine up but blocked all day") ──
+
+from zoneinfo import ZoneInfo  # noqa: E402
+
+EASTERN = ZoneInfo("America/New_York")
+SESSION = datetime(2026, 9, 29, 11, 0, tzinfo=EASTERN).timestamp()  # Tuesday
+
+
+def liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, states, when=SESSION, **kwargs):
+    """One watchdog run per (data_stale, entries_blocked_reason) engine state."""
+    monkeypatch.setattr(watchdog, 'observe', lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog.time, 'time', lambda: when)
+    results = []
+    for stale, reason in states:
+        policy_probe['engine']['data_stale'] = stale
+        policy_probe['engine']['pipeline_diagnostics'] = None if reason is None else {
+            "schema": "paper_pipeline_diagnostics_v1", "entries_blocked_reason": reason,
+            "no_order_reason": "private-secret"}
+        results.append(watchdog.run_watchdog(tmp_path, check_policy=True, **kwargs))
+    return results
+
+
+def streaks(results):
+    return [result['trading_liveness']['blocked_streak'] for result in results]
+
+
+@pytest.mark.parametrize('when', [
+    datetime(2026, 9, 26, 11, 0, tzinfo=EASTERN).timestamp(),   # Saturday
+    datetime(2026, 11, 26, 11, 0, tzinfo=EASTERN).timestamp(),  # Thanksgiving (NYSE holiday)
+    datetime(2026, 9, 29, 9, 35, tzinfo=EASTERN).timestamp(),   # first ten minutes
+    datetime(2026, 9, 29, 15, 55, tzinfo=EASTERN).timestamp(),  # last ten minutes
+    datetime(2026, 11, 27, 12, 55, tzinfo=EASTERN).timestamp(),  # early close 13:00
+    datetime(2026, 9, 29, 20, 0, tzinfo=EASTERN).timestamp(),   # after hours
+], ids=['weekend', 'holiday', 'open_edge', 'close_edge', 'early_close_edge', 'after_hours'])
+def test_market_closed_never_reports_entries_blocked(watchdog, monkeypatch, tmp_path, policy_probe, when):
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(True, 'stale_data')] * 4, when=when)
+    assert streaks(results) == [0, 0, 0, 0]
+    assert {result['trading_liveness']['state'] for result in results} == {'outside_market_hours'}
+    assert all(result['problems'] == [] and result['healthy'] for result in results)
+
+
+def test_blocked_two_runs_is_quiet_third_requests_attention_without_recovery(
+    watchdog, monkeypatch, tmp_path, policy_probe,
+):
+    monkeypatch.setattr(watchdog, 'command', lambda *a, **k: pytest.fail('liveness must never recover a service'))
+    notices = []
+    monkeypatch.setattr(watchdog, 'notify_local', lambda message: notices.append(message) or True)
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(True, 'stale_data')] * 4,
+                            recover=True, local_notifications=True)
+    assert streaks(results) == [1, 2, 3, 4]
+    assert [result['problems'] for result in results] == [
+        [], [], ['entries_blocked:stale_data'], ['entries_blocked:stale_data']]
+    assert [result['healthy'] for result in results] == [True, True, False, False]
+    assert all(result['actions'] == [] for result in results)
+    assert watchdog.choose_recovery(dict(healthy(watchdog), problems=results[-1]['problems']), True) is None
+    assert [n for n in notices if 'entries_blocked' in n] == [
+        'Paper services need attention: entries_blocked:stale_data']
+    saved = json.loads((tmp_path / 'logs/paper_watchdog_status.json').read_text())
+    assert saved['trading_liveness'] == {'enabled': True, 'threshold': 3, 'state': 'blocked',
+                                         'blocked_streak': 4, 'problems': ['entries_blocked:stale_data'],
+                                         'reason': 'stale_data'}
+
+
+def test_unblocked_run_resets_streak_and_reason_changes_keep_counting(watchdog, monkeypatch, tmp_path, policy_probe):
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [
+        (True, 'stale_data'), (False, 'governance_halt'), (False, ''),
+        (False, 'governance_halt'), (False, 'governance_halt'), (False, 'governance_halt'),
+    ])
+    assert streaks(results) == [1, 2, 0, 1, 2, 3]
+    assert [result['problems'] for result in results] == [[], [], [], [], [], ['entries_blocked:governance_halt']]
+    assert results[2]['trading_liveness']['state'] == 'clear'
+
+
+def test_scheduled_opening_block_and_unverifiable_status_do_not_accumulate(
+    watchdog, monkeypatch, tmp_path, policy_probe,
+):
+    opening = datetime(2026, 9, 29, 9, 50, tzinfo=EASTERN).timestamp()
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe,
+                            [(False, 'opening_block')] * 3, when=opening)
+    assert streaks(results) == [0, 0, 0]
+    assert {result['trading_liveness']['state'] for result in results} == {'scheduled_block'}
+    assert all(result['problems'] == [] for result in results)
+    # A stale-data block inside the opening window is real, and a run without a
+    # verified engine status (no tick diagnostics yet / policy failure) resets.
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe,
+                            [(True, 'stale_data'), (True, 'stale_data'), (False, None)], when=opening)
+    assert streaks(results) == [1, 2, 0] and results[-1]['trading_liveness']['state'] == 'unknown'
+    policy_probe['status']['live_engine']['running'] = False
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(True, 'stale_data')] * 3)
+    assert streaks(results) == [0, 0, 0]
+    assert all(result['problems'] == ['policy_scheduler_not_running'] for result in results)
+
+
+def test_unexpected_reason_text_is_redacted_to_a_fixed_code(watchdog, monkeypatch, tmp_path, policy_probe):
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe,
+                            [(False, 'private-secret https://secret.invalid/?token=x')] * 3)
+    assert results[-1]['problems'] == ['entries_blocked:unclassified']
+    for name in ['paper_watchdog_status.json', 'paper_watchdog_events.jsonl']:
+        text = (tmp_path / 'logs' / name).read_text()
+        assert 'private-secret' not in text and 'secret.invalid' not in text
+
+
+def test_session_window_falls_back_to_weekday_0940_1550_without_calendar(watchdog, monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, 'backend.utils.market_hours', None)  # import fails
+    def at(day, hour, minute):
+        return watchdog._in_entry_check_window(datetime(2026, 9, day, hour, minute, tzinfo=EASTERN).timestamp())
+    assert [at(29, 9, 39), at(29, 9, 40), at(29, 15, 49), at(29, 15, 50), at(26, 11, 0)] == [
+        False, True, True, False, False]
+
+
+def test_trading_liveness_requires_policy_opt_in(watchdog, monkeypatch, tmp_path):
+    monkeypatch.setattr(watchdog, 'observe', lambda now: healthy(watchdog))
+    monkeypatch.setattr(watchdog, 'observe_policy', lambda *a: pytest.fail('private status requires opt-in'))
+    assert watchdog.run_watchdog(tmp_path)['trading_liveness'] == {'enabled': False}

@@ -39,6 +39,13 @@ CRITICAL_LOG_WINDOW_SECONDS = 60
 CRITICAL_LOG_MIN_WINDOW_SECONDS = 1
 CRITICAL_LOG_MAX_QUERIES = 12
 CRITICAL_LOG_BUDGET_SECONDS = 10
+# Trading liveness (audit 2026-09-29 R10): attention after this many consecutive
+# runs (~15 minutes at the 5-minute cadence) that saw entries blocked inside the
+# regular session minus its first/last ENTRY_CHECK_EDGE_MINUTES.
+ENTRIES_BLOCKED_RUNS = 3
+ENTRY_CHECK_EDGE_MINUTES = 10
+# By-design time-window blocks (engine: no entries 09:30-10:00 ET).
+SCHEDULED_ENTRY_BLOCKS = frozenset({"opening_block"})
 
 RUNTIME_STATES = frozenset({
     "disabled", "missing_scheduler", "scheduler_stopped", "engine_uninitialized",
@@ -602,13 +609,16 @@ def observe_backups(root: Path, now: float) -> dict:
     return result
 
 
-def observe_policy() -> dict:
+def observe_policy(liveness: dict | None = None) -> dict:
     """Check the pinned paper policy using local observer access only.
 
     This check never acquires paper-broker credentials or chooses recovery.
     All external failures use fixed codes: exception bodies may contain secrets.
+    When ``liveness`` is given and the check passes, it receives a fixed-code
+    summary of the verified engine status for the trading-liveness check.
     """
     result = {"enabled": True, "status": "unavailable", "problems": []}
+    engine_status = None
     stage = "binding"
     try:
         if str(ROOT) not in sys.path:
@@ -644,7 +654,8 @@ def observe_policy() -> dict:
         if scheduler.get("running") is not True:
             raise ValueError("scheduler_not_running")
         stage = "engine_not_initialized"
-        if scheduler["engine"].get("initialized") is not True:
+        engine_status = scheduler["engine"]
+        if engine_status.get("initialized") is not True:
             raise ValueError("engine_not_initialized")
         stage = "binding_changed"
         _, rechecked, _ = host.load_binding(host.DEFAULT_BINDING)
@@ -654,12 +665,93 @@ def observe_policy() -> dict:
     except Exception:  # noqa: BLE001 - Never persist credentials or transport bodies.
         result["status"] = stage
         result["problems"] = ["policy_" + stage]
+    if liveness is not None and result["status"] == "ok":
+        liveness["summary"] = _entry_block_summary(engine_status)
+    return result
+
+
+def _entry_block_summary(engine) -> dict | None:
+    """Fixed codes only from engine status; None when it cannot be judged."""
+    try:
+        if not isinstance(engine, dict) or type(engine.get("data_stale")) is not bool:
+            return None
+        diagnostics = engine.get("pipeline_diagnostics")
+        reason = diagnostics.get("entries_blocked_reason") if isinstance(diagnostics, dict) else None
+        if reason is not None and not isinstance(reason, str):
+            return None
+        if reason:
+            reason = reason if re.fullmatch(r"[a-z][a-z0-9_]{0,47}", reason) else "unclassified"
+        if engine["data_stale"]:
+            scheduled = not reason or reason in SCHEDULED_ENTRY_BLOCKS
+            return {"blocked": True, "reason": "data_stale" if scheduled else reason}
+        if reason is None:
+            return None  # no completed tick diagnostics to judge
+        return {"blocked": bool(reason) and reason not in SCHEDULED_ENTRY_BLOCKS, "reason": reason or None}
+    except Exception:  # noqa: BLE001 - an observer must never fail the run
+        return None
+
+
+def _in_entry_check_window(now: float) -> bool:
+    """Regular session minus its first/last edge minutes, US/Eastern.
+
+    Uses the repository NYSE calendar (holidays, early closes) when it is
+    importable; otherwise weekdays 09:40-15:50 ET.
+    """
+    from datetime import time as clock_time
+    from zoneinfo import ZoneInfo
+
+    try:
+        eastern = datetime.fromtimestamp(now, timezone.utc).astimezone(ZoneInfo("America/New_York"))
+    except (ValueError, OverflowError, OSError, KeyError):
+        return False
+    close = clock_time(16, 0)
+    try:
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from backend.utils import market_hours
+
+        if not market_hours.is_trading_day(eastern.date()):
+            return False
+        close = market_hours.market_close_time(eastern.date())
+    except Exception:  # noqa: BLE001 - calendar unavailable: plain weekday window
+        if eastern.weekday() >= 5:
+            return False
+    minute = eastern.hour * 60 + eastern.minute
+    return (9 * 60 + 30 + ENTRY_CHECK_EDGE_MINUTES
+            <= minute < close.hour * 60 + close.minute - ENTRY_CHECK_EDGE_MINUTES)
+
+
+def observe_trading_liveness(previous: dict, now: float, summary: dict | None,
+                             threshold: int = ENTRIES_BLOCKED_RUNS) -> dict:
+    """Attention when an up engine has been unable to enter for N runs.
+
+    Counts consecutive runs that saw entries blocked (non-empty
+    entries_blocked_reason or data_stale) inside the session window. Outside
+    the window, with no verified engine status, or when entries are allowed
+    the streak resets. Only fixed codes are persisted; never selects recovery.
+    """
+    prior = previous.get("trading_liveness")
+    streak = prior.get("blocked_streak") if isinstance(prior, dict) else 0
+    if type(streak) is not int or not 0 <= streak <= 1_000_000:
+        streak = 0
+    result = {"enabled": True, "threshold": threshold, "state": "clear",
+              "blocked_streak": 0, "problems": []}
+    if not _in_entry_check_window(now):
+        result["state"] = "outside_market_hours"
+    elif summary is None:
+        result["state"] = "unknown"
+    elif summary["blocked"]:
+        result.update(state="blocked", reason=summary["reason"], blocked_streak=streak + 1)
+        if streak + 1 >= threshold:
+            result["problems"] = ["entries_blocked:" + summary["reason"]]
+    elif summary["reason"]:
+        result.update(state="scheduled_block", reason=summary["reason"])
     return result
 
 
 def run_watchdog(root: Path, *, recover: bool = False, reopen_docker: bool = False,
                  local_notifications: bool = False, check_backups: bool = False,
-                 check_policy: bool = False) -> dict:
+                 check_policy: bool = False, entries_blocked_runs: int = ENTRIES_BLOCKED_RUNS) -> dict:
     logs = root / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     status_path = logs / "paper_watchdog_status.json"
@@ -736,10 +828,18 @@ def run_watchdog(root: Path, *, recover: bool = False, reopen_docker: bool = Fal
     # Policy/scheduler failures use the existing attention path only. Adding
     # them after recovery decisions prevents a healthy API from being restarted
     # because its research baseline or scheduler needs operator review.
-    result["policy_monitor"] = observe_policy() if check_policy else {"enabled": False}
+    liveness = {}
+    result["policy_monitor"] = observe_policy(liveness) if check_policy else {"enabled": False}
     if check_policy:
         result["problems"].extend(result["policy_monitor"]["problems"])
+        # Trading liveness reuses that verified status read. Same attention-only
+        # path: it can notify, never start/restart a container (R10).
+        result["trading_liveness"] = observe_trading_liveness(
+            previous, now, liveness.get("summary"), entries_blocked_runs)
+        result["problems"].extend(result["trading_liveness"]["problems"])
         result["healthy"] = not result["problems"]
+    else:
+        result["trading_liveness"] = {"enabled": False}
     changed = previous.get("problems") != result["problems"] or previous.get("healthy") != result["healthy"]
     pending_events = monitor.get("pending_events", monitor["new_events"])
     prior_notice = previous.get("notification") or {}

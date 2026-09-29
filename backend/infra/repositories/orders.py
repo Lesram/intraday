@@ -4,7 +4,8 @@ Implements async CRUD operations with proper error handling.
 """
 
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+import json
 import logging
 from typing import Any
 import uuid
@@ -16,6 +17,35 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..schemas import Order, OutboxEvent
 
 logger = logging.getLogger(__name__)
+
+
+def _differs_when_stored(provided: Any, stored: Any, column: Any) -> bool:
+    """True if writing ``provided`` would change the stored numeric value.
+
+    Compared at the column's DECIMAL scale (what the database keeps). Anything
+    that cannot be compared counts as a change so the write path is unchanged.
+    """
+    if provided is None:
+        return False
+    if stored is None:
+        return True
+    try:
+        scale = getattr(column.type, "scale", None)
+        new, old = Decimal(str(provided)), Decimal(str(stored))
+        if scale is not None:
+            quantum = Decimal(1).scaleb(-scale)
+            new = new.quantize(quantum, rounding=ROUND_HALF_UP)
+            old = old.quantize(quantum, rounding=ROUND_HALF_UP)
+        return new != old
+    except (InvalidOperation, TypeError, ValueError):
+        return True
+
+
+def _json_differs(new: dict[str, Any], old: dict[str, Any]) -> bool:
+    try:
+        return json.dumps(new, sort_keys=True) != json.dumps(old, sort_keys=True)
+    except (TypeError, ValueError):
+        return True
 
 
 class OrderNotFoundError(Exception):
@@ -241,7 +271,49 @@ class OrdersRepo:
 
         Raises:
             OrderNotFoundError: If order not found
+
+        Audit 2026-09-29 R8: a snapshot identical to the stored row (numeric
+        fields compared at their column storage scale, attributes after the
+        merge) is a no-op. Startup order sync replays every recent order; the
+        unconditional ``updated_at = now`` made older same-symbol fills look
+        updated after any entry opened before the restart, which the closed-
+        position lookup rightly treats as ambiguous, so those closes could
+        never be accounted. When any provided field differs, the UPDATE below
+        is unchanged.
         """
+        current = (
+            await self.session.execute(
+                select(
+                    Order.broker_order_id,
+                    Order.status,
+                    Order.filled_qty,
+                    Order.avg_fill_price,
+                    Order.limit_price,
+                    Order.stop_price,
+                    Order.attributes,
+                ).where(Order.id == order_id)
+            )
+        ).one_or_none()
+        if current is None:
+            raise OrderNotFoundError(f"Order {order_id} not found")
+        (stored_broker_id, stored_status, stored_filled, stored_avg,
+         stored_limit, stored_stop, stored_attrs) = current
+        merged_attrs = {**(stored_attrs or {}), **attributes} if attributes else None
+        if not (
+            (broker_order_id is not None and broker_order_id != stored_broker_id)
+            or (status is not None and status != stored_status)
+            or _differs_when_stored(filled_qty, stored_filled, Order.filled_qty)
+            or _differs_when_stored(avg_fill_price, stored_avg, Order.avg_fill_price)
+            or _differs_when_stored(limit_price, stored_limit, Order.limit_price)
+            or _differs_when_stored(stop_price, stored_stop, Order.stop_price)
+            or (merged_attrs is not None and _json_differs(merged_attrs, stored_attrs or {}))
+        ):
+            logger.debug(
+                "Order broker result unchanged; no write",
+                extra={"order_id": str(order_id), "status": status},
+            )
+            return
+
         # Build update values
         values = {"updated_at": datetime.now(UTC)}
 
@@ -264,18 +336,8 @@ class OrdersRepo:
         if stop_price is not None:
             values["stop_price"] = stop_price
 
-        # For attributes, we need to merge with existing attributes
-        if attributes:
-            # First fetch current attributes
-            stmt = select(Order.attributes).where(Order.id == order_id)
-            result = await self.session.execute(stmt)
-            current_attrs = result.scalar_one_or_none()
-
-            if current_attrs is None:
-                raise OrderNotFoundError(f"Order {order_id} not found")
-
-            # Merge attributes
-            merged_attrs = {**(current_attrs or {}), **attributes}
+        # For attributes, merge with the existing attributes read above
+        if merged_attrs is not None:
             values["attributes"] = merged_attrs
 
         stmt = (
