@@ -107,6 +107,12 @@ class AlpacaMarketDataStream:
         self.connection_generation = 0
         self._channel_versions = {channel: 0 for channel in self._desired}
         self._subscription_error = 0
+        # Audit 2026-09-29 (MDP-04a/MDP-12): keep the provider's error code so
+        # a symbol-cap refusal (405) is handled as a refusal, not retried and
+        # replayed wholesale on every reconnect.
+        self.last_error_code: int | None = None
+        self.symbol_limit_exceeded = False
+        self.refused_symbols = 0
         self._subscription_changed = asyncio.Event()
         self._subscription_lock = asyncio.Lock()
         self._connect_lock = asyncio.Lock()
@@ -282,6 +288,23 @@ class AlpacaMarketDataStream:
             logger.error(f"Authentication error: {e}", exc_info=True)
             return False
 
+    @property
+    def desired_symbols(self) -> set[str]:
+        """Union of symbols this client wants across channels (may be unconfirmed)."""
+        return set().union(*self._desired.values())
+
+    @property
+    def reconnecting(self) -> bool:
+        """True while this client's own bounded reconnect loop still owns recovery."""
+        listener = self._listener
+        return bool(
+            self.should_reconnect
+            and not self.is_authenticated
+            and listener is not None
+            and not listener.done()
+            and self.reconnect_attempts < self.MAX_RECONNECT_ATTEMPTS
+        )
+
     def _confirmed(self, channel: str) -> set[str]:
         if channel == "quotes":
             return set(self.quote_subscriptions)
@@ -339,6 +362,23 @@ class AlpacaMarketDataStream:
                         break
                     await asyncio.wait_for(self._subscription_changed.wait(), timeout=remaining)
                     self._subscription_changed.clear()
+                if (action == "subscribe" and error != self._subscription_error
+                        and self.last_error_code == 405
+                        and generation == self.connection_generation):
+                    # Provider symbol cap: refused names are dropped from the
+                    # desired set so they are neither retried every call nor
+                    # replayed (and refused as a whole) after a reconnect.
+                    refused = 0
+                    for channel, names in channels.items():
+                        rejected = names - self._confirmed(channel)
+                        self._desired[channel].difference_update(rejected)
+                        refused += len(rejected)
+                    self.symbol_limit_exceeded = True
+                    self.refused_symbols += refused
+                    logger.warning(
+                        "Market-data subscription refused by provider symbol limit: "
+                        "%d symbol-channel request(s) dropped from desired set", refused,
+                    )
             except (TimeoutError, WebSocketException, OSError):
                 logger.warning("Market-data subscription %s incomplete", action)
             except Exception:
@@ -458,6 +498,8 @@ class AlpacaMarketDataStream:
 
             elif msg_type == "error":
                 # Error message
+                code = message.get("code")
+                self.last_error_code = code if isinstance(code, int) else None
                 self._subscription_error += 1
                 self._subscription_changed.set()
                 error_msg = message.get("msg", "Unknown error")
@@ -598,5 +640,8 @@ class AlpacaMarketDataStream:
             "quote_subscriptions": len(self.quote_subscriptions),
             "trade_subscriptions": len(self.trade_subscriptions),
             "bar_subscriptions": sum(len(s) for s in self.bar_subscriptions.values()),
-            "last_heartbeat": self.last_heartbeat.isoformat() if self.last_heartbeat else None
+            "last_heartbeat": self.last_heartbeat.isoformat() if self.last_heartbeat else None,
+            "last_error_code": self.last_error_code,
+            "symbol_limit_exceeded": self.symbol_limit_exceeded,
+            "refused_symbols": self.refused_symbols,
         }

@@ -79,7 +79,9 @@ def stream_for(symbols):
 
 
 @pytest.mark.asyncio
-async def test_active_sparse_symbol_blocks_despite_aggregate_and_quotes_then_recovers(monkeypatch):
+async def test_active_sparse_symbol_excluded_despite_aggregate_and_quotes_then_recovers(monkeypatch):
+    """Audit 2026-09-29 (MDP-03): a sparse symbol behind a fresh aggregate is
+    excluded individually; it no longer blocks every other entry."""
     data, clock = provider()
     data._subscribed_symbols.update({"FAST", "SLOW"})
     await data._on_bar("SLOW", bar(NOW - 60))
@@ -98,19 +100,37 @@ async def test_active_sparse_symbol_blocks_despite_aggregate_and_quotes_then_rec
     monkeypatch.setattr("backend.organism.live_engine.logger", log)
     engine._stage_update_data_staleness()
     engine._stage_check_entry_blockers(LiveTickResult(), "now")
-    assert engine._data_stale and engine._entries_blocked
-    assert engine._last_entries_blocked_reason == "stale_data"
-    engine._stage_update_data_staleness()
-    assert log.info.call_count == 0  # No false recovery behind fresh aggregate.
+    assert not engine._data_stale and not engine._entries_blocked
+    assert engine._stale_entry_symbols == frozenset({"SLOW"})
     assert data.get_bar_age("SLOW") == 121
     assert data.get_latest_quote("SLOW")["bid"] == 99  # Quote is not bar health.
+    engine._stage_update_data_staleness()
+    assert engine._stale_entry_symbols == frozenset({"SLOW"})  # No false recovery.
     await data._on_bar("SLOW", bar(clock[0] - 1))
     engine._stage_update_data_staleness()
+    assert engine._stale_entry_symbols == frozenset()
     assert engine._data_stale is False
-    assert log.info.call_count == 1
-    assert "freshness check passed" in log.info.call_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_stale_critical_benchmark_blocks_all_entries_then_recovers(monkeypatch):
+    """A stale shared regime input (SPY/QQQ) still blocks every entry."""
+    data, clock = provider()
+    data._subscribed_symbols.update({"FAST", "SPY"})
+    await data._on_bar("SPY", bar(NOW - 60))
+    clock[0] += 121
+    await data._on_bar("FAST", bar(clock[0] - 1))
+    engine = engine_for(data, clock)
+    log = MagicMock()
+    monkeypatch.setattr("backend.organism.live_engine.logger", log)
     engine._stage_update_data_staleness()
-    assert log.info.call_count == 1
+    engine._stage_check_entry_blockers(LiveTickResult(), "now")
+    assert engine._data_stale and engine._entries_blocked
+    assert engine._last_entries_blocked_reason == "stale_data"
+    await data._on_bar("SPY", bar(clock[0] - 1))
+    engine._stage_update_data_staleness()
+    assert engine._data_stale is False
+    assert any("freshness check passed" in call.args[0] for call in log.info.call_args_list)
 
 
 @pytest.mark.asyncio

@@ -231,6 +231,23 @@ MIN_BARS = _env_int("ORGANISM_MIN_BARS", 200)
 LONG_ONLY = _env_bool("ORGANISM_LONG_ONLY", True)
 SCANNER_ENABLED = _env_bool("SCANNER_ENABLED", True)
 USE_STREAMING = _env_bool("ORGANISM_USE_STREAMING", False)
+# Audit 2026-09-29 (MDP-01/02/03): bounded, prioritised live data admission.
+# Alpaca's IEX (Basic) stream refuses subscriptions beyond ~30 symbols
+# ("symbol limit exceeded", code 405). On 2026-09-28 permanent scanner
+# injection grew the desired set to 68 and every tick blocked all entries.
+# The desired stream set is capped and ordered: held positions, critical
+# benchmarks, core universe, then a TTL window of scanner discoveries.
+STREAM_MAX_SYMBOLS = max(1, _env_int("ORGANISM_STREAM_MAX_SYMBOLS", 30))
+# Shared regime/cross-asset inputs. Only these (or aggregate stream loss)
+# block entries globally; any other stale symbol is excluded individually.
+STREAM_CRITICAL_SYMBOLS: tuple[str, ...] = tuple(dict.fromkeys(
+    s.strip().upper()
+    for s in _env_str("ORGANISM_STREAM_CRITICAL_SYMBOLS", "SPY,QQQ").split(",")
+    if s.strip()
+))
+SCANNER_WINDOW_MAX = max(0, _env_int("ORGANISM_SCANNER_WINDOW_MAX", 8))
+SCANNER_WINDOW_TTL_SCANS = max(1, _env_int("ORGANISM_SCANNER_WINDOW_TTL_SCANS", 5))
+_STALE_SYMBOL_REPORT_LIMIT = 10
 
 # Multi-bar prediction horizon — aligns ML target with typical holding period
 _HORIZON_DEFAULTS = {"1Min": 15, "5Min": 6, "15Min": 3, "1Hour": 2, "1Day": 1}
@@ -633,6 +650,14 @@ class OrganismLiveEngine(
 
         # Retain original subscription dependencies across discovery/rotation.
         self._streaming_base_symbols = frozenset(self._universe) | {"SPY", "QQQ"}
+        # Audit 2026-09-29: the configured/restored core universe plus a
+        # bounded TTL window of scanner picks; discovery never accumulates.
+        self._core_universe: list[str] = list(self._universe)
+        self._scanner_window: dict[str, tuple[int, int]] = {}
+        self._scanner_scan_seq = 0
+        self._stale_entry_symbols: frozenset[str] = frozenset()
+        self._stream_admitted: frozenset[str] | None = None
+        self._stream_sync_status: dict[str, Any] = {}
 
         # ── Timeframe-aware config ───────────────────────────────
         self._timeframe = timeframe or LIVE_TIMEFRAME
@@ -1547,7 +1572,23 @@ class OrganismLiveEngine(
         position whose direction and sector count are established. The
         QUALITY gates below (fitness, liquidity, circuit breaker) still
         apply, so a symbol degrading mid-day cannot receive adds.
+
+        Audit 2026-09-29 (MDP-03): live-data admission is per symbol. A
+        symbol whose streaming bars are stale, or that is outside the
+        bounded provider subscription set, is rejected here for every entry
+        path (alpha, pure breakout, pyramid add) instead of one stale symbol
+        blocking the whole book. The final submission freshness gate
+        (``entry_freshness.require_fresh_entry``) remains the backstop.
         """
+        if symbol in getattr(self, "_stale_entry_symbols", ()):
+            return False, "stale_symbol"
+        _admitted = getattr(self, "_stream_admitted", None)
+        if (
+            _admitted is not None
+            and self._streaming_provider is not None
+            and symbol not in _admitted
+        ):
+            return False, "unadmitted_symbol"
         if not for_pyramid_add:
             if symbol in open_symbols:
                 return False, "open_position"
@@ -1825,6 +1866,10 @@ class OrganismLiveEngine(
                     )
                     # Update selector to match
                     self.universe_selector._active = list(self._universe)
+
+            # Audit 2026-09-29: the restored/converged universe is the core
+            # that each session starts from; discovery is a bounded window.
+            self._core_universe = list(self._universe)
 
             # Restore cumulative data — try brain first, then DB fallback
             prev_trades = self.brain.get_trade_records()
@@ -2351,12 +2396,20 @@ class OrganismLiveEngine(
                     try:
                         diagnostics.finish()
                         self._last_pipeline_diagnostics = diagnostics.snapshot()
+                        _stale_excluded = sorted(getattr(self, "_stale_entry_symbols", ()) or ())
+                        _admitted = getattr(self, "_stream_admitted", None)
                         self._last_pipeline_diagnostics.update(
                             tick=self._tick_count,
                             universe_size=len(self._universe),
                             entries_blocked_reason=getattr(self, "_last_entries_blocked_reason", ""),
                             combined_candidates_pre_sizing=getattr(self, "_last_live_candidates_pre_sizing", 0),
                             no_order_reason=getattr(self, "_last_no_order_reason", ""),
+                            # Audit 2026-09-29 (MDP-05): make data admission visible.
+                            stale_symbols_excluded=_stale_excluded[:_STALE_SYMBOL_REPORT_LIMIT],
+                            stale_symbols_excluded_count=len(_stale_excluded),
+                            stream_admitted_count=(len(_admitted) if _admitted is not None else None),
+                            stream_sync=dict(getattr(self, "_stream_sync_status", {}) or {}),
+                            scanner_window_size=len(getattr(self, "_scanner_window", {}) or {}),
                         )
                         logger.info("Pipeline diagnostics: %s", json.dumps(
                             self._last_pipeline_diagnostics, sort_keys=True, allow_nan=False))
@@ -2629,7 +2682,15 @@ class OrganismLiveEngine(
                     threshold_s=self._DATA_STALE_THRESHOLD_S,
                     now=now,
                 )
-            self._data_stale = aggregate_stale or bool(stale_syms)
+            # Audit 2026-09-29 (MDP-03): only aggregate stream loss or a stale
+            # critical benchmark (shared regime/cross-asset input) blocks every
+            # entry. Any other stale symbol is excluded individually by the
+            # shared entry gate, so one sparse IEX name cannot stop the book.
+            _critical = set(STREAM_CRITICAL_SYMBOLS)
+            critical_stale = [(s, a) for s, a in stale_syms if s in _critical]
+            _previous_excluded = getattr(self, "_stale_entry_symbols", frozenset())
+            self._stale_entry_symbols = frozenset(s for s, _ in stale_syms)
+            self._data_stale = aggregate_stale or bool(critical_stale)
             if self._data_stale and not _was_stale:
                 if aggregate_stale:
                     logger.warning(
@@ -2639,13 +2700,23 @@ class OrganismLiveEngine(
                     )
                 else:
                     logger.warning(
-                        "PP-6: %d symbol(s) stale beyond threshold "
-                        "(aggregate looked fresh): %s",
-                        len(stale_syms),
-                        [(s, round(a, 1)) for s, a in stale_syms[:5]],
+                        "PP-6: %d critical symbol(s) stale beyond threshold "
+                        "(aggregate looked fresh) — blocking entries: %s",
+                        len(critical_stale),
+                        [(s, round(a, 1)) for s, a in critical_stale[:5]],
                     )
             elif not self._data_stale and _was_stale:
                 logger.info("Data stream fresh again — freshness check passed")
+            if self._stale_entry_symbols != _previous_excluded:
+                _added = sorted(self._stale_entry_symbols - _previous_excluded)
+                _cleared = sorted(_previous_excluded - self._stale_entry_symbols)
+                logger.info(
+                    "PP-6 per-symbol admission: %d stale symbol(s) excluded "
+                    "from entries (+%s -%s)",
+                    len(self._stale_entry_symbols),
+                    _added[:_STALE_SYMBOL_REPORT_LIMIT],
+                    _cleared[:_STALE_SYMBOL_REPORT_LIMIT],
+                )
         except Exception as _stale_err:
             self._data_stale = True
             logger.warning(
@@ -2663,24 +2734,50 @@ class OrganismLiveEngine(
         if provider is None:
             return
         try:
-            desired = sorted(
-                set(self._streaming_base_symbols)
-                | set(self._universe)
-                | set(current_positions)
-            )
+            # Audit 2026-09-29 (MDP-01): the desired set is bounded by the
+            # provider cap and ordered by what must never lose data.
+            desired = self._bounded_stream_symbols(current_positions)
+            self._stream_admitted = frozenset(desired)
             synchronized = await asyncio.wait_for(
                 provider.update_subscriptions(desired), timeout=self._STREAM_SUBSCRIPTION_SYNC_TIMEOUT_S,
             )
+            status = "complete"
             if synchronized is not True:
-                raise RuntimeError("subscription_update_incomplete")
+                # Refusal of a non-critical symbol is a per-symbol exclusion.
+                # Provider loss or an unconfirmed benchmark/held symbol still
+                # blocks every entry (exits keep their own data path).
+                confirmed = self._confirmed_stream_symbols(provider)
+                required = set(STREAM_CRITICAL_SYMBOLS) | set(current_positions or {})
+                if confirmed is None or not required <= confirmed:
+                    raise RuntimeError("subscription_update_incomplete")
+                self._stream_admitted = frozenset(s for s in desired if s in confirmed)
+                status = "partial"
+            self._stream_sync_status = {
+                "status": status,
+                "desired": len(desired),
+                "admitted": len(self._stream_admitted),
+                "cap": STREAM_MAX_SYMBOLS,
+            }
             self._stage_update_data_staleness()
             if self._data_stale:
                 self._entries_blocked = True
                 if not self._last_entries_blocked_reason:
                     self._last_entries_blocked_reason = "stale_data"
+            if status == "partial" and not getattr(self, "_stream_subscription_partial", False):
+                logger.warning(
+                    "Streaming subscription partially confirmed — %d/%d desired "
+                    "symbols admitted; unconfirmed symbols excluded from entries",
+                    len(self._stream_admitted), len(desired),
+                )
+            self._stream_subscription_partial = status == "partial"
             self._stream_subscription_sync_failed = False
         except Exception as error:
             self._entries_blocked = True
+            self._stream_sync_status = {
+                "status": "failed",
+                "error": type(error).__name__,
+                "cap": STREAM_MAX_SYMBOLS,
+            }
             if not self._last_entries_blocked_reason:
                 self._last_entries_blocked_reason = "stream_subscription_sync"
             if not getattr(self, "_stream_subscription_sync_failed", False):
@@ -2689,6 +2786,76 @@ class OrganismLiveEngine(
                     "entries blocked (%s)", type(error).__name__,
                 )
             self._stream_subscription_sync_failed = True
+
+    @staticmethod
+    def _confirmed_stream_symbols(provider) -> "set[str] | None":
+        """Symbols the provider has confirmed for bars and quotes, or None."""
+        confirmed = getattr(provider, "confirmed_symbols", None)
+        if not callable(confirmed) or not getattr(provider, "is_running", False):
+            return None
+        try:
+            return {str(s).upper() for s in confirmed()}
+        except Exception:
+            return None
+
+    def _bounded_stream_symbols(self, current_positions) -> list[str]:
+        """Desired stream set: held > benchmarks > core > scanner window > base.
+
+        Held positions and critical benchmarks are never dropped, even if
+        together they exceed the configured cap; everything else is
+        truncated in priority order so the provider cap is respected.
+        """
+        held = sorted(str(s).upper() for s in (current_positions or {}))
+        core = list(getattr(self, "_core_universe", None) or self._universe)
+        core_set = set(core)
+        window = [s for s in self._universe if s not in core_set]
+        base_rest = sorted(set(self._streaming_base_symbols) - core_set)
+        ordered = list(dict.fromkeys(
+            [*held, *STREAM_CRITICAL_SYMBOLS, *core, *window, *base_rest]
+        ))
+        cap = max(STREAM_MAX_SYMBOLS, len(set(held) | set(STREAM_CRITICAL_SYMBOLS)))
+        return ordered[:cap]
+
+    def _scanner_window_capacity(self) -> int:
+        """How many scanner discoveries fit beside core/held/benchmarks."""
+        if self._streaming_provider is None:
+            return SCANNER_WINDOW_MAX
+        core = set(getattr(self, "_core_universe", None) or self._universe)
+        held = {str(s).upper() for s in (getattr(self, "_last_positions", None) or {})}
+        reserved = core | held | set(STREAM_CRITICAL_SYMBOLS)
+        return max(0, min(SCANNER_WINDOW_MAX, STREAM_MAX_SYMBOLS - len(reserved)))
+
+    def _refresh_scanner_window(self, candidates: list[str]) -> list[str]:
+        """Maintain scanner discoveries as a bounded, TTL-evicted window.
+
+        Returns the symbols newly admitted to the universe on this scan.
+        Replaces the former permanent append (``self._universe += picks``),
+        which grew the universe without bound until a restart.
+        """
+        core = list(getattr(self, "_core_universe", None) or self._universe)
+        core_set = set(core)
+        window = dict(getattr(self, "_scanner_window", {}) or {})
+        held = {str(s).upper() for s in (getattr(self, "_last_positions", None) or {})}
+        self._scanner_scan_seq = getattr(self, "_scanner_scan_seq", 0) + 1
+        scan = self._scanner_scan_seq
+        for rank, sym in enumerate(candidates):
+            sym = str(sym).upper()
+            if sym not in core_set:
+                window[sym] = (rank, scan)
+        window = {
+            s: v for s, v in window.items()
+            if scan - v[1] < SCANNER_WINDOW_TTL_SCANS or s in held
+        }
+        ranked = sorted(window, key=lambda s: (-window[s][1], window[s][0]))
+        kept = ranked[: self._scanner_window_capacity()]
+        kept += [s for s in ranked if s in held and s not in kept]
+        self._scanner_window = {s: window[s] for s in kept}
+        before = set(self._universe)
+        self._universe = core + [s for s in kept if s not in core_set]
+        evicted = sorted(before - set(self._universe) - core_set)
+        if evicted:
+            logger.info("Scanner window evicted %d symbols: %s", len(evicted), evicted[:10])
+        return [s for s in self._universe if s not in before]
 
     def _get_strategy_selector(self):
         """Lazily build + cache the momentum-only live StrategySelector.
@@ -2982,7 +3149,10 @@ class OrganismLiveEngine(
                         # Past close — don't keep retrying rejecting submits.
                         # Audit 2026-06-09 finding 3.4: escalate (CRITICAL
                         # alert + overnight flag → next-open forced exit).
-                        _open = getattr(self, "_last_known_positions", None) or {}
+                        # Audit 2026-09-29 (X-02): the per-tick broker position
+                        # cache is _last_positions; the former attribute name was
+                        # never assigned, so this escalation could never fire.
+                        _open = getattr(self, "_last_positions", None) or {}
                         if _open:
                             logger.warning(
                                 "EOD flatten window passed (now=%d ET); "
@@ -3012,15 +3182,15 @@ class OrganismLiveEngine(
                     new_candidates = await self.market_scanner.scan()
                     self._scanner_candidates = new_candidates
                     if new_candidates:
-                        # Temporarily add top scanner picks to universe for this tick
-                        scanner_additions = [
-                            s for s in new_candidates[:20]
-                            if s not in self._universe
-                        ]
+                        # Audit 2026-09-29 (MDP-02): scanner picks join a
+                        # bounded TTL window (reset daily), never a permanent
+                        # append that outgrows the provider subscription cap.
+                        scanner_additions = self._refresh_scanner_window(
+                            list(new_candidates[:20])
+                        )
                         if scanner_additions:
-                            self._universe = list(self._universe) + scanner_additions
                             logger.info(
-                                "Scanner injected %d symbols into universe (total: %d)",
+                                "Scanner window admitted %d symbols into universe (total: %d)",
                                 len(scanner_additions),
                                 len(self._universe),
                             )
@@ -3324,6 +3494,12 @@ class OrganismLiveEngine(
                     self._orb_live_count_today = 0
                     self._eod_live_count_today = 0
                     self._mr_live_count_today = 0
+                    # Audit 2026-09-29 (MDP-02): each session starts from the
+                    # core universe; yesterday's discoveries are dropped and
+                    # the next subscription sync retires them.
+                    _core = list(getattr(self, "_core_universe", None) or self._universe)
+                    self._universe = _core
+                    self._scanner_window = {}
                     self._symbol_banned.clear()
                     self._ml_reversal_used.clear()
                     # V4 Q-Q1 / R-F-3 (2026-05-02): per-symbol "today"
@@ -7379,6 +7555,10 @@ class OrganismLiveEngine(
                     len(new_universe),
                 )
                 self._universe = new_universe
+                # Audit 2026-09-29: rotation redefines the core universe;
+                # scanner discoveries are re-derived against it.
+                self._core_universe = list(new_universe)
+                self._scanner_window = {}
         except Exception as e:
             logger.debug("Universe rotation skipped: %s", e)
 
@@ -7954,6 +8134,22 @@ class OrganismLiveEngine(
             "regime": self.regime_detector.current_regime,
             "shorts_enabled": self.evolved_params.shorts_enabled,
             "data_stale": self._data_stale,
+            # Audit 2026-09-29 (MDP-05): per-symbol admission state.
+            "stream_admission": {
+                "cap": STREAM_MAX_SYMBOLS,
+                "critical_symbols": list(STREAM_CRITICAL_SYMBOLS),
+                "core_universe_size": len(getattr(self, "_core_universe", []) or []),
+                "universe_size": len(self._universe),
+                "scanner_window": sorted(getattr(self, "_scanner_window", {}) or {}),
+                "admitted_count": (
+                    len(self._stream_admitted)
+                    if getattr(self, "_stream_admitted", None) is not None else None
+                ),
+                "stale_symbols_excluded": sorted(
+                    getattr(self, "_stale_entry_symbols", ()) or ()
+                )[:_STALE_SYMBOL_REPORT_LIMIT],
+                "sync": dict(getattr(self, "_stream_sync_status", {}) or {}),
+            },
             "learning_mode": self._is_learning_mode,
             "trading_phase": trading_phase.get("phase", ""),
             "policy_lock": {
