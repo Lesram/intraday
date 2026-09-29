@@ -111,6 +111,9 @@ class AlpacaMarketDataStream:
         # a symbol-cap refusal (405) is handled as a refusal, not retried and
         # replayed wholesale on every reconnect.
         self.last_error_code: int | None = None
+        # Error code observed during the in-flight subscription request only
+        # (requests are serialized by _subscription_lock).
+        self._request_error_code: int | None = None
         self.symbol_limit_exceeded = False
         self.refused_symbols = 0
         self._subscription_changed = asyncio.Event()
@@ -333,6 +336,7 @@ class AlpacaMarketDataStream:
                 return False
             versions = dict(self._channel_versions)
             error = self._subscription_error
+            self._request_error_code = None
             self._retry_after[key] = loop.time() + self.SUBSCRIPTION_RETRY_INTERVAL_S
             self._subscription_changed.clear()
             deadline = loop.time() + self.SUBSCRIPTION_ACK_TIMEOUT_S
@@ -363,7 +367,7 @@ class AlpacaMarketDataStream:
                     await asyncio.wait_for(self._subscription_changed.wait(), timeout=remaining)
                     self._subscription_changed.clear()
                 if (action == "subscribe" and error != self._subscription_error
-                        and self.last_error_code == 405
+                        and self._request_error_code == 405
                         and generation == self.connection_generation):
                     # Provider symbol cap: refused names are dropped from the
                     # desired set so they are neither retried every call nor
@@ -500,6 +504,7 @@ class AlpacaMarketDataStream:
                 # Error message
                 code = message.get("code")
                 self.last_error_code = code if isinstance(code, int) else None
+                self._request_error_code = self.last_error_code
                 self._subscription_error += 1
                 self._subscription_changed.set()
                 error_msg = message.get("msg", "Unknown error")

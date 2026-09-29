@@ -94,10 +94,17 @@ def test_corrupt_flag_returns_none(shim):
 
 
 def test_past_close_branch_escalates():
-    src = inspect.getsource(OrganismLiveEngine._live_tick_inner)
-    assert "_record_unflattened_positions(" in src, (
+    # Audit 2026-09-29: the >=16:00 branch lives in an extracted helper that
+    # reads the per-tick broker position cache (the former attribute it read,
+    # ``_last_known_positions``, was never assigned, so it could never fire).
+    tick_src = inspect.getsource(OrganismLiveEngine._live_tick_inner)
+    assert "_stage_post_close_escalation(" in tick_src
+    helper_src = inspect.getsource(OrganismLiveEngine._stage_post_close_escalation)
+    assert "_record_unflattened_positions(" in helper_src, (
         "the >=16:00 branch must escalate, not warning-only"
     )
+    assert '"_last_positions"' in helper_src
+    assert 'getattr(self, "_last_known_positions"' not in helper_src + tick_src
 
 
 def test_morning_force_exit_wired():

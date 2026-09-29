@@ -44,8 +44,15 @@ CRITICAL_LOG_BUDGET_SECONDS = 10
 # regular session minus its first/last ENTRY_CHECK_EDGE_MINUTES.
 ENTRIES_BLOCKED_RUNS = 3
 ENTRY_CHECK_EDGE_MINUTES = 10
-# By-design time-window blocks (engine: no entries 09:30-10:00 ET).
-SCHEDULED_ENTRY_BLOCKS = frozenset({"opening_block"})
+# By-design, time-bounded blocks (engine: no entries 09:30-10:00 ET; restart warmup).
+SCHEDULED_ENTRY_BLOCKS = frozenset({"opening_block", "warmup"})
+# Deliberate strategy/pacing decisions: reported, never a liveness problem
+# (a regime sit-out can legitimately last all day).
+POLICY_ENTRY_BLOCKS = frozenset({"regime_sitout", "spy_ma_filter", "throttle", "burst_cap"})
+# Risk interlocks: deliberate, but they need an operator (some are sticky).
+RISK_HALT_BLOCKS = frozenset({"daily_max_loss", "drawdown_kill", "governance_halt"})
+# Everything else (stale_data, stream_subscription_sync, insufficient_data,
+# equity_zero, unclassified, and any reason not listed above) is a fault.
 
 RUNTIME_STATES = frozenset({
     "disabled", "missing_scheduler", "scheduler_stopped", "engine_uninitialized",
@@ -670,6 +677,37 @@ def observe_policy(liveness: dict | None = None) -> dict:
     return result
 
 
+def _stream_data_plane_fault(engine: dict) -> str | None:
+    """Fixed code when the engine's stream admission shows a data-plane fault.
+
+    First-reason-wins bookkeeping can mask a failed subscription sync behind
+    a policy reason, so the admission state is read directly.
+    """
+    admission = engine.get("stream_admission")
+    if not isinstance(admission, dict):
+        return None
+    sync = admission.get("sync")
+    status = sync.get("status") if isinstance(sync, dict) else None
+    if status == "failed":
+        return "stream_subscription_sync"
+    admitted = admission.get("admitted_count")
+    if status in {"complete", "partial"} and type(admitted) is int and admitted <= 0:
+        return "no_admitted_symbols"
+    return None
+
+
+def _classify_entry_block(reason: str | None) -> str:
+    if not reason:
+        return "clear"
+    if reason in SCHEDULED_ENTRY_BLOCKS:
+        return "scheduled"
+    if reason in POLICY_ENTRY_BLOCKS:
+        return "policy"
+    if reason in RISK_HALT_BLOCKS:
+        return "risk_halt"
+    return "fault"
+
+
 def _entry_block_summary(engine) -> dict | None:
     """Fixed codes only from engine status; None when it cannot be judged."""
     try:
@@ -681,12 +719,17 @@ def _entry_block_summary(engine) -> dict | None:
             return None
         if reason:
             reason = reason if re.fullmatch(r"[a-z][a-z0-9_]{0,47}", reason) else "unclassified"
+        plane = _stream_data_plane_fault(engine)
         if engine["data_stale"]:
-            scheduled = not reason or reason in SCHEDULED_ENTRY_BLOCKS
-            return {"blocked": True, "reason": "data_stale" if scheduled else reason}
+            if not reason or _classify_entry_block(reason) in {"scheduled", "policy"}:
+                reason = plane or "data_stale"
+            return {"blocked": True, "kind": _classify_entry_block(reason), "reason": reason}
+        if plane is not None:
+            return {"blocked": True, "kind": "fault", "reason": plane}
         if reason is None:
             return None  # no completed tick diagnostics to judge
-        return {"blocked": bool(reason) and reason not in SCHEDULED_ENTRY_BLOCKS, "reason": reason or None}
+        kind = _classify_entry_block(reason)
+        return {"blocked": kind in {"fault", "risk_halt"}, "kind": kind, "reason": reason or None}
     except Exception:  # noqa: BLE001 - an observer must never fail the run
         return None
 
@@ -725,10 +768,12 @@ def observe_trading_liveness(previous: dict, now: float, summary: dict | None,
                              threshold: int = ENTRIES_BLOCKED_RUNS) -> dict:
     """Attention when an up engine has been unable to enter for N runs.
 
-    Counts consecutive runs that saw entries blocked (non-empty
-    entries_blocked_reason or data_stale) inside the session window. Outside
-    the window, with no verified engine status, or when entries are allowed
-    the streak resets. Only fixed codes are persisted; never selects recovery.
+    Counts consecutive runs inside the session window that saw entries
+    blocked by a fault (stale data, subscription/data-plane loss, unknown
+    reasons) or a risk halt. Scheduled and policy blocks (opening block,
+    regime sit-out, ...) are reported but reset the streak. Outside the
+    window or with no verified engine status the streak resets. Only fixed
+    codes are persisted; never selects recovery.
     """
     prior = previous.get("trading_liveness")
     streak = prior.get("blocked_streak") if isinstance(prior, dict) else 0
@@ -741,11 +786,15 @@ def observe_trading_liveness(previous: dict, now: float, summary: dict | None,
     elif summary is None:
         result["state"] = "unknown"
     elif summary["blocked"]:
-        result.update(state="blocked", reason=summary["reason"], blocked_streak=streak + 1)
+        risk = summary.get("kind") == "risk_halt"
+        result.update(state="risk_halt" if risk else "blocked", reason=summary["reason"],
+                      blocked_streak=streak + 1)
         if streak + 1 >= threshold:
-            result["problems"] = ["entries_blocked:" + summary["reason"]]
+            prefix = "risk_halt:" if risk else "entries_blocked:"
+            result["problems"] = [prefix + summary["reason"]]
     elif summary["reason"]:
-        result.update(state="scheduled_block", reason=summary["reason"])
+        state = "policy_block" if summary.get("kind") == "policy" else "scheduled_block"
+        result.update(state=state, reason=summary["reason"])
     return result
 
 

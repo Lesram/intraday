@@ -44,7 +44,9 @@ _STALENESS_REJECT_S = float(os.getenv("ORGANISM_STREAMING_STALENESS_REJECT_S", "
 # Audit 2026-09-29 (MDP-01): provider websocket symbol cap (Alpaca IEX
 # Basic refuses >~30 symbols with "symbol limit exceeded"). The engine
 # already sends a prioritised bounded list; this is defence in depth.
-MAX_STREAM_SYMBOLS = max(1, int(os.getenv("ORGANISM_STREAM_MAX_SYMBOLS", "30")))
+# Default leaves headroom under the documented 30-symbol IEX plan limit;
+# keep in sync with live_engine.STREAM_MAX_SYMBOLS (same env var).
+MAX_STREAM_SYMBOLS = max(1, int(os.getenv("ORGANISM_STREAM_MAX_SYMBOLS", "28")))
 
 
 class StreamingDataProvider:

@@ -145,7 +145,7 @@ async def test_desired_set_is_capped_by_priority_and_never_drops_held(monkeypatc
     engine = helper_engine(provider, now, ["CORE1", "CORE2", "CORE3"])
     engine._core_universe = ["CORE1", "CORE2"]
     desired = engine._bounded_stream_symbols({"HELD": {"qty": 1}})
-    assert desired == ["HELD", "SPY", "QQQ", "CORE1", "CORE2"]
+    assert desired == ["SPY", "QQQ", "HELD", "CORE1", "CORE2"]
     # Held + benchmarks are never truncated even beyond the cap.
     many = {f"H{i}": {} for i in range(6)}
     assert set(many) | {"SPY", "QQQ"} <= set(engine._bounded_stream_symbols(many))

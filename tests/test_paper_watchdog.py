@@ -1189,8 +1189,49 @@ def test_unblocked_run_resets_streak_and_reason_changes_keep_counting(watchdog, 
         (False, 'governance_halt'), (False, 'governance_halt'), (False, 'governance_halt'),
     ])
     assert streaks(results) == [1, 2, 0, 1, 2, 3]
-    assert [result['problems'] for result in results] == [[], [], [], [], [], ['entries_blocked:governance_halt']]
+    # A risk interlock is deliberate but needs an operator: its own code.
+    assert [result['problems'] for result in results] == [[], [], [], [], [], ['risk_halt:governance_halt']]
     assert results[2]['trading_liveness']['state'] == 'clear'
+    assert results[1]['trading_liveness']['state'] == 'risk_halt'
+
+
+@pytest.mark.parametrize('reason', ['regime_sitout', 'spy_ma_filter', 'throttle', 'burst_cap'])
+def test_policy_blocks_are_reported_but_never_accumulate(watchdog, monkeypatch, tmp_path, policy_probe, reason):
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(False, reason)] * 4)
+    assert streaks(results) == [0, 0, 0, 0]
+    assert {result['trading_liveness']['state'] for result in results} == {'policy_block'}
+    assert all(result['problems'] == [] and result['healthy'] for result in results)
+
+
+def test_warmup_is_a_scheduled_block(watchdog, monkeypatch, tmp_path, policy_probe):
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(False, 'warmup')] * 3)
+    assert streaks(results) == [0, 0, 0]
+    assert {result['trading_liveness']['state'] for result in results} == {'scheduled_block'}
+
+
+def test_policy_reason_cannot_mask_a_failed_stream_sync(watchdog, monkeypatch, tmp_path, policy_probe):
+    """First-reason-wins bookkeeping can hide the 2026-09-28 failure mode."""
+    policy_probe['engine']['stream_admission'] = {
+        'cap': 28, 'admitted_count': 0, 'sync': {'status': 'failed', 'error': 'RuntimeError', 'cap': 28}}
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(False, 'regime_sitout')] * 3)
+    assert streaks(results) == [1, 2, 3]
+    assert results[-1]['problems'] == ['entries_blocked:stream_subscription_sync']
+    # Stale data behind a policy reason is reported as the data-plane fault.
+    policy_probe['engine']['stream_admission'] = {'cap': 28, 'admitted_count': 20,
+                                                  'sync': {'status': 'complete'}}
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(True, 'regime_sitout')] * 3)
+    assert results[-1]['problems'] == ['entries_blocked:data_stale']
+
+
+def test_zero_admitted_symbols_is_a_data_plane_fault(watchdog, monkeypatch, tmp_path, policy_probe):
+    policy_probe['engine']['stream_admission'] = {'cap': 28, 'admitted_count': 0,
+                                                  'sync': {'status': 'partial'}}
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(False, '')] * 3)
+    assert results[-1]['problems'] == ['entries_blocked:no_admitted_symbols']
+    # REST mode (no stream admission state) is judged by the reason alone.
+    policy_probe['engine']['stream_admission'] = {'cap': 28, 'admitted_count': None, 'sync': {}}
+    results = liveness_runs(watchdog, monkeypatch, tmp_path, policy_probe, [(False, '')] * 3)
+    assert streaks(results) == [0, 0, 0]
 
 
 def test_scheduled_opening_block_and_unverifiable_status_do_not_accumulate(

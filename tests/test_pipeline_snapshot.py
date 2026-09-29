@@ -16,6 +16,7 @@ def test_snapshot_identifies_actual_scanner_source_without_runtime_claim():
         "streaming_universe_initialization", "streaming_subscription_sync",
         "streaming_subscription_timeout", "pipeline_diagnostics",
         "ml_features", "composite_indicators", "alpaca_market_data_stream",
+        "stream_admission",
     }
     assert hashes["market_scanner"] == hashlib.sha256(
         inspect.getsource(market_scanner).encode()
@@ -93,4 +94,24 @@ def test_snapshot_reads_pending_resolution_bounds_without_runtime_claim():
     assert policy["confirmation_attempts"] == 2
     assert policy["inventory_limit"] == 17
     assert resolved["resolved"]["pending_entry_resolution"] == policy
+    assert resolved["engine_observed"] is False
+
+
+def test_snapshot_reads_actual_stream_capacity_bounds_without_runtime_claim(monkeypatch):
+    """Audit 2026-09-29: the capacity/admission contract is visible in the snapshot."""
+    monkeypatch.setattr("backend.organism.live_engine.STREAM_MAX_SYMBOLS", 24)
+    monkeypatch.setattr("backend.organism.live_engine.STREAM_CRITICAL_SYMBOLS", ("SPY",))
+    monkeypatch.setattr("backend.organism.live_engine.SCANNER_WINDOW_MAX", 3)
+    monkeypatch.setattr("backend.organism.streaming_data_provider.MAX_STREAM_SYMBOLS", 26)
+    defaults = snapshot._build_defaults_snapshot()
+    with patch.object(snapshot, "_find_api_container", return_value=""):
+        resolved = snapshot._build_resolved_config_snapshot()
+    policy = defaults["streaming_subscription_sync"]
+    assert policy["stream_max_symbols"] == 24
+    assert policy["provider_max_symbols"] == 26
+    assert policy["critical_symbols"] == ["SPY"]
+    assert policy["scanner_window_max"] == 3
+    assert policy["global_staleness_policy"] == (
+        "aggregate_stream_loss_or_critical_symbol_stale_blocks_entries")
+    assert resolved["resolved"]["streaming_subscription_sync"] == policy
     assert resolved["engine_observed"] is False

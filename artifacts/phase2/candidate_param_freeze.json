@@ -1,10 +1,10 @@
 {
-  "VALIDATED_AT": "2026-09-29T09:55:18.180315+00:00",
+  "VALIDATED_AT": "2026-09-29T13:09:42.686655+00:00",
   "_note_status": "new candidate validation boundary; no active clock change",
   "active_forward_cutoff": "2026-09-25T21:11:46.270521+00:00",
   "candidate_only": true,
   "deployment_approved": false,
-  "git_sha": "5d3249b90e7ac22a6808572616d338745b356df9",
+  "git_sha": "dded459726a0521adee526d418cdfedd5d6ec78f",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -14,15 +14,16 @@
   "provenance": "no reconstructable fit-date; all pre-cutoff data contaminated by construction",
   "surface": {
     "data_pipeline_sources": {
-      "alpaca_market_data_stream": "5321255b8bfe96641587eb1512b2a728cdd3f78d12e033117b03fdb8e735d534",
+      "alpaca_market_data_stream": "b04a64557068bbdc7247f32e9fd4dbeac56ca37febb0040c75f8d217ffe04826",
       "composite_indicators": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
       "live_engine_data": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
       "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
       "ml_features": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
       "pipeline_diagnostics": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
       "staleness_admission": "e1253bf45b09091d7d99688a5dad690a4ac42ba40afcbcc3201271278dec6ca5",
-      "streaming_data_provider": "ba02946c815df1c5432910b0a37047a48fd42fa680e975164bcd29c58bb593b6",
-      "streaming_subscription_sync": "fd2482409b63aad786aadefb7593f9216fc2e8475b1682d8803e913e23370dbe",
+      "stream_admission": "38b74aa631cc5975d022774bced15b26b656b712d3d85600a8668658b75a11fb",
+      "streaming_data_provider": "b9a7057faa8025b8b052ea1b64c2465a8232b6c694d1ef450644eb170b8df307",
+      "streaming_subscription_sync": "ee90d73f9426b2c6d565d862369be89f452f1195eaa3dfc00a1d5686838fb1fb",
       "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
       "streaming_universe_initialization": "0f1f4b84fa17cd93cf1e17edc070e7cbf4fd7dfd569cbea9a33a289f3ef26855"
     },
@@ -213,7 +214,7 @@
       "entry_admission": "5e3ac62e8058d1ead9974fd9d5204736a83e890eaa4ac8293c136f69a126631b",
       "entry_cancellation": "59e69af2c6d40932b039ce477ec746c98e05d1b494ac74d777b5f85f0e61de38",
       "entry_evidence": "e5c303a49974d8a14a0d54ab8488dc67427ae194a21cd5b675ee8df769e229e9",
-      "entry_frame_capture": "053193dab4c38fc2f0ca53172df87cc341e43a99a3d9bab0c3d3a3996f58f00a",
+      "entry_frame_capture": "52f8f40f798e1b37655cd121db4fedd12ed89c42372f83ff7b34ae32b32b8c7d",
       "entry_freshness": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
       "entry_submission": "434cb6e6ee14d8ad5008334cc60ba7c6931faa001e0bdebb65a7ae76b99a2714",
       "fixed_risk": "532fdc8c66146c410718456bcd6e7a13c5b7310cde443ad00b6a13652faab78b",
@@ -243,7 +244,7 @@
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "7fcf1b477a84221ade592601ec01f166b725939be161436aca5c3b2734f8f2b4",
+      "entry_gates_dispatch": "8e98b9c188686d7c1aae43b5fcd5e6a447bfbbd2171ff7e34bc9864787f854fd",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
       "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",

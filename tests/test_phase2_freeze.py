@@ -69,6 +69,7 @@ def test_freeze_covers_full_decision_surface(freeze):
         "streaming_universe_initialization", "streaming_subscription_sync",
         "streaming_subscription_timeout", "pipeline_diagnostics",
         "ml_features", "composite_indicators", "alpaca_market_data_stream",
+        "stream_admission",
     }
     assert freeze["surface"]["research_policy"]["locked"] is True
     assert freeze["surface"]["research_policy"]["qualified_trade_count"] is None
@@ -211,18 +212,20 @@ def test_verify_detects_freshness_dependency_drift(tmp_path, monkeypatch, module
 @pytest.mark.parametrize("module_name", [
     "market_scanner", "streaming_data_provider", "live_engine_data", "staleness_admission",
     "pipeline_diagnostics", "streaming_universe_initialization", "streaming_subscription_sync",
-    "ml_features", "composite_indicators", "alpaca_market_data_stream",
+    "ml_features", "composite_indicators", "alpaca_market_data_stream", "stream_admission",
 ])
 def test_pipeline_source_drift_invalidates_freeze_without_reset(tmp_path, monkeypatch, module_name):
     """Discovery/data changes must not evade the original six-function guard."""
     import importlib
 
-    if module_name in {"staleness_admission", "streaming_universe_initialization", "streaming_subscription_sync"}:
+    if module_name in {"staleness_admission", "streaming_universe_initialization",
+                       "streaming_subscription_sync", "stream_admission"}:
         from backend.organism.live_engine import OrganismLiveEngine
         module = getattr(OrganismLiveEngine, {
             "staleness_admission": "_stage_update_data_staleness",
             "streaming_universe_initialization": "__init__",
             "streaming_subscription_sync": "_sync_streaming_subscriptions",
+            "stream_admission": "_bounded_stream_symbols",
         }[module_name])
     elif module_name == "alpaca_market_data_stream":
         module = importlib.import_module("backend.integrations." + module_name)
