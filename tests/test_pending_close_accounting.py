@@ -203,7 +203,12 @@ async def test_reappearing_position_clears_pending_and_preserves_management(data
     assert engine._all_trades[0].closed_at == later.isoformat()
 
 
-async def test_complete_later_close_waits_for_earlier_close_and_ties_are_stable(tmp_path):
+async def test_unresolved_earlier_close_is_skipped_later_close_accounted_and_ties_stable(tmp_path, monkeypatch):
+    # Audit 2026-09-29 R9: this test used to pin the queue barrier (AMD waited
+    # behind TSLA). An unresolvable close now stays pending on its own.
+    from backend.organism import live_engine as live_engine_module
+    log = MagicMock()
+    monkeypatch.setattr(live_engine_module, "logger", log)
     engine = engine_at(tmp_path)
     # Reverse insertion order and lexical symbol order vs entry identity.
     track(engine, "AMD", uuid.UUID(int=2))
@@ -215,12 +220,65 @@ async def test_complete_later_close_waits_for_earlier_close_and_ties_are_stable(
         return ClosedPositionFills(6, 100, 99, -6, False)
     engine._lookup_closed_position_fills_from_db = fills
     await engine._reconcile_fills({})
-    assert_consumers(engine, 0, 0)
-    assert {meta["pending_close"]["observed_at"] for meta in engine._entry_metadata.values()} == {CLOSE.isoformat()}
+    await engine._reconcile_fills({})
+    assert [trade.symbol for trade in engine.learner.trade_history] == ["AMD"]
+    assert_consumers(engine, 1, -6)
+    assert engine._entry_metadata["TSLA"]["pending_close"]["observed_at"] == CLOSE.isoformat()
+    assert "TSLA" not in engine._symbol_daily_pnl
+    warned = [c.args for c in log.warning.call_args_list if c.args and "Close accounting unresolved" in str(c.args[0])]
+    assert warned == [(warned[0][0], "TSLA", "exact_fills_unavailable", CLOSE.isoformat())]
+    engine._now_fn = lambda: CLOSE + timedelta(minutes=7)
+    assert engine.status()["close_accounting"]["unresolved"] == {"TSLA": {
+        "reason": "exact_fills_unavailable", "observed_at": CLOSE.isoformat(), "age_seconds": 420.0}}
     complete = True
     await engine._reconcile_fills({})
-    assert [trade.symbol for trade in engine.learner.trade_history] == ["TSLA", "AMD"]
+    assert [trade.symbol for trade in engine.learner.trade_history] == ["AMD", "TSLA"]
+    assert engine._all_trades[1].closed_at == CLOSE.isoformat()
     assert_consumers(engine, 2, -12)
+    assert engine.status()["close_accounting"]["unresolved"] == {}
+    # Closes resolvable in the same pass still commit in stable identity order.
+    tied = engine_at(tmp_path / "tied")
+    track(tied, "AMD", uuid.UUID(int=2))
+    track(tied, "TSLA", uuid.UUID(int=1))
+    tied._lookup_closed_position_fills_from_db = fills
+    await tied._reconcile_fills({})
+    assert [trade.symbol for trade in tied.learner.trade_history] == ["TSLA", "AMD"]
+
+
+@pytest.mark.parametrize("reason", ["exact_fills_unavailable", "no_exit_price", "zero_shares"])
+async def test_unresolvable_close_never_blocks_a_later_close(tmp_path, monkeypatch, reason):
+    """R9: each former `break` now skips only its own close; nothing fabricated."""
+    import pandas as pd
+    from backend.organism import live_engine as live_engine_module
+    log = MagicMock()
+    monkeypatch.setattr(live_engine_module, "logger", log)
+    engine = engine_at(tmp_path)
+    engine._data_client.get_latest_quote = MagicMock(return_value={})
+    track(engine, "AMD", uuid.UUID(int=2))
+    features = {}
+    if reason == "exact_fills_unavailable":
+        track(engine, "TSLA", uuid.UUID(int=1))
+    else:
+        # Orphan bookkeeping has no entry identity, so it sorts first.
+        engine._entry_metadata["TSLA"] = {"entry_price": 100, "entry_tick": 1, "direction": 1,
+                                          "entry_source": "reconciliation_orphan", "confidence": 0.5}
+        if reason == "zero_shares":
+            features["TSLA"] = pd.DataFrame({"close": [101.0]})
+    async def fills(symbol, meta, *, closed_at):
+        return None if symbol == "TSLA" else ClosedPositionFills(6, 100, 99, -6, False)
+    engine._lookup_closed_position_fills_from_db = fills
+    for _ in range(2):
+        await engine._reconcile_fills(features)
+    assert [trade.symbol for trade in engine._all_trades] == ["AMD"]
+    assert_consumers(engine, 1, -6)
+    assert engine._entry_metadata["TSLA"]["pending_close"]["observed_at"] == CLOSE.isoformat()
+    assert "TSLA" not in engine._symbol_daily_pnl
+    assert list(engine._accounting_completed_entries) == [str(uuid.UUID(int=2))]
+    assert close_accounting.read(engine.brain.brain_dir)["tracking"]["_entry_metadata"]["TSLA"]["pending_close"]
+    assert engine.status()["close_accounting"]["unresolved"]["TSLA"]["reason"] == reason
+    warned = [c.args for c in log.warning.call_args_list if c.args and "Close accounting unresolved" in str(c.args[0])]
+    assert [args[1:3] for args in warned] == [("TSLA", reason)]  # once per episode
+    assert not engine._order_service.submit_order.called
 
 
 @pytest.mark.parametrize("status,filled,cleared", [
@@ -266,17 +324,20 @@ async def test_replaced_entry_remains_visible_pending_across_repeat_and_restart(
     track(engine, "AMD", later_entry["id"])
     for _ in range(2):
         await engine._reconcile_fills({})
-        assert_consumers(engine, 0, 0)
-        pending = engine.status()["close_accounting"]["pending"]["TSLA"]
+        # R9: the unresolved earlier close no longer holds AMD's complete close.
+        assert_consumers(engine, 1, -6)
+        assert "AMD" not in engine._entry_metadata
+        status = engine.status()["close_accounting"]
+        pending = status["pending"]["TSLA"]
         assert pending["accounting_hold_reason"] == REPLACEMENT_PENDING_REASON
         assert pending["observed_at"] == CLOSE.isoformat()
         assert pending["exit_reason"] == "stop_loss"
-        assert not engine._accounting_completed_entries
-        assert "AMD" in engine._entry_metadata  # The unresolved earlier close retains queue order.
+        assert status["unresolved"]["TSLA"]["reason"] == REPLACEMENT_PENDING_REASON
+        assert str(ANCHOR) not in engine._accounting_completed_entries
     restarted = engine_at(tmp_path, database, now=CLOSE + timedelta(minutes=10))
     await restarted.initialize()
     await restarted._reconcile_fills({})
-    assert_consumers(restarted, 0, 0)
+    assert_consumers(restarted, 1, -6)
     pending = restarted.status()["close_accounting"]["pending"]["TSLA"]
     assert pending["accounting_hold_reason"] == REPLACEMENT_PENDING_REASON
     assert pending["observed_at"] == CLOSE.isoformat()
@@ -405,17 +466,23 @@ async def test_stale_legacy_ticks_cannot_bypass_pending_barrier_or_refresh_coold
     # an existing durable pending close must bypass entry grace.
     restarted._tick_count = 400
     track(restarted, "AMD", uuid.UUID(int=2))
+    looked_up = []
     async def fills(symbol, meta, *, closed_at):
+        looked_up.append(symbol)
         if symbol == "TSLA":
             return None
         return ClosedPositionFills(6, 100, 99, -6, False)
     restarted._lookup_closed_position_fills_from_db = fills
     await restarted._reconcile_fills({})
-    assert_consumers(restarted, 0, 0)
+    # The durable TSLA close bypasses the stale-tick grace and is evaluated
+    # first; unresolved, it stays pending without holding AMD back (R9).
+    assert looked_up == ["TSLA", "AMD"]
+    assert restarted._entry_metadata["TSLA"]["pending_close"]["observed_at"] == CLOSE.isoformat()
+    assert_consumers(restarted, 1, -6)
     await complete_partial(database)
     restarted._lookup_closed_position_fills_from_db = OrganismLiveEngine._lookup_closed_position_fills_from_db.__get__(restarted)
     await restarted._reconcile_fills({})
-    assert_consumers(restarted, 1, -2)
+    assert_consumers(restarted, 2, -8)
     assert restarted._symbol_exit_tick["TSLA"] <= restarted._tick_count - restarted._STOP_LOSS_REENTRY_TICKS
 
 

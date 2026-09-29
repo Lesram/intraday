@@ -6573,6 +6573,53 @@ class OrganismLiveEngine(
             target = getattr(self, name)
             target.discard(symbol) if isinstance(target, set) else target.pop(symbol, None)
 
+    def _close_episode(self, symbol: str) -> "tuple[str, str] | None":
+        """Identity of the symbol's current pending close (observed_at, entry id)."""
+        meta = self._entry_metadata.get(symbol) or {}
+        pending = meta.get("pending_close")
+        if not isinstance(pending, dict):
+            return None
+        return str(pending.get("observed_at", "")), str(meta.get("entry_order_id") or "")
+
+    def _defer_unresolved_close(self, symbol: str, reason: str) -> None:
+        """Audit 2026-09-29 R9: leave one close pending, never fabricated.
+
+        Its tracking stays durable (and entry-gated); later, independent
+        closes are still accounted this pass. One WARNING per symbol per
+        pending episode; status() reports reason and age under
+        close_accounting.unresolved. In-memory only (a restart re-warns once).
+        """
+        episode = self._close_episode(symbol)
+        unresolved = getattr(self, "_unresolved_closes", None)
+        if unresolved is None:
+            unresolved = self._unresolved_closes = {}
+        previous = unresolved.get(symbol)
+        unresolved[symbol] = {"episode": episode, "reason": reason}
+        if previous is None or previous["episode"] != episode:
+            logger.warning(
+                "Close accounting unresolved for %s (%s): close observed at %s "
+                "stays pending and entry-gated; later closes are still accounted",
+                symbol, reason, episode[0] if episode else "unknown",
+            )
+
+    def _unresolved_close_status(self) -> dict[str, Any]:
+        """Stuck pending closes for status(): reason and age in seconds."""
+        view: dict[str, Any] = {}
+        try:
+            now = self._now_fn()
+            for symbol, item in (getattr(self, "_unresolved_closes", None) or {}).items():
+                episode = self._close_episode(symbol)
+                if episode is None or item["episode"] != episode:
+                    continue
+                try:
+                    age = round(max(0.0, (now - datetime.fromisoformat(episode[0])).total_seconds()), 1)
+                except (TypeError, ValueError):
+                    age = None
+                view[symbol] = {"reason": item["reason"], "observed_at": episode[0], "age_seconds": age}
+        except Exception:  # noqa: BLE001 - monitoring must never break status()
+            return {}
+        return view
+
     async def _reconcile_fills(
         self,
         features_by_symbol: dict[str, pd.DataFrame],
@@ -6714,9 +6761,9 @@ class OrganismLiveEngine(
                 continue
             closed.add(sym)
 
-        # Persist the whole newly-flat batch before committing any member.
-        # Stable ordering prevents delayed DB legs from reordering learner/risk
-        # history relative to later, already-complete closes on other symbols.
+        # Persist the whole newly-flat batch before committing any member, so
+        # each close keeps its original observed_at/exit reason even while it
+        # waits for delayed DB legs (see the R9 ordering note below).
         with self._accounting_lock:
             newly_closed = [sym for sym in closed if "pending_close" not in self._entry_metadata[sym]]
             before_pending = close_accounting.capture(self) if newly_closed else None
@@ -6743,10 +6790,23 @@ class OrganismLiveEngine(
                     self._accounting_error = f"pending checkpoint failed: {type(exc).__name__}"
                     raise
 
+        # Commit order is deterministic (observed_at, entry id, symbol). Audit
+        # 2026-09-29 R9: an unresolvable close is SKIPPED, not a barrier. Every
+        # consumer below is per-symbol (at most one pending close per symbol;
+        # the symbol stays entry-gated while pending) or order-insensitive
+        # (sums/counters; the forward corpus sorts by closed_at). The only
+        # cross-symbol effect is list order in _all_trades / learner history
+        # when a skipped close resolves later — accepted, instead of freezing
+        # every later close (and its symbol) behind one unresolvable close.
         ordered_closed = sorted(closed, key=lambda sym: (
             self._entry_metadata[sym]["pending_close"]["observed_at"],
             str(self._entry_metadata[sym].get("entry_order_id", "")), sym,
         ))
+        if getattr(self, "_unresolved_closes", None):
+            self._unresolved_closes = {
+                sym: item for sym, item in self._unresolved_closes.items()
+                if item["episode"] == self._close_episode(sym)
+            }
         for sym in ordered_closed:
             meta = self._entry_metadata.get(sym)
             if meta is None:
@@ -6769,8 +6829,10 @@ class OrganismLiveEngine(
                 continue
             if position_fills is None and meta.get("entry_source") != "reconciliation_orphan":
                 # Unknown attribution, DB errors and incomplete fills stay
-                # visible/pending. Later closes wait behind this outcome.
-                break
+                # visible/pending (R9: skipped, later closes still run).
+                self._defer_unresolved_close(
+                    sym, pending.get("accounting_hold_reason") or "exact_fills_unavailable")
+                continue
             # Orphan bookkeeping retains its exclusion from all learning.
             # Fetch legacy fallbacks outside the serialized no-await commit.
             fallback_exit = fallback_entry = None
@@ -6838,7 +6900,9 @@ class OrganismLiveEngine(
                             "(features and quotes both missing). Entry was $%.2f",
                             sym, meta["entry_price"],
                         )
-                        break
+                        # Nothing mutated since capture; stays pending (R9).
+                        self._defer_unresolved_close(sym, "no_exit_price")
+                        continue
 
                     direction = meta.get("direction", 1.0)
                     shares = 0
@@ -6868,7 +6932,8 @@ class OrganismLiveEngine(
                         shares = meta.get("filled_shares", 0)
                     if shares == 0:
                         logger.error("Zero shares for closed position %s — skipping trade record", sym)
-                        break
+                        self._defer_unresolved_close(sym, "zero_shares")  # R9: stays pending
+                        continue
 
                     if position_fills is not None:
                         pnl = position_fills.pnl
@@ -7930,6 +7995,8 @@ class OrganismLiveEngine(
                 "policy": close_accounting.ACCOUNTING_POLICY,
                 "error": self._accounting_error,
                 "pending": {sym: meta["pending_close"] for sym, meta in self._entry_metadata.items() if meta.get("pending_close")},
+                # R9: pending closes skipped as unresolvable, with reason/age.
+                "unresolved": self._unresolved_close_status(),
             },
             # Performance stats
             "cumulative_pnl": round(cumulative_pnl, 2),
