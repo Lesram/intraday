@@ -3,13 +3,14 @@
   "resolved": {
     "close_accounting_policy": "exact_position_fills_or_pending_v1",
     "candidate_data_pipeline_sources": {
-      "alpaca_market_data_stream": "77a06a49bf8c8fcd81116064fd7bf547ee5cd1c8a5978938ed24d19973aeeead",
+      "alpaca_market_data_stream": "f99338fab383d483e49f80a675cf4062f572554762f44557ffbf5a7470a49a57",
       "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
-      "streaming_data_provider": "35a4960744484fd534c3218a10a076887944098418954af4ddcd7fbab436f535",
+      "streaming_data_provider": "c175082d54ac4453484b6f245879a69cccf6539a7523124885a828c9cef4deda",
       "live_engine_data": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
-      "staleness_admission": "6cbb82f794c6fd63edfa750e70b4116ce8b2117af4b05d23fff60fe3e56e5b0b",
-      "streaming_universe_initialization": "e3c0cc8f1d0c554138d4bdedc810474badfa0ed19f6681b6c69c774411c39f85",
-      "streaming_subscription_sync": "ce1d1d94393813783d8458c10b4c508b25f9b5a6329d9d6e04daffc0c75f3da0",
+      "staleness_admission": "e1253bf45b09091d7d99688a5dad690a4ac42ba40afcbcc3201271278dec6ca5",
+      "streaming_universe_initialization": "0f1f4b84fa17cd93cf1e17edc070e7cbf4fd7dfd569cbea9a33a289f3ef26855",
+      "streaming_subscription_sync": "da5ca30fdbf600734496c70c6f358d4051773dfdd0c0174e261dc5ee1d1a0f3a",
+      "stream_admission": "6237ed67852fef001c6ffa719e0eeec9c5101f983fe09dccd5c94210e0c4638a",
       "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
       "pipeline_diagnostics": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
       "ml_features": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
@@ -33,11 +34,26 @@
       "completion": "provider_confirmed_bars_and_quotes_current_connection",
       "unsubscribe": "retain_until_provider_confirmed_removal",
       "historical_prefill": "history_only_never_a_live_receipt",
-      "universe": "constructor_base_plus_SPY_QQQ_current_universe_and_held_positions",
+      "universe": "critical_then_held_then_pending_within_cap_then_core_then_scanner_window_then_base_bounded_by_cap",
+      "scanner_window_order": "current_scan_existing_members_first_then_newcomers_by_rank_then_older_by_recency",
+      "stream_max_symbols": 28,
+      "provider_max_symbols": 28,
+      "critical_symbols": [
+        "SPY",
+        "QQQ"
+      ],
+      "scanner_window_max": 8,
+      "scanner_window_ttl_scans": 5,
+      "admission": "desired_intersect_provider_confirmed_current_connection",
       "checked_at": "after_fresh_position_query_before_entry_dispatch",
       "failure": "block_entries_retry_next_tick_preserve_exits",
+      "partial": "unconfirmed_non_critical_symbols_excluded_individually",
+      "required_confirmed": "critical_and_held_symbols_else_block_all_entries",
+      "provider_symbol_limit": "refused_symbols_dropped_from_desired_never_replayed_not_resent_until_capacity_freed",
+      "protected_request": "benchmarks_and_held_requested_first_on_their_own_never_skipped_as_refused",
       "new_symbols": "wait_for_actual_bars_no_REST_prefill",
-      "global_staleness_policy": "any_subscribed_symbol_stale_blocks_entries"
+      "global_staleness_policy": "aggregate_stream_loss_or_critical_symbol_stale_blocks_entries",
+      "per_symbol_staleness_policy": "stale_or_unadmitted_symbol_rejected_by_shared_entry_gate"
     },
     "pending_entry_resolution": {
       "call_timeout_seconds": 2.0,
