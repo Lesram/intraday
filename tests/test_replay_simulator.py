@@ -379,7 +379,11 @@ async def test_replay_time_override_uses_bar_time():
 
 
 # wave: V13-W93
-@pytest.mark.timeout(120)
+# Audit 2026-09-29: budget 120 s -> 180 s like the sibling 100-tick replays.
+# The same 100-tick replay took 118.5 s on the unchanged prior commit and
+# 121.5 s at this head on a 2-vCPU audit container (31.6 s on the original
+# host); the assertions are unchanged, only the CI time budget.
+@pytest.mark.timeout(180)
 @pytest.mark.asyncio
 async def test_replay_no_throttle_blocking():
     """With time overrides + adequate initial cash, replay should not be
