@@ -1,28 +1,53 @@
 {
   "scope": "task",
   "ref": "HEAD",
-  "total": 6,
+  "total": 19,
   "all": [
     "artifacts/phase2/candidate_param_freeze.json",
+    "backend/api/routes/auth.py",
+    "backend/api/routes/positions.py",
+    "backend/api/routes/signals.py",
+    "backend/infra/outbox_worker.py",
+    "backend/infra/runtime_identity.py",
     "backend/organism/live_engine.py",
-    "backend/organism/streaming_data_provider.py",
+    "backend/organism/live_engine_state.py",
+    "backend/services/positions_service.py",
+    "docs/architecture/mapss.md",
     "docs/runbooks/PAPER_UPTIME.md",
     "scripts/phase2_freeze.py",
-    "tests/test_stream_capacity_admission.py"
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_audit_20260930_safety_release.py",
+    "tests/test_march31_safe_fix.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_stream_capacity_admission.py",
+    "tests/test_wave35_fixes.py",
+    "tests/unit/test_api_routes_phase5.py"
   ],
   "backend": [
+    "backend/api/routes/auth.py",
+    "backend/api/routes/positions.py",
+    "backend/api/routes/signals.py",
+    "backend/infra/outbox_worker.py",
+    "backend/infra/runtime_identity.py",
     "backend/organism/live_engine.py",
-    "backend/organism/streaming_data_provider.py"
+    "backend/organism/live_engine_state.py",
+    "backend/services/positions_service.py"
   ],
   "organism": [
     "backend/organism/live_engine.py",
-    "backend/organism/streaming_data_provider.py"
+    "backend/organism/live_engine_state.py"
   ],
   "tests": [
-    "tests/test_stream_capacity_admission.py"
+    "tests/test_audit_20260930_safety_release.py",
+    "tests/test_march31_safe_fix.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_stream_capacity_admission.py",
+    "tests/test_wave35_fixes.py",
+    "tests/unit/test_api_routes_phase5.py"
   ],
   "config": [],
   "docs": [
+    "docs/architecture/mapss.md",
     "docs/runbooks/PAPER_UPTIME.md"
   ]
 }

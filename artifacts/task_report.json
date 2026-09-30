@@ -1,17 +1,30 @@
 {
-  "task_id": "audit-2026-09-29-stream-admission",
-  "summary": "Audit 2026-09-29: bounded stream admission, per-symbol staleness, state/ops repairs R1-R11 (PR #34)",
-  "sha": "e8e615375f0320f4d57a7856c773a1c7d96741ce",
-  "branch": "codex/audit-20260929-stream-repair",
+  "task_id": "evidence-repair",
+  "summary": "fix: audit 2026-09-30 safety release (EXE-03/04/05/06, OPS-04, SEC-03/04, CFG-01, TEL-01)",
+  "sha": "8444390473930d759e4f4fb7a51223befaabcdfb",
+  "branch": "codex/audit-20260930-safety-release",
   "change_scope": "task",
   "change_ref": "HEAD",
   "files_changed": [
     "artifacts/phase2/candidate_param_freeze.json",
+    "backend/api/routes/auth.py",
+    "backend/api/routes/positions.py",
+    "backend/api/routes/signals.py",
+    "backend/infra/outbox_worker.py",
+    "backend/infra/runtime_identity.py",
     "backend/organism/live_engine.py",
-    "backend/organism/streaming_data_provider.py",
+    "backend/organism/live_engine_state.py",
+    "backend/services/positions_service.py",
+    "docs/architecture/mapss.md",
     "docs/runbooks/PAPER_UPTIME.md",
     "scripts/phase2_freeze.py",
-    "tests/test_stream_capacity_admission.py"
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_audit_20260930_safety_release.py",
+    "tests/test_march31_safe_fix.py",
+    "tests/test_phase2_freeze.py",
+    "tests/test_stream_capacity_admission.py",
+    "tests/test_wave35_fixes.py",
+    "tests/unit/test_api_routes_phase5.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -31,10 +44,17 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
+    "backend/api/routes/auth.py",
+    "backend/api/routes/positions.py",
+    "backend/api/routes/signals.py",
+    "backend/infra/outbox_worker.py",
+    "backend/infra/runtime_identity.py",
     "backend/organism/live_engine.py",
-    "backend/organism/streaming_data_provider.py"
+    "backend/organism/live_engine_state.py",
+    "backend/services/positions_service.py"
   ],
   "docs_updated": [
+    "docs/architecture/mapss.md",
     "docs/runbooks/PAPER_UPTIME.md"
   ],
   "risks": [

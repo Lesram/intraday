@@ -1,25 +1,25 @@
 # Live Audit Index
 
-Generated: 2026-09-29T17:56:52Z
+Generated: 2026-09-30T09:53:22Z
 PR: n/a
-SHA: `e8e615375f`
-Branch: `codex/audit-20260929-stream-repair`
+SHA: `8444390473`
+Branch: `codex/audit-20260930-safety-release`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **6**
+Total distinct changed files: **19**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 2 | `backend/organism/live_engine.py`, `backend/organism/streaming_data_provider.py` |
-| Scripts | 1 | `scripts/phase2_freeze.py` |
+| Backend | 8 | `backend/api/routes/auth.py`, `backend/api/routes/positions.py`, `backend/api/routes/signals.py`, `backend/infra/outbox_worker.py`, `backend/infra/runtime_identity.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_state.py`, `backend/services/positions_service.py` |
+| Scripts | 2 | `scripts/phase2_freeze.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_stream_capacity_admission.py` |
-| Docs | 1 | `docs/runbooks/PAPER_UPTIME.md` |
+| Tests | 6 | `tests/test_audit_20260930_safety_release.py`, `tests/test_march31_safe_fix.py`, `tests/test_phase2_freeze.py`, `tests/test_stream_capacity_admission.py`, `tests/test_wave35_fixes.py`, `tests/unit/test_api_routes_phase5.py` |
+| Docs | 2 | `docs/architecture/mapss.md`, `docs/runbooks/PAPER_UPTIME.md` |
 | Artifacts/evidence | 1 | `artifacts/phase2/candidate_param_freeze.json` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
@@ -30,11 +30,24 @@ Organism subset of Backend: **2** file(s).
 ### Full changed-file list
 
 - `artifacts/phase2/candidate_param_freeze.json`
+- `backend/api/routes/auth.py`
+- `backend/api/routes/positions.py`
+- `backend/api/routes/signals.py`
+- `backend/infra/outbox_worker.py`
+- `backend/infra/runtime_identity.py`
 - `backend/organism/live_engine.py`
-- `backend/organism/streaming_data_provider.py`
+- `backend/organism/live_engine_state.py`
+- `backend/services/positions_service.py`
+- `docs/architecture/mapss.md`
 - `docs/runbooks/PAPER_UPTIME.md`
 - `scripts/phase2_freeze.py`
+- `scripts/runtime/write_runtime_snapshot.py`
+- `tests/test_audit_20260930_safety_release.py`
+- `tests/test_march31_safe_fix.py`
+- `tests/test_phase2_freeze.py`
 - `tests/test_stream_capacity_admission.py`
+- `tests/test_wave35_fixes.py`
+- `tests/unit/test_api_routes_phase5.py`
 
 ## Configuration resolution (not engine observation)
 

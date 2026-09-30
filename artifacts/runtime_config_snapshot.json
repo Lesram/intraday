@@ -6,7 +6,7 @@
     "streaming_data_provider": "5ecc8a7f4700a8e9967ac722652fe4c9936e0b1c1e50d5ac7d7149f08a7cb6aa",
     "live_engine_data": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
     "staleness_admission": "e1253bf45b09091d7d99688a5dad690a4ac42ba40afcbcc3201271278dec6ca5",
-    "streaming_universe_initialization": "0f1f4b84fa17cd93cf1e17edc070e7cbf4fd7dfd569cbea9a33a289f3ef26855",
+    "streaming_universe_initialization": "3fe004d8533d53e9071f23f6679b85240f87495b002a1169eed59c5e52033840",
     "streaming_subscription_sync": "da5ca30fdbf600734496c70c6f358d4051773dfdd0c0174e261dc5ee1d1a0f3a",
     "stream_admission": "341e1094ab85734aa8ffd04360799cb0666a921aefba5aec7539ebb95249eda0",
     "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
@@ -60,10 +60,54 @@
     "inventory_limit": 256,
     "filled_entry_cooldown": "preserve_engine_pending_entry_ticks",
     "expiry": "unresolved_identity_never_expires_by_time",
+    "age_escalation_min_seconds": 1800.0,
+    "age_escalation": "one_critical_per_identity_older_than_max(min_seconds,2x_pending_entry_ticks_x_tick_interval)_first_seen_persisted_across_restarts",
     "release": "broker_terminal_and_exact_accounting_exposure_confirmation",
     "ordinary_reconciliation": "read_only_after_fill_accounting",
     "retry_order": "resume_after_last_attempted_identity"
   },
+  "broker_position_reads": {
+    "failed_read": "unknown_never_flat",
+    "tick_on_unknown": "block_entries_skip_reconcile_no_exit_flatten_or_overnight_action_from_stale_snapshot",
+    "subscriptions_on_unknown": "held_names_from_last_confirmed_snapshot_stay_subscribed",
+    "exit_call_on_unknown": "reread_once_then_hold_any_side_exit",
+    "startup_on_unknown": "keep_entry_metadata_skip_reconstruction",
+    "post_close_on_unknown": "last_confirmed_snapshot_else_critical_flatness_unverified",
+    "critical_after_consecutive_ticks": 6
+  },
+  "eod_session": {
+    "close_source": "nyse_calendar_market_close_time",
+    "late_entry_block_minutes_before_close": 15,
+    "flatten_minutes_before_close": 2,
+    "overnight_forced_exit_window": "09:30_until_flatten_window_start",
+    "post_close_escalation": "at_or_after_close"
+  },
+  "daily_loss_baseline": {
+    "persisted_keys": [
+      "daily_loss_session_date",
+      "daily_starting_equity",
+      "daily_loss_halt",
+      "daily_loss_halt_session"
+    ],
+    "restart": "same_session_restores_baseline_and_halt_no_roll_reapplies_governance_halt",
+    "earlier_session_halt": "carried_over_and_cleared_on_the_new_session_first_tick",
+    "missing_baseline": "rebaseline_at_current_equity_critical_after_the_open",
+    "write": "brain_save_and_immediate_atomic_write_on_roll_or_halt"
+  },
+  "runtime_config_hash_env": [
+    "ORGANISM_DRAWDOWN_KILL_PCT",
+    "ORGANISM_MAX_DAILY_LOSS",
+    "ORGANISM_MAX_NOTIONAL",
+    "ORGANISM_ORB_LIVE_ENABLED",
+    "ORGANISM_EOD_LIVE_ENABLED",
+    "ORGANISM_MEAN_REVERSION_LIVE_ENABLED",
+    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
+    "SCANNER_ENABLED",
+    "ORGANISM_STREAM_MAX_SYMBOLS",
+    "ORGANISM_STREAM_CRITICAL_SYMBOLS",
+    "ORGANISM_SCANNER_WINDOW_MAX",
+    "ORGANISM_SCANNER_WINDOW_TTL_SCANS"
+  ],
   "entry_freshness": {
     "required_timeframe": "1Min",
     "max_bar_age_seconds": 120.0,
