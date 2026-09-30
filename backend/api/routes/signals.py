@@ -222,6 +222,18 @@ def get_authenticated_user(current_user=Depends(get_current_user)):
     return current_user
 
 
+def require_trader_user(current_user=Depends(get_authenticated_user)):
+    """Audit 2026-09-30 SEC-03: acting on a signal submits broker orders.
+
+    Only ``trader`` or ``admin`` may do that; a self-registered ``user`` gets
+    403 (same rule as the orders surface).
+    """
+    roles = set(getattr(current_user, "roles", None) or [])
+    if not roles & {"trader", "admin"}:
+        raise HTTPException(status_code=403, detail="trader or admin role required")
+    return current_user
+
+
 async def get_order_service(request: Request):
     """FastAPI dependency that provides an OrderService bound to a request-scoped DB session."""
     # Get sessionmaker from app state (configured during app lifespan)
@@ -510,7 +522,7 @@ async def create_signal(
 @router.post("/act", response_model=ActOnSignalResponse)
 async def act_on_signal(
     request: ActOnSignalRequest,
-    current_user=Depends(get_authenticated_user),
+    current_user=Depends(require_trader_user),
     db: AsyncSession = Depends(get_db_session)
 ) -> ActOnSignalResponse:
     """

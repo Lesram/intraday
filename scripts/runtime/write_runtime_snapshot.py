@@ -36,6 +36,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.streaming_data_provider import StreamingDataProvider
         from backend.organism import streaming_data_provider as _provider_module
         from backend.organism import live_engine as _engine_module
+        from backend.infra import runtime_identity as _runtime_identity
         from backend.organism import operator_cancellation
         from scripts.phase2_freeze import compute_data_pipeline_sources
         from backend.organism.research_policy import policy_status
@@ -90,6 +91,9 @@ def _build_defaults_snapshot() -> dict:
                 "inventory_limit": operator_cancellation.INVENTORY_LIMIT,
                 "filled_entry_cooldown": "preserve_engine_pending_entry_ticks",
                 "expiry": "unresolved_identity_never_expires_by_time",
+                # Audit 2026-09-30 EXE-03: visibility, not retirement.
+                "age_escalation_min_seconds": OrganismLiveEngine._PENDING_ENTRY_ESCALATE_SECONDS,
+                "age_escalation": "one_critical_per_identity_older_than_max(min_seconds,2x_pending_entry_ticks_x_tick_interval)_first_seen_persisted_across_restarts",
                 "release": "broker_terminal_and_exact_accounting_exposure_confirmation",
                 "ordinary_reconciliation": "read_only_after_fill_accounting",
                 "retry_order": "resume_after_last_attempted_identity",
@@ -121,6 +125,32 @@ def _build_defaults_snapshot() -> dict:
                 "global_staleness_policy": "aggregate_stream_loss_or_critical_symbol_stale_blocks_entries",
                 "per_symbol_staleness_policy": "stale_or_unadmitted_symbol_rejected_by_shared_entry_gate",
             },
+            # Audit 2026-09-30 safety release (EXE-05, EXE-06, OPS-04, CFG-01).
+            "broker_position_reads": {
+                "failed_read": "unknown_never_flat",
+                "tick_on_unknown": "block_entries_skip_reconcile_no_exit_flatten_or_overnight_action_from_stale_snapshot",
+                "subscriptions_on_unknown": "held_names_from_last_confirmed_snapshot_stay_subscribed",
+                "exit_call_on_unknown": "reread_once_then_hold_any_side_exit",
+                "startup_on_unknown": "keep_entry_metadata_skip_reconstruction",
+                "post_close_on_unknown": "last_confirmed_snapshot_else_critical_flatness_unverified",
+                "critical_after_consecutive_ticks": OrganismLiveEngine._POSITIONS_UNKNOWN_CRITICAL_TICKS,
+            },
+            "eod_session": {
+                "close_source": "nyse_calendar_market_close_time",
+                "late_entry_block_minutes_before_close": _engine_module.EOD_LATE_ENTRY_BLOCK_MINUTES,
+                "flatten_minutes_before_close": _engine_module.EOD_FLATTEN_WINDOW_MINUTES,
+                "overnight_forced_exit_window": "09:30_until_flatten_window_start",
+                "post_close_escalation": "at_or_after_close",
+            },
+            "daily_loss_baseline": {
+                "persisted_keys": ["daily_loss_session_date", "daily_starting_equity",
+                                   "daily_loss_halt", "daily_loss_halt_session"],
+                "restart": "same_session_restores_baseline_and_halt_no_roll_reapplies_governance_halt",
+                "earlier_session_halt": "carried_over_and_cleared_on_the_new_session_first_tick",
+                "missing_baseline": "rebaseline_at_current_equity_critical_after_the_open",
+                "write": "brain_save_and_immediate_atomic_write_on_roll_or_halt",
+            },
+            "runtime_config_hash_env": list(_runtime_identity.RUNTIME_HASH_ENV),
             "entry_freshness": {
                 "required_timeframe": ENTRY_TIMEFRAME,
                 "max_bar_age_seconds": MAX_ENTRY_BAR_AGE_SECONDS,
@@ -441,6 +471,10 @@ def _build_resolved_config_snapshot() -> dict:
         "composite_feature_columns": defaults.get("composite_feature_columns"),
         "streaming_subscription_sync": defaults.get("streaming_subscription_sync"),
         "pending_entry_resolution": defaults.get("pending_entry_resolution"),
+        "broker_position_reads": defaults.get("broker_position_reads"),
+        "eod_session": defaults.get("eod_session"),
+        "daily_loss_baseline": defaults.get("daily_loss_baseline"),
+        "runtime_config_hash_env": defaults.get("runtime_config_hash_env"),
         "entry_freshness": defaults.get("entry_freshness"),
         "drawdown_kill_pct": _resolve_float(
             "ORGANISM_DRAWDOWN_KILL_PCT", "drawdown_kill_pct", "drawdown_kill_pct",

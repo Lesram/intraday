@@ -250,6 +250,9 @@ STREAM_CRITICAL_SYMBOLS: tuple[str, ...] = tuple(dict.fromkeys(
 ))
 SCANNER_WINDOW_MAX = max(0, _env_int("ORGANISM_SCANNER_WINDOW_MAX", 8))
 SCANNER_WINDOW_TTL_SCANS = max(1, _env_int("ORGANISM_SCANNER_WINDOW_TTL_SCANS", 5))
+# Audit 2026-09-30 EXE-06: late-day windows, in minutes before the session close.
+EOD_LATE_ENTRY_BLOCK_MINUTES = 15
+EOD_FLATTEN_WINDOW_MINUTES = 2
 _STALE_SYMBOL_REPORT_LIMIT = 10
 
 # Multi-bar prediction horizon — aligns ML target with typical holding period
@@ -953,6 +956,17 @@ class OrganismLiveEngine(
         # Maps symbol → tick number when entry order was submitted
         self._pending_entry: dict[str, int] = {}
         self._PENDING_ENTRY_TICKS = 30  # Wait 30 ticks (~5 min) per-symbol cooldown (was 15)
+        # Audit 2026-09-30 EXE-03: wall-clock age of each unresolved pending
+        # entry, persisted across restarts; one CRITICAL per identity past
+        # _PENDING_ENTRY_ESCALATE_SECONDS. Visibility only — nothing is retired.
+        self._pending_entry_since: dict[str, dict] = {}
+        # Audit 2026-09-30 EXE-05: set per tick by the step-4 broker read.
+        self._positions_unknown: bool = False
+        # Audit 2026-09-30 OPS-04: the session a daily-loss halt belongs to.
+        self._daily_loss_halt_session: str = ""
+        self._positions_unknown_streak: int = 0
+        self._pending_entry_escalated: set = set()
+        self._pending_entry_age_report: list[dict] = []
 
         # CORE-011: Track order IDs for pending entry orders so we can
         # cancel them at the broker level on drawdown kill.
@@ -1276,7 +1290,17 @@ class OrganismLiveEngine(
         # Only on a LATER session than the failed flatten, and only during
         # regular hours (same-session re-entry into the flatten window must
         # not trigger this).
-        if not (_today_et > _ov_date and 930 <= _hhmm_now < 1558):
+        # Audit 2026-09-30 EXE-06: the window ends where the flatten window
+        # starts on the session's own calendar (15:58 normally, 12:58 early).
+        try:
+            _in_window = 930 <= _hhmm_now and self._eod_session_phase(_now_et2) in ("open", "late_block")
+        except Exception:
+            _in_window = 930 <= _hhmm_now < 1558
+        if not (_today_et > _ov_date and _in_window):
+            return
+        # Audit 2026-09-30 EXE-05: an unknown account state proves nothing;
+        # keep the flag and retry once the broker answers.
+        if getattr(self, "_positions_unknown", False):
             return
         for sym in _ov_syms:
             pos_data = current_positions.get(sym)
@@ -1289,11 +1313,13 @@ class OrganismLiveEngine(
                 _dir = (
                     1.0 if pos_data.get("side", "long") == "long" else -1.0
                 )
-                await self._submit_exit_order(
+                _ov_result = await self._submit_exit_order(
                     sym, _shares, "overnight_force_exit",
                     direction=_dir,
                     broker_positions=current_positions,
                 )
+                if isinstance(_ov_result, dict) and _ov_result.get("reason") == "broker_positions_unknown":
+                    continue  # held, not dispatched: the flag stays for the retry
                 self._exit_cooldown[sym] = self._tick_count
                 self._pending_exit[sym] = self._tick_count
                 result.trades_closed += 1
@@ -1964,11 +1990,12 @@ class OrganismLiveEngine(
             # to prevent stale/orphan metadata from creating phantom trades.
             saved_entry_meta = self.brain.extra_counters.get("entry_metadata", {})
             if saved_entry_meta and isinstance(saved_entry_meta, dict):
-                try:
-                    broker_positions = await self._positions_service.get_all_positions()
-                    broker_symbols = set(broker_positions.keys()) if broker_positions else set()
-                except Exception:
-                    broker_symbols = None  # Cannot validate — keep all metadata
+                # Audit 2026-09-29 EXE-05: an unknown read cannot validate
+                # anything — keep all metadata (a failed read used to look flat
+                # and pruned it).
+                broker_positions = await self._read_broker_positions()
+                broker_symbols = (set(broker_positions.keys())
+                                  if broker_positions is not None else None)
 
                 if broker_symbols is not None:
                     stale_symbols = set(saved_entry_meta.keys()) - broker_symbols
@@ -2001,6 +2028,9 @@ class OrganismLiveEngine(
                     self._pending_entry[sym] = self._tick_count
             for sym in self._pending_entry_order_ids:
                 self._pending_entry.setdefault(sym, self._tick_count)
+            # Audit 2026-09-30 EXE-03: keep each identity's first-seen time.
+            self._restore_pending_entry_since(
+                self.brain.extra_counters.get("pending_entry_since", {}))
 
             # Restore regime-stratified Kelly stats
             rk_data = self.brain.extra_counters.get("regime_kelly_stats")
@@ -2134,6 +2164,8 @@ class OrganismLiveEngine(
                 ).strftime("%Y-%m-%d")
             except Exception:
                 today_et = self._now_fn().strftime("%Y-%m-%d")
+            # Audit 2026-09-30 OPS-04: the loss baseline has its own session key.
+            self._restore_daily_loss_baseline(self.brain.extra_counters, today_et)
             if saved_session == today_et:
                 self._orb_live_count_today = int(
                     self.brain.extra_counters.get("orb_live_count_today", 0)
@@ -2939,6 +2971,28 @@ class OrganismLiveEngine(
         self._universe = list(getattr(self, "_core_universe", None) or self._universe)
         self._scanner_window = {}
 
+    @staticmethod
+    def _eod_session_phase(now_et) -> str:
+        """Audit 2026-09-30 EXE-06: late-day phase relative to today's close.
+
+        ``open`` before close-15 min; ``late_block`` (no new alpha/breakout
+        entries) from close-15; ``flatten`` in the last 2 minutes; then
+        ``post_close``. The close comes from the NYSE calendar, so early-close
+        days (13:00 ET, e.g. 2026-11-27 and 2026-12-24) move every threshold;
+        a normal 16:00 close keeps 15:45 / 15:58 / 16:00 exactly.
+        """
+        from backend.utils.market_hours import market_close_time
+        close = market_close_time(now_et.date())
+        close_min = close.hour * 60 + close.minute
+        now_min = now_et.hour * 60 + now_et.minute
+        if now_min >= close_min:
+            return "post_close"
+        if now_min >= close_min - EOD_FLATTEN_WINDOW_MINUTES:
+            return "flatten"
+        if now_min >= close_min - EOD_LATE_ENTRY_BLOCK_MINUTES:
+            return "late_block"
+        return "open"
+
     async def _stage_post_close_escalation(self, now_et, now_iso: str) -> None:
         """Escalate positions still open after 16:00 ET (audit 2026-06-09 3.4).
 
@@ -2946,17 +3000,24 @@ class OrganismLiveEngine(
         broker query, and the scheduler stops shortly after the close, so it
         takes a fresh broker snapshot rather than trusting the previous
         tick's ``_last_positions`` cache (absent on the first tick after a
-        restart). The cache is the fallback only when the fresh snapshot is
-        empty, because a failed broker read also comes back empty.
+        restart). The cache is the fallback only when the read fails
+        (EXE-05: a failed read is unknown; a confirmed empty answer is flat).
         """
-        try:
-            fresh = await self._positions_service.get_all_positions()
-        except Exception as exc:  # noqa: BLE001 - escalation must not break the tick
-            logger.warning("Post-close position check failed: %s", exc)
-            fresh = None
-        if fresh:
+        fresh = await self._read_broker_positions()
+        if fresh is not None:
             self._last_positions = fresh
-        _open = fresh or getattr(self, "_last_positions", None) or {}
+            _open = fresh
+        else:
+            logger.warning("Post-close position check failed: broker positions unknown")
+            _open = getattr(self, "_last_positions", None) or {}
+            _day = now_et.strftime("%Y-%m-%d")
+            if not _open and getattr(self, "_post_close_unverified_day", None) != _day:
+                self._post_close_unverified_day = _day
+                logger.critical(
+                    "POST-CLOSE FLATNESS UNVERIFIED for %s: the broker position read "
+                    "failed and no confirmed snapshot exists; verify the account is flat",
+                    _day,
+                )
         if _open:
             logger.warning(
                 "EOD flatten window passed (now=%d ET); positions still open: %s",
@@ -3237,7 +3298,11 @@ class OrganismLiveEngine(
                     _now_utc = self._now_fn()
                     _now_et = _now_utc.astimezone(zoneinfo.ZoneInfo("America/New_York"))
                     _hhmm_eod = _now_et.hour * 100 + _now_et.minute
-                    if _hhmm_eod >= 1545:
+                    # Audit 2026-09-30 EXE-06: thresholds follow the session's
+                    # close (13:00 ET on NYSE early-close days); see
+                    # _eod_session_phase. A normal day is unchanged.
+                    _eod_phase = self._eod_session_phase(_now_et)
+                    if _eod_phase in ("late_block", "flatten", "post_close"):
                         # Set a strategy-specific flag, NOT the global safety
                         # flag. ORB/EOD live paths check this and ignore it.
                         self._alpha_breakout_late_blocked = True
@@ -3251,9 +3316,9 @@ class OrganismLiveEngine(
                     # _pending_exit 3-tick TTL would otherwise retry exit
                     # submissions past close, broker would reject, and the
                     # cycle would repeat indefinitely with no operator alert.
-                    if 1558 <= _hhmm_eod < 1600:
+                    if _eod_phase == "flatten":
                         _eod_flatten_triggered = True
-                    elif _hhmm_eod >= 1600:
+                    elif _eod_phase == "post_close":
                         # Past close — don't keep retrying rejecting submits.
                         # Audit 2026-06-09 finding 3.4: escalate (CRITICAL
                         # alert + overnight flag → next-open forced exit).
@@ -3549,9 +3614,9 @@ class OrganismLiveEngine(
                 )
 
             self._pipeline_diagnostics.stage("position_management_and_entry_prechecks")
-            # 4. GET CURRENT POSITIONS from broker
-            current_positions = await self._positions_service.get_all_positions()
-            await self._sync_streaming_subscriptions(current_positions)
+            # 4. GET CURRENT POSITIONS from broker (EXE-05: unknown is not flat)
+            current_positions, _subscription_positions = await self._positions_for_tick()
+            await self._sync_streaming_subscriptions(_subscription_positions)
             open_symbols = set(current_positions.keys())
             equity = await self._get_equity()
 
@@ -3581,6 +3646,7 @@ class OrganismLiveEngine(
                 except Exception:
                     today = self._now_fn().strftime("%Y-%m-%d")
 
+                self._clear_carried_daily_loss_halt(today)  # OPS-04
                 if today != self._daily_loss_date:
                     # Date rolled — reset session counters and any daily-loss
                     # halt state. Runs every tick regardless of MAX_DAILY_LOSS.
@@ -3622,20 +3688,29 @@ class OrganismLiveEngine(
                     if getattr(self, "_daily_loss_halt", False):
                         self.governance.resume_trading()
                         self._daily_loss_halt = False
+                        self._daily_loss_halt_session = ""
                         logger.info(
                             "Daily max-loss halt auto-cleared on date roll",
                         )
                     self._daily_starting_equity = equity
                     self._daily_loss_date = today
+                    self._persist_daily_loss_state()
+                else:
+                    self._ensure_daily_loss_baseline(today, equity)  # OPS-04
 
                 # ── Daily max-loss circuit breaker ──────────────
                 if MAX_DAILY_LOSS > 0:
                     daily_pnl = equity - self._daily_starting_equity
                     if daily_pnl <= -MAX_DAILY_LOSS:
+                        _newly_halted = not getattr(self, "_daily_loss_halt", False)
                         self.governance.halt_trading()
                         self._daily_loss_halt = True
                         self._entries_blocked = True
                         self._last_entries_blocked_reason = "daily_max_loss"
+                        # Audit 2026-09-30 OPS-04: the halt's session, written now.
+                        self._daily_loss_halt_session = today
+                        if _newly_halted:
+                            self._persist_daily_loss_state()
                         logger.critical(
                             "DAILY MAX-LOSS HALT: PnL=$%.2f exceeds -$%.0f "
                             "limit. Trading halted. Auto-clears on next ET "
@@ -4156,10 +4231,13 @@ class OrganismLiveEngine(
                     ORGANISM_ENTRIES_BLOCKED.labels(reason=_reason_label).inc()
                     if current_positions:
                         ORGANISM_HALTED_WITH_POSITIONS.inc()
+                # Audit 2026-09-30 TEL-01: name the actual reason (this line
+                # said "halt/drawdown/insufficient data" for stale data too).
                 logger.info(
-                    "Entries blocked (halt/drawdown/insufficient data) — "
+                    "Entries blocked (%s) — "
                     "skipping pyramids, scans, sizing, entries, and retrain. "
-                    "Exits processed: %d", exits_submitted,
+                    "Exits processed: %d",
+                    self._last_entries_blocked_reason or "unknown", exits_submitted,
                 )
                 result.activity.append(ActivityEvent(
                     event_type="governance",
@@ -5509,11 +5587,9 @@ class OrganismLiveEngine(
                 # 9. SUBMIT ENTRY ORDERS
                 # Re-check positions right before ordering to catch partial
                 # fills from cancelled orders that silently accumulated shares
-                try:
-                    fresh_positions = await self._positions_service.get_all_positions()
-                    fresh_open = set(fresh_positions.keys())
-                except Exception:
-                    fresh_open = open_symbols
+                # EXE-05: nothing is submitted while the account state is unknown.
+                fresh_open, _submit_sizes = await self._entry_positions_recheck(sizes, open_symbols)
+                _positions_unknown_at_submit = _submit_sizes is not sizes
 
                 # V12 W72 / DD5-2: route through the canonical helper from
                 # backend.organism.regime instead of carrying a private
@@ -5528,7 +5604,7 @@ class OrganismLiveEngine(
                 # callers agree.
                 from backend.organism.regime import is_inverse_etf as _is_inverse_etf
 
-                for sz in sizes:
+                for sz in _submit_sizes:
                     # EXPERIMENT 2: suppress inverse ETF entries in chop.
                     # Evidence: Apr 7-10 baseline shows PSQ/SH have 0% win
                     # rate across 6 trades (-$28.54) in chop. 4/6 never went
@@ -5756,6 +5832,8 @@ class OrganismLiveEngine(
                     result,
                     sizes_count=len(sizes),
                 )
+                if _positions_unknown_at_submit:
+                    self._last_no_order_reason = "broker_positions_unknown"
 
                 # 9b. EXPLORATION BUCKET — REMOVED (improve9 hardening)
                 # The exploration execution path submitted live orders for
@@ -5767,6 +5845,10 @@ class OrganismLiveEngine(
             # 10. RECORD TRADE OUTCOMES from closed positions
             await self._reconcile_fills(features_by_symbol)
             await self._reconcile_pending_entry_orders()
+            try:
+                self._track_pending_entry_ages()
+            except Exception as _age_err:  # noqa: BLE001 - visibility must never break the tick
+                logger.warning("Pending entry age tracking failed: %s", _age_err)
 
             # ── Step 11: Retrain/evolve (gated) ────────────────
             if not self._entries_blocked:
@@ -6721,18 +6803,21 @@ class OrganismLiveEngine(
         positions.  The idempotency key uses tick_count (not wall-clock) so
         the same exit intent across rapid ticks is deduplicated.
         """
-        # Track exit reason for trade attribution
-        self._last_exit_reason[symbol] = reason
-        # Audit 2026-06-11 (measurement integrity): mark positions that
-        # scale out in pieces. Per-leg exit accounting does not exist yet —
-        # the eventual single trade row records full size at the FINAL exit
-        # price — so flag the row as approximate for analysis.
-        if "partial" in reason and symbol in self._entry_metadata:
-            try:
-                self._entry_metadata[symbol]["had_partial_exits"] = True
-            except Exception:
-                pass
         side = "buy" if direction < 0 else "sell"
+
+        # Audit 2026-09-30 EXE-05: while the tick's broker read failed, no exit
+        # of either side goes out from a stale snapshot. Re-read once; if the
+        # broker still does not answer, hold (a cover of a short that no
+        # longer exists would open an unmanaged long).
+        if getattr(self, "_positions_unknown", False):
+            fresh = await self._read_broker_positions()
+            if fresh is None:
+                logger.error(
+                    "Exit for %s held: broker positions unknown (%s side) — "
+                    "retry once the broker answers", symbol, side,
+                )
+                return {"status": "blocked", "reason": "broker_positions_unknown"}
+            broker_positions = fresh
 
         # LONG_ONLY guard: never submit a sell (short-creating) exit when
         # LONG_ONLY is active.  Only buy-to-cover (direction < 0) is allowed
@@ -6741,7 +6826,16 @@ class OrganismLiveEngine(
             # Verify we actually hold a long position of this size before selling
             try:
                 if broker_positions is None:
-                    broker_positions = await self._positions_service.get_all_positions()
+                    # Audit 2026-09-30 EXE-05: an unknown answer blocks the sell
+                    # instead of reading as "no position".
+                    fresh = await self._read_broker_positions()
+                    if fresh is None:
+                        logger.error(
+                            "LONG_ONLY guard: broker positions unknown for %s — "
+                            "holding the sell until the broker answers", symbol,
+                        )
+                        return {"status": "blocked", "reason": "broker_positions_unknown"}
+                    broker_positions = fresh
                 broker_pos = broker_positions.get(symbol)
                 if broker_pos is None:
                     logger.warning(
@@ -6776,6 +6870,20 @@ class OrganismLiveEngine(
                     symbol, e,
                 )
                 return {"status": "blocked", "reason": f"broker_check_failed: {e}"}
+
+        # Track exit reason for trade attribution. Audit 2026-09-30: recorded
+        # only once the guard lets the exit through, so a held or blocked
+        # attempt cannot relabel the reason of a later close.
+        self._last_exit_reason[symbol] = reason
+        # Audit 2026-06-11 (measurement integrity): mark positions that
+        # scale out in pieces. Per-leg exit accounting does not exist yet —
+        # the eventual single trade row records full size at the FINAL exit
+        # price — so flag the row as approximate for analysis.
+        if "partial" in reason and symbol in self._entry_metadata:
+            try:
+                self._entry_metadata[symbol]["had_partial_exits"] = True
+            except Exception:
+                pass
 
         # Idempotency key: use tick_count so the same exit intent within the
         # same tick is deduplicated, but different ticks get different keys.
@@ -6908,10 +7016,11 @@ class OrganismLiveEngine(
         so they can be properly managed.
         """
         self._accounting_owner_loop = asyncio.get_running_loop()
-        try:
-            current_positions = await self._positions_service.get_all_positions()
-        except Exception as e:
-            logger.warning("Reconciliation skipped — broker API failed: %s", e)
+        # Audit 2026-09-29 EXE-05: never infer closes from an unknown read
+        # (the legacy read returned {} on failure, which looked flat).
+        current_positions = await self._read_broker_positions()
+        if current_positions is None:
+            logger.warning("Reconciliation skipped — broker positions unknown")
             return
 
         # Cache for sync callers (e.g. _retrain_and_evolve universe rotation)
@@ -7790,6 +7899,7 @@ class OrganismLiveEngine(
             "pending_entry": dict(self._pending_entry),
             # ── Audit-D additions (2026-05-01) ──────────────
             "pending_entry_order_ids": dict(self._pending_entry_order_ids),
+            "pending_entry_since": dict(getattr(self, "_pending_entry_since", {}) or {}),
             "pending_exit": dict(self._pending_exit),
             "exit_cooldown": dict(self._exit_cooldown),
             "symbol_banned": list(self._symbol_banned),
@@ -7798,6 +7908,12 @@ class OrganismLiveEngine(
             "eod_live_count_today": self._eod_live_count_today,
             "mr_live_count_today": self._mr_live_count_today,
             "daily_session_date": self._daily_loss_date,
+            # Audit 2026-09-30 OPS-04: persist the day's loss baseline and halt
+            # so a same-day restart cannot re-arm the breaker from zero.
+            "daily_loss_session_date": self._daily_loss_date,
+            "daily_starting_equity": float(self._daily_starting_equity or 0.0),
+            "daily_loss_halt": bool(getattr(self, "_daily_loss_halt", False)),
+            "daily_loss_halt_session": getattr(self, "_daily_loss_halt_session", "") or "",
             # Audit-D finding D-20 (2026-05-02): pyramid_positions persistence.
             # Was previously local-only; pyramid stop/target/layer state was
             # lost on restart. Reconstruction code in apply_to_learner
@@ -8129,9 +8245,89 @@ class OrganismLiveEngine(
             data["exit_levels"] = exit_levels
             data["entry_metadata"] = entry_metadata
             data["pending_entry_order_ids"] = dict(getattr(self, "_pending_entry_order_ids", {}))
+            data["pending_entry_since"] = dict(getattr(self, "_pending_entry_since", {}) or {})
             _write_text_atomic(ec_path, json.dumps(data, indent=2, default=str))
         except Exception as e:
             logger.error("Failed to persist exit_levels standalone: %s", e)
+
+    def _restore_daily_loss_baseline(self, saved: dict, today_et: str) -> bool:
+        """Audit 2026-09-30 OPS-04: restore today's loss baseline after a restart.
+
+        Restoring the session date means the first tick does not roll, because
+        a roll would re-baseline at the post-loss equity and re-arm the breaker
+        from zero. The baseline carries its own session key
+        (``daily_loss_session_date``), written immediately at the roll, so it
+        never vouches for other session-scoped keys that only the full brain
+        save writes. A daily-loss halt records its own session
+        (``daily_loss_halt_session``): today's halt re-applies the governance
+        halt (the halt write can precede the next governance save); a halt from
+        an earlier session is carried over and cleared on this session's first
+        tick — governance restores its own halt flag regardless of date.
+        Returns True only when today's baseline was restored.
+        """
+        if not isinstance(saved, dict):
+            return False
+        session = saved.get("daily_loss_session_date") or saved.get("daily_session_date")
+        halted = bool(saved.get("daily_loss_halt", False))
+        halt_session = saved.get("daily_loss_halt_session") or (session if halted else "")
+        if halted and isinstance(halt_session, str) and halt_session and halt_session < today_et:
+            self._daily_loss_halt = True
+            self._daily_loss_halt_session = halt_session
+            logger.info("Daily max-loss halt from %s carried over; this session's "
+                        "first tick clears it", halt_session)
+            halted = False
+        if session != today_et:
+            return False
+        try:
+            start = float(saved.get("daily_starting_equity", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            return False
+        if start <= 0:
+            return False
+        self._daily_loss_date = today_et
+        self._daily_starting_equity = start
+        if halted:
+            self._daily_loss_halt = True
+            self._daily_loss_halt_session = today_et
+            self.governance.halt_trading()  # idempotent; the halt write may lead its save
+        logger.info("Restored daily loss baseline for %s: start equity %.2f, halted=%s",
+                    today_et, start, bool(getattr(self, "_daily_loss_halt", False)))
+        return True
+
+    def _persist_daily_loss_state(self) -> None:
+        """Audit 2026-09-30 OPS-04: write today's loss baseline immediately.
+
+        The periodic brain save also carries these keys; this closes the gap
+        between the session roll (or a halt) and the next save. Same atomic
+        read-modify-write as ``_persist_exit_levels_standalone``, under the
+        same (reentrant) accounting lock. Never raises into the tick.
+        """
+        import contextlib
+        import json
+        from backend.organism.brain_persistence import _write_text_atomic
+        try:
+            ec_path = self.brain.brain_dir / "extra_counters.json"
+            if not ec_path.parent.is_dir():
+                return
+            with getattr(self, "_accounting_lock", None) or contextlib.nullcontext():
+                data = {}
+                if ec_path.is_file():
+                    with open(ec_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                # Only the baseline's own keys: rewriting daily_session_date here
+                # would relabel yesterday's bans/counters/pyramids as today's.
+                state = {
+                    "daily_loss_session_date": self._daily_loss_date,
+                    "daily_starting_equity": float(self._daily_starting_equity or 0.0),
+                    "daily_loss_halt": bool(getattr(self, "_daily_loss_halt", False)),
+                    "daily_loss_halt_session": getattr(self, "_daily_loss_halt_session", "") or "",
+                }
+                data.update(state)
+                _write_text_atomic(ec_path, json.dumps(data, indent=2, default=str))
+                if isinstance(getattr(self.brain, "extra_counters", None), dict):
+                    self.brain.extra_counters.update(state)
+        except Exception as e:  # noqa: BLE001 - persistence must never break the tick
+            logger.error("Failed to persist daily loss state: %s", e)
 
     async def _cancel_pending_entry_orders(self) -> None:
         """CORE-011: cancel entries only; never remove uncertain fill identity."""
@@ -8168,9 +8364,207 @@ class OrganismLiveEngine(
             logger.warning("Pending entry resolution incomplete; attribution retained: %s",
                            receipt["issues"])
 
+    def _pending_entry_escalate_after(self) -> float:
+        """Audit 2026-09-30 EXE-03: seconds before an unresolved identity pages.
+
+        A filled entry stays pending for the admission cooldown by design
+        (``_PENDING_ENTRY_TICKS`` ticks), so the limit is never shorter than
+        twice that window in wall-clock time (the INV-4 threshold) at the
+        configured tick interval; wall clock keeps it restart-proof.
+        """
+        try:
+            interval = max(1, int(os.getenv("ORGANISM_TICK_INTERVAL_SECONDS", "60") or 60))
+        except ValueError:
+            interval = 60
+        return max(float(self._PENDING_ENTRY_ESCALATE_SECONDS),
+                   2.0 * float(getattr(self, "_PENDING_ENTRY_TICKS", 30)) * interval)
+
+    def _restore_pending_entry_since(self, saved) -> None:
+        """Audit 2026-09-30 EXE-03: keep first-seen times of restored identities.
+
+        Only identities still pending under the same order id keep their time;
+        anything else starts its age at the next tick.
+        """
+        if not isinstance(saved, dict):
+            return
+        self._pending_entry_since = {
+            sym: dict(item) for sym, item in saved.items()
+            if isinstance(item, dict) and sym in self._pending_entry
+            and item.get("order_id") == self._pending_entry_order_ids.get(sym)
+        }
+
+    def _track_pending_entry_ages(self) -> list[dict]:
+        """Audit 2026-09-30 EXE-03: age unresolved pending entries by wall clock.
+
+        A pending identity is retired only by broker terminal state plus
+        accounting proof, so a lost identity used to persist silently (and
+        now also holds a protected stream slot). Ages survive restarts via
+        ``pending_entry_since``; each identity past the limit raises one
+        CRITICAL (the watchdog's critical-log monitor pages on it). Nothing is
+        retired or cancelled here.
+        """
+        now = self._now_fn().astimezone(UTC)
+        since = getattr(self, "_pending_entry_since", None)
+        if not isinstance(since, dict):
+            since = self._pending_entry_since = {}
+        escalated = getattr(self, "_pending_entry_escalated", None)
+        if not isinstance(escalated, set):
+            escalated = self._pending_entry_escalated = set()
+        limit = self._pending_entry_escalate_after()
+        live = set(self._pending_entry) | set(self._pending_entry_order_ids)
+        for sym in list(since):
+            if sym not in live:
+                since.pop(sym, None)
+        report = []
+        for sym in sorted(live):
+            order_id = self._pending_entry_order_ids.get(sym)
+            item = since.get(sym)
+            if not isinstance(item, dict) or item.get("order_id") != order_id:
+                item = since[sym] = {"order_id": order_id, "since": now.isoformat()}
+            try:
+                first_seen = datetime.fromisoformat(str(item["since"]))
+                if first_seen.tzinfo is None:
+                    raise ValueError("naive timestamp")
+                age = max(0.0, (now - first_seen).total_seconds())
+            except (KeyError, TypeError, ValueError):
+                item["since"] = now.isoformat()
+                age = 0.0
+            report.append({"symbol": sym, "order_id": order_id, "age_seconds": round(age, 1)})
+            identity = (sym, order_id)
+            if age >= limit and identity not in escalated:
+                escalated.add(identity)
+                logger.critical(
+                    "PENDING ENTRY UNRESOLVED for %.0f min: %s order %s — it blocks "
+                    "re-entry and holds a protected stream slot; reconcile it against "
+                    "the broker (nothing is retired automatically)",
+                    age / 60.0, sym, order_id,
+                )
+        escalated.intersection_update({(r["symbol"], r["order_id"]) for r in report})
+        self._pending_entry_age_report = report
+        return report
+
     # ═════════════════════════════════════════════════════════════
     #  HELPERS
     # ═════════════════════════════════════════════════════════════
+
+    _POSITIONS_UNKNOWN_CRITICAL_TICKS = 6  # ~1 minute at 10 s ticks
+    _PENDING_ENTRY_ESCALATE_SECONDS = 1800.0  # EXE-03: 30 minutes unresolved
+
+    async def _positions_for_tick(self) -> "tuple[dict, dict]":
+        """Audit 2026-09-30 EXE-05: the tick's positions and subscription set.
+
+        A failed read is UNKNOWN, never flat. New entries stop for the tick
+        (``broker_positions_unknown``). Held names from the last confirmed
+        snapshot stay subscribed, but position management gets no positions,
+        exactly as before the change: no exit, flatten or overnight action runs
+        from a stale snapshot, no exit cooldown is armed by an attempt that
+        cannot reach the broker, and the first answered tick acts immediately.
+        Returns ``(current_positions, subscription_positions)``.
+        """
+        positions = await self._read_broker_positions(track=True)
+        self._positions_unknown = positions is None
+        if positions is not None:
+            return positions, positions
+        self._entries_blocked = True
+        if not getattr(self, "_last_entries_blocked_reason", ""):
+            self._last_entries_blocked_reason = "broker_positions_unknown"
+        return {}, dict(getattr(self, "_last_positions", None) or {})
+
+    async def _entry_positions_recheck(self, sizes: list, open_symbols: set) -> "tuple[set, list]":
+        """Audit 2026-09-30 EXE-05: the pre-order position re-check.
+
+        Re-reads positions right before entry submission (catches partial fills
+        from cancelled orders). An unknown account state cannot prove a symbol
+        is not already held, or that the position cap is free, so nothing is
+        submitted: returns ``(open_symbols, [])``. Otherwise returns the fresh
+        open set and ``sizes`` itself.
+        """
+        fresh_positions = await self._read_broker_positions()
+        if fresh_positions is None:
+            logger.warning("Entry submission skipped: broker positions unknown at the "
+                           "pre-order re-check (%d sized candidates held)", len(sizes))
+            return open_symbols, []
+        return set(fresh_positions.keys()), sizes
+
+    def _clear_carried_daily_loss_halt(self, today: str) -> None:
+        """Audit 2026-09-30 OPS-04: clear a daily-loss halt from an earlier session.
+
+        Runs on every tick before the session roll, so the halt clears on the
+        new session's first tick even when the session date was restored at
+        startup (close-accounting checkpoint), which skips the roll.
+        """
+        halt_session = getattr(self, "_daily_loss_halt_session", "") or ""
+        if getattr(self, "_daily_loss_halt", False) and halt_session and halt_session < today:
+            self.governance.resume_trading()
+            self._daily_loss_halt = False
+            self._daily_loss_halt_session = ""
+            logger.info("Daily max-loss halt from %s auto-cleared for session %s",
+                        halt_session, today)
+            self._persist_daily_loss_state()
+
+    def _ensure_daily_loss_baseline(self, today: str, equity: float) -> None:
+        """Audit 2026-09-30 OPS-04: never measure the day's loss against zero.
+
+        The session date can be restored (close-accounting checkpoint) without
+        a baseline, which left the breaker disarmed. Take the baseline now.
+        Before the open nothing can have been lost yet (INFO); after it, the
+        day's earlier loss is invisible to the breaker (CRITICAL).
+        """
+        if (self._daily_starting_equity or 0.0) > 0:
+            return
+        try:
+            from backend.utils.market_hours import MARKET_OPEN
+            lossless = self._now_fn().astimezone(ZoneInfo("America/New_York")).time() < MARKET_OPEN
+        except Exception:  # noqa: BLE001
+            lossless = False
+        (logger.info if lossless else logger.critical)(
+            "DAILY LOSS BASELINE MISSING for %s after a restart — re-baselined at "
+            "current equity %.2f%s", today, equity,
+            "" if lossless else "; losses earlier today are not counted by the breaker",
+        )
+        self._daily_starting_equity = equity
+        self._persist_daily_loss_state()
+
+    async def _read_broker_positions(self, *, track: bool = False) -> "dict[str, dict] | None":
+        """Broker positions, or ``None`` when the read failed (EXE-05).
+
+        ``None`` means UNKNOWN, never flat. The production PositionsService
+        exposes ``get_all_positions_strict()`` (raises on failure; ``{}`` is a
+        confirmed flat account). Services that only implement
+        ``get_all_positions()`` keep their contract: an exception is unknown,
+        any returned value is the answer. ``track`` (the tick's main read)
+        counts consecutive failures and raises one CRITICAL per episode.
+        """
+        service = self._positions_service
+        try:
+            if getattr(type(service), "get_all_positions_strict", None) is not None:
+                positions = await service.get_all_positions_strict()
+                if not isinstance(positions, dict):
+                    raise TypeError(f"strict positions read returned {type(positions).__name__}")
+            else:
+                positions = await service.get_all_positions()
+        except Exception as exc:  # noqa: BLE001 - every caller handles unknown
+            if track:
+                streak = getattr(self, "_positions_unknown_streak", 0) + 1
+                self._positions_unknown_streak = streak
+                if streak == self._POSITIONS_UNKNOWN_CRITICAL_TICKS:
+                    logger.critical(
+                        "BROKER POSITIONS UNKNOWN for %d consecutive ticks (%s): new "
+                        "entries blocked; no exit runs from a stale snapshot until "
+                        "the broker answers",
+                        streak, type(exc).__name__,
+                    )
+                else:
+                    logger.warning("Broker position read failed (%d consecutive): %s", streak, exc)
+            else:
+                logger.warning("Broker position read failed: %s", exc)
+            return None
+        if track:
+            if getattr(self, "_positions_unknown_streak", 0):
+                logger.info("Broker position reads recovered after %d failed ticks",
+                            self._positions_unknown_streak)
+            self._positions_unknown_streak = 0
+        return positions
 
     async def _get_equity(self) -> float:
         """Get current portfolio equity from broker.
@@ -8273,6 +8667,31 @@ class OrganismLiveEngine(
             "universe_size": len(self._universe),
             "universe_symbols": list(self._universe),
             "positions_tracked": len(self._entry_metadata),
+            # Audit 2026-09-30 EXE-05: a failed broker read is unknown, not flat.
+            "broker_positions": {
+                "unknown": bool(getattr(self, "_positions_unknown", False)),
+                "consecutive_failed_ticks": int(getattr(self, "_positions_unknown_streak", 0)),
+            },
+            # Audit 2026-09-30 EXE-03: unresolved pending entries by age.
+            "pending_entries": {
+                "count": len(getattr(self, "_pending_entry_age_report", []) or []),
+                "escalate_after_seconds": self._pending_entry_escalate_after(),
+                "oldest_age_seconds": max(
+                    (r["age_seconds"] for r in getattr(self, "_pending_entry_age_report", []) or []),
+                    default=None,
+                ),
+                "stale": [
+                    r for r in getattr(self, "_pending_entry_age_report", []) or []
+                    if r["age_seconds"] >= self._pending_entry_escalate_after()
+                ][:10],
+            },
+            # Audit 2026-09-30 OPS-04: the day's loss baseline survives restarts.
+            "daily_loss": {
+                "session_date": getattr(self, "_daily_loss_date", ""),
+                "starting_equity": float(getattr(self, "_daily_starting_equity", 0.0) or 0.0),
+                "halted": bool(getattr(self, "_daily_loss_halt", False)),
+                "limit": float(MAX_DAILY_LOSS),
+            },
             "close_accounting": {
                 "policy": close_accounting.ACCOUNTING_POLICY,
                 "error": self._accounting_error,

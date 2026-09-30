@@ -284,8 +284,9 @@ class TestAuthEndpoints:
             "email": "new@example.com",
             "password": "StrongPassword123!"
         })
-        # May return 400 for weak password, 422 for validation, 500 if DB not initialized
-        assert response.status_code in [200, 201, 400, 409, 422, 500]
+        # May return 400 for weak password, 422 for validation, 500 if DB not initialized.
+        # Audit 2026-09-30 SEC-04: 403 while self-registration is disabled (default).
+        assert response.status_code in [200, 201, 400, 403, 409, 422, 500]
     
     def test_logout(self):
         """Test POST /api/v1/auth/logout"""
