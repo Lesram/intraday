@@ -81,7 +81,7 @@ def test_freeze_covers_full_decision_surface(freeze):
         "operator_controls", "governance", "entry_admission", "operator_api",
         "entry_frame_capture", "entry_evidence", "entry_freshness", "entry_submission",
         "emergency_stop_api", "emergency_stop_service", "entry_cancellation",
-        "pending_entry_lifecycle", "eod_escalation",
+        "pending_entry_lifecycle", "eod_escalation", "broker_state_safety",
     }
     rde = freeze["surface"]["routing_data_env"]
     assert set(rde) >= {"ALPACA_DATA_FEED", "ORGANISM_MIN_AVG_DOLLAR_VOLUME",
@@ -368,7 +368,12 @@ def test_absent_active_reference_generates_only_nonactive_candidate(isolated_ref
 @pytest.mark.parametrize("method_name", [
     "_stage_expire_cooldowns", "_cancel_pending_entry_orders",
     "_reconcile_pending_entry_orders", "_confirm_pending_entry_orders",
-    "_check_tick_invariants",
+    "_check_tick_invariants", "_track_pending_entry_ages",
+    "_read_broker_positions", "_persist_daily_loss_state", "_eod_session_phase",
+    "_restore_daily_loss_baseline", "_restore_pending_entry_since",
+    "_submit_exit_order", "_reconcile_fills", "_reconstruct_position_state",
+    "_pending_entry_escalate_after", "_positions_for_tick", "_entry_positions_recheck",
+    "_clear_carried_daily_loss_halt", "_ensure_daily_loss_baseline",
 ])
 def test_pending_entry_lifecycle_drift_preserves_active_boundary(tmp_path, monkeypatch, method_name):
     from backend.organism.live_engine import OrganismLiveEngine

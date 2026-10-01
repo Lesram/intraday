@@ -47,9 +47,10 @@ class TestFixA_StartupMetadataPruning:
         """The initialize method must call get_all_positions to
         cross-check entry_metadata against broker state."""
         src = _get_method_source("initialize")
-        # Must query broker positions during metadata restoration
-        assert "get_all_positions" in src, (
-            "initialize() does not call get_all_positions — "
+        # Must query broker positions during metadata restoration. Audit
+        # 2026-09-30 EXE-05: through the unknown-aware read helper.
+        assert "_read_broker_positions" in src, (
+            "initialize() does not read broker positions — "
             "stale metadata pruning fix is missing"
         )
         # Must compute stale_symbols
@@ -69,7 +70,8 @@ class TestFixA_StartupMetadataPruning:
     def test_initialize_has_failsafe_on_broker_error(self):
         """If broker is unreachable, metadata must be kept (fail-safe)."""
         src = _get_method_source("initialize")
-        assert "broker_symbols = None" in src, (
+        # Audit 2026-09-30 EXE-05: an unknown read (None) keeps all metadata.
+        assert "if broker_positions is not None else None" in src, (
             "initialize() has no fail-safe for broker API failure"
         )
 

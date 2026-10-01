@@ -200,10 +200,10 @@ class _StateReconstructionMixin:
         from backend.organism.pyramider import PyramidLevel, PyramidPosition
         from backend.organism.regime import RegimeLabel
 
-        try:
-            positions = await self._positions_service.get_all_positions()
-        except Exception as e:
-            logger.warning("Cannot reconstruct positions: %s", e)
+        # Audit 2026-09-29 EXE-05: unknown is not flat.
+        positions = await self._read_broker_positions()
+        if positions is None:
+            logger.warning("Cannot reconstruct positions: broker positions unknown")
             return
 
         if not positions:

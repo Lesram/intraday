@@ -21,6 +21,28 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+class PositionReadError(RuntimeError):
+    """The broker position read failed: account state is UNKNOWN, not flat.
+
+    Audit 2026-09-29 EXE-05: ``get_all_positions()`` returns ``{}`` on any
+    failure, which callers cannot tell apart from a flat account. Callers
+    that make safety decisions from the answer (entries, reconciliation,
+    flatness proofs, sell guards) use ``get_all_positions_strict()``.
+    """
+
+
+def _position_dict(position) -> dict[str, Any]:
+    return {
+        'symbol': position.symbol,
+        'qty': float(position.qty),
+        'side': 'long' if float(position.qty) > 0 else 'short',
+        'market_value': float(position.market_value) if position.market_value else 0.0,
+        'cost_basis': float(position.cost_basis) if position.cost_basis else 0.0,
+        'unrealized_pl': float(position.unrealized_pl) if position.unrealized_pl else 0.0,
+        'avg_entry_price': float(position.avg_entry_price) if position.avg_entry_price else 0.0
+    }
+
+
 class PositionsService:
     """
     Service for managing and querying portfolio positions.
@@ -100,37 +122,37 @@ class PositionsService:
                 'avg_entry_price': 0.0
             } for symbol in symbols}
 
+    async def get_all_positions_strict(self) -> dict[str, dict[str, Any]]:
+        """All current positions, or ``PositionReadError`` when the read fails.
+
+        An empty dict means the broker confirmed a flat account.
+        """
+        if not self.trading_client:
+            raise PositionReadError("no trading client")
+        try:
+            positions = await asyncio.to_thread(self.trading_client.get_all_positions)
+            position_map = {position.symbol: _position_dict(position) for position in positions}
+        except Exception as e:
+            raise PositionReadError(f"{type(e).__name__}: {e}") from e
+        logger.debug(f"Retrieved {len(position_map)} total positions")
+        return position_map
+
     async def get_all_positions(self) -> dict[str, dict[str, Any]]:
         """
         Get all current positions.
 
         Returns:
-            Dict mapping all held symbols to position data
+            Dict mapping all held symbols to position data. Returns ``{}`` when
+            the read fails (legacy contract for display/diagnostic callers);
+            safety decisions use ``get_all_positions_strict()``.
         """
         try:
+            return await self.get_all_positions_strict()
+        except PositionReadError as e:
             if not self.trading_client:
                 logger.warning("No trading client available, returning empty positions")
-                return {}
-
-            positions = await asyncio.to_thread(self.trading_client.get_all_positions)
-
-            position_map = {}
-            for position in positions:
-                position_map[position.symbol] = {
-                    'symbol': position.symbol,
-                    'qty': float(position.qty),
-                    'side': 'long' if float(position.qty) > 0 else 'short',
-                    'market_value': float(position.market_value) if position.market_value else 0.0,
-                    'cost_basis': float(position.cost_basis) if position.cost_basis else 0.0,
-                    'unrealized_pl': float(position.unrealized_pl) if position.unrealized_pl else 0.0,
-                    'avg_entry_price': float(position.avg_entry_price) if position.avg_entry_price else 0.0
-                }
-
-            logger.debug(f"Retrieved {len(position_map)} total positions")
-            return position_map
-
-        except Exception as e:
-            logger.error(f"Failed to get all positions: {e}")
+            else:
+                logger.error(f"Failed to get all positions: {e}")
             return {}
 
     async def get_position(self, symbol: str) -> dict[str, Any] | None:

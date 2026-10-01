@@ -1107,8 +1107,13 @@ class OutboxWorker:
                                attempts=attempts,
                                error=error_message[:200],
                                dlq_payload=dlq_payload)
+                    alert = dlq_exposure_alert(event, error_result)
 
                     await session.commit()
+                    # Page only once the dead-letter state is committed: a failed
+                    # commit leaves the event for retry and must not page.
+                    if alert is not None:
+                        logger.critical(alert["message"], **alert["fields"])
 
                     # Uncertain acknowledgement is not broker rejection. The
                     # outbox delivery stops, while the order stays unresolved
@@ -1141,6 +1146,41 @@ class OutboxWorker:
             logger.error("Failed to move event to DLQ",
                         event_id=event_id,
                         error=str(e))
+
+
+def dlq_exposure_alert(event: dict[str, Any], error_result: dict[str, Any]) -> dict[str, Any] | None:
+    """Audit 2026-09-30 EXE-04: page on dead-lettered exits and ambiguous submissions.
+
+    A dead-lettered sell (an exit in long-only mode) can leave a position open,
+    and an ambiguous submission may still be live at the broker. Both need an
+    operator; ordinary rejected entries do not. The returned message is logged
+    at CRITICAL, which the paper watchdog's critical-log monitor turns into an
+    attention event. Client-key reconciliation of the order row is unchanged.
+    """
+    payload = event.get("payload") if isinstance(event, dict) else None
+    payload = payload if isinstance(payload, dict) else {}
+    if isinstance(payload.get("payload"), dict):
+        payload = {**payload, **payload["payload"]}
+    side = str(payload.get("side") or "").lower()
+    key = str(payload.get("client_key") or payload.get("client_order_id") or "")
+    lowered = key.lower()
+    is_exit = side == "sell" or any(tag in lowered for tag in ("exit", "flatten", "close"))
+    ambiguous = bool((error_result or {}).get("submission_ambiguous"))
+    if not (is_exit or ambiguous):
+        return None
+    headline = "EXIT ORDER DEAD-LETTERED" if is_exit else "ORDER SUBMISSION AMBIGUOUS"
+    return {
+        "message": f"{headline}: reconcile against the broker; the position may still be open",
+        "fields": {
+            "event_id": event.get("id") if isinstance(event, dict) else None,
+            "symbol": payload.get("symbol"),
+            "side": side or None,
+            "qty": payload.get("qty"),
+            "client_key": key or None,
+            "ambiguous": ambiguous,
+            "error": str((error_result or {}).get("error", ""))[:200],
+        },
+    }
 
 
 # Global worker instance

@@ -1,10 +1,10 @@
 {
-  "VALIDATED_AT": "2026-09-29T17:23:58.976111+00:00",
+  "VALIDATED_AT": "2026-10-01T17:38:43.379848+00:00",
   "_note_status": "new candidate validation boundary; no active clock change",
   "active_forward_cutoff": "2026-09-25T21:11:46.270521+00:00",
   "candidate_only": true,
   "deployment_approved": false,
-  "git_sha": "0d34129e78d0edc0d948ae07517a038ec5098ad1",
+  "git_sha": "34ecc47af0b27267664b5e97852a09fcaead1836",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -25,7 +25,7 @@
       "streaming_data_provider": "5ecc8a7f4700a8e9967ac722652fe4c9936e0b1c1e50d5ac7d7149f08a7cb6aa",
       "streaming_subscription_sync": "da5ca30fdbf600734496c70c6f358d4051773dfdd0c0174e261dc5ee1d1a0f3a",
       "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
-      "streaming_universe_initialization": "0f1f4b84fa17cd93cf1e17edc070e7cbf4fd7dfd569cbea9a33a289f3ef26855"
+      "streaming_universe_initialization": "3fe004d8533d53e9071f23f6679b85240f87495b002a1169eed59c5e52033840"
     },
     "effective_policy_baseline": {
       "artifact_sha256": "0b7cb116f29b981788196ea2dfa09db7ce7c03e450bfee23660cb33695179c93",
@@ -209,6 +209,7 @@
     },
     "research_policy_sources": {
       "baseline_verification": "23a999cf3e3f3e22d51fc0e6e8272baff38886db402e8ebea6f05f1cf26709b1",
+      "broker_state_safety": "9e7624afd73ebaeac42eeecccf4908d6041be819dc4a3ea257af69db23f7f9e9",
       "emergency_stop_api": "a846f54401617b081009a09e9a1c22d82c18a8361d98829f2971a7294e60a6ab",
       "emergency_stop_service": "d3efb81f9e5ae6f6d3036133786dddff5f824028d95a80465cdb5385cb20b5ca",
       "entry_admission": "5e3ac62e8058d1ead9974fd9d5204736a83e890eaa4ac8293c136f69a126631b",
@@ -217,7 +218,7 @@
       "entry_frame_capture": "74616be7ec8aa822b88c67a79d9fc94eb9ffa031ad54716264276c3b03da0074",
       "entry_freshness": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
       "entry_submission": "434cb6e6ee14d8ad5008334cc60ba7c6931faa001e0bdebb65a7ae76b99a2714",
-      "eod_escalation": "913d34c97936fe95cdbfd0dfdbf3e71bc1e894f6bfd56caca334aa8d6e42ce96",
+      "eod_escalation": "e53b30df2807ab71b2aa635513da90c5250011711c7f3dcf8374a364c0251c73",
       "fixed_risk": "532fdc8c66146c410718456bcd6e7a13c5b7310cde443ad00b6a13652faab78b",
       "governance": "68a47b4a76f832e69ef1c9972b847598c92ed59c75f3531209f961aeedc8075d",
       "ml_isolation": "5c90eaa7ba8353747f0d960a43dfa4f52bb9203429048f29ecf3eb64da928b83",
@@ -225,14 +226,14 @@
       "operator_api": "1a3acf76fc878a16ba0f107740b2b7a340bd6dbd4ee9582d9ad997bbd4370710",
       "operator_controls": "1542fa02cfd5d755fc4f9a3360595d8b8f0227cc023d80432cc1633816083da3",
       "parameter_application": "00047876c5404ab98293de96c6b72375814a3fcda4a0c4c1d50d316db52b6b26",
-      "pending_entry_lifecycle": "c607dbb5d1d16ddee633d57fd65e8d146c7ff74135936669b895b201c220f3c3",
+      "pending_entry_lifecycle": "4f235b803ccba92ce1958a38439b3511e239a7fa6b1e0c4766119474e59ec021",
       "phase": "d43130ff43e5c538b5b7fc045a94d8c1c800c694d1df902fafda7b958afefa2b",
       "phase_resolution": "7b53df7368535020c692d2106b93e036bd12029622a4a93d24818357dd072d64",
       "policy": "5893789698cacc6bb393278d09e7bf213eb91ba300023ab41f6a40f81d9a594e",
       "scheduler": "51b1df5aafc6763a40fe5cba49b0122195a36bfcbe658c8e96ed9438bf6cc203",
       "settings_api": "b22f4d5ca318a32556aa4e04d52a1f57281929a647b5646a4ec80bdad5fb1020",
       "settings_update": "34b9d92c3930487f06dab1abfd606ed5f4124a79f443adf8b6c019b5b184fc54",
-      "startup": "b1751bf758dfd896990de156a419556161397ffe4cb23c32b544f86812ef4d88",
+      "startup": "351008980cd73c1cb0a18d60adbb6af94826469f3e026fbeb1f9082095dcb2dc",
       "sync_training": "158c33d4643d2f7f3e28eeb2059fecfc3249dea6df131cdf005d1a6a595e658c",
       "trainer": "38d283265f0242001249b6ace042e9da1e30b13311bf4fc19bc25a72fb4748b2"
     },
@@ -245,7 +246,7 @@
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "5b0188087288fb4f060ec97c4d7998d6cdcf78edce714410f22fb4563645c48c",
+      "entry_gates_dispatch": "4d2ec1430bf42c6ae68cda4e3b3be91103daff4e704a48cd3701e228de0b05ba",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
       "regime_detector": "4a6eef4179ae40987b044462eac60b481b8fafd148097e408af9858e5d36dfd4",

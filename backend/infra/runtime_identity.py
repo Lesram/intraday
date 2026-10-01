@@ -26,6 +26,25 @@ def resolve_git_sha() -> str:
         return "unknown"
 
 
+RUNTIME_HASH_ENV: tuple[str, ...] = (
+    "ORGANISM_DRAWDOWN_KILL_PCT",
+    "ORGANISM_MAX_DAILY_LOSS",
+    "ORGANISM_MAX_NOTIONAL",
+    "ORGANISM_ORB_LIVE_ENABLED",
+    "ORGANISM_EOD_LIVE_ENABLED",
+    "ORGANISM_MEAN_REVERSION_LIVE_ENABLED",
+    "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
+    # Audit 2026-09-30 CFG-01: market-data admission and discovery settings
+    # decide which symbols can trade (the 2026-09-29 stopgap changed
+    # SCANNER_ENABLED without changing this hash).
+    "SCANNER_ENABLED",
+    "ORGANISM_STREAM_MAX_SYMBOLS",
+    "ORGANISM_STREAM_CRITICAL_SYMBOLS",
+    "ORGANISM_SCANNER_WINDOW_MAX",
+    "ORGANISM_SCANNER_WINDOW_TTL_SCANS",
+)
+
+
 def runtime_config_hash() -> str:
     """Stable non-secret hash of runtime settings that affect trading behavior."""
     settings = get_settings()
@@ -36,15 +55,7 @@ def runtime_config_hash() -> str:
         "USE_MOCK_BROKER",
     )
     payload: dict[str, Any] = {key: str(getattr(settings, key, None)) for key in keys}
-    for env_name in (
-        "ORGANISM_DRAWDOWN_KILL_PCT",
-        "ORGANISM_MAX_DAILY_LOSS",
-        "ORGANISM_MAX_NOTIONAL",
-        "ORGANISM_ORB_LIVE_ENABLED",
-        "ORGANISM_EOD_LIVE_ENABLED",
-        "ORGANISM_MEAN_REVERSION_LIVE_ENABLED",
-        "ORGANISM_PHASE9_SHADOW_ENGINES_ENABLED",
-    ):
+    for env_name in RUNTIME_HASH_ENV:
         payload[env_name] = os.environ.get(env_name, "")
     blob = json.dumps(payload, sort_keys=True)
     return hashlib.sha256(blob.encode()).hexdigest()[:16]

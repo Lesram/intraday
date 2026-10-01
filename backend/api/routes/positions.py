@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.infra.db import get_db_session
-from backend.infra.security import AuthenticatedUser, get_authenticated_user
+from backend.infra.security import AuthenticatedUser, get_authenticated_user, require_trader
 from backend.services.positions_service import create_positions_service
 
 router = APIRouter(prefix="/positions", tags=["Positions"])
@@ -245,7 +245,8 @@ async def preview_import(
 
 @router.post("/import", response_model=ImportResponse)
 async def import_positions_endpoint(
-    current_user: AuthenticatedUser = Depends(get_authenticated_user)
+    # Audit 2026-09-30 SEC-03: mutating position routes need trader or admin.
+    current_user: AuthenticatedUser = Depends(require_trader)
 ) -> ImportResponse:
     """
     Import all pre-existing Alpaca positions as historical orders.
@@ -300,7 +301,8 @@ class ClosePositionResponse(BaseModel):
 @router.post("/{symbol}/close", response_model=ClosePositionResponse)
 async def close_position(
     symbol: str,
-    current_user: AuthenticatedUser = Depends(get_authenticated_user),
+    # Audit 2026-09-30 SEC-03: closing submits a broker order — trader or admin.
+    current_user: AuthenticatedUser = Depends(require_trader),
     db: AsyncSession = Depends(get_db_session),
     body: dict[str, Any] | None = Body(None)
 ) -> ClosePositionResponse:

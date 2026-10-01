@@ -1,28 +1,23 @@
 {
   "scope": "task",
   "ref": "HEAD",
-  "total": 6,
+  "total": 4,
   "all": [
     "artifacts/phase2/candidate_param_freeze.json",
+    "backend/infra/outbox_worker.py",
     "backend/organism/live_engine.py",
-    "backend/organism/streaming_data_provider.py",
-    "docs/runbooks/PAPER_UPTIME.md",
-    "scripts/phase2_freeze.py",
-    "tests/test_stream_capacity_admission.py"
+    "tests/test_audit_20260930_safety_release.py"
   ],
   "backend": [
-    "backend/organism/live_engine.py",
-    "backend/organism/streaming_data_provider.py"
+    "backend/infra/outbox_worker.py",
+    "backend/organism/live_engine.py"
   ],
   "organism": [
-    "backend/organism/live_engine.py",
-    "backend/organism/streaming_data_provider.py"
+    "backend/organism/live_engine.py"
   ],
   "tests": [
-    "tests/test_stream_capacity_admission.py"
+    "tests/test_audit_20260930_safety_release.py"
   ],
   "config": [],
-  "docs": [
-    "docs/runbooks/PAPER_UPTIME.md"
-  ]
+  "docs": []
 }

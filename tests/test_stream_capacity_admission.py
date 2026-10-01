@@ -285,12 +285,13 @@ async def test_post_close_escalation_uses_a_fresh_broker_snapshot():
     engine._positions_service = _Positions(RuntimeError("broker down"))
     await engine._stage_post_close_escalation(now_et, stamp)
     assert calls == [(["MSFT"], "2026-09-28", stamp)]
-    # An empty read is ambiguous (the service returns {} on failure), so the
-    # cache still escalates rather than silently dropping exposure.
+    # EXE-05 (2026-09-30): a failed read raises (unknown) and a returned {}
+    # is a confirmed flat account, so a stale cache no longer escalates.
     calls.clear()
     engine._positions_service = _Positions({})
     await engine._stage_post_close_escalation(now_et, stamp)
-    assert calls == [(["MSFT"], "2026-09-28", stamp)]
+    assert calls == []
+    assert engine._last_positions == {}
 
 
 def test_unadmitted_symbol_outranks_stale_symbol():
