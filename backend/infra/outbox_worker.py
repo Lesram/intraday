@@ -1108,10 +1108,12 @@ class OutboxWorker:
                                error=error_message[:200],
                                dlq_payload=dlq_payload)
                     alert = dlq_exposure_alert(event, error_result)
-                    if alert is not None:
-                        logger.critical(alert["message"], **alert["fields"])
 
                     await session.commit()
+                    # Page only once the dead-letter state is committed: a failed
+                    # commit leaves the event for retry and must not page.
+                    if alert is not None:
+                        logger.critical(alert["message"], **alert["fields"])
 
                     # Uncertain acknowledgement is not broker rejection. The
                     # outbox delivery stops, while the order stays unresolved

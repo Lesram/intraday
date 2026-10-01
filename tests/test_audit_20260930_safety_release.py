@@ -155,10 +155,12 @@ async def test_reconcile_never_infers_a_close_from_an_unknown_read(tmp_path):
     await engine._reconcile_fills({})
     assert "pending_close" not in engine._entry_metadata["AAPL"]
     assert engine._last_positions == {"AAPL": {"qty": 5}}
-    # The same state on a CONFIRMED flat read does start a close (the test is not vacuous).
+    # The same state on a CONFIRMED flat read does start a close (the test is not vacuous):
+    # attribution is kept and the pending-close marker is created.
     engine._positions_service = PositionsService(_Client([]))
     await engine._reconcile_fills({})
-    assert "pending_close" in engine._entry_metadata.get("AAPL", {"pending_close": True})
+    assert "AAPL" in engine._entry_metadata
+    assert engine._entry_metadata["AAPL"].get("pending_close")
 
 
 @pytest.mark.asyncio
@@ -203,6 +205,38 @@ def test_daily_loss_state_is_persisted_atomically_without_touching_other_keys(tm
     assert data["exit_levels"] == {"AAPL": {}} and data["tick_count"] == 7
     assert (data["daily_loss_session_date"], data["daily_starting_equity"], data["daily_loss_halt"]) == (
         "2026-09-30", 98_500.0, True)
+
+
+def test_daily_loss_persist_failure_pages(tmp_path, monkeypatch, caplog):
+    """PR #35 review: a failed immediate write is CRITICAL (the watchdog pages), never silent."""
+    import backend.organism.brain_persistence as bp
+    engine = _engine(tmp_path)
+    engine.brain.brain_dir.mkdir(parents=True, exist_ok=True)
+    engine._daily_loss_date, engine._daily_starting_equity, engine._daily_loss_halt = "2026-09-30", 98_500.0, True
+
+    def _boom(*_a, **_k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(bp, "_write_text_atomic", _boom)
+    with caplog.at_level(logging.CRITICAL):
+        engine._persist_daily_loss_state()                     # never raises into the tick
+    assert any(r.levelno == logging.CRITICAL and "DAILY LOSS STATE NOT PERSISTED" in r.getMessage()
+               for r in caplog.records)
+    assert engine._daily_loss_halt is True                     # the in-memory halt stays in force
+
+
+@pytest.mark.asyncio
+async def test_confirmed_reads_refresh_the_unknown_fallback_snapshot(tmp_path):
+    """PR #35 review: any confirmed read (not only reconciliation's) refreshes the fallback."""
+    engine = _engine(tmp_path)
+    engine._last_positions = {}
+    engine._positions_service = PositionsService(_Client([_alpaca_position("AAPL", 4)]))
+    opened, _ = await engine._entry_positions_recheck([], set())
+    assert opened == {"AAPL"} and engine._last_positions["AAPL"]["qty"] == 4.0
+    engine._positions_service = PositionsService(_Client(ConnectionError("down")))
+    current, subscription = await engine._positions_for_tick()
+    assert current == {} and "AAPL" in subscription            # held name stays subscribed
+    assert engine._last_positions["AAPL"]["qty"] == 4.0          # unknown never overwrites it
 
 
 def test_earlier_session_halt_is_carried_over_and_same_session_halt_reapplies_governance(tmp_path):
@@ -418,6 +452,54 @@ def test_dead_lettered_exit_and_ambiguous_submissions_raise_an_alert():
     assert ambiguous["message"].startswith("ORDER SUBMISSION AMBIGUOUS")
     from backend.infra.outbox_worker import OutboxWorker
     assert "dlq_exposure_alert(event, error_result)" in inspect.getsource(OutboxWorker._move_to_dlq)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("commit_fails", [False, True])
+async def test_dead_letter_alert_pages_only_after_the_commit(monkeypatch, commit_fails):
+    """PR #35 review: a failed DLQ commit leaves the event for retry and must not page."""
+    import backend.infra.outbox as outbox_mod
+    import backend.infra.outbox_worker as worker_mod
+
+    calls = []
+
+    class _Repo:
+        def __init__(self, session):
+            pass
+
+        async def mark_failed(self, **kwargs):
+            calls.append("mark_failed")
+
+    class _Session:
+        async def commit(self):
+            calls.append("commit")
+            if commit_fails:
+                raise RuntimeError("db down")
+
+        async def rollback(self):
+            calls.append("rollback")
+
+        async def close(self):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    log = MagicMock()
+    log.critical.side_effect = lambda *a, **k: calls.append("critical")
+    monkeypatch.setattr(outbox_mod, "OutboxRepo", _Repo)
+    monkeypatch.setattr(worker_mod, "logger", log)
+    worker = worker_mod.OutboxWorker(lambda: _Session())
+    event = {"id": "00000000-0000-0000-0000-000000000001", "retry_count": 5,
+             "payload": {"symbol": "AAPL", "side": "sell", "qty": 10, "client_key": "organism_exit_AAPL_x"}}
+    await worker._move_to_dlq(event, {"error": "timeout"})
+    if commit_fails:
+        assert "critical" not in calls and "rollback" in calls
+    else:
+        assert calls.index("commit") < calls.index("critical")
 
 
 # ── SEC-03 / SEC-04: who may trade, who may register ─────────────────────────

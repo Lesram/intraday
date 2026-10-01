@@ -8327,7 +8327,14 @@ class OrganismLiveEngine(
                 if isinstance(getattr(self.brain, "extra_counters", None), dict):
                     self.brain.extra_counters.update(state)
         except Exception as e:  # noqa: BLE001 - persistence must never break the tick
-            logger.error("Failed to persist daily loss state: %s", e)
+            # PR #35 review: the in-memory breaker stays armed (and any halt stays
+            # in force), but a restart before the next brain save could restore an
+            # older baseline or lose today's halt, so this pages (CRITICAL).
+            logger.critical(
+                "DAILY LOSS STATE NOT PERSISTED (%s): the breaker is armed in memory, but a "
+                "restart before the next brain save may lose today's baseline or halt",
+                e,
+            )
 
     async def _cancel_pending_entry_orders(self) -> None:
         """CORE-011: cancel entries only; never remove uncertain fill identity."""
@@ -8564,6 +8571,9 @@ class OrganismLiveEngine(
                 logger.info("Broker position reads recovered after %d failed ticks",
                             self._positions_unknown_streak)
             self._positions_unknown_streak = 0
+        # PR #35 review: every confirmed answer refreshes the snapshot an unknown
+        # tick falls back to (held names stay subscribed), not only reconciliation's.
+        self._last_positions = dict(positions)
         return positions
 
     async def _get_equity(self) -> float:
