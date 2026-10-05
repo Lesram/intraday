@@ -4,6 +4,6 @@
   "timed_out": false,
   "error": "",
   "output_file": "artifacts/runtime_snapshot.log",
-  "output_tail": "Defaults snapshot written to /home/claude/wt-surf-1/artifacts/runtime_defaults_snapshot.json\nResolved config snapshot written to /home/claude/wt-surf-1/artifacts/resolved_config_snapshot.json\nLive process snapshot written to /home/claude/wt-surf-1/artifacts/live_process_runtime_snapshot.json\nLegacy snapshot written to /home/claude/wt-surf-1/artifacts/runtime_config_snapshot.json\n",
+  "output_tail": "Defaults snapshot written to /home/claude/wt-surf-2b/artifacts/runtime_defaults_snapshot.json\nResolved config snapshot written to /home/claude/wt-surf-2b/artifacts/resolved_config_snapshot.json\nLive process snapshot written to /home/claude/wt-surf-2b/artifacts/live_process_runtime_snapshot.json\nLegacy snapshot written to /home/claude/wt-surf-2b/artifacts/runtime_config_snapshot.json\n",
   "errors": []
 }

@@ -1,23 +1,28 @@
 {
-  "task_id": "audit-20261005-surface-exit-safety",
-  "summary": "fix: exit safety nets see the broker price, exit window keeps stop and max-loss, quote rung cannot abort the tick (audit 2026-10-05 C05-01, C05-02, C06-02)",
-  "sha": "50fef27a8b2994bc79e76ebf3424cc19d6fb4d6a",
-  "branch": "fix/surface-exit-safety",
-  "change_scope": "task",
-  "change_ref": "HEAD",
+  "task_id": "audit-20261005-surface-external-close",
+  "summary": "fix: account closes made outside the engine's exit orders (audit 2026-10-05 C06-01)",
+  "sha": "039e39248866744a1740c014dfb489bd2bae81d1",
+  "branch": "fix/surface-external-close",
+  "change_scope": "base",
+  "change_ref": "943303d8...HEAD",
   "files_changed": [
     "backend/organism/live_engine.py",
-    "backend/services/positions_service.py",
+    "backend/organism/live_engine_fills.py",
+    "backend/organism/operator_cancellation.py",
     "docs/architecture/mapss.md",
-    "tests/test_audit_20261005_surface_exit_safety.py",
-    "tests/test_v12_baseline_invariants.py",
-    "tests/test_v13_w100_live_tick_coverage.py"
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_audit_20261005_surface_external_close.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
     "python scripts/ci/generate_artifacts.py full",
     "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
-    "python scripts/ci/check_spec_drift.py --json"
+    "python scripts/ci/check_spec_drift.py --json",
+    "pytest -q tests/test_audit_20261005_surface_external_close.py (and the required close-accounting, operator_cancellation, integrations and source-pinning suites, one file per run under the shared lock)",
+    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json python scripts/phase2_freeze.py --verify --candidate",
+    "INTRA_DIFF_BASE=943303d8 INTRA_TASK_ID=audit-20261005-surface-external-close python scripts/ci/generate_artifacts.py full",
+    "INTRA_DIFF_BASE=943303d8 python scripts/ci/generate_audit_index.py"
   ],
   "tests_passed": [
     "organism_live_engine",
@@ -32,22 +37,27 @@
   "tests_failed": [],
   "runtime_behavior_changed": [
     "backend/organism/live_engine.py",
-    "backend/services/positions_service.py"
+    "backend/organism/live_engine_fills.py",
+    "backend/organism/operator_cancellation.py"
   ],
   "docs_updated": [
-    "docs/architecture/mapss.md"
+    "docs/architecture/mapss.md",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md"
   ],
   "risks": [
-    "1 organism file(s) changed \u2014 replay verification required",
-    "Frozen decision surface changed (owner sign-off 2026-10-05): phase2_freeze --verify --candidate reports exactly source_hashes.entry_gates_dispatch and research_policy_sources.broker_state_safety; production needs a regenerated candidate_param_freeze.json and a new approved activation (new FROZEN_AT resets the forward clock).",
-    "tests/test_phase2_freeze.py::test_decision_surface_unchanged and ::test_verify_mode_passes_on_unchanged_surface fail by design until the release assembly regenerates candidate_param_freeze.json (deliberately not regenerated on this branch).",
-    "Live exit-path behaviour changes: the broker-price safety nets can now fire, and the exit window sends stop/max-loss exits for unclaimed shares on the next tick instead of about 10 ticks later."
+    "3 organism file(s) changed \u2014 replay verification required",
+    "Frozen decision surface changed (owner sign-off 2026-10-05): phase2_freeze --verify --candidate reports research_policy_sources.broker_state_safety (new hash), research_policy_sources.entry_cancellation (the only key beyond the base's two) and source_hashes.entry_gates_dispatch (the base's hash, not touched here). Production needs a regenerated candidate_param_freeze.json and a new approved activation (new FROZEN_AT resets the forward clock).",
+    "tests/test_phase2_freeze.py::test_decision_surface_unchanged and ::test_verify_mode_passes_on_unchanged_surface fail by design until the release assembly regenerates candidate_param_freeze.json (not regenerated here).",
+    "Live close-accounting behaviour changes: a strategy position closed outside the engine's exit orders is recorded as an external_close reconciliation artifact (exact for the platform close routes; approximate after 15 min for closes with no DB row) and its entry gate is released; a close still pending 30 min after it was observed raises one CRITICAL per episode.",
+    "Known limit: the engine's own (system) lot of an externally closed lifetime stays open in the lot ledger, so the next entry in that symbol cannot release its pending identity through the open-position check (EXE-03 CRITICAL after 30 min, symbol pending-entry gated) until owner-agnostic lot matching or a lot repair lands.",
+    "A forward external_close artifact has a price source other than db_position_fills, so every later daily evidence report flags unqualified_price_source until the next activation (as for orphan artifacts)."
   ],
   "follow_ups": [
     "Release assembly: regenerate artifacts/phase2/candidate_param_freeze.json once for all frozen-code fixes, then activate (new FROZEN_AT, activation record, daily-evidence binding); research_policy_baseline.json stays unchanged.",
-    "EOD flatten and the overnight forced exit still size from the full broker qty, not qty_available/unclaimed shares (an oversized flatten is refused by the PR #36 outbox guard).",
-    "Pyramid close_partial reads pos_data['direction'], which PositionsService never supplies (latent; pyramiding is off in production).",
-    "An orphan close that never finds a price stays pending with per-tick saves (C06-03); bars_held still skips minute boundaries crossed during the exit window."
+    "With or before this release (C07 review): owner-agnostic lot matching for the single broker account and a lot repair for closes with no DB row, so the next entry after an external close can release its pending identity and RealizedTrade FIFO stays per lifetime.",
+    "Operator path to finalize or release a named pending close (C06-01 verifier note; organism/routes.py is hashed) for closes that stay ambiguous: generic manual orders without close_position, an order after the observed close, holds that never clear.",
+    "C06-04 (frozen observed_at excludes late legs) and C02-03 (stub metadata without an order id) still leave closes pending; they now page after 30 min instead of staying silent.",
+    "C06-03: a pending close still triggers a brain save every pass (now bounded to the 15-min wait for unbooked external closes)."
   ],
   "artifact_pack_status": "pass",
   "artifact_pack_errors": []
