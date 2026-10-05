@@ -490,11 +490,14 @@ class AlpacaOutboxDispatcher:
                         error=str(e),
                         error_type=type(e).__name__)
 
-            if is_insufficient_qty_rejection(e):
-                # Audit 2026-10-05 C01-01: a definitive rejection. Retrying it
-                # turns into a short sale once another sell for the same shares
-                # fills, so the order is finalized and never retried.
-                intent, _ = resolve_order_intent(event_data)
+            intent, _ = resolve_order_intent(event_data)
+            exit_sell = (intent == "exit"
+                         and str(event_data.get("side") or "").strip().lower() == "sell")
+            if exit_sell and is_insufficient_qty_rejection(e):
+                # Audit 2026-10-05 C01-01: a definitive rejection of an exit sell.
+                # Retrying it turns into a short sale once another sell for the
+                # same shares fills, so the order is finalized and never retried.
+                # Entries and buy-to-cover keep the normal failure flow below.
                 detail = f"the broker rejected the order: {str(getattr(e, 'detail', None) or e)[:300]}"
                 return _refused(event_data,
                                 reason="broker_rejected_insufficient_qty",

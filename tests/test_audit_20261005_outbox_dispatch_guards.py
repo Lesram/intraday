@@ -346,6 +346,35 @@ async def test_insufficient_qty_rejection_is_terminal_not_retried(wired):
     assert broker.kinds().count("POST") == 1
 
 
+ENTRY_ATTRS = {"source": "organism", "reason": "organism_entry", "tick": 10}
+EXIT_ATTRS = {"source": "organism", "reason": "stop_loss", "tick": 200}
+
+
+@pytest.mark.parametrize("side,reduce_only,attributes,long_only", [
+    ("buy", False, ENTRY_ATTRS, "true"),
+    ("sell", False, ENTRY_ATTRS, "true"),  # declared short entry (strong-short path)
+    ("buy", True, EXIT_ATTRS, "true"),  # buy-to-cover exit
+    ("sell", False, {"source": "manual"}, "false"),  # undeclared sell, long-only off
+], ids=["entry_buy", "declared_short_entry", "buy_to_cover_exit", "undeclared_sell_long_only_off"])
+async def test_insufficient_qty_rejection_of_other_orders_keeps_the_normal_failure_flow(
+        wired, monkeypatch, side, reduce_only, attributes, long_only):
+    """PR #36 review: only exit sells are finalized on an insufficient-qty rejection."""
+    monkeypatch.setenv("ORGANISM_LONG_ONLY", long_only)
+    broker = FakeBroker(position=long_position(100), place_error=INSUFFICIENT_QTY)
+    worker = wired.bind(broker)
+    result = await OrderService(sessionmaker=wired.sessions).submit_symbol_order(
+        symbol="AAPL", side=side, qty=100, order_type="market", tif="day", reduce_only=reduce_only,
+        idempotency_key=f"review_{side}_{reduce_only}_{uuid.uuid4().hex[:8]}", attributes=attributes)
+    order_id = result["order_id"]
+    await process_one(worker)
+    assert broker.kinds() == ["POST"]  # not an exit sell: no guard reads
+    order, event = await state(wired.sessions, order_id)
+    assert order.status == "accepted" and "dispatch_refusal" not in (order.attributes or {})
+    assert (event.status, event.attempts) == ("pending", 1)  # the normal retry schedule
+    assert event.last_error.startswith("403")
+    assert criticals(wired.log) == []
+
+
 async def test_lookup_body_that_does_not_confirm_the_key_is_never_sent(wired):
     broker = FakeBroker(position=long_position(100),
                         existing={"id": BROKER_ID, "status": "accepted", "client_order_id": "other"})
