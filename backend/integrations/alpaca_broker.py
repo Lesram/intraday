@@ -558,6 +558,42 @@ class AlpacaBrokerClient:
             raise BrokerAcknowledgementUnresolved(client_order_id, "lookup_not_confirmed")
         return data
 
+    async def find_order_by_client_order_id(self, client_order_id: str) -> dict | None:
+        """Strict lookup by client key: the order, or None only on a broker 404.
+
+        Audit 2026-10-05 C01-01: the dispatch-time exit guard must tell "never
+        placed" apart from "lookup failed". reconcile_order_acknowledgement maps
+        both to BrokerAcknowledgementUnresolved; here a definitive 404 returns None and
+        every other failure raises. A 200 whose body does not confirm the exact
+        client key raises BrokerAcknowledgementUnresolved (the order exists but
+        cannot be attached, so it must never be sent again).
+        """
+        if not isinstance(client_order_id, str) or not client_order_id.strip():
+            raise BrokerAcknowledgementUnresolved(None, "missing_client_order_id")
+        try:
+            response = await self._make_request_with_retry(
+                "GET", f"{self.base_url}/v2/orders:by_client_order_id",
+                params={"client_order_id": client_order_id},
+            )
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        if response.status_code == 404:
+            return None
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Unexpected client order lookup status {response.status_code}",
+            )
+        try:
+            data = response.json()
+        except (TypeError, ValueError, RecursionError):
+            data = None
+        if not _valid_order_acknowledgement(data, client_order_id, lookup=True):
+            raise BrokerAcknowledgementUnresolved(client_order_id, "lookup_not_confirmed")
+        return data
+
     async def get_order(self, order_id: str) -> dict:
         """
         Retrieve order details by order ID.
