@@ -1,13 +1,17 @@
 {
-  "task_id": "evidence-repair",
-  "summary": "fix: limit insufficient-qty finalization to exit sells (PR #36 review)",
-  "sha": "1c5be559653f39137180b696a90bba2ccd1ee01d",
-  "branch": "fix/outbox-dispatch-guards",
+  "task_id": "audit-20261005-surface-exit-safety",
+  "summary": "fix: exit safety nets see the broker price, exit window keeps stop and max-loss, quote rung cannot abort the tick (audit 2026-10-05 C05-01, C05-02, C06-02)",
+  "sha": "50fef27a8b2994bc79e76ebf3424cc19d6fb4d6a",
+  "branch": "fix/surface-exit-safety",
   "change_scope": "task",
   "change_ref": "HEAD",
   "files_changed": [
-    "backend/integrations/alpaca_outbox.py",
-    "tests/test_audit_20261005_outbox_dispatch_guards.py"
+    "backend/organism/live_engine.py",
+    "backend/services/positions_service.py",
+    "docs/architecture/mapss.md",
+    "tests/test_audit_20261005_surface_exit_safety.py",
+    "tests/test_v12_baseline_invariants.py",
+    "tests/test_v13_w100_live_tick_coverage.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -27,13 +31,24 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/integrations/alpaca_outbox.py"
+    "backend/organism/live_engine.py",
+    "backend/services/positions_service.py"
   ],
-  "docs_updated": [],
+  "docs_updated": [
+    "docs/architecture/mapss.md"
+  ],
   "risks": [
-    "1 backend runtime file(s) changed \u2014 targeted verification required"
+    "1 organism file(s) changed \u2014 replay verification required",
+    "Frozen decision surface changed (owner sign-off 2026-10-05): phase2_freeze --verify --candidate reports exactly source_hashes.entry_gates_dispatch and research_policy_sources.broker_state_safety; production needs a regenerated candidate_param_freeze.json and a new approved activation (new FROZEN_AT resets the forward clock).",
+    "tests/test_phase2_freeze.py::test_decision_surface_unchanged and ::test_verify_mode_passes_on_unchanged_surface fail by design until the release assembly regenerates candidate_param_freeze.json (deliberately not regenerated on this branch).",
+    "Live exit-path behaviour changes: the broker-price safety nets can now fire, and the exit window sends stop/max-loss exits for unclaimed shares on the next tick instead of about 10 ticks later."
   ],
-  "follow_ups": [],
+  "follow_ups": [
+    "Release assembly: regenerate artifacts/phase2/candidate_param_freeze.json once for all frozen-code fixes, then activate (new FROZEN_AT, activation record, daily-evidence binding); research_policy_baseline.json stays unchanged.",
+    "EOD flatten and the overnight forced exit still size from the full broker qty, not qty_available/unclaimed shares (an oversized flatten is refused by the PR #36 outbox guard).",
+    "Pyramid close_partial reads pos_data['direction'], which PositionsService never supplies (latent; pyramiding is off in production).",
+    "An orphan close that never finds a price stays pending with per-tick saves (C06-03); bars_held still skips minute boundaries crossed during the exit window."
+  ],
   "artifact_pack_status": "pass",
   "artifact_pack_errors": []
 }
