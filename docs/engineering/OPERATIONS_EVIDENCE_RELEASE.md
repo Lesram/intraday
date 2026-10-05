@@ -180,7 +180,10 @@ recorded after the entry still hold as before. Old dead letters (for example
 the four April XLE rows marked `failed`) no longer hold every later close of
 the symbol. The hold names its evidence in `pending_close.accounting_hold_reason`
 (`ambiguous_order:<order id>` or `replacement_lineage_unverified`), with one
-WARNING per new reason. No historical row is rewritten.
+WARNING per new reason. The zero-fill entry cleanup likewise considers only
+orders submitted between the entry and the observed close
+(`pending_close.observed_at`); a later order for the symbol no longer keeps a
+verified-unfilled entry pending. No historical row is rewritten.
 
 A broker-confirmed close fill whose owner has no, or too few, open lots is no
 longer rolled back. The order status, filled quantity, price and execution are

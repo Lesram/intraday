@@ -274,6 +274,28 @@ async def test_engine_accounts_despite_stale_history_and_defers_on_live_ambiguit
     assert not engine._order_service.submit_order.called
 
 
+async def test_zero_fill_cleanup_scan_is_bounded_to_the_observed_close(db, tmp_path):
+    entry = make_row("XLE", "buy", 6, at=ENTRY, status="canceled", filled=0)
+    later = make_row("XLE", "buy", 2, at=CLOSED + timedelta(minutes=5), status="accepted",
+                     source=None, user="ops@example.com")  # after the close: not this lifetime
+    await store(db, [entry, later])
+    host = lookup(db)
+    assert await host._entry_verified_unfilled("XLE", pending_meta(entry)) is True
+    # Without a parseable observed close the scan stays unbounded (fail closed).
+    for meta in ({"entry_order_id": str(entry.id)},
+                 {"entry_order_id": str(entry.id), "pending_close": {"observed_at": "unknown"}}):
+        assert await host._entry_verified_unfilled("XLE", meta) is False
+    engine = make_engine(tmp_path, db, CLOSED)
+    track(engine, "XLE", entry, ENTRY)
+    await engine._reconcile_fills({})
+    assert "XLE" not in engine._entry_metadata and engine._all_trades == []
+    assert engine._accounting_completed_entries[str(entry.id)] == "verified_unfilled"
+    # An order inside the lifetime still makes the cleanup uncertain.
+    inside = make_row("XLE", "sell", 6, at=EXIT, status="accepted")
+    await store(db, [inside])
+    assert await host._entry_verified_unfilled("XLE", pending_meta(entry)) is False
+
+
 # ── C07-01: a broker-confirmed close is persisted even without matching lots ─
 
 

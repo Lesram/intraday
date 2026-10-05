@@ -91,6 +91,15 @@ def _order_may_affect_lifetime(row: Any, entry_time: datetime) -> bool:
         return True
 
 
+def _pending_close_time(meta: dict[str, Any]) -> datetime | None:
+    """Observed close time the caller accounts this lifetime to, if known."""
+    pending = meta.get("pending_close")
+    try:
+        return _as_utc(datetime.fromisoformat(str(pending["observed_at"])))
+    except (TypeError, KeyError, ValueError, AttributeError, OverflowError):
+        return None
+
+
 def _hold_close(meta: dict[str, Any], symbol: str, reason: str) -> None:
     """Name the blocking evidence in pending status; warn once per reason."""
     pending = meta.get("pending_close")
@@ -220,8 +229,12 @@ class _FillLookupMixin:
     async def _entry_verified_unfilled(self, symbol: str, meta: dict[str, Any]) -> bool:
         """Only a terminal, identified entry with no execution can be discarded.
 
-        Any other order in its lifetime makes cleanup uncertain. This is
-        deliberately stricter than missing position data or a missing DB row.
+        Any other order in its lifetime (submitted from the entry up to the
+        observed close in ``pending_close.observed_at``) makes cleanup
+        uncertain; a later order for the symbol is not part of this lifetime
+        (C08-01). Without a parseable observed close the scan stays unbounded.
+        This is deliberately stricter than missing position data or a missing
+        DB row.
         """
         if not self._sessionmaker:
             return False
@@ -248,10 +261,14 @@ class _FillLookupMixin:
                 ).limit(1))).scalar_one_or_none()
                 if executions is not None:
                     return False  # Order summaries can lag individual fills.
-                other = (await session.execute(select(Order.id).where(
+                other_stmt = select(Order.id).where(
                     Order.symbol == symbol, Order.submitted_at >= row.submitted_at,
                     Order.id != entry_id,
-                ).limit(1))).scalar_one_or_none()
+                )
+                closed_at = _pending_close_time(meta)
+                if closed_at is not None:
+                    other_stmt = other_stmt.where(Order.submitted_at <= closed_at)
+                other = (await session.execute(other_stmt.limit(1))).scalar_one_or_none()
                 return other is None
         except Exception as exc:  # noqa: BLE001 - any lookup failure must retain unresolved accounting.
             logger.debug("Zero-fill verification unavailable for %s: %s", symbol, exc)
