@@ -67,6 +67,40 @@ local time, currently Pacific. `source_saved_at` remains available in each recei
 for engine-state investigation. Watchdog backup freshness uses archive creation
 time, so an unchanged brain during closed markets does not create a false alert.
 
+## Engine brain saves: crash recovery and integrity
+
+Added 2026-10-05 (audit C12). A full brain save stages the whole new generation
+in `organism_brain/.tmp_save/`, then writes `.brain_swap_journal.json` (staged
+names, sizes, SHA-256) before it replaces any HEAD file. Files are renamed over
+their old versions, so a file present in both generations is never missing. The
+new generation's file list is written into `.save_complete`; the journal is then
+removed. A crash during the swap leaves the journal, and the next load or save
+completes the swap (`C12-01 (...) rolled forward` at WARNING). If a staged file
+is missing or altered, the HEAD is rejected (CRITICAL). Load then uses the newest
+complete engine backup; a save discards the journal and rewrites every file.
+
+A HEAD or engine backup whose `.save_complete` lists a missing file is never
+loaded with that state empty (`C12-01: brain generation ... is incomplete`,
+CRITICAL). The newest complete backup is used, or startup has no brain. Engine
+backups are copied to `backups/.partial_*` and renamed only when complete. Older
+code ignores the journal and reads only whether `.save_complete` exists, so a
+brain saved by this code loads after a rollback.
+
+Essential saves take the brain lock, run only after an interrupted swap was
+completed, and do not rewrite model files that have not changed. A save that did
+not happen is not reported as one. Each failure logs `BRAIN SAVE NOT PERSISTED`
+(ERROR) and does not advance the brain-save watchdog. Every third consecutive
+failure logs `BRAIN SAVES FAILING REPEATEDLY` (CRITICAL), which the paper watchdog
+notifies. Check disk space, permissions, and other holders of
+`organism_brain/.brain.lock`.
+
+Every model and cache pickle the engine writes is HMAC-signed. An unsigned
+pickle in the brain is never unpickled: it is logged at CRITICAL
+(`C12-04: refusing to deserialize unsigned ...`) and treated as missing. With
+the approved baseline configured, startup is held. Restore a signed copy from
+`backups/` or a verified archive. Do not re-create the file with plain `joblib`
+or `pickle`.
+
 ## Installing and checking schedules
 
 Apply the reviewed scripts to `/Users/marselkei/VS/intra` and ensure `logs/`

@@ -19,8 +19,14 @@ picks up exactly where the last one left off:
     └─────────────────────────────────────────────────────────────────┘
 
 Safety guarantees:
-    * Atomic writes (write to .tmp → rename) — never corrupt the brain
-    * Automatic backup before every save — keep last 5 snapshots
+    * Per-file atomic writes (same-directory temp → fsync → rename)
+    * Full saves stage a complete generation in ``.tmp_save`` and publish it
+      through a journaled swap (audit 2026-10-05 C12-01): a crash mid-swap is
+      rolled forward by the next load()/save(), and a HEAD whose completion
+      inventory lists a missing file is rejected (backup fallback) instead of
+      loading the missing state as empty
+    * Backup before every full save (and hourly from essential saves) —
+      keep last 5 snapshots
     * Version manifest — detect incompatible brain formats
     * Graceful degradation — if brain is missing or corrupt, start fresh
 
@@ -52,7 +58,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import joblib
 import numpy as np
 import pandas as pd
 
@@ -69,7 +74,24 @@ ARCHIVE_PREFIX = "trade_history_archive_"
 LOCK_FILE = ".brain.lock"
 # Audit 2026-06-09 finding 3.6: save() deletes this before its swap and
 # rewrites it after — a brain dir without it was interrupted mid-swap.
+# Audit 2026-10-05 C12-01: save() now writes the generation's file inventory
+# into it (HEAD_INVENTORY_FORMAT JSON). Older code only checks that the file
+# exists, so a brain saved this way still loads after a rollback; a legacy
+# timestamp sentinel (or none) keeps the legacy load path.
 SAVE_COMPLETE_SENTINEL = ".save_complete"
+HEAD_INVENTORY_FORMAT = "brain-head-inventory-v1"
+# C12-01: write-ahead journal of a full-save swap — present only while a swap
+# is in flight or after a crash interrupted one. The staging dir and the
+# directory-replacement trash both live INSIDE brain_dir (same filesystem,
+# private to this brain: C12-08). The ".brain_" prefix keeps the journal out of
+# the host-side archive (scripts/runtime/rotate_brain_backup.py).
+SWAP_JOURNAL_FILE = ".brain_swap_journal.json"
+SWAP_JOURNAL_FORMAT = "brain-swap-journal-v1"
+SWAP_STAGING_DIR = ".tmp_save"
+SWAP_TRASH_DIR = ".brain_old"
+# C12-02: an essential save stages a CHANGED ensemble here and publishes it only
+# when every model pair serialized (never a reduced ensemble_manifest.json).
+ENSEMBLE_STAGING_DIR = ".brain_ensemble_stage"
 CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE = "candidate_filter_shadow_telemetry.jsonl"
 STRATEGY_EVIDENCE_TELEMETRY_FILE = "strategy_evidence_events.jsonl"
 # Work order 2026-07-23 Task 2 — append-only sidecar telemetry + the model
@@ -109,6 +131,34 @@ EXTERNAL_HEAD_ENTRIES = frozenset({
     "transfer_knowledge.json",
 })
 QUARANTINED_SIDECAR_SUFFIX = "_quarantined.jsonl"
+# Head entries a full save never swaps out or deletes: the swap's own journal and
+# staging dirs, the lock, backups, append-only sidecars (Task 2, 2026-07-23),
+# entries owned by other components (R7, 2026-09-29), forensic snapshots,
+# archives and quarantined sidecars (matched by prefix/suffix below).
+_SWAP_PRESERVED_NAMES = frozenset({
+    SWAP_STAGING_DIR,
+    SWAP_TRASH_DIR,
+    SWAP_JOURNAL_FILE,
+    LOCK_FILE,
+    "backups",
+}) | SIDECAR_TELEMETRY_NAMES | EXTERNAL_HEAD_ENTRIES
+
+
+def _preserved_during_swap(name: str) -> bool:
+    return (
+        name in _SWAP_PRESERVED_NAMES
+        or name.startswith("corrupt_head_")
+        or name.startswith(ARCHIVE_PREFIX)
+        or name.endswith(QUARANTINED_SIDECAR_SUFFIX)
+    )
+
+
+class BrainHeadIncomplete(RuntimeError):
+    """A brain directory is not one complete generation (audit 2026-10-05 C12-01).
+
+    Raised inside the load path so it falls through to the PP-2 backup
+    fallback instead of loading missing state files as empty.
+    """
 
 
 def _float_or_none(value: Any) -> "float | None":
@@ -234,6 +284,14 @@ class OrganismBrain:
         self.backup_dir = self.brain_dir / "backups"
         self._loaded = False
         self._manifest: dict[str, Any] = {}
+        # C12-01: the directory the restored state came from (HEAD, or the
+        # backup the PP-2 fallback used), so model caches and the ensemble
+        # are read from the SAME generation as the rest of the state.
+        self._loaded_from: Path | None = None
+        # C12-02: (ensemble object, state version) known to be in HEAD, so
+        # essential saves never rewrite an unchanged (frozen) ensemble.
+        self._ensemble_on_disk: tuple[Any, int] | None = None
+        self._staged_ensemble_key: tuple[Any, int] | None = None
 
         # ── Restored state containers ────────────────────────────
         # ML models (joblib objects)
@@ -266,8 +324,17 @@ class OrganismBrain:
 
     @property
     def exists(self) -> bool:
-        """Does a saved brain already exist on disk?"""
-        return (self.brain_dir / MANIFEST_FILE).is_file()
+        """Does a saved brain already exist on disk?
+
+        C12-01: a full-save swap journal also counts — an interrupted first
+        save is a recoverable brain, and callers (live_engine.initialize:
+        ``load() if exists else False``) must reach load(), which rolls the
+        swap forward, instead of starting fresh.
+        """
+        return (
+            (self.brain_dir / MANIFEST_FILE).is_file()
+            or (self.brain_dir / SWAP_JOURNAL_FILE).is_file()
+        )
 
     @property
     def generation(self) -> int:
@@ -325,33 +392,50 @@ class OrganismBrain:
             )
 
         try:
-            return self._load_locked()
+            return self._load_locked(lock_held=_lock_acquired)
         finally:
             if _lock_acquired:
                 _lock.release()
 
-    def _load_locked(self) -> bool:
-        """Body of load(); caller holds the brain lock."""
-        # Audit 2026-06-09 finding 3.6: detect crash-mid-swap. save()
-        # removes the sentinel before the swap and rewrites it after, so a
-        # missing sentinel means either (a) the previous save died mid-swap
-        # (SIGKILL/OOM) or (b) a legacy pre-sentinel brain. We log loudly
-        # and attempt the normal load — a genuinely half-swapped directory
-        # still fails into the existing backup-restore path, but now with
-        # an accurate diagnosis in the log; a legacy-but-healthy brain
-        # loads fine and gains a sentinel below.
+    def _load_locked(self, lock_held: bool = True) -> bool:
+        """Body of load(); caller holds the brain lock (``lock_held``)."""
         _sentinel = self.brain_dir / SAVE_COMPLETE_SENTINEL
         _manifest_file = self.brain_dir / MANIFEST_FILE
-        if _manifest_file.is_file() and not _sentinel.is_file():
-            logger.warning(
-                "Brain HEAD has no save-completion sentinel — either a "
-                "legacy (pre-sentinel) brain or the previous save() died "
-                "mid-swap. Attempting load; if it fails, the corrupt-head "
-                "snapshot should be read as a MID-SWAP CRASH, not data "
-                "corruption."
-            )
+        self._loaded_from = None
 
         try:
+            # Audit 2026-10-05 C12-01: finish a full-save swap that a crash
+            # interrupted BEFORE anything is read, so the load sees one
+            # complete generation. Without the lock (another holder for 20 s)
+            # an in-flight swap cannot be resolved safely: reject the HEAD
+            # (PP-2 backup fallback below) instead of reading it half-swapped.
+            if (self.brain_dir / SWAP_JOURNAL_FILE).is_file():
+                if not lock_held:
+                    raise BrainHeadIncomplete(
+                        "full-save swap journal present and the brain lock "
+                        "is unavailable"
+                    )
+                self._resolve_pending_swap(caller="load")
+
+            # Audit 2026-06-09 finding 3.6: no sentinel (and no journal) means
+            # either a legacy (pre-sentinel) brain or a save by older code
+            # that died mid-swap. We log loudly and attempt the normal load —
+            # a genuinely half-swapped directory still fails into the backup-
+            # restore path; a legacy-but-healthy brain loads fine and gains a
+            # sentinel below.
+            if _manifest_file.is_file() and not _sentinel.is_file():
+                logger.warning(
+                    "Brain HEAD has no save-completion sentinel — either a "
+                    "legacy (pre-sentinel) brain or the previous save() died "
+                    "mid-swap. Attempting load; if it fails, the corrupt-head "
+                    "snapshot should be read as a MID-SWAP CRASH, not data "
+                    "corruption."
+                )
+            # C12-01: a generation published by save() lists its files in the
+            # sentinel; a listed file that is missing makes the HEAD
+            # incomplete — it is never loaded as empty state.
+            self._verify_generation_inventory(self.brain_dir)
+
             self._load_manifest()
             self._load_ml_models()
             self._load_ml_state()
@@ -366,12 +450,16 @@ class OrganismBrain:
             self._load_regime_state()
             self._load_evaluation_event_history()
             self._loaded = True
+            self._loaded_from = self.brain_dir
 
             # 3.6: a successful load proves the HEAD is coherent — ensure
-            # the completion sentinel exists (upgrades legacy brains).
+            # the completion sentinel exists (upgrades legacy brains; the
+            # legacy timestamp form carries no inventory).
             try:
                 if not _sentinel.is_file():
-                    _sentinel.write_text(datetime.now(timezone.utc).isoformat())
+                    _write_text_atomic(
+                        _sentinel, datetime.now(timezone.utc).isoformat()
+                    )
             except Exception:
                 pass
 
@@ -424,9 +512,12 @@ class OrganismBrain:
         """V9 PP-2 / Wave-41 (2026-05-03): walk backups/ newest-first;
         return True if a backup loads cleanly; False if none usable.
 
-        Each backup is a snapshot directory. We swap it into place
-        atomically by renaming current brain_dir aside, then renaming
-        the backup over brain_dir. On failure we restore the original.
+        Each backup is a snapshot directory. The state is LOADED from the
+        backup in place (``self.brain_dir`` is repointed temporarily); HEAD
+        is not modified — the next save rewrites it. Audit 2026-10-05
+        C12-01: a backup whose completion inventory lists a missing file is
+        skipped, and ``self._loaded_from`` records the backup so the model
+        caches and the ensemble are read from the same generation.
         """
         backups_dir = self.brain_dir / "backups"
         if not backups_dir.is_dir():
@@ -494,6 +585,7 @@ class OrganismBrain:
                 original_dir = self.brain_dir
                 self.brain_dir = backup
                 try:
+                    self._verify_generation_inventory(backup)
                     self._load_manifest()
                     self._load_ml_models()
                     self._load_ml_state()
@@ -507,6 +599,7 @@ class OrganismBrain:
                     self._load_governance_state()
                     self._load_regime_state()
                     self._load_evaluation_event_history()
+                    self._loaded_from = backup
                     return True
                 finally:
                     self.brain_dir = original_dir
@@ -533,12 +626,20 @@ class OrganismBrain:
         force: bool = False,
         allow_reset: bool = False,
         reset_reason: str | None = None,
-    ) -> None:
+    ) -> bool:
         """Save the organism's full learned state to disk.
 
-        Atomic: writes to temp dir first, then renames.
+        Stages the complete generation in ``.tmp_save`` and publishes it with
+        a journaled swap (audit 2026-10-05 C12-01, ``_commit_staged_generation``):
+        a crash at any point leaves either the previous complete generation or
+        a journal that the next load()/save() rolls forward to the new one.
         Backs up the previous brain before overwriting.
         Thread-safe via cross-platform file lock (Phase 3.1).
+
+        Returns True when the new generation was published and False when no
+        save happened — the brain lock is held elsewhere or the trained-
+        overwrite guard blocked it (C12-06: never reported as a save). Write
+        failures raise.
 
         The ``force`` flag is audit-only: ``save()`` always performs the
         same full atomic save regardless of the flag. The walk-forward
@@ -553,84 +654,158 @@ class OrganismBrain:
         self.brain_dir.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
-        # V10 PP2-3 / Wave-56 (2026-05-03): sweep orphan .tmp files left
-        # by a previous SIGKILL'd save.  _write_json / _write_csv_atomic
-        # only unlink on caught exception; SIGKILL leaves them.
-        # Cosmetic but accumulates.
-        try:
-            for f in self.brain_dir.iterdir():
-                if f.is_file() and f.name.endswith(".tmp"):
-                    try:
-                        f.unlink()
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-
         lock = _BrainLock(self.brain_dir / LOCK_FILE)
         try:
             lock.acquire()
         except RuntimeError as e:
             logger.warning("Skipping brain save — lock held: %s", e)
-            return
+            return False
 
-        # DEFENSIVE GUARD (Patch E, refactored in F1 to use shared check).
-        # Refuse to overwrite a trained manifest with untrained state.
-        # Uses _check_trained_overwrite_guard for consistent logic across
-        # save() and (in F2) save_essential_state().
-        should_block, reason = self._check_trained_overwrite_guard(
-            self.brain_dir, signal_gen, learner,
-            force=force, allow_reset=allow_reset, reset_reason=reset_reason,
-        )
-        if should_block:
-            # F3: suspicious-write instrumentation fires on block
-            self._log_suspicious_manifest_write(
-                caller="save", target=self.brain_dir,
-                signal_gen=signal_gen, learner=learner,
-                force=force, allow_reset=allow_reset,
-                reset_reason=reset_reason,
-            )
-            logger.error(
-                "BRAIN SAVE BLOCKED (save): refusing to overwrite trained "
-                "manifest (%s) with untrained state "
-                "(incoming: total_trades=0, ml_is_trained=False). "
-                "Break-glass reset requires force=True AND allow_reset=True "
-                "AND reset_reason.",
-                reason,
-            )
-            # Alert wiring: emit guard-fire alert.
-            # V5 S-J3-1 / Wave-17a (2026-05-03): wave-8c's J-3 fix
-            # caught the RuntimeError but routed every alert to
-            # logger.warning because get_running_loop() always raises
-            # in worker threads. Use the canonical cross-thread
-            # dispatcher which schedules on the captured main loop via
-            # asyncio.run_coroutine_threadsafe.
+        try:
+            # V10 PP2-3 / Wave-56 (2026-05-03): sweep orphan .tmp files left
+            # by a previous SIGKILL'd save.  _write_json / _write_csv_atomic
+            # only unlink on caught exception; SIGKILL leaves them.
+            # Cosmetic but accumulates. (C12: runs under the brain lock, so
+            # another lock holder's in-flight temp file is never swept.)
             try:
-                from backend.infra.alerting import (
-                    AlertCategory, AlertSeverity, send_alert,
-                    dispatch_alert_from_thread,
+                for f in self.brain_dir.iterdir():
+                    if f.is_file() and f.name.endswith(".tmp"):
+                        try:
+                            f.unlink()
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+            # C12-01: finish a swap that a crash interrupted before this save
+            # reads HEAD (guard, backup) or reuses the staging directory. A
+            # journal that cannot be applied is discarded: this full save
+            # rewrites every brain-owned file, and the incomplete HEAD is not
+            # backed up.
+            head_complete = True
+            try:
+                self._resolve_pending_swap(caller="save")
+            except BrainHeadIncomplete as exc:
+                logger.critical(
+                    "C12-01: discarding an unusable full-save swap journal (%s); "
+                    "this save rewrites every brain-owned file and skips the "
+                    "pre-save backup of the incomplete HEAD", exc,
                 )
-                _r = reason
-                ok = dispatch_alert_from_thread(
-                    lambda: send_alert(
-                        AlertCategory.SYSTEM_ERROR, AlertSeverity.ERROR,
-                        "Brain Save Blocked",
-                        f"Trained manifest overwrite blocked (save). {_r}",
+                self._discard_swap_journal()
+                head_complete = False
+
+            # DEFENSIVE GUARD (Patch E, refactored in F1 to use shared check).
+            # Refuse to overwrite a trained manifest with untrained state.
+            # Uses _check_trained_overwrite_guard for consistent logic across
+            # save() and (in F2) save_essential_state().
+            should_block, reason = self._check_trained_overwrite_guard(
+                self.brain_dir, signal_gen, learner,
+                force=force, allow_reset=allow_reset, reset_reason=reset_reason,
+            )
+            if should_block:
+                # F3: suspicious-write instrumentation fires on block
+                self._log_suspicious_manifest_write(
+                    caller="save", target=self.brain_dir,
+                    signal_gen=signal_gen, learner=learner,
+                    force=force, allow_reset=allow_reset,
+                    reset_reason=reset_reason,
+                )
+                logger.error(
+                    "BRAIN SAVE BLOCKED (save): refusing to overwrite trained "
+                    "manifest with untrained state (%s). "
+                    "Break-glass reset requires force=True AND allow_reset=True "
+                    "AND reset_reason.",
+                    reason,
+                )
+                # Alert wiring: emit guard-fire alert.
+                # V5 S-J3-1 / Wave-17a (2026-05-03): wave-8c's J-3 fix
+                # caught the RuntimeError but routed every alert to
+                # logger.warning because get_running_loop() always raises
+                # in worker threads. Use the canonical cross-thread
+                # dispatcher which schedules on the captured main loop via
+                # asyncio.run_coroutine_threadsafe.
+                try:
+                    from backend.infra.alerting import (
+                        AlertCategory, AlertSeverity, send_alert,
+                        dispatch_alert_from_thread,
                     )
-                )
-                if not ok:
+                    _r = reason
+                    ok = dispatch_alert_from_thread(
+                        lambda: send_alert(
+                            AlertCategory.SYSTEM_ERROR, AlertSeverity.ERROR,
+                            "Brain Save Blocked",
+                            f"Trained manifest overwrite blocked (save). {_r}",
+                        )
+                    )
+                    if not ok:
+                        logger.warning(
+                            "Brain Save Blocked alert dropped (no main loop ref): %s",
+                            _r,
+                        )
+                except Exception as _alert_err:
+                    # V9 UU-3 / Wave-41 (2026-05-03): surface the alert path
+                    # exception at WARNING (was bare pass) so a broken
+                    # alerter doesn't get masked by a brain-save block.
                     logger.warning(
-                        "Brain Save Blocked alert dropped (no main loop ref): %s",
-                        _r,
+                        "UU-3: brain-save-blocked alert path raised: %s",
+                        _alert_err,
                     )
-            except Exception as _alert_err:
-                # V9 UU-3 / Wave-41 (2026-05-03): surface the alert path
-                # exception at WARNING (was bare pass) so a broken
-                # alerter doesn't get masked by a brain-save block.
-                logger.warning(
-                    "UU-3: brain-save-blocked alert path raised: %s",
-                    _alert_err,
+                return False
+
+            # 1. Backup current brain (if it exists as a complete generation)
+            if head_complete and self.exists:
+                self._create_backup()
+
+            # 2. Write the complete new generation to the staging dir first.
+            tmp_dir = self.brain_dir / SWAP_STAGING_DIR
+            if tmp_dir.exists():
+                shutil.rmtree(tmp_dir)
+            tmp_dir.mkdir(parents=True)
+
+            try:
+                self._save_ml_models(tmp_dir, signal_gen)
+                self._save_ml_state(tmp_dir, signal_gen)
+                self._save_model_metrics_history(tmp_dir, learner)
+                self._save_evaluation_event_history(tmp_dir, learner)
+                self._save_learning_state(tmp_dir, learner)
+                self._save_reference_features(tmp_dir, learner)
+                self._save_trade_history(tmp_dir, all_trades)
+                self._save_equity_curve(tmp_dir, equity_curve)
+                self._save_epoch_metrics(tmp_dir, epoch_metrics)
+                self._save_extra_counters(tmp_dir, peak_equity, extra_counters)
+                self._save_evolved_params(tmp_dir, evolved_params)
+                self._save_governance_state(tmp_dir, governance_controller)
+                self._save_regime_state(tmp_dir, regime_detector)
+                self._save_manifest(
+                    tmp_dir, signal_gen, learner,
+                    force=force, allow_reset=allow_reset, reset_reason=reset_reason,
                 )
+
+                # 3. Journaled swap of the staged generation into HEAD (C12-01).
+                self._commit_staged_generation(tmp_dir)
+                self._ensemble_on_disk = self._staged_ensemble_key
+
+                gen = learner.state.generation if hasattr(learner, "state") else 0
+                eq_str = f", equity ${equity_curve[-1]:,.0f}" if equity_curve else ""
+                print(f"  💾 Brain saved: generation {gen}, "
+                      f"{len(all_trades)} trades{eq_str}")
+                logger.info(
+                    "Brain saved successfully to %s%s",
+                    self.brain_dir,
+                    " (forced)" if force else "",
+                )
+                return True
+
+            except Exception as e:
+                self._ensemble_on_disk = None
+                logger.error("Brain save failed: %s", e)
+                print(f"  ⚠️  Brain save failed: {e}")
+                # A journal left by a failed swap still needs the staged
+                # generation: the next load()/save() rolls it forward.
+                if not (self.brain_dir / SWAP_JOURNAL_FILE).exists():
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                raise
+        finally:
             try:
                 lock.release()
             except Exception as _rel_err:
@@ -641,136 +816,238 @@ class OrganismBrain:
                     "save attempt may also fail. Manual intervention may "
                     "be needed if this persists.", _rel_err,
                 )
-            return
 
-        # 1. Backup current brain (if it exists)
-        if self.exists:
-            self._create_backup()
+    # ═════════════════════════════════════════════════════════════
+    #  FULL-SAVE SWAP JOURNAL (audit 2026-10-05 C12-01 / C12-08 / C12-09)
+    # ═════════════════════════════════════════════════════════════
 
-        # 2. Write everything to a temp directory first (atomic)
-        tmp_dir = self.brain_dir / ".tmp_save"
-        if tmp_dir.exists():
-            shutil.rmtree(tmp_dir)
-        tmp_dir.mkdir(parents=True)
+    def _commit_staged_generation(self, tmp_dir: Path) -> None:
+        """Publish the generation staged in ``tmp_dir`` into HEAD.
 
+        Write-ahead protocol (caller holds the brain lock):
+
+        1. Every staged file was fsynced when written; fsync ``tmp_dir``,
+           then atomically write the journal: the staged entry names in
+           publish order (``manifest.json`` last) with each file's size and
+           sha256. From here a crash is rolled FORWARD by the next
+           load()/save() (``_resolve_pending_swap``).
+        2. ``_apply_swap``: drop the completion sentinel, replace each HEAD
+           entry with its staged copy (files by ``os.replace`` — an entry
+           present in both generations is never missing), delete the previous
+           generation's brain-owned entries the new one does not have, fsync
+           HEAD, write the sentinel with the new inventory and remove the
+           journal.
+
+        An exception during step 2 propagates with the journal kept, so the
+        staged generation is published by the next load()/save().
+        """
+        names = sorted(
+            (entry.name for entry in tmp_dir.iterdir()),
+            key=lambda name: (name == MANIFEST_FILE, name),
+        )
+        files: dict[str, dict[str, Any]] = {}
+        for name in names:
+            path = tmp_dir / name
+            if path.is_file() and not path.is_symlink():
+                files[name] = {
+                    "size": path.stat().st_size,
+                    "sha256": _file_sha256(path),
+                }
+        _fsync_dir(tmp_dir)
+        journal = {
+            "format": SWAP_JOURNAL_FORMAT,
+            "started_at": self._now_fn().isoformat(),
+            "entries": names,
+            "files": files,
+        }
+        _write_text_atomic(
+            self.brain_dir / SWAP_JOURNAL_FILE, json.dumps(journal, sort_keys=True)
+        )
+        self._apply_swap(journal)
+
+    def _apply_swap(self, journal: dict[str, Any]) -> None:
+        """Publish the journaled staged generation into HEAD (idempotent).
+
+        Used by a save's own commit and by crash recovery: every step can be
+        repeated after an interruption. Staged entries already published are
+        skipped, the deletions and the sentinel write are idempotent, and the
+        journal is removed only after the sentinel records the new inventory.
+        """
+        brain_dir = self.brain_dir
+        stage = brain_dir / SWAP_STAGING_DIR
+        trash = brain_dir / SWAP_TRASH_DIR
+        entries = [str(name) for name in journal["entries"]]
+        new_names = set(entries)
+
+        # 3.6: no completion sentinel while HEAD is between generations.
         try:
-            self._save_ml_models(tmp_dir, signal_gen)
-            self._save_ml_state(tmp_dir, signal_gen)
-            self._save_model_metrics_history(tmp_dir, learner)
-            self._save_evaluation_event_history(tmp_dir, learner)
-            self._save_learning_state(tmp_dir, learner)
-            self._save_reference_features(tmp_dir, learner)
-            self._save_trade_history(tmp_dir, all_trades)
-            self._save_equity_curve(tmp_dir, equity_curve)
-            self._save_epoch_metrics(tmp_dir, epoch_metrics)
-            self._save_extra_counters(tmp_dir, peak_equity, extra_counters)
-            self._save_evolved_params(tmp_dir, evolved_params)
-            self._save_governance_state(tmp_dir, governance_controller)
-            self._save_regime_state(tmp_dir, regime_detector)
-            self._save_manifest(
-                tmp_dir, signal_gen, learner,
-                force=force, allow_reset=allow_reset, reset_reason=reset_reason,
+            os.unlink(brain_dir / SAVE_COMPLETE_SENTINEL)
+        except FileNotFoundError:
+            pass
+
+        for name in entries:
+            src = stage / name
+            if not os.path.lexists(src):
+                continue  # published before an interruption
+            dest = brain_dir / name
+            if src.is_dir() or dest.is_dir():
+                # Only a preserved name can be a directory here; the
+                # regenerated copy replaces it (R7). The old one is parked in
+                # the trash first so the move cannot nest the new tree, and is
+                # put back if the move fails.
+                parked = None
+                if os.path.lexists(dest):
+                    trash.mkdir(parents=True, exist_ok=True)
+                    parked = _unused_child(trash, name)
+                    shutil.move(str(dest), str(parked))
+                try:
+                    shutil.move(str(src), str(dest))
+                except BaseException:
+                    if parked is not None and not os.path.lexists(dest):
+                        shutil.move(str(parked), str(dest))
+                    raise
+            else:
+                os.replace(src, dest)
+
+        # The previous generation's brain-owned entries that this generation
+        # does not have (a break-glass reset cannot resurrect stale models).
+        for entry in list(brain_dir.iterdir()):
+            name = entry.name
+            if (
+                name in new_names
+                or name == SAVE_COMPLETE_SENTINEL
+                or _preserved_during_swap(name)
+            ):
+                continue
+            if entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+
+        # C12-09: the renames are durable before the sentinel vouches for them.
+        _fsync_dir(brain_dir)
+        inventory = {
+            "format": HEAD_INVENTORY_FORMAT,
+            "completed_at": self._now_fn().isoformat(),
+            # Brain-owned entries only: a preserved name a save happened to
+            # regenerate belongs to another component, which may remove it.
+            "files": sorted(n for n in entries if not _preserved_during_swap(n)),
+        }
+        _write_text_atomic(
+            brain_dir / SAVE_COMPLETE_SENTINEL, json.dumps(inventory, sort_keys=True)
+        )
+        try:
+            os.unlink(brain_dir / SWAP_JOURNAL_FILE)
+        except FileNotFoundError:
+            pass
+        _fsync_dir(brain_dir)
+        shutil.rmtree(trash, ignore_errors=True)
+        shutil.rmtree(stage, ignore_errors=True)
+
+    def _resolve_pending_swap(self, *, caller: str) -> bool:
+        """Roll a full-save swap that a crash interrupted forward (C12-01).
+
+        Caller holds the brain lock. Returns False when no journal is
+        present and True after the journaled generation was published.
+        Raises ``BrainHeadIncomplete`` when the journal is unreadable or the
+        staged generation can no longer be published intact (a staged file
+        or its published copy is missing or altered); the journal and the
+        staging dir are then left for the caller to decide.
+        """
+        journal_path = self.brain_dir / SWAP_JOURNAL_FILE
+        if not journal_path.is_file():
+            return False
+        # What is on disk is about to change: the next essential save must
+        # write the ensemble rather than assume HEAD holds it (C12-02).
+        self._ensemble_on_disk = None
+        try:
+            journal = json.loads(journal_path.read_text(encoding="utf-8"))
+            if (
+                not isinstance(journal, dict)
+                or journal.get("format") != SWAP_JOURNAL_FORMAT
+                or not isinstance(journal.get("entries"), list)
+                or not isinstance(journal.get("files"), dict)
+            ):
+                raise ValueError("unsupported swap journal format")
+        except Exception as exc:
+            logger.critical(
+                "C12-01 (%s): brain swap journal %s is unreadable (%s)",
+                caller, journal_path, exc,
             )
+            raise BrainHeadIncomplete(f"unreadable swap journal: {exc}") from exc
 
-            # 3. Atomic swap: rename temp dir to active dir.
-            #    First, swap the current brain dir to a staging path,
-            #    then move tmp into place, then clean up the old dir.
-            #    This minimises the window for corruption.
-            old_dir = self.brain_dir.with_name(".brain_old")
-            if old_dir.exists():
-                shutil.rmtree(old_dir, ignore_errors=True)
-
-            # Move current brain -> old, tmp -> brain. Preserve safety-history
-            # artifacts that are not regenerated inside tmp_dir. Task 2
-            # (2026-07-23): SIDECAR_TELEMETRY_NAMES now covers ALL append-only
-            # sidecars (shadow-exit / model-swap-audit / previous_model dir),
-            # not just the two that happened to be listed — these are the files
-            # the swap kept deleting on every full save. R7 (2026-09-29): plus
-            # EXTERNAL_HEAD_ENTRIES and *_quarantined.jsonl.
-            preserved_names = {
-                ".tmp_save",
-                ".brain_old",
-                LOCK_FILE,
-                "backups",
-            } | set(SIDECAR_TELEMETRY_NAMES) | set(EXTERNAL_HEAD_ENTRIES)
-
-            def _preserve_during_swap(path: Path) -> bool:
-                return (
-                    path.name in preserved_names
-                    or path.name.startswith("corrupt_head_")
-                    or path.name.startswith(ARCHIVE_PREFIX)
-                    or path.name.endswith(QUARANTINED_SIDECAR_SUFFIX)
-                )
-
-            has_existing = any(
-                f for f in self.brain_dir.iterdir()
-                if not _preserve_during_swap(f)
+        problems = self._swap_journal_problems(journal)
+        if problems:
+            logger.critical(
+                "C12-01 (%s): the full brain save interrupted at %s cannot be "
+                "completed: %s",
+                caller, journal.get("started_at"), "; ".join(problems),
             )
-            # Audit 2026-06-09 finding 3.6: drop the completion sentinel
-            # BEFORE the (non-atomic) file-by-file swap. If this process
-            # dies mid-swap, the missing sentinel tells the next load()
-            # exactly what happened.
-            _sentinel_path = self.brain_dir / SAVE_COMPLETE_SENTINEL
-            try:
-                _sentinel_path.unlink()
-            except FileNotFoundError:
-                pass
-            try:
-                if has_existing:
-                    # Move current files to old_dir
-                    old_dir.mkdir(parents=True, exist_ok=True)
-                    for f in list(self.brain_dir.iterdir()):
-                        if _preserve_during_swap(f):
-                            continue
-                        shutil.move(str(f), str(old_dir / f.name))
-
-                # Move new files from tmp to brain dir. Only a preserved name
-                # can still exist here; the regenerated copy replaces it (R7):
-                # a file atomically via os.replace, a directory by moving the
-                # old one aside first so shutil.move cannot nest the new tree.
-                for f in tmp_dir.iterdir():
-                    dest = self.brain_dir / f.name
-                    if f.is_dir() or dest.is_dir():
-                        if os.path.lexists(dest):
-                            old_dir.mkdir(parents=True, exist_ok=True)
-                            shutil.move(str(dest), str(old_dir / f.name))
-                        shutil.move(str(f), str(dest))
-                    else:
-                        os.replace(f, dest)
-                self.backup_dir.mkdir(parents=True, exist_ok=True)
-            except Exception:
-                # Restore from old if anything went wrong
-                if old_dir.exists():
-                    for f in old_dir.iterdir():
-                        dest = self.brain_dir / f.name
-                        if not dest.exists():
-                            shutil.move(str(f), str(dest))
-                raise
-            finally:
-                shutil.rmtree(old_dir, ignore_errors=True)
-
-            # Swap finished — rewrite the completion sentinel (3.6).
-            _sentinel_path.write_text(datetime.now(timezone.utc).isoformat())
-
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-
-            gen = learner.state.generation if hasattr(learner, "state") else 0
-            eq_str = f", equity ${equity_curve[-1]:,.0f}" if equity_curve else ""
-            print(f"  💾 Brain saved: generation {gen}, "
-                  f"{len(all_trades)} trades{eq_str}")
-            logger.info(
-                "Brain saved successfully to %s%s",
-                self.brain_dir,
-                " (forced)" if force else "",
+            raise BrainHeadIncomplete(
+                "interrupted swap cannot be completed: " + "; ".join(problems)
             )
+        self._apply_swap(journal)
+        logger.warning(
+            "C12-01 (%s): the full brain save interrupted at %s was rolled "
+            "forward — HEAD holds the complete new generation",
+            caller, journal.get("started_at"),
+        )
+        return True
 
-        except Exception as e:
-            logger.error("Brain save failed: %s", e)
-            print(f"  ⚠️  Brain save failed: {e}")
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-            raise
-        finally:
-            lock.release()
+    def _swap_journal_problems(self, journal: dict[str, Any]) -> list[str]:
+        """Why a journaled generation can no longer be published intact.
+
+        Every staged file must still be staged, or already published, with
+        exactly the journaled size and sha256; every staged directory must
+        exist in one of the two places.
+        """
+        stage = self.brain_dir / SWAP_STAGING_DIR
+        files = journal["files"]
+        problems: list[str] = []
+        for name in journal["entries"]:
+            name = str(name)
+            staged = stage / name
+            published = self.brain_dir / name
+            meta = files.get(name)
+            if meta is None:
+                if not (staged.is_dir() or published.is_dir()):
+                    problems.append(f"{name}: directory missing")
+                continue
+            candidate = staged if os.path.lexists(staged) else published
+            if not candidate.is_file() or candidate.is_symlink():
+                problems.append(f"{name}: missing")
+            elif (
+                candidate.stat().st_size != meta.get("size")
+                or _file_sha256(candidate) != meta.get("sha256")
+            ):
+                problems.append(f"{name}: does not match the journal")
+        return problems
+
+    def _discard_swap_journal(self) -> None:
+        """Drop an unusable journal and its staging dirs (journal first)."""
+        try:
+            os.unlink(self.brain_dir / SWAP_JOURNAL_FILE)
+        except FileNotFoundError:
+            pass
+        _fsync_dir(self.brain_dir)
+        shutil.rmtree(self.brain_dir / SWAP_STAGING_DIR, ignore_errors=True)
+        shutil.rmtree(self.brain_dir / SWAP_TRASH_DIR, ignore_errors=True)
+
+    def _verify_generation_inventory(self, directory: Path) -> None:
+        """Raise ``BrainHeadIncomplete`` when ``directory``'s completion
+        inventory lists an entry that is missing (C12-01). Legacy (timestamp)
+        and absent sentinels carry no inventory and are not checked."""
+        listed = _read_head_inventory(directory / SAVE_COMPLETE_SENTINEL)
+        if listed is None:
+            return
+        missing = sorted(n for n in listed if not os.path.lexists(directory / n))
+        if missing:
+            logger.critical(
+                "C12-01: brain generation at %s is incomplete — missing %s; "
+                "it is not loaded as empty state",
+                directory, missing,
+            )
+            raise BrainHeadIncomplete(f"generation incomplete: missing {missing}")
 
     def apply_to_signal_generator(self, signal_gen: Any) -> bool:
         """Restore saved ML models into a MLSignalGenerator instance.
@@ -789,20 +1066,21 @@ class OrganismBrain:
         if self.clf is None or self.reg is None:
             return False
 
+        # C12-01: the caches and the ensemble come from the directory the
+        # state was loaded from — after a PP-2 backup fallback that is the
+        # backup, never the rejected HEAD, so generations are not mixed.
+        source_dir = getattr(self, "_loaded_from", None) or self.brain_dir
+
         # Audit-C concern 2 (2026-05-02): restore S17 same-holdout cache.
         for attr_name in ("_last_val_X", "_last_val_y_dir", "_last_val_y_ret"):
-            cache_path = self.brain_dir / f"ml_{attr_name.lstrip('_')}.joblib"
+            cache_path = source_dir / f"ml_{attr_name.lstrip('_')}.joblib"
             if cache_path.is_file():
                 try:
-                    from backend.utils.secure_pickle import (
-                        secure_load_from_path,
-                        is_signed_pickle,
-                    )
-                    raw = cache_path.read_bytes()
-                    if is_signed_pickle(raw):
-                        setattr(signal_gen, attr_name, secure_load_from_path(cache_path))
-                    else:
-                        setattr(signal_gen, attr_name, joblib.load(cache_path))
+                    # C12-04: an unsigned cache is never deserialized; it is
+                    # handled exactly like a missing one.
+                    signed, value = _read_signed_brain_pickle(cache_path, "S17 cache")
+                    if signed:
+                        setattr(signal_gen, attr_name, value)
                 except Exception as e:
                     logger.debug(
                         "Failed to restore S17 cache %s: %s", attr_name, e,
@@ -814,10 +1092,14 @@ class OrganismBrain:
         ensemble = getattr(signal_gen, "_ensemble", None)
         if ensemble is not None and hasattr(ensemble, "load"):
             try:
-                if ensemble.load(self.brain_dir):
+                if ensemble.load(source_dir):
                     logger.info(
                         "Restored RF/LGBM ensemble from brain (axis-8 parity)"
                     )
+                    # C12-02: HEAD holds exactly what was just read from it,
+                    # so essential saves need not rewrite it while unchanged.
+                    if source_dir == self.brain_dir:
+                        self._ensemble_on_disk = _ensemble_state_key(ensemble)
             except Exception as e:
                 logger.warning(
                     "Failed to restore ensemble: %s", e,
@@ -1040,7 +1322,7 @@ class OrganismBrain:
         extra_counters: dict[str, Any] | None = None,
         governance_controller: Any | None = None,
         regime_detector: Any | None = None,
-    ) -> None:
+    ) -> bool:
         """Persist all runtime truth directly to brain_dir when the
         walk-forward gate blocks a full (atomic-swap) brain save.
 
@@ -1056,28 +1338,68 @@ class OrganismBrain:
           - extra_counters.json        (tick_count, universe, kelly, calibration)
           - governance_state.json      (frozen/halted flags)
           - regime_state.json          (detector history)
-          - ml_state.json              (feature config, NOT model weights)
+          - ml_state.json              (feature config + model metrics
+                                        history, NOT model weights)
           - manifest.json              (updated trade count + pnl)
 
         NOT written (promotion-gated):
           - ml_classifier.joblib       (model binary — only on gate pass)
           - ml_regressor.joblib        (model binary — only on gate pass)
           - evolved_params.json        (evolved strategy params — only on gate pass)
+
+        The RF/LGBM ensemble is written only when it differs from what HEAD
+        holds, all-or-nothing (audit 2026-10-05 C12-02); an unchanged
+        (research-locked) ensemble is never rewritten.
+
+        Returns True when everything above was persisted and False when it
+        was not — brain lock held elsewhere, an interrupted full save that
+        cannot be completed, the trained-overwrite guard, a changed ensemble
+        that could not be written, or any write error (logged). Never raises
+        (C12-06: a save that did not happen is reported, not claimed).
         """
         self.brain_dir.mkdir(parents=True, exist_ok=True)
 
-        # F2: trained-state guard is now inside _write_manifest_guarded
-        # (replaces the F-lite inline guard that was here). The helper
-        # also unifies total_runs sourcing with the full save path,
-        # closing the in-memory vs on-disk divergence that allowed the
-        # two paths to drift during the Apr 8/9 wipe incidents.
+        # C12-06: the same lock as save()/load(): an essential save never
+        # interleaves with a full-save swap or a host-side brain snapshot.
+        lock = _BrainLock(self.brain_dir / LOCK_FILE)
+        try:
+            lock.acquire()
+        except RuntimeError as e:
+            logger.warning("Essential brain save NOT persisted — lock held: %s", e)
+            return False
 
         try:
+            # C12-01: never write runtime files into a half-swapped HEAD; an
+            # interrupted full save is completed first (or this save fails).
+            self._resolve_pending_swap(caller="save_essential_state")
+
+            # F2: the trained-state guard lives in _write_manifest_guarded,
+            # which also unifies total_runs sourcing with the full save path
+            # (the in-memory vs on-disk divergence behind the Apr 8/9 wipe
+            # incidents). C12-03: it is evaluated here too, BEFORE any file
+            # is written — a blocked save must not leave regressed runtime
+            # files behind a protected manifest.
+            should_block, reason = self._check_trained_overwrite_guard(
+                self.brain_dir, signal_gen, learner,
+            )
+            if should_block:
+                self._log_suspicious_manifest_write(
+                    caller="save_essential_state", target=self.brain_dir,
+                    signal_gen=signal_gen, learner=learner,
+                    force=False, allow_reset=False, reset_reason=None,
+                )
+                logger.error(
+                    "BRAIN SAVE BLOCKED (save_essential_state): refusing to "
+                    "overwrite trained manifest with untrained state (%s). "
+                    "No file was written.",
+                    reason,
+                )
+                return False
+
             # Runtime truth — always persist
             self._save_trade_history(self.brain_dir, all_trades)
             self._save_learning_state(self.brain_dir, learner)
             self._save_evaluation_event_history(self.brain_dir, learner)
-            self._save_model_metrics_history(self.brain_dir, learner)
             if equity_curve is not None:
                 self._save_equity_curve(self.brain_dir, equity_curve)
             if epoch_metrics is not None:
@@ -1088,8 +1410,11 @@ class OrganismBrain:
                 )
             self._save_governance_state(self.brain_dir, governance_controller)
             self._save_regime_state(self.brain_dir, regime_detector)
-            # ML feature config (not model weights)
+            # ML feature config (not model weights). C12-05: written BEFORE
+            # the model-metrics history, which is merged into ml_state.json —
+            # the reverse order erased the history on every essential save.
             self._save_ml_state(self.brain_dir, signal_gen)
+            self._save_model_metrics_history(self.brain_dir, learner)
 
             # V4 R-F-5 (2026-05-02): persist the RF/LGBM ensemble even
             # when the walk-forward gate blocks a full save.
@@ -1101,15 +1426,27 @@ class OrganismBrain:
             # gate blocks the full save, the ensemble files stay absent
             # on disk. After restart, predict() runs XGB-only and the
             # axis-8 parity bug wave-11d closed silently re-opens.
+            # C12-02: only when it changed since HEAD last received it —
+            # re-pickling and re-signing an unchanged ensemble on every
+            # essential save was pure risk (0-byte models on a kill).
+            ensemble_ok = True
             ensemble = getattr(signal_gen, "_ensemble", None)
-            if ensemble is not None and hasattr(ensemble, "save"):
+            if (
+                ensemble is not None
+                and hasattr(ensemble, "save")
+                and getattr(ensemble, "_is_trained", None) is not False
+                and not self._ensemble_unchanged_on_disk(ensemble)
+            ):
+                key = _ensemble_state_key(ensemble)
                 try:
-                    ensemble.save(self.brain_dir)
+                    ensemble_ok = self._publish_ensemble(ensemble)
                 except Exception as e:
+                    ensemble_ok = False
                     logger.warning(
                         "save_essential_state: ensemble persist failed: %s",
                         e,
                     )
+                self._ensemble_on_disk = key if ensemble_ok else None
 
             # Manifest write through the unified guarded helper (F1/F2).
             # force=False: essential-save path is unconditionally guarded.
@@ -1119,10 +1456,9 @@ class OrganismBrain:
                 force=False,
             )
             if not wrote:
-                # Guard blocked the write. Runtime-truth files above were
-                # already persisted (they're harmless without a matching
-                # manifest update). Log and return.
-                return
+                # Guard or manifest read-back invariant failed (already
+                # logged by the helper): the save is NOT complete.
+                return False
 
             logger.info(
                 "Essential state saved (all runtime truth, "
@@ -1157,8 +1493,56 @@ class OrganismBrain:
                     "WW-1: essential-save backup failed (non-fatal): %s",
                     _bk_err,
                 )
+            return ensemble_ok
         except Exception as e:
             logger.error("Failed to save essential state: %s", e)
+            return False
+        finally:
+            try:
+                lock.release()
+            except Exception as _rel_err:
+                logger.warning(
+                    "Essential brain save lock.release() failed: %s", _rel_err,
+                )
+
+    def _ensemble_unchanged_on_disk(self, ensemble: Any) -> bool:
+        """C12-02: HEAD already holds exactly this ensemble state."""
+        recorded = getattr(self, "_ensemble_on_disk", None)
+        current = _ensemble_state_key(ensemble)
+        return (
+            recorded is not None
+            and current is not None
+            and recorded[0] is current[0]
+            and recorded[1] == current[1]
+        )
+
+    def _publish_ensemble(self, ensemble: Any) -> bool:
+        """C12-02: write a changed ensemble into HEAD, all-or-nothing.
+
+        The ensemble is serialized into a private staging dir first; only
+        when EVERY model pair and the manifest were written are the files
+        renamed into HEAD (pairs first, ``ensemble_manifest.json`` last), so
+        a failure never publishes a reduced manifest or a truncated model.
+        Returns True when the ensemble was published, False when HEAD kept
+        its previous ensemble (untrained ensembles never reach this).
+        """
+        stage = self.brain_dir / ENSEMBLE_STAGING_DIR
+        shutil.rmtree(stage, ignore_errors=True)
+        stage.mkdir(parents=True)
+        try:
+            if not ensemble.save(stage) or not _ensemble_written_completely(stage, ensemble):
+                logger.warning(
+                    "save_essential_state: the ensemble could not be fully "
+                    "serialized; HEAD keeps its previous ensemble files",
+                )
+                return False
+            manifest_name = "ensemble_manifest.json"
+            for entry in sorted(stage.iterdir(), key=lambda p: (p.name == manifest_name, p.name)):
+                os.replace(entry, self.brain_dir / entry.name)
+            _fsync_dir(self.brain_dir)
+            return True
+        finally:
+            shutil.rmtree(stage, ignore_errors=True)
 
     # ═════════════════════════════════════════════════════════════
     #  PRIVATE — SAVE HELPERS
@@ -1186,6 +1570,8 @@ class OrganismBrain:
 
         Resolves existing state from the best available source:
         ``self._manifest`` (in-memory) > on-disk ``manifest.json`` > empty.
+        The regression test itself is ``_regresses_trained_state`` (audit
+        2026-10-05 C12-03 added the trained→untrained model leg).
         """
         # Resolve best available existing state
         existing: dict[str, Any] = {}
@@ -1202,35 +1588,8 @@ class OrganismBrain:
         if not existing:
             return False, ""  # nothing to protect yet
 
-        existing_trades = existing.get("total_trades", 0) or 0
-        existing_trained = bool(existing.get("ml_is_trained", False))
-        existing_generation = existing.get("generation", 0) or 0
-        is_trained_existing = (
-            existing_trades > 0 or existing_trained or existing_generation > 0
-        )
-
-        incoming_trades = (
-            learner.state.total_trades
-            if learner is not None and hasattr(learner, "state")
-            else 0
-        )
-        incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
-        incoming_generation = (
-            learner.state.generation
-            if learner is not None and hasattr(learner, "state")
-            else 0
-        )
-        is_fresh_incoming = (
-            incoming_trades == 0
-            and not incoming_trained
-            and incoming_generation == 0
-        )
-
-        if is_trained_existing and is_fresh_incoming:
-            reason = (
-                f"existing: total_trades={existing_trades}, "
-                f"ml_is_trained={existing_trained}, generation={existing_generation}"
-            )
+        regresses, reason = _regresses_trained_state(existing, signal_gen, learner)
+        if regresses:
             # F3 break-glass: require the full triad to override.
             # force=True alone is NOT sufficient.
             break_glass_ok = bool(
@@ -1286,8 +1645,7 @@ class OrganismBrain:
             )
             logger.error(
                 "BRAIN SAVE BLOCKED (%s): refusing to overwrite trained "
-                "manifest (%s) with untrained state "
-                "(incoming: total_trades=0, ml_is_trained=False). "
+                "manifest with untrained state (%s). "
                 "Break-glass reset requires force=True AND allow_reset=True "
                 "AND reset_reason.",
                 caller, reason,
@@ -1308,15 +1666,9 @@ class OrganismBrain:
                     _existing_for_bg = {}
         _ex_tr = _existing_for_bg.get("total_trades", 0) or 0
         _ex_ml = bool(_existing_for_bg.get("ml_is_trained", False))
-        _ex_gen = _existing_for_bg.get("generation", 0) or 0
-        _in_tr = (learner.state.total_trades
-                  if learner is not None and hasattr(learner, "state") else 0)
-        _in_ml = bool(getattr(signal_gen, "_is_trained", False))
-        _in_gen = (learner.state.generation
-                   if learner is not None and hasattr(learner, "state") else 0)
-        _is_trained_ex = _ex_tr > 0 or _ex_ml or _ex_gen > 0
-        _is_fresh_in = _in_tr == 0 and not _in_ml and _in_gen == 0
-        if _is_trained_ex and _is_fresh_in:
+        if _existing_for_bg and _regresses_trained_state(
+            _existing_for_bg, signal_gen, learner,
+        )[0]:
             # Break-glass passed. Log instrumentation + loud warning.
             self._log_suspicious_manifest_write(
                 caller=caller, target=target,
@@ -1606,7 +1958,11 @@ class OrganismBrain:
         )
 
     def _save_ml_models(self, target: Path, signal_gen: Any) -> None:
+        # C12-02: which ensemble state this generation holds once committed.
+        self._staged_ensemble_key = None
         if signal_gen._is_trained:
+            # Every model write is atomic (temp file → fsync → os.replace;
+            # same bytes as before): secure_dump_to_path, audit 2026-10-05.
             from backend.utils.secure_pickle import secure_dump_to_path
             secure_dump_to_path(
                 signal_gen._clf, target / "ml_classifier.joblib"
@@ -1637,7 +1993,11 @@ class OrganismBrain:
             ensemble = getattr(signal_gen, "_ensemble", None)
             if ensemble is not None and hasattr(ensemble, "save"):
                 try:
-                    ensemble.save(target)
+                    key = _ensemble_state_key(ensemble)
+                    if ensemble.save(target) and _ensemble_written_completely(
+                        target, ensemble,
+                    ):
+                        self._staged_ensemble_key = key
                 except Exception as e:
                     logger.warning(
                         "Failed to persist ensemble: %s", e,
@@ -1851,20 +2211,10 @@ class OrganismBrain:
         # left a truncated CSV; on next startup _load_trade_history would
         # fail or lose the latest trades. Now: write-then-rename guarantees
         # the on-disk file is either the previous full state or the new
-        # full state — never partial.
-        _csv_path = target / "trade_history.csv"
-        _tmp_path = target / "trade_history.csv.tmp"
-        try:
-            df.to_csv(_tmp_path, index=False)
-            _tmp_path.replace(_csv_path)  # atomic on POSIX
-        except Exception:
-            # Best-effort cleanup; re-raise for caller to handle
-            if _tmp_path.exists():
-                try:
-                    _tmp_path.unlink()
-                except Exception:
-                    pass
-            raise
+        # full state — never partial. Audit 2026-10-05 C12-09:
+        # _write_csv_atomic adds the fsyncs this path lacked (same
+        # ``trade_history.csv.tmp`` temp name, cleanup and re-raise).
+        _write_csv_atomic(df, target / "trade_history.csv")
 
     def _save_equity_curve(
         self, target: Path, equity_curve: list[float]
@@ -2001,23 +2351,19 @@ class OrganismBrain:
         clf_path = self.brain_dir / "ml_classifier.joblib"
         reg_path = self.brain_dir / "ml_regressor.joblib"
         if clf_path.is_file() and reg_path.is_file():
-            # Verify HMAC to guard against pickle-bomb injection
-            from backend.utils.secure_pickle import (
-                secure_load_from_path,
-                is_signed_pickle,
-            )
+            # Verify HMAC to guard against pickle-bomb injection. Audit
+            # 2026-10-05 C12-04: an unsigned file is never deserialized; the
+            # pair is then handled exactly like a missing pair (both None).
+            models: dict[str, Any] = {}
             for path, attr in [(clf_path, "clf"), (reg_path, "reg")]:
-                raw = path.read_bytes()
-                if is_signed_pickle(raw):
-                    setattr(self, attr, secure_load_from_path(path))
-                else:
-                    # Legacy unsigned file — load and re-sign on next save
-                    logger.warning(
-                        "Loading unsigned ML model %s — will re-sign on "
-                        "next brain save",
-                        path.name,
-                    )
-                    setattr(self, attr, joblib.load(path))
+                signed, value = _read_signed_brain_pickle(path, "ML model")
+                if not signed:
+                    self.clf = None
+                    self.reg = None
+                    return
+                models[attr] = value
+            self.clf = models["clf"]
+            self.reg = models["reg"]
         else:
             self.clf = None
             self.reg = None
@@ -2366,14 +2712,22 @@ class OrganismBrain:
         would overwrite the corrupt manifest.json with a fresh one,
         losing forensic record.  Capture corrupt HEAD first if a
         marker file says so.
+
+        Audit 2026-10-05 C12-01: the snapshot is copied under a temporary
+        ``.partial_*`` name and published with one rename, so an interrupted
+        copy (crash, full disk) never leaves a partial ``brain_gen*`` restore
+        candidate for the PP-2 fallback to load with missing files.
         """
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         gen = self._manifest.get("generation", 0)
         backup_name = f"brain_gen{gen}_{ts}"
         backup_path = self.backup_dir / backup_name
+        staging_path = self.backup_dir / f".partial_{backup_name}"
 
         try:
-            backup_path.mkdir(parents=True, exist_ok=True)
+            for stale in self.backup_dir.glob(".partial_brain_gen*"):
+                shutil.rmtree(stale, ignore_errors=True)
+            staging_path.mkdir(parents=True, exist_ok=True)
             # Copy all brain files (not backups dir, not lock file). Task 2
             # (2026-07-23): also capture the previous_model/ rollback dir so a
             # backup restore brings it back — _create_backup previously copied
@@ -2382,11 +2736,12 @@ class OrganismBrain:
                 if f.name == LOCK_FILE:
                     continue
                 if f.is_file():
-                    shutil.copy2(str(f), str(backup_path / f.name))
+                    shutil.copy2(str(f), str(staging_path / f.name))
                 elif f.is_dir() and f.name == PREVIOUS_MODEL_DIR:
                     shutil.copytree(
-                        str(f), str(backup_path / f.name), dirs_exist_ok=True
+                        str(f), str(staging_path / f.name), dirs_exist_ok=True
                     )
+            os.rename(staging_path, backup_path)
 
             # Prune old backups — keep only the latest MAX_BACKUPS. Task 6
             # (2026-07-23): count only real ``brain_gen*`` backups so the
@@ -2405,6 +2760,7 @@ class OrganismBrain:
 
         except Exception as e:
             logger.warning("Backup failed (non-fatal): %s", e)
+            shutil.rmtree(staging_path, ignore_errors=True)
 
     def get_trade_records(self) -> list[Any]:
         """Convert stored trade history dicts back to TradeRecord objects.
@@ -2562,6 +2918,7 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
         except Exception:
             pass
         raise
+    _fsync_dir(path.parent)  # C12-09: make the rename durable
 
 
 def _write_text_atomic(path: Path, text: str) -> None:
@@ -2586,6 +2943,7 @@ def _write_text_atomic(path: Path, text: str) -> None:
         except OSError:
             pass
         raise
+    _fsync_dir(path.parent)  # C12-09: make the rename durable
 
 
 def _write_csv_atomic(df: "pd.DataFrame", path: Path) -> None:
@@ -2616,6 +2974,162 @@ def _write_csv_atomic(df: "pd.DataFrame", path: Path) -> None:
         except Exception:
             pass
         raise
+    _fsync_dir(path.parent)  # C12-09: make the rename durable
+
+
+def _fsync_dir(path: Path) -> None:
+    """Best-effort fsync of a directory so renames inside it are durable
+    (audit 2026-10-05 C12-09). Platforms or filesystems that cannot fsync a
+    directory are ignored — atomicity never depends on this, only durability.
+    """
+    try:
+        fd = os.open(str(path), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _file_sha256(path: Path) -> str:
+    import hashlib
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _unused_child(directory: Path, name: str) -> Path:
+    """``directory/name``, or a suffixed sibling name if that is taken."""
+    candidate = directory / name
+    index = 1
+    while os.path.lexists(candidate):
+        candidate = directory / f"{name}.{index}"
+        index += 1
+    return candidate
+
+
+def _read_head_inventory(sentinel: Path) -> list[str] | None:
+    """Entry names listed by a save-completion sentinel, or None for a
+    legacy (timestamp), absent or unreadable sentinel (C12-01)."""
+    try:
+        text = sentinel.read_text(encoding="utf-8")
+    except (FileNotFoundError, IsADirectoryError, NotADirectoryError):
+        return None
+    except OSError as exc:
+        logger.warning("C12-01: cannot read %s (%s)", sentinel, exc)
+        return None
+    if not text.lstrip().startswith("{"):
+        return None  # legacy ISO-timestamp sentinel
+    try:
+        data = json.loads(text)
+    except ValueError:
+        logger.warning("C12-01: unparseable save-completion sentinel %s", sentinel)
+        return None
+    if (
+        not isinstance(data, dict)
+        or data.get("format") != HEAD_INVENTORY_FORMAT
+        or not isinstance(data.get("files"), list)
+    ):
+        return None
+    return [str(name) for name in data["files"]]
+
+
+def _read_signed_brain_pickle(path: Path, component: str) -> tuple[bool, Any]:
+    """Deserialize a brain pickle only when it is in the HMAC-signed format.
+
+    Audit 2026-10-05 C12-04: every pickle the platform writes into a brain
+    (models, S17 caches, ensemble pairs) is signed by secure_dump_to_path, and
+    every model/cache file the production brain loads was found signed, so an
+    unsigned file is foreign or tampered. It is never deserialized (pickle
+    executes code on load): a CRITICAL line is logged and ``(False, None)`` is
+    returned so the caller handles the component exactly like a missing file.
+    A signed file whose signature does not verify still raises
+    ``TamperedPickleError`` as before. The bytes that were checked are the
+    bytes that are verified and loaded (no second read).
+    """
+    from backend.utils.secure_pickle import is_signed_pickle, secure_loads
+    raw = path.read_bytes()
+    if not is_signed_pickle(raw):
+        logger.critical(
+            "C12-04: refusing to deserialize unsigned brain pickle %s (%s); "
+            "handled as a missing file — restore a signed copy",
+            path, component,
+        )
+        return False, None
+    return True, secure_loads(raw)
+
+
+def _ensemble_state_key(ensemble: Any) -> tuple[Any, int] | None:
+    """(object, state version) of an ensemble, or None when it does not track
+    a state version (then essential saves always write it) — C12-02."""
+    version = getattr(ensemble, "_state_version", None)
+    if type(version) is not int:
+        return None
+    return (ensemble, version)
+
+
+def _ensemble_written_completely(target: Path, ensemble: Any) -> bool:
+    """Did ``ensemble.save(target)`` write EVERY model pair (C12-02)?"""
+    try:
+        manifest = json.loads(
+            (target / "ensemble_manifest.json").read_text(encoding="utf-8")
+        )
+        names = [str(entry.get("name")) for entry in manifest.get("models", [])]
+    except Exception:
+        return False
+    expected = [str(name) for name in (getattr(ensemble, "model_names", None) or [])]
+    return bool(names) and names == expected and all(
+        (target / f"ensemble_{name}_{kind}.joblib").is_file()
+        for name in names for kind in ("clf", "reg")
+    )
+
+
+def _regresses_trained_state(
+    existing: dict[str, Any], signal_gen: Any, learner: Any,
+) -> tuple[bool, str]:
+    """Would an incoming save regress the trained state in ``existing``?
+
+    Patch E / F1: the incoming state is completely fresh — total_trades 0,
+    untrained ML and generation 0 — while the existing manifest has trades,
+    a trained model or a generation.
+
+    Audit 2026-10-05 C12-03: close_accounting restores the learner's
+    total_trades/cumulative_pnl at startup even when the brain load FAILED,
+    which defeated that test (incoming trades > 0). So a manifest that
+    records a trained model is also protected from any incoming state whose
+    signal generator is untrained, whatever the trade count. (A save with no
+    signal generator at all carries no model information and keeps the
+    original test.)
+    """
+    existing_trades = existing.get("total_trades", 0) or 0
+    existing_trained = bool(existing.get("ml_is_trained", False))
+    existing_generation = existing.get("generation", 0) or 0
+    has_state = learner is not None and hasattr(learner, "state")
+    incoming_trades = learner.state.total_trades if has_state else 0
+    incoming_trained = bool(getattr(signal_gen, "_is_trained", False))
+    incoming_generation = learner.state.generation if has_state else 0
+
+    is_trained_existing = (
+        existing_trades > 0 or existing_trained or existing_generation > 0
+    )
+    is_fresh_incoming = (
+        incoming_trades == 0 and not incoming_trained and incoming_generation == 0
+    )
+    model_regression = (
+        existing_trained and signal_gen is not None and not incoming_trained
+    )
+    reason = (
+        f"existing: total_trades={existing_trades}, "
+        f"ml_is_trained={existing_trained}, generation={existing_generation}; "
+        f"incoming: total_trades={incoming_trades}, "
+        f"ml_is_trained={incoming_trained}, generation={incoming_generation}"
+    )
+    return (is_trained_existing and is_fresh_incoming) or model_regression, reason
 
 
 def _read_json(path: Path) -> dict[str, Any]:
