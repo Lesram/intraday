@@ -63,6 +63,34 @@ and `EXIT ORDER DEAD-LETTERED` or `ORDER SUBMISSION AMBIGUOUS` from
 the order outbox. Each needs an operator to reconcile against the broker; none
 triggers recovery.
 
+Outbox exit guard (candidate, audit 2026-10-05; not deployed until activated).
+Before an exit sell is sent, the outbox reads the broker position and refuses an
+exit larger than the free long quantity, so a delayed or repeated exit cannot
+open a short. A refused exit is never retried: its order row becomes `rejected`
+with the reason in `attributes.dispatch_refusal`, its outbox event is `failed`,
+and the CRITICAL carries symbol, qty, client key, reason and outcome.
+
+- `DUPLICATE EXIT SUPPRESSED AT DISPATCH`: the broker had no position, normally
+  because an earlier exit for the same position filled while the engine re-sent
+  it. Check that the symbol is flat at the broker and that an earlier sell for it
+  is `filled`. If so, nothing else is needed. If no exit filled, the position was
+  closed elsewhere; confirm that it was intended.
+- `EXIT ORDER REFUSED AT DISPATCH`: shares remain but fewer are free than the
+  order (other open orders hold them, or the position is smaller), or the
+  position is short. Check the symbol's open orders and position at the broker.
+  An open sell holding the shares normally completes the exit, and the engine
+  re-sends any remainder on its next exit cycle. A short position must not exist
+  under long-only: the EOD flatten covers it, or cover it manually, then find the
+  order that sold it.
+- `ORDER REJECTED BY BROKER (insufficient qty)`: Alpaca rejected the exit for the
+  same reason. Check it the same way.
+- `EXIT REFUSAL CONFLICTS WITH BROKER EVIDENCE`: the order row already has a
+  broker id or fills, so it was left unchanged. Reconcile that order against the
+  broker.
+
+If the exit guard cannot read the broker, it sends nothing and retries. When the
+retries run out, the event is dead-lettered with `EXIT ORDER DEAD-LETTERED`.
+
 Undelivered counts survive notification and log-read failures and are retried
 on later runs. The first scan covers the previous 15 minutes; subsequent scans
 use the last successful cursor. Each scan is limited to 1,000 lines and 256 KiB

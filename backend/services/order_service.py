@@ -539,6 +539,24 @@ async def circuit_breaker_check_async(daily_pnl: float | None = None) -> bool:
     return await cb.check_async(daily_pnl)
 
 
+def declared_order_intent(reduce_only: bool, attributes: dict[str, Any] | None) -> str | None:
+    """Audit 2026-10-05 C01-01: the intent a caller declared for an order.
+
+    ``reduce_only`` declares an exit, which the outbox dispatcher guards so an
+    exit sell cannot open a short. The organism engine submits every exit with
+    ``reduce_only=True`` (``_submit_exit_order``), so its other orders are
+    entries; declaring them keeps a sell that deliberately opens a short (the
+    strong-short path) out of the dispatcher's long-only fallback. Other
+    callers declare nothing; the dispatcher then applies the long-only side
+    rule (see ``alpaca_outbox.resolve_order_intent``).
+    """
+    if reduce_only:
+        return "exit"
+    if isinstance(attributes, dict) and attributes.get("source") == "organism":
+        return "entry"
+    return None
+
+
 class OrderService:
     """
     Service for order operations including strategy-driven workflows.
@@ -748,6 +766,9 @@ class OrderService:
             attributes: Additional order attributes
             daily_pnl: Optional daily P&L for circuit breaker check
             reduce_only: If True, bypass PnL circuit breaker (exit/risk-reducing orders)
+                and declare the order an exit in the outbox payload, so the
+                dispatcher never sends an exit sell beyond the broker's free
+                long position
 
         Returns:
             Order submission result. Shape on success::
@@ -930,7 +951,14 @@ class OrderService:
                     tif=tif,
                     client_key=idempotency_key,
                     attributes=attributes or {},
+                    # Audit 2026-10-05 C01-01: the dispatcher's exit guard keys
+                    # on the declared intent (an exit sell must not exceed the
+                    # broker's free long position).
+                    reduce_only=bool(reduce_only),
                 )
+                _intent = declared_order_intent(reduce_only, attributes)
+                if _intent is not None:
+                    _outbox_kwargs["intent"] = _intent
                 if limit_price is not None:
                     _outbox_kwargs["limit_price"] = str(limit_price)
                 await self.outbox_repo.add_order_submit_event(**_outbox_kwargs)

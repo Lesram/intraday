@@ -1,42 +1,36 @@
 # Live Audit Index
 
-Generated: 2026-10-05T15:35:46Z
+Generated: 2026-10-05T13:05:50Z
 PR: n/a
-SHA: `d1f8a9d8c4`
-Branch: `fix/brain-crash-safety`
+SHA: `1c5be55965`
+Branch: `fix/outbox-dispatch-guards`
 Scope: **backend_logic**
-Change scope: `base` (`ee023515...HEAD`)
+Change scope: `task` (`HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **8**
+Total distinct changed files: **2**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 5 | `backend/api/lifespan.py`, `backend/organism/brain_persistence.py`, `backend/organism/ensemble_models.py`, `backend/organism/live_engine.py`, `backend/utils/secure_pickle.py` |
+| Backend | 1 | `backend/integrations/alpaca_outbox.py` |
 | Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 2 | `tests/test_apr8_patch_e_trained_state_guard.py`, `tests/test_audit_20261005_brain_crash_safety.py` |
-| Docs | 1 | `docs/runbooks/PAPER_BACKUP_RECOVERY.md` |
+| Tests | 1 | `tests/test_audit_20261005_outbox_dispatch_guards.py` |
+| Docs | 0 | none |
 | Artifacts/evidence | 0 | none |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **3** file(s).
+Organism subset of Backend: **0** file(s).
 
 ### Full changed-file list
 
-- `backend/api/lifespan.py`
-- `backend/organism/brain_persistence.py`
-- `backend/organism/ensemble_models.py`
-- `backend/organism/live_engine.py`
-- `backend/utils/secure_pickle.py`
-- `docs/runbooks/PAPER_BACKUP_RECOVERY.md`
-- `tests/test_apr8_patch_e_trained_state_guard.py`
-- `tests/test_audit_20261005_brain_crash_safety.py`
+- `backend/integrations/alpaca_outbox.py`
+- `tests/test_audit_20261005_outbox_dispatch_guards.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -77,4 +71,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 3 organism file(s) changed — require replay verification
+- 1 backend runtime file(s) changed — require targeted verification

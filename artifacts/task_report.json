@@ -1,19 +1,13 @@
 {
-  "task_id": "audit-20261005-brain-crash-safety",
-  "summary": "Audit 2026-10-05 C12 brain crash safety: journaled full-save swap rolled forward after a crash, with the generation's file inventory in .save_complete so a HEAD or backup with a missing file is rejected instead of loading empty state; essential saves no longer rewrite the unchanged frozen ensemble and every model write is atomic (same bytes); the trained-overwrite guard blocks untrained models over a trained brain whatever the restored trade totals; unsigned pickles fail closed; model_metrics_history survives essential saves; saves that did not happen are reported (return values, ERROR, CRITICAL every third consecutive failure); renamed files and the brain directory are fsynced",
-  "sha": "d1f8a9d8c456b7240fca8f0f0ea75e3bce6d91f4",
-  "branch": "fix/brain-crash-safety",
-  "change_scope": "base",
-  "change_ref": "ee023515...HEAD",
+  "task_id": "evidence-repair",
+  "summary": "fix: limit insufficient-qty finalization to exit sells (PR #36 review)",
+  "sha": "1c5be559653f39137180b696a90bba2ccd1ee01d",
+  "branch": "fix/outbox-dispatch-guards",
+  "change_scope": "task",
+  "change_ref": "HEAD",
   "files_changed": [
-    "backend/api/lifespan.py",
-    "backend/organism/brain_persistence.py",
-    "backend/organism/ensemble_models.py",
-    "backend/organism/live_engine.py",
-    "backend/utils/secure_pickle.py",
-    "docs/runbooks/PAPER_BACKUP_RECOVERY.md",
-    "tests/test_apr8_patch_e_trained_state_guard.py",
-    "tests/test_audit_20261005_brain_crash_safety.py"
+    "backend/integrations/alpaca_outbox.py",
+    "tests/test_audit_20261005_outbox_dispatch_guards.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -33,17 +27,11 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/api/lifespan.py",
-    "backend/organism/brain_persistence.py",
-    "backend/organism/ensemble_models.py",
-    "backend/organism/live_engine.py",
-    "backend/utils/secure_pickle.py"
+    "backend/integrations/alpaca_outbox.py"
   ],
-  "docs_updated": [
-    "docs/runbooks/PAPER_BACKUP_RECOVERY.md"
-  ],
+  "docs_updated": [],
   "risks": [
-    "3 organism file(s) changed \u2014 replay verification required"
+    "1 backend runtime file(s) changed \u2014 targeted verification required"
   ],
   "follow_ups": [],
   "artifact_pack_status": "pass",
