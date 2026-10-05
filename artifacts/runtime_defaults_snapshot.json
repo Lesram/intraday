@@ -115,6 +115,49 @@
     "refusal_record": "order_attributes_dispatch_refusal_and_event_dead_lettered_in_one_transaction",
     "page": "critical_after_commit_duplicate_flat_exit_has_its_own_headline"
   },
+  "close_accounting_holds": {
+    "session_bounded_tifs": [
+      "cls",
+      "day",
+      "fok",
+      "ioc",
+      "opg"
+    ],
+    "session_cutoff_slack_seconds": 300,
+    "session_end_slack_seconds": 3600,
+    "session_search_days": 14,
+    "session_end": "20:00_et_of_first_nyse_trading_day_whose_regular_close_is_after_basis_plus_cutoff_slack",
+    "acknowledged_basis": "max(submitted_at, updated_at)",
+    "unacknowledged_basis": "submitted_at",
+    "unacknowledged_limit": "ambiguous_submission_without_persisted_broker_id_untracked_flat_to_flat_backstop",
+    "gtc_or_unknown_tif": "hold_until_terminal",
+    "in_lifetime": "always_hold",
+    "late_pre_entry_fill": "hold_unbounded",
+    "replaced_day_predecessor": "session_bounded_assumes_successor_kept_session_bounded_tif",
+    "hold_reason": "ambiguous_order:<id>|replacement_lineage_unverified",
+    "hold_warning": "once_per_new_reason_cleared_on_resolution",
+    "zero_fill_cleanup_scan": "orders_submitted_from_entry_to_pending_close_observed_at_else_unbounded"
+  },
+  "fill_lot_accounting": {
+    "unmatched_close": "persist_summary_execution_and_matched_lots_record_attributes.lot_accounting",
+    "lot_matching": "owner_scoped_fifo",
+    "deferral": "close_retryable_while_same_owner_opening_in_recovery_scope_unresolved",
+    "deferral_window": "opening_submitted_at_or_before_close_and_at_most_grace_before_it",
+    "lot_ordering_grace_seconds": 432000,
+    "lot_ordering_max_age_seconds": 3888000,
+    "late_netting": "new_opening_lot_closes_owner_unmatched_closes_submitted_at_or_after_it_within_grace_fifo",
+    "late_match_price": "close_unmatched_vwap",
+    "record_statuses": [
+      "unmatched",
+      "matched_late"
+    ],
+    "record_decimal_places": 6,
+    "ordering_basis": "submission_time_not_broker_fill_time",
+    "page": "critical_after_commit_all_five_ingress",
+    "late_match_log": "warning_after_commit_all_five_ingress",
+    "startup_page_order": "oldest_first_after_persisted_order_recovery",
+    "transient_failure": "whole_order_rolled_back_and_retried"
+  },
   "runtime_config_hash_env": [
     "ORGANISM_DRAWDOWN_KILL_PCT",
     "ORGANISM_MAX_DAILY_LOSS",
