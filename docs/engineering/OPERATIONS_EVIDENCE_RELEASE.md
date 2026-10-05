@@ -11,7 +11,7 @@ A strategy close is not finalized until attributed entry/exit cashflows conserve
 
 Definitively unfilled/rejected entries can be removed only after zero execution is verified. Unknown attribution remains unknown; orphan exclusions remain. A reappearing broker position retains position management. Deferred resolution across sessions retains the true close time without contaminating the current day's counters or creating a fresh cooldown from yesterday's outcome.
 
-Replacement-order lineage is not reliably persisted by the current broker stream. A `replaced` predecessor is terminal, but does not prove its successor is finished or absent. Such lifetimes remain pending with `replacement_lineage_unverified`, and forward replaced orders block daily evidence qualification. This includes zero-fill predecessors. Supporting automatic replacement-chain accounting requires a separate ingestion/attribution repair; this release does not fabricate lineage or silently clear that hold.
+Replacement-order lineage is not reliably persisted by the current broker stream. A `replaced` predecessor is terminal, but does not prove its successor is finished or absent. Such lifetimes remain pending with `replacement_lineage_unverified` while the predecessor could still affect them, and forward replaced orders block daily evidence qualification. This includes zero-fill predecessors. Since the October 5 addendum below, a replaced DAY (or other session-bounded) predecessor stops holding after its own NYSE session. That rule assumes the successor kept a session-bounded TIF: Alpaca's replace can change the TIF and the successor is not ingested, so a GTC successor would go unseen. The backstop is the flat-to-flat check of the lifetime's own legs. Supporting automatic replacement-chain accounting requires a separate ingestion/attribution repair; this release does not fabricate lineage, and clears the hold only by that documented session bound.
 
 Pending records must survive startup's flat-symbol cleanup. Finalization needs one authoritative durable accounting state, or a replayable journal with consumer receipts. A separate 'applied ID' file alongside independently written CSV and learner state is not a transaction. Failure injection at persistence boundaries must restore either the old coherent state with a pending close or the new coherent state. Do not claim crash consistency from clean-save tests.
 
@@ -169,12 +169,15 @@ An unresolved or `replaced` order, including one submitted before the entry,
 holds a close only while it could still execute during that lifetime. DAY,
 IOC, FOK, OPG and CLS orders, and any order the broker never acknowledged (no
 broker order id), stop working at 20:00 ET of their eligible NYSE session, plus
-one hour of slack: the first trading day whose regular close (early closes
-included) follows the submission, or for an acknowledged order the later of
-its submission and last update (a delayed delivery is acknowledged later). A
-later touch of a never-acknowledged row, such as a remediation status, does
-not revive it. After-hours, weekend and holiday submissions therefore still
-hold the next session.
+one hour of slack (`SESSION_END_SLACK`). The eligible session is the first
+trading day (early closes included) whose regular close is after the basis
+time plus five minutes (`SESSION_CUTOFF_SLACK`: POST latency and app-clock lag
+at the cut-off, so an order entered or acknowledged at 15:57 also holds the
+next session). The basis is the submission, or for an acknowledged order the
+later of its submission and last update (a delayed delivery is acknowledged
+later). A later touch of a never-acknowledged row, such as a remediation
+status, does not revive it. After-hours, weekend and holiday submissions
+therefore still hold the next session.
 Acknowledged GTC or unknown-TIF orders, in-lifetime rows and pre-entry fills
 recorded after the entry still hold as before. Old dead letters (for example
 the four April XLE rows marked `failed`) no longer hold every later close of
@@ -185,17 +188,69 @@ orders submitted between the entry and the observed close
 (`pending_close.observed_at`); a later order for the symbol no longer keeps a
 verified-unfilled entry pending. No historical row is rewritten.
 
+Limits of the session rule. A never-acknowledged row is bounded by the session
+of its submission because the row shows no later delivery. An ambiguous
+submission (EXE-04) that reached Alpaca later without a persisted broker id
+may still work after that session and is not seen by this rule (follow-up:
+use the `order.submitted` event's last activity as the basis while the event
+exists). A replaced DAY predecessor is bounded on the successor-TIF assumption
+stated above. For both, exits are sized from the broker position and
+`_closed_position_fills` still requires the lifetime's own legs to be terminal
+and flat-to-flat, so a stray fill keeps the close pending (no wrong P&L, at
+worst an unneeded hold). Pre-entry fills touched after the entry still hold
+that lifetime without a time bound.
+
 A broker-confirmed close fill whose owner has no, or too few, open lots is no
 longer rolled back. The order status, filled quantity, price and execution are
 committed together with any lots that do match (FIFO, owner-scoped as before).
 The remainder is recorded in `orders.attributes.lot_accounting`
-(`status=unmatched`, `repair=required`, cumulative matched/unmatched quantity),
-and one CRITICAL line is logged after the commit on every ingress: trade-update
-stream, persisted-order recovery, reconnect gap-fill, startup order sync and
-outbox acknowledgement. While an earlier same-owner opening order that the
-broker acknowledged is still unresolved and less than five days old, the close
-remains retryable as before (`LotAccountingDeferred`, nothing staged), so an
-out-of-order replay converges instead of leaving a phantom lot. Startup order
-sync applies its newest-first page oldest first for the same reason. Transient
-failures still roll back the whole order. Repairing recorded unmatched closes
-and owner-agnostic lot matching for the single broker account remain follow-ups.
+(`status=unmatched`, `repair=required`, cumulative matched and unmatched
+quantity and unmatched notional, stored at 6 dp), and one CRITICAL line is
+logged after the commit on every ingress: trade-update stream, persisted-order
+recovery, reconnect gap-fill, startup order sync and outbox acknowledgement.
+Transient failures still roll back the whole order.
+
+Ingestion is not globally ordered (recovery pages by id; startup order sync
+runs recovery before its oldest-first page), so a close can be applied before
+its opening. Two rules make the lot ledger converge whatever the delay:
+
+- Deferral. While a same-owner opening that persisted-order recovery retries
+  (unresolved, broker-acknowledged, organism or outbox lineage) was submitted
+  at or before the close and at most five days before it
+  (`LOT_ORDERING_GRACE`, anchored to the close, not to the wall clock), the
+  close stays retryable as before (`LotAccountingDeferred`, a `ValueError`
+  raised before anything is staged). An opening older than 45 days
+  (`LOT_ORDERING_MAX_AGE`) no longer defers. After a restart that follows an
+  outage shorter than that, recovery defers the close and settles the
+  opening, and the startup page (or the next recovery pass) then applies the
+  close against the opening's lot. The cap also bounds how long a stuck
+  opening row can keep a broker-filled close unrecorded: until that opening
+  is 45 days old (the close's row stays non-terminal meanwhile and holds its
+  lifetime's exact accounting).
+- Late netting. Otherwise the close is recorded as above. When an opening fill
+  lands later (an opening that was never acknowledged, is outside recovery
+  scope or is past the cap), its new lot is closed FIFO against the owner's
+  recorded unmatched closes of that symbol and side submitted at or after the
+  opening and within `LOT_ORDERING_GRACE`, at the close's unmatched VWAP. The
+  close's record becomes `matched_late` (`repair=none`, `matched_late_qty`,
+  `last_late_match`) and a WARNING follows the commit. A close submitted before
+  the opening never consumes it.
+
+Both rules order legs by submission time; broker fill times are not ingested
+(C07-07). An opening submitted before a close but filled after it (a resting
+limit order) would be matched to that close. Read-only check for records still
+needing repair:
+
+```sql
+SELECT id, symbol, side, user_id, submitted_at, attributes->'lot_accounting' AS lot_accounting
+FROM orders
+WHERE attributes->'lot_accounting'->>'status' = 'unmatched'
+ORDER BY submitted_at;
+```
+
+The runtime snapshot reports these rules in `close_accounting_holds` and
+`fill_lot_accounting`; the policy id stays `exact_position_fills_or_pending_v1`.
+Follow-ups: a repair path for records that stay `unmatched`, owner-agnostic
+lot matching for the single broker account (with or before C06-01, since a UI
+close of an engine position leaves the engine's `system` lot open), and an
+unmatched-record count in status and the daily evidence pack.
