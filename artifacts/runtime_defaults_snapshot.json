@@ -95,6 +95,26 @@
     "missing_baseline": "rebaseline_at_current_equity_critical_after_the_open",
     "write": "brain_save_and_immediate_atomic_write_on_roll_or_halt"
   },
+  "order_dispatch_guards": {
+    "exit_sell": "client_key_lookup_then_broker_position_refuse_if_free_long_below_order_qty",
+    "exit_free_long_source": "qty_available_else_qty_zero_when_flat_or_short",
+    "exit_scope": "declared_exit_or_close_position_or_undeclared_sell_when_long_only",
+    "exit_size_policy": "refuse_not_clamp",
+    "buy_to_cover": "not_checked",
+    "entries": "unchanged_no_dispatch_guard",
+    "refused_order_status": "rejected",
+    "refusal_reasons": [
+      "exit_position_flat",
+      "exit_position_short",
+      "exit_exceeds_free_long_position",
+      "broker_rejected_insufficient_qty"
+    ],
+    "broker_insufficient_qty": "terminal_rejected_never_retried",
+    "found_at_broker_by_client_key": "attached_never_resent",
+    "failed_guard_read": "not_sent_event_retried",
+    "refusal_record": "order_attributes_dispatch_refusal_and_event_dead_lettered_in_one_transaction",
+    "page": "critical_after_commit_duplicate_flat_exit_has_its_own_headline"
+  },
   "runtime_config_hash_env": [
     "ORGANISM_DRAWDOWN_KILL_PCT",
     "ORGANISM_MAX_DAILY_LOSS",
