@@ -4,6 +4,48 @@
 
 ---
 
+## Candidate surface exit-safety fixes (audit 2026-10-05) — NOT deployed
+
+Stacked on the outbox exit guard below (PR #36). Frozen decision sources change:
+`source_hashes.entry_gates_dispatch` (`_live_tick_inner`) and
+`research_policy_sources.broker_state_safety` (`_position_dict`,
+`_submit_exit_order`, `_reconcile_fills`); nothing else in the surface moves.
+Marsel signed off on these frozen-code fixes on 2026-10-05; they take effect only
+through a new activation. No strategy parameter, threshold, feed, sizing or entry
+behaviour changes, and no new constant. The approved policy baseline
+(`artifacts/phase2/research_policy_baseline.json`) is unchanged and still
+verifies at startup: it fingerprints restored parameters and models, not source.
+
+- **Broker price for the safety nets (C05-01).** `_position_dict` now carries
+  Alpaca's `current_price` and `qty_available`. Before, the dict had no price, so
+  the no-features max-loss net and the pending-exit net (DD2-1) read 0 and could
+  never fire live (replay and tests supplied the field by hand). A missing, zero,
+  negative or non-finite price is 0.0: no net fires on it and each logs a
+  WARNING. An unreported or malformed `qty_available` is None.
+- **Exit window keeps the stop (C05-02).** After an exit that leaves shares open
+  (partial take-profit, `ml_reversal`, a blocked or failed exit) the 3-tick
+  pending window and the 10-tick DD3-3 cooldown skipped the hard stop and
+  max-loss for about 2.5 minutes at the measured cycle. Routine exits stay
+  suspended in the window, but every tick now runs the exit engine's every-tick
+  risk path (`check_exit(..., is_new_bar=False)`: max-loss, hard stop) on the bar
+  close and the DD2-1 max-loss net on the broker price. A breach sells only the
+  shares that no exit of the window has claimed and that the broker reports free
+  of open orders (`qty_available`). `_submit_exit_order` records the unclaimed
+  remainder after every submission that neither raised nor came back `blocked`,
+  so an exit in flight is never sent twice (the outbox guard of PR #36 stays the
+  last line). A failed or blocked exit claims nothing, so its position is
+  protected from the next tick; a blocked window exit is not counted as an order.
+- **Exit-price quote rung (C06-02).** See PHASE 10: the rung reads the streaming
+  provider's cached quote instead of a method the production data client lacks;
+  any failure leaves the close pending (`no_exit_price`) without aborting the tick.
+- **Known limits.** The unclaimed-share record lives in memory only: after a
+  restart a restored window is bounded by the broker quantity and
+  `qty_available` (startup cancels open orders). Without a bar the window checks
+  only the 8% max-loss on the broker price, like the no-features net. An exit
+  that is refused or rejected downstream stays claimed until its window ends, as
+  before. `bars_held` still skips minute boundaries crossed during the window. An
+  orphan close that never finds a price stays pending (no terminal path yet).
+
 ## Candidate outbox exit guard (audit 2026-10-05) — NOT deployed
 
 Stacked on the 2026-09-30 candidate below (PR #35). Order path only: no strategy
@@ -682,9 +724,14 @@ START TICK
 
 | Cooldown | Ticks | Real Time (~10s ticks) | Purpose |
 |---|---|---|---|
-| `_EXIT_COOLDOWN_TICKS` | 10 | ~100s | Prevents re-entering a recently exited symbol |
+| `_EXIT_COOLDOWN_TICKS` | 10 | ~100s | Prevents re-entering a recently exited symbol; suspends routine exits (DD3-3) |
 | `_PENDING_ENTRY_TICKS` | 30 | ~5 min | Prevents duplicate entry submissions |
-| `_PENDING_EXIT_TICKS` | 3 | ~30s | Prevents duplicate exit submissions |
+| `_PENDING_EXIT_TICKS` | 3 | ~30s | Prevents duplicate exit submissions (routine exits) |
+
+Candidate audit 2026-10-05 (C05-02): in the exit window (pending exit or exit
+cooldown) the hard stop and max-loss still run every tick on the shares no exit
+of the window has claimed; see PHASE 5. At the measured ~15.7 s production
+cycle the 10-tick cooldown lasts about 2.5 minutes.
 
 ---
 
@@ -858,10 +905,27 @@ GET POSITIONS + EQUITY
 FOR EACH OPEN POSITION:
   │
   ├── FILTER: LONG_ONLY and side != "long" → SKIP (artifact short)
-  ├── FILTER: sym in _pending_exit → SKIP (exit already submitted)
+  │
+  ├── EXIT WINDOW: sym in _pending_exit (3 ticks) or _exit_cooldown (10 ticks)
+  │   │   (candidate audit 2026-10-05 C05-02; before it the window skipped
+  │   │    everything, and the broker-price net below could not fire live)
+  │   ├── Routine exits stay SUSPENDED (no profit/trailing/time/ML exit, no bars_held)
+  │   ├── Every tick, the always-on risk exits still run:
+  │   │   ├── bar + exit_levels → check_exit(..., is_new_bar=False):
+  │   │   │   max_loss_limit / stop_loss on the bar close
+  │   │   └── DD2-1 net: pnl vs broker avg_entry on the broker current_price
+  │   │       (bar close if the broker price is unusable) <= -max_loss_pct (8%)
+  │   │       → reason "safety_net_pending_exit_breach"
+  │   ├── A breach sells only shares no exit of this window has claimed
+  │   │   (_exit_unclaimed_qty, recorded by _submit_exit_order after a
+  │   │   submission that did not raise or come back "blocked") and that the
+  │   │   broker reports free of open orders (qty_available, when reported)
+  │   │   → an exit in flight is never sent twice; 0 left → nothing sent
+  │   └── Neither a bar nor a valid broker price → WARNING, nothing evaluated
   │
   ├── PATH A: No features available for this symbol
-  │   ├── Get broker_price and avg_entry from position data
+  │   ├── Get broker_price (position current_price) and avg_entry
+  │   │   (missing, zero, negative or non-finite price → 0.0 → WARNING, no exit)
   │   ├── Compute pnl_pct = (broker_price - entry) / entry × direction
   │   ├── IF pnl_pct <= -max_loss_pct (8%) → SAFETY NET EXIT
   │   │   └── Submit full exit, reason: "safety_net_no_features"
@@ -981,6 +1045,7 @@ FOR EACH OPEN POSITION:
           ├── Submit exit order via _submit_exit_order():
           │   ├── Store exit reason in _last_exit_reason[symbol] for trade attribution
           │   ├── Capture synchronous fill price in _last_exit_fill_price[symbol]
+          │   ├── Record the shares the exit window leaves unclaimed (_exit_unclaimed_qty)
           │   └── Set cooldowns (_exit_cooldown, _pending_exit)
           └── Reasons: "stop_loss", "trailing_stop", "take_profit", "partial_take_profit",
               "failure_to_follow", "loser_time_stop", "ml_reversal", "max_loss_limit",
@@ -1495,6 +1560,16 @@ historical precision.
 Explicitly adopted orphans retain their non-strategy classification and may
 retain labeled approximate bookkeeping; they never become strategy evidence.
 No strategy rule, risk threshold, exploration path or frozen hash changes.
+
+Without exact fills an orphan close is priced from a DB exit fill, then the
+bar close, then the streaming provider's cached quote (`quote_mid`/`quote_bid`/
+`quote_ask`). Candidate audit 2026-10-05 (C06-02, a frozen-surface change in
+`_reconcile_fills`): the quote rung used to call `get_latest_quote` on the data
+client, which the production `AlpacaDataClient` does not have; the
+AttributeError aborted reconciliation and the rest of every tick (pending-entry
+release, age escalation, retrain, the periodic brain save), across restarts.
+Now no quote, or any failure reading or parsing it, means "price unknown": the
+close stays pending (`no_exit_price`) and the tick continues.
 
 Replay uses its own executed-order adapter for the same conserved-cashflow
 contract; its outcomes carry `simulated_position_fills`, distinct from paper

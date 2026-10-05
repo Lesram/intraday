@@ -66,7 +66,12 @@ LIVE_ENGINE_PATH = REPO_ROOT / "backend" / "organism" / "live_engine.py"
 # September24 repair:28 additional lines for explicit rejection causes,
 # non-decision timing/counters and the one subscription synchronization call.
 # This is a scoped reviewed addition; the parked decomposition is unchanged.
-LIVE_TICK_INNER_LOC_CEILING = 2_805 + 18 + 1 + 28
+# Audit 2026-10-05 surface exit-safety fixes (C05-01 broker price, C05-02
+# exit-window stop/max-loss on unclaimed shares; owner sign-off 2026-10-05):
+# the function grows from 2850 to 2879 lines, 27 over the previous ceiling.
+# The logic stays inline because a helper outside _live_tick_inner would sit
+# outside the frozen-surface hash. Exact ceiling, no spare tolerance.
+LIVE_TICK_INNER_LOC_CEILING = 2_805 + 18 + 1 + 28 + 27
 
 
 def _find_live_tick_inner_loc() -> int:
