@@ -254,3 +254,86 @@ Follow-ups: a repair path for records that stay `unmatched`, owner-agnostic
 lot matching for the single broker account (with or before C06-01, since a UI
 close of an engine position leaves the engine's `system` lot open), and an
 unmatched-record count in status and the daily evidence pack.
+
+## October 5 external-close accounting (audit C06-01)
+
+A strategy close that no organism exit order booked used to stay pending for
+good: no trade, the symbol entry-gated across restarts, one WARNING. This
+repair changes the frozen `_reconcile_fills` and
+`operator_cancellation._accounted_entry_fill` (owner sign-off 2026-10-05;
+effective only through a new activation). The classification and the
+escalation live outside the frozen surface (`live_engine_fills.py`,
+`_defer_unresolved_close`). The policy id stays
+`exact_position_fills_or_pending_v1`: strategy outcomes still require exact
+organism legs, and the new records are reconciliation artifacts, the class v1
+already uses for orphan bookkeeping. The checkpoint format, its reader and the
+daily evidence check are unchanged.
+
+Exact. The platform's close routes (`POST /positions/{symbol}/close`,
+`POST /orders/{id}/close-position`) book a market leg with
+`attributes.close_position = true`, no `source`, under the operator's owner.
+When such legs are exit-side, terminal, filled with a broker id and complete
+the lifetime flat-to-flat by the observed close, the close is recorded at once
+with the DB cash flows (`price_source = external_close_db_fills`). The anchor,
+quantity and hold checks are those of exact accounting, and orders after the
+observed close are outside the window, as there.
+
+Approximate. When every order from the entry to the observed close is
+attributable (organism, or a close-route exit leg) and terminal, the DB
+lifetime is still open and the broker is flat, part of the quantity was closed
+with no DB row: the Alpaca dashboard or app, or a broker liquidation (the
+platform itself never closes without a row). If any order for the symbol was
+submitted after the observed close, nothing is recorded, because it could hold
+the missing legs (for example a late engine exit, C06-04). Otherwise the close
+waits `EXTERNAL_CLOSE_APPROXIMATE_AFTER` (15 minutes from the observed close,
+status reason `external_close_unbooked`). It is then recorded with the DB legs
+exact and the unbooked quantity at the best available mark: the bar close kept
+when the close was first observed (`pending_close.observed_bar_close`), else
+the current bar close, else the streaming provider's cached quote (mid, bid,
+ask); `price_source = external_close_approximate_<rung>`. Without a mark it
+stays pending (`no_exit_price`). Another leg's or lifetime's fill price is
+never used.
+
+Both records carry `exit_reason = external_close`,
+`is_reconciliation_artifact = true`, the original observed close time, the
+entry identity and strategy, and the DB entry cost. They never reach the
+learner, Kelly, calibration, symbol counts, bans, evolution or the edge
+monitor; the daily-loss breaker still sees broker equity. The symbol's tracking
+is cleared and its completed identity persisted in one checkpoint replace, so
+the entry gate is released and a restart keeps the outcome. The daily evidence
+check still flags every forward row whose price source is not
+`db_position_fills` (`unqualified_price_source`), as it does for orphan
+artifacts, so a session with an external close cannot be certified.
+
+The pending-entry release (`_accounted_entry_fill`, flat branch) accepts an
+`external_close` artifact with the same identity, quantity and entry cost in
+place of exhausted lots: the close-route leg is booked under the operator's
+owner and a dashboard close books nothing, so the engine's own lot stays open.
+Other artifacts, and strategy trades whose lots are not exhausted, are still
+refused.
+
+A close still pending 30 minutes after it was observed raises one CRITICAL
+per episode (`_UNRESOLVED_CLOSE_ESCALATE_SECONDS`; a restart re-pages once if
+it is still unresolved). The page finalizes nothing. Genuinely ambiguous closes
+(holds, an unattributed or still-working leg, an order after the observed
+close, no entry identity, DB failures) stay pending with one WARNING per
+episode, as before.
+
+Known limit. The engine's own (`system`) lot of an externally closed lifetime
+stays open in the lot ledger (owner-scoped matching; no row at all for
+dashboard closes). The next entry in that symbol therefore cannot release its
+pending identity through the open-position check, because the owner's open
+lots exceed the broker quantity: EXE-03 pages after 30 minutes and the symbol
+stays pending-entry gated until the ledger is repaired. Owner-agnostic lot
+matching (close routes) and a lot repair (closes with no row) are needed with
+or before this release. Read-only check; an open `system` lot for a symbol the
+broker shows flat is such a leftover:
+
+```sql
+SELECT id, order_id, symbol, qty, remaining_qty, open_date
+FROM position_lots
+WHERE user_id = 'system' AND remaining_qty > 0
+ORDER BY symbol, open_date;
+```
+
+The runtime snapshot reports these rules in `external_close_accounting`.

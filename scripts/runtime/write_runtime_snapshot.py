@@ -191,6 +191,27 @@ def _build_defaults_snapshot() -> dict:
                 "hold_warning": "once_per_new_reason_cleared_on_resolution",
                 "zero_fill_cleanup_scan": "orders_submitted_from_entry_to_pending_close_observed_at_else_unbounded",
             },
+            # Audit 2026-10-05 C06-01: an identified strategy position closed
+            # outside the engine's exit orders (policy id unchanged).
+            "external_close_accounting": {
+                "close_route_leg": "attributes.close_position_true_without_organism_source_exit_side_only",
+                "exact": "close_route_legs_complete_the_lifetime_flat_to_flat_by_the_observed_close_recorded_at_once",
+                "unbooked": "every_leg_to_the_observed_close_attributable_and_terminal_db_still_open_broker_flat_no_later_order",
+                "approximate_after_seconds": int(_fill_lookup.EXTERNAL_CLOSE_APPROXIMATE_AFTER.total_seconds()),
+                "approximate_mark": "observed_bar_close_then_current_bar_close_then_streaming_quote_mid_bid_ask",
+                "approximate_cash": "db_legs_exact_plus_unbooked_qty_at_mark",
+                "no_mark": "stays_pending_no_exit_price",
+                "exit_reason": _fill_lookup.EXTERNAL_CLOSE_EXIT_REASON,
+                "exact_price_source": _fill_lookup.EXTERNAL_CLOSE_EXACT_SOURCE,
+                "approximate_price_source": _fill_lookup.EXTERNAL_CLOSE_APPROXIMATE_SOURCE_PREFIX + "<rung>",
+                "wait_reason": _fill_lookup.EXTERNAL_CLOSE_UNBOOKED_REASON,
+                "classification": "reconciliation_artifact_no_learner_kelly_calibration_symbol_counts_bans_evolution_or_edge_monitor",
+                "holds": "same_as_exact_accounting_see_close_accounting_holds",
+                "entry_gate": "released_when_recorded",
+                "pending_entry_release": "flat_branch_accepts_external_close_artifact_same_identity_quantity_entry_cost_lots_may_stay_open",
+                "escalate_after_seconds": OrganismLiveEngine._UNRESOLVED_CLOSE_ESCALATE_SECONDS,
+                "escalation": "one_critical_per_pending_episode_per_process_nothing_finalized",
+            },
             # Audit 2026-10-05 C07-01: lot-ledger effects of broker-confirmed fills.
             "fill_lot_accounting": {
                 "unmatched_close": "persist_summary_execution_and_matched_lots_record_attributes.lot_accounting",
@@ -535,6 +556,7 @@ def _build_resolved_config_snapshot() -> dict:
         "daily_loss_baseline": defaults.get("daily_loss_baseline"),
         "order_dispatch_guards": defaults.get("order_dispatch_guards"),
         "close_accounting_holds": defaults.get("close_accounting_holds"),
+        "external_close_accounting": defaults.get("external_close_accounting"),
         "fill_lot_accounting": defaults.get("fill_lot_accounting"),
         "runtime_config_hash_env": defaults.get("runtime_config_hash_env"),
         "entry_freshness": defaults.get("entry_freshness"),

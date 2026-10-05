@@ -140,14 +140,21 @@ async def _accounted_entry_fill(db, row, receipt, engine, broker):
     if position is None:
         # A stale completed-ID alone may predate later fills. Require the exact
         # closed trade quantity/cost plus exhausted original lots and fresh flat.
+        # Audit 2026-10-05 C06-01: a close outside the engine never exhausts the
+        # engine's own lots (a platform close route books it under the operator's
+        # owner; the Alpaca dashboard or a broker liquidation books nothing). Its
+        # 'external_close' reconciliation artifact, with the same identity,
+        # quantity and entry cost, proves this fill was accounted instead.
         completed = getattr(engine, '_accounting_completed_entries', {}).get(str(row.id))
         remaining = (await db.execute(select(func.coalesce(func.sum(PositionLot.remaining_qty), 0))
                                       .where(PositionLot.order_id == row.id))).scalar_one()
-        if _number(remaining) != 0:
-            return False
+        exhausted = _number(remaining) == 0
         return any(
             trade.entry_order_id == str(row.id) and trade.closed_at == completed
-            and not trade.is_reconciliation_artifact and _number(trade.shares) == filled
+            and (not trade.is_reconciliation_artifact and exhausted
+                 or trade.is_reconciliation_artifact
+                 and getattr(trade, 'exit_reason', None) == 'external_close')
+            and _number(trade.shares) == filled
             and abs(_number(trade.entry_price) * filled - expected_cash) <= tolerance
             for trade in getattr(engine, '_all_trades', [])
         )

@@ -4,6 +4,63 @@
 
 ---
 
+## Candidate external-close accounting (audit 2026-10-05 C06-01) — NOT deployed
+
+Stacked on the merged exit-safety and close-accounting candidates below.
+Frozen decision sources change: `research_policy_sources.broker_state_safety`
+(`_reconcile_fills`) and `research_policy_sources.entry_cancellation`
+(`operator_cancellation.py`, `_accounted_entry_fill` only), on top of the base's
+own `broker_state_safety` and `entry_gates_dispatch` drift. Marsel signed off on
+these frozen-code fixes on 2026-10-05; they take effect only through a new
+activation. No strategy parameter, threshold, feed, sizing or entry-decision
+change. The policy id stays `exact_position_fills_or_pending_v1` (strategy
+outcomes still need exact organism legs; the new records are reconciliation
+artifacts, as orphan bookkeeping already is under v1).
+
+- **Problem.** An identified strategy position closed by anything other than an
+  organism exit order (the platform's close routes, the Alpaca dashboard after
+  the EOD page says "manual intervention recommended", a broker liquidation)
+  stayed pending forever: no trade, the symbol entry-gated across restarts.
+- **Close-route legs are exact.** `POST /positions/{symbol}/close` and
+  `POST /orders/{id}/close-position` book their leg with `close_position: true`
+  and no organism source. When such exit-side legs complete the lifetime
+  flat-to-flat by the observed close (all legs terminal and attributable; the
+  holds of exact accounting apply), the close is recorded at once with the DB
+  cash flows (`price_source=external_close_db_fills`).
+- **No DB leg (dashboard, liquidation) is approximate.** When every leg up to
+  the observed close is attributable and terminal, the DB lifetime is still
+  open, the broker is flat and no later order exists for the symbol, the close
+  waits `EXTERNAL_CLOSE_APPROXIMATE_AFTER` (15 min, reason
+  `external_close_unbooked`). Then the DB legs count exactly and the unbooked
+  quantity is priced at the bar close kept when the close was first observed
+  (`pending_close.observed_bar_close`), else the current bar close, else the
+  streaming quote (`price_source=external_close_approximate_<rung>`). No mark:
+  it stays pending (`no_exit_price`).
+- **Never strategy evidence.** Both carry `exit_reason=external_close` and
+  `is_reconciliation_artifact=true`: no learner, Kelly, calibration, symbol
+  counts, bans, evolution or edge-monitor input, exactly like orphan artifacts.
+  Tracking is cleared (entry gate released) and the completed identity persists
+  across restarts. The daily evidence check still refuses forward rows whose
+  price source is not `db_position_fills`.
+- **Pending entry identity.** `_accounted_entry_fill`'s flat branch accepts the
+  `external_close` artifact (same identity, quantity and entry cost) without
+  exhausted lots: the close-route leg is booked under the operator's owner and
+  a dashboard close books nothing, so the engine's own lot stays open.
+- **Escalation.** A close still pending 30 min after it was observed raises one
+  CRITICAL per episode (`_UNRESOLVED_CLOSE_ESCALATE_SECONDS`, in
+  `_defer_unresolved_close`; a restart re-pages once). Genuinely ambiguous closes
+  (holds, unattributed or working legs, an order after the observed close) stay
+  pending as before.
+- **Known limit.** The engine's own (`system`) lot of an externally closed
+  lifetime stays open in the lot ledger, so the next entry in that symbol cannot
+  release its pending identity (owner lots exceed the broker quantity): EXE-03
+  pages after 30 min and the symbol is pending-entry gated until the ledger is
+  repaired. Owner-agnostic lot matching and a lot repair are needed with or
+  before this release (`docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`,
+  October 5 external-close section). Snapshot: `external_close_accounting`.
+
+---
+
 ## Candidate surface exit-safety fixes (audit 2026-10-05) — NOT deployed
 
 Stacked on the outbox exit guard below (PR #36). Frozen decision sources change:
@@ -1613,6 +1670,22 @@ The hold reason names the row (`ambiguous_order:<id>` or
 `replacement_lineage_unverified`, one WARNING per new reason); the zero-fill
 cleanup scans orders submitted from the entry to `pending_close.observed_at`.
 Snapshot: `close_accounting_holds`.
+
+**Closes outside the engine (candidate, audit 2026-10-05 C06-01, a frozen-surface
+change in `_reconcile_fills` and `_accounted_entry_fill`).** Same policy id. When
+exact accounting refuses an identified close and the entry is not verified
+unfilled, `_lookup_external_close_from_db` classifies the symbol's orders from the
+entry on (read-only, same holds). Platform close-route legs
+(`attributes.close_position` true, no organism source, exit side) that complete
+the lifetime flat-to-flat are recorded at once (`external_close_db_fills`). A
+lifetime whose attributable, terminal legs leave quantity open while the broker is
+flat, with no later order for the symbol, waits
+`EXTERNAL_CLOSE_APPROXIMATE_AFTER` (15 min) and is then recorded with the unbooked
+quantity at `observed_bar_close`, the current bar close or the streaming quote
+(`external_close_approximate_<rung>`). Both are `external_close` reconciliation
+artifacts excluded from every learning consumer; tracking is cleared. Everything
+else stays pending; one CRITICAL per episode after 30 min. Snapshot:
+`external_close_accounting`.
 
 Replay uses its own executed-order adapter for the same conserved-cashflow
 contract; its outcomes carry `simulated_position_fills`, distinct from paper
