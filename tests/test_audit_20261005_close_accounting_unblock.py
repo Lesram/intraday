@@ -173,11 +173,25 @@ async def test_recent_genuinely_ambiguous_orders_still_defer(db, case):
     assert meta["pending_close"]["accounting_hold_reason"] == expected
 
 
-def test_eligible_session_follows_the_nyse_calendar():
-    def at_et(*parts):
-        from zoneinfo import ZoneInfo
-        return datetime(*parts, tzinfo=ZoneInfo("America/New_York")).astimezone(UTC)
+def at_et(*parts):
+    from zoneinfo import ZoneInfo
+    return datetime(*parts, tzinfo=ZoneInfo("America/New_York")).astimezone(UTC)
 
+
+@pytest.fixture
+def nyse_2026(monkeypatch):
+    """Pin the NYSE calendar these 2026 cases use: market_hours builds its sets
+    for the import year -1..+5 only, so later runs would lose 2026's holidays."""
+    from backend.utils import market_hours
+
+    years = (2025, 2026, 2027)
+    holidays = set().union(*(market_hours._calculate_nyse_holidays(y) for y in years))
+    early = set().union(*(market_hours._calculate_nyse_early_close(y) for y in years)) - holidays
+    monkeypatch.setattr(market_hours, "NYSE_HOLIDAYS", holidays)
+    monkeypatch.setattr(market_hours, "NYSE_EARLY_CLOSE", early)
+
+
+def test_eligible_session_follows_the_nyse_calendar(nyse_2026):
     row = {"broker_order_id": "acknowledged", "tif": "day", "updated_at": None}
     # Friday before Labor Day, after the close: queued for Tuesday 2026-09-08.
     row["submitted_at"] = at_et(2026, 9, 4, 17, 0)
@@ -197,6 +211,34 @@ def test_eligible_session_follows_the_nyse_calendar():
     assert not fills._order_may_affect_lifetime(row, at_et(2026, 9, 8, 10, 0))
     # Unknown evidence fails closed.
     assert fills._order_may_affect_lifetime({"broker_order_id": None}, ENTRY)
+
+
+def test_session_bounds_carry_slack_at_the_cut_off_and_after_the_session_end(nyse_2026):
+    assert fills.SESSION_END_SLACK == timedelta(hours=1)
+    assert fills.SESSION_CUTOFF_SLACK == timedelta(minutes=5)
+    row = {"broker_order_id": "acknowledged", "tif": "day", "updated_at": None,
+           "submitted_at": at_et(2026, 10, 5, 11, 0)}
+    # Monday's session ends at 20:00 ET; it may still work for one more hour.
+    assert fills._order_may_affect_lifetime(row, at_et(2026, 10, 5, 20, 50))
+    assert not fills._order_may_affect_lifetime(row, at_et(2026, 10, 5, 21, 10))
+    tuesday_entry = at_et(2026, 10, 6, 10, 0)
+    for broker_id in ("acknowledged", None):
+        # Entered within the cut-off slack of the 16:00 close: POST latency or
+        # a lagging app clock can queue it for Tuesday, so it holds Tuesday.
+        late = {**row, "broker_order_id": broker_id, "submitted_at": at_et(2026, 10, 5, 15, 57)}
+        assert fills._order_may_affect_lifetime(late, tuesday_entry)
+        assert not fills._order_may_affect_lifetime(
+            {**late, "submitted_at": at_et(2026, 10, 5, 15, 54)}, tuesday_entry)
+    # An acknowledgement persisted at 15:59:59 likewise holds Tuesday.
+    acked = {**row, "submitted_at": at_et(2026, 10, 5, 15, 50),
+             "updated_at": at_et(2026, 10, 5, 15, 59, 59)}
+    assert fills._order_may_affect_lifetime(acked, tuesday_entry)
+    # The slack follows early closes (13:00 ET on 2026-11-27): Monday is held.
+    monday_entry = at_et(2026, 11, 30, 10, 0)
+    assert fills._order_may_affect_lifetime(
+        {**row, "submitted_at": at_et(2026, 11, 27, 12, 57)}, monday_entry)
+    assert not fills._order_may_affect_lifetime(
+        {**row, "submitted_at": at_et(2026, 11, 27, 12, 50)}, monday_entry)
 
 
 async def test_hold_reason_names_the_blocker_once_and_clears_when_it_resolves(db, monkeypatch):

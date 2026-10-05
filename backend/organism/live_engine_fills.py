@@ -26,15 +26,28 @@ REPLACEMENT_PENDING_REASON = "replacement_lineage_unverified"
 AMBIGUOUS_ORDER_REASON_PREFIX = "ambiguous_order:"
 
 # Audit 2026-10-05 C08-01: an unresolved or replaced order can only change an
-# identified lifetime while it can still execute at the broker. Session-bounded
-# orders, and orders the broker never acknowledged (no broker order id: they
-# can only start working through a later outbox delivery, which persists the
-# broker id and touches updated_at), stop working at the extended-hours close
-# of their eligible NYSE session. Acknowledged GTC/other/unknown-TIF orders stay
-# conservative: they block until a terminal status is ingested.
+# identified lifetime while it can still execute at the broker. A
+# session-bounded (DAY/IOC/FOK/OPG/CLS) order stops working at the
+# extended-hours close of its eligible NYSE session. An order the broker never
+# acknowledged (no broker order id on the row) is bounded by the session of its
+# submission, so a dead letter touched later (for example by a remediation
+# status) cannot hold every later close of the symbol. Known limit: the row
+# alone cannot show an ambiguous submission (EXE-04) that reached the broker
+# later without a broker id being persisted; such an order may still work
+# after that session. The backstop is the lifetime's own legs: exits are sized
+# from the broker position and _closed_position_fills requires them to be
+# terminal and flat-to-flat, so a stray fill from it keeps the close pending.
+# A replaced DAY predecessor is bounded the same way, on the assumption that
+# its successor kept a session-bounded TIF (replacement lineage and the
+# successor's TIF are not ingested). Acknowledged GTC/other/unknown-TIF orders
+# stay conservative: they block until a terminal status is ingested.
 SESSION_BOUNDED_TIFS = frozenset({"day", "ioc", "fok", "opg", "cls"})
 # Broker cancellation latency and DB/broker clock skew after the session end.
 SESSION_END_SLACK = timedelta(hours=1)
+# POST latency and app-clock lag at the regular-close cut-off: an order entered
+# or acknowledged this close to the close may already be queued for the next
+# session, so the session is picked from the basis time plus this slack.
+SESSION_CUTOFF_SLACK = timedelta(minutes=5)
 _SESSION_SEARCH_DAYS = 14
 
 
@@ -70,12 +83,17 @@ def _eligible_session_end(moment: datetime) -> datetime | None:
 
 
 def _order_may_affect_lifetime(row: Any, entry_time: datetime) -> bool:
-    """Fail closed unless the order provably stopped working before the entry.
+    """Fail closed unless the order stopped working before the entry.
 
-    An acknowledged order's session follows the latest of submitted_at and
-    updated_at: a delayed delivery is acknowledged (and touched) later, never
-    earlier. A never-acknowledged order is delivered at submission; a later
-    touch (e.g. remediation marking a dead letter 'failed') cannot revive it.
+    The eligible session is picked from a basis time plus SESSION_CUTOFF_SLACK
+    and ends at its 20:00 ET close plus SESSION_END_SLACK. An acknowledged
+    order's basis is the later of submitted_at and updated_at: a delayed
+    delivery is acknowledged (and touched) later, never earlier. A
+    never-acknowledged order's basis is its submission: a later touch (e.g.
+    remediation marking a dead letter 'failed') does not revive it. That rests
+    on the row's only recorded delivery attempt; an ambiguous submission that
+    reached the broker later without a persisted broker id is not visible here
+    (see the module note above for the backstop).
     """
     try:
         submitted = _as_utc(row["submitted_at"])
@@ -85,7 +103,7 @@ def _order_may_affect_lifetime(row: Any, entry_time: datetime) -> bool:
             basis = max(submitted, _as_utc(row["updated_at"] or submitted))
         else:
             basis = submitted
-        session_end = _eligible_session_end(basis)
+        session_end = _eligible_session_end(basis + SESSION_CUTOFF_SLACK)
         return session_end is None or session_end + SESSION_END_SLACK >= _as_utc(entry_time)
     except (KeyError, TypeError, ValueError, AttributeError, OverflowError):
         return True
@@ -312,6 +330,8 @@ class _FillLookupMixin:
                 # lifetime. Either holds the close only while it can still work
                 # at the broker after the entry (C08-01: a dead-lettered April
                 # row must not make every later close of the symbol pending).
+                # A replaced DAY row is bounded by its own session on the
+                # assumption that its successor kept a session-bounded TIF.
                 unresolved_stmt = select(
                     Order.id, Order.status, Order.tif, Order.submitted_at,
                     Order.updated_at, Order.broker_order_id,
