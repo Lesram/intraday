@@ -1,13 +1,20 @@
 {
-  "task_id": "evidence-repair",
-  "summary": "fix: limit insufficient-qty finalization to exit sells (PR #36 review)",
-  "sha": "1c5be559653f39137180b696a90bba2ccd1ee01d",
-  "branch": "fix/outbox-dispatch-guards",
-  "change_scope": "task",
-  "change_ref": "HEAD",
+  "task_id": "audit-20261005-brain-crash-safety",
+  "summary": "Audit 2026-10-05 C12 brain crash safety, with the review addressed: journaled full-save swap rolled forward after a crash only while HEAD holds no newer state (a stale journal from a rollback or a write outside a save is retired with a forensic copy and HEAD kept); generation inventory rejects missing, unsigned or torn listed files (backup fallback); after a fallback the engine takes a full save and never backs up or essential-saves into a rejected HEAD; ml_state.json written once per save; essential saves report OSError; standalone exit-level write settles a pending journal; read-only unsigned-pickle pre-deploy check; essential saves skip the unchanged frozen ensemble; trained-overwrite guard; unsigned pickles never deserialized; saves that did not happen are reported; renames fsynced",
+  "sha": "4d65b1df40073750fd492e43209869944a6de136",
+  "branch": "fix/brain-crash-safety",
+  "change_scope": "base",
+  "change_ref": "6a56d753...HEAD",
   "files_changed": [
-    "backend/integrations/alpaca_outbox.py",
-    "tests/test_audit_20261005_outbox_dispatch_guards.py"
+    "backend/api/lifespan.py",
+    "backend/organism/brain_persistence.py",
+    "backend/organism/ensemble_models.py",
+    "backend/organism/live_engine.py",
+    "backend/utils/secure_pickle.py",
+    "docs/runbooks/PAPER_BACKUP_RECOVERY.md",
+    "scripts/ops/check_brain_pickles_signed.py",
+    "tests/test_apr8_patch_e_trained_state_guard.py",
+    "tests/test_audit_20261005_brain_crash_safety.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -27,11 +34,17 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/integrations/alpaca_outbox.py"
+    "backend/api/lifespan.py",
+    "backend/organism/brain_persistence.py",
+    "backend/organism/ensemble_models.py",
+    "backend/organism/live_engine.py",
+    "backend/utils/secure_pickle.py"
   ],
-  "docs_updated": [],
+  "docs_updated": [
+    "docs/runbooks/PAPER_BACKUP_RECOVERY.md"
+  ],
   "risks": [
-    "1 backend runtime file(s) changed \u2014 targeted verification required"
+    "3 organism file(s) changed \u2014 replay verification required"
   ],
   "follow_ups": [],
   "artifact_pack_status": "pass",
