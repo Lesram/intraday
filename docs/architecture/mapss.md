@@ -839,12 +839,40 @@ DETECT REGIME (only if features sufficient)
   │   │   └── stress_pct > 0.4 → boost stress × (1 + 0.5 × stress_pct)
   │   └── Re-normalize probabilities
   │
-  ├── Priority 2: SPY-Based
-  │   └── detect(spy_features) — needs SPY with >= 10 bars
+  ├── Priority 2: SPY-Based (no usable sector ETF this tick)
+  │   └── detect_isolated(spy_features) — needs SPY with >= 10 bars. It is
+  │       detect() with the detector's running state (_smoothed_probs,
+  │       _history) saved and restored (audit 2026-10-05 C09-01): same label
+  │       on that tick, no prior carried into later ticks or regime_state.json
   │
   └── Priority 3: Market Aggregate
       └── Average regime probabilities across all symbols
 ```
+
+### Routed Label and Detector State (as frozen)
+
+- Every per-symbol and per-ETF `detect()` inside the cross-asset and
+  market-aggregate paths starts from the detector's running prior
+  (`_smoothed_probs`) and the prior is restored afterwards. In production that
+  prior is empty, so the routed label is the plain argmax of the averaged
+  single-shot probabilities, then sector-breadth conditioning: the EMA
+  (α=0.3) and the DD2-4 hysteresis band (0.05) do not carry across ticks. The
+  forward verdict is measured on this behaviour; aggregate smoothing would be a
+  strategy change.
+- Audit 2026-10-05 C09-01: the SPY-only fallback used to leave its SPY vector
+  in the shared detector, which then pinned every later routed label and was
+  persisted to `regime_state.json`. It now calls
+  `RegimeDetector.detect_isolated()`, which restores the running state. A
+  consequence outside production: in a universe with no sector ETF (every tick
+  takes the SPY-only branch, e.g. the replay-simulator test universes),
+  consecutive SPY labels are no longer EMA-smoothed tick to tick.
+- Tripwire: after each tick, `live_tick` logs `REGIME PRIOR TRIPWIRE` at
+  CRITICAL (once per process) if `_smoothed_probs` or `_history` is non-empty,
+  e.g. an old `regime_state.json` restored at startup (a startup guard in
+  `OrganismBrain.apply_regime_state` is a follow-up). Log-only.
+- `status()['regime']` and the transfer-learning record report the label the
+  last tick routed (`_last_regime`); `RegimeDetector.current_regime` stays
+  `unknown` on the aggregate path.
 
 ### Regime Classification Logic
 
@@ -861,7 +889,7 @@ From feature data, 5 signals are extracted:
 
 **Intraday threshold scaling**: `tf_scale = 1 / sqrt(bars_per_day)`. For 1-min bars (390 bpd), tf_scale ≈ 0.0507. This scales per-bar thresholds to match the magnitude of single-bar returns/volatility at that timeframe. Lookback periods are separately scaled 4× via `is_intraday`.
 
-Scores → softmax → EMA smoothing (α=0.3) → argmax = primary regime.
+Scores → softmax → EMA smoothing (α=0.3, from the detector's running prior) → argmax (hysteresis band 0.05) = primary regime of one `detect()` call. The routed market label does not carry that smoothing across ticks (see "Routed Label and Detector State" above).
 
 ### Regime Labels
 
@@ -2014,7 +2042,13 @@ Scores → Softmax → Probabilities (sum to 1.0)
 
 Probabilities → EMA Smoothing (α=0.3) → prevent whipsaw
 
-Smoothed → argmax → Primary Regime Label
+Smoothed → argmax → Primary Regime Label   (per detect() call)
+
+Routed market label (cross-asset / aggregate): each per-symbol and per-ETF
+detect() starts from the empty production prior and the prior is restored
+afterwards, so no smoothing or hysteresis carries across ticks (§6, "Routed
+Label and Detector State"). The SPY-only fallback uses detect_isolated(),
+which restores it too (C09-01).
 ```
 
 ### Additional Components

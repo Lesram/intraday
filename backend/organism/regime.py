@@ -358,6 +358,30 @@ class RegimeDetector:
         self._last_state = state
         return state
 
+    def detect_isolated(self, features_df: pd.DataFrame) -> RegimeState:
+        """``detect()`` that leaves the running smoothing state as it found it.
+
+        Audit 2026-10-05 C09-01. The live engine's SPY-only fallback (a tick
+        with no usable sector ETF) used to call ``detect()`` on this shared
+        detector. That wrote ``_smoothed_probs`` and ``_history``, and
+        ``detect_market_regime`` / ``detect_cross_asset_regime`` then restored
+        the stale vector into every later per-symbol and per-ETF detect, so one
+        such tick pinned every later routed label and was persisted to
+        ``regime_state.json``. This returns exactly what ``detect()`` returns
+        from the current state (same prior, same hysteresis reference), then
+        puts ``_smoothed_probs`` and ``_history`` back, as the aggregate paths
+        do, even if ``detect()`` raises. ``_last_state`` is updated as on every
+        routed tick: decision snapshots read it, and the next ``detect()`` uses
+        it only as the hysteresis reference for its own primary.
+        """
+        saved_probs = dict(self._smoothed_probs or {})
+        saved_history = list(self._history or [])
+        try:
+            return self.detect(features_df)
+        finally:
+            self._smoothed_probs = saved_probs
+            self._history = saved_history
+
     def _compute_probabilities(
         self,
         *,
