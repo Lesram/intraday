@@ -609,6 +609,8 @@ async def test_openings_that_cannot_settle_do_not_hold_a_confirmed_close(db, ope
     }[opening]()
     exit_ = make_row("TSLA", "sell", 6, at=closed, status="accepted")
     await store(db, [entry, exit_])
+    if opening == "other_owner":
+        await add_submission_lineage(db, entry)  # recovery would settle it: only the owner differs
     outcome = await apply_snapshot(db, exit_, filled=6, price=101)
     assert outcome["lot_discrepancy"]["unmatched_qty"] == "6"
     order, executions, _, _ = await ledger(db, exit_)
@@ -681,6 +683,255 @@ async def test_startup_sync_applies_the_newest_first_page_oldest_first(db, monke
     order, _, realized, lots = await ledger(db, exit_)
     assert order.status == "filled" and "lot_accounting" not in order.attributes
     assert [(x.qty, x.realized_pnl) for x in realized] == [(6, 6)]
+    assert [(lot.remaining_qty, lot.status) for lot in lots] == [(0, "closed")]
+
+
+def real_startup_app(monkeypatch, db, page, snapshots):
+    """The real _sync_orders runs the real persisted-order recovery first (no
+    mock: rows paged by id), then the newest-first page; fake transport only."""
+    import weakref
+
+    from backend.services import order_recovery_service as recovery
+
+    monkeypatch.setattr(recovery, "_services", weakref.WeakKeyDictionary())
+    monkeypatch.setattr("backend.api.socketio_server.broadcast_order_update", AsyncMock())
+
+    async def get(url, **kwargs):
+        if url.endswith("/v2/orders"):
+            return httpx.Response(200, json=page)
+        return httpx.Response(200, json=snapshots[url.rsplit("/", 1)[-1]])
+
+    broker = SimpleNamespace(base_url="https://paper.invalid", _get_auth_headers=lambda: {},
+                             client=SimpleNamespace(get=get))
+    monkeypatch.setattr("backend.integrations.alpaca_broker.get_alpaca_broker_client", lambda: broker)
+    return SimpleNamespace(state=SimpleNamespace(sessionmaker=db))
+
+
+def logged(log, level, marker):
+    return [c for c in getattr(log, level).call_args_list if c.args and marker in str(c.args[0])]
+
+
+async def missed_round_trip_after_outage(db, monkeypatch, opened):
+    """Both legs' fills were missed while the process was down; the close has the
+    lower id, so persisted-order recovery reaches it before its opening."""
+    from backend.api.lifespan import _sync_orders
+
+    exit_ = make_row("TSLA", "sell", 6, at=opened + timedelta(minutes=10), status="accepted")
+    entry = make_row("TSLA", "buy", 6, at=opened, status="accepted")
+    assert exit_.id.hex < entry.id.hex
+    await store(db, [exit_, entry])
+    log = MagicMock()
+    monkeypatch.setattr(stream, "logger", log)
+    snaps = {exit_.broker_order_id: broker_snapshot(exit_, filled=6, price=101),
+             entry.broker_order_id: broker_snapshot(entry, filled=6, price=100)}
+    page = [snaps[exit_.broker_order_id], snaps[entry.broker_order_id]]  # newest first
+    await _sync_orders(real_startup_app(monkeypatch, db, page, snaps))
+    return entry, exit_, log
+
+
+@pytest.mark.parametrize("days_down", [6, 40])
+async def test_startup_sync_converges_after_an_outage_longer_than_the_grace(db, monkeypatch, days_down):
+    """Blocking review item: past LOT_ORDERING_GRACE of wall-clock age the close
+    must still wait for its opening (the window is anchored to the close)."""
+    assert timedelta(days=days_down) > stream.LOT_ORDERING_GRACE
+    opened = datetime.now(UTC) - timedelta(days=days_down)
+    entry, exit_, log = await missed_round_trip_after_outage(db, monkeypatch, opened)
+    order, executions, realized, lots = await ledger(db, exit_)
+    assert (order.status, order.filled_qty, len(executions)) == ("filled", 6, 1)
+    assert "lot_accounting" not in order.attributes
+    assert [(x.open_order_id, x.qty, x.realized_pnl) for x in realized] == [(entry.id, 6, 6)]
+    assert [(lot.order_id, lot.remaining_qty, lot.status) for lot in lots] == [(entry.id, 0, "closed")]
+    assert not log.critical.called and not logged(log, "warning", "LATE MATCH")
+
+
+async def test_outage_beyond_the_cap_still_converges_by_late_netting(db, monkeypatch):
+    """Past LOT_ORDERING_MAX_AGE the close is recorded (and pages) instead of
+    waiting; the opening's lot is then netted against it in the same startup."""
+    opened = datetime.now(UTC) - stream.LOT_ORDERING_MAX_AGE - timedelta(days=5)
+    entry, exit_, log = await missed_round_trip_after_outage(db, monkeypatch, opened)
+    order, executions, realized, lots = await ledger(db, exit_)
+    assert (order.status, order.filled_qty, len(executions)) == ("filled", 6, 1)
+    record = order.attributes["lot_accounting"]
+    assert (record["status"], record["repair"], record["late_matches"]) == ("matched_late", "none", 1)
+    assert (record["unmatched_qty"], record["matched_late_qty"]) == ("0.000000", "6.000000")
+    assert record["last_late_match"]["opening_order_id"] == str(entry.id)
+    assert [(x.open_order_id, x.qty, x.close_price, x.realized_pnl, x.attributes) for x in realized] == [
+        (entry.id, 6, 101, 6, {"lot_accounting": "matched_late"})]
+    assert [(lot.order_id, lot.remaining_qty, lot.status) for lot in lots] == [(entry.id, 0, "closed")]
+    pages = logged(log, "critical", "LOT ACCOUNTING DISCREPANCY")
+    late = logged(log, "warning", "LOT ACCOUNTING LATE MATCH")
+    assert len(pages) == len(late) == 1
+    assert "persisted_order_recovery" in late[0].args
+    assert str(exit_.id) in late[0].args and str(entry.id) in late[0].args
+
+
+async def add_submission_lineage(db, row):
+    async with db() as session:
+        session.add(OutboxEvent(topic="order.submitted", status="sent",
+                                payload={"order_id": str(row.id), "client_key": row.client_idempotency_key}))
+        await session.commit()
+
+
+@pytest.mark.parametrize("case, defers", [
+    ("old_pair_within_cap", True),
+    ("old_pair_beyond_cap", False),
+    ("opening_after_close", False),
+    ("outside_recovery_scope", False),
+    ("outbox_lineage", True),
+])
+async def test_deferral_window_is_anchored_to_the_close(db, case, defers):
+    now = datetime.now(UTC)
+    opened = {"old_pair_within_cap": now - timedelta(days=40),
+              "old_pair_beyond_cap": now - stream.LOT_ORDERING_MAX_AGE - timedelta(days=1),
+              "opening_after_close": now - timedelta(minutes=5)}.get(case, now - timedelta(minutes=30))
+    closed = now - timedelta(minutes=10) if case == "opening_after_close" else opened + timedelta(minutes=20)
+    source = None if case in ("outside_recovery_scope", "outbox_lineage") else "organism"
+    entry = make_row("TSLA", "buy", 6, at=opened, status="accepted", source=source)
+    exit_ = make_row("TSLA", "sell", 6, at=closed, status="accepted")
+    await store(db, [entry, exit_])
+    if case == "outbox_lineage":
+        await add_submission_lineage(db, entry)  # recovery retries it: it can still settle
+    if defers:
+        with pytest.raises(stream.LotAccountingDeferred, match=str(entry.id)):
+            await apply_snapshot(db, exit_, filled=6, price=101)
+        order, executions, _, lots = await ledger(db, exit_)
+        assert (order.status, executions, lots) == ("accepted", [], [])
+    else:
+        outcome = await apply_snapshot(db, exit_, filled=6, price=101)
+        assert outcome["lot_discrepancy"]["unmatched_qty"] == "6"
+
+
+async def test_late_acknowledged_opening_is_netted_against_the_recorded_close(db, monkeypatch):
+    """An opening the broker took without a persisted broker id (ambiguous
+    submission) cannot defer the close; its late acknowledgement nets the lot."""
+    opened, closed, _ = now_rows()
+    entry = make_row("TSLA", "buy", 6, at=opened, status="accepted", broker=False)
+    exit_ = make_row("TSLA", "sell", 6, at=closed, status="accepted")
+    await store(db, [entry, exit_])
+    log = MagicMock()
+    monkeypatch.setattr(stream, "logger", log)
+    await via_stream(db, monkeypatch, exit_, broker_snapshot(exit_, filled=6, price=101))
+    order, _, realized, _ = await ledger(db, exit_)
+    assert order.attributes["lot_accounting"]["status"] == "unmatched" and realized == []
+    acknowledged = {**broker_snapshot(entry, filled=6, price=100), "id": str(uuid.uuid4())}
+    await via_outbox_ack(db, monkeypatch, entry, acknowledged)
+    order, _, realized, lots = await ledger(db, exit_)
+    record = order.attributes["lot_accounting"]
+    assert (record["status"], record["unmatched_qty"], record["matched_late_qty"]) == (
+        "matched_late", "0.000000", "6.000000")
+    assert [(x.open_order_id, x.qty, x.realized_pnl) for x in realized] == [(entry.id, 6, 6)]
+    assert [(lot.order_id, lot.remaining_qty, lot.status) for lot in lots] == [(entry.id, 0, "closed")]
+    late = logged(log, "warning", "LOT ACCOUNTING LATE MATCH")
+    assert len(logged(log, "critical", "LOT ACCOUNTING DISCREPANCY")) == len(late) == 1
+    assert "outbox_acknowledgement" in late[0].args
+
+
+@pytest.mark.parametrize("case", ["close_before_opening", "other_owner", "beyond_grace", "already_matched"])
+async def test_late_netting_only_consumes_closes_the_opening_precedes(db, case):
+    now = datetime.now(UTC)
+    if case == "close_before_opening":  # an orphan exit, then a new entry
+        exit_ = make_row("TSLA", "sell", 6, at=now - timedelta(minutes=30), status="accepted")
+        entry = make_row("TSLA", "buy", 6, at=now - timedelta(minutes=10), status="accepted")
+        rows = [exit_, entry]
+    elif case == "other_owner":  # an operator close of the engine's position
+        entry = make_row("TSLA", "buy", 6, at=now - timedelta(minutes=30), status="accepted")
+        exit_ = make_row("TSLA", "sell", 6, at=now - timedelta(minutes=10), status="accepted",
+                         source=None, user="ops@example.com")
+        rows = [entry, exit_]
+    elif case == "beyond_grace":
+        entry = make_row("TSLA", "buy", 6, at=now - timedelta(days=6, minutes=20), status="accepted")
+        exit_ = make_row("TSLA", "sell", 6, at=now - timedelta(minutes=20), status="accepted")
+        rows = [entry, exit_]
+    else:  # the close was already fully netted by an earlier opening
+        first = make_row("TSLA", "buy", 6, at=now - timedelta(minutes=40), status="accepted", broker=False)
+        entry = make_row("TSLA", "buy", 6, at=now - timedelta(minutes=35), status="accepted", broker=False)
+        exit_ = make_row("TSLA", "sell", 6, at=now - timedelta(minutes=10), status="accepted")
+        rows = [first, entry, exit_]
+    await store(db, rows)
+    outcome = await apply_snapshot(db, exit_, filled=6, price=101)
+    assert outcome["lot_discrepancy"]["unmatched_qty"] == "6"
+    if case == "already_matched":
+        assert "lot_late_matches" in await apply_snapshot(db, first, filled=6, price=99)
+    opened = await apply_snapshot(db, entry, filled=6, price=100)
+    assert "lot_late_matches" not in opened
+    order, _, realized, lots = await ledger(db, exit_)
+    expected = "matched_late" if case == "already_matched" else "unmatched"
+    assert order.attributes["lot_accounting"]["status"] == expected
+    assert [x.open_order_id for x in realized] == ([first.id] if case == "already_matched" else [])
+    assert [(lot.remaining_qty, lot.status) for lot in lots if lot.order_id == entry.id] == [(6, "open")]
+
+
+async def test_unmatched_record_accumulates_across_partial_fills(db):
+    _, submitted, touched = now_rows()
+    exit_ = make_row("NVDA", "sell", 4, at=submitted, status="accepted", updated=touched)
+    await store(db, [exit_])
+    await apply_snapshot(db, exit_, filled=2, price=50, status="partially_filled")
+    replay = await apply_snapshot(db, exit_, filled=2, price=50, status="partially_filled")
+    assert replay["applied"] is False and "lot_discrepancy" not in replay
+    await apply_snapshot(db, exit_, filled=4, price=51)  # cumulative VWAP: second leg at 52
+    order, executions, _, _ = await ledger(db, exit_)
+    assert [(x.fill_qty, x.fill_price) for x in executions] == [(2, 50), (2, 52)]
+    record = order.attributes["lot_accounting"]
+    assert (record["unmatched_qty"], record["matched_qty"], record["events"]) == ("4.000000", "0.000000", 2)
+    assert (record["unmatched_notional"], record["last_fill_qty"], record["last_fill_price"]) == (
+        "204.000000", "2.000000", "52.000000")
+    assert record["last_execution_id"] == str(executions[-1].id)
+
+
+async def test_late_netting_is_partial_fifo_and_priced_at_the_unmatched_vwap(db):
+    t = datetime.now(UTC) - timedelta(minutes=40)
+    first = make_row("TSLA", "buy", 1, at=t, status="accepted", broker=False)
+    second = make_row("TSLA", "buy", 3, at=t + timedelta(minutes=1), status="accepted", broker=False)
+    exit_ = make_row("TSLA", "sell", 4, at=t + timedelta(minutes=10), status="accepted")
+    await store(db, [first, second, exit_])
+    await apply_snapshot(db, exit_, filled=2, price=50, status="partially_filled")
+    await apply_snapshot(db, exit_, filled=4, price=51)  # unmatched 2 @ 50 + 2 @ 52: VWAP 51
+    outcome = await apply_snapshot(db, first, filled=1, price=48)
+    assert [(m["qty"], m["price"], m["close_status"], m["close_unmatched_qty"])
+            for m in outcome["lot_late_matches"]] == [("1.000000", "51.000000", "unmatched", "3.000000")]
+    order, _, realized, _ = await ledger(db, exit_)
+    record = order.attributes["lot_accounting"]
+    assert (record["status"], record["repair"], record["unmatched_notional"], record["late_matches"]) == (
+        "unmatched", "required", "153.000000", 1)
+    await apply_snapshot(db, second, filled=3, price=49)
+    order, _, realized, lots = await ledger(db, exit_)
+    record = order.attributes["lot_accounting"]
+    assert (record["status"], record["repair"], record["unmatched_qty"], record["matched_late_qty"],
+            record["late_matches"]) == ("matched_late", "none", "0.000000", "4.000000", 2)
+    assert sorted((x.qty, x.close_price, x.realized_pnl) for x in realized) == [(1, 51, 3), (3, 51, 6)]
+    assert sorted((lot.qty, lot.remaining_qty, lot.status) for lot in lots) == [(1, 0, "closed"), (3, 0, "closed")]
+
+
+async def test_late_netting_consumes_recorded_closes_in_submission_order(db):
+    t = datetime.now(UTC) - timedelta(minutes=40)
+    later = make_row("TSLA", "sell", 3, at=t + timedelta(minutes=10), status="accepted")  # lower id
+    earlier = make_row("TSLA", "sell", 4, at=t + timedelta(minutes=5), status="accepted")
+    entry = make_row("TSLA", "buy", 4, at=t, status="accepted", broker=False)
+    await store(db, [later, earlier, entry])
+    await apply_snapshot(db, later, filled=3, price=103)
+    await apply_snapshot(db, earlier, filled=4, price=102)
+    outcome = await apply_snapshot(db, entry, filled=4, price=100)
+    assert [(m["close_order_id"], m["qty"]) for m in outcome["lot_late_matches"]] == [
+        (str(earlier.id), "4.000000")]
+    statuses = [(await ledger(db, row))[0].attributes["lot_accounting"]["status"] for row in (earlier, later)]
+    assert statuses == ["matched_late", "unmatched"]
+
+
+async def test_late_netting_covers_short_positions(db):
+    opened, closed, _ = now_rows()
+    entry = make_row("SQQQ", "sell", 5, at=opened, status="accepted", broker=False)
+    exit_ = make_row("SQQQ", "buy", 5, at=closed, status="accepted")
+    entry.attributes = {**entry.attributes, "position_intent": "sell_to_open"}
+    exit_.attributes = {**exit_.attributes, "position_intent": "buy_to_close"}
+    await store(db, [entry, exit_])
+    recorded = await apply_snapshot(db, exit_, filled=5, price=18)
+    assert recorded["lot_discrepancy"]["position_side"] == "short"
+    netted = await apply_snapshot(db, entry, filled=5, price=20)
+    assert [m["position_side"] for m in netted["lot_late_matches"]] == ["short"]
+    order, _, realized, lots = await ledger(db, exit_)
+    assert order.attributes["lot_accounting"]["status"] == "matched_late"
+    assert [(x.qty, x.open_price, x.close_price, x.realized_pnl, x.attributes) for x in realized] == [
+        (5, 20, 18, 10, {"position_side": "short", "lot_accounting": "matched_late"})]
     assert [(lot.remaining_qty, lot.status) for lot in lots] == [(0, "closed")]
 
 
