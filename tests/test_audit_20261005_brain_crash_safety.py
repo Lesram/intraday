@@ -18,6 +18,19 @@ C12-05  every essential save erased ml_state.json['model_metrics_history'].
 C12-06  saves that did not happen were reported as saves.
 C12-09  renames were not fsynced (files and directory).
 
+Review of the fix (2026-10-05):
+- a roll-forward never publishes staged files over HEAD state written after
+  the journal (pre-fix code after a rollback, a write outside a save): the
+  journal records each replaced/deleted HEAD file's pre-swap identity; a
+  stale journal is retired with a forensic copy and HEAD is kept;
+- an unsigned or torn pickle listed in a generation's inventory makes it
+  incomplete (backup fallback), as a missing file does;
+- after a backup fallback the engine takes a full save; essential saves into
+  a rejected HEAD and backups of it are refused; ml_state.json is written once
+  per save; save_essential_state reports OSError; the engine's standalone
+  exit-level write settles a pending journal first;
+- scripts/ops/check_brain_pickles_signed.py: read-only pre-deploy check.
+
 Compatibility: a copy of the production brain loads exactly as with the code
 before this change, and a brain saved by this code loads with that code.
 """
@@ -189,6 +202,36 @@ def _head_files(brain_dir: Path) -> dict[str, bytes]:
 
 def _inventory(brain_dir: Path) -> list[str] | None:
     return bp._read_head_inventory(brain_dir / SAVE_COMPLETE_SENTINEL)
+
+
+class _Crash(BaseException):
+    """Escapes every ``except Exception`` handler, like a kill (the brain lock
+    is released by the ``finally``, as a dead process releases its flock)."""
+
+
+def _crash_full_save_before_publishing(monkeypatch, brain: OrganismBrain, name: str,
+                                       n: int, **kwargs) -> None:
+    """A full save of generation ``n`` that dies just before the staged
+    ``name`` replaces its HEAD copy: the journal and the staging dir stay."""
+    real_replace = os.replace
+    target = brain.brain_dir / name
+
+    def crash(src, dst, *a, **kw):
+        if Path(src).parent.name == SWAP_STAGING_DIR and Path(dst) == target:
+            raise _Crash()
+        return real_replace(src, dst, *a, **kw)
+
+    monkeypatch.setattr(bp.os, "replace", crash)
+    try:
+        with pytest.raises(_Crash):
+            _full_save(brain, n, **kwargs)
+    finally:
+        monkeypatch.setattr(bp.os, "replace", real_replace)
+    assert (brain.brain_dir / SWAP_JOURNAL_FILE).is_file()
+
+
+def _swap_forensics(brain_dir: Path) -> list[Path]:
+    return sorted(brain_dir.glob(f"corrupt_head_*{bp.SWAP_FORENSIC_SUFFIX}"))
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -587,6 +630,162 @@ def test_failed_swap_in_process_is_rolled_forward_by_the_next_save(tmp_path, mon
     assert fresh.learning_state["total_trades"] == 7                      # essential save
 
 
+# ── Review: a roll-forward never publishes over state written after the journal ──
+
+def test_journal_records_the_pre_swap_identity_of_replaced_and_deleted_files(tmp_path, monkeypatch):
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    before = {p.name: bp._file_identity(p) for p in brain_dir.iterdir() if p.is_file()}
+    # Generation 6 has no epoch metrics: the swap deletes epoch_metrics.csv.
+    _crash_full_save_before_publishing(monkeypatch, brain, "equity_curve.csv", 6, epoch_metrics=[])
+    journal = json.loads((brain_dir / SWAP_JOURNAL_FILE).read_text())
+    assert journal["format"] == bp.SWAP_JOURNAL_FORMAT
+    assert set(journal["head"]) == set(journal["entries"])
+    assert journal["head"]["learning_state.json"] == before["learning_state.json"]
+    assert journal["delete"] == {"epoch_metrics.csv": before["epoch_metrics.csv"]}
+    assert all(meta == bp._file_identity(brain_dir / SWAP_STAGING_DIR / name)
+               for name, meta in journal["files"].items())
+    # Nothing changed since: the next load rolls generation 6 forward.
+    fresh = OrganismBrain(brain_dir)
+    assert fresh.load() is True and fresh.learning_state["total_trades"] == 6
+    assert not (brain_dir / "epoch_metrics.csv").exists()
+    assert not _swap_forensics(brain_dir)
+
+
+def test_head_file_changed_before_its_publication_is_kept(tmp_path, monkeypatch, caplog):
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    _crash_full_save_before_publishing(monkeypatch, brain, "epoch_metrics.csv", 6)
+    # A write outside a save (or older code) updates HEAD's still-old copy.
+    newer = json.loads((brain_dir / "extra_counters.json").read_text())
+    newer["pending_entry_order_ids"] = {"NVDA": "ord-newer"}
+    (brain_dir / "extra_counters.json").write_text(json.dumps(newer))
+
+    fresh = OrganismBrain(brain_dir)
+    with caplog.at_level(logging.CRITICAL, logger="backend.organism.brain_persistence"):
+        assert fresh.load() is True
+    assert fresh._loaded_from == fresh.brain_dir                       # HEAD, not a backup
+    assert fresh.extra_counters["pending_entry_order_ids"] == {"NVDA": "ord-newer"}
+    assert not (brain_dir / SWAP_JOURNAL_FILE).exists()
+    assert any("STALE" in r.getMessage() and "extra_counters.json" in r.getMessage()
+               for r in caplog.records)
+    (forensic,) = _swap_forensics(brain_dir)
+    assert (forensic / SWAP_JOURNAL_FILE).is_file()
+    assert (forensic / "staged" / "extra_counters.json").is_file()
+    assert json.loads((forensic / "head" / "extra_counters.json").read_text()) == newer
+    assert "kept over a stale" in fresh.full_save_required()
+
+
+def test_published_file_changed_after_the_crash_is_kept(tmp_path, monkeypatch):
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    _crash_full_save_before_publishing(monkeypatch, brain, "governance_state.json", 6)
+    # extra_counters.json (generation 6) was published, then rewritten.
+    (brain_dir / "extra_counters.json").write_text(json.dumps({"tick_count": 999}))
+    fresh = OrganismBrain(brain_dir)
+    assert fresh.load() is True and fresh._loaded_from == fresh.brain_dir
+    assert fresh.extra_counters == {"tick_count": 999}
+    assert fresh.governance_state["generation_marker"] == 5   # never published
+    assert not (brain_dir / SWAP_JOURNAL_FILE).exists() and len(_swap_forensics(brain_dir)) == 1
+
+
+def test_file_created_after_the_journal_is_not_deleted_by_a_roll_forward(tmp_path, monkeypatch):
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5, equity_curve=[]) is True
+    _crash_full_save_before_publishing(monkeypatch, brain, "epoch_metrics.csv", 6, equity_curve=[])
+    assert not (brain_dir / "equity_curve.csv").exists()
+    (brain_dir / "equity_curve.csv").write_text("equity\n1.0\n2.0\n")   # written after the crash
+    fresh = OrganismBrain(brain_dir)
+    assert fresh.load() is True
+    assert fresh.equity_curve == [1.0, 2.0]
+    assert not (brain_dir / SWAP_JOURNAL_FILE).exists()
+
+
+def test_timestamp_sentinel_next_to_a_journal_blocks_the_roll_forward(tmp_path, monkeypatch, caplog):
+    """Only pre-fix code writes a timestamp .save_complete (on every load):
+    it loaded this brain after the crash, so the journal is stale."""
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    _crash_full_save_before_publishing(monkeypatch, brain, "learning_state.json", 6)
+    assert not (brain_dir / SAVE_COMPLETE_SENTINEL).exists()
+    (brain_dir / SAVE_COMPLETE_SENTINEL).write_text("2026-10-05T12:00:00+00:00")
+    journal = json.loads((brain_dir / SWAP_JOURNAL_FILE).read_text())
+    assert any(SAVE_COMPLETE_SENTINEL in p for p in OrganismBrain(brain_dir)._swap_journal_problems(journal))
+    fresh = OrganismBrain(brain_dir)
+    with caplog.at_level(logging.CRITICAL, logger="backend.organism.brain_persistence"):
+        assert fresh.load() is True
+    assert fresh.learning_state["total_trades"] == 5            # HEAD as the old code saw it
+    assert fresh.extra_counters["tick_count"] == 106            # published before the crash
+    assert any("STALE" in r.getMessage() for r in caplog.records)
+    assert not (brain_dir / SWAP_JOURNAL_FILE).exists()
+
+
+def test_altered_staged_file_rejects_head_and_keeps_the_journal_until_replaced(tmp_path, monkeypatch, caplog):
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    _crash_full_save_before_publishing(monkeypatch, brain, "governance_state.json", 6)
+    staged = brain_dir / SWAP_STAGING_DIR / "learning_state.json"
+    damaged = staged.read_text().replace("6", "9")
+    staged.write_text(damaged)   # damaged staging, not newer HEAD state
+
+    loader = OrganismBrain(brain_dir)
+    with caplog.at_level(logging.CRITICAL, logger="backend.organism.brain_persistence"):
+        assert loader.load() is True
+    assert loader._loaded_from.parent.name == "backups"       # the complete generation 5
+    assert loader.learning_state["total_trades"] == 5
+    assert any("cannot be completed" in r.getMessage() and "learning_state.json" in r.getMessage()
+               for r in caplog.records)
+    assert (brain_dir / SWAP_JOURNAL_FILE).is_file()           # a load never retires it
+
+    # A full save that dies while staging keeps the journal: HEAD is still rejected.
+    real = OrganismBrain._save_ml_models
+
+    def dies(self, target, signal_gen):
+        raise _Crash()
+
+    monkeypatch.setattr(OrganismBrain, "_save_ml_models", dies)
+    with pytest.raises(_Crash):
+        _full_save(loader, 7)
+    monkeypatch.setattr(OrganismBrain, "_save_ml_models", real)
+    (forensic,) = _swap_forensics(brain_dir)
+    assert (forensic / "staged" / "learning_state.json").read_text() == damaged
+    assert (forensic / SWAP_JOURNAL_FILE).is_file() and (forensic / "head" / "manifest.json").is_file()
+    assert (brain_dir / SWAP_JOURNAL_FILE).is_file()
+    again = OrganismBrain(brain_dir)
+    assert again.load() is True and again._loaded_from.parent.name == "backups"
+
+    # The next full save replaces the journal and publishes a complete generation.
+    assert _full_save(again, 8) is True
+    assert not (brain_dir / SWAP_JOURNAL_FILE).exists()
+    reloaded = OrganismBrain(brain_dir)
+    assert reloaded.load() is True and reloaded._loaded_from == reloaded.brain_dir
+    assert reloaded.learning_state["total_trades"] == 8
+
+
+def test_unlocked_load_with_a_pending_journal_uses_a_backup(tmp_path, monkeypatch):
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    _crash_full_save_before_publishing(monkeypatch, brain, "governance_state.json", 6)
+    monkeypatch.setattr(time, "sleep", lambda seconds: None)   # skip the 20 s lock wait
+    holder = _BrainLock(brain_dir / LOCK_FILE)
+    holder.acquire()
+    try:
+        fresh = OrganismBrain(brain_dir)
+        assert fresh.load() is True
+    finally:
+        holder.release()
+    assert fresh._loaded_from.parent.name == "backups"          # never read half-swapped
+    assert fresh.learning_state["total_trades"] == 5
+    assert (brain_dir / SWAP_JOURNAL_FILE).is_file()            # not settled without the lock
+
+
 # ═════════════════════════════════════════════════════════════════════════
 # C12-02 — frozen models are not rewritten; remaining model writes are atomic
 # ═════════════════════════════════════════════════════════════════════════
@@ -830,29 +1029,98 @@ def _write_unsigned(path: Path, marker: Path) -> None:
     path.write_bytes(pickle.dumps(_SideEffect(marker)))
 
 
-def test_unsigned_main_model_is_never_deserialized(tmp_path, caplog):
+def test_unsigned_main_model_is_never_deserialized_and_falls_back(tmp_path, caplog):
+    """C12-04 review: an unsigned listed model makes the generation incomplete
+    (as a missing one does): the newest complete backup is used, never this
+    HEAD without models; without a usable backup the load fails closed."""
     brain_dir = tmp_path / "brain"
-    assert _full_save(OrganismBrain(brain_dir), 5) is True
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    assert _full_save(brain, 6) is True  # the backup of generation 5 is minted first
     marker = tmp_path / "deserialized"
     _write_unsigned(brain_dir / "ml_classifier.joblib", marker)
-    brain = OrganismBrain(brain_dir)
+    fresh = OrganismBrain(brain_dir)
     with caplog.at_level(logging.CRITICAL, logger="backend.organism.brain_persistence"):
-        assert brain.load() is True
+        assert fresh.load() is True
     assert not marker.exists()
-    assert brain.clf is None and brain.reg is None  # exactly like a missing pair
-    assert brain._loaded_from == brain.brain_dir      # not treated as corruption
-    assert any("unsigned brain pickle" in r.getMessage() and r.levelno == logging.CRITICAL
-               for r in caplog.records)
+    assert fresh._loaded_from.parent.name == "backups"
+    assert fresh.clf is not None and fresh.reg is not None and fresh.learning_state["total_trades"] == 5
+    assert any("unsigned or torn pickle" in r.getMessage() and "ml_classifier.joblib" in r.getMessage()
+               for r in caplog.records if r.levelno == logging.CRITICAL)
+
+    shutil.rmtree(brain_dir / "backups")
+    assert OrganismBrain(brain_dir).load() is False   # fail closed, nothing deserialized
+    assert not marker.exists()
 
 
-def test_unsigned_cache_and_ensemble_pair_are_never_deserialized(tmp_path, caplog):
+def test_unsigned_main_model_in_a_brain_without_inventory_also_falls_back(tmp_path):
+    """A legacy brain (timestamp sentinel, no inventory): _load_ml_models raises
+    for the unsigned model, so the PP-2 fallback runs, as with older code."""
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    assert _full_save(brain, 6) is True
+    (brain_dir / SAVE_COMPLETE_SENTINEL).write_text("2026-09-28T19:55:00+00:00")
+    marker = tmp_path / "deserialized"
+    _write_unsigned(brain_dir / "ml_regressor.joblib", marker)
+    fresh = OrganismBrain(brain_dir)
+    assert fresh.load() is True and not marker.exists()
+    assert fresh._loaded_from.parent.name == "backups" and fresh.reg is not None
+
+
+@pytest.mark.parametrize("damage", ["half", "zero_bytes"])
+def test_torn_signed_model_recovers_from_the_backup_like_the_pre_fix_code(tmp_path, damage):
+    """The reviewer's probe A: a torn (truncated) signed classifier failed the
+    'signed' length check, so the fix loaded HEAD without models where the
+    pre-fix code's joblib.load raised and the PP-2 fallback recovered."""
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5) is True
+    assert _full_save(brain, 6) is True
+    clf = brain_dir / "ml_classifier.joblib"
+    raw = clf.read_bytes()
+    clf.write_bytes(raw[: len(raw) // 2] if damage == "half" else b"")
+    fresh = OrganismBrain(brain_dir)
+    assert fresh.load() is True
+    assert fresh._loaded_from.parent.name == "backups"
+    assert _digest(fresh)["models"] == (True, True)
+    assert fresh.learning_state["total_trades"] == 5 and fresh.extra_counters["tick_count"] == 105
+
+
+def test_unsigned_listed_cache_or_ensemble_pair_uses_the_backups_signed_copies(tmp_path, caplog):
+    brain_dir = tmp_path / "brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5, ensemble=_ensemble()) is True
+    assert _full_save(brain, 6, ensemble=_ensemble()) is True
+    marker = tmp_path / "deserialized"
+    _write_unsigned(brain_dir / "ml_last_val_X.joblib", marker)
+    _write_unsigned(brain_dir / "ensemble_lin2_reg.joblib", marker)
+    fresh = OrganismBrain(brain_dir)
+    with caplog.at_level(logging.CRITICAL, logger="backend.organism.brain_persistence"):
+        assert fresh.load() is True
+    assert fresh._loaded_from.parent.name == "backups"
+    critical = [r.getMessage() for r in caplog.records if r.levelno == logging.CRITICAL]
+    assert any("ml_last_val_X.joblib" in m and "ensemble_lin2_reg.joblib" in m for m in critical)
+    target = SimpleNamespace(load_calibration=lambda c: None,
+                             _ensemble=EnsemblePredictor(n_estimators=3, max_depth=2), _xgb_params={})
+    assert fresh.apply_to_signal_generator(target) is True
+    assert not marker.exists()
+    assert np.array_equal(target._last_val_X, _X[:10])           # the backup's signed copy
+    assert target._ensemble.model_names == ["lin", "lin2"]
+    assert "rejected HEAD" in fresh.full_save_required()
+
+
+def test_unsigned_cache_and_ensemble_pair_in_a_brain_without_inventory_are_skipped(tmp_path, caplog):
+    """No inventory (a brain last saved by older code): an unsigned S17 cache or
+    ensemble file is never deserialized and is skipped like a missing one."""
     brain_dir = tmp_path / "brain"
     assert _full_save(OrganismBrain(brain_dir), 5, ensemble=_ensemble()) is True
+    (brain_dir / SAVE_COMPLETE_SENTINEL).write_text("2026-09-28T19:55:00+00:00")
     marker = tmp_path / "deserialized"
     _write_unsigned(brain_dir / "ml_last_val_X.joblib", marker)
     _write_unsigned(brain_dir / "ensemble_lin2_reg.joblib", marker)
     brain = OrganismBrain(brain_dir)
-    assert brain.load() is True
+    assert brain.load() is True and brain._loaded_from == brain.brain_dir
     target = SimpleNamespace(load_calibration=lambda c: None,
                              _ensemble=EnsemblePredictor(n_estimators=3, max_depth=2), _xgb_params={})
     with caplog.at_level(logging.CRITICAL):
@@ -864,6 +1132,19 @@ def test_unsigned_cache_and_ensemble_pair_are_never_deserialized(tmp_path, caplo
     critical = [r.getMessage() for r in caplog.records if r.levelno == logging.CRITICAL]
     assert any("ml_last_val_X.joblib" in m for m in critical)
     assert any("ensemble_lin2_reg.joblib" in m for m in critical)
+
+
+def test_header_only_signed_check_matches_is_signed_pickle(tmp_path):
+    from backend.utils.secure_pickle import is_signed_pickle, is_signed_pickle_file, secure_dumps
+    signed = secure_dumps({"a": list(range(50))})
+    import pickle
+    samples = [signed, signed[: len(signed) // 2], signed[:-1], signed + b"x", b"", b"\x00" * 3,
+               pickle.dumps({"a": 1}), signed[:4] + b"\x00" * 40]
+    for index, data in enumerate(samples):
+        path = tmp_path / f"s{index}.joblib"
+        path.write_bytes(data)
+        assert is_signed_pickle_file(path) is is_signed_pickle(data), index
+    assert is_signed_pickle_file(tmp_path / "absent.joblib") is False
 
 
 def test_signed_file_with_a_foreign_key_still_fails_the_load(tmp_path, monkeypatch):
@@ -894,6 +1175,27 @@ def test_model_metrics_history_survives_essential_saves(tmp_path):
                              _bars_since_retrain=0)
     assert fresh.apply_to_learner(target) is True
     assert [m.generation for m in target.state.model_metrics] == [1, 2]
+
+
+def test_ml_state_is_written_once_per_save_with_its_history(tmp_path, monkeypatch):
+    """Review: a second read-merge-write of ml_state.json left a window in
+    which a kill dropped the history again."""
+    from backend.organism.ml_signal import ModelMetrics
+    metrics = [ModelMetrics(generation=3, accuracy=0.55)]
+    writes: list[dict] = []
+    real_write_json = bp._write_json
+
+    def recording(path, data):
+        if Path(path).name == "ml_state.json":
+            writes.append(json.loads(json.dumps(data, default=str)))
+        return real_write_json(path, data)
+
+    monkeypatch.setattr(bp, "_write_json", recording)
+    brain = OrganismBrain(tmp_path / "brain")
+    assert _full_save(brain, 5, learner=_learner(5, metrics=metrics)) is True
+    assert _essential_save(brain, 6, learner=_learner(6, metrics=metrics)) is True
+    assert len(writes) == 2
+    assert all([h["generation"] for h in w["model_metrics_history"]] == [3] for w in writes)
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -931,6 +1233,205 @@ def test_save_with_the_lock_held_elsewhere_is_reported(tmp_path):
         holder.release()
     assert _head_files(brain_dir) == before
     assert _full_save(brain, 6) is True
+
+
+def test_essential_save_reports_an_unopenable_lock_or_directory(tmp_path, monkeypatch, caplog):
+    """Review: mkdir() and the lock file's open() ran outside the try, so an
+    OSError escaped save_essential_state despite its 'never raises'."""
+    brain = OrganismBrain(tmp_path / "brain")
+    assert _full_save(brain, 5) is True
+
+    def denied(self):
+        raise PermissionError(errno.EACCES, "Permission denied", str(self._path))
+
+    monkeypatch.setattr(_BrainLock, "acquire", denied)
+    with caplog.at_level(logging.ERROR, logger="backend.organism.brain_persistence"):
+        assert _essential_save(brain, 6) is False
+    monkeypatch.undo()
+    blocker = tmp_path / "not_a_dir"
+    blocker.write_text("x")
+    with caplog.at_level(logging.ERROR, logger="backend.organism.brain_persistence"):
+        assert _essential_save(OrganismBrain(blocker / "brain"), 6) is False
+    errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
+    assert sum("cannot create the brain directory or open its lock file" in m for m in errors) == 2
+
+
+def _head_rejected_by_a_missing_cache(brain_dir: Path, *, ensemble=None) -> OrganismBrain:
+    """Generation 6 in HEAD lacks a listed cache: a load restores generation 5."""
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5, ensemble=ensemble) is True
+    assert _full_save(brain, 6, ensemble=ensemble) is True
+    (brain_dir / "ml_last_val_X.joblib").unlink()
+    fresh = OrganismBrain(brain_dir)
+    assert fresh.load() is True and fresh._loaded_from.parent.name == "backups"
+    return fresh
+
+
+def test_essential_save_into_a_rejected_head_is_reported_not_claimed(tmp_path, caplog):
+    """The reviewer's probe F: after a backup fallback, essential saves wrote
+    into the HEAD every load rejects and returned True; WW-1 backed it up."""
+    brain_dir = tmp_path / "brain"
+    fresh = _head_rejected_by_a_missing_cache(brain_dir)
+    before = _head_files(brain_dir)
+    backups = sorted(p.name for p in (brain_dir / "backups").iterdir())
+    assert "rejected HEAD" in fresh.full_save_required()
+    with caplog.at_level(logging.ERROR, logger="backend.organism.brain_persistence"):
+        assert _essential_save(fresh, 7, signal_gen=_signal_gen(5)) is False
+    assert any("NOT persisted" in r.getMessage() and "rejected HEAD" in r.getMessage()
+               for r in caplog.records)
+    assert _head_files(brain_dir) == before                                  # nothing written
+    assert sorted(p.name for p in (brain_dir / "backups").iterdir()) == backups  # no WW-1 copy
+
+    # A full save repairs HEAD without backing the rejected HEAD up.
+    assert _full_save(fresh, 7) is True
+    assert sorted(p.name for p in (brain_dir / "backups").iterdir()) == backups
+    assert fresh.full_save_required() is None
+    assert _essential_save(fresh, 8) is True
+    reloaded = OrganismBrain(brain_dir)
+    assert reloaded.load() is True and reloaded._loaded_from == reloaded.brain_dir
+    assert reloaded.learning_state["total_trades"] == 8
+
+
+def _engine_on(brain_dir: Path):
+    from unittest.mock import MagicMock
+    from backend.organism.live_engine import OrganismLiveEngine
+    return OrganismLiveEngine(
+        data_client=MagicMock(), order_service=MagicMock(), positions_service=MagicMock(),
+        brain_dir=str(brain_dir), universe=["AAPL"],
+    )
+
+
+def test_engine_takes_a_full_save_after_a_backup_fallback(tmp_path, caplog):
+    from backend.organism import close_accounting
+    brain_dir = tmp_path / "brain"
+    first = _trained_engine(brain_dir)
+    assert first.force_save_brain()["success"] and first.force_save_brain()["success"]
+    (brain_dir / "ml_last_val_X.joblib").unlink()                # HEAD now rejected
+    engine = _engine_on(brain_dir)
+    # The restart path of initialize(): brain load (backup fallback), models,
+    # learner, then the close-accounting restore of the trade ledger.
+    assert engine.brain.load() is True and engine.brain._loaded_from.parent.name == "backups"
+    assert engine.brain.apply_to_signal_generator(engine.signal_gen) is True
+    assert engine.brain.apply_to_learner(engine.learner) is True
+    close_accounting.restore(engine, close_accounting.read(brain_dir), startup=True)
+    backups = sorted(p.name for p in (brain_dir / "backups").iterdir())
+    engine.brain.walk_forward_gate = lambda *a, **k: (False, "regression")
+    engine._tick_count, engine._watchdog_last_brain_save_tick = 500, 400
+    with caplog.at_level(logging.WARNING):
+        engine._save_brain()
+    assert any("taking a gated full save" in r.getMessage() for r in caplog.records)
+    assert engine._consecutive_wf_skips == 0 and engine._watchdog_last_brain_save_tick == 500
+    assert engine.brain.full_save_required() is None
+    assert sorted(p.name for p in (brain_dir / "backups").iterdir()) == backups
+    reloaded = OrganismBrain(brain_dir)
+    assert reloaded.load() is True and reloaded._loaded_from == reloaded.brain_dir
+    assert reloaded.clf is not None and (brain_dir / "ml_last_val_X.joblib").is_file()
+    # From then on the gate's essential saves apply again.
+    engine._tick_count = 520
+    engine._save_brain()
+    assert engine._consecutive_wf_skips == 1 and engine._watchdog_last_brain_save_tick == 520
+
+
+def test_standalone_exit_level_write_settles_a_pending_journal(tmp_path):
+    """The reviewer's probe B2: after a swap failed in-process, the engine's
+    standalone exit-level write changed the published extra_counters.json and
+    every essential save failed until the forced full save (cycle 12)."""
+    brain_dir = tmp_path / "brain"
+    engine = _gated_engine(brain_dir)
+    assert engine.force_save_brain()["success"] is True
+    real_replace = os.replace
+
+    def eio(src, dst, *a, **kw):
+        if Path(src).parent.name == SWAP_STAGING_DIR and Path(dst) == brain_dir / "governance_state.json":
+            raise OSError(errno.EIO, "injected EIO on publish")
+        return real_replace(src, dst, *a, **kw)
+
+    bp.os.replace = eio
+    try:
+        assert engine.force_save_brain()["success"] is False
+    finally:
+        bp.os.replace = real_replace
+    assert (brain_dir / SWAP_JOURNAL_FILE).is_file()
+    engine.brain.walk_forward_gate = lambda *a, **k: (False, "regression")
+    engine._pending_entry_order_ids["NVDA"] = "ord-new"   # changed before the next cycle
+    engine._tick_count += 20
+    engine._save_brain()
+    assert not (brain_dir / SWAP_JOURNAL_FILE).exists()
+    assert engine._watchdog_last_brain_save_tick == engine._tick_count   # the cycle persisted
+    assert engine._brain_save_consecutive_failures == 0
+    assert not _swap_forensics(brain_dir)                                 # rolled forward
+    fresh = OrganismBrain(brain_dir)
+    assert fresh.load() is True and fresh._loaded_from == fresh.brain_dir
+    assert fresh.extra_counters["pending_entry_order_ids"]["NVDA"] == "ord-new"
+
+
+def test_daily_loss_write_during_a_pending_journal_does_not_wedge_saves(tmp_path):
+    """_persist_daily_loss_state (frozen surface) also writes extra_counters.json
+    outside a save: the next essential save keeps that newer HEAD and saves."""
+    brain_dir = tmp_path / "brain"
+    engine = _gated_engine(brain_dir)
+    real_replace = os.replace
+
+    def eio(src, dst, *a, **kw):
+        if Path(src).parent.name == SWAP_STAGING_DIR and Path(dst) == brain_dir / "governance_state.json":
+            raise OSError(errno.EIO, "injected EIO on publish")
+        return real_replace(src, dst, *a, **kw)
+
+    bp.os.replace = eio
+    try:
+        assert engine.force_save_brain()["success"] is False
+    finally:
+        bp.os.replace = real_replace
+    engine._daily_loss_date, engine._daily_starting_equity = "2026-10-05", 98_765.0
+    engine._persist_daily_loss_state()
+    assert engine.brain.save_essential_state(
+        signal_gen=engine.signal_gen, learner=engine.learner, all_trades=engine._all_trades,
+        extra_counters=engine._build_extra_counters(), governance_controller=engine.governance,
+        regime_detector=engine.regime_detector,
+    ) is True
+    assert not (brain_dir / SWAP_JOURNAL_FILE).exists() and len(_swap_forensics(brain_dir)) == 1
+    assert "kept over a stale" in engine.brain.full_save_required()
+    fresh = OrganismBrain(brain_dir)
+    assert fresh.load() is True and fresh._loaded_from == fresh.brain_dir
+    assert fresh.extra_counters["daily_starting_equity"] == 98_765.0
+
+
+def test_shutdown_save_that_did_not_persist_logs_an_error(monkeypatch):
+    import asyncio
+    from backend.api import lifespan
+
+    records: list[tuple[str, str]] = []
+
+    class _Recorder:
+        def _log(self, level, msg, *args, **_kw):
+            records.append((level, msg % args if args else msg))
+
+        def info(self, msg, *args, **kw):
+            self._log("info", msg, *args, **kw)
+
+        def warning(self, msg, *args, **kw):
+            self._log("warning", msg, *args, **kw)
+
+        def error(self, msg, *args, **kw):
+            self._log("error", msg, *args, **kw)
+
+    monkeypatch.setattr(lifespan, "logger", _Recorder())
+
+    def ctx(force_save_brain):
+        engine = SimpleNamespace(force_save_brain=force_save_brain)
+        return {"organism_scheduler": SimpleNamespace(_engine=engine)}
+
+    def boom():
+        raise RuntimeError("disk gone")
+
+    asyncio.run(lifespan._shut_brain_save(None, ctx(lambda: {"success": False, "error": "lock held"})))
+    assert records == [("error", "Defensive brain save at shutdown did NOT persist: lock held")]
+    records.clear()
+    asyncio.run(lifespan._shut_brain_save(None, ctx(lambda: {"success": True})))
+    assert records == [("info", "Brain saved at shutdown (lifespan defensive save)")]
+    records.clear()
+    asyncio.run(lifespan._shut_brain_save(None, ctx(boom)))
+    assert records == [("error", "Defensive brain save failed at shutdown: disk gone")]
 
 
 def _gated_engine(brain_dir: Path):
@@ -1002,7 +1503,7 @@ def test_full_save_fsyncs_files_then_directory_then_sentinel(tmp_path, monkeypat
     brain = OrganismBrain(brain_dir)
     assert _full_save(brain, 5) is True
     events: list[tuple[str, str]] = []
-    real_fsync, real_replace = os.fsync, os.replace
+    real_fsync, real_replace, real_unlink = os.fsync, os.replace, os.unlink
 
     def fsync(fd):
         try:
@@ -1015,8 +1516,13 @@ def test_full_save_fsyncs_files_then_directory_then_sentinel(tmp_path, monkeypat
         events.append(("replace", os.fspath(dst)))
         return real_replace(src, dst, *a, **kw)
 
+    def unlink(path, *a, **kw):
+        events.append(("unlink", os.fspath(path)))
+        return real_unlink(path, *a, **kw)
+
     monkeypatch.setattr(os, "fsync", fsync)
     monkeypatch.setattr(os, "replace", replace)
+    monkeypatch.setattr(os, "unlink", unlink)
     assert _full_save(brain, 6) is True
 
     stage = str(brain_dir / SWAP_STAGING_DIR)
@@ -1040,6 +1546,13 @@ def test_full_save_fsyncs_files_then_directory_then_sentinel(tmp_path, monkeypat
                 if k == "replace" and Path(p) == brain_dir / SAVE_COMPLETE_SENTINEL]
     dir_syncs = [i for i, (k, p) in enumerate(events) if k == "fsync" and Path(p) == brain_dir]
     assert published and sentinel
+    # Review: the old sentinel's unlink is durable before the first rename, so
+    # a timestamp sentinel next to a journal can only be newer (older code).
+    dropped = [i for i, (k, p) in enumerate(events)
+               if k == "unlink" and Path(p) == brain_dir / SAVE_COMPLETE_SENTINEL]
+    assert dropped and dropped[0] < published[0]
+    assert any(dropped[0] < i < published[0] for i in dir_syncs), \
+        "brain_dir was not fsynced between the sentinel unlink and the first rename"
     assert any(published[-1] < i < sentinel[0] for i in dir_syncs), \
         "brain_dir was not fsynced between the last rename and the sentinel"
     assert any(k == "fsync" and Path(p).parent == brain_dir and SAVE_COMPLETE_SENTINEL in Path(p).name
@@ -1165,6 +1678,115 @@ def test_brain_saved_by_this_code_loads_with_the_pre_fix_code(tmp_path, pre_fix_
     assert len(old["ml_state"]["model_metrics_history"]) == 1
 
 
+_PRE_FIX_ESSENTIAL_SCRIPT = r"""
+import json, sys
+from types import SimpleNamespace
+import numpy as np
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from backend.organism.brain_persistence import OrganismBrain
+from backend.organism.ensemble_models import EnsemblePredictor
+
+rng = np.random.default_rng(20261005)
+X = rng.normal(size=(80, 4))
+Y_DIR, Y_RET = (X[:, 0] > 0).astype(int), X[:, 1] * 0.01
+n = int(sys.argv[2])
+
+
+class Persisted:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def to_persistence_dict(self):
+        return dict(self.payload)
+
+
+calibration = {"counts": [[0, 0]] * 5, "map": [1.0] * 5}
+brain = OrganismBrain(sys.argv[1])
+loaded = brain.load() if brain.exists else False
+sg = SimpleNamespace(
+    _is_trained=True, _clf=LogisticRegression().fit(X, Y_DIR), _reg=LinearRegression().fit(X, Y_RET),
+    _ensemble=EnsemblePredictor(n_estimators=3, max_depth=2), _feature_cols=["f0", "f1", "f2", "f3"],
+    _xgb_params={"max_depth": 3}, generation=n, train_window=100, _latest_metrics=None,
+    calibration_to_dict=lambda: calibration, load_calibration=lambda data: None,
+)
+applied = brain.apply_to_signal_generator(sg)
+learner = SimpleNamespace(
+    state=SimpleNamespace(generation=n, total_trades=n, cumulative_pnl=-1.0 * n, best_sharpe=0.5,
+                          total_bars_seen=0, retrain_count=0, drift_events=0, best_generation=0,
+                          generation_accuracies=[], model_metrics=[],
+                          evaluation_events=[{"generation": n, "accepted": True}]),
+    trade_history=[], _reference_features=None, _bars_since_retrain=0,
+)
+before = brain.learning_state.get("total_trades")
+brain.save_essential_state(
+    signal_gen=sg, learner=learner, all_trades=[], equity_curve=[100_000.0 + i for i in range(n)],
+    epoch_metrics=[{"epoch": i} for i in range(n)], peak_equity=100_000.0 + n,
+    extra_counters={"tick_count": 100 + n, "daily_loss_halt": True,
+                    "pending_entry_order_ids": {"MSFT": f"ord-{n}"}},
+    governance_controller=Persisted({"trading_halted": True, "generation_marker": n}),
+    regime_detector=Persisted({"history": [n], "sma_period": 200}),
+)
+print(json.dumps({"loaded": loaded, "applied": applied, "loaded_total": before}))
+"""
+
+
+def test_rollback_to_pre_fix_code_mid_swap_is_never_rolled_forward_over_its_state(
+        tmp_path, pre_fix_code, monkeypatch, caplog):
+    """Review blocking item (probe C2), with the real ee023515 code: the fixed
+    code dies mid-swap after publishing the (frozen) ensemble; a rollback
+    starts the pre-fix code, which ignores the journal, loads HEAD and stores
+    newer runtime state (halt, pending MSFT entry) in an essential save,
+    re-pickling the ensemble byte-identically; the fixed code is redeployed.
+    The roll-forward used to put generation 6 back over that state."""
+    from backend.utils.secure_pickle import secure_dumps, secure_loads
+    brain_dir = tmp_path / "brain"
+    ensemble = _ensemble()
+    # Production property: frozen models loaded from disk re-pickle identically.
+    ensemble._models = [(secure_loads(secure_dumps(c)), secure_loads(secure_dumps(r)), name, w)
+                        for c, r, name, w in ensemble._models]
+    ensemble._bump_state_version()
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5, ensemble=ensemble) is True
+    _crash_full_save_before_publishing(monkeypatch, brain, "epoch_metrics.csv", 6, ensemble=ensemble)
+
+    env = dict(os.environ, PYTHONPATH=str(pre_fix_code), PYTHONDONTWRITEBYTECODE="1")
+    old = subprocess.run([sys.executable, "-c", _PRE_FIX_ESSENTIAL_SCRIPT, str(brain_dir), "7"],
+                         cwd=str(pre_fix_code), env=env, capture_output=True, text=True, timeout=300)
+    assert old.returncode == 0, old.stderr[-4000:]
+    ran = json.loads(old.stdout.strip().splitlines()[-1])
+    assert ran["loaded"] and ran["applied"] and ran["loaded_total"] == 5
+    assert (brain_dir / SWAP_JOURNAL_FILE).is_file()                 # ignored by the old code
+    assert bp._sentinel_kind(brain_dir / SAVE_COMPLETE_SENTINEL) == "legacy"
+    head_before = _head_files(brain_dir)
+
+    fresh = OrganismBrain(brain_dir)
+    with caplog.at_level(logging.CRITICAL, logger="backend.organism.brain_persistence"):
+        assert fresh.load() is True
+    digest = _digest(fresh)
+    assert fresh._loaded_from == fresh.brain_dir
+    assert digest["learning"] == 7 and digest["governance"] == 7 and digest["halt"] is True
+    assert digest["pending"] == {"MSFT": "ord-7"} and digest["models"] == (True, True)
+    assert fresh.governance_state["trading_halted"] is True
+    assert not (brain_dir / SWAP_JOURNAL_FILE).exists()
+    assert any("STALE" in r.getMessage() and "REFUSED" in r.getMessage() for r in caplog.records)
+    # HEAD kept exactly as the old code left it; only the journal is gone.
+    after = _head_files(brain_dir)
+    assert after == {k: v for k, v in head_before.items() if k != SWAP_JOURNAL_FILE}
+    (forensic,) = _swap_forensics(brain_dir)
+    assert (forensic / SWAP_JOURNAL_FILE).is_file() and (forensic / "staged" / MANIFEST_FILE).is_file()
+    assert (forensic / "head" / "learning_state.json").read_bytes() == after["learning_state.json"]
+    assert "kept over a stale" in fresh.full_save_required()
+
+    # The pre-fix code still loads the kept HEAD (forensic dir present) ...
+    shutil.copytree(brain_dir, tmp_path / "old_view", ignore=shutil.ignore_patterns("backups"))
+    assert _summary(pre_fix_code, tmp_path / "old_view")["learning_state"]["total_trades"] == 7
+    # ... and the next full save by the fixed code restores the inventory.
+    sg = _signal_gen(7, ensemble=EnsemblePredictor(n_estimators=3, max_depth=2))
+    assert fresh.apply_to_signal_generator(sg) is True
+    assert _full_save(fresh, 8, signal_gen=sg) is True
+    assert fresh.full_save_required() is None and _inventory(brain_dir)
+
+
 @pytest.mark.skipif(not (PRODUCTION_BRAIN_COPY / MANIFEST_FILE).is_file(),
                     reason="private production brain copy not present")
 def test_production_brain_copy_loads_exactly_as_before(tmp_path, pre_fix_code):
@@ -1207,3 +1829,66 @@ def test_production_state_resaved_by_this_code_loads_with_the_pre_fix_code(tmp_p
     assert old["extra_counters"] == json.loads(json.dumps(loaded.extra_counters, default=str))
     assert old["evolved_params"] == json.loads(json.dumps(loaded.evolved_params, default=str))
     assert old["n_trades"] == len(loaded.trade_history)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# Review — read-only pre-deploy check for unsigned pickles (C12-04 premise)
+# ═════════════════════════════════════════════════════════════════════════
+
+def _load_check_script():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "check_brain_pickles_signed", REPO_ROOT / "scripts/ops/check_brain_pickles_signed.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _tree_state(root: Path) -> dict:
+    return {str(p.relative_to(root)): (p.read_bytes(), p.stat().st_mtime_ns)
+            for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def test_pickle_check_script_reports_unsigned_and_torn_pickles_read_only(tmp_path, capsys):
+    check = _load_check_script()
+    brain_dir = tmp_path / "organism_brain"
+    brain = OrganismBrain(brain_dir)
+    assert _full_save(brain, 5, ensemble=_ensemble()) is True
+    assert _full_save(brain, 6, ensemble=_ensemble()) is True      # backups/ has generation 5
+    marker = tmp_path / "deserialized"
+    (brain_dir / "previous_model").mkdir()
+    _write_unsigned(brain_dir / "previous_model" / "clf.pkl", marker)  # never loaded: info only
+    archive = tmp_path / "organism_brain_archive"
+    skip = shutil.ignore_patterns("backups", "corrupt_head_*", ".brain*")
+    shutil.copytree(brain_dir, archive / "2026-10-04T233000.000000Z", ignore=skip)
+    shutil.copytree(brain_dir, archive / "2026-10-05T233000.000000Z", ignore=skip)
+    _write_unsigned(archive / "2026-10-04T233000.000000Z" / "ml_regressor.joblib", marker)
+
+    args = ["--brain-dir", str(brain_dir), "--archive-dir", str(archive)]
+    assert check.main(args) == 0                                     # newest snapshot only
+    out = capsys.readouterr().out
+    assert "OK: every pickle the engine loads is signed" in out
+    assert "previous_model/clf.pkl is not signed (never loaded by the engine)" in out
+    assert check.main(args + ["--all-archives"]) == 1
+    out = capsys.readouterr().out
+    assert "UNSIGNED OR TORN" in out and "ml_regressor.joblib" in out
+
+    clf = brain_dir / "ml_classifier.joblib"
+    raw = clf.read_bytes()
+    clf.write_bytes(raw[: len(raw) // 2])                            # torn signed model
+    _write_unsigned(brain_dir / "ensemble_lin_reg.joblib", marker)    # unsigned ensemble file
+    before = _tree_state(tmp_path)
+    assert check.main(["--brain-dir", str(brain_dir), "--json"]) == 1
+    report = json.loads(capsys.readouterr().out)
+    head, *backups = report["locations"]
+    assert head["kind"] == "head"
+    assert head["unsigned"] == ["ensemble_lin_reg.joblib", "ml_classifier.joblib"]
+    assert head["info_unsigned"] == ["previous_model/clf.pkl"] and head["loaded_checked"] == 9
+    assert backups and all(b["kind"] == "backup" and not b["unsigned"] for b in backups)
+    assert report["status"] == "unsigned" and report["unsigned_loaded_pickles"] == 2
+    assert not marker.exists()                                       # nothing was unpickled
+    assert _tree_state(tmp_path) == before                           # nothing was modified
+
+    assert check.main(["--brain-dir", str(tmp_path / "missing")]) == 2
+    assert check.main(["--brain-dir", str(brain_dir), "--archive-dir", str(tmp_path / "nope")]) == 2
+    capsys.readouterr()

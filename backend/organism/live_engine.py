@@ -615,6 +615,21 @@ def trim_feature_frames_asof(
     }
 
 
+def _brain_full_save_reason(brain: Any) -> str | None:
+    """Audit 2026-10-05 C12 review: why only a full save can leave a HEAD that
+    a restart loads (the brain's ``full_save_required``), or None. Anything but
+    a non-empty string (no such method, a stub) counts as None. Never raises."""
+    check = getattr(brain, "full_save_required", None)
+    if not callable(check):
+        return None
+    try:
+        reason = check()
+    except Exception as e:  # noqa: BLE001 - a check must not break the save
+        logger.warning("Brain full-save requirement check failed: %s", e)
+        return None
+    return reason if isinstance(reason, str) and reason else None
+
+
 class OrganismLiveEngine(
     _FillLookupMixin,
     _StateReconstructionMixin,
@@ -8158,7 +8173,17 @@ class OrganismLiveEngine(
                 # the .save_complete sentinel cannot drift behind in-memory
                 # state indefinitely. This changes only WHEN state persists.
                 self._consecutive_wf_skips += 1
-                if self._consecutive_wf_skips < self._max_wf_save_skips:
+                # Audit 2026-10-05 C12 review: an essential save never writes
+                # models, caches or evolved params, so it cannot repair a HEAD
+                # that a restart would not load as one complete generation
+                # (state restored from a backup, an interrupted swap, HEAD kept
+                # over a stale swap journal, a listed file missing/unsigned).
+                # Take the gated full save now instead of persisting into it.
+                full_save_reason = _brain_full_save_reason(self.brain)
+                if (
+                    self._consecutive_wf_skips < self._max_wf_save_skips
+                    and not full_save_reason
+                ):
                     logger.warning(
                         "Full brain save SKIPPED by walk-forward gate "
                         "(%d/%d consecutive): %s — persisting all runtime "
@@ -8189,12 +8214,20 @@ class OrganismLiveEngine(
                     self._record_brain_save_success()
                     self._watchdog_last_brain_save_tick = self._tick_count
                     return
-                logger.warning(
-                    "Walk-forward gate has blocked %d consecutive full brain "
-                    "saves — forcing a gated full save (gated_save=true) to "
-                    "bound restart state-loss. Gate reason: %s",
-                    self._consecutive_wf_skips, reason,
-                )
+                if full_save_reason:
+                    logger.warning(
+                        "Walk-forward gate blocked the full brain save, but %s "
+                        "— taking a gated full save (gated_save=true) so a "
+                        "restart loads one complete generation. Gate reason: %s",
+                        full_save_reason, reason,
+                    )
+                else:
+                    logger.warning(
+                        "Walk-forward gate has blocked %d consecutive full brain "
+                        "saves — forcing a gated full save (gated_save=true) to "
+                        "bound restart state-loss. Gate reason: %s",
+                        self._consecutive_wf_skips, reason,
+                    )
 
             # Full brain save. When reached via the bounded-skip ceiling,
             # `force=True` is AUDIT-ONLY: save() performs the identical atomic
@@ -8311,9 +8344,20 @@ class OrganismLiveEngine(
         atomically. The previous in-place ``open(path, "w")`` left truncated,
         invalid JSON on a crash or serializer error mid-write (a forced backup
         restore on the next start). Serialization is unchanged.
+
+        Audit 2026-10-05 C12 review: extra_counters.json is part of the brain's
+        journaled full-save swap. An interrupted swap is settled first (rolled
+        forward, or retired with HEAD kept), so this write never changes a
+        file under a pending journal and wedges the following essential saves.
         """
         import json
         from backend.organism.brain_persistence import _write_text_atomic
+        resolve = getattr(self.brain, "resolve_pending_swap", None)
+        if callable(resolve):
+            try:
+                resolve()
+            except Exception as e:  # noqa: BLE001 - never blocks this write
+                logger.error("Brain swap settlement before the exit-level write failed: %s", e)
         try:
             ec_path = self.brain.brain_dir / "extra_counters.json"
             if ec_path.is_file():

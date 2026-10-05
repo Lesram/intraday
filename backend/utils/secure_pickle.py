@@ -283,6 +283,29 @@ def is_signed_pickle(data: bytes) -> bool:
         return False
 
 
+def is_signed_pickle_file(path: str | Path) -> bool:
+    """``is_signed_pickle()`` of a file's bytes, reading only its header.
+
+    The same structural check (the 4-byte length header against the size),
+    so a truncated ("torn") signed file is reported exactly like an unsigned
+    one. Nothing is unpickled and no signing secret is needed; the signature
+    itself is verified only by ``secure_loads``. A file that cannot be read
+    is reported as not signed.
+    """
+    try:
+        size = os.stat(path).st_size
+        if size < HEADER_SIZE + SIGNATURE_LENGTH + 1:
+            return False
+        with open(path, "rb") as f:
+            header = f.read(HEADER_SIZE)
+        if len(header) != HEADER_SIZE:
+            return False
+        data_length = struct.unpack(HEADER_FORMAT, header)[0]
+        return size == HEADER_SIZE + data_length + SIGNATURE_LENGTH
+    except (OSError, struct.error):
+        return False
+
+
 def migrate_pickle_file(
     input_path: str | Path,
     output_path: str | Path | None = None
