@@ -1,17 +1,18 @@
 {
-  "task_id": "audit-20261005-surface-exit-safety",
-  "summary": "fix: exit safety nets see the broker price, exit window keeps stop and max-loss, quote rung cannot abort the tick (audit 2026-10-05 C05-01, C05-02, C06-02)",
-  "sha": "50fef27a8b2994bc79e76ebf3424cc19d6fb4d6a",
-  "branch": "fix/surface-exit-safety",
-  "change_scope": "task",
-  "change_ref": "HEAD",
+  "task_id": "audit-20261005-surface-stream-history",
+  "summary": "fix: live stream buffers carry the engine's history window after a provider restart and for late subscriptions (audit 2026-10-05 C11-01)",
+  "sha": "8730bff197d1e150e5b9ecfa37e276c311a5df29",
+  "branch": "fix/surface-stream-history",
+  "change_scope": "base",
+  "change_ref": "8fbe733d...HEAD",
   "files_changed": [
-    "backend/organism/live_engine.py",
-    "backend/services/positions_service.py",
+    "backend/organism/live_engine_data.py",
+    "backend/organism/streaming_data_provider.py",
     "docs/architecture/mapss.md",
-    "tests/test_audit_20261005_surface_exit_safety.py",
-    "tests/test_v12_baseline_invariants.py",
-    "tests/test_v13_w100_live_tick_coverage.py"
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_audit_20261005_surface_stream_history.py",
+    "tests/test_streaming_subscription_acknowledgement.py",
+    "tests/unit/test_streaming_data_provider.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -31,23 +32,26 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/organism/live_engine.py",
-    "backend/services/positions_service.py"
+    "backend/organism/live_engine_data.py",
+    "backend/organism/streaming_data_provider.py"
   ],
   "docs_updated": [
     "docs/architecture/mapss.md"
   ],
   "risks": [
-    "1 organism file(s) changed \u2014 replay verification required",
-    "Frozen decision surface changed (owner sign-off 2026-10-05): phase2_freeze --verify --candidate reports exactly source_hashes.entry_gates_dispatch and research_policy_sources.broker_state_safety; production needs a regenerated candidate_param_freeze.json and a new approved activation (new FROZEN_AT resets the forward clock).",
+    "2 organism file(s) changed \u2014 replay verification required",
+    "Frozen decision surface changed (owner sign-off 2026-10-05): phase2_freeze --verify --candidate reports data_pipeline_sources.streaming_data_provider and data_pipeline_sources.live_engine_data in addition to the base branch's source_hashes.entry_gates_dispatch and research_policy_sources.broker_state_safety; production needs a regenerated candidate_param_freeze.json and a new approved activation (new FROZEN_AT resets the forward clock).",
     "tests/test_phase2_freeze.py::test_decision_surface_unchanged and ::test_verify_mode_passes_on_unchanged_surface fail by design until the release assembly regenerates candidate_param_freeze.json (deliberately not regenerated on this branch).",
-    "Live exit-path behaviour changes: the broker-price safety nets can now fire, and the exit window sends stop/max-loss exits for unclaimed shares on the next tick instead of about 10 ticks later."
+    "Live data-path behaviour changes after a provider restart and for symbols subscribed after startup (scanner window, newly held names): features, regime and scans use the engine's 500-bar window (481 feature rows) instead of a 50-499-bar buffer, so those names are no longer skipped by the alpha/breakout row gates and regime routing matches a normally started engine and replay. Normal startup, transport reconnects and stale-stream reconnects are unchanged.",
+    "If the REST seed already holds the newest closed bar when the stream delivers it, that stream bar is a same-minute correction and the symbol's first live receipt waits for the next bar (up to one more minute excluded from entries; fail-closed, the same race as the existing startup prefill).",
+    "Extra REST only while seeds fail: one seed retry per failing symbol per 60 s (<= 28/min) and <= 5 short-buffer reads per 10 s (<= 30/min, each <= 5 s, at most one parallel round per tick)."
   ],
   "follow_ups": [
-    "Release assembly: regenerate artifacts/phase2/candidate_param_freeze.json once for all frozen-code fixes, then activate (new FROZEN_AT, activation record, daily-evidence binding); research_policy_baseline.json stays unchanged.",
-    "EOD flatten and the overnight forced exit still size from the full broker qty, not qty_available/unclaimed shares (an oversized flatten is refused by the PR #36 outbox guard).",
-    "Pyramid close_partial reads pos_data['direction'], which PositionsService never supplies (latent; pyramiding is off in production).",
-    "An orphan close that never finds a price stays pending with per-tick saves (C06-03); bars_held still skips minute boundaries crossed during the exit window."
+    "Release assembly: regenerate artifacts/phase2/candidate_param_freeze.json once for all frozen-code fixes, then activate (new FROZEN_AT, activation record, daily-evidence binding) together with the SCANNER_ENABLED flip.",
+    "Optional (verifier: low priority, 3-8 s measured): move the startup prefill out of STARTUP_TIMEOUT_S and let the background seed fill it after subscriptions are confirmed.",
+    "C11-05: the feature store's QA report is computed and discarded every tick and its 19-row warm-up trim still applies (non-surface part can land separately).",
+    "diagnostic_checks.check_streaming_coverage counts REST-seeded buffers as streaming coverage (C14 note); seeds now also fill buffers after restarts and for late subscriptions.",
+    "Add tests/test_audit_20261005_surface_stream_history.py to the paper-readiness workflow selection."
   ],
   "artifact_pack_status": "pass",
   "artifact_pack_errors": []

@@ -1,40 +1,41 @@
 # Live Audit Index
 
-Generated: 2026-10-05T16:17:50Z
+Generated: 2026-10-05T19:12:25Z
 PR: n/a
-SHA: `50fef27a8b`
-Branch: `fix/surface-exit-safety`
+SHA: `8730bff197`
+Branch: `fix/surface-stream-history`
 Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Change scope: `base` (`8fbe733d...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **6**
+Total distinct changed files: **7**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 2 | `backend/organism/live_engine.py`, `backend/services/positions_service.py` |
-| Scripts | 0 | none |
+| Backend | 2 | `backend/organism/live_engine_data.py`, `backend/organism/streaming_data_provider.py` |
+| Scripts | 1 | `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 0 | none |
-| Tests | 3 | `tests/test_audit_20261005_surface_exit_safety.py`, `tests/test_v12_baseline_invariants.py`, `tests/test_v13_w100_live_tick_coverage.py` |
+| Tests | 3 | `tests/test_audit_20261005_surface_stream_history.py`, `tests/test_streaming_subscription_acknowledgement.py`, `tests/unit/test_streaming_data_provider.py` |
 | Docs | 1 | `docs/architecture/mapss.md` |
 | Artifacts/evidence | 0 | none |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **1** file(s).
+Organism subset of Backend: **2** file(s).
 
 ### Full changed-file list
 
-- `backend/organism/live_engine.py`
-- `backend/services/positions_service.py`
+- `backend/organism/live_engine_data.py`
+- `backend/organism/streaming_data_provider.py`
 - `docs/architecture/mapss.md`
-- `tests/test_audit_20261005_surface_exit_safety.py`
-- `tests/test_v12_baseline_invariants.py`
-- `tests/test_v13_w100_live_tick_coverage.py`
+- `scripts/runtime/write_runtime_snapshot.py`
+- `tests/test_audit_20261005_surface_stream_history.py`
+- `tests/test_streaming_subscription_acknowledgement.py`
+- `tests/unit/test_streaming_data_provider.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -75,4 +76,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 1 organism file(s) changed — require replay verification
+- 2 organism file(s) changed — require replay verification

@@ -4,8 +4,8 @@
   "candidate_data_pipeline_sources": {
     "alpaca_market_data_stream": "f99338fab383d483e49f80a675cf4062f572554762f44557ffbf5a7470a49a57",
     "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
-    "streaming_data_provider": "5ecc8a7f4700a8e9967ac722652fe4c9936e0b1c1e50d5ac7d7149f08a7cb6aa",
-    "live_engine_data": "f10b6c4c4036a92f87ca085fc4bedbc5038beeb3bf67b28c855e6da3963c2dc1",
+    "streaming_data_provider": "bc32785952d81b28b8fd1e658d46c45a6b57e6252b759a85b1aba3af4285aed8",
+    "live_engine_data": "360417e4f0cd17aef0ab352a0288f75e731d653f2664dd18258371bdd4efab03",
     "staleness_admission": "e1253bf45b09091d7d99688a5dad690a4ac42ba40afcbcc3201271278dec6ca5",
     "streaming_universe_initialization": "3fe004d8533d53e9071f23f6679b85240f87495b002a1169eed59c5e52033840",
     "streaming_subscription_sync": "da5ca30fdbf600734496c70c6f358d4051773dfdd0c0174e261dc5ee1d1a0f3a",
@@ -63,9 +63,23 @@
     "required_confirmed": "critical_and_held_symbols_else_block_all_entries",
     "provider_symbol_limit": "refused_symbols_dropped_from_desired_never_replayed_not_resent_until_capacity_freed",
     "protected_request": "benchmarks_and_held_requested_first_on_their_own_never_skipped_as_refused",
-    "new_symbols": "wait_for_actual_bars_no_REST_prefill",
+    "new_symbols": "freshness_waits_for_actual_bars_background_REST_history_seed",
     "global_staleness_policy": "aggregate_stream_loss_or_critical_symbol_stale_blocks_entries",
     "per_symbol_staleness_policy": "stale_or_unadmitted_symbol_rejected_by_shared_entry_gate"
+  },
+  "stream_history": {
+    "history_window": "engine_lookback_bars_of_engine_timeframe_same_as_feeder_REST_path",
+    "ring_capacity_bars": 2000,
+    "seed": "one_background_REST_seed_per_subscribed_symbol_per_session_after_provider_restart_new_subscription_or_failed_prefill",
+    "seed_merge": "startup_prefill_merge_history_only_stream_rows_kept_never_a_receipt_generation_guarded",
+    "seed_concurrency": "one_request_at_a_time_outside_subscription_sync_deadline",
+    "seed_timeout_seconds": 30.0,
+    "seed_retry_after_failure_seconds": 60.0,
+    "stream_buffer_served_when": "fresh_and_min_bars_and_(history_seeded_or_at_least_min(history_window,ring_capacity))",
+    "short_buffer": "REST_within_budget_else_short_buffer_as_before",
+    "short_buffer_rest_max_calls": 5,
+    "short_buffer_rest_window_seconds": 10.0,
+    "short_buffer_rest_timeout_seconds": 5.0
   },
   "broker_position_reads": {
     "failed_read": "unknown_never_flat",
