@@ -1,12 +1,39 @@
 {
-  "scope": "task",
-  "ref": "HEAD",
-  "total": 6,
+  "scope": "base",
+  "ref": "27c29897...HEAD",
+  "total": 33,
   "all": [
+    "artifacts/algorithm_improvements.junit.xml",
+    "artifacts/algorithm_improvements.log",
+    "artifacts/changed_files.json",
+    "artifacts/live_process_runtime_snapshot.json",
+    "artifacts/multi_tick_state.junit.xml",
+    "artifacts/multi_tick_state.log",
+    "artifacts/organism_engine_scenarios.junit.xml",
+    "artifacts/organism_engine_scenarios.log",
+    "artifacts/organism_live_engine.junit.xml",
+    "artifacts/organism_live_engine.log",
+    "artifacts/replay_simulator.junit.xml",
+    "artifacts/replay_simulator.log",
+    "artifacts/replay_summary.json",
+    "artifacts/runtime_snapshot.log",
+    "artifacts/runtime_snapshot_summary.json",
+    "artifacts/safety_invariants.junit.xml",
+    "artifacts/safety_invariants.log",
+    "artifacts/self_evolution.junit.xml",
+    "artifacts/self_evolution.log",
+    "artifacts/semantic_invariants.junit.xml",
+    "artifacts/semantic_invariants.log",
+    "artifacts/semantic_invariants_summary.json",
+    "artifacts/task_report.json",
+    "artifacts/test_summary.json",
     "backend/organism/live_engine.py",
     "backend/services/positions_service.py",
     "docs/architecture/mapss.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
     "tests/test_audit_20261005_surface_exit_safety.py",
+    "tests/test_multi_tick_state.py",
+    "tests/test_safety_invariants.py",
     "tests/test_v12_baseline_invariants.py",
     "tests/test_v13_w100_live_tick_coverage.py"
   ],
@@ -19,11 +46,14 @@
   ],
   "tests": [
     "tests/test_audit_20261005_surface_exit_safety.py",
+    "tests/test_multi_tick_state.py",
+    "tests/test_safety_invariants.py",
     "tests/test_v12_baseline_invariants.py",
     "tests/test_v13_w100_live_tick_coverage.py"
   ],
   "config": [],
   "docs": [
-    "docs/architecture/mapss.md"
+    "docs/architecture/mapss.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md"
   ]
 }

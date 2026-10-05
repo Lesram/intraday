@@ -1,15 +1,42 @@
 {
   "task_id": "audit-20261005-surface-exit-safety",
-  "summary": "fix: exit safety nets see the broker price, exit window keeps stop and max-loss, quote rung cannot abort the tick (audit 2026-10-05 C05-01, C05-02, C06-02)",
-  "sha": "50fef27a8b2994bc79e76ebf3424cc19d6fb4d6a",
+  "summary": "fix: exit safety nets see the broker price (regular hours only; a fresh bar must agree), the exit window runs only max-loss and the hard stop on a copy of the exit levels, the quote rung cannot abort the tick (audit 2026-10-05 C05-01, C05-02, C06-02, with review fixes)",
+  "sha": "b7cdf0b5a7b27065bf5ecf83b8391f875c140887",
   "branch": "fix/surface-exit-safety",
-  "change_scope": "task",
-  "change_ref": "HEAD",
+  "change_scope": "base",
+  "change_ref": "27c29897...HEAD",
   "files_changed": [
+    "artifacts/algorithm_improvements.junit.xml",
+    "artifacts/algorithm_improvements.log",
+    "artifacts/changed_files.json",
+    "artifacts/live_process_runtime_snapshot.json",
+    "artifacts/multi_tick_state.junit.xml",
+    "artifacts/multi_tick_state.log",
+    "artifacts/organism_engine_scenarios.junit.xml",
+    "artifacts/organism_engine_scenarios.log",
+    "artifacts/organism_live_engine.junit.xml",
+    "artifacts/organism_live_engine.log",
+    "artifacts/replay_simulator.junit.xml",
+    "artifacts/replay_simulator.log",
+    "artifacts/replay_summary.json",
+    "artifacts/runtime_snapshot.log",
+    "artifacts/runtime_snapshot_summary.json",
+    "artifacts/safety_invariants.junit.xml",
+    "artifacts/safety_invariants.log",
+    "artifacts/self_evolution.junit.xml",
+    "artifacts/self_evolution.log",
+    "artifacts/semantic_invariants.junit.xml",
+    "artifacts/semantic_invariants.log",
+    "artifacts/semantic_invariants_summary.json",
+    "artifacts/task_report.json",
+    "artifacts/test_summary.json",
     "backend/organism/live_engine.py",
     "backend/services/positions_service.py",
     "docs/architecture/mapss.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
     "tests/test_audit_20261005_surface_exit_safety.py",
+    "tests/test_multi_tick_state.py",
+    "tests/test_safety_invariants.py",
     "tests/test_v12_baseline_invariants.py",
     "tests/test_v13_w100_live_tick_coverage.py"
   ],
@@ -35,19 +62,27 @@
     "backend/services/positions_service.py"
   ],
   "docs_updated": [
-    "docs/architecture/mapss.md"
+    "docs/architecture/mapss.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md"
   ],
   "risks": [
     "1 organism file(s) changed \u2014 replay verification required",
     "Frozen decision surface changed (owner sign-off 2026-10-05): phase2_freeze --verify --candidate reports exactly source_hashes.entry_gates_dispatch and research_policy_sources.broker_state_safety; production needs a regenerated candidate_param_freeze.json and a new approved activation (new FROZEN_AT resets the forward clock).",
     "tests/test_phase2_freeze.py::test_decision_surface_unchanged and ::test_verify_mode_passes_on_unchanged_surface fail by design until the release assembly regenerates candidate_param_freeze.json (deliberately not regenerated on this branch).",
-    "Live exit-path behaviour changes: the broker-price safety nets can now fire, and the exit window sends stop/max-loss exits for unclaimed shares on the next tick instead of about 10 ticks later."
+    "Live exit-path behaviour changes: the broker-price safety nets can now fire, but only in regular trading hours and, when the symbol has a fresh bar, only if the bar close also breaches; the exit window sends stop/max-loss exits for unclaimed shares on the next tick instead of about 10 ticks later. Its stop check runs on a copy of the exit levels, so window ticks leave the trailing anchor and MFE/MAE tracking unchanged, as in the base code.",
+    "A broker-price breach seen only on the 09:28-09:30 or 16:00-16:01 ET ticks (13:00-16:01 on early-close days) is logged and waits for the next regular-hours tick.",
+    "The bar confirmation uses the per-symbol staleness admission (_stale_entry_symbols, 120 s) for freshness; without a streaming provider (REST-only mode, tests, replay) every frame counts as fresh, so a lagging REST bar can delay a broker-price net until it agrees."
   ],
   "follow_ups": [
     "Release assembly: regenerate artifacts/phase2/candidate_param_freeze.json once for all frozen-code fixes, then activate (new FROZEN_AT, activation record, daily-evidence binding); research_policy_baseline.json stays unchanged.",
+    "Owner decision: should exit-window ticks advance the trailing anchor and MFE/MAE tracking (frozen during the window, as in the base code; see mapss Known limits)?",
+    "Routine and no-features exits still count a 'blocked' _submit_exit_order return as an order and arm the exit window (not in the changed code; practically unreachable there).",
     "EOD flatten and the overnight forced exit still size from the full broker qty, not qty_available/unclaimed shares (an oversized flatten is refused by the PR #36 outbox guard).",
+    "After a restart an exit still queued in the outbox is invisible to qty_available; a window breach can send a second exit that only the outbox guard stops (mapss Known limits; the base code had the same exposure at tick N+10).",
     "Pyramid close_partial reads pos_data['direction'], which PositionsService never supplies (latent; pyramiding is off in production).",
-    "An orphan close that never finds a price stays pending with per-tick saves (C06-03); bars_held still skips minute boundaries crossed during the exit window."
+    "An orphan close that never finds a price stays pending with per-tick saves (C06-03); the C06-02 quote rung has no quote-age check, so quote_* rows can be stale; bars_held still skips minute boundaries crossed during the exit window.",
+    "artifacts/frozen_repairs_20260927/causal_features/replay_{crash,eod}.json are stale against 27c29897 (the crash scenario now labels two bar-41 exits max_loss_limit instead of pyramid_cut_full_*, same bar, shares and P&L), and tests/test_cross_asset_alignment_replay.py rewrites them whenever it runs.",
+    "PR text: _live_tick_inner 2850 -> 2879 lines in the first cut (ceilings +27 after 2 lines of prior headroom) and -> 2889 in the review fix (ceilings +10, exact); the portfolio API's current_price now shows Alpaca's price instead of 0 (display only)."
   ],
   "artifact_pack_status": "pass",
   "artifact_pack_errors": []

@@ -1,15 +1,15 @@
 # Live Audit Index
 
-Generated: 2026-10-05T16:17:50Z
+Generated: 2026-10-05T21:55:51Z
 PR: n/a
-SHA: `50fef27a8b`
+SHA: `b7cdf0b5a7`
 Branch: `fix/surface-exit-safety`
 Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Change scope: `base` (`27c29897...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **6**
+Total distinct changed files: **33**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
@@ -18,9 +18,9 @@ Category counts below partition that total. File previews show at most ten paths
 | Backend | 2 | `backend/organism/live_engine.py`, `backend/services/positions_service.py` |
 | Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 3 | `tests/test_audit_20261005_surface_exit_safety.py`, `tests/test_v12_baseline_invariants.py`, `tests/test_v13_w100_live_tick_coverage.py` |
-| Docs | 1 | `docs/architecture/mapss.md` |
-| Artifacts/evidence | 0 | none |
+| Tests | 5 | `tests/test_audit_20261005_surface_exit_safety.py`, `tests/test_multi_tick_state.py`, `tests/test_safety_invariants.py`, `tests/test_v12_baseline_invariants.py`, `tests/test_v13_w100_live_tick_coverage.py` |
+| Docs | 2 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Artifacts/evidence | 24 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
@@ -29,10 +29,37 @@ Organism subset of Backend: **1** file(s).
 
 ### Full changed-file list
 
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
 - `backend/organism/live_engine.py`
 - `backend/services/positions_service.py`
 - `docs/architecture/mapss.md`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `tests/test_audit_20261005_surface_exit_safety.py`
+- `tests/test_multi_tick_state.py`
+- `tests/test_safety_invariants.py`
 - `tests/test_v12_baseline_invariants.py`
 - `tests/test_v13_w100_live_tick_coverage.py`
 
