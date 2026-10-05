@@ -14,7 +14,7 @@ Key Features:
 
 import asyncio
 import ast
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import json
 import os
@@ -112,11 +112,140 @@ def _accounting_action(
     return f"unsupported:{side}"
 
 
-def _order_user_id(order: Any) -> str:
+def _owner(attributes: Any, column_user_id: Any) -> str:
+    """Lot owner: attributes.user_id, then the order's user_id, then 'system'."""
     return (
-        _order_attributes(order).get("user_id")
-        or getattr(order, "user_id", None)
+        (attributes.get("user_id") if isinstance(attributes, dict) else None)
+        or column_user_id
         or "system"
+    )
+
+
+def _order_user_id(order: Any) -> str:
+    return _owner(_order_attributes(order), getattr(order, "user_id", None))
+
+
+# Audit 2026-10-05 C07-01: ingestion paths are not globally ordered (recovery
+# pages by id, gap-fill by update time, startup sync runs recovery before its
+# page), so a close can be applied before the opening fill it consumes. Two
+# rules keep the lot ledger convergent whatever the delay:
+# 1. Deferral. While an earlier same-owner opening that persisted-order
+#    recovery retries is unresolved, the close stays retryable as before. The
+#    window is anchored to the close (the opening was submitted at or before
+#    it and at most LOT_ORDERING_GRACE earlier), so a restart after any outage
+#    shorter than LOT_ORDERING_MAX_AGE still applies both legs in order. The
+#    cap bounds how long a stuck opening row can keep a broker-confirmed close
+#    unpersisted.
+# 2. Late netting. Otherwise the close is persisted and its deficit recorded
+#    in attributes.lot_accounting. An opening lot ingested later is netted
+#    against that record (_net_recorded_unmatched_closes), so an opening that
+#    was never acknowledged, is outside recovery scope or is older than the cap
+#    cannot leave a phantom open lot either.
+# Both rules order legs by submission time; broker fill times are not ingested.
+LOT_ORDERING_GRACE = timedelta(days=5)
+LOT_ORDERING_MAX_AGE = timedelta(days=45)
+_LOT_QUANTUM = Decimal("0.000001")  # DECIMAL(18, 6), as the ledger columns
+
+
+class LotAccountingDeferred(ValueError):
+    """A close outran an earlier opening fill that can still be ingested.
+
+    Raised before any lot changes, so every caller rolls back and retries the
+    snapshot exactly as it did before for lot errors (stream retry, persisted
+    order recovery, reconnect gap-fill, startup sync, outbox acknowledgement).
+    It must stay a ValueError: startup sync catches a fixed list of exception
+    types and goes on with the rest of its page.
+    """
+
+
+async def _unsettled_earlier_opening(
+    session: AsyncSession,
+    *,
+    close_order_id: Any,
+    close_submitted_at: datetime | None,
+    user_id: str,
+    symbol: str,
+    open_side: str,
+) -> Any | None:
+    """Earlier same-owner opening order whose broker fill may still arrive.
+
+    Qualifies: an opening-side order in persisted-order recovery's scope
+    (unresolved, broker-acknowledged, organism or outbox lineage, so recovery
+    keeps retrying it), submitted at or before the close and at most
+    LOT_ORDERING_GRACE before it, and less than LOT_ORDERING_MAX_AGE old. Any
+    other row cannot be relied on to settle and must not keep a
+    broker-confirmed close unpersisted; if its fill lands later anyway, its
+    lot is netted against the recorded unmatched close.
+    """
+    from backend.infra.schemas import Order
+
+    now = datetime.now(UTC)
+    anchor = close_submitted_at if close_submitted_at is not None else now
+    rows = await session.execute(
+        select(Order.id, Order.user_id, Order.attributes)
+        .where(
+            # The same row scope persisted-order recovery pages through.
+            *OrdersRepo._recovery_scope(),
+            Order.symbol == symbol,
+            Order.side == open_side,
+            Order.id != close_order_id,
+            Order.submitted_at <= anchor,
+            Order.submitted_at >= anchor - LOT_ORDERING_GRACE,
+            Order.submitted_at >= now - LOT_ORDERING_MAX_AGE,
+        )
+        .order_by(Order.submitted_at.asc(), Order.id.asc())
+    )
+    for order_id, column_user_id, attributes in rows.all():
+        if _owner(attributes, column_user_id) == user_id:
+            return order_id
+    return None
+
+
+def _realized_trade(
+    *,
+    lot: Any,
+    qty: Decimal,
+    close_price: Decimal,
+    close_order_id: Any,
+    close_date: datetime,
+    user_id: str,
+    symbol: str,
+    position_side: str,
+    attributes: dict[str, Any] | None = None,
+) -> Any:
+    """One RealizedTrade closing ``qty`` of ``lot`` at ``close_price``."""
+    from backend.infra.schemas import RealizedTrade
+
+    if position_side == "short":
+        realized_pnl = qty * (lot.cost_basis - close_price)
+        realized_pnl_percent = (
+            ((lot.cost_basis - close_price) / lot.cost_basis * 100)
+            if lot.cost_basis != 0
+            else Decimal("0")
+        )
+        trade_attributes = {"position_side": "short"}
+    else:
+        realized_pnl = qty * (close_price - lot.cost_basis)
+        realized_pnl_percent = (
+            ((close_price - lot.cost_basis) / lot.cost_basis * 100)
+            if lot.cost_basis != 0
+            else Decimal("0")
+        )
+        trade_attributes = {}
+    return RealizedTrade(
+        user_id=user_id,
+        symbol=symbol,
+        qty=qty,
+        open_price=lot.cost_basis,
+        close_price=close_price,
+        realized_pnl=realized_pnl,
+        realized_pnl_percent=realized_pnl_percent,
+        open_order_id=lot.order_id,
+        close_order_id=close_order_id,
+        lot_id=lot.id,
+        open_date=lot.open_date,
+        close_date=close_date,
+        attributes={**trade_attributes, **(attributes or {})},
     )
 
 
@@ -131,8 +260,17 @@ async def _close_position_lots_fifo(
     close_date: datetime,
     open_side: str,
     position_side: str,
-) -> list[Any]:
-    from backend.infra.schemas import Order, PositionLot, RealizedTrade
+    close_submitted_at: datetime | None = None,
+) -> tuple[list[Any], Decimal]:
+    """FIFO-close the owner's open lots; return realized trades and the remainder.
+
+    A broker-confirmed close is never refused for missing lots (C07-01): any
+    quantity without an open lot is returned unmatched for the caller to record.
+    It is deferred (LotAccountingDeferred, before any change) only while an
+    earlier same-owner opening fill can still be ingested
+    (_unsettled_earlier_opening).
+    """
+    from backend.infra.schemas import Order, PositionLot
 
     stmt = (
         select(PositionLot)
@@ -149,18 +287,23 @@ async def _close_position_lots_fifo(
     )
     result = await session.execute(stmt)
     open_lots = list(result.scalars().all())
-    if not open_lots:
-        raise ValueError(
-            f"No open {position_side} lots found for "
-            f"{user_id}/{symbol} to close {qty_to_close} shares"
-        )
 
-    total_available = sum(lot.remaining_qty for lot in open_lots)
+    total_available = sum((lot.remaining_qty for lot in open_lots), Decimal("0"))
     if total_available < qty_to_close:
-        raise ValueError(
-            f"Insufficient {position_side} lots for {user_id}/{symbol}: "
-            f"need {qty_to_close}, available {total_available}"
+        pending_open = await _unsettled_earlier_opening(
+            session,
+            close_order_id=close_order_id,
+            close_submitted_at=close_submitted_at,
+            user_id=user_id,
+            symbol=symbol,
+            open_side=open_side,
         )
+        if pending_open is not None:
+            raise LotAccountingDeferred(
+                f"Close of {qty_to_close} {symbol} for {user_id} deferred: "
+                f"{total_available} open {position_side} lots while earlier "
+                f"opening order {pending_open} is unresolved"
+            )
 
     remaining_to_close = qty_to_close
     realized_trades = []
@@ -169,37 +312,15 @@ async def _close_position_lots_fifo(
             break
 
         qty_from_lot = min(lot.remaining_qty, remaining_to_close)
-        if position_side == "short":
-            realized_pnl = qty_from_lot * (lot.cost_basis - close_price)
-            realized_pnl_percent = (
-                ((lot.cost_basis - close_price) / lot.cost_basis * 100)
-                if lot.cost_basis != 0
-                else Decimal("0")
-            )
-            attributes = {"position_side": "short"}
-        else:
-            realized_pnl = qty_from_lot * (close_price - lot.cost_basis)
-            realized_pnl_percent = (
-                ((close_price - lot.cost_basis) / lot.cost_basis * 100)
-                if lot.cost_basis != 0
-                else Decimal("0")
-            )
-            attributes = {}
-
-        realized_trade = RealizedTrade(
+        realized_trade = _realized_trade(
+            lot=lot,
+            qty=qty_from_lot,
+            close_price=close_price,
+            close_order_id=close_order_id,
+            close_date=close_date,
             user_id=user_id,
             symbol=symbol,
-            qty=qty_from_lot,
-            open_price=lot.cost_basis,
-            close_price=close_price,
-            realized_pnl=realized_pnl,
-            realized_pnl_percent=realized_pnl_percent,
-            open_order_id=lot.order_id,
-            close_order_id=close_order_id,
-            lot_id=lot.id,
-            open_date=lot.open_date,
-            close_date=close_date,
-            attributes=attributes,
+            position_side=position_side,
         )
         session.add(realized_trade)
         realized_trades.append(realized_trade)
@@ -210,7 +331,227 @@ async def _close_position_lots_fifo(
         remaining_to_close -= qty_from_lot
 
     await session.flush()
-    return realized_trades
+    return realized_trades, remaining_to_close
+
+
+def _quantized(value: Decimal) -> str:
+    return str(value.quantize(_LOT_QUANTUM))
+
+
+def _record_decimal(record: dict[str, Any], key: str, default: Decimal = Decimal("0")) -> Decimal:
+    value = _decimal_or_none(record.get(key))
+    return value if value is not None and value.is_finite() else default
+
+
+def _record_count(record: dict[str, Any], key: str) -> int:
+    try:
+        return max(int(record.get(key) or 0), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _lot_accounting_record(order: Any, discrepancy: dict[str, Any]) -> dict[str, Any]:
+    """Durable, cumulative ``attributes.lot_accounting`` for an unmatched close.
+
+    Quantities, prices and notionals are stored at the ledger's 6 dp. The
+    unmatched notional (sum of unmatched quantity x leg price) prices a later
+    late match. Late-match history of the same close is kept.
+    """
+    previous = _order_attributes(order).get("lot_accounting")
+    if not isinstance(previous, dict) or previous.get("status") not in ("unmatched", "matched_late"):
+        previous = {}
+    unmatched_leg = Decimal(discrepancy["unmatched_qty"])
+    leg_price = Decimal(discrepancy["fill_price"])
+    return {
+        **previous,
+        "status": "unmatched",
+        "repair": "required",
+        "reason": discrepancy["reason"],
+        "owner": discrepancy["owner"],
+        "position_side": discrepancy["position_side"],
+        "unmatched_qty": _quantized(_record_decimal(previous, "unmatched_qty") + unmatched_leg),
+        "unmatched_notional": _quantized(
+            _record_decimal(previous, "unmatched_notional") + unmatched_leg * leg_price
+        ),
+        "matched_qty": _quantized(
+            _record_decimal(previous, "matched_qty") + Decimal(discrepancy["matched_qty"])
+        ),
+        "events": _record_count(previous, "events") + 1,
+        "last_fill_qty": _quantized(Decimal(discrepancy["fill_qty"])),
+        "last_fill_price": _quantized(leg_price),
+        "last_execution_id": discrepancy["execution_id"],
+        "recorded_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def _open_unmatched_record(attributes: Any, user_id: str, position_side: str) -> dict[str, Any] | None:
+    """The close's lot_accounting record if it still has unmatched quantity for this owner/side."""
+    record = attributes.get("lot_accounting") if isinstance(attributes, dict) else None
+    if (
+        isinstance(record, dict)
+        and record.get("status") == "unmatched"
+        and record.get("owner") == user_id
+        and record.get("position_side") == position_side
+        and _record_decimal(record, "unmatched_qty") > 0
+    ):
+        return record
+    return None
+
+
+async def _net_recorded_unmatched_closes(
+    session: AsyncSession,
+    *,
+    lot: Any,
+    opening: Any,
+    user_id: str,
+    close_side: str,
+    position_side: str,
+) -> list[dict[str, Any]]:
+    """Net a newly opened lot against closes already recorded unmatched (C07-01).
+
+    A close applied before its opening fill is recorded unmatched when no
+    deferral applied (the opening was never acknowledged, is outside recovery
+    scope or is older than LOT_ORDERING_MAX_AGE). When that opening fill lands,
+    its lot is closed FIFO against the owner's unmatched closes of this symbol
+    and position side submitted at or after the opening and at most
+    LOT_ORDERING_GRACE later, as FIFO would have matched them in order: one
+    RealizedTrade per match at the close's unmatched VWAP, and the record moves
+    to ``matched_late`` once nothing remains unmatched. A close submitted before
+    the opening never consumes it.
+
+    Locking: the caller already holds the opening row; each candidate close row
+    is locked and re-read here before its record changes, so a concurrent
+    ingestion of that close serializes with the netting. Should that ingestion
+    be FIFO-locking an earlier lot of this same opening, PostgreSQL reports a
+    deadlock and the losing transaction is retried by its ingress like any
+    other transient failure.
+    """
+    from backend.infra.schemas import Order
+
+    opened_at = getattr(opening, "submitted_at", None)
+    if opened_at is None or not lot.remaining_qty > 0:
+        return []
+    candidates = await session.execute(
+        select(Order.id, Order.attributes)
+        .where(
+            Order.symbol == opening.symbol,
+            Order.side == close_side,
+            Order.id != opening.id,
+            Order.submitted_at >= opened_at,
+            Order.submitted_at <= opened_at + LOT_ORDERING_GRACE,
+        )
+        .order_by(Order.submitted_at.asc(), Order.id.asc())
+    )
+    close_ids = [
+        order_id
+        for order_id, attributes in candidates.all()
+        if _open_unmatched_record(attributes, user_id, position_side) is not None
+    ]
+    matches: list[dict[str, Any]] = []
+    for close_id in close_ids:
+        if not lot.remaining_qty > 0:
+            break
+        close = (
+            await session.execute(
+                select(Order)
+                .where(Order.id == close_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        ).scalar_one_or_none()
+        record = _open_unmatched_record(getattr(close, "attributes", None), user_id, position_side)
+        if record is None:
+            continue
+        unmatched = _record_decimal(record, "unmatched_qty")
+        notional = _record_decimal(
+            record, "unmatched_notional", unmatched * _record_decimal(record, "last_fill_price")
+        )
+        price = (notional / unmatched).quantize(_LOT_QUANTUM)
+        if not price.is_finite() or price <= 0:
+            continue  # A malformed record stays unmatched for repair.
+        qty = min(unmatched, lot.remaining_qty)
+        trade = _realized_trade(
+            lot=lot,
+            qty=qty,
+            close_price=price,
+            close_order_id=close.id,
+            close_date=close.submitted_at,
+            user_id=user_id,
+            symbol=opening.symbol,
+            position_side=position_side,
+            attributes={"lot_accounting": "matched_late"},
+        )
+        session.add(trade)
+        lot.remaining_qty -= qty
+        if lot.remaining_qty == 0:
+            lot.status = "closed"
+        left = unmatched - qty
+        updated = {
+            **record,
+            "status": "unmatched" if left > 0 else "matched_late",
+            "repair": "required" if left > 0 else "none",
+            "unmatched_qty": _quantized(left),
+            "unmatched_notional": _quantized(notional - qty * price if left > 0 else Decimal("0")),
+            "matched_late_qty": _quantized(_record_decimal(record, "matched_late_qty") + qty),
+            "late_matches": _record_count(record, "late_matches") + 1,
+            "last_late_match": {
+                "opening_order_id": str(opening.id),
+                "lot_id": str(lot.id),
+                "qty": _quantized(qty),
+                "price": _quantized(price),
+                "matched_at": datetime.now(UTC).isoformat(),
+            },
+        }
+        await OrdersRepo(session).attach_broker_result(close.id, attributes={"lot_accounting": updated})
+        matches.append({
+            "symbol": str(opening.symbol),
+            "owner": user_id,
+            "position_side": position_side,
+            "opening_order_id": str(opening.id),
+            "close_order_id": str(close.id),
+            "qty": _quantized(qty),
+            "price": _quantized(price),
+            "realized_pnl": str(trade.realized_pnl),
+            "close_status": updated["status"],
+            "close_unmatched_qty": updated["unmatched_qty"],
+        })
+    if matches:
+        await session.flush()
+    return matches
+
+
+def log_lot_accounting_discrepancy(accounting: dict[str, Any] | None, *, ingress: str) -> None:
+    """Report lot-accounting outcomes of a committed snapshot; callers invoke it after commit.
+
+    A persisted unmatched close pages once (CRITICAL). A late match of a new
+    opening lot against an earlier unmatched close is logged at WARNING: it
+    resolves (part of) a discrepancy that has already paged.
+    """
+    for match in (accounting or {}).get("lot_late_matches") or ():
+        logger.warning(
+            "LOT ACCOUNTING LATE MATCH: %s %s of opening order %s closed against close order %s, "
+            "which was recorded unmatched earlier; %s shares of that close remain unmatched "
+            "(ingress=%s)",
+            match.get("qty"), match.get("symbol"), match.get("opening_order_id"),
+            match.get("close_order_id"), match.get("close_unmatched_qty"), ingress,
+            owner=match.get("owner"),
+            price=match.get("price"),
+            realized_pnl=match.get("realized_pnl"),
+            close_status=match.get("close_status"),
+        )
+    discrepancy = (accounting or {}).get("lot_discrepancy")
+    if not discrepancy:
+        return
+    logger.critical(
+        "LOT ACCOUNTING DISCREPANCY: broker-confirmed %s fill of %s %s persisted for order %s, "
+        "but %s shares matched no open %s lots for owner %s; recorded in "
+        "orders.attributes.lot_accounting for repair (ingress=%s)",
+        discrepancy.get("side"), discrepancy.get("fill_qty"), discrepancy.get("symbol"),
+        discrepancy.get("order_id"), discrepancy.get("unmatched_qty"),
+        discrepancy.get("position_side"), discrepancy.get("owner"), ingress,
+        reason=discrepancy.get("reason"),
+        execution_id=discrepancy.get("execution_id"),
+    )
 
 
 async def apply_incremental_fill_accounting(
@@ -229,7 +570,11 @@ async def apply_incremental_fill_accounting(
 
     Alpaca reports cumulative ``filled_qty``.  This helper is intentionally
     side-effect-free for duplicate/stale updates and records exactly the
-    delta that has not already been represented by execution rows.
+    delta that has not already been represented by execution rows. A close
+    whose owner has no (or too few) open lots still records its execution and
+    any matched lots; the unmatched remainder is returned as ``lot_discrepancy``.
+    A new opening lot is first netted against earlier-recorded unmatched closes
+    it precedes (``lot_late_matches``).
     """
     if status not in ("filled", "partially_filled", "canceled", "cancelled", "expired"):
         return {"applied": False, "reason": "non_fill_status"}
@@ -323,8 +668,10 @@ async def apply_incremental_fill_accounting(
     user_id = _order_user_id(order)
 
     realized = []
+    unmatched = Decimal("0")
+    late_matches: list[dict[str, Any]] = []
     if action == "open_long":
-        await lot_tracker.create_lot(
+        lot = await lot_tracker.create_lot(
             user_id=user_id,
             symbol=order.symbol,
             qty=incremental,
@@ -333,8 +680,12 @@ async def apply_incremental_fill_accounting(
             open_date=fill_dt,
         )
         position_side = "long"
+        late_matches = await _net_recorded_unmatched_closes(
+            session, lot=lot, opening=order, user_id=user_id,
+            close_side="sell", position_side=position_side,
+        )
     elif action == "close_long":
-        realized = await _close_position_lots_fifo(
+        realized, unmatched = await _close_position_lots_fifo(
             session,
             user_id=user_id,
             symbol=order.symbol,
@@ -344,6 +695,7 @@ async def apply_incremental_fill_accounting(
             close_date=fill_dt,
             open_side="buy",
             position_side="long",
+            close_submitted_at=getattr(order, "submitted_at", None),
         )
         position_side = "long"
     elif action == "open_short":
@@ -358,9 +710,14 @@ async def apply_incremental_fill_accounting(
             status="open",
         )
         session.add(lot)
+        await session.flush()
         position_side = "short"
+        late_matches = await _net_recorded_unmatched_closes(
+            session, lot=lot, opening=order, user_id=user_id,
+            close_side="buy", position_side=position_side,
+        )
     elif action == "close_short":
-        realized = await _close_position_lots_fifo(
+        realized, unmatched = await _close_position_lots_fifo(
             session,
             user_id=user_id,
             symbol=order.symbol,
@@ -370,13 +727,14 @@ async def apply_incremental_fill_accounting(
             close_date=fill_dt,
             open_side="sell",
             position_side="short",
+            close_submitted_at=getattr(order, "submitted_at", None),
         )
         position_side = "short"
     else:
         return {"applied": False, "reason": f"unsupported_action:{action}"}
 
     await session.flush()
-    return {
+    outcome = {
         "applied": True,
         "side": side,
         "action": action,
@@ -390,6 +748,24 @@ async def apply_incremental_fill_accounting(
         "existing_execution_qty": str(existing_execution_qty),
         "cumulative_filled_qty": str(cumulative),
     }
+    if unmatched > 0:
+        outcome["lot_discrepancy"] = {
+            "status": "unmatched",
+            "reason": "no_open_lots" if unmatched == incremental else "insufficient_open_lots",
+            "order_id": str(order.id),
+            "symbol": str(order.symbol),
+            "side": side,
+            "owner": user_id,
+            "position_side": position_side,
+            "fill_qty": str(incremental),
+            "matched_qty": str(incremental - unmatched),
+            "unmatched_qty": str(unmatched),
+            "fill_price": str(price),
+            "execution_id": str(execution.id),
+        }
+    if late_matches:
+        outcome["lot_late_matches"] = late_matches
+    return outcome
 
 
 async def apply_order_fill_snapshot(
@@ -408,6 +784,16 @@ async def apply_order_fill_snapshot(
     must roll back the complete transaction and remain retryable. Unsupported
     same-quantity cash corrections are explicit reconciliation errors, never
     silent changes to lots that may already have realized outcomes.
+
+    Audit 2026-10-05 C07-01: a close with no (or too few) open lots for its
+    owner is not a failure. Broker truth (status, filled quantity, price and
+    execution) is staged with any matched lots, and the remainder is recorded
+    in ``attributes.lot_accounting`` for repair. A close that outran an
+    earlier opening recovery can still settle is deferred instead
+    (LotAccountingDeferred), and an opening lot ingested after its close was
+    recorded is netted against that record. The result carries
+    ``lot_discrepancy`` and ``lot_late_matches``; callers report them with
+    log_lot_accounting_discrepancy() after their commit.
     """
     from backend.infra.schemas import Execution, Order
 
@@ -464,12 +850,18 @@ async def apply_order_fill_snapshot(
     price = _decimal_or_none(avg_fill_price)
     if quantity > 0 and (price is None or not price.is_finite() or price <= 0):
         raise ValueError("Invalid broker cumulative price")
+    discrepancy = accounting.get("lot_discrepancy")
     await OrdersRepo(session).attach_broker_result(
         current.id,
         broker_order_id=broker_order_id,
         status=status,
         filled_qty=quantity,
         avg_fill_price=price if quantity > 0 else None,
+        attributes=(
+            {"lot_accounting": _lot_accounting_record(current, discrepancy)}
+            if discrepancy
+            else None
+        ),
     )
     if accounting["applied"] and accounting["side"] == "sell":
         # YY-2: ORDER_FILLED remains durable in the same accounting transaction.
@@ -974,6 +1366,7 @@ class AlpacaStreamClient:
                     broker_order_id=broker_order_id, broker_order_data=order_data,
                 )
                 await session.commit()
+                log_lot_accounting_discrepancy(accounting, ingress="trade_update_stream")
                 internal_status = accounting["status"]
                 if accounting.get("reason") == "stale_snapshot":
                     return
@@ -1199,6 +1592,9 @@ class AlpacaStreamClient:
                                     broker_order_data=broker_data,
                                 )
                                 await session.commit()
+                                log_lot_accounting_discrepancy(
+                                    accounting, ingress="reconnect_gap_fill"
+                                )
                                 broker_status = accounting["status"]
                                 if accounting.get("reason") != "stale_snapshot":
                                     reconciled += 1
