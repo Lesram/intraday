@@ -848,6 +848,7 @@ class OutboxWorker:
                     for key, value in (details or {}).items()
                     if key not in {"filled_qty", "avg_fill_price"}
                 }
+                snapshot_accounting = None
                 if details and (details.get("broker") == "alpaca" or "alpaca_response" in details):
                     from backend.integrations.alpaca_stream import apply_order_fill_snapshot
                     from backend.services.order_recovery_service import (
@@ -887,6 +888,7 @@ class OutboxWorker:
                         logger.info("Ignored stale broker acknowledgement", order_id=order_id)
                         return
                     status = accounting["status"]
+                    snapshot_accounting = accounting
                     await order_repo.attach_broker_result(
                         order_uuid,
                         attributes=update_attributes or None,
@@ -955,6 +957,12 @@ class OutboxWorker:
                     )
 
                 await session.commit()
+                if snapshot_accounting is not None:
+                    from backend.integrations.alpaca_stream import log_lot_accounting_discrepancy
+
+                    log_lot_accounting_discrepancy(
+                        snapshot_accounting, ingress="outbox_acknowledgement"
+                    )
 
                 logger.info(
                     "Order status updated successfully via ORM",

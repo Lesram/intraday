@@ -23,6 +23,19 @@ logger = get_structured_logger(__name__)
 # positions nor conserved summary quantities can prove replacement cash flows.
 ACCOUNTABLE_TERMINAL_STATUSES = frozenset({"filled", "canceled", "cancelled", "expired", "rejected"})
 REPLACEMENT_PENDING_REASON = "replacement_lineage_unverified"
+AMBIGUOUS_ORDER_REASON_PREFIX = "ambiguous_order:"
+
+# Audit 2026-10-05 C08-01: an unresolved or replaced order can only change an
+# identified lifetime while it can still execute at the broker. Session-bounded
+# orders, and orders the broker never acknowledged (no broker order id: they
+# can only start working through a later outbox delivery, which persists the
+# broker id and touches updated_at), stop working at the extended-hours close
+# of their eligible NYSE session. Acknowledged GTC/other/unknown-TIF orders stay
+# conservative: they block until a terminal status is ingested.
+SESSION_BOUNDED_TIFS = frozenset({"day", "ioc", "fok", "opg", "cls"})
+# Broker cancellation latency and DB/broker clock skew after the session end.
+SESSION_END_SLACK = timedelta(hours=1)
+_SESSION_SEARCH_DAYS = 14
 
 
 def _replacement_pending(meta: dict[str, Any]) -> None:
@@ -30,6 +43,62 @@ def _replacement_pending(meta: dict[str, Any]) -> None:
     pending = meta.get("pending_close")
     if isinstance(pending, dict):
         pending["accounting_hold_reason"] = REPLACEMENT_PENDING_REASON
+
+
+def _as_utc(value: datetime) -> datetime:
+    # PostgreSQL returns aware values; SQLite fixtures can return naive UTC.
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _eligible_session_end(moment: datetime) -> datetime | None:
+    """Last instant an order entered (or last touched) at ``moment`` can work.
+
+    Orders entered after the regular close, overnight, on weekends or on
+    holidays queue for the next session, so the eligible session is the first
+    NYSE trading day whose regular close (early closes included) is after
+    ``moment``. Extended-hours DAY orders can work until 20:00 ET that day.
+    """
+    from backend.utils.market_hours import ET, EXTENDED_CLOSE, is_trading_day, market_close_time
+
+    local = _as_utc(moment).astimezone(ET)
+    day = local.date()
+    for _ in range(_SESSION_SEARCH_DAYS):
+        if is_trading_day(day) and local < datetime.combine(day, market_close_time(day), tzinfo=ET):
+            return datetime.combine(day, EXTENDED_CLOSE, tzinfo=ET).astimezone(UTC)
+        day += timedelta(days=1)
+    return None
+
+
+def _order_may_affect_lifetime(row: Any, entry_time: datetime) -> bool:
+    """Fail closed unless the order provably stopped working before the entry.
+
+    An acknowledged order's session follows the latest of submitted_at and
+    updated_at: a delayed delivery is acknowledged (and touched) later, never
+    earlier. A never-acknowledged order is delivered at submission; a later
+    touch (e.g. remediation marking a dead letter 'failed') cannot revive it.
+    """
+    try:
+        submitted = _as_utc(row["submitted_at"])
+        if str(row["broker_order_id"] or "").strip():
+            if str(row["tif"] or "").strip().lower() not in SESSION_BOUNDED_TIFS:
+                return True
+            basis = max(submitted, _as_utc(row["updated_at"] or submitted))
+        else:
+            basis = submitted
+        session_end = _eligible_session_end(basis)
+        return session_end is None or session_end + SESSION_END_SLACK >= _as_utc(entry_time)
+    except (KeyError, TypeError, ValueError, AttributeError, OverflowError):
+        return True
+
+
+def _hold_close(meta: dict[str, Any], symbol: str, reason: str) -> None:
+    """Name the blocking evidence in pending status; warn once per reason."""
+    pending = meta.get("pending_close")
+    if isinstance(pending, dict):
+        if pending.get("accounting_hold_reason") == reason:
+            return
+        pending["accounting_hold_reason"] = reason
+    logger.warning("Exact close accounting for %s held: %s", symbol, reason)
 
 
 @dataclass(frozen=True)
@@ -193,9 +262,14 @@ class _FillLookupMixin:
     ) -> ClosedPositionFills | None:
         """Read all confirmed fill legs for an identified, closed position.
 
-        Read-only, bounded to the DB entry timestamp and this reconciliation
-        time. Unknown identity, incomplete quantities or DB failure leaves the
-        strategy close pending; no stored order/corpus is edited.
+        Read-only. Fill legs are bounded to the DB entry timestamp and this
+        reconciliation time. Unresolved and replaced orders (including
+        pre-entry ones) block exact accounting only while they could still
+        execute during this lifetime (``_order_may_affect_lifetime``); stale
+        history no longer holds every later close of the symbol. The blocking
+        row is named in ``pending_close.accounting_hold_reason``. Unknown
+        identity, incomplete quantities or DB failure leaves the strategy close
+        pending; no stored order/corpus is edited.
         """
         if not self._sessionmaker or meta.get("entry_source") == "reconciliation_orphan":
             return None
@@ -205,7 +279,7 @@ class _FillLookupMixin:
         except (ValueError, TypeError):
             return None
         try:
-            from sqlalchemy import func, or_, select
+            from sqlalchemy import func, select
             from backend.infra.schemas import Order
 
             async with self._sessionmaker() as session:
@@ -215,32 +289,48 @@ class _FillLookupMixin:
                 entry_time = (await session.execute(anchor_stmt)).scalar_one_or_none()
                 if entry_time is None:
                     return None
+                pending = meta.get("pending_close")
                 # A replaced predecessor can hide a missing/active successor,
-                # including an older order that can affect this lifetime. Keep
-                # the existing conservative scope but make the hold actionable.
-                replacement_stmt = select(Order.id).where(
+                # and an older active order can still execute during this
+                # lifetime. Either holds the close only while it can still work
+                # at the broker after the entry (C08-01: a dead-lettered April
+                # row must not make every later close of the symbol pending).
+                unresolved_stmt = select(
+                    Order.id, Order.status, Order.tif, Order.submitted_at,
+                    Order.updated_at, Order.broker_order_id,
+                ).where(
                     Order.symbol == symbol, Order.submitted_at <= closed_at,
-                    func.lower(Order.status) == "replaced",
-                ).limit(1)
-                if (await session.execute(replacement_stmt)).scalar_one_or_none() is not None:
+                    func.lower(Order.status).not_in(ACCOUNTABLE_TERMINAL_STATUSES),
+                ).order_by(Order.submitted_at.desc(), Order.id)
+                live = [
+                    row for row in (await session.execute(unresolved_stmt)).mappings().all()
+                    if _order_may_affect_lifetime(row, entry_time)
+                ]
+                replaced = next((row for row in live if str(row["status"]).lower() == "replaced"), None)
+                if replaced is not None:
+                    if not (isinstance(pending, dict)
+                            and pending.get("accounting_hold_reason") == REPLACEMENT_PENDING_REASON):
+                        logger.warning("Exact close accounting for %s held: %s (order %s)",
+                                       symbol, REPLACEMENT_PENDING_REASON, replaced["id"])
                     _replacement_pending(meta)
                     return None
-                pending = meta.get("pending_close")
                 if isinstance(pending, dict) and pending.get("accounting_hold_reason") == REPLACEMENT_PENDING_REASON:
                     pending.pop("accounting_hold_reason", None)
-                # A pre-entry order can still execute during this lifetime.
-                # Reject older active orders and older fills updated since
-                # entry: their attribution cannot be established here.
-                ambiguous_stmt = select(Order.id).where(
+                # Older fills updated since entry: their attribution cannot be
+                # established here (unchanged, deliberately unbounded).
+                late_fill_stmt = select(Order.id).where(
                     Order.symbol == symbol, Order.submitted_at <= closed_at,
-                    or_(
-                        func.lower(Order.status).not_in(ACCOUNTABLE_TERMINAL_STATUSES),
-                        (Order.submitted_at < entry_time)
-                        & (Order.filled_qty > 0) & (Order.updated_at >= entry_time),
-                    ),
+                    Order.submitted_at < entry_time, Order.filled_qty > 0,
+                    Order.updated_at >= entry_time,
                 ).limit(1)
-                if (await session.execute(ambiguous_stmt)).scalar_one_or_none() is not None:
+                blocker = live[0]["id"] if live else (
+                    await session.execute(late_fill_stmt)).scalar_one_or_none()
+                if blocker is not None:
+                    _hold_close(meta, symbol, f"{AMBIGUOUS_ORDER_REASON_PREFIX}{blocker}")
                     return None
+                if isinstance(pending, dict) and str(
+                        pending.get("accounting_hold_reason") or "").startswith(AMBIGUOUS_ORDER_REASON_PREFIX):
+                    pending.pop("accounting_hold_reason", None)
                 stmt = select(
                     Order.id, Order.symbol, Order.side, Order.qty, Order.filled_qty,
                     Order.avg_fill_price, Order.status, Order.submitted_at,
@@ -260,7 +350,7 @@ class _FillLookupMixin:
                     logger.warning("Complete position fill accounting unavailable for %s", symbol)
                 return result
         except Exception as exc:  # noqa: BLE001 — preserve best-effort reconciliation on DB failures
-            logger.debug("Closed-position fill lookup failed for %s: %s", symbol, exc)
+            logger.warning("Closed-position fill lookup failed for %s: %s", symbol, exc)
             return None
 
     async def _lookup_entry_fill_from_db(

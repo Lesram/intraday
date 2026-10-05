@@ -158,3 +158,41 @@ that no intervening candidate trading occurred. The original six decision-source
 groups, strategy/feed/exit configuration and historical ledger remain unchanged.
 This addendum records the repair contract; actual corrected runtime acceptance
 and natural-session evidence are still pending.
+
+## October 5 close-accounting unblock (audit C08-01, C07-01)
+
+Exact-fills-or-pending is unchanged; two defects that made it permanent are
+repaired outside the frozen surface (`backend/organism/live_engine_fills.py`,
+`backend/integrations/alpaca_stream.py` and its five ingress callers).
+
+An unresolved or `replaced` order, including one submitted before the entry,
+holds a close only while it could still execute during that lifetime. DAY,
+IOC, FOK, OPG and CLS orders, and any order the broker never acknowledged (no
+broker order id), stop working at 20:00 ET of their eligible NYSE session, plus
+one hour of slack: the first trading day whose regular close (early closes
+included) follows the submission, or for an acknowledged order the later of
+its submission and last update (a delayed delivery is acknowledged later). A
+later touch of a never-acknowledged row, such as a remediation status, does
+not revive it. After-hours, weekend and holiday submissions therefore still
+hold the next session.
+Acknowledged GTC or unknown-TIF orders, in-lifetime rows and pre-entry fills
+recorded after the entry still hold as before. Old dead letters (for example
+the four April XLE rows marked `failed`) no longer hold every later close of
+the symbol. The hold names its evidence in `pending_close.accounting_hold_reason`
+(`ambiguous_order:<order id>` or `replacement_lineage_unverified`), with one
+WARNING per new reason. No historical row is rewritten.
+
+A broker-confirmed close fill whose owner has no, or too few, open lots is no
+longer rolled back. The order status, filled quantity, price and execution are
+committed together with any lots that do match (FIFO, owner-scoped as before).
+The remainder is recorded in `orders.attributes.lot_accounting`
+(`status=unmatched`, `repair=required`, cumulative matched/unmatched quantity),
+and one CRITICAL line is logged after the commit on every ingress: trade-update
+stream, persisted-order recovery, reconnect gap-fill, startup order sync and
+outbox acknowledgement. While an earlier same-owner opening order that the
+broker acknowledged is still unresolved and less than five days old, the close
+remains retryable as before (`LotAccountingDeferred`, nothing staged), so an
+out-of-order replay converges instead of leaving a phantom lot. Startup order
+sync applies its newest-first page oldest first for the same reason. Transient
+failures still roll back the whole order. Repairing recorded unmatched closes
+and owner-agnostic lot matching for the single broker account remain follow-ups.

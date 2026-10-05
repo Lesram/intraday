@@ -146,6 +146,7 @@ class OrderRecoveryService:
                                     continue
                                 from backend.integrations.alpaca_stream import (
                                     apply_order_fill_snapshot,
+                                    log_lot_accounting_discrepancy,
                                 )
 
                                 accounting = await apply_order_fill_snapshot(
@@ -158,6 +159,9 @@ class OrderRecoveryService:
                                     broker_order_data=data,
                                 )
                                 await session.commit()
+                                log_lot_accounting_discrepancy(
+                                    accounting, ingress="persisted_order_recovery"
+                                )
                             result["applied"] += int(accounting["applied"])
                             result["reconciled"] += 1
                             result["unresolved_in_pass"] += int(
