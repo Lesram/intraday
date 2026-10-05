@@ -1,13 +1,18 @@
 {
-  "task_id": "evidence-repair",
-  "summary": "fix: limit insufficient-qty finalization to exit sells (PR #36 review)",
-  "sha": "1c5be559653f39137180b696a90bba2ccd1ee01d",
-  "branch": "fix/outbox-dispatch-guards",
-  "change_scope": "task",
-  "change_ref": "HEAD",
+  "task_id": "audit-20261005-close-accounting-unblock",
+  "summary": "Audit 2026-10-05 C08-01/C07-01 close-accounting unblock on top of PR #36: unresolved/replaced orders (pre-entry included) hold an exact close only while they could still execute in the lifetime, with the blocking order named in pending_close.accounting_hold_reason, and the zero-fill cleanup scan is bounded to the observed close; a broker-confirmed close fill with no or too few owner lots is persisted with attributes.lot_accounting and one post-commit CRITICAL on all five fill paths (deferred only while an earlier acknowledged opening fill can still arrive)",
+  "sha": "3ca3dc3d63bb3175ff65d79c7a89f0aea8b1bca1",
+  "branch": "fix/close-accounting-unblock",
+  "change_scope": "base",
+  "change_ref": "27c29897...HEAD",
   "files_changed": [
-    "backend/integrations/alpaca_outbox.py",
-    "tests/test_audit_20261005_outbox_dispatch_guards.py"
+    "backend/api/lifespan.py",
+    "backend/infra/outbox_worker.py",
+    "backend/integrations/alpaca_stream.py",
+    "backend/organism/live_engine_fills.py",
+    "backend/services/order_recovery_service.py",
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
+    "tests/test_audit_20261005_close_accounting_unblock.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -27,11 +32,17 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/integrations/alpaca_outbox.py"
+    "backend/api/lifespan.py",
+    "backend/infra/outbox_worker.py",
+    "backend/integrations/alpaca_stream.py",
+    "backend/organism/live_engine_fills.py",
+    "backend/services/order_recovery_service.py"
   ],
-  "docs_updated": [],
+  "docs_updated": [
+    "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md"
+  ],
   "risks": [
-    "1 backend runtime file(s) changed \u2014 targeted verification required"
+    "1 organism file(s) changed \u2014 replay verification required"
   ],
   "follow_ups": [],
   "artifact_pack_status": "pass",
