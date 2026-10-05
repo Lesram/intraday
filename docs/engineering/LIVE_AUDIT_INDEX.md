@@ -1,40 +1,38 @@
 # Live Audit Index
 
-Generated: 2026-09-29T17:56:52Z
+Generated: 2026-10-01T18:09:35Z
 PR: n/a
-SHA: `e8e615375f`
-Branch: `codex/audit-20260929-stream-repair`
+SHA: `7053847349`
+Branch: `codex/audit-20260930-safety-release`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **6**
+Total distinct changed files: **4**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 2 | `backend/organism/live_engine.py`, `backend/organism/streaming_data_provider.py` |
-| Scripts | 1 | `scripts/phase2_freeze.py` |
+| Backend | 2 | `backend/infra/outbox_worker.py`, `backend/organism/live_engine.py` |
+| Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_stream_capacity_admission.py` |
-| Docs | 1 | `docs/runbooks/PAPER_UPTIME.md` |
+| Tests | 1 | `tests/test_audit_20260930_safety_release.py` |
+| Docs | 0 | none |
 | Artifacts/evidence | 1 | `artifacts/phase2/candidate_param_freeze.json` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **2** file(s).
+Organism subset of Backend: **1** file(s).
 
 ### Full changed-file list
 
 - `artifacts/phase2/candidate_param_freeze.json`
+- `backend/infra/outbox_worker.py`
 - `backend/organism/live_engine.py`
-- `backend/organism/streaming_data_provider.py`
-- `docs/runbooks/PAPER_UPTIME.md`
-- `scripts/phase2_freeze.py`
-- `tests/test_stream_capacity_admission.py`
+- `tests/test_audit_20260930_safety_release.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -75,4 +73,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 2 organism file(s) changed — require replay verification
+- 1 organism file(s) changed — require replay verification

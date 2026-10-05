@@ -116,15 +116,24 @@ def test_dd2_8_pure_breakout_gates_on_direction():
 
 
 def test_dd2_9_eod_flatten_upper_bounded_at_close():
-    """EOD flatten window must bracket [15:58, 16:00) ET, not [15:58, ∞)."""
+    """EOD flatten window must bracket [15:58, 16:00) ET, not [15:58, ∞).
+
+    Audit 2026-09-30 EXE-06: the window comes from _eod_session_phase, which
+    follows the session's close (early closes move it to [12:58, 13:00)).
+    """
+    import pandas as pd
     from backend.organism import live_engine
     src = inspect.getsource(live_engine)
-    # The window expression must include `< 1600` somewhere near the
-    # _eod_flatten_triggered = True assignment.
     idx = src.find("_eod_flatten_triggered = True")
     assert idx > 0, "Could not find EOD flatten trigger"
     window = src[max(0, idx - 200):idx + 100]
-    assert "1558 <= _hhmm_eod < 1600" in window, (
+    assert 'if _eod_phase == "flatten":' in window
+    phase = live_engine.OrganismLiveEngine._eod_session_phase
+    at = lambda stamp: pd.Timestamp(stamp, tz="America/New_York").to_pydatetime()
+    assert phase(at("2026-09-30 15:57")) == "late_block"
+    assert phase(at("2026-09-30 15:58")) == "flatten"
+    assert phase(at("2026-09-30 15:59")) == "flatten"
+    assert phase(at("2026-09-30 16:00")) == "post_close", (
         "DD2-9 regression: EOD flatten trigger is no longer upper-bounded "
         "at market close (16:00 ET). Stuck in retry loop past close."
     )

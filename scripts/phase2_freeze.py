@@ -114,6 +114,9 @@ def compute_surface() -> dict:
     from backend.organism import research_policy, research_baseline, trading_phase, background_trainer
     from backend.organism import governance, model_fingerprint, operator_controls
     from backend.organism import entry_evidence, entry_freshness
+    from backend.organism import live_engine
+    from backend.services import positions_service
+    from backend.utils import market_hours
     from backend.organism.self_evolution import apply_evolved_params
     from backend.organism.strategies.strategy_config import (
         REGIME_POLICY, STRATEGY_CONFIG,
@@ -193,6 +196,12 @@ def compute_surface() -> dict:
             "eod_escalation": _h(
                 inspect.getsource(OrganismLiveEngine._stage_post_close_escalation)
                 + inspect.getsource(OrganismLiveEngine._record_unflattened_positions)
+                # Audit 2026-09-30 EXE-06: the late-day phase boundaries and
+                # the NYSE calendar (holidays, early closes) they follow.
+                + inspect.getsource(OrganismLiveEngine._eod_session_phase)
+                + inspect.getsource(market_hours)
+                + repr((live_engine.EOD_LATE_ENTRY_BLOCK_MINUTES,
+                        live_engine.EOD_FLATTEN_WINDOW_MINUTES))
                 + inspect.getsource(OrganismLiveEngine._force_exit_overnight_stragglers)),
             # Pending identity must not disappear through a helper edit while
             # the top-level EOD dispatch hash remains unchanged.
@@ -201,7 +210,26 @@ def compute_surface() -> dict:
                 + inspect.getsource(OrganismLiveEngine._cancel_pending_entry_orders)
                 + inspect.getsource(OrganismLiveEngine._reconcile_pending_entry_orders)
                 + inspect.getsource(OrganismLiveEngine._confirm_pending_entry_orders)
-                + inspect.getsource(OrganismLiveEngine._check_tick_invariants)),
+                + inspect.getsource(OrganismLiveEngine._check_tick_invariants)
+                # Audit 2026-09-30 EXE-03: age escalation of unresolved identities.
+                + inspect.getsource(OrganismLiveEngine._track_pending_entry_ages)
+                + inspect.getsource(OrganismLiveEngine._pending_entry_escalate_after)
+                + inspect.getsource(OrganismLiveEngine._restore_pending_entry_since)),
+            # Audit 2026-09-30 EXE-05 / OPS-04: an unknown broker read blocks
+            # entries and holds sells; the daily-loss baseline survives restarts.
+            "broker_state_safety": _h(
+                inspect.getsource(OrganismLiveEngine._read_broker_positions)
+                + inspect.getsource(OrganismLiveEngine._positions_for_tick)
+                + inspect.getsource(OrganismLiveEngine._entry_positions_recheck)
+                + inspect.getsource(OrganismLiveEngine._clear_carried_daily_loss_halt)
+                + inspect.getsource(OrganismLiveEngine._ensure_daily_loss_baseline)
+                + inspect.getsource(positions_service.PositionsService.get_all_positions_strict)
+                + inspect.getsource(positions_service._position_dict)
+                + inspect.getsource(OrganismLiveEngine._submit_exit_order)
+                + inspect.getsource(OrganismLiveEngine._reconcile_fills)
+                + inspect.getsource(OrganismLiveEngine._reconstruct_position_state)
+                + inspect.getsource(OrganismLiveEngine._restore_daily_loss_baseline)
+                + inspect.getsource(OrganismLiveEngine._persist_daily_loss_state)),
         },
     }
     # Normalize to the JSON representation so on-disk vs in-memory compare cleanly.

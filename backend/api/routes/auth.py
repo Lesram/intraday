@@ -7,6 +7,7 @@ All endpoints use database-backed authentication with proper security measures.
 """
 
 import logging
+import os
 import re
 import time
 import uuid
@@ -603,7 +604,28 @@ async def get_current_user_info(
 # User Registration Endpoint
 # ============================================================================
 
-@router.post("/register", response_model=UserRegistrationResponse, status_code=status.HTTP_201_CREATED)
+def self_registration_enabled() -> bool:
+    """Audit 2026-09-30 SEC-04: self-registration is off unless explicitly enabled.
+
+    Set ``AUTH_ALLOW_SELF_REGISTRATION=true`` to allow it. Registered users get
+    only the ``user`` role, which cannot trade (orders, signals/act, position
+    mutations need ``trader`` or ``admin``).
+    """
+    value = os.environ.get("AUTH_ALLOW_SELF_REGISTRATION", "")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def require_self_registration() -> None:
+    """Route dependency: refuse before any user-store dependency is opened."""
+    if not self_registration_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Self-registration is disabled",
+        )
+
+
+@router.post("/register", response_model=UserRegistrationResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_self_registration)])
 async def register(
     request: UserRegistrationRequest,
     repo: UserRepository = Depends(get_user_repo)
@@ -624,7 +646,13 @@ async def register(
     Raises:
         HTTPException: 409 if email already exists
         HTTPException: 422 for validation errors
+        HTTPException: 403 when self-registration is disabled (the default)
     """
+    if not self_registration_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Self-registration is disabled",
+        )
     try:
         # Check if user already exists
         if hasattr(repo, "exists_by_email"):

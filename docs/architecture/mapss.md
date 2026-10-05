@@ -4,6 +4,73 @@
 
 ---
 
+## Candidate safety release (audit 2026-09-30) — NOT deployed
+
+Draft follow-up to the deployed PR #34 release. It needs Marsel's sign-off and a
+new activation, and it waits for PR #34's first natural-session acceptance. No
+strategy parameter, feed, risk threshold or sizing policy changes.
+
+- **Broker position reads (EXE-05).** A failed read is UNKNOWN, never flat.
+  `PositionsService.get_all_positions_strict()` raises `PositionReadError`; the
+  legacy `get_all_positions()` still returns `{}` for display callers. On an
+  unknown tick read the engine blocks new entries (`broker_positions_unknown`,
+  a watchdog fault class) and keeps held names from the last confirmed
+  snapshot subscribed. Position management sees no positions, exactly as
+  before the change: no exit, flatten or overnight forced exit runs from a
+  stale snapshot, so no exit cooldown is armed and the first answered tick
+  acts. Fill reconciliation is skipped (no close is inferred). Any exit call
+  made while unknown re-reads once and is held if the broker still does not
+  answer (either side). The pre-order re-check submits nothing while unknown.
+  Startup keeps entry metadata and skips reconstruction. Six consecutive
+  unknown ticks raise one CRITICAL; an unknown read after the close with no
+  confirmed snapshot raises `POST-CLOSE FLATNESS UNVERIFIED` once per day.
+  Exit attribution is recorded only once the guard lets an exit through.
+- **Late-day thresholds (EXE-06).** Entry block, flatten window and post-close
+  escalation follow `market_close_time()` from the NYSE calendar: close-15 min
+  (`EOD_LATE_ENTRY_BLOCK_MINUTES`), the last 2 minutes
+  (`EOD_FLATTEN_WINDOW_MINUTES`), at/after close. A normal day is unchanged
+  (15:45 / 15:58 / 16:00); early-close days (13:00 ET, e.g. 2026-11-27,
+  2026-12-24) move all three. The next-session forced exit window ends where
+  the flatten window starts.
+- **Daily-loss baseline (OPS-04).** `daily_starting_equity` and `daily_loss_halt`
+  persist under their own `daily_loss_session_date` (brain save plus an
+  immediate atomic write on the session roll or a halt; the immediate write
+  never touches `daily_session_date`, which gates other session keys). A
+  same-day restart restores them without a roll and re-applies the governance
+  halt if one was recorded. A halt records its own `daily_loss_halt_session`;
+  a halt from an earlier session is carried over (through any number of
+  restarts) and cleared on the new session's first tick, even when the session
+  date was restored from the close-accounting checkpoint. If the session date
+  is known but no baseline exists, the tick takes the baseline at current
+  equity instead of measuring against zero (CRITICAL after the open, when the
+  day's earlier loss cannot be seen).
+- **Pending entries (EXE-03).** Still never retired by time. Each unresolved
+  identity is aged by wall clock (first-seen time persisted across restarts)
+  and raises one CRITICAL once it is older than the larger of 30 minutes and
+  twice the filled-entry cooldown in wall-clock time (`_PENDING_ENTRY_TICKS` ×
+  `ORGANISM_TICK_INTERVAL_SECONDS`); `status.pending_entries` shows ages.
+- **Dead-lettered orders (EXE-04).** A dead-lettered sell (exit) or an
+  ambiguous submission logs CRITICAL with symbol, side, qty and client key.
+  Client-key reconciliation of the order row is unchanged.
+- **API (SEC-03, SEC-04).** `/signals/act`, `/positions/{symbol}/close` and
+  `/positions/import` need `trader` or `admin`. Self-registration is refused
+  unless `AUTH_ALLOW_SELF_REGISTRATION=true`.
+- **Runtime identity (CFG-01).** `runtime_config_hash` also covers
+  `SCANNER_ENABLED`, `ORGANISM_STREAM_MAX_SYMBOLS`,
+  `ORGANISM_STREAM_CRITICAL_SYMBOLS`, `ORGANISM_SCANNER_WINDOW_MAX` and
+  `ORGANISM_SCANNER_WINDOW_TTL_SCANS`, so the hash changes at this release.
+- **Freeze.** Changed keys versus the PR #34 candidate surface (installed as the
+  host's active freeze on 2026-09-30; the committed `param_freeze.json` is older):
+  `source_hashes.entry_gates_dispatch`,
+  `data_pipeline_sources.streaming_universe_initialization`,
+  `research_policy_sources.{startup, eod_escalation, pending_entry_lifecycle}`
+  and the new `research_policy_sources.broker_state_safety` (strict read,
+  exit submission, fill reconciliation, position reconstruction, daily-loss
+  restore and persistence). `eod_escalation` now also pins the NYSE calendar
+  module and the late-day minute constants.
+
+---
+
 ## Approved operational correctness repairs (candidate 2026-09-27)
 
 Marsel explicitly approved the five audited frozen repairs and a new forward

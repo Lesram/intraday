@@ -51,6 +51,18 @@ Notifications contain a count and a request to inspect application logs. The
 watchdog retains only hashes, counts, and timestamps from those events; it does
 not copy private alert payloads into its report.
 
+Engine events that page through this scan (candidate safety release, audit
+2026-09-30; not deployed until activated): `BROKER POSITIONS UNKNOWN` after six
+consecutive ticks whose broker position read failed (entries blocked; no exit
+runs from a stale snapshot until the broker answers), `POST-CLOSE FLATNESS
+UNVERIFIED` when that read fails after the close with no confirmed snapshot,
+`PENDING ENTRY UNRESOLVED` once per pending entry identity older than the
+larger of 30 minutes and twice the filled-entry cooldown, `DAILY LOSS BASELINE
+MISSING` when a restart after the open cannot restore the day's loss baseline,
+and `EXIT ORDER DEAD-LETTERED` or `ORDER SUBMISSION AMBIGUOUS` from
+the order outbox. Each needs an operator to reconcile against the broker; none
+triggers recovery.
+
 Undelivered counts survive notification and log-read failures and are retried
 on later runs. The first scan covers the previous 15 minutes; subsequent scans
 use the last successful cursor. Each scan is limited to 1,000 lines and 256 KiB
@@ -123,7 +135,7 @@ weekdays 09:40-15:50 ET if unavailable), a run whose engine is blocked by a
 **fault** extends a streak persisted as `trading_liveness` in the status file.
 Faults are `data_stale`, `stale_data`, `stream_subscription_sync`,
 `insufficient_data`, `equity_zero`, `unclassified` and any reason not listed
-below; a failed stream sync or zero admitted non-benchmark symbols in
+below (for example `broker_positions_unknown` from the candidate safety release); a failed stream sync or zero admitted non-benchmark symbols in
 `status.stream_admission` counts as a fault even when a policy reason is shown.
 **Risk halts** (`daily_max_loss`, `drawdown_kill`, `governance_halt`) extend the
 same streak. Three consecutive such runs (about 15 minutes) add
