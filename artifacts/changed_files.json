@@ -1,22 +1,17 @@
 {
   "scope": "task",
   "ref": "HEAD",
-  "total": 4,
+  "total": 2,
   "all": [
-    "artifacts/phase2/candidate_param_freeze.json",
-    "backend/infra/outbox_worker.py",
-    "backend/organism/live_engine.py",
-    "tests/test_audit_20260930_safety_release.py"
+    "backend/integrations/alpaca_outbox.py",
+    "tests/test_audit_20261005_outbox_dispatch_guards.py"
   ],
   "backend": [
-    "backend/infra/outbox_worker.py",
-    "backend/organism/live_engine.py"
+    "backend/integrations/alpaca_outbox.py"
   ],
-  "organism": [
-    "backend/organism/live_engine.py"
-  ],
+  "organism": [],
   "tests": [
-    "tests/test_audit_20260930_safety_release.py"
+    "tests/test_audit_20261005_outbox_dispatch_guards.py"
   ],
   "config": [],
   "docs": []

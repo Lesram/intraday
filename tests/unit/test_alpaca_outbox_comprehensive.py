@@ -530,14 +530,21 @@ class TestAlpacaOutboxDispatcherAlpacaBroker:
             
             mock_broker_client = AsyncMock()
             mock_broker_client.place_order.return_value = {"id": "456", "status": "new"}
+            # Audit 2026-10-05 C01-01: under long-only a sell is an exit, so the
+            # dispatcher first looks the client key up (not at the broker) and
+            # reads the position (25 free long shares) before sending.
+            mock_broker_client.find_order_by_client_order_id.return_value = None
+            mock_broker_client.get_position.return_value = {
+                "symbol": "TSLA", "qty": "25", "qty_available": "25", "side": "long",
+            }
             mock_broker.return_value = mock_broker_client
-            
+
             from backend.integrations.alpaca_outbox import AlpacaOutboxDispatcher
-            
+
             dispatcher = AlpacaOutboxDispatcher()
-            
+
             await dispatcher._dispatch_to_alpaca_broker(stop_order)
-            
+
             call_kwargs = mock_broker_client.place_order.call_args[1]
             assert call_kwargs["type"] == "stop"
             assert call_kwargs["stop_price"] == 200.00

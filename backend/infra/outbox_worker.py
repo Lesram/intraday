@@ -459,6 +459,16 @@ class OutboxWorker:
                     else:
                         await self._handle_event_failure(event, result)
                     return
+                if result.get("dispatch_refused"):
+                    # Audit 2026-10-05 C01-01: the exit guard (or the broker)
+                    # refused the order definitively; never retried.
+                    await self._finalize_refused_dispatch(event, result)
+                    return
+                if result.get("retryable"):
+                    # The exit guard could not confirm the order is safe to
+                    # send, so nothing was sent: retry it, whatever the text.
+                    await self._handle_event_failure(event, result)
+                    return
                 # Check if this is a validation error that should not be retried
                 error_msg = result.get("error", "")
                 is_validation_error = (
@@ -1146,6 +1156,140 @@ class OutboxWorker:
             logger.error("Failed to move event to DLQ",
                         event_id=event_id,
                         error=str(e))
+
+    async def _finalize_refused_dispatch(self, event: dict[str, Any], result: dict[str, Any]):
+        """Audit 2026-10-05 C01-01: record an exit that was refused at dispatch.
+
+        The dispatcher refuses only once the persisted client key is not found
+        at the broker, or when the broker rejected the order outright, so the
+        order is not live. In one transaction the order row becomes 'rejected'
+        (an accountable terminal status) with the reason in
+        ``attributes.dispatch_refusal``, and the event is dead-lettered without
+        retry. A row that already shows broker evidence (a broker id or fills)
+        or a terminal status is left as it is. The CRITICAL page follows the
+        commit; if the commit fails the error propagates and the event is
+        retried, which repeats the guard.
+        """
+        import uuid
+
+        from sqlalchemy import select
+
+        from backend.infra.outbox import OutboxRepo
+        from backend.infra.repositories.orders import OrdersRepo
+        from backend.infra.schemas import Order
+
+        event_id = event.get("id")
+        payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        if isinstance(payload.get("payload"), dict):
+            payload = {**payload, **payload["payload"]}
+        order_id = result.get("order_id") or payload.get("order_id")
+        status = _REFUSED_ORDER_STATUS
+        reason = str(result.get("refusal_reason") or "dispatch_refused")
+        detail = str(result.get("refusal_detail") or result.get("error") or reason)
+        error_message = str(result.get("error") or f"DISPATCH_REFUSED:{reason}")
+        record = {
+            "reason": reason,
+            "detail": detail[:500],
+            "intent": result.get("intent"),
+            "outbox_event_id": event_id,
+            "refused_at": datetime.now(UTC).isoformat(),
+        }
+        outcome = "order_row_missing"
+
+        async with self.sessionmaker() as session:
+            try:
+                try:
+                    order_uuid = uuid.UUID(str(order_id))
+                except (TypeError, ValueError):
+                    order_uuid = None
+                row = None
+                if order_uuid is not None:
+                    row = (
+                        await session.execute(
+                            select(Order)
+                            .where(Order.id == order_uuid)
+                            .with_for_update()
+                            .execution_options(populate_existing=True)
+                        )
+                    ).scalar_one_or_none()
+                if row is not None:
+                    if row.broker_order_id or Decimal(str(row.filled_qty or 0)) != 0:
+                        outcome = "order_row_has_broker_evidence"
+                    elif str(row.status or "").lower() in _TERMINAL_ORDER_STATUSES:
+                        outcome = "order_row_already_terminal"
+                    else:
+                        await OrdersRepo(session).attach_broker_result(
+                            row.id,
+                            status=status,
+                            attributes={"dispatch_refusal": record},
+                        )
+                        outcome = f"order_marked_{status}"
+                await OutboxRepo(session).mark_failed(
+                    event_id=uuid.UUID(str(event_id)),
+                    attempts=event.get("retry_count", 0),
+                    error_message=error_message,
+                )
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+            finally:
+                await session.close()
+
+        message = _refusal_headline(reason, outcome) + ": " + detail + _OUTCOME_NOTES.get(outcome, "")
+        logger.critical(
+            message,
+            event_id=event_id,
+            order_id=order_id,
+            symbol=payload.get("symbol"),
+            side=payload.get("side"),
+            qty=payload.get("qty"),
+            client_key=payload.get("client_key"),
+            reason=reason,
+            order_status=status,
+            outcome=outcome,
+        )
+        try:
+            from backend.websocket import broadcaster
+            if broadcaster:
+                await broadcaster.broadcast_to_topic("orders", {
+                    "type": "order.rejected",
+                    "order_id": order_id or event_id,
+                    "symbol": payload.get("symbol"),
+                    "reason": error_message[:500],
+                    "event_id": event_id,
+                })
+        except Exception as ws_err:  # noqa: BLE001 - the notice is best-effort
+            logger.debug("WebSocket notification failed (non-critical)", error=str(ws_err))
+
+
+# Audit 2026-10-05 C01-01: a refused exit's row status, and the statuses a
+# refusal never overwrites.
+_REFUSED_ORDER_STATUS = "rejected"
+_TERMINAL_ORDER_STATUSES = frozenset({
+    "filled", "canceled", "cancelled", "expired", "rejected", "replaced", "failed",
+})
+_OUTCOME_NOTES = {
+    "order_row_already_terminal": " (order row was already terminal and is unchanged)",
+    "order_row_missing": " (no order row found for this event)",
+}
+
+
+def _refusal_headline(reason: str, outcome: str) -> str:
+    """CRITICAL headline for a refused exit (the watchdog pages on CRITICAL).
+
+    A duplicate exit (position already flat, normally because an earlier exit
+    filled) reads differently from refusals where shares or a short position
+    remain, so an operator can tell "already done" from "needs a look".
+    """
+    if outcome == "order_row_has_broker_evidence":
+        return ("EXIT REFUSAL CONFLICTS WITH BROKER EVIDENCE, order row left unchanged: "
+                "reconcile it against the broker")
+    if reason == "exit_position_flat":
+        return "DUPLICATE EXIT SUPPRESSED AT DISPATCH, not sent (position already flat)"
+    if reason == "broker_rejected_insufficient_qty":
+        return "ORDER REJECTED BY BROKER (insufficient qty), not retried"
+    return "EXIT ORDER REFUSED AT DISPATCH, not sent"
 
 
 def dlq_exposure_alert(event: dict[str, Any], error_result: dict[str, Any]) -> dict[str, Any] | None:

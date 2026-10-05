@@ -4,6 +4,55 @@
 
 ---
 
+## Candidate outbox exit guard (audit 2026-10-05) — NOT deployed
+
+Stacked on the 2026-09-30 candidate below (PR #35). Order path only: no strategy
+parameter, feed, risk threshold, sizing policy, entry behaviour or frozen-surface
+source changes (`scripts/phase2_freeze.py --verify --candidate` passes unchanged).
+Entries are dispatched exactly as before; the entry age/session refusal (C01-04)
+is deferred until it can ship with the sign-off-gated pending-entry release
+(C04-01).
+
+- **Exit sells cannot open a short at dispatch (C01-01).**
+  `OrderService.submit_symbol_order` writes `reduce_only` and `intent` (`exit` for
+  reduce-only orders, `entry` for the organism's other orders) into the outbox
+  payload. A sell is guarded when its intent is `exit`, when it is a
+  close-position route order (`attributes.close_position`), or when it declares
+  nothing (a manual order, or an event queued before this release) while
+  `ORGANISM_LONG_ONLY` is true (the default). A declared `entry` sell (the
+  strong-short path) is not guarded. Right before the POST the dispatcher (1)
+  looks the order up by its persisted client key: an order already at Alpaca is
+  attached and never re-sent; (2) reads the broker position and takes the free
+  long quantity (`qty_available`, else `qty`; zero when flat or short). If either
+  read fails, nothing is sent and the event is retried (after its retries it is
+  dead-lettered with the EXE-04 CRITICAL). If the free long quantity is below the
+  order quantity, the exit is refused, not clamped (a smaller order would no
+  longer match its order row): the row becomes `rejected` with
+  `attributes.dispatch_refusal`, the event is dead-lettered without retry in the
+  same transaction, and a CRITICAL follows the commit:
+  `DUPLICATE EXIT SUPPRESSED AT DISPATCH` when the position is already flat
+  (normally an earlier exit filled), `EXIT ORDER REFUSED AT DISPATCH` when shares
+  remain or the position is short. Alpaca's `insufficient qty` rejection is
+  terminal the same way (`ORDER REJECTED BY BROKER (insufficient qty)`) instead
+  of being retried into a short sale. Buy-to-cover exits, lookup-only
+  (ambiguous) events, shadow, dry_run and the mock broker are unchanged. What to
+  check on each CRITICAL: `docs/runbooks/PAPER_UPTIME.md`.
+- **Known limits.** Refusing rather than clamping means a full exit, the EOD
+  flatten or the max-loss safety net sent while an earlier partial exit still
+  holds shares is refused (Alpaca would reject it too); the remainder goes out on
+  the engine's next exit cycle. The guard narrows the duplicate-exit race but
+  does not close it: if Alpaca's position endpoint still shows shares that an
+  earlier sell has just filled, or a sell is placed outside the outbox worker
+  (for example manually at Alpaca) between the read and the POST, the POST can
+  still be accepted as a short sale (follow-up: evaluate
+  `DELETE /v2/positions/{symbol}?qty=N` for exits on paper). Each exit now makes
+  two extra broker reads (client-key lookup, position) before `place_order`'s own
+  pre-check; an outage of either endpoint holds queued exits, and one that lasts
+  through 15:58-16:00 leaves the position open until the next session's forced
+  exit.
+
+---
+
 ## Candidate safety release (audit 2026-09-30) — NOT deployed
 
 Draft follow-up to the deployed PR #34 release. It needs Marsel's sign-off and a
@@ -2775,8 +2824,13 @@ OUTBOX WORKER (background, 100ms poll):
   2. For each event:
      ├── Route by topic: "order.submitted" → broker dispatch
      ├── Shadow/dry_run/mock/real broker based on execution mode
-     ├── Success → mark_sent()
-     ├── Retryable failure → mark_retry() with backoff
+     ├── Real broker, before the POST of an exit sell (exit guard, audit 2026-10-05):
+     │     client-key lookup (found → attach) → broker position (qty_available) → send or refuse
+     │     (entries and buy-to-cover go straight to the POST, as before)
+     ├── Success (incl. an exit found at the broker by client key) → mark_sent()
+     ├── Refused exit, or Alpaca "insufficient qty" → order row rejected
+     │     + mark_failed() in one transaction, no retry, CRITICAL log after the commit
+     ├── Retryable failure (incl. a failed exit-guard read) → mark_retry() with backoff
      └── Max retries (5) or validation error → DLQ
   3. DLQ: mark_failed() + broadcast "order.rejected" via WebSocket
 ```
