@@ -1,7 +1,7 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/claude/venv312/bin/python
 cachedir: .pytest_cache
-rootdir: /home/claude/wt-safety
+rootdir: /home/claude/wt-fix-brain
 configfile: pytest.ini
 plugins: anyio-4.12.1, xdist-3.8.0, asyncio-1.3.0, timeout-2.4.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
@@ -44,90 +44,90 @@ tests/test_replay_simulator.py::test_replay_completes_100_ticks
   <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-- generated xml file: /home/claude/wt-safety/artifacts/replay_simulator.junit.xml -
+- generated xml file: /home/claude/wt-fix-brain/artifacts/replay_simulator.junit.xml -
 ============================== slowest durations ===============================
-117.79s call     tests/test_replay_simulator.py::test_replay_no_throttle_blocking
-117.59s call     tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
-113.10s call     tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit
-110.71s call     tests/test_replay_simulator.py::test_replay_completes_100_ticks
-109.69s call     tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl
-51.14s call     tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
-50.48s call     tests/test_replay_simulator.py::test_replay_with_crash_data
-19.06s call     tests/test_replay_simulator.py::test_replay_regime_history_populated
-8.69s call     tests/test_replay_simulator.py::test_replay_equity_monotonic_start
+119.19s call     tests/test_replay_simulator.py::test_replay_no_throttle_blocking
+117.39s call     tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit
+116.79s call     tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+111.55s call     tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl
+109.73s call     tests/test_replay_simulator.py::test_replay_completes_100_ticks
+50.81s call     tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
+49.20s call     tests/test_replay_simulator.py::test_replay_with_crash_data
+19.31s call     tests/test_replay_simulator.py::test_replay_regime_history_populated
+9.25s call     tests/test_replay_simulator.py::test_replay_equity_monotonic_start
 0.01s call     tests/test_replay_simulator.py::test_from_csv_loads_correctly
-0.00s teardown tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl
-0.00s teardown tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
-0.00s teardown tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
-0.00s teardown tests/test_replay_simulator.py::test_replay_no_throttle_blocking
-0.00s teardown tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit
-0.00s teardown tests/test_replay_simulator.py::test_replay_completes_100_ticks
+0.00s teardown tests/test_replay_simulator.py::test_replay_equity_monotonic_start
 0.00s teardown tests/test_replay_simulator.py::test_replay_with_crash_data
 0.00s teardown tests/test_replay_simulator.py::test_replay_regime_history_populated
+0.00s teardown tests/test_replay_simulator.py::test_replay_no_throttle_blocking
+0.00s teardown tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit
+0.00s teardown tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
+0.00s teardown tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl
 0.00s call     tests/test_replay_simulator.py::test_make_price_df_trends
-0.00s teardown tests/test_replay_simulator.py::test_replay_equity_monotonic_start
+0.00s teardown tests/test_replay_simulator.py::test_replay_completes_100_ticks
+0.00s teardown tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
 0.00s call     tests/test_replay_simulator.py::test_replay_time_override_uses_bar_time
-0.00s setup    tests/test_replay_simulator.py::test_replay_equity_monotonic_start
-0.00s call     tests/test_replay_simulator.py::test_bar_provider_returns_correct_window
-0.00s call     tests/test_replay_simulator.py::test_bar_provider_advances_correctly
-0.00s call     tests/test_replay_simulator.py::test_bar_provider_lookback_200_gives_more_ticks
-0.00s call     tests/test_replay_simulator.py::test_replay_engine_constructor_does_not_pollute_replay_mode
-0.00s call     tests/test_replay_simulator.py::test_make_features_dict
-0.00s call     tests/test_replay_simulator.py::test_replay_seasonality_uses_bar_time
-0.00s setup    tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit
 0.00s call     tests/test_replay_simulator.py::test_replay_engine_intraday_default_lookback
-0.00s call     tests/test_replay_simulator.py::test_replay_engine_daily_default_lookback
-0.00s setup    tests/test_replay_simulator.py::test_replay_with_crash_data
+0.00s call     tests/test_replay_simulator.py::test_make_features_dict
+0.00s call     tests/test_replay_simulator.py::test_bar_provider_returns_correct_window
+0.00s call     tests/test_replay_simulator.py::test_replay_engine_constructor_does_not_pollute_replay_mode
+0.00s call     tests/test_replay_simulator.py::test_bar_provider_advances_correctly
+0.00s call     tests/test_replay_simulator.py::test_replay_seasonality_uses_bar_time
+0.00s setup    tests/test_replay_simulator.py::test_replay_regime_history_populated
 0.00s call     tests/test_replay_simulator.py::test_bar_provider_current_price
+0.00s call     tests/test_replay_simulator.py::test_replay_engine_custom_lookback
+0.00s call     tests/test_replay_simulator.py::test_replay_result_summary
+0.00s call     tests/test_replay_simulator.py::test_bar_provider_lookback_200_gives_more_ticks
+0.00s setup    tests/test_replay_simulator.py::test_replay_with_crash_data
+0.00s setup    tests/test_replay_simulator.py::test_replay_engine_custom_lookback
+0.00s setup    tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
 0.00s setup    tests/test_replay_simulator.py::test_simulated_broker_fills_correctly
 0.00s setup    tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops
-0.00s call     tests/test_replay_simulator.py::test_replay_engine_custom_lookback
-0.00s setup    tests/test_replay_simulator.py::test_replay_daily_timeframe_uses_wider_stops
-0.00s setup    tests/test_replay_simulator.py::test_replay_seasonality_uses_bar_time
-0.00s teardown tests/test_replay_simulator.py::test_replay_seasonality_uses_bar_time
-0.00s setup    tests/test_replay_simulator.py::test_replay_result_summary
+0.00s setup    tests/test_replay_simulator.py::test_replay_throttle_actually_blocks_at_low_limit
 0.00s setup    tests/test_replay_simulator.py::test_replay_trades_have_valid_pnl
-0.00s setup    tests/test_replay_simulator.py::test_replay_regime_history_populated
+0.00s setup    tests/test_replay_simulator.py::test_replay_no_throttle_blocking
+0.00s setup    tests/test_replay_simulator.py::test_replay_result_summary
+0.00s setup    tests/test_replay_simulator.py::test_replay_equity_monotonic_start
+0.00s call     tests/test_replay_simulator.py::test_bar_provider_exhaustion
+0.00s call     tests/test_replay_simulator.py::test_replay_engine_daily_default_lookback
+0.00s teardown tests/test_replay_simulator.py::test_from_csv_loads_correctly
+0.00s setup    tests/test_replay_simulator.py::test_replay_seasonality_uses_bar_time
 0.00s setup    tests/test_replay_simulator.py::test_replay_time_override_uses_bar_time
 0.00s call     tests/test_replay_simulator.py::test_simulated_broker_fills_correctly
-0.00s call     tests/test_replay_simulator.py::test_bar_provider_exhaustion
-0.00s call     tests/test_replay_simulator.py::test_replay_result_summary
+0.00s setup    tests/test_replay_simulator.py::test_replay_engine_intraday_default_lookback
+0.00s teardown tests/test_replay_simulator.py::test_replay_seasonality_uses_bar_time
 0.00s setup    tests/test_replay_simulator.py::test_replay_engine_constructor_does_not_pollute_replay_mode
-0.00s setup    tests/test_replay_simulator.py::test_from_csv_loads_correctly
 0.00s teardown tests/test_replay_simulator.py::test_simulated_broker_fills_correctly
-0.00s setup    tests/test_replay_simulator.py::test_replay_no_throttle_blocking
 0.00s setup    tests/test_replay_simulator.py::test_replay_completes_100_ticks
-0.00s teardown tests/test_replay_simulator.py::test_from_csv_loads_correctly
 0.00s setup    tests/test_replay_simulator.py::test_replay_slippage_applied
+0.00s setup    tests/test_replay_simulator.py::test_from_csv_loads_correctly
+0.00s call     tests/test_replay_simulator.py::test_replay_slippage_applied
 0.00s teardown tests/test_replay_simulator.py::test_replay_time_override_uses_bar_time
 0.00s setup    tests/test_replay_simulator.py::test_simulated_broker_portfolio_value
-0.00s teardown tests/test_replay_simulator.py::test_replay_result_summary
-0.00s call     tests/test_replay_simulator.py::test_replay_slippage_applied
-0.00s setup    tests/test_replay_simulator.py::test_replay_engine_daily_default_lookback
-0.00s call     tests/test_replay_simulator.py::test_simulated_broker_portfolio_value
-0.00s setup    tests/test_replay_simulator.py::test_bar_provider_lookback_200_gives_more_ticks
 0.00s teardown tests/test_replay_simulator.py::test_replay_slippage_applied
-0.00s setup    tests/test_replay_simulator.py::test_make_price_df_trends
-0.00s setup    tests/test_replay_simulator.py::test_replay_engine_custom_lookback
-0.00s teardown tests/test_replay_simulator.py::test_simulated_broker_portfolio_value
-0.00s teardown tests/test_replay_simulator.py::test_replay_engine_constructor_does_not_pollute_replay_mode
-0.00s setup    tests/test_replay_simulator.py::test_replay_engine_intraday_default_lookback
-0.00s setup    tests/test_replay_simulator.py::test_make_features_dict
-0.00s teardown tests/test_replay_simulator.py::test_bar_provider_lookback_200_gives_more_ticks
-0.00s setup    tests/test_replay_simulator.py::test_replay_result_metrics
-0.00s teardown tests/test_replay_simulator.py::test_replay_engine_custom_lookback
-0.00s setup    tests/test_replay_simulator.py::test_bar_provider_returns_correct_window
-0.00s setup    tests/test_replay_simulator.py::test_bar_provider_exhaustion
-0.00s teardown tests/test_replay_simulator.py::test_bar_provider_advances_correctly
-0.00s setup    tests/test_replay_simulator.py::test_bar_provider_current_price
-0.00s teardown tests/test_replay_simulator.py::test_replay_engine_daily_default_lookback
-0.00s teardown tests/test_replay_simulator.py::test_replay_result_metrics
-0.00s setup    tests/test_replay_simulator.py::test_bar_provider_advances_correctly
+0.00s teardown tests/test_replay_simulator.py::test_replay_result_summary
 0.00s call     tests/test_replay_simulator.py::test_replay_result_metrics
-0.00s teardown tests/test_replay_simulator.py::test_make_price_df_trends
-0.00s teardown tests/test_replay_simulator.py::test_make_features_dict
-0.00s teardown tests/test_replay_simulator.py::test_bar_provider_current_price
+0.00s teardown tests/test_replay_simulator.py::test_simulated_broker_portfolio_value
+0.00s setup    tests/test_replay_simulator.py::test_bar_provider_lookback_200_gives_more_ticks
+0.00s call     tests/test_replay_simulator.py::test_simulated_broker_portfolio_value
+0.00s teardown tests/test_replay_simulator.py::test_replay_engine_constructor_does_not_pollute_replay_mode
+0.00s setup    tests/test_replay_simulator.py::test_make_price_df_trends
+0.00s setup    tests/test_replay_simulator.py::test_make_features_dict
+0.00s setup    tests/test_replay_simulator.py::test_replay_result_metrics
+0.00s setup    tests/test_replay_simulator.py::test_bar_provider_returns_correct_window
+0.00s setup    tests/test_replay_simulator.py::test_replay_engine_daily_default_lookback
+0.00s setup    tests/test_replay_simulator.py::test_bar_provider_current_price
+0.00s setup    tests/test_replay_simulator.py::test_bar_provider_exhaustion
+0.00s setup    tests/test_replay_simulator.py::test_bar_provider_advances_correctly
+0.00s teardown tests/test_replay_simulator.py::test_replay_engine_custom_lookback
 0.00s teardown tests/test_replay_simulator.py::test_replay_engine_intraday_default_lookback
+0.00s teardown tests/test_replay_simulator.py::test_bar_provider_lookback_200_gives_more_ticks
+0.00s teardown tests/test_replay_simulator.py::test_make_price_df_trends
 0.00s teardown tests/test_replay_simulator.py::test_bar_provider_exhaustion
+0.00s teardown tests/test_replay_simulator.py::test_bar_provider_current_price
+0.00s teardown tests/test_replay_simulator.py::test_make_features_dict
 0.00s teardown tests/test_replay_simulator.py::test_bar_provider_returns_correct_window
-================== 28 passed, 1 warning in 698.81s (0:11:38) ===================
+0.00s teardown tests/test_replay_simulator.py::test_replay_engine_daily_default_lookback
+0.00s teardown tests/test_replay_simulator.py::test_bar_provider_advances_correctly
+0.00s teardown tests/test_replay_simulator.py::test_replay_result_metrics
+================== 28 passed, 1 warning in 703.78s (0:11:43) ===================
