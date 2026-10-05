@@ -17,28 +17,46 @@ C06-02  The quote rung of the exit-price ladder called
         provider's cached quote; any failure there means "price unknown" and the
         close stays pending.
 
+Review of 2026-10-05 (REQUEST_CHANGES on the first cut):
+        the window's risk check runs on a copy of the exit levels, so window
+        ticks never move the trailing anchor or the MFE/MAE tracking; a
+        broker-price breach acts only in regular trading hours and, when the
+        symbol has a fresh bar, only if the bar close also breaches.
+
 Positions come from the REAL PositionsService over a fake Alpaca TradingClient
 whose positions carry alpaca-py's string fields; exits go through the REAL
-``_submit_exit_order`` into a recording OrderService mock.
+``_submit_exit_order`` into a recording OrderService mock. Every tick runs on a
+pinned clock: the broker-price nets depend on the time of day.
 """
 from __future__ import annotations
 
+import dataclasses
 import inspect
+import json
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from backend.services.positions_service import PositionsService, _position_dict
+from backend.utils.market_hours import NYSE_EARLY_CLOSE
 
 NOW = datetime(2026, 10, 1, 15, 0, 5, tzinfo=UTC)  # Thursday 11:00:05 ET
 CYCLE_S = 15.7  # production tick cycle: 10 s sleep + tick time
 _MISSING = object()
+_ET = ZoneInfo("America/New_York")
+
+
+def et(day, hms):
+    """An ET wall-clock instant (``day`` a date or ISO string) as aware UTC."""
+    return datetime.fromisoformat(f"{day}T{hms}").replace(tzinfo=_ET).astimezone(UTC)
 
 
 # ── fakes and helpers ────────────────────────────────────────────────────────
@@ -158,6 +176,13 @@ async def tick(engine, clock, i):
         return await engine.live_tick()
 
 
+async def tick_at(engine, clock, when):
+    """One tick at ``when``; call set_features after moving the clock there."""
+    clock["now"] = when
+    with patch("backend.organism.live_engine.LONG_ONLY", True):
+        return await engine.live_tick()
+
+
 def warnings_for(caplog, text):
     return [r for r in caplog.records
             if r.levelno == logging.WARNING and text in r.getMessage()]
@@ -224,13 +249,18 @@ async def test_no_features_net_skips_bogus_broker_price_with_warning(tmp_path, c
     assert warnings_for(caplog, "No features AND no valid broker price for AAPL")
 
 
-@pytest.mark.parametrize("bar", [None, 100.0])
-async def test_window_max_loss_net_fires_on_real_broker_price(tmp_path, bar):
-    """DD2-1 is live: the broker price is checked in the window, bar or no bar."""
+@pytest.mark.parametrize("bar, stale", [(None, False), (91.0, False), (100.0, True)],
+                         ids=["no_bar", "fresh_bar_confirms", "stale_bar"])
+async def test_window_max_loss_net_fires_on_real_broker_price(tmp_path, bar, stale):
+    """DD2-1 is live: in regular hours the broker price fires the window net
+    when the symbol has no fresh bar or its fresh bar also breaches. A bar the
+    per-symbol staleness admission lists as stale cannot veto it."""
     client = FakeTradingClient()
     client.hold("AAPL", 10, 100.0, price="90")
     engine, orders, clock = make_engine(tmp_path, client)
     set_features(engine, clock, {"AAPL": bar})
+    if stale:  # stage 0.5 writes this every tick while a streaming provider runs
+        engine._stale_entry_symbols = frozenset({"AAPL"})
     engine._pending_exit["AAPL"] = engine._exit_cooldown["AAPL"] = engine._tick_count
     result = await tick(engine, clock, 1)
     assert orders == [{"tick": 1, "symbol": "AAPL", "side": "sell", "qty": 10,
@@ -409,6 +439,193 @@ async def test_exit_order_records_unclaimed_shares(tmp_path):
             await engine._submit_exit_order("AAPL", 5, "stop_loss", broker_positions=held)
         assert "AAPL" not in engine._exit_unclaimed_qty
     assert [o["qty"] for o in orders] == [3, 7]
+
+
+# ── Review of 2026-10-05: the window is exactly max-loss + hard stop ────────
+# The reviewer's price path: a window peak of 106, the partial take-profit at
+# 103 on tick 10, then a slide to 100.1 (scratch probe_hf.py).
+_REVIEW_PATH = [104.0, 106.0, 105.0, 104.5, 104.0, 103.5, 103.2, 103.1, 103.0, 103.0,
+                102.8, 102.6, 102.4, 102.2, 102.0, 101.8, 101.6, 101.5, 101.4,
+                101.3, 101.2, 100.9, 100.7, 100.4, 100.1]
+
+
+async def test_window_ticks_leave_trailing_anchor_and_excursions_frozen(tmp_path):
+    """Window ticks must not move ExitLevels tracking: before the fix the 106
+    peak became the trailing anchor and a trailing_stop went out at tick 22
+    (100.9 under a 101.0 trail). Like the base code: anchor 103, trail 100.0,
+    no trailing exit through tick 25, and MAE tracked only on routine ticks."""
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price="103.5")
+    with patch("backend.organism.live_engine.OrganismLiveEngine._is_learning_mode",
+               new_callable=PropertyMock, return_value=False):
+        engine, orders, clock = make_engine(tmp_path, client)
+        arm_levels(engine)
+        levels = engine._exit_levels["AAPL"]
+        # A prior exit armed the window this tick and left 8 shares unclaimed.
+        engine._pending_exit["AAPL"] = engine._exit_cooldown["AAPL"] = engine._tick_count
+        engine._exit_unclaimed_qty = {"AAPL": 8}
+        trace = {}
+        for i, px in enumerate(_REVIEW_PATH, start=1):
+            client.hold("AAPL", 10, 100.0, price=str(px))
+            set_features(engine, clock, {"AAPL": px})
+            await tick(engine, clock, i * 4)  # 4 cycles apart: every tick is a new bar
+            trace[i] = (levels.highest_favorable, levels.worst_adverse)
+    assert [(o["tick"], o["qty"], o["reason"]) for o in orders] == [
+        (10, 2, "partial_take_profit")]
+    assert all(trace[i] == (100.0, 0.0) for i in range(1, 10))  # window: untouched
+    assert all(trace[i] == (103.0, 103.0) for i in range(10, 20))  # tick 10, then its window
+    assert all(trace[i] == (103.0, _REVIEW_PATH[i - 1]) for i in range(20, 26))  # routine
+    assert levels.trailing_active and levels.trailing_stop == pytest.approx(100.0)
+
+
+@pytest.mark.parametrize("bar, expected", [(106.0, []), (98.5, [(1, 10, "stop_loss")])],
+                         ids=["new_high", "stop_breach"])
+async def test_window_risk_check_runs_on_a_copy_of_the_exit_levels(tmp_path, bar, expected):
+    """A window tick at a new high, or under the stop (which still exits),
+    leaves the position's ExitLevels exactly as they were."""
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price=str(bar))
+    engine, orders, clock = make_engine(tmp_path, client)
+    arm_levels(engine)
+    before = dataclasses.asdict(engine._exit_levels["AAPL"])
+    set_features(engine, clock, {"AAPL": bar})
+    engine._pending_exit["AAPL"] = engine._exit_cooldown["AAPL"] = engine._tick_count
+    await tick(engine, clock, 1)
+    assert [(o["tick"], o["qty"], o["reason"]) for o in orders] == expected
+    assert dataclasses.asdict(engine._exit_levels["AAPL"]) == before
+
+
+# ── Review of 2026-10-05: a lone broker mark never sells ────────────────────
+async def test_fresh_bar_that_disagrees_vetoes_a_broker_price_breach(tmp_path, caplog):
+    """The reviewer's probe: the bar (99.5) is above the 99 stop, the broker
+    mark (91.9) is 8.1% under entry. Before: a 10-share window exit."""
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price="91.9")
+    engine, orders, clock = make_engine(tmp_path, client)
+    arm_levels(engine)
+    set_features(engine, clock, {"AAPL": 99.5})
+    engine._pending_exit["AAPL"] = engine._exit_cooldown["AAPL"] = engine._tick_count
+    with caplog.at_level(logging.WARNING):
+        result = await tick(engine, clock, 1)
+    assert orders == [] and result.orders_submitted == 0
+    assert warnings_for(caplog, "Exit window for AAPL: broker-price breach at 91.90 not acted on")
+
+
+_EARLY_CLOSE_DAY = max(NYSE_EARLY_CLOSE)  # 13:00 ET close; always in the module's calendar
+
+
+@pytest.mark.parametrize("when", [
+    et("2026-10-01", "09:28:30"),  # pre-open warm-up tick
+    et("2026-10-01", "16:00:20"),  # the close (the scheduler ticks to 16:01)
+    et(_EARLY_CLOSE_DAY, "13:30:00"),  # after an early close
+], ids=["pre_open", "close", "early_close_afternoon"])
+@pytest.mark.parametrize("net", ["no_features", "window"])
+async def test_broker_price_nets_do_not_act_outside_regular_hours(tmp_path, caplog, when, net):
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price="90")  # -10%, no bar: the broker mark alone
+    engine, orders, clock = make_engine(tmp_path, client)
+    clock["now"] = when
+    set_features(engine, clock, {})
+    if net == "window":
+        engine._pending_exit["AAPL"] = engine._exit_cooldown["AAPL"] = engine._tick_count
+    with caplog.at_level(logging.WARNING):
+        await tick_at(engine, clock, when)
+    assert orders == []
+    assert warnings_for(caplog, (
+        "Exit window for AAPL: broker-price breach at 90.00 not acted on" if net == "window"
+        else "SAFETY NET (no features) for AAPL: broker breach at 90.00 not acted on"))
+
+
+@pytest.mark.parametrize("net, reason", [("no_features", "safety_net_no_features"),
+                                         ("window", "safety_net_pending_exit_breach")])
+async def test_broker_price_nets_act_from_the_open(tmp_path, net, reason):
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price="90")
+    engine, orders, clock = make_engine(tmp_path, client)
+    when = clock["now"] = et("2026-10-01", "09:30:05")
+    set_features(engine, clock, {})
+    if net == "window":
+        engine._pending_exit["AAPL"] = engine._exit_cooldown["AAPL"] = engine._tick_count
+    await tick_at(engine, clock, when)
+    assert [(o["qty"], o["reason"]) for o in orders] == [(10, reason)]
+
+
+# ── Review of 2026-10-05: non-blocking items and surviving mutants ──────────
+async def test_negative_qty_available_on_a_long_frees_no_shares(tmp_path):
+    """Like the outbox guard (max(0, min(qty, available))): an anomalous
+    negative qty_available on a long means 0 free shares, not abs() = 2."""
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price="99.5", qty_available="-2")
+    engine, orders, clock = make_engine(tmp_path, client)
+    arm_levels(engine)
+    set_features(engine, clock, {"AAPL": 98.0})  # under the 99 stop
+    engine._pending_exit["AAPL"] = engine._exit_cooldown["AAPL"] = engine._tick_count
+    await tick(engine, clock, 1)
+    assert orders == []
+
+
+async def test_window_exit_is_logged_with_its_real_reason(tmp_path, caplog):
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price="98.5")
+    engine, orders, clock = make_engine(tmp_path, client)
+    arm_levels(engine)
+    set_features(engine, clock, {"AAPL": 98.5})
+    engine._pending_exit["AAPL"] = engine._exit_cooldown["AAPL"] = engine._tick_count
+    with caplog.at_level(logging.WARNING):
+        await tick(engine, clock, 1)
+    assert [o["reason"] for o in orders] == ["stop_loss"]
+    assert warnings_for(caplog, "Exit window stop_loss exit: AAPL at 98.50")
+    assert not warnings_for(caplog, "DD2-1")
+
+
+@pytest.mark.parametrize("later_exit", ["eod_flatten", "overnight_force_exit"])
+async def test_window_exit_rearms_pending_so_no_second_sell_in_the_same_tick(tmp_path, later_exit):
+    """Mutant M12: a window exit must re-arm _pending_exit. EOD flatten and the
+    overnight forced exit run later in the same tick and skip only pending
+    symbols; without the re-arm each would sell the full position again."""
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price="98.5")
+    engine, orders, clock = make_engine(tmp_path, client)
+    arm_levels(engine)
+    if later_exit == "eod_flatten":
+        when = clock["now"] = et("2026-10-01", "15:58:30")  # the flatten window
+    else:
+        when = clock["now"] = et("2026-10-01", "09:31:00")
+        Path(engine.brain.brain_dir).mkdir(parents=True, exist_ok=True)
+        engine._overnight_flag_path().write_text(
+            json.dumps({"session_date": "2026-09-30", "symbols": ["AAPL"]}))
+    set_features(engine, clock, {"AAPL": 98.5})  # under the 99 stop
+    engine._tick_count = 20
+    engine._exit_cooldown["AAPL"] = 16  # an earlier exit's window; its pending expired
+    await tick_at(engine, clock, when)
+    assert [(o["qty"], o["reason"]) for o in orders] == [(10, "stop_loss")]
+    assert engine._pending_exit["AAPL"] == engine._tick_count
+
+
+async def test_pending_only_window_from_the_pyramid_close_path(tmp_path):
+    """Mutant M7: the pyramid close_partial path (live_engine step 6) arms
+    _pending_exit without _exit_cooldown. That window still suspends routine
+    exits and still runs the stop on the shares the pyramid sell left free."""
+    client = FakeTradingClient()
+    client.hold("AAPL", 10, 100.0, price="100")
+    with patch("backend.organism.live_engine.OrganismLiveEngine._is_learning_mode",
+               new_callable=PropertyMock, return_value=False):
+        engine, orders, clock = make_engine(tmp_path, client)
+        arm_levels(engine)
+        engine._exit_levels["AAPL"].partial_tp_taken = True  # leave the full take-profit
+        with patch("backend.organism.live_engine.LONG_ONLY", True):  # step 6's call
+            await engine._submit_exit_order("AAPL", 3, reason="pyramid_cut", direction=1.0)
+        engine._pending_exit["AAPL"] = engine._tick_count
+        assert "AAPL" not in engine._exit_cooldown
+        # The pyramid sell is still open: the broker holds 3 shares for it.
+        client.hold("AAPL", 10, 100.0, price="120", qty_available="7")
+        set_features(engine, clock, {"AAPL": 120.0})  # past take-profit: a routine exit
+        await tick(engine, clock, 1)
+        assert [o["reason"] for o in orders] == ["pyramid_cut"]  # routine exits suspended
+        client.hold("AAPL", 10, 100.0, price="98.5", qty_available="7")
+        set_features(engine, clock, {"AAPL": 98.5})  # under the 99 stop
+        await tick(engine, clock, 2)
+    assert [(o["qty"], o["reason"]) for o in orders] == [(3, "pyramid_cut"), (7, "stop_loss")]
 
 
 # ── C06-02: the quote rung no longer aborts reconciliation or the tick ──────

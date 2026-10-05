@@ -366,14 +366,18 @@ def test_baseline_live_tick_inner_loc_present():
     # W100's exact 2852-line ceiling and grants no other growth tolerance.
     # The audit 2026-10-05 surface exit-safety fixes (C05-01/C05-02, owner
     # sign-off 2026-10-05) grow the 2850-line function to 2879 lines, 27 over
-    # that ceiling; this matches W100's exact 2879-line ceiling.
+    # that ceiling; this matches W100's exact 2879-line ceiling. Their review
+    # (regular-hours gate and fresh-bar confirmation for the broker-price nets)
+    # adds 10 more (2889), matching W100's exact 2889-line ceiling.
     approved_final_entry_freshness_growth = 21
     approved_scanner_cache_clear_growth = 1
     approved_streaming_diagnostics_growth = 28
     approved_surface_exit_safety_growth = 27
+    approved_surface_exit_safety_review_growth = 10
     assert base_loc == 2802
     assert loc <= (base_loc + approved_final_entry_freshness_growth + approved_scanner_cache_clear_growth
-                   + approved_streaming_diagnostics_growth + approved_surface_exit_safety_growth), (
+                   + approved_streaming_diagnostics_growth + approved_surface_exit_safety_growth
+                   + approved_surface_exit_safety_review_growth), (
         f"_live_tick_inner regressed from baseline {base_loc} to {loc}; "
         "growth beyond the reviewed streaming/diagnostics/exit-safety ceiling is not allowed."
     )

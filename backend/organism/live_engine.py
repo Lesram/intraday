@@ -26,6 +26,7 @@ Wire into the live server scheduler for automatic bar-by-bar execution.
 from __future__ import annotations
 
 import asyncio
+import copy
 import os
 import time
 import threading
@@ -103,6 +104,7 @@ from backend.organism.background_trainer import BackgroundTrainer
 from backend.organism.market_scanner import MarketScanner, SCAN_INTERVAL_TICKS
 from backend.strategies.types import TradingSignal
 from backend.utils.logger import get_logger
+from backend.utils.market_hours import is_market_open
 from backend.organism.pipeline_diagnostics import (
     PipelineDiagnostics, finite_age, entry_frame_age, subscription_state,
 )
@@ -3894,6 +3896,7 @@ class OrganismLiveEngine(
             self.exit_engine.learning_mode = self._is_learning_mode
             _MAX_LOSS_PCT = self.exit_engine.max_loss_pct
             exits_submitted = 0
+            _rth = is_market_open(self._now_fn())  # broker-price nets act only in regular hours
             # Audit 2026-10-05 C05-02: unclaimed-share records live as long as their window.
             if getattr(self, "_exit_unclaimed_qty", None):
                 self._exit_unclaimed_qty = {s: q for s, q in self._exit_unclaimed_qty.items()
@@ -3937,11 +3940,11 @@ class OrganismLiveEngine(
                 # max-loss; the unsold portion of a partial-TP / ML-reversal
                 # exit could blow through max_loss_pct during that 30s window.
                 # Audit 2026-10-05 C05-02: so could the whole window, and this net never
-                # fired live (C05-01). Every window tick now runs the always-on risk
-                # exits, (a) the exit engine's max-loss and hard stop on the bar close
-                # and (b) this max-loss net on the broker price; a breach sells only
-                # shares no exit of the window has claimed (recorded by
-                # _submit_exit_order) and the broker reports free (qty_available).
+                # fired live (C05-01). Each window tick runs only the always-on risk exits:
+                # (a) the exit engine's max-loss and hard stop on the bar close, checked on a
+                # copy of the levels (no trailing/MAE update); (b) this max-loss net on the
+                # broker price, in regular hours only and confirmed by a fresh bar. A breach
+                # sells only unclaimed shares (_submit_exit_order) the broker reports free.
                 if sym in self._pending_exit:
                     _exit_window = True
                 if _exit_window:
@@ -3953,20 +3956,27 @@ class OrganismLiveEngine(
                     _dir = 1.0 if pos_data.get("side", "long") == "long" else -1.0
                     _win_reason, _win_price = "", _broker_price or _win_bar
                     if _win_bar > 0 and _win_levels is not None:  # (a): risk exits only
-                        _win_sig = self.exit_engine.check_exit(
-                            _win_levels, _win_bar, regime, is_new_bar=False)
+                        _win_sig = self.exit_engine.check_exit(  # a copy: tracking stays frozen
+                            copy.copy(_win_levels), _win_bar, regime, is_new_bar=False)
                         if _win_sig.should_exit:
                             _win_reason, _win_price = _win_sig.reason, _win_bar
                     if not _win_reason and _win_price > 0 and avg_entry > 0:  # (b)
                         pnl_pct = (_win_price - avg_entry) / avg_entry * _dir
-                        if pnl_pct <= -_MAX_LOSS_PCT:
+                        _bar_ok = (_win_bar <= 0 or sym in self._stale_entry_symbols  # fresh bar
+                                   or (_win_bar - avg_entry) / avg_entry * _dir <= -_MAX_LOSS_PCT)
+                        if pnl_pct <= -_MAX_LOSS_PCT and (not _broker_price or (_rth and _bar_ok)):
                             _win_reason = "safety_net_pending_exit_breach"
+                        elif pnl_pct <= -_MAX_LOSS_PCT:  # a lone broker mark: logged, not acted on
+                            logger.warning("Exit window for %s: broker-price breach at %.2f not "
+                                           "acted on (regular hours=%s, bar close=%.2f)",
+                                           sym, _broker_price, _rth, _win_bar)
                     elif not _win_reason and not (_win_bar > 0 and _win_levels is not None):
                         logger.warning("Exit window for %s: no valid bar or broker price (or "
                                        "entry) — hard stop and max-loss not evaluated", sym)
                     sell_shares = int(abs(float(pos_data.get("qty", 0)))) if _win_reason else 0
-                    try:  # never more than the broker reports free of open orders
-                        sell_shares = min(sell_shares, int(abs(float(pos_data["qty_available"]))))
+                    try:  # never more than the broker reports free of open orders (long: >= 0)
+                        _qa = float(pos_data["qty_available"])
+                        sell_shares = min(sell_shares, int(max(0.0, _qa) if _dir > 0 else abs(_qa)))
                     except (KeyError, TypeError, ValueError, OverflowError):
                         pass  # qty_available not reported
                     _unclaimed = (getattr(self, "_exit_unclaimed_qty", None) or {}).get(sym)
@@ -3984,9 +3994,9 @@ class OrganismLiveEngine(
                                 self._pending_exit[sym] = self._tick_count
                                 exits_submitted += 1
                                 result.orders_submitted += 1
-                                logger.warning("DD2-1 breach: %s %s at %.2f in the exit window — "
-                                               "%d unclaimed share(s) sent",
-                                               sym, _win_reason, _win_price, sell_shares)
+                                logger.warning("Exit window %s exit: %s at %.2f — %d unclaimed "
+                                               "share(s) sent",
+                                               _win_reason, sym, _win_price, sell_shares)
                                 result.activity.append(ActivityEvent(
                                     event_type="exit", symbol=sym, timestamp=now_iso,
                                     message=f"EXIT: {sym} — {_win_reason} "
@@ -3995,9 +4005,9 @@ class OrganismLiveEngine(
                                              "exit_window": True},
                                 ))
                         except Exception as e:
-                            result.errors.append(f"DD2-1 safety net failed for {sym}: {e}")
+                            result.errors.append(f"Exit window {_win_reason} failed for {sym}: {e}")
                     elif _win_reason:
-                        logger.debug("Exit window for %s: %s, all shares already claimed",
+                        logger.debug("Exit window for %s: %s, no unclaimed free share to sell",
                                      sym, _win_reason)
                     continue
                 feat_df = features_by_symbol.get(sym)
@@ -4012,8 +4022,10 @@ class OrganismLiveEngine(
                         side = pos_data.get("side", "long")
                         _dir = 1.0 if side == "long" else -1.0
                         pnl_pct = (broker_price - avg_entry) / avg_entry * _dir
-                        if pnl_pct <= -_MAX_LOSS_PCT:
-                            from backend.organism.adaptive_exits import ExitSignal
+                        if pnl_pct <= -_MAX_LOSS_PCT and not _rth:  # no bar here: hours decide
+                            logger.warning("SAFETY NET (no features) for %s: broker breach at %.2f "
+                                           "not acted on outside regular hours", sym, broker_price)
+                        elif pnl_pct <= -_MAX_LOSS_PCT:
                             qty = abs(float(pos_data.get("qty", 0)))
                             sell_shares = int(qty)
                             if sell_shares > 0:

@@ -71,7 +71,15 @@ LIVE_ENGINE_PATH = REPO_ROOT / "backend" / "organism" / "live_engine.py"
 # the function grows from 2850 to 2879 lines, 27 over the previous ceiling.
 # The logic stays inline because a helper outside _live_tick_inner would sit
 # outside the frozen-surface hash. Exact ceiling, no spare tolerance.
-LIVE_TICK_INNER_LOC_CEILING = 2_805 + 18 + 1 + 28 + 27
+# Review of the same fixes (2026-10-05): a broker-price breach acts only in
+# regular hours and, with a fresh bar, only if the bar confirms it. That adds
+# 10 lines (2879 -> 2889): the per-tick hours flag (1), the window net's bar
+# confirmation and its skip WARNING (6), the long-only qty_available clamp (1)
+# and the no-features net's hours gate and WARNING (3, less 1 dead import).
+# The run-on-a-copy fix for the window's stop check is line-neutral. Same reason
+# to stay inline: the hashed helpers are the order seam (_submit_exit_order) or
+# another surface key (market_hours, under eod_escalation).
+LIVE_TICK_INNER_LOC_CEILING = 2_805 + 18 + 1 + 28 + 27 + 10
 
 
 def _find_live_tick_inner_loc() -> int:

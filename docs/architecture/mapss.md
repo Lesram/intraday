@@ -26,25 +26,60 @@ verifies at startup: it fingerprints restored parameters and models, not source.
   (partial take-profit, `ml_reversal`, a blocked or failed exit) the 3-tick
   pending window and the 10-tick DD3-3 cooldown skipped the hard stop and
   max-loss for about 2.5 minutes at the measured cycle. Routine exits stay
-  suspended in the window, but every tick now runs the exit engine's every-tick
-  risk path (`check_exit(..., is_new_bar=False)`: max-loss, hard stop) on the bar
-  close and the DD2-1 max-loss net on the broker price. A breach sells only the
-  shares that no exit of the window has claimed and that the broker reports free
-  of open orders (`qty_available`). `_submit_exit_order` records the unclaimed
-  remainder after every submission that neither raised nor came back `blocked`,
-  so an exit in flight is never sent twice (the outbox guard of PR #36 stays the
-  last line). A failed or blocked exit claims nothing, so its position is
-  protected from the next tick; a blocked window exit is not counted as an order.
+  suspended in the window, but every tick now runs exactly the exit engine's
+  max-loss and hard stop (`check_exit(..., is_new_bar=False)`) on the bar close
+  and the DD2-1 max-loss net on the broker price. The exit engine checks a copy
+  of the position's `ExitLevels`, so a window tick changes no exit state: the
+  trailing anchor (`highest_favorable`) and the MFE/MAE tracking
+  (`worst_adverse`) move only on routine ticks, as before the fix. A breach sells
+  only the shares that no exit of the window has claimed and that the broker
+  reports free of open orders (`qty_available`; a long's negative value counts as
+  0 free shares, as in the outbox guard, and a short uses its absolute value).
+  `_submit_exit_order` records the unclaimed remainder after every submission
+  that neither raised nor came back `blocked`, so an exit in flight is never sent
+  twice (the outbox guard of PR #36 stays the last line). A failed or blocked exit
+  claims nothing, so its position is protected from the next tick; a blocked
+  window exit is not counted as an order. A window exit re-arms `_pending_exit`,
+  so the EOD flatten and the overnight forced exit later in the same tick skip
+  the symbol, and logs `Exit window <reason> exit: ...` with its real reason.
+- **A lone broker mark never sells.** Both broker-price nets (the window's DD2-1
+  net and the no-features net) act on a broker-price max-loss breach only in
+  regular trading hours (`backend.utils.market_hours.is_market_open`: the NYSE
+  calendar with holidays and 13:00 ET early closes). The scheduler also ticks at
+  09:28-09:30 and 16:00-16:01 ET (13:00-16:01 on early-close days); a breach seen
+  there is logged at WARNING and not acted on. In regular hours, when the symbol
+  has a fresh bar this tick, the bar close must breach max-loss too, or the
+  breach is logged at WARNING and skipped. A fresh bar is the symbol's feature
+  frame for this tick with a usable close, for a symbol the per-symbol staleness
+  admission (`_stale_entry_symbols`: no stream bar within 120 s) does not list.
+  With no fresh bar (no frame, an unusable close, or a symbol listed stale) the
+  broker price alone triggers: that is what the nets are for. The no-features net
+  never has a bar, so only the hours apply to it. When the broker price itself is
+  unusable, the window net still falls back to the bar close, as before.
 - **Exit-price quote rung (C06-02).** See PHASE 10: the rung reads the streaming
   provider's cached quote instead of a method the production data client lacks;
   any failure leaves the close pending (`no_exit_price`) without aborting the tick.
-- **Known limits.** The unclaimed-share record lives in memory only: after a
-  restart a restored window is bounded by the broker quantity and
-  `qty_available` (startup cancels open orders). Without a bar the window checks
-  only the 8% max-loss on the broker price, like the no-features net. An exit
-  that is refused or rejected downstream stays claimed until its window ends, as
-  before. `bars_held` still skips minute boundaries crossed during the window. An
-  orphan close that never finds a price stays pending (no terminal path yet).
+- **Known limits.** Trailing-stop tracking stays frozen during the window: prices
+  seen on window ticks never reach the trailing anchor or the MFE/MAE fields, so
+  a window peak cannot tighten a later trailing stop. Whether window ticks should
+  advance that tracking is an owner decision for later. The unclaimed-share
+  record lives in memory only: after a restart a restored window is bounded by
+  the broker quantity and `qty_available` (startup cancels open broker orders).
+  An exit still queued in the outbox, not yet at Alpaca, is invisible to
+  `qty_available`, so after a restart a window breach can send a second exit for
+  the same shares; the outbox guard of PR #36 then decides, and it can lose the
+  race with a lagging position endpoint. The base code had the same exposure at
+  tick N+10 (a routine full exit). Without a bar the window checks only the 8%
+  max-loss on the broker price, like the no-features net. Without a streaming
+  provider (REST-only mode, tests, replay) no symbol is listed stale, so the
+  tick's frame counts as a fresh bar. Outside regular hours the bar-based checks
+  run as before. An exit that is refused or rejected downstream stays claimed
+  until its window ends, as before. A routine or no-features exit that comes back
+  `blocked` is still counted as an order and arms the window (unchanged; the
+  verifier rated that return practically unreachable there, and a blocked exit
+  claims no shares). `bars_held` still skips minute boundaries crossed during the
+  window. An orphan close that never finds a price stays pending (no terminal
+  path yet).
 
 ## Candidate outbox exit guard (audit 2026-10-05) — NOT deployed
 
@@ -910,25 +945,33 @@ FOR EACH OPEN POSITION:
   │   │   (candidate audit 2026-10-05 C05-02; before it the window skipped
   │   │    everything, and the broker-price net below could not fire live)
   │   ├── Routine exits stay SUSPENDED (no profit/trailing/time/ML exit, no bars_held)
-  │   ├── Every tick, the always-on risk exits still run:
-  │   │   ├── bar + exit_levels → check_exit(..., is_new_bar=False):
-  │   │   │   max_loss_limit / stop_loss on the bar close
+  │   ├── Every tick, exactly the always-on risk exits still run:
+  │   │   ├── bar + exit_levels → check_exit(copy of exit_levels, ..., is_new_bar=False):
+  │   │   │   max_loss_limit / stop_loss on the bar close; the copy keeps the
+  │   │   │   trailing anchor and MFE/MAE tracking frozen (window ticks never move them)
   │   │   └── DD2-1 net: pnl vs broker avg_entry on the broker current_price
   │   │       (bar close if the broker price is unusable) <= -max_loss_pct (8%)
-  │   │       → reason "safety_net_pending_exit_breach"
+  │   │       → reason "safety_net_pending_exit_breach". A broker-price breach
+  │   │       acts only in regular hours (market_hours.is_market_open), and a
+  │   │       fresh bar (frame with a usable close, symbol not in
+  │   │       _stale_entry_symbols) must breach too; otherwise WARNING, no exit
   │   ├── A breach sells only shares no exit of this window has claimed
   │   │   (_exit_unclaimed_qty, recorded by _submit_exit_order after a
   │   │   submission that did not raise or come back "blocked") and that the
-  │   │   broker reports free of open orders (qty_available, when reported)
-  │   │   → an exit in flight is never sent twice; 0 left → nothing sent
+  │   │   broker reports free of open orders (qty_available, when reported;
+  │   │   a long's negative value → 0) → an exit in flight is never sent twice;
+  │   │   0 left → nothing sent
+  │   ├── A window exit re-arms _pending_exit and _exit_cooldown: the EOD flatten
+  │   │   and the overnight forced exit later in this tick skip the symbol
   │   └── Neither a bar nor a valid broker price → WARNING, nothing evaluated
   │
   ├── PATH A: No features available for this symbol
   │   ├── Get broker_price (position current_price) and avg_entry
   │   │   (missing, zero, negative or non-finite price → 0.0 → WARNING, no exit)
   │   ├── Compute pnl_pct = (broker_price - entry) / entry × direction
-  │   ├── IF pnl_pct <= -max_loss_pct (8%) → SAFETY NET EXIT
-  │   │   └── Submit full exit, reason: "safety_net_no_features"
+  │   ├── IF pnl_pct <= -max_loss_pct (8%):
+  │   │   ├── outside regular hours (market_hours.is_market_open) → WARNING, no exit
+  │   │   └── in regular hours → SAFETY NET EXIT, full exit, "safety_net_no_features"
   │   └── ELSE → no action (can't evaluate without features)
   │
   ├── PATH B: Features available but NO exit_levels for this symbol
