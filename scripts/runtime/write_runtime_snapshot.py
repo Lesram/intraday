@@ -36,6 +36,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.integrations import alpaca_outbox as _outbox_dispatch
         from backend.organism.streaming_data_provider import StreamingDataProvider
         from backend.organism import streaming_data_provider as _provider_module
+        from backend.organism import live_engine_data as _feeder_module
         from backend.organism import live_engine as _engine_module
         from backend.infra import runtime_identity as _runtime_identity
         from backend.organism import operator_cancellation
@@ -122,9 +123,25 @@ def _build_defaults_snapshot() -> dict:
                 "required_confirmed": "critical_and_held_symbols_else_block_all_entries",
                 "provider_symbol_limit": "refused_symbols_dropped_from_desired_never_replayed_not_resent_until_capacity_freed",
                 "protected_request": "benchmarks_and_held_requested_first_on_their_own_never_skipped_as_refused",
-                "new_symbols": "wait_for_actual_bars_no_REST_prefill",
+                "new_symbols": "freshness_waits_for_actual_bars_background_REST_history_seed",
                 "global_staleness_policy": "aggregate_stream_loss_or_critical_symbol_stale_blocks_entries",
                 "per_symbol_staleness_policy": "stale_or_unadmitted_symbol_rejected_by_shared_entry_gate",
+            },
+            # Audit 2026-10-05 C11-01: live buffers carry the engine's history
+            # window after provider restarts and for late subscriptions.
+            "stream_history": {
+                "history_window": "engine_lookback_bars_of_engine_timeframe_same_as_feeder_REST_path",
+                "ring_capacity_bars": _provider_module._DEFAULT_BUFFER_SIZE,
+                "seed": "one_background_REST_seed_per_subscribed_symbol_per_session_after_provider_restart_new_subscription_or_failed_prefill",
+                "seed_merge": "startup_prefill_merge_history_only_stream_rows_kept_never_a_receipt_generation_guarded",
+                "seed_concurrency": "one_request_at_a_time_outside_subscription_sync_deadline",
+                "seed_timeout_seconds": StreamingDataProvider.HISTORY_SEED_TIMEOUT_S,
+                "seed_retry_after_failure_seconds": StreamingDataProvider.HISTORY_SEED_RETRY_S,
+                "stream_buffer_served_when": "fresh_and_min_bars_and_(history_seeded_or_at_least_min(history_window,ring_capacity))",
+                "short_buffer": "REST_within_budget_else_short_buffer_as_before",
+                "short_buffer_rest_max_calls": _feeder_module.HISTORY_FALLBACK_MAX_CALLS,
+                "short_buffer_rest_window_seconds": _feeder_module.HISTORY_FALLBACK_WINDOW_S,
+                "short_buffer_rest_timeout_seconds": _feeder_module.HISTORY_FALLBACK_TIMEOUT_S,
             },
             # Audit 2026-09-30 safety release (EXE-05, EXE-06, OPS-04, CFG-01).
             "broker_position_reads": {
@@ -490,6 +507,7 @@ def _build_resolved_config_snapshot() -> dict:
         "candidate_data_pipeline_sources": defaults.get("candidate_data_pipeline_sources"),
         "composite_feature_columns": defaults.get("composite_feature_columns"),
         "streaming_subscription_sync": defaults.get("streaming_subscription_sync"),
+        "stream_history": defaults.get("stream_history"),
         "pending_entry_resolution": defaults.get("pending_entry_resolution"),
         "broker_position_reads": defaults.get("broker_position_reads"),
         "eod_session": defaults.get("eod_session"),

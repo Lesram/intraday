@@ -4,6 +4,63 @@
 
 ---
 
+## Candidate surface stream-history fix (audit 2026-10-05) — NOT deployed
+
+Stacked on the exit-safety fixes below. Frozen decision sources change:
+`data_pipeline_sources.streaming_data_provider` and
+`data_pipeline_sources.live_engine_data`; nothing else in the surface moves
+beyond the two keys the exit-safety fixes already changed. Marsel signed off on
+the frozen-code fixes on 2026-10-05; this takes effect only through a new
+activation (the same release that re-enables the market scanner). No strategy
+parameter, threshold, feed, sizing, staleness admission or receipt rule changes.
+
+- **History after a provider restart and for late subscriptions (C11-01).**
+  A provider restart (`_retry_start` after the transport exhausts its
+  reconnects, or a failed initial start) clears every buffer, and symbols
+  subscribed after startup (scanner window names, newly held names) started
+  empty. The feeder switched from 500 REST bars to the live buffer as soon as it
+  held `MIN_BARS` (50) bars, so features, regime and scans ran on a truncated,
+  growing history for hours, and the alpha (50 rows) and breakout (60 rows)
+  scanners skipped 50-78-bar frames. Now:
+  - Each subscribed symbol gets one background REST history seed per session:
+    after a restart, after each new subscription, and for a symbol whose startup
+    prefill or seed failed. It reuses the startup prefill's merge (history only,
+    stream rows received meanwhile are kept and win their minute, never a
+    receipt), is generation-guarded (a restart, stop or stale-stream reconnect
+    discards the in-flight result; a symbol retired meanwhile is not
+    resurrected), and runs one request at a time in a background task outside
+    the 5-second subscription-sync deadline. A failed seed is retried no sooner
+    than `HISTORY_SEED_RETRY_S` (60 s); each request is capped at
+    `HISTORY_SEED_TIMEOUT_S` (30 s).
+  - The prefill and the seed request the engine's own window
+    (`LIVE_LOOKBACK` bars of `LIVE_TIMEFRAME`). The prefill used to re-read
+    `ORGANISM_LIVE_LOOKBACK` with its own default of 100 against the engine's 500.
+  - `_fetch_bars` serves a fresh live buffer only when it holds the history
+    window: its REST history was merged this session (REST can hold fewer than
+    500 bars for a sparse IEX name; the buffer then holds all of it), or it alone
+    holds `min(LIVE_LOOKBACK, ring capacity 2000)` bars. A shorter buffer is
+    replaced by REST within a budget of `HISTORY_FALLBACK_MAX_CALLS` (5) reads
+    per rolling `HISTORY_FALLBACK_WINDOW_S` (10 s, about one tick, so a tick
+    waits for at most one parallel round), each capped at
+    `HISTORY_FALLBACK_TIMEOUT_S` (5 s). Over budget, on timeout or failure, or
+    when REST returns fewer rows than the buffer, the short buffer is served
+    exactly as before. Below `MIN_BARS` the ordinary REST path is unchanged.
+  - Once seeded, a buffer gives the same frame as REST (481 feature rows with
+    the feature store), so features, regime routing and scanner eligibility match
+    a normally started engine.
+- **REST load.** One seed request per symbol after a restart (20 for the core
+  universe, sequential, as the startup prefill already does) and one per newly
+  subscribed name; zero short-buffer reads while seeds succeed. Worst case while
+  seeds keep failing: one retry per failing symbol per minute (at most 28/min)
+  plus at most 30 short-buffer reads per minute, against Alpaca's 200/min basic
+  limit (the unbounded alternative was 120/min for 20 symbols at 6 ticks/min).
+- **Known limits.** If REST already holds the newest closed bar when the seed
+  lands and the stream delivers that bar afterwards, the stream bar is a
+  same-minute correction, so the symbol's first receipt waits for the next bar
+  (up to a minute longer excluded from entries; fail-closed, as with the startup
+  prefill). The startup prefill still runs inside the 25-second startup bound
+  (3-8 s measured). The feature store's 19-row warm-up trim is unchanged (C11-05).
+
 ## Candidate surface exit-safety fixes (audit 2026-10-05) — NOT deployed
 
 Stacked on the outbox exit guard below (PR #36). Frozen decision sources change:
@@ -285,7 +342,9 @@ request). A sync is reported `complete` only when every desired symbol is
 admitted. An unconfirmed non-critical symbol is excluded individually
 (`unadmitted_symbol`); provider loss or an unconfirmed critical/held symbol
 blocks every new entry (`stream_subscription_sync`); protective exits still
-execute. New subscriptions do not seed REST bars or claim freshness.
+execute. New subscriptions never claim freshness. (Candidate 2026-10-05: their
+REST history is seeded in the background, history only; see the stream-history
+fix at the top.)
 
 Staleness is per symbol (MDP-03): aggregate stream loss or a stale critical
 benchmark blocks every entry (`stale_data`); any other stale symbol is rejected
@@ -792,7 +851,10 @@ FETCH DATA
   │
   ├── For each symbol in universe (parallelized, semaphore=10):
   │   ├── Priority 1: Streaming provider (fast-path)
-  │   │   └── Falls through to REST if unavailable or < MIN_BARS
+  │   │   ├── Falls through to REST if unavailable, stale or < MIN_BARS
+  │   │   └── Candidate 2026-10-05: a buffer >= MIN_BARS without the history
+  │   │       window (not seeded, < min(LIVE_LOOKBACK, 2000) bars) is replaced
+  │   │       by bounded REST (5 reads / 10 s, 5 s each), else served as before
   │   ├── Priority 2: REST API (get_historical_bars_df or get_historical_data)
   │   │
   │   ├── Minimum bars check:
@@ -3551,7 +3613,11 @@ StreamingDataProvider:
   │
   ├── Manages Alpaca WebSocket bar stream
   ├── Ring buffer per symbol (size: 2000 entries ≈ 33 hours of 1-min bars)
-  ├── Prefill from REST on subscribe (ORGANISM_LIVE_LOOKBACK=100, ORGANISM_LIVE_TIMEFRAME)
+  ├── Prefill from REST at startup (engine LIVE_LOOKBACK bars of LIVE_TIMEFRAME;
+  │   candidate 2026-10-05, previously ORGANISM_LIVE_LOOKBACK with default 100)
+  ├── Candidate 2026-10-05: one background REST history seed per symbol after a
+  │   provider restart, a new subscription or a failed prefill/seed (history
+  │   only, never a receipt; retry after 60 s; 30 s per request)
   │
   ├── On new bar:
   │   ├── Append to ring buffer
