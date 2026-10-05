@@ -33,6 +33,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.composite_indicators import COMPOSITE_COLUMNS
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
         from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
+        from backend.integrations import alpaca_outbox as _outbox_dispatch
         from backend.organism.streaming_data_provider import StreamingDataProvider
         from backend.organism import streaming_data_provider as _provider_module
         from backend.organism import live_engine as _engine_module
@@ -149,6 +150,25 @@ def _build_defaults_snapshot() -> dict:
                 "earlier_session_halt": "carried_over_and_cleared_on_the_new_session_first_tick",
                 "missing_baseline": "rebaseline_at_current_equity_critical_after_the_open",
                 "write": "brain_save_and_immediate_atomic_write_on_roll_or_halt",
+            },
+            # Audit 2026-10-05 C01-01: exit guard in the outbox dispatch path.
+            "order_dispatch_guards": {
+                "exit_sell": "client_key_lookup_then_broker_position_refuse_if_free_long_below_order_qty",
+                "exit_free_long_source": "qty_available_else_qty_zero_when_flat_or_short",
+                "exit_scope": "declared_exit_or_close_position_or_undeclared_sell_when_long_only",
+                "exit_size_policy": "refuse_not_clamp",
+                "buy_to_cover": "not_checked",
+                "entries": "unchanged_no_dispatch_guard",
+                "refused_order_status": _outbox_dispatch.REFUSED_ORDER_STATUS,
+                "refusal_reasons": [
+                    "exit_position_flat", "exit_position_short",
+                    "exit_exceeds_free_long_position", "broker_rejected_insufficient_qty",
+                ],
+                "broker_insufficient_qty": "terminal_rejected_never_retried",
+                "found_at_broker_by_client_key": "attached_never_resent",
+                "failed_guard_read": "not_sent_event_retried",
+                "refusal_record": "order_attributes_dispatch_refusal_and_event_dead_lettered_in_one_transaction",
+                "page": "critical_after_commit_duplicate_flat_exit_has_its_own_headline",
             },
             "runtime_config_hash_env": list(_runtime_identity.RUNTIME_HASH_ENV),
             "entry_freshness": {
@@ -474,6 +494,7 @@ def _build_resolved_config_snapshot() -> dict:
         "broker_position_reads": defaults.get("broker_position_reads"),
         "eod_session": defaults.get("eod_session"),
         "daily_loss_baseline": defaults.get("daily_loss_baseline"),
+        "order_dispatch_guards": defaults.get("order_dispatch_guards"),
         "runtime_config_hash_env": defaults.get("runtime_config_hash_env"),
         "entry_freshness": defaults.get("entry_freshness"),
         "drawdown_kill_pct": _resolve_float(

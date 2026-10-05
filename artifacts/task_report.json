@@ -1,15 +1,13 @@
 {
   "task_id": "evidence-repair",
-  "summary": "fix: address PR #35 review (persist-failure page, snapshot cache, DLQ alert order, test)",
-  "sha": "7053847349b1e97a4fffb9446a4d163b7c2001e1",
-  "branch": "codex/audit-20260930-safety-release",
+  "summary": "fix: limit insufficient-qty finalization to exit sells (PR #36 review)",
+  "sha": "1c5be559653f39137180b696a90bba2ccd1ee01d",
+  "branch": "fix/outbox-dispatch-guards",
   "change_scope": "task",
   "change_ref": "HEAD",
   "files_changed": [
-    "artifacts/phase2/candidate_param_freeze.json",
-    "backend/infra/outbox_worker.py",
-    "backend/organism/live_engine.py",
-    "tests/test_audit_20260930_safety_release.py"
+    "backend/integrations/alpaca_outbox.py",
+    "tests/test_audit_20261005_outbox_dispatch_guards.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -29,12 +27,11 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/infra/outbox_worker.py",
-    "backend/organism/live_engine.py"
+    "backend/integrations/alpaca_outbox.py"
   ],
   "docs_updated": [],
   "risks": [
-    "1 organism file(s) changed \u2014 replay verification required"
+    "1 backend runtime file(s) changed \u2014 targeted verification required"
   ],
   "follow_ups": [],
   "artifact_pack_status": "pass",

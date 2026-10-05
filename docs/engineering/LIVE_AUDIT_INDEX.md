@@ -1,38 +1,36 @@
 # Live Audit Index
 
-Generated: 2026-10-01T18:09:35Z
+Generated: 2026-10-05T13:05:50Z
 PR: n/a
-SHA: `7053847349`
-Branch: `codex/audit-20260930-safety-release`
+SHA: `1c5be55965`
+Branch: `fix/outbox-dispatch-guards`
 Scope: **backend_logic**
 Change scope: `task` (`HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **4**
+Total distinct changed files: **2**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 2 | `backend/infra/outbox_worker.py`, `backend/organism/live_engine.py` |
+| Backend | 1 | `backend/integrations/alpaca_outbox.py` |
 | Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_audit_20260930_safety_release.py` |
+| Tests | 1 | `tests/test_audit_20261005_outbox_dispatch_guards.py` |
 | Docs | 0 | none |
-| Artifacts/evidence | 1 | `artifacts/phase2/candidate_param_freeze.json` |
+| Artifacts/evidence | 0 | none |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **1** file(s).
+Organism subset of Backend: **0** file(s).
 
 ### Full changed-file list
 
-- `artifacts/phase2/candidate_param_freeze.json`
-- `backend/infra/outbox_worker.py`
-- `backend/organism/live_engine.py`
-- `tests/test_audit_20260930_safety_release.py`
+- `backend/integrations/alpaca_outbox.py`
+- `tests/test_audit_20261005_outbox_dispatch_guards.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -73,4 +71,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 1 organism file(s) changed — require replay verification
+- 1 backend runtime file(s) changed — require targeted verification
