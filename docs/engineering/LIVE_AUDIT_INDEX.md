@@ -1,25 +1,25 @@
 # Live Audit Index
 
-Generated: 2026-10-05T16:17:50Z
+Generated: 2026-10-05T22:16:51Z
 PR: n/a
-SHA: `50fef27a8b`
-Branch: `fix/surface-exit-safety`
+SHA: `10e2ee4a20`
+Branch: `fix/surface-dispatch-lifecycle`
 Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Change scope: `base` (`943303d8...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **6**
+Total distinct changed files: **10**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 2 | `backend/organism/live_engine.py`, `backend/services/positions_service.py` |
-| Scripts | 0 | none |
+| Backend | 3 | `backend/infra/outbox_worker.py`, `backend/integrations/alpaca_outbox.py`, `backend/organism/operator_cancellation.py` |
+| Scripts | 2 | `scripts/db/phase7_data_integrity_remediation.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 0 | none |
-| Tests | 3 | `tests/test_audit_20261005_surface_exit_safety.py`, `tests/test_v12_baseline_invariants.py`, `tests/test_v13_w100_live_tick_coverage.py` |
-| Docs | 1 | `docs/architecture/mapss.md` |
+| Tests | 3 | `tests/test_audit_20261005_outbox_dispatch_guards.py`, `tests/test_audit_20261005_surface_dispatch_lifecycle.py`, `tests/test_phase7_data_integrity_remediation.py` |
+| Docs | 2 | `docs/architecture/mapss.md`, `docs/runbooks/PAPER_UPTIME.md` |
 | Artifacts/evidence | 0 | none |
 | Reports | 0 | none |
 | Configuration | 0 | none |
@@ -29,12 +29,16 @@ Organism subset of Backend: **1** file(s).
 
 ### Full changed-file list
 
-- `backend/organism/live_engine.py`
-- `backend/services/positions_service.py`
+- `backend/infra/outbox_worker.py`
+- `backend/integrations/alpaca_outbox.py`
+- `backend/organism/operator_cancellation.py`
 - `docs/architecture/mapss.md`
-- `tests/test_audit_20261005_surface_exit_safety.py`
-- `tests/test_v12_baseline_invariants.py`
-- `tests/test_v13_w100_live_tick_coverage.py`
+- `docs/runbooks/PAPER_UPTIME.md`
+- `scripts/db/phase7_data_integrity_remediation.py`
+- `scripts/runtime/write_runtime_snapshot.py`
+- `tests/test_audit_20261005_outbox_dispatch_guards.py`
+- `tests/test_audit_20261005_surface_dispatch_lifecycle.py`
+- `tests/test_phase7_data_integrity_remediation.py`
 
 ## Configuration resolution (not engine observation)
 

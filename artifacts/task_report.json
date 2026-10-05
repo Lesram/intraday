@@ -1,23 +1,30 @@
 {
-  "task_id": "audit-20261005-surface-exit-safety",
-  "summary": "fix: exit safety nets see the broker price, exit window keeps stop and max-loss, quote rung cannot abort the tick (audit 2026-10-05 C05-01, C05-02, C06-02)",
-  "sha": "50fef27a8b2994bc79e76ebf3424cc19d6fb4d6a",
-  "branch": "fix/surface-exit-safety",
-  "change_scope": "task",
-  "change_ref": "HEAD",
+  "task_id": "audit-20261005-surface-dispatch-lifecycle",
+  "summary": "fix: dead-lettered and late entries no longer block their symbol (audit 2026-10-05 C04-01, C01-04)",
+  "sha": "10e2ee4a20eb1fbd6472cff2c0d861121814eb54",
+  "branch": "fix/surface-dispatch-lifecycle",
+  "change_scope": "base",
+  "change_ref": "943303d8...HEAD",
   "files_changed": [
-    "backend/organism/live_engine.py",
-    "backend/services/positions_service.py",
+    "backend/infra/outbox_worker.py",
+    "backend/integrations/alpaca_outbox.py",
+    "backend/organism/operator_cancellation.py",
     "docs/architecture/mapss.md",
-    "tests/test_audit_20261005_surface_exit_safety.py",
-    "tests/test_v12_baseline_invariants.py",
-    "tests/test_v13_w100_live_tick_coverage.py"
+    "docs/runbooks/PAPER_UPTIME.md",
+    "scripts/db/phase7_data_integrity_remediation.py",
+    "scripts/runtime/write_runtime_snapshot.py",
+    "tests/test_audit_20261005_outbox_dispatch_guards.py",
+    "tests/test_audit_20261005_surface_dispatch_lifecycle.py",
+    "tests/test_phase7_data_integrity_remediation.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
     "python scripts/ci/generate_artifacts.py full",
     "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
-    "python scripts/ci/check_spec_drift.py --json"
+    "python scripts/ci/check_spec_drift.py --json",
+    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json python scripts/phase2_freeze.py --verify --candidate",
+    "python -m pytest -q --timeout=300 <32 required suites: the new lifecycle tests, the outbox/close-accounting/exit-safety/safety-release audit suites, the integrations suites, broker-ack, DLQ, and every test importing operator_cancellation, outbox_worker or alpaca_outbox> (794 passed, 16 skipped, 0 failed)",
+    "python -m pytest -q tests/test_phase2_freeze.py (61 passed; the 2 candidate-equality tests fail by design)"
   ],
   "tests_passed": [
     "organism_live_engine",
@@ -31,23 +38,30 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/organism/live_engine.py",
-    "backend/services/positions_service.py"
+    "backend/infra/outbox_worker.py",
+    "backend/integrations/alpaca_outbox.py",
+    "backend/organism/operator_cancellation.py"
   ],
   "docs_updated": [
-    "docs/architecture/mapss.md"
+    "docs/architecture/mapss.md",
+    "docs/runbooks/PAPER_UPTIME.md"
   ],
   "risks": [
     "1 organism file(s) changed \u2014 replay verification required",
-    "Frozen decision surface changed (owner sign-off 2026-10-05): phase2_freeze --verify --candidate reports exactly source_hashes.entry_gates_dispatch and research_policy_sources.broker_state_safety; production needs a regenerated candidate_param_freeze.json and a new approved activation (new FROZEN_AT resets the forward clock).",
+    "Frozen decision surface changed (owner sign-off 2026-10-05): phase2_freeze --verify --candidate reports research_policy_sources.entry_cancellation (backend/organism/operator_cancellation.py) in addition to the base's source_hashes.entry_gates_dispatch and research_policy_sources.broker_state_safety; production needs a regenerated candidate_param_freeze.json and a new approved activation (new FROZEN_AT resets the forward clock).",
     "tests/test_phase2_freeze.py::test_decision_surface_unchanged and ::test_verify_mode_passes_on_unchanged_surface fail by design until the release assembly regenerates candidate_param_freeze.json (deliberately not regenerated on this branch).",
-    "Live exit-path behaviour changes: the broker-price safety nets can now fire, and the exit window sends stop/max-loss exits for unclaimed shares on the next tick instead of about 10 ticks later."
+    "Live order-path behaviour changes: an entry older than 120 s at dispatch, or created in a regular session that has since closed, is no longer sent (expired); a dead-lettered or refused entry is released about 60-75 s after the dead letter once the broker answers 404 for its client key, so the symbol can be re-entered. A cause that rejects every attempt (for example buying power) now cycles, bounded by the engine's hourly entry throttle (12 in learning mode).",
+    "Residual race: a POST the broker processes more than 60 s after the worker's last failed attempt could appear after the absence proof; the trade-update stream would then attach its fills by client key, but the pending identity is already released.",
+    "Not covered: ambiguous (lookup-only) dead letters are still never finalized (C04-03), and rows dead-lettered before this release carry no record, so a pending identity one of them still holds needs the documented brain repair (docs/runbooks/PAPER_UPTIME.md).",
+    "Shadow mode and dry_run under ENVIRONMENT=production (C04-02, unchanged here) dead-letter every order; their entries are now proven absent and released instead of locking the symbol, so they cycle like a persistent rejection."
   ],
   "follow_ups": [
     "Release assembly: regenerate artifacts/phase2/candidate_param_freeze.json once for all frozen-code fixes, then activate (new FROZEN_AT, activation record, daily-evidence binding); research_policy_baseline.json stays unchanged.",
-    "EOD flatten and the overnight forced exit still size from the full broker qty, not qty_available/unclaimed shares (an oversized flatten is refused by the PR #36 outbox guard).",
-    "Pyramid close_partial reads pos_data['direction'], which PositionsService never supplies (latent; pyramiding is off in production).",
-    "An orphan close that never finds a price stays pending with per-tick saves (C06-03); bars_held still skips minute boundaries crossed during the exit window."
+    "C04-03: a separate lookup budget for ambiguous submissions and client-key recovery of rows without a broker id (alpaca_outbox.probe_order_absence tells a definitive 404 from a failed lookup).",
+    "C01-05: classify breaker-open dispatches as not sent and post-send transport errors as ambiguous; this branch's entry age and session limits are what make rescheduling entries safe, and ambiguous outcomes stay outside the dead-letter finalization.",
+    "C04-02: decide shadow-mode semantics (the engine stops submitting, or shadow rows are finalized with a not-sent marker) and stop writing a status the constraint forbids.",
+    "C04-04: claim one outbox event at a time and release unstarted claims on stop; a stranded entry now expires instead of being sent 30 minutes late.",
+    "Optional operator-run hand-off of pre-release dead letters to the worker's absence check (needs a policy for orders found at the broker long after they filled)."
   ],
   "artifact_pack_status": "pass",
   "artifact_pack_errors": []
