@@ -1,32 +1,18 @@
 {
   "scope": "task",
   "ref": "HEAD",
-  "total": 9,
+  "total": 2,
   "all": [
-    "backend/infra/outbox_worker.py",
-    "backend/integrations/alpaca_broker.py",
     "backend/integrations/alpaca_outbox.py",
-    "backend/services/order_service.py",
-    "docs/architecture/mapss.md",
-    "docs/runbooks/PAPER_UPTIME.md",
-    "scripts/runtime/write_runtime_snapshot.py",
-    "tests/test_audit_20261005_outbox_dispatch_guards.py",
-    "tests/unit/test_alpaca_outbox_comprehensive.py"
+    "tests/test_audit_20261005_outbox_dispatch_guards.py"
   ],
   "backend": [
-    "backend/infra/outbox_worker.py",
-    "backend/integrations/alpaca_broker.py",
-    "backend/integrations/alpaca_outbox.py",
-    "backend/services/order_service.py"
+    "backend/integrations/alpaca_outbox.py"
   ],
   "organism": [],
   "tests": [
-    "tests/test_audit_20261005_outbox_dispatch_guards.py",
-    "tests/unit/test_alpaca_outbox_comprehensive.py"
+    "tests/test_audit_20261005_outbox_dispatch_guards.py"
   ],
   "config": [],
-  "docs": [
-    "docs/architecture/mapss.md",
-    "docs/runbooks/PAPER_UPTIME.md"
-  ]
+  "docs": []
 }

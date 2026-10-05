@@ -1,32 +1,19 @@
 {
-  "task_id": "audit-20261005-outbox-exit-guard",
-  "summary": "fix: outbox exit guard, exit sells cannot open a short (audit 2026-10-05 C01-01); C01-04 entry expiry deferred until the sign-off-gated C04-01 release",
-  "sha": "ec9306df621e220237635c9232482ba3ce1801b4",
+  "task_id": "evidence-repair",
+  "summary": "fix: limit insufficient-qty finalization to exit sells (PR #36 review)",
+  "sha": "1c5be559653f39137180b696a90bba2ccd1ee01d",
   "branch": "fix/outbox-dispatch-guards",
   "change_scope": "task",
   "change_ref": "HEAD",
   "files_changed": [
-    "backend/infra/outbox_worker.py",
-    "backend/integrations/alpaca_broker.py",
     "backend/integrations/alpaca_outbox.py",
-    "backend/services/order_service.py",
-    "docs/architecture/mapss.md",
-    "docs/runbooks/PAPER_UPTIME.md",
-    "scripts/runtime/write_runtime_snapshot.py",
-    "tests/test_audit_20261005_outbox_dispatch_guards.py",
-    "tests/unit/test_alpaca_outbox_comprehensive.py"
+    "tests/test_audit_20261005_outbox_dispatch_guards.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
     "python scripts/ci/generate_artifacts.py full",
     "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
-    "python scripts/ci/check_spec_drift.py --json",
-    "pytest -q -p no:cacheprovider tests/test_audit_20261005_outbox_dispatch_guards.py",
-    "pytest -q -p no:cacheprovider <55 test files importing alpaca_outbox|outbox_worker|order_service> tests/test_order_integrity_comprehensive.py tests/test_position_reconciliation.py tests/test_position_reconciliation_comprehensive.py",
-    "pytest -q -p no:cacheprovider tests/test_replay_simulator.py",
-    "python scripts/ci/lint_ratchet.py",
-    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json python scripts/phase2_freeze.py --verify --candidate",
-    "python scripts/ci/generate_audit_index.py"
+    "python scripts/ci/check_spec_drift.py --json"
   ],
   "tests_passed": [
     "organism_live_engine",
@@ -36,56 +23,17 @@
     "self_evolution",
     "algorithm_improvements",
     "semantic_invariants",
-    "replay_simulator",
-    "test_audit_20261005_outbox_dispatch_guards (50 passed)",
-    "55 files importing alpaca_outbox/outbox_worker/order_service (incl. test_audit_20260930_safety_release) + order_integrity/position_reconciliation trio: 1431 passed, 23 skipped, 1 failed (pre-existing, see tests_failed_preexisting)",
-    "test_replay_simulator standalone (28 passed)",
-    "lint_ratchet (no new violations)",
-    "mutation check: 11/11 targeted mutants killed, including the review's survivors M23 (undeclared-sell fallback), M21 (long-only default) and M4 (retryable branch)"
+    "replay_simulator"
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/infra/outbox_worker.py",
-    "backend/integrations/alpaca_broker.py",
-    "backend/integrations/alpaca_outbox.py",
-    "backend/services/order_service.py"
+    "backend/integrations/alpaca_outbox.py"
   ],
-  "docs_updated": [
-    "docs/architecture/mapss.md",
-    "docs/runbooks/PAPER_UPTIME.md"
-  ],
+  "docs_updated": [],
   "risks": [
-    "4 backend runtime file(s) changed \u2014 targeted verification required",
-    "Order-path behaviour change (not frozen surface): an exit sell whose free long quantity at the broker is below its order quantity is refused (row 'rejected', event dead-lettered, CRITICAL); Alpaca 'insufficient qty' is terminal instead of retried. Entries are unchanged.",
-    "Refused, not clamped: a full exit, the EOD flatten or the max-loss safety net sent while an earlier partial exit still holds shares is refused (Alpaca would reject it too); the remainder goes out on the engine's next exit cycle.",
-    "The guard narrows the duplicate-exit race but does not close it: Alpaca's position endpoint lagging a fill, or a sell placed outside the outbox worker between the read and the POST, can still produce a short sale.",
-    "Each exit makes two extra broker reads (client-key lookup, position) before place_order's own pre-check; an outage of either endpoint holds queued exits, and one through 15:58-16:00 leaves the position open until the next session's forced exit.",
-    "Undeclared payloads (manual API orders, events queued before this release) use the long-only rule read from ORGANISM_LONG_ONLY (env), not the engine's runtime toggle.",
-    "'insufficient qty' is detected by message text on a non-429 4xx; a changed Alpaca message falls back to the old retry path (the exit guard upstream still applies).",
-    "Duplicate exits after a broker delay page CRITICAL under their own headline ('DUPLICATE EXIT SUPPRESSED AT DISPATCH'), roughly one per engine re-fire per symbol."
+    "1 backend runtime file(s) changed \u2014 targeted verification required"
   ],
-  "follow_ups": [
-    "C01-04: ship the entry age/session refusal together with the sign-off-gated C04-01 release (operator_cancellation releases a tracked entry whose row is terminal with attributes.dispatch_refusal and has no Execution/PositionLot rows).",
-    "C01-05: classify breaker-open dispatches as not-sent and post-send transport errors as ambiguous at budget exhaustion; consider terminal handling for other definitive 4xx.",
-    "C04-03: separate lookup-only budget and client-key recovery of rows without a broker id; AlpacaBrokerClient.find_order_by_client_order_id (this PR) is the strict lookup it needs.",
-    "C04-04: claim one event at a time / release claims on stop().",
-    "Reduce-only check for buy-to-cover exits (a duplicate cover could open a long).",
-    "Engine side (hashed, needs sign-off): no exit re-submission while an earlier exit for the symbol is unresolved.",
-    "Evaluate DELETE /v2/positions/{symbol}?qty=N for exits on paper (cannot open a short).",
-    "Optional: skip place_order's pre-check after the guard's strict 404; a refusal counter by reason; log duplicate-flat exits at WARNING if the pages prove noisy.",
-    "Delete the unreachable OutboxProcessor submission path in backend/infra/outbox.py (pre-existing, bypasses the guard if ever wired)."
-  ],
+  "follow_ups": [],
   "artifact_pack_status": "pass",
-  "artifact_pack_errors": [],
-  "tests_failed_preexisting": [
-    "tests/unit/test_service_modules.py::TestQuoteManager::test_get_quote \u2014 needs Alpaca credentials (alpaca-py ValueError: You must supply a method of authentication); fails identically on base 5140711"
-  ],
-  "tests_updated": [
-    "tests/unit/test_alpaca_outbox_comprehensive.py::TestAlpacaOutboxDispatcherAlpacaBroker::test_alpaca_broker_with_stop_order \u2014 a sell under long-only is now an exit, so the dispatcher first looks the client key up and reads the position; the AsyncMock broker answered neither, so the guard correctly held the order. The test now supplies lookup=None and a 25-share long; its assertions are unchanged."
-  ],
-  "freeze_verify": {
-    "candidate": "pass (exit 0): CANDIDATE DRIFT-VERIFY OK",
-    "plain_verify": "exit 1, output identical on base 5140711 (committed param_freeze.json predates the PR #34/#35 candidate surface); no hashed source touched"
-  },
-  "new_env_settings": {}
+  "artifact_pack_errors": []
 }
