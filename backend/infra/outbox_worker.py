@@ -6,6 +6,16 @@ in FIFO order using proper ORM patterns instead of direct SQL connections.
 
 ARCHITECTURAL FIX: Eliminates direct sqlite3.connect() usage that bypassed ORM.
 Now uses unified database manager and repository pattern for all database access.
+
+Audit 2026-10-05 (C04-01, C01-04): a dead-lettered order, and an entry refused
+at dispatch because it is stale or its regular session has closed, is recorded
+on its order row (``attributes.outbox_dead_letter``) in the dead-letter
+transaction. Once that commit has settled, and only while no other delivery of
+the order is pending, a read-only client-key lookup decides: a definitive 404
+finalizes the row ('rejected', or 'expired' for a refused entry) with the
+absence proof; an order found at the broker is attached by its client key; any
+other answer is retried later. The organism engine releases a pending entry
+identity only for a row finalized this way.
 """
 
 import asyncio
@@ -16,6 +26,7 @@ import os
 import random
 import time
 from typing import Any
+import uuid
 
 # §2.1 FIX: Use canonical config instead of separate UnifiedSettings
 from backend.config.settings import get_settings
@@ -165,6 +176,16 @@ class OutboxWorker:
                 pass
             self._prune_task = None
 
+        # Audit 2026-10-05 C04-01: and the dead-letter absence loop.
+        dead_letter_task = getattr(self, "_dead_letter_task", None)
+        if dead_letter_task is not None:
+            dead_letter_task.cancel()
+            try:
+                await dead_letter_task
+            except asyncio.CancelledError:
+                pass
+            self._dead_letter_task = None
+
         logger.info("OutboxWorker stopped")
 
     async def prune_old_events(
@@ -269,6 +290,29 @@ class OutboxWorker:
             "BB5-F1: outbox prune loop started (retention=%dd, interval=%ds)",
             max_age_days, int(interval_seconds),
         )
+
+    async def start_dead_letter_loop(self, *, interval_seconds: float | None = None) -> None:
+        """Audit 2026-10-05 C04-01: run ``resolve_dead_letters`` periodically.
+
+        A separate task, so broker lookups never hold up order dispatch.
+        Idempotent; ``stop()`` cancels it.
+        """
+        if getattr(self, "_dead_letter_task", None) is not None:
+            return
+        interval = DEAD_LETTER_SWEEP_SECONDS if interval_seconds is None else interval_seconds
+
+        async def _loop() -> None:
+            while self._running:
+                try:
+                    await self.resolve_dead_letters()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:  # noqa: BLE001 - retried on the next sweep
+                    logger.warning("Dead-letter absence sweep failed: %s", e)
+                await asyncio.sleep(interval)
+
+        self._dead_letter_task = asyncio.create_task(_loop())
+        logger.info("Dead-letter absence loop started (interval=%ss)", interval)
 
     async def _dispatcher(self):
         """
@@ -410,6 +454,22 @@ class OutboxWorker:
             payload["_broker_ack_lookup_only"] = True
             if isinstance(nested, dict):
                 payload["payload"] = {**nested, "_broker_ack_lookup_only": True}
+        elif topic == "order.submitted":
+            # Audit 2026-10-05 C01-04: an entry is never sent late. Exits and
+            # lookup-only events are never refused here.
+            try:
+                refusal = entry_dispatch_refusal(payload, event.get("created_at"), now=_now_utc())
+            except Exception as exc:  # noqa: BLE001 - an unchecked order is held, not sent
+                logger.error("Entry dispatch check failed; order not sent", event_id=event_id,
+                             error=str(exc), error_type=type(exc).__name__)
+                await self._handle_event_failure(event, {
+                    "success": False, "retryable": True,
+                    "error": f"entry_dispatch_check_unavailable:{type(exc).__name__}",
+                })
+                return
+            if refusal is not None:
+                await self._expire_entry_at_dispatch(event, *refusal)
+                return
 
         logger.info("Processing outbox event",
                    event_id=event_id,
@@ -1082,18 +1142,21 @@ class OutboxWorker:
                 finally:
                     await session.close()
 
-    async def _move_to_dlq(self, event: dict[str, Any], error_result: dict[str, Any]):
+    async def _move_to_dlq(self, event: dict[str, Any], error_result: dict[str, Any],
+                           *, terminal_status: str | None = None):
         """
         Move event to dead letter queue.
 
         Args:
             event: Failed event
             error_result: Final error details
+            terminal_status: Order status once the broker confirms the order was
+                never placed (audit 2026-10-05 C04-01); 'rejected' by default,
+                'expired' for an entry refused at dispatch.
         """
         event_id = event.get("id")
 
         try:
-            import uuid
             event_uuid = uuid.UUID(event_id)
             error_message = error_result.get("error", "Max retries exceeded")
             attempts = event.get("retry_count", 0)
@@ -1106,6 +1169,12 @@ class OutboxWorker:
                         event_id=event_uuid,
                         attempts=attempts,
                         error_message=error_message
+                    )
+                    # Audit 2026-10-05 C04-01: in the same transaction, record
+                    # the dead letter on its order row for the absence check.
+                    dead_letter = await self._record_dead_letter(
+                        session, event, error_result,
+                        terminal_status or DEAD_LETTER_ORDER_STATUS,
                     )
 
                     # Log DLQ details for manual inspection — do NOT re-enqueue
@@ -1132,6 +1201,15 @@ class OutboxWorker:
                     # commit leaves the event for retry and must not page.
                     if alert is not None:
                         logger.critical(alert["message"], **alert["fields"])
+                    if dead_letter is not None:
+                        logger.info(
+                            "Dead-lettered order recorded; the broker absence check follows "
+                            "(audit 2026-10-05 C04-01)",
+                            event_id=event_id, order_id=dead_letter["order_id"],
+                            symbol=dead_letter["symbol"], side=dead_letter["side"],
+                            reason=dead_letter["reason"],
+                            terminal_status=dead_letter["terminal_status"],
+                        )
 
                     # Uncertain acknowledgement is not broker rejection. The
                     # outbox delivery stops, while the order stays unresolved
@@ -1143,6 +1221,8 @@ class OutboxWorker:
                             await broadcaster.broadcast_to_topic("orders", {
                                 "type": ("order.reconciliation_required"
                                          if error_result.get("submission_ambiguous")
+                                         else "order.expired"
+                                         if error_result.get("dispatch_expired")
                                          else "order.rejected"),
                                 "order_id": payload.get("order_id", event_id),
                                 "symbol": payload.get("symbol"),
@@ -1270,6 +1350,410 @@ class OutboxWorker:
         except Exception as ws_err:  # noqa: BLE001 - the notice is best-effort
             logger.debug("WebSocket notification failed (non-critical)", error=str(ws_err))
 
+    # ── Audit 2026-10-05 C01-04 / C04-01: refused entries and dead letters ──
+
+    async def _expire_entry_at_dispatch(self, event: dict[str, Any], reason: str, detail: str):
+        """Audit 2026-10-05 C01-04: an entry too old, or whose session has closed, is not sent.
+
+        It is dead-lettered without a dispatch attempt, and its row is recorded
+        for the absence check like any other dead letter; once the broker
+        confirms it never received the order the row becomes 'expired', which
+        lets the engine release the pending entry identity. An earlier attempt
+        that did reach the broker is found by its client key and attached.
+        """
+        payload = _flat_payload(event.get("payload"))
+        logger.warning(
+            "Entry not sent: refused at dispatch (audit 2026-10-05 C01-04)",
+            event_id=event.get("id"), order_id=payload.get("order_id"),
+            symbol=payload.get("symbol"), side=payload.get("side"),
+            qty=payload.get("qty"), reason=reason, detail=detail,
+        )
+        await self._move_to_dlq(event, {
+            "success": False,
+            "dispatch_expired": True,
+            "refusal_reason": reason,
+            "error": f"DISPATCH_EXPIRED:{reason}: {detail}",
+        }, terminal_status=EXPIRED_ENTRY_ORDER_STATUS)
+
+    async def _record_dead_letter(self, session, event: dict[str, Any],
+                                  error_result: dict[str, Any], terminal_status: str):
+        """Audit 2026-10-05 C04-01: mark a dead-lettered order row for the absence check.
+
+        Runs inside the dead-letter transaction, so the record exists exactly
+        when the event is dead-lettered. Only an order.submitted event with an
+        unambiguous outcome qualifies: an ambiguous submission (lookup-only
+        marker) may be live at the broker and keeps its existing handling. Only
+        a row still awaiting the broker (no broker id, no fills, not terminal,
+        same client key) is recorded; its status is left as it is. Returns a
+        summary for the log, or None.
+        """
+        if event.get("topic") != "order.submitted" or _ambiguous_dead_letter(event, error_result):
+            return None
+        payload = _flat_payload(event.get("payload"))
+        client_key = payload.get("client_key")
+        try:
+            order_uuid = uuid.UUID(str(payload.get("order_id")))
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(client_key, str) or not client_key.strip():
+            return None
+
+        from sqlalchemy import select
+
+        from backend.infra.repositories.orders import OrdersRepo
+        from backend.infra.schemas import Order
+
+        row = (
+            await session.execute(
+                select(Order)
+                .where(Order.id == order_uuid)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        ).scalar_one_or_none()
+        if (row is None or row.broker_order_id
+                or Decimal(str(row.filled_qty or 0)) != 0
+                or str(row.status or "").lower() in _TERMINAL_ORDER_STATUSES
+                or row.client_idempotency_key != client_key):
+            return None
+        attempts = int(event.get("retry_count") or 0)
+        reason = str(error_result.get("refusal_reason") or (
+            "retries_exhausted" if attempts >= getattr(self, "max_retries", 5)
+            else "non_retryable_error"))
+        record = {
+            "state": DEAD_LETTER_STATE_PENDING,
+            "reason": reason,
+            "error": str(error_result.get("error") or "")[:300],
+            "outbox_event_id": str(event.get("id")),
+            "client_order_id": client_key,
+            "attempts": attempts,
+            "dead_lettered_at": _now_utc().isoformat(),
+            "terminal_status": terminal_status,
+        }
+        await OrdersRepo(session).attach_broker_result(
+            row.id, attributes={DEAD_LETTER_ATTRIBUTE: record},
+        )
+        return {"order_id": str(row.id), "symbol": row.symbol, "side": row.side, **record}
+
+    async def resolve_dead_letters(self, *, now: datetime | None = None) -> list[dict[str, Any]]:
+        """Audit 2026-10-05 C04-01: settle recorded dead letters against the broker.
+
+        For each recorded row whose dead letter is at least
+        DEAD_LETTER_SETTLE_SECONDS old (a late-processed POST of the last
+        attempt has time to show) and is due under its retry backoff, and
+        only while no other delivery of the order is pending, the order is
+        looked up by its client key: a definitive 404 finalizes the row with
+        the absence proof, an order found at the broker is attached, and any
+        other answer is retried with a capped backoff. Returns one outcome per
+        row it acted on. Never submits an order.
+        """
+        now = now or _now_utc()
+        outcomes = []
+        lookups = 0
+        for order_id, record in await self._dead_letter_candidates():
+            if lookups >= DEAD_LETTER_SWEEP_BATCH:
+                break
+            outcome = await self._resolve_dead_letter(order_id, record, now)
+            if outcome is not None:
+                lookups += int(bool(outcome.get("lookup")))
+                outcomes.append(outcome)
+        return outcomes
+
+    async def _dead_letter_candidates(self) -> list[tuple[Any, Any]]:
+        """Rows recorded by ``_record_dead_letter`` still awaiting the absence check."""
+        from sqlalchemy import func, select
+
+        from backend.infra.schemas import Order
+
+        async with self.sessionmaker() as session:
+            rows = (
+                await session.execute(
+                    select(Order.id, Order.attributes)
+                    .where(
+                        Order.broker_order_id.is_(None),
+                        func.lower(Order.status).not_in(sorted(_TERMINAL_ORDER_STATUSES)),
+                        Order.attributes[(DEAD_LETTER_ATTRIBUTE, "state")].as_string()
+                        == DEAD_LETTER_STATE_PENDING,
+                    )
+                    .order_by(Order.updated_at, Order.id)
+                    .limit(DEAD_LETTER_CANDIDATE_LIMIT)
+                )
+            ).all()
+        return [(order_id, (attributes or {}).get(DEAD_LETTER_ATTRIBUTE))
+                for order_id, attributes in rows if isinstance(attributes, dict)]
+
+    async def _resolve_dead_letter(self, order_id: Any, record: Any,
+                                   now: datetime) -> dict[str, Any] | None:
+        """One recorded dead letter; None when it is not due yet."""
+        key = str(order_id)
+        try:
+            order_uuid = uuid.UUID(key)
+            client_key = record["client_order_id"]
+            dead_lettered_at = _as_utc(record["dead_lettered_at"])
+            terminal_status = record["terminal_status"]
+            uuid.UUID(str(record["outbox_event_id"]))
+        except (TypeError, ValueError, KeyError):
+            return {"order_id": key, "outcome": "record_invalid"}
+        if (not isinstance(client_key, str) or not client_key.strip() or dead_lettered_at is None
+                or terminal_status not in (DEAD_LETTER_ORDER_STATUS, EXPIRED_ENTRY_ORDER_STATUS)):
+            return {"order_id": key, "outcome": "record_invalid"}
+        if (now - dead_lettered_at).total_seconds() < DEAD_LETTER_SETTLE_SECONDS:
+            return None
+        retries = getattr(self, "_dead_letter_retry", None)
+        if not isinstance(retries, dict):
+            retries = self._dead_letter_retry = {}
+        retry = retries.get(key)
+        if retry is not None and now < retry[0]:
+            return None
+        if await self._other_pending_delivery(order_uuid):
+            # Another delivery could still place the order: absence now proves nothing.
+            return {"order_id": key, "outcome": "pending_delivery_exists"}
+
+        from backend.integrations import alpaca_outbox
+
+        try:
+            state, order, detail = await asyncio.wait_for(
+                alpaca_outbox.probe_order_absence(client_key), DEAD_LETTER_LOOKUP_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            state, order, detail = "unknown", None, "lookup_timeout"
+        checked_at = now.isoformat()
+        if state == "absent":
+            retries.pop(key, None)
+            outcome = await self._write_dead_letter_outcome(
+                order_uuid, record, state=DEAD_LETTER_STATE_FINALIZED, status=terminal_status,
+                require_unsent=True, absence={
+                    "result": "not_found", "checked_at": checked_at,
+                    "client_order_id": client_key,
+                    "lookup": "GET /v2/orders:by_client_order_id",
+                },
+            )
+            if outcome == DEAD_LETTER_STATE_FINALIZED:
+                logger.warning(
+                    "Dead-lettered order finalized: the broker confirmed it was never placed "
+                    "(audit 2026-10-05 C04-01)",
+                    order_id=key, client_order_id=client_key, status=terminal_status,
+                    reason=record.get("reason"), outbox_event_id=record.get("outbox_event_id"),
+                )
+            return {"order_id": key, "outcome": outcome, "detail": detail, "lookup": True}
+        if state == "present":
+            retries.pop(key, None)
+            outcome = await self._attach_dead_letter(order_uuid, record, order, checked_at)
+            return {"order_id": key, "outcome": outcome, "detail": detail, "lookup": True}
+        attempts = (retry[1] if retry is not None else 0) + 1
+        delay = min(DEAD_LETTER_SWEEP_SECONDS * 2 ** (attempts - 1), DEAD_LETTER_MAX_BACKOFF_SECONDS)
+        retries[key] = (now + timedelta(seconds=delay), attempts)
+        logger.warning(
+            "Dead-lettered order: broker absence unverified, retrying (audit 2026-10-05 C04-01)",
+            order_id=key, client_order_id=client_key, detail=detail,
+            attempts=attempts, retry_in_seconds=delay,
+        )
+        return {"order_id": key, "outcome": "absence_unverified", "detail": detail, "lookup": True}
+
+    async def _other_pending_delivery(self, order_uuid: uuid.UUID) -> bool:
+        """True when a pending order.submitted event for this order exists (or cannot be ruled out)."""
+        from sqlalchemy import select
+
+        from backend.infra.schemas import OutboxEvent
+
+        async with self.sessionmaker() as session:
+            rows = (
+                await session.execute(
+                    select(OutboxEvent.payload)
+                    .where(OutboxEvent.status == "pending", OutboxEvent.topic == "order.submitted")
+                    .limit(DEAD_LETTER_PENDING_SCAN_LIMIT + 1)
+                )
+            ).all()
+        if len(rows) > DEAD_LETTER_PENDING_SCAN_LIMIT:
+            return True
+        for (payload,) in rows:
+            try:
+                if uuid.UUID(str(_flat_payload(payload).get("order_id"))) == order_uuid:
+                    return True
+            except (TypeError, ValueError):
+                continue
+        return False
+
+    async def _write_dead_letter_outcome(self, order_uuid: uuid.UUID, record: dict[str, Any], *,
+                                         state: str, absence: dict[str, Any],
+                                         status: str | None = None, require_unsent: bool) -> str:
+        """Record the absence-check outcome (and the terminal status) under the row lock.
+
+        Nothing is written when the row's record is no longer the pending one
+        for this dead letter. Finalizing (``require_unsent``) also needs the row
+        still unsent (no broker id, no fills, not terminal) and its event still
+        dead-lettered (or already pruned, which only removes failed or sent
+        events).
+        """
+        from sqlalchemy import select
+
+        from backend.infra.repositories.orders import OrdersRepo
+        from backend.infra.schemas import Order, OutboxEvent
+
+        async with self.sessionmaker() as session:
+            try:
+                row = (
+                    await session.execute(
+                        select(Order)
+                        .where(Order.id == order_uuid)
+                        .with_for_update()
+                        .execution_options(populate_existing=True)
+                    )
+                ).scalar_one_or_none()
+                attributes = row.attributes if row is not None and isinstance(row.attributes, dict) else {}
+                current = attributes.get(DEAD_LETTER_ATTRIBUTE)
+                if (not isinstance(current, dict) or current.get("state") != DEAD_LETTER_STATE_PENDING
+                        or current.get("outbox_event_id") != record.get("outbox_event_id")):
+                    await session.rollback()
+                    return "record_changed"
+                if require_unsent:
+                    if (row.broker_order_id or Decimal(str(row.filled_qty or 0)) != 0
+                            or str(row.status or "").lower() in _TERMINAL_ORDER_STATUSES):
+                        await session.rollback()
+                        return "order_row_changed"
+                    event = await session.get(OutboxEvent, uuid.UUID(str(record["outbox_event_id"])))
+                    if event is not None and event.status != "failed":
+                        await session.rollback()
+                        return "event_not_dead_lettered"
+                await OrdersRepo(session).attach_broker_result(
+                    row.id, status=status,
+                    attributes={DEAD_LETTER_ATTRIBUTE: {**current, "state": state, "absence": absence}},
+                )
+                await session.commit()
+                return state
+            except Exception:
+                await session.rollback()
+                raise
+            finally:
+                await session.close()
+
+    async def _attach_dead_letter(self, order_uuid: uuid.UUID, record: dict[str, Any],
+                                  order: dict[str, Any], checked_at: str) -> str:
+        """A dead-lettered order is live at the broker: attach it by its client key and page.
+
+        The acknowledgement is persisted through ``_update_order_status``, the
+        same validated path as a normal acknowledgement (identity checks, fill
+        accounting), so normal recovery and the engine's broker confirmation
+        apply from here on. The outbox event stays dead-lettered; nothing is
+        sent.
+        """
+        error = None
+        try:
+            await self._update_order_status(
+                order_id=str(order_uuid), status=str(order.get("status")),
+                broker_order_id=order.get("id"),
+                details={"broker": "alpaca", "alpaca_response": order,
+                         "message": "Dead-lettered order found at the broker by its client key"},
+            )
+        except Exception as exc:  # noqa: BLE001 - recorded and paged below
+            error = f"{type(exc).__name__}: {exc}"[:300]
+        state = DEAD_LETTER_STATE_FOUND if error is None else DEAD_LETTER_STATE_FOUND_UNATTACHED
+        absence = {"result": "found", "checked_at": checked_at,
+                   "client_order_id": record.get("client_order_id"),
+                   "broker_order_id": order.get("id"), "broker_status": order.get("status")}
+        if error is not None:
+            absence["error"] = error
+        outcome = await self._write_dead_letter_outcome(
+            order_uuid, record, state=state, absence=absence, require_unsent=False,
+        )
+        logger.critical(
+            ("DEAD-LETTERED ORDER FOUND AT THE BROKER, attached by its client key"
+             if error is None else
+             "DEAD-LETTERED ORDER FOUND AT THE BROKER, could not be attached")
+            + ": the outbox stopped delivery but the order is live; reconcile it",
+            order_id=str(order_uuid), client_order_id=record.get("client_order_id"),
+            broker_order_id=order.get("id"), broker_status=order.get("status"),
+            reason=record.get("reason"), outcome=outcome, error=error,
+        )
+        return outcome
+
+
+# Audit 2026-10-05 C01-04 / C04-01: entry dispatch limits and dead-letter
+# finalization (see the module docstring).
+DEAD_LETTER_ORDER_STATUS = "rejected"     # a dead letter the broker confirmed it never received
+EXPIRED_ENTRY_ORDER_STATUS = "expired"    # an entry refused at dispatch, likewise confirmed
+ENTRY_DISPATCH_MAX_AGE_SECONDS = 120.0    # measured from OutboxEvent.created_at (intent time)
+DEAD_LETTER_SETTLE_SECONDS = 60.0         # dead letter to its first broker lookup
+DEAD_LETTER_SWEEP_SECONDS = 15.0          # sweep interval and first retry backoff
+DEAD_LETTER_MAX_BACKOFF_SECONDS = 300.0   # cap of the doubling retry backoff
+DEAD_LETTER_LOOKUP_TIMEOUT_SECONDS = 5.0  # per client-key lookup
+DEAD_LETTER_SWEEP_BATCH = 5               # lookups per sweep at most
+DEAD_LETTER_CANDIDATE_LIMIT = 50          # recorded rows read per sweep
+DEAD_LETTER_PENDING_SCAN_LIMIT = 1000     # pending events scanned; more is "cannot rule out"
+DEAD_LETTER_ATTRIBUTE = "outbox_dead_letter"
+DEAD_LETTER_STATE_PENDING = "absence_check_pending"
+DEAD_LETTER_STATE_FINALIZED = "finalized"
+DEAD_LETTER_STATE_FOUND = "found_at_broker"
+DEAD_LETTER_STATE_FOUND_UNATTACHED = "found_unattached"
+
+
+def _now_utc() -> datetime:
+    """Clock of the entry dispatch limits and the dead-letter records (patched in tests)."""
+    return datetime.now(UTC)
+
+
+def _as_utc(value: Any) -> datetime | None:
+    """A datetime or ISO string as aware UTC (naive values are UTC), else None."""
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str) and value.strip():
+        try:
+            parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    else:
+        return None
+    return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
+
+
+def _flat_payload(payload: Any) -> dict[str, Any]:
+    """An order.submitted payload with a nested ``payload`` merged in, as the dispatcher sees it."""
+    flat = dict(payload) if isinstance(payload, dict) else {}
+    if isinstance(flat.get("payload"), dict):
+        flat = {**flat, **flat["payload"]}
+    return flat
+
+
+def _ambiguous_dead_letter(event: dict[str, Any], error_result: dict[str, Any]) -> bool:
+    """An ambiguous submission: the order may be live, so it is never finalized here."""
+    return bool(error_result.get("submission_ambiguous")) or any(
+        str(value or "").startswith("INTRA_BROKER_ACK")
+        for value in (error_result.get("error"), event.get("last_error"))
+    )
+
+
+def entry_dispatch_refusal(payload: Any, created_at: Any, *, now: datetime) -> tuple[str, str] | None:
+    """Audit 2026-10-05 C01-04: ``(reason, detail)`` when an entry must not be sent now.
+
+    Every order that is not an exit is checked (exits are never refused for
+    age; the exit guard covers them). ``created_at`` is the outbox row's
+    creation time, the original intent time that retries do not change. The
+    order is refused when it is older than ENTRY_DISPATCH_MAX_AGE_SECONDS, or
+    when it was created during a regular session that has since closed: sent
+    now, a DAY order would be queued for the next session. An order created
+    outside a regular session is checked for age only. An unknown creation
+    time is not refused (the worker reads it from the event row).
+    """
+    from backend.integrations.alpaca_outbox import resolve_order_intent
+    from backend.utils.market_hours import ET, is_market_open, market_close_time
+
+    intent, _basis = resolve_order_intent(_flat_payload(payload))
+    created = _as_utc(created_at)
+    if intent == "exit" or created is None:
+        return None
+    age = max(0.0, (now - created).total_seconds())
+    if age > ENTRY_DISPATCH_MAX_AGE_SECONDS:
+        return ("entry_stale",
+                f"order age {age:.0f}s exceeds the {ENTRY_DISPATCH_MAX_AGE_SECONDS:.0f}s "
+                "entry dispatch limit")
+    if is_market_open(created):
+        day = created.astimezone(ET).date()
+        session_end = datetime.combine(day, market_close_time(day), tzinfo=ET)
+        if now >= session_end:
+            return ("entry_session_closed",
+                    f"created in the regular session that closed at {session_end.isoformat()}")
+    return None
+
 
 # Audit 2026-10-05 C01-01: a refused exit's row status, and the statuses a
 # refusal never overwrites.
@@ -1309,6 +1793,10 @@ def dlq_exposure_alert(event: dict[str, Any], error_result: dict[str, Any]) -> d
     at CRITICAL, which the paper watchdog's critical-log monitor turns into an
     attention event. Client-key reconciliation of the order row is unchanged.
     """
+    if (error_result or {}).get("dispatch_expired"):
+        # Audit 2026-10-05 C01-04: an entry refused before dispatch (never an
+        # exit) was not sent; a declared short entry must not page as an exit.
+        return None
     payload = event.get("payload") if isinstance(event, dict) else None
     payload = payload if isinstance(payload, dict) else {}
     if isinstance(payload.get("payload"), dict):
@@ -1407,6 +1895,8 @@ async def start_outbox_worker(sessionmaker) -> OutboxWorker:
         max_age_days=max_age_days,
         interval_seconds=interval_seconds,
     )
+    # Audit 2026-10-05 C04-01: dead letters are settled against the broker.
+    await worker.start_dead_letter_loop()
     return worker
 
 

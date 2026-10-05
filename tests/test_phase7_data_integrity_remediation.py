@@ -278,7 +278,8 @@ async def test_phase7_integrity_apply_removes_exact_duplicates_and_marks_stale(
         realized = await _all(session, RealizedTrade)
         assert len(realized) == 1
         orders = {str(order.id): order for order in await _all(session, Order)}
-        assert orders[str(stale.id)].status == "failed"
+        # Audit 2026-10-05 C04-01: an accountable terminal status, never 'failed'.
+        assert orders[str(stale.id)].status == "rejected"
         cleanup = orders[str(stale.id)].attributes["phase7_data_integrity_cleanup"]
         assert cleanup["previous_status"] == "accepted"
         assert cleanup["reason"] == "failed_outbox_no_broker_id_zero_fill"

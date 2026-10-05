@@ -10,8 +10,13 @@ delayed or retried exit could otherwise open a short. The exit is first looked
 up by its persisted client key; one that already reached the broker is
 attached and never sent again. A refused exit is returned as
 ``dispatch_refused`` and the outbox worker finalizes it; a guard read that
-fails returns ``retryable`` and nothing is sent. Entries are dispatched
-exactly as before.
+fails returns ``retryable`` and nothing is sent. Entries that reach this
+dispatcher are sent exactly as before; the outbox worker refuses stale or
+after-session entries before they get here (C01-04).
+
+Audit 2026-10-05 (C04-01): ``probe_order_absence`` is the read-only client-key
+lookup the outbox worker uses to prove that a dead-lettered order never reached
+the broker. Only a definitive 404 counts as absent.
 """
 
 import asyncio
@@ -211,6 +216,28 @@ async def _exit_send_guard(broker_client: Any, event_data: dict[str, Any], *, sy
         return _GuardOutcome(result=_refused(event_data, reason=reason, detail=detail,
                                              intent=intent))
     return _GuardOutcome()
+
+
+async def probe_order_absence(client_order_id: str) -> tuple[str, dict[str, Any] | None, str]:
+    """Audit 2026-10-05 C04-01: is the order with this persisted client key at the broker?
+
+    Returns ``(state, order, detail)``. ``state`` is 'absent' only on a
+    definitive 404 for the exact client key; 'present' (with the broker's
+    order) when the broker confirms that key; 'unknown' for anything else: a
+    transport error or timeout, the open breaker, a 5xx, missing credentials,
+    or a 200 that does not confirm the key. Read-only: never submits.
+    """
+    from backend.integrations.alpaca_broker import get_alpaca_broker_client
+
+    try:
+        found = await get_alpaca_broker_client().find_order_by_client_order_id(client_order_id)
+    except BrokerAcknowledgementUnresolved as exc:
+        return "unknown", None, f"lookup_not_confirmed:{exc.reason}"
+    except Exception as exc:  # noqa: BLE001 - only a definitive 404 proves absence
+        return "unknown", None, f"lookup_failed:{type(exc).__name__}"
+    if found is None:
+        return "absent", None, "not_found"
+    return "present", found, "found"
 
 
 def get_smart_tif(requested_tif: str | None = None) -> str:

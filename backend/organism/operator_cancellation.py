@@ -4,6 +4,11 @@ The emergency endpoint requires durable operator halt and tick drain. The
 engine's tracked-entry reconciliation runs under its tick/startup authority;
 ordinary ticks observe, while EOD/startup/drawdown may cancel exact entries.
 Protective exits, DB order statuses and fill evidence are never mutated here.
+
+Audit 2026-10-05 C04-01: an entry the outbox never delivered has no broker id
+to confirm. It resolves only through the outbox worker's own finalization (see
+``_never_sent``), never through a broker 404 seen here, and never on the tick
+that registered (or restored) its identity.
 """
 from __future__ import annotations
 
@@ -22,6 +27,8 @@ CONFIRM_ATTEMPTS = 3
 DB_TERMINAL = ('filled', 'canceled', 'cancelled', 'expired', 'rejected')
 CANCELLED = {'canceled', 'cancelled'}
 ACTIVE = {'new', 'accepted', 'pending_new', 'accepted_for_bidding', 'partially_filled', 'pending_cancel', 'held'}
+# Audit 2026-10-05 C04-01: statuses the outbox worker finalizes a never-delivered order to.
+NEVER_SENT_STATUSES = ('rejected', 'expired')
 
 
 class CancellationUnverified(Exception):
@@ -56,6 +63,29 @@ def _validate_order(observed, row):
     return observed['status'], filled
 
 
+def _never_sent(row):
+    """Audit 2026-10-05 C04-01: the outbox worker's proof that an order never reached the broker.
+
+    True only for a row the worker finalized itself: no broker id, status
+    'rejected' or 'expired', and ``attributes.outbox_dead_letter`` finalized
+    with that same status and an absence proof, a 404 for the row's own client
+    key looked up after the dead letter was committed and while no other
+    delivery of the order was pending. A 404 alone, a status set by hand or by
+    a remediation script, or a dead letter still awaiting its lookup is not
+    proof.
+    """
+    attrs = row.attributes if isinstance(row.attributes, dict) else {}
+    record = attrs.get('outbox_dead_letter')
+    absence = record.get('absence') if isinstance(record, dict) else None
+    key = row.client_idempotency_key
+    return bool(not row.broker_order_id and row.status in NEVER_SENT_STATUSES
+                and isinstance(absence, dict) and record.get('state') == 'finalized'
+                and record.get('terminal_status') == row.status
+                and isinstance(record.get('outbox_event_id'), str) and record['outbox_event_id']
+                and isinstance(key, str) and key and absence.get('result') == 'not_found'
+                and absence.get('client_order_id') == key)
+
+
 async def _one_order(broker, row, *, cancel=True):
     receipt = {'entry_order_id': str(row.id), 'broker_order_id': row.broker_order_id,
                'symbol': row.symbol, 'cancel_requested': False, 'cancel_confirmed': False}
@@ -63,7 +93,11 @@ async def _one_order(broker, row, *, cancel=True):
         receipt['issue'] = 'replacement_or_linked_order_unverified'
         return receipt
     if not row.broker_order_id:
-        receipt['issue'] = 'broker_dispatch_unresolved'
+        if _never_sent(row):
+            # Audit 2026-10-05 C04-01: nothing to confirm or cancel at the broker.
+            receipt.update(never_sent=True, dispatch_status=row.status, filled_qty='0')
+        else:
+            receipt['issue'] = 'broker_dispatch_unresolved'
         return receipt
     try:
         if (not isinstance(row.broker_order_id, str) or str(UUID(row.broker_order_id)) != row.broker_order_id
@@ -184,6 +218,9 @@ async def confirm_tracked_entries(engine, *, cancel=False, broker=None):
     EOD/startup/drawdown may request cancellation. Ordinary reconciliation only
     observes. No DB summary writes, replacement guesses, or order submissions.
     Uncertain results never authorize removal from the engine's pending maps.
+    An entry the outbox never delivered is released as verified unfilled only
+    with the worker's proof (``_never_sent``), zero fills, and on a later tick
+    than the one that registered or restored its identity.
     """
     result = {'orders': [], 'issues': [], 'db_modified': False}
     pending = dict(getattr(engine, '_pending_entry_order_ids', {}))
@@ -231,6 +268,15 @@ async def confirm_tracked_entries(engine, *, cancel=False, broker=None):
                     receipt = await _one_order(broker, row, cancel=cancel)
                     receipt['release_pending'] = False
                     state = receipt.get('broker_status')
+                    if receipt.get('never_sent'):
+                        # Audit 2026-10-05 C04-01: the worker's terminal row is the
+                        # status, still subject to the zero-fill check below, and
+                        # never on the tick that registered or restored the identity.
+                        state = row.status
+                        tick = getattr(engine, '_tick_count', None)
+                        registered = getattr(engine, '_pending_entry', {}).get(symbol)
+                        if not (type(tick) is int and type(registered) is int and tick > registered):
+                            receipt['issue'] = 'never_sent_release_waits_for_next_tick'
                     if state in CANCELLED | {'expired', 'rejected', 'filled'}:
                         filled = _number(receipt.get('filled_qty'))
                         if filled == 0 and state != 'filled' and not receipt.get('issue'):

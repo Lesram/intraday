@@ -34,6 +34,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
         from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
         from backend.integrations import alpaca_outbox as _outbox_dispatch
+        from backend.infra import outbox_worker as _outbox_worker
         from backend.integrations import alpaca_stream as _fill_ingestion
         from backend.organism import live_engine_fills as _fill_lookup
         from backend.organism.streaming_data_provider import StreamingDataProvider
@@ -98,6 +99,9 @@ def _build_defaults_snapshot() -> dict:
                 "age_escalation_min_seconds": OrganismLiveEngine._PENDING_ENTRY_ESCALATE_SECONDS,
                 "age_escalation": "one_critical_per_identity_older_than_max(min_seconds,2x_pending_entry_ticks_x_tick_interval)_first_seen_persisted_across_restarts",
                 "release": "broker_terminal_and_exact_accounting_exposure_confirmation",
+                # Audit 2026-10-05 C04-01: an entry the outbox never delivered.
+                "never_sent_release": "outbox_worker_finalized_absence_proof_and_zero_fills_on_a_later_tick_than_registration_or_restore",
+                "never_sent_statuses": list(operator_cancellation.NEVER_SENT_STATUSES),
                 "ordinary_reconciliation": "read_only_after_fill_accounting",
                 "retry_order": "resume_after_last_attempted_identity",
             },
@@ -160,7 +164,7 @@ def _build_defaults_snapshot() -> dict:
                 "exit_scope": "declared_exit_or_close_position_or_undeclared_sell_when_long_only",
                 "exit_size_policy": "refuse_not_clamp",
                 "buy_to_cover": "not_checked",
-                "entries": "unchanged_no_dispatch_guard",
+                "entries": "no_exit_guard_reads_age_and_session_limits_in_outbox_worker_see_order_dead_letter_lifecycle",
                 "refused_order_status": _outbox_dispatch.REFUSED_ORDER_STATUS,
                 "refusal_reasons": [
                     "exit_position_flat", "exit_position_short",
@@ -171,6 +175,33 @@ def _build_defaults_snapshot() -> dict:
                 "failed_guard_read": "not_sent_event_retried",
                 "refusal_record": "order_attributes_dispatch_refusal_and_event_dead_lettered_in_one_transaction",
                 "page": "critical_after_commit_duplicate_flat_exit_has_its_own_headline",
+            },
+            # Audit 2026-10-05 C01-04 / C04-01: entry dispatch limits and the
+            # dead-letter lifecycle (outbox worker, not frozen surface).
+            "order_dead_letter_lifecycle": {
+                "entry_dispatch_max_age_seconds": _outbox_worker.ENTRY_DISPATCH_MAX_AGE_SECONDS,
+                "entry_age_basis": "outbox_event_created_at_intent_time_unchanged_by_retries",
+                "entry_session_rule": "created_in_a_regular_nyse_session_refused_once_that_session_closed_early_closes_included",
+                "entry_scope": "every_order_except_exits_and_lookup_only_events",
+                "entry_refusal": "dead_lettered_without_dispatch_attempt_notice_order_expired_warning_no_page",
+                "entry_check_failure": "held_and_retried_never_sent_unchecked",
+                "record": "orders_attributes_outbox_dead_letter_in_the_dead_letter_transaction_unambiguous_unsent_rows_only",
+                "settle_seconds": _outbox_worker.DEAD_LETTER_SETTLE_SECONDS,
+                "sweep_interval_seconds": _outbox_worker.DEAD_LETTER_SWEEP_SECONDS,
+                "lookup_timeout_seconds": _outbox_worker.DEAD_LETTER_LOOKUP_TIMEOUT_SECONDS,
+                "lookups_per_sweep": _outbox_worker.DEAD_LETTER_SWEEP_BATCH,
+                "candidates_per_sweep": _outbox_worker.DEAD_LETTER_CANDIDATE_LIMIT,
+                "pending_event_scan_limit": _outbox_worker.DEAD_LETTER_PENDING_SCAN_LIMIT,
+                "retry_backoff": "doubling_from_sweep_interval_in_memory",
+                "max_backoff_seconds": _outbox_worker.DEAD_LETTER_MAX_BACKOFF_SECONDS,
+                "absence": "definitive_404_for_persisted_client_key_after_commit_and_settle_with_no_other_pending_event",
+                "finalized_status": _outbox_worker.DEAD_LETTER_ORDER_STATUS,
+                "refused_entry_finalized_status": _outbox_worker.EXPIRED_ENTRY_ORDER_STATUS,
+                "finalize_recheck": "row_lock_unsent_row_and_event_still_dead_lettered",
+                "found_at_broker": "attached_by_client_key_through_acknowledgement_path_critical",
+                "unknown": "retried_never_finalized",
+                "ambiguous_dead_letters": "not_recorded_unchanged_handling",
+                "dead_lettered_sells": "finalized_the_same_way_exe04_critical_unchanged",
             },
             # Audit 2026-10-05 C08-01: which unresolved or replaced orders hold an
             # identified lifetime's exact close accounting (policy id unchanged).
@@ -534,6 +565,7 @@ def _build_resolved_config_snapshot() -> dict:
         "eod_session": defaults.get("eod_session"),
         "daily_loss_baseline": defaults.get("daily_loss_baseline"),
         "order_dispatch_guards": defaults.get("order_dispatch_guards"),
+        "order_dead_letter_lifecycle": defaults.get("order_dead_letter_lifecycle"),
         "close_accounting_holds": defaults.get("close_accounting_holds"),
         "fill_lot_accounting": defaults.get("fill_lot_accounting"),
         "runtime_config_hash_env": defaults.get("runtime_config_hash_env"),

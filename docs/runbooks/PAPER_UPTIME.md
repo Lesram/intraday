@@ -91,6 +91,31 @@ and the CRITICAL carries symbol, qty, client key, reason and outcome.
 If the exit guard cannot read the broker, it sends nothing and retries. When the
 retries run out, the event is dead-lettered with `EXIT ORDER DEAD-LETTERED`.
 
+Dispatch lifecycle (candidate, audit 2026-10-05; not deployed until activated).
+An entry older than 120 s at dispatch, or created in a regular session that has
+since closed, is not sent (WARNING `Entry not sent: refused at dispatch`). Such
+an entry and any unambiguous dead letter are looked up by their client key at
+least 60 s later; a 404 finalizes the order row (`expired` for a refused entry,
+else `rejected`, with the proof in `attributes.outbox_dead_letter`) and the
+engine then releases the symbol's pending entry on its next tick.
+
+- `DEAD-LETTERED ORDER FOUND AT THE BROKER, attached by its client key`: the
+  outbox stopped delivery, but the order is live at Alpaca (an earlier attempt
+  reached it). It is now tracked by its broker id like any order; check its fills
+  and the position at the broker.
+- `DEAD-LETTERED ORDER FOUND AT THE BROKER, could not be attached`: the broker's
+  order does not match the row (symbol, side or quantity). Reconcile it by hand;
+  the symbol's pending entry stays until then.
+
+While the lookup keeps failing (broker unreachable), the row stays unresolved and
+`PENDING ENTRY UNRESOLVED` pages after 30 minutes; nothing is retired until the
+broker answers. Ambiguous submissions (`ORDER SUBMISSION AMBIGUOUS`) are not
+finalized this way. Rows dead-lettered before this release carry no record: a
+pending entry identity one of them still holds needs the brain repair (stop the
+api container, remove the symbol from `pending_entry`, `pending_entry_order_ids`
+and `pending_entry_since` in `extra_counters.json`, start it again; the running
+engine and its shutdown save both rewrite that file).
+
 Undelivered counts survive notification and log-read failures and are retried
 on later runs. The first scan covers the previous 15 minutes; subsequent scans
 use the last successful cursor. Each scan is limited to 1,000 lines and 256 KiB
