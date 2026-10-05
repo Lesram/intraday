@@ -510,6 +510,91 @@ async def test_close_defers_while_an_earlier_opening_fill_can_still_arrive(db, m
     assert [(lot.remaining_qty, lot.status) for lot in lots] == [(0, "closed")]
 
 
+@pytest.mark.parametrize("ingress", sorted(INGRESS))
+async def test_deferred_close_is_untouched_and_retryable_on_every_ingress(db, monkeypatch, ingress):
+    """The close outran its acknowledged opening fill: nothing is staged or paged
+    and each ingress keeps its retry contract. Startup sync catches only listed
+    exception types, so LotAccountingDeferred must stay a ValueError for the
+    rest of its page to be applied."""
+    opened, closed, touched = now_rows()
+    entry = make_row("TSLA", "buy", 6, at=opened, status="accepted", updated=touched)
+    exit_ = make_row("TSLA", "sell", 6, at=closed, status="accepted", updated=touched)
+    other = make_row("AMD", "buy", 2, at=closed, status="accepted", updated=touched)
+    await store(db, [entry, exit_, other])
+    log = MagicMock()
+    monkeypatch.setattr(stream, "logger", log)
+    exit_snap = broker_snapshot(exit_, filled=6, price=101)
+    other_snap = broker_snapshot(other, filled=2, price=50)
+    # The opening fill has not arrived: its broker lookup is unavailable.
+    snapshots = {exit_.broker_order_id: exit_snap, other.broker_order_id: other_snap}
+    other_applied = ingress in {"persisted_order_recovery", "reconnect_gap_fill", "startup_order_sync"}
+    if ingress == "trade_update_stream":
+        with pytest.raises(stream.LotAccountingDeferred, match=str(entry.id)):
+            await via_stream(db, monkeypatch, exit_, exit_snap)  # queue retries, then DLQ
+    elif ingress == "outbox_acknowledgement":
+        with pytest.raises(stream.LotAccountingDeferred, match=str(entry.id)):
+            await via_outbox_ack(db, monkeypatch, exit_, exit_snap)  # worker keeps it lookup-only
+    elif ingress == "persisted_order_recovery":
+        from backend.services import order_recovery_service as recovery
+
+        async def fetch(broker_id):
+            if broker_id not in snapshots:
+                raise ValueError("Broker order lookup unavailable")
+            return snapshots[broker_id]
+
+        result = await recovery.OrderRecoveryService().recover(db, fetch)
+        assert (result["errors"], result["reconciled"]) == (2, 1)
+    elif ingress == "reconnect_gap_fill":
+        from backend.services import order_recovery_service as recovery
+
+        monkeypatch.setattr(recovery, "recover_persisted_orders", AsyncMock())
+        stream_client(monkeypatch, db)
+
+        async def get(url, **kwargs):
+            broker_id = url.rsplit("/", 1)[-1]
+            if broker_id in snapshots:
+                return httpx.Response(200, json=snapshots[broker_id])
+            return httpx.Response(503, json={})
+
+        @asynccontextmanager
+        async def transport(*args, **kwargs):
+            yield SimpleNamespace(get=get)
+
+        monkeypatch.setattr(httpx, "AsyncClient", transport)
+        client = stream.AlpacaStreamClient.__new__(stream.AlpacaStreamClient)
+        client._last_connected_at = 0
+        client._terminal_order_ids = set()
+        client.api_key, client.api_secret, client.is_paper = "synthetic", "synthetic", True
+        await client._gap_fill_after_reconnect()
+    else:
+        from backend.api.lifespan import _sync_orders
+        from backend.services import order_recovery_service as recovery
+
+        monkeypatch.setattr(recovery, "recover_persisted_orders", AsyncMock())
+        monkeypatch.setattr("backend.api.socketio_server.broadcast_order_update", AsyncMock())
+        page = [other_snap, exit_snap]  # newest first: the close is applied before AMD
+        broker = SimpleNamespace(
+            base_url="https://paper.invalid", _get_auth_headers=lambda: {},
+            client=SimpleNamespace(get=AsyncMock(return_value=httpx.Response(200, json=page))),
+        )
+        monkeypatch.setattr("backend.integrations.alpaca_broker.get_alpaca_broker_client",
+                            lambda: broker)
+        await _sync_orders(SimpleNamespace(state=SimpleNamespace(sessionmaker=db)))
+    order, executions, realized, lots = await ledger(db, exit_)
+    assert (order.status, order.filled_qty, executions, realized) == ("accepted", 0, [], [])
+    assert "lot_accounting" not in order.attributes
+    assert [lot.symbol for lot in lots] == (["AMD"] if other_applied else [])
+    async with db() as session:
+        assert ((await session.get(Order, other.id)).status == "filled") is other_applied
+    assert not log.critical.called
+    # Retryable: once the opening fill lands, the same snapshot closes its lot.
+    await apply_snapshot(db, entry, filled=6, price=100)
+    await apply_snapshot(db, exit_, filled=6, price=101)
+    order, _, realized, _ = await ledger(db, exit_)
+    assert order.status == "filled" and "lot_accounting" not in order.attributes
+    assert [(x.qty, x.realized_pnl) for x in realized] == [(6, 6)]
+
+
 @pytest.mark.parametrize("opening", ["stale", "unacknowledged", "other_owner", "terminal"])
 async def test_openings_that_cannot_settle_do_not_hold_a_confirmed_close(db, opening):
     opened, closed, _ = now_rows()
