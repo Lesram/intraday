@@ -26,6 +26,7 @@ Wire into the live server scheduler for automatic bar-by-bar execution.
 from __future__ import annotations
 
 import asyncio
+import copy
 import os
 import time
 import threading
@@ -103,6 +104,7 @@ from backend.organism.background_trainer import BackgroundTrainer
 from backend.organism.market_scanner import MarketScanner, SCAN_INTERVAL_TICKS
 from backend.strategies.types import TradingSignal
 from backend.utils.logger import get_logger
+from backend.utils.market_hours import is_market_open
 from backend.organism.pipeline_diagnostics import (
     PipelineDiagnostics, finite_age, entry_frame_age, subscription_state,
 )
@@ -3894,6 +3896,11 @@ class OrganismLiveEngine(
             self.exit_engine.learning_mode = self._is_learning_mode
             _MAX_LOSS_PCT = self.exit_engine.max_loss_pct
             exits_submitted = 0
+            _rth = is_market_open(self._now_fn())  # broker-price nets act only in regular hours
+            # Audit 2026-10-05 C05-02: unclaimed-share records live as long as their window.
+            if getattr(self, "_exit_unclaimed_qty", None):
+                self._exit_unclaimed_qty = {s: q for s, q in self._exit_unclaimed_qty.items()
+                                            if s in self._pending_exit or s in self._exit_cooldown}
             for sym, pos_data in list(current_positions.items()):
                 # LONG_ONLY guard: skip exit processing for SHORT positions.
                 # Short positions should not exist when LONG_ONLY=true; they
@@ -3907,69 +3914,101 @@ class OrganismLiveEngine(
                         sym, pos_data.get("qty", "?"),
                     )
                     continue
+                # Audit 2026-10-05 C05-01: broker price for the safety nets; missing, zero,
+                # negative or non-finite reads 0.0, which no net fires on (WARNING instead).
+                try:
+                    _broker_price = float(pos_data.get("current_price") or 0.0)
+                except (TypeError, ValueError):
+                    _broker_price = 0.0
+                _broker_price = _broker_price if 0.0 < _broker_price < float("inf") else 0.0
                 # V9 DD3-3 / Wave-43 (2026-05-03): consult _exit_cooldown
                 # on the exit path. The 3-tick `_pending_exit` TTL can
                 # expire BEFORE a slow broker fill arrives; without this
                 # gate, the next tick re-fires the exit for full broker
                 # qty -> oversell race. `_exit_cooldown` has a longer TTL
-                # (typically 6 ticks) so it catches the gap. We still
-                # let the V8 DD2-1 max-loss safety check below run since
-                # that path is a true breach.
-                if (
+                # (10 ticks) so it catches the gap: routine exits stay
+                # suspended for the whole window.
+                _exit_window = (
                     sym in self._exit_cooldown
-                    and sym not in self._pending_exit
                     and (self._tick_count - self._exit_cooldown[sym])
                         < self._EXIT_COOLDOWN_TICKS
-                ):
-                    logger.debug(
-                        "DD3-3: skipping routine exit for %s — exit_cooldown "
-                        "active (tick %d, set %d)",
-                        sym, self._tick_count, self._exit_cooldown[sym],
-                    )
-                    continue
+                )
 
                 # V8 / DD2-1 / Wave-32 (2026-05-03): hard safety net even when
                 # a pending exit is in flight.  The 3-tick `_pending_exit`
                 # cooldown was previously skipping ALL exit checks including
                 # max-loss; the unsold portion of a partial-TP / ML-reversal
                 # exit could blow through max_loss_pct during that 30s window.
-                # Now: routine exit logic still skipped, but max-loss STILL
-                # checked against broker price.
+                # Audit 2026-10-05 C05-02: so could the whole window, and this net never
+                # fired live (C05-01). Each window tick runs only the always-on risk exits:
+                # (a) the exit engine's max-loss and hard stop on the bar close, checked on a
+                # copy of the levels (no trailing/MAE update); (b) this max-loss net on the
+                # broker price, in regular hours only and confirmed by a fresh bar. A breach
+                # sells only unclaimed shares (_submit_exit_order) the broker reports free.
                 if sym in self._pending_exit:
-                    broker_price = float(pos_data.get("current_price", 0))
+                    _exit_window = True
+                if _exit_window:
+                    _win_feat, _win_levels = features_by_symbol.get(sym), self._exit_levels.get(sym)
+                    _win_bar = (float(_win_feat["close"].iloc[-1])
+                                if _win_feat is not None and len(_win_feat) >= 1 else 0.0)
+                    _win_bar = _win_bar if 0.0 < _win_bar < float("inf") else 0.0
                     avg_entry = float(pos_data.get("avg_entry_price", 0))
-                    if broker_price > 0 and avg_entry > 0:
-                        side = pos_data.get("side", "long")
-                        _dir = 1.0 if side == "long" else -1.0
-                        pnl_pct = (broker_price - avg_entry) / avg_entry * _dir
-                        if pnl_pct <= -_MAX_LOSS_PCT:
-                            qty = abs(float(pos_data.get("qty", 0)))
-                            sell_shares = int(qty)
-                            if sell_shares > 0:
-                                try:
-                                    await self._submit_exit_order(
-                                        sym, sell_shares,
-                                        "safety_net_pending_exit_breach",
-                                        direction=_dir,
-                                        broker_positions=current_positions,
-                                    )
-                                    self._exit_cooldown[sym] = self._tick_count
-                                    exits_submitted += 1
-                                    result.orders_submitted += 1
-                                    logger.warning(
-                                        "DD2-1 breach: %s pnl=%.2f%% past max_loss "
-                                        "during pending-exit window — safety net fired",
-                                        sym, pnl_pct * 100,
-                                    )
-                                except Exception as e:
-                                    result.errors.append(
-                                        f"DD2-1 safety net failed for {sym}: {e}"
-                                    )
-                    logger.debug(
-                        "Skipping routine exit check for %s — pending exit "
-                        "from tick %d (no breach)",
-                        sym, self._pending_exit[sym],
-                    )
+                    _dir = 1.0 if pos_data.get("side", "long") == "long" else -1.0
+                    _win_reason, _win_price = "", _broker_price or _win_bar
+                    if _win_bar > 0 and _win_levels is not None:  # (a): risk exits only
+                        _win_sig = self.exit_engine.check_exit(  # a copy: tracking stays frozen
+                            copy.copy(_win_levels), _win_bar, regime, is_new_bar=False)
+                        if _win_sig.should_exit:
+                            _win_reason, _win_price = _win_sig.reason, _win_bar
+                    if not _win_reason and _win_price > 0 and avg_entry > 0:  # (b)
+                        pnl_pct = (_win_price - avg_entry) / avg_entry * _dir
+                        _bar_ok = (_win_bar <= 0 or sym in self._stale_entry_symbols  # fresh bar
+                                   or (_win_bar - avg_entry) / avg_entry * _dir <= -_MAX_LOSS_PCT)
+                        if pnl_pct <= -_MAX_LOSS_PCT and (not _broker_price or (_rth and _bar_ok)):
+                            _win_reason = "safety_net_pending_exit_breach"
+                        elif pnl_pct <= -_MAX_LOSS_PCT:  # a lone broker mark: logged, not acted on
+                            logger.warning("Exit window for %s: broker-price breach at %.2f not "
+                                           "acted on (regular hours=%s, bar close=%.2f)",
+                                           sym, _broker_price, _rth, _win_bar)
+                    elif not _win_reason and not (_win_bar > 0 and _win_levels is not None):
+                        logger.warning("Exit window for %s: no valid bar or broker price (or "
+                                       "entry) — hard stop and max-loss not evaluated", sym)
+                    sell_shares = int(abs(float(pos_data.get("qty", 0)))) if _win_reason else 0
+                    try:  # never more than the broker reports free of open orders (long: >= 0)
+                        _qa = float(pos_data["qty_available"])
+                        sell_shares = min(sell_shares, int(max(0.0, _qa) if _dir > 0 else abs(_qa)))
+                    except (KeyError, TypeError, ValueError, OverflowError):
+                        pass  # qty_available not reported
+                    _unclaimed = (getattr(self, "_exit_unclaimed_qty", None) or {}).get(sym)
+                    if _unclaimed is not None:
+                        sell_shares = min(sell_shares, _unclaimed)
+                    if sell_shares > 0:
+                        try:
+                            _win_result = await self._submit_exit_order(
+                                sym, sell_shares, _win_reason, direction=_dir,
+                                broker_positions=current_positions,
+                            )
+                            if not (isinstance(_win_result, dict)
+                                    and _win_result.get("status") == "blocked"):
+                                self._exit_cooldown[sym] = self._tick_count
+                                self._pending_exit[sym] = self._tick_count
+                                exits_submitted += 1
+                                result.orders_submitted += 1
+                                logger.warning("Exit window %s exit: %s at %.2f — %d unclaimed "
+                                               "share(s) sent",
+                                               _win_reason, sym, _win_price, sell_shares)
+                                result.activity.append(ActivityEvent(
+                                    event_type="exit", symbol=sym, timestamp=now_iso,
+                                    message=f"EXIT: {sym} — {_win_reason} "
+                                            f"(exit window, {sell_shares} shares)",
+                                    details={"reason": _win_reason, "shares": sell_shares,
+                                             "exit_window": True},
+                                ))
+                        except Exception as e:
+                            result.errors.append(f"Exit window {_win_reason} failed for {sym}: {e}")
+                    elif _win_reason:
+                        logger.debug("Exit window for %s: %s, no unclaimed free share to sell",
+                                     sym, _win_reason)
                     continue
                 feat_df = features_by_symbol.get(sym)
                 if feat_df is None or len(feat_df) < 1:
@@ -3977,14 +4016,16 @@ class OrganismLiveEngine(
                     # even when feature computation fails.  We NEVER skip exit
                     # checks for open positions — data outages must not disable
                     # risk management.
-                    broker_price = float(pos_data.get("current_price", 0))
+                    broker_price = _broker_price
                     avg_entry = float(pos_data.get("avg_entry_price", 0))
                     if broker_price > 0 and avg_entry > 0:
                         side = pos_data.get("side", "long")
                         _dir = 1.0 if side == "long" else -1.0
                         pnl_pct = (broker_price - avg_entry) / avg_entry * _dir
-                        if pnl_pct <= -_MAX_LOSS_PCT:
-                            from backend.organism.adaptive_exits import ExitSignal
+                        if pnl_pct <= -_MAX_LOSS_PCT and not _rth:  # no bar here: hours decide
+                            logger.warning("SAFETY NET (no features) for %s: broker breach at %.2f "
+                                           "not acted on outside regular hours", sym, broker_price)
+                        elif pnl_pct <= -_MAX_LOSS_PCT:
                             qty = abs(float(pos_data.get("qty", 0)))
                             sell_shares = int(qty)
                             if sell_shares > 0:
@@ -6929,6 +6970,28 @@ class OrganismLiveEngine(
             self._total_exits_submitted += 1
         except Exception:
             pass
+        # Audit 2026-10-05 C05-02: record how many shares of the position no
+        # exit of its current exit window has claimed yet; the window's
+        # stop/max-loss check in _live_tick_inner sells at most these, so an
+        # exit in flight is never sent twice. A held or raising exit claims
+        # nothing; holdings that cannot be read claim every share.
+        try:
+            _held_map = broker_positions if broker_positions is not None else (
+                getattr(self, "_last_positions", None) or {})
+            try:
+                _held = int(abs(float((_held_map.get(symbol) or {}).get("qty", 0) or 0)))
+            except (TypeError, ValueError):
+                _held = 0
+            _unclaimed = getattr(self, "_exit_unclaimed_qty", None)
+            if _unclaimed is None:
+                _unclaimed = self._exit_unclaimed_qty = {}
+            _prior = (_unclaimed.get(symbol)
+                      if symbol in self._pending_exit or symbol in self._exit_cooldown
+                      else None)
+            _unclaimed[symbol] = max(
+                0, (_held if _prior is None else min(_held, _prior)) - int(shares))
+        except Exception:  # noqa: BLE001 - bookkeeping never fails a sent exit
+            logger.warning("Exit window bookkeeping failed for %s", symbol, exc_info=True)
         # V4 H-2 / Wave-16c (2026-05-02): the sync `submit_symbol_order`
         # response carries no `avg_fill_price` (the broker submission
         # is async — sync response → outbox → broker → WS
@@ -7252,11 +7315,30 @@ class OrganismLiveEngine(
                                 exit_price = float(feat_df["close"].iloc[-1])
                                 _price_source = "bar_close"
                             else:
-                                # Try latest quote from streaming data provider
-                                quote = self._data_client.get_latest_quote(sym)
-                                bid = quote.get("bid")
-                                ask = quote.get("ask")
-                                if bid and ask and bid > 0 and ask > 0:
+                                # Try latest quote from streaming data provider.
+                                # Audit 2026-10-05 C06-02: the production data
+                                # client (AlpacaDataClient) has no quote method; the
+                                # AttributeError aborted this pass and the rest of
+                                # every tick. The cached quote lives in the
+                                # streaming provider. Any failure here means "price
+                                # unknown": the close stays pending (no_exit_price).
+                                bid = ask = 0.0
+                                try:
+                                    provider = self._streaming_provider
+                                    quote = (provider.get_latest_quote(sym)
+                                             if provider is not None else None)
+                                    if isinstance(quote, dict):
+                                        bid = float(quote.get("bid") or 0.0)
+                                        ask = float(quote.get("ask") or 0.0)
+                                except Exception as exc:  # noqa: BLE001 - price unknown
+                                    logger.warning(
+                                        "Exit price for %s: quote fallback failed (%s) "
+                                        "— price unknown", sym, type(exc).__name__,
+                                    )
+                                    bid = ask = 0.0
+                                bid = bid if 0.0 < bid < float("inf") else 0.0
+                                ask = ask if 0.0 < ask < float("inf") else 0.0
+                                if bid > 0 and ask > 0:
                                     exit_price = (bid + ask) / 2.0
                                     _price_source = "quote_mid"
                                     logger.info(
@@ -7264,10 +7346,10 @@ class OrganismLiveEngine(
                                         "(no bar features available)",
                                         sym, exit_price,
                                     )
-                                elif bid and bid > 0:
+                                elif bid > 0:
                                     exit_price = bid
                                     _price_source = "quote_bid"
-                                elif ask and ask > 0:
+                                elif ask > 0:
                                     exit_price = ask
                                     _price_source = "quote_ask"
 

@@ -32,6 +32,24 @@ class PositionReadError(RuntimeError):
 
 
 def _position_dict(position) -> dict[str, Any]:
+    # Audit 2026-10-05 C05-01: the organism's broker-price safety nets read
+    # current_price, and its exit-window stop/max-loss check reads
+    # qty_available (shares not held by open orders). Both are optional on the
+    # Alpaca Position. A price that is missing, zero, negative or not finite
+    # becomes 0.0, which no safety net acts on; an unreported or malformed
+    # qty_available becomes None.
+    try:
+        current_price = float(getattr(position, 'current_price', None) or 0.0)
+    except (TypeError, ValueError):
+        current_price = 0.0
+    if not 0.0 < current_price < float('inf'):
+        current_price = 0.0
+    try:
+        qty_available = float(getattr(position, 'qty_available', None))
+    except (TypeError, ValueError):
+        qty_available = None
+    if qty_available is not None and not abs(qty_available) < float('inf'):
+        qty_available = None
     return {
         'symbol': position.symbol,
         'qty': float(position.qty),
@@ -39,7 +57,9 @@ def _position_dict(position) -> dict[str, Any]:
         'market_value': float(position.market_value) if position.market_value else 0.0,
         'cost_basis': float(position.cost_basis) if position.cost_basis else 0.0,
         'unrealized_pl': float(position.unrealized_pl) if position.unrealized_pl else 0.0,
-        'avg_entry_price': float(position.avg_entry_price) if position.avg_entry_price else 0.0
+        'avg_entry_price': float(position.avg_entry_price) if position.avg_entry_price else 0.0,
+        'current_price': current_price,
+        'qty_available': qty_available,
     }
 
 
