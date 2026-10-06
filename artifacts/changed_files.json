@@ -1,18 +1,42 @@
 {
-  "scope": "task",
-  "ref": "HEAD",
-  "total": 2,
+  "scope": "base",
+  "ref": "6a56d753...HEAD",
+  "total": 14,
   "all": [
-    "backend/integrations/alpaca_outbox.py",
-    "tests/test_audit_20261005_outbox_dispatch_guards.py"
+    "backend/api/lifespan.py",
+    "backend/api/logging_setup.py",
+    "backend/api/routes/auth.py",
+    "backend/api/socketio_server.py",
+    "backend/infra/security.py",
+    "backend/infra/users.py",
+    "backend/utils/log_redaction.py",
+    "backend/utils/logger.py",
+    "docs/setup/AUTHENTICATION.md",
+    "docs/setup/QUICK_START.md",
+    "scripts/db/create_admin_user.py",
+    "tests/test_audit_20261005_session_log_hardening.py",
+    "tests/test_wave50_fixes.py",
+    "tests/unit/test_api_auth_routes_comprehensive.py"
   ],
   "backend": [
-    "backend/integrations/alpaca_outbox.py"
+    "backend/api/lifespan.py",
+    "backend/api/logging_setup.py",
+    "backend/api/routes/auth.py",
+    "backend/api/socketio_server.py",
+    "backend/infra/security.py",
+    "backend/infra/users.py",
+    "backend/utils/log_redaction.py",
+    "backend/utils/logger.py"
   ],
   "organism": [],
   "tests": [
-    "tests/test_audit_20261005_outbox_dispatch_guards.py"
+    "tests/test_audit_20261005_session_log_hardening.py",
+    "tests/test_wave50_fixes.py",
+    "tests/unit/test_api_auth_routes_comprehensive.py"
   ],
   "config": [],
-  "docs": []
+  "docs": [
+    "docs/setup/AUTHENTICATION.md",
+    "docs/setup/QUICK_START.md"
+  ]
 }

@@ -4,4 +4,4 @@ tests/test_organism_engine_scenarios.py::test_insufficient_data_still_processes_
   <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-31 passed, 1 warning in 176.86s (0:02:56)
+31 passed, 1 warning in 148.97s (0:02:28)
