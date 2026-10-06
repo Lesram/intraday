@@ -1413,11 +1413,14 @@ class OutboxWorker:
         from backend.infra.repositories.orders import OrdersRepo
         from backend.infra.schemas import Order
 
+        # FOR NO KEY UPDATE, as on every fill path (PR #37): the record write
+        # changes no key column, and foreign-key checks of rows referencing this
+        # order must not wait for it.
         row = (
             await session.execute(
                 select(Order)
                 .where(Order.id == order_uuid)
-                .with_for_update()
+                .with_for_update(key_share=True)
                 .execution_options(populate_existing=True)
             )
         ).scalar_one_or_none()
@@ -1689,11 +1692,15 @@ class OutboxWorker:
 
         async with self.sessionmaker() as session:
             try:
+                # FOR NO KEY UPDATE, as on every fill path (PR #37): the outcome
+                # write changes only status and attributes, never a key column.
+                # It still conflicts with the fill paths' own row lock, so a
+                # concurrent fill ingestion and the finalization serialize.
                 row = (
                     await session.execute(
                         select(Order)
                         .where(Order.id == order_uuid)
-                        .with_for_update()
+                        .with_for_update(key_share=True)
                         .execution_options(populate_existing=True)
                     )
                 ).scalar_one_or_none()

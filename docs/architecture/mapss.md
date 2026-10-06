@@ -140,6 +140,10 @@ runtime snapshot block `order_dead_letter_lifecycle`.
      the sweep goes on with the next row (review NB3). At most 5 lookups per
      sweep, 5 s each. Nothing is ever submitted. A clean dead letter is
      therefore finalized about 6 minutes after it happened, at the earliest.
+     The record and the finalization lock the order row `FOR NO KEY UPDATE`,
+     like every fill path (PR #37): they write only status and attributes, so
+     they still serialize with fill ingestion of the same order but never block
+     foreign-key checks of rows that reference it.
   3. *Release (frozen half).* `confirm_tracked_entries` treats a row without a
      broker id as resolved only when the worker finalized it with that proof
      (`_never_sent`), the row, its executions and its lots show no fill, and
