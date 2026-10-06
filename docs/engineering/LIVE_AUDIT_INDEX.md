@@ -1,15 +1,15 @@
 # Live Audit Index
 
-Generated: 2026-10-06T00:52:28Z
+Generated: 2026-10-06T20:38:38Z
 PR: n/a
-SHA: `31f6477b36`
+SHA: `9d7d876693`
 Branch: `fix/session-and-log-hardening`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **14**
+Total distinct changed files: **39**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
@@ -19,8 +19,8 @@ Category counts below partition that total. File previews show at most ten paths
 | Scripts | 1 | `scripts/db/create_admin_user.py` |
 | CI | 0 | none |
 | Tests | 3 | `tests/test_audit_20261005_session_log_hardening.py`, `tests/test_wave50_fixes.py`, `tests/unit/test_api_auth_routes_comprehensive.py` |
-| Docs | 2 | `docs/setup/AUTHENTICATION.md`, `docs/setup/QUICK_START.md` |
-| Artifacts/evidence | 0 | none |
+| Docs | 3 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/setup/AUTHENTICATION.md`, `docs/setup/QUICK_START.md` |
+| Artifacts/evidence | 24 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
@@ -29,6 +29,30 @@ Organism subset of Backend: **0** file(s).
 
 ### Full changed-file list
 
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
 - `backend/api/lifespan.py`
 - `backend/api/logging_setup.py`
 - `backend/api/routes/auth.py`
@@ -37,6 +61,7 @@ Organism subset of Backend: **0** file(s).
 - `backend/infra/users.py`
 - `backend/utils/log_redaction.py`
 - `backend/utils/logger.py`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `docs/setup/AUTHENTICATION.md`
 - `docs/setup/QUICK_START.md`
 - `scripts/db/create_admin_user.py`
