@@ -615,6 +615,21 @@ def trim_feature_frames_asof(
     }
 
 
+def _brain_full_save_reason(brain: Any) -> str | None:
+    """Audit 2026-10-05 C12 review: why only a full save can leave a HEAD that
+    a restart loads (the brain's ``full_save_required``), or None. Anything but
+    a non-empty string (no such method, a stub) counts as None. Never raises."""
+    check = getattr(brain, "full_save_required", None)
+    if not callable(check):
+        return None
+    try:
+        reason = check()
+    except Exception as e:  # noqa: BLE001 - a check must not break the save
+        logger.warning("Brain full-save requirement check failed: %s", e)
+        return None
+    return reason if isinstance(reason, str) and reason else None
+
+
 class OrganismLiveEngine(
     _FillLookupMixin,
     _StateReconstructionMixin,
@@ -7981,7 +7996,7 @@ class OrganismLiveEngine(
             )
 
             # Full save — bypass the gate, same kwargs block as _save_brain
-            self.brain.save(
+            saved = self.brain.save(
                 signal_gen=self.signal_gen,
                 learner=self.learner,
                 equity_curve=self._equity_curve,
@@ -7994,6 +8009,20 @@ class OrganismLiveEngine(
                 regime_detector=self.regime_detector,
                 force=True,
             )
+            if saved is False:
+                # Audit 2026-10-05 C12-06: lock held elsewhere or the
+                # trained-overwrite guard blocked it — nothing was written.
+                detail = ("brain.save() did not publish (brain lock held "
+                          "elsewhere or trained-overwrite guard blocked it)")
+                self._record_brain_save_failure("forced full save", detail)
+                return {
+                    "success": False,
+                    "forced": True,
+                    "error": detail,
+                    "tick": self._tick_count,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            self._record_brain_save_success()
             # C4 watchdog: truth-source update
             self._watchdog_last_brain_save_tick = self._tick_count
 
@@ -8016,6 +8045,7 @@ class OrganismLiveEngine(
             }
         except Exception as e:
             logger.error("force_save_brain failed: %s", e, exc_info=True)
+            self._record_brain_save_failure("forced full save", str(e))
             return {
                 "success": False,
                 "forced": True,
@@ -8100,6 +8130,9 @@ class OrganismLiveEngine(
                             _disk_trades,
                             "".join(_tb2.format_stack()),
                         )
+                        self._record_brain_save_failure(
+                            "save", "forensic guard: learner state regressed",
+                        )
                         return  # Abort save entirely
                 except Exception:
                     pass  # If we can't read disk, let the guarded helper decide
@@ -8140,7 +8173,17 @@ class OrganismLiveEngine(
                 # the .save_complete sentinel cannot drift behind in-memory
                 # state indefinitely. This changes only WHEN state persists.
                 self._consecutive_wf_skips += 1
-                if self._consecutive_wf_skips < self._max_wf_save_skips:
+                # Audit 2026-10-05 C12 review: an essential save never writes
+                # models, caches or evolved params, so it cannot repair a HEAD
+                # that a restart would not load as one complete generation
+                # (state restored from a backup, an interrupted swap, HEAD kept
+                # over a stale swap journal, a listed file missing/unsigned).
+                # Take the gated full save now instead of persisting into it.
+                full_save_reason = _brain_full_save_reason(self.brain)
+                if (
+                    self._consecutive_wf_skips < self._max_wf_save_skips
+                    and not full_save_reason
+                ):
                     logger.warning(
                         "Full brain save SKIPPED by walk-forward gate "
                         "(%d/%d consecutive): %s — persisting all runtime "
@@ -8148,7 +8191,7 @@ class OrganismLiveEngine(
                         self._consecutive_wf_skips, self._max_wf_save_skips,
                         reason,
                     )
-                    self.brain.save_essential_state(
+                    saved = self.brain.save_essential_state(
                         signal_gen=self.signal_gen,
                         learner=self.learner,
                         all_trades=self._all_trades,
@@ -8159,14 +8202,32 @@ class OrganismLiveEngine(
                         governance_controller=self.governance,
                         regime_detector=self.regime_detector,
                     )
+                    if saved is False:
+                        # Audit 2026-10-05 C12-06: a save that did not happen
+                        # does not advance the C4 watchdog.
+                        self._record_brain_save_failure(
+                            "essential save",
+                            "save_essential_state reported the state was not "
+                            "persisted (see the preceding brain_persistence log)",
+                        )
+                        return
+                    self._record_brain_save_success()
                     self._watchdog_last_brain_save_tick = self._tick_count
                     return
-                logger.warning(
-                    "Walk-forward gate has blocked %d consecutive full brain "
-                    "saves — forcing a gated full save (gated_save=true) to "
-                    "bound restart state-loss. Gate reason: %s",
-                    self._consecutive_wf_skips, reason,
-                )
+                if full_save_reason:
+                    logger.warning(
+                        "Walk-forward gate blocked the full brain save, but %s "
+                        "— taking a gated full save (gated_save=true) so a "
+                        "restart loads one complete generation. Gate reason: %s",
+                        full_save_reason, reason,
+                    )
+                else:
+                    logger.warning(
+                        "Walk-forward gate has blocked %d consecutive full brain "
+                        "saves — forcing a gated full save (gated_save=true) to "
+                        "bound restart state-loss. Gate reason: %s",
+                        self._consecutive_wf_skips, reason,
+                    )
 
             # Full brain save. When reached via the bounded-skip ceiling,
             # `force=True` is AUDIT-ONLY: save() performs the identical atomic
@@ -8175,7 +8236,7 @@ class OrganismLiveEngine(
             # a gated save can still never wipe a trained brain with fresh
             # state. It only tags the save as a bounded gated save.
             gated_save = not should_save
-            self.brain.save(
+            saved = self.brain.save(
                 signal_gen=self.signal_gen,
                 learner=self.learner,
                 equity_curve=self._equity_curve,
@@ -8188,6 +8249,18 @@ class OrganismLiveEngine(
                 regime_detector=self.regime_detector,
                 force=gated_save,
             )
+            if saved is False:
+                # Audit 2026-10-05 C12-06: lock held elsewhere or the
+                # trained-overwrite guard blocked it. Not a landed save: the
+                # skip counter and the C4 watchdog stay where they are, so
+                # the next cycle retries the full save.
+                self._record_brain_save_failure(
+                    "full save",
+                    "brain.save() did not publish (brain lock held elsewhere "
+                    "or trained-overwrite guard blocked it)",
+                )
+                return
+            self._record_brain_save_success()
             # C4: Update brain save watchdog tick; reset the skip counter now
             # that a full save (clean or gated) has landed.
             self._consecutive_wf_skips = 0
@@ -8216,6 +8289,45 @@ class OrganismLiveEngine(
                 logger.debug("Transfer knowledge save skipped: %s", te)
         except Exception as e:
             logger.error("Brain save failed: %s", e)
+            self._record_brain_save_failure("save", str(e))
+
+    # Audit 2026-10-05 C12-06: consecutive brain-save failures at which (and at
+    # every multiple of which) a CRITICAL line is logged for the watchdog scan.
+    _BRAIN_SAVE_FAILURE_CRITICAL_EVERY = 3
+
+    def _record_brain_save_success(self) -> None:
+        """C12-06: a brain save landed; close any run of failures."""
+        failures = getattr(self, "_brain_save_consecutive_failures", 0)
+        if failures:
+            logger.warning(
+                "Brain save persisted again after %d consecutive failed "
+                "attempt(s)", failures,
+            )
+        self._brain_save_consecutive_failures = 0
+
+    def _record_brain_save_failure(self, kind: str, detail: str) -> None:
+        """C12-06: report a brain save that did not happen — never as a save.
+
+        Every failure logs an ERROR (the C4 watchdog is not advanced by the
+        caller). Repeated failures log CRITICAL — at the threshold and every
+        multiple of it — which the paper watchdog's CRITICAL log scan pages
+        on. Never raises into the tick.
+        """
+        failures = getattr(self, "_brain_save_consecutive_failures", 0) + 1
+        self._brain_save_consecutive_failures = failures
+        logger.error(
+            "BRAIN SAVE NOT PERSISTED (%s, %d consecutive): %s",
+            kind, failures, detail,
+        )
+        every = self._BRAIN_SAVE_FAILURE_CRITICAL_EVERY
+        if failures % every == 0:
+            logger.critical(
+                "BRAIN SAVES FAILING REPEATEDLY: %d consecutive brain save "
+                "attempts did not persist (latest: %s: %s). The in-memory "
+                "engine state is not on disk; a restart now would restore "
+                "older brain state.",
+                failures, kind, detail,
+            )
 
     @close_accounting.serialized
     def _persist_exit_levels_standalone(
@@ -8232,9 +8344,33 @@ class OrganismLiveEngine(
         atomically. The previous in-place ``open(path, "w")`` left truncated,
         invalid JSON on a crash or serializer error mid-write (a forced backup
         restore on the next start). Serialization is unchanged.
+
+        Audit 2026-10-05 C12 review: extra_counters.json is part of the brain's
+        journaled full-save swap. An interrupted swap is settled first (rolled
+        forward, or retired with HEAD kept), so this write never changes a
+        file under a pending journal and wedges the following essential saves.
+        When it cannot be settled (brain lock busy, swap not completable),
+        this write is skipped: it would turn a recoverable journal stale. The
+        brain save that follows (a full save while a swap is pending) carries
+        the same fields from ``_build_extra_counters``.
         """
         import json
         from backend.organism.brain_persistence import _write_text_atomic
+        resolve = getattr(self.brain, "resolve_pending_swap", None)
+        if callable(resolve):
+            try:
+                settled = resolve()
+            except Exception as e:  # noqa: BLE001 - reported, never raised into the tick
+                logger.error("Brain swap settlement before the exit-level write failed: %s", e)
+                settled = False
+            if settled is False:
+                logger.error(
+                    "Exit-level standalone write SKIPPED: an interrupted brain "
+                    "full-save swap is pending and could not be settled; the "
+                    "next brain save persists exit levels, entry metadata and "
+                    "pending entry ids"
+                )
+                return
         try:
             ec_path = self.brain.brain_dir / "extra_counters.json"
             if ec_path.is_file():

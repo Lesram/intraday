@@ -182,18 +182,69 @@ def secure_load(file: BinaryIO) -> Any:
     return secure_loads(signed_data)
 
 
+def _fsync_directory(directory: Path) -> None:
+    """Best-effort fsync of a directory so a rename inside it is durable.
+
+    Platforms or filesystems that cannot open or fsync a directory are
+    ignored: atomicity never depends on this, only durability.
+    """
+    try:
+        fd = os.open(str(directory), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def atomic_write_bytes(path: str | Path, data: bytes) -> None:
+    """Replace ``path`` with ``data`` atomically and durably.
+
+    Audit 2026-10-05 C12-02 / C12-09: the bytes go to a unique temporary file
+    in the same directory, which is fsynced and then renamed over ``path``
+    (``os.replace``); the directory is fsynced afterwards (best effort). A
+    failure at any point leaves the previous ``path`` untouched and removes
+    the temporary file, so a reader never sees a truncated or partial file.
+    The temporary name ends in ``.tmp`` so an orphan left by a SIGKILL is
+    swept by the brain save (PP2-3).
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.{os.urandom(6).hex()}.tmp")
+    try:
+        with open(tmp_path, "xb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            tmp_path.unlink()
+        except OSError:
+            pass
+        raise
+    _fsync_directory(path.parent)
+
+
 def secure_dump_to_path(obj: Any, path: str | Path) -> None:
     """
     Securely serialize an object to a file path.
-    
+
+    The object is pickled and signed in memory first and the file is then
+    replaced atomically (``atomic_write_bytes``): a crash, a full disk or a
+    pickling error never truncates or half-writes an existing file. The file
+    bytes are exactly ``secure_dumps(obj)``, as before (audit 2026-10-05
+    C12-02: the previous in-place ``open(path, 'wb')`` left a 0-byte model
+    on disk for the whole pickling + signing time).
+
     Args:
         obj: Object to serialize
         path: File path to write to
     """
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, 'wb') as f:
-        secure_dump(obj, f)
+    atomic_write_bytes(path, secure_dumps(obj))
 
 
 def secure_load_from_path(path: str | Path) -> Any:
@@ -229,6 +280,29 @@ def is_signed_pickle(data: bytes) -> bool:
         expected_total = HEADER_SIZE + data_length + SIGNATURE_LENGTH
         return len(data) == expected_total
     except Exception:
+        return False
+
+
+def is_signed_pickle_file(path: str | Path) -> bool:
+    """``is_signed_pickle()`` of a file's bytes, reading only its header.
+
+    The same structural check (the 4-byte length header against the size),
+    so a truncated ("torn") signed file is reported exactly like an unsigned
+    one. Nothing is unpickled and no signing secret is needed; the signature
+    itself is verified only by ``secure_loads``. A file that cannot be read
+    is reported as not signed.
+    """
+    try:
+        size = os.stat(path).st_size
+        if size < HEADER_SIZE + SIGNATURE_LENGTH + 1:
+            return False
+        with open(path, "rb") as f:
+            header = f.read(HEADER_SIZE)
+        if len(header) != HEADER_SIZE:
+            return False
+        data_length = struct.unpack(HEADER_FORMAT, header)[0]
+        return size == HEADER_SIZE + data_length + SIGNATURE_LENGTH
+    except (OSError, struct.error):
         return False
 
 

@@ -1,36 +1,68 @@
 # Live Audit Index
 
-Generated: 2026-10-05T13:05:50Z
+Generated: 2026-10-06T19:58:12Z
 PR: n/a
-SHA: `1c5be55965`
-Branch: `fix/outbox-dispatch-guards`
+SHA: `f8b0c5fc54`
+Branch: `fix/brain-crash-safety`
 Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **2**
+Total distinct changed files: **34**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 1 | `backend/integrations/alpaca_outbox.py` |
-| Scripts | 0 | none |
+| Backend | 5 | `backend/api/lifespan.py`, `backend/organism/brain_persistence.py`, `backend/organism/ensemble_models.py`, `backend/organism/live_engine.py`, `backend/utils/secure_pickle.py` |
+| Scripts | 1 | `scripts/ops/check_brain_pickles_signed.py` |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_audit_20261005_outbox_dispatch_guards.py` |
-| Docs | 0 | none |
-| Artifacts/evidence | 0 | none |
+| Tests | 2 | `tests/test_apr8_patch_e_trained_state_guard.py`, `tests/test_audit_20261005_brain_crash_safety.py` |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/runbooks/PAPER_BACKUP_RECOVERY.md` |
+| Artifacts/evidence | 24 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **0** file(s).
+Organism subset of Backend: **3** file(s).
 
 ### Full changed-file list
 
-- `backend/integrations/alpaca_outbox.py`
-- `tests/test_audit_20261005_outbox_dispatch_guards.py`
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
+- `backend/api/lifespan.py`
+- `backend/organism/brain_persistence.py`
+- `backend/organism/ensemble_models.py`
+- `backend/organism/live_engine.py`
+- `backend/utils/secure_pickle.py`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
+- `docs/runbooks/PAPER_BACKUP_RECOVERY.md`
+- `scripts/ops/check_brain_pickles_signed.py`
+- `tests/test_apr8_patch_e_trained_state_guard.py`
+- `tests/test_audit_20261005_brain_crash_safety.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -71,4 +103,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 1 backend runtime file(s) changed — require targeted verification
+- 3 organism file(s) changed — require replay verification
