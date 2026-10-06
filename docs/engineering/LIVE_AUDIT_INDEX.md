@@ -1,15 +1,15 @@
 # Live Audit Index
 
-Generated: 2026-10-05T22:49:36Z
+Generated: 2026-10-06T17:53:21Z
 PR: n/a
-SHA: `4d65b1df40`
+SHA: `237d3413c8`
 Branch: `fix/brain-crash-safety`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **9**
+Total distinct changed files: **34**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
@@ -19,8 +19,8 @@ Category counts below partition that total. File previews show at most ten paths
 | Scripts | 1 | `scripts/ops/check_brain_pickles_signed.py` |
 | CI | 0 | none |
 | Tests | 2 | `tests/test_apr8_patch_e_trained_state_guard.py`, `tests/test_audit_20261005_brain_crash_safety.py` |
-| Docs | 1 | `docs/runbooks/PAPER_BACKUP_RECOVERY.md` |
-| Artifacts/evidence | 0 | none |
+| Docs | 2 | `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/runbooks/PAPER_BACKUP_RECOVERY.md` |
+| Artifacts/evidence | 24 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
@@ -29,11 +29,36 @@ Organism subset of Backend: **3** file(s).
 
 ### Full changed-file list
 
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
 - `backend/api/lifespan.py`
 - `backend/organism/brain_persistence.py`
 - `backend/organism/ensemble_models.py`
 - `backend/organism/live_engine.py`
 - `backend/utils/secure_pickle.py`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `docs/runbooks/PAPER_BACKUP_RECOVERY.md`
 - `scripts/ops/check_brain_pickles_signed.py`
 - `tests/test_apr8_patch_e_trained_state_guard.py`
