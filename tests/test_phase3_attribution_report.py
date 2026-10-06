@@ -51,6 +51,38 @@ def test_reports_share_active_cutoff_and_nonempty_normalized_regime(
     assert (freeze.read_bytes(), trades.read_bytes()) == before
 
 
+def test_verdict_and_attribution_reports_exclude_reconciliation_artifacts(tmp_path, monkeypatch, capsys):
+    # Audit 2026-10-05 C06-01 review: an external close keeps a mapped
+    # entry_source, so both reports counted it as a momentum trade.
+    freeze = tmp_path / "param_freeze.json"
+    freeze.write_text(json.dumps({"FROZEN_AT": "2026-08-03T14:00:00+00:00"}))
+    trades = tmp_path / "trade_history.csv"
+    pd.DataFrame({
+        "closed_at": ["2026-08-03T14:01:00+00:00", "2026-08-03T14:02:00+00:00",
+                      "2026-08-03T14:03:00+00:00"],
+        "entry_source": ["alpha"] * 3,
+        "regime_at_entry": ["trending_up"] * 3,
+        "exit_reason": ["trailing_stop", "external_close", "external_close"],
+        "is_reconciliation_artifact": [False, True, True],
+        "price_source": ["db_position_fills", "external_close_db_fills",
+                         "external_close_approximate_observed_bar_close"],
+        "pnl": [2.0, -18.0, -126.0],
+        "entry_price": [100.0] * 3,
+        "shares": [10] * 3,
+    }).to_csv(trades, index=False)
+    for module in (gate_report, attribution):
+        monkeypatch.setattr(module, "FREEZE", freeze)
+        monkeypatch.setattr(module, "TRADES", trades)
+    monkeypatch.setattr(attribution, "EVIDENCE", tmp_path / "no-shadow-feed.jsonl")
+    assert gate_report.main() == 0
+    assert "forward trades=1" in capsys.readouterr().out
+    assert attribution.main() == 0
+    output = capsys.readouterr().out
+    assert "forward corpus: 1 trades" in output
+    row = next(line for line in output.splitlines() if "trending_up" in line)
+    assert "momentum" in row and "n=1" in row and "exp=+1.7000" in row  # 2.0 minus 3 bps
+
+
 def test_primary_six_bps_report_processes_preserve_inputs_and_parent_env(tmp_path):
     import os
     from pathlib import Path

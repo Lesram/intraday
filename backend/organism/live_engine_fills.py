@@ -3,8 +3,11 @@
 Strategy outcomes require an identified entry and conserved quantities across
 every attributed order. Legacy entry/final-exit lookups remain available for
 excluded orphan bookkeeping. A lifetime closed outside the engine's exit orders
-is classified for reconciliation-artifact bookkeeping (``ExternalClose``). All
-database access is read-only.
+is classified for reconciliation-artifact bookkeeping (``ExternalClose``).
+Database access is read-only with one exception: once such a close is
+recordable, its lot repair (``alpaca_stream.repair_external_close_lots``) is
+committed before the lookup returns, so before the artifact can release the
+symbol's entry gate.
 """
 from __future__ import annotations
 
@@ -69,6 +72,10 @@ EXTERNAL_CLOSE_UNBOOKED_REASON = "external_close_unbooked"
 # Well beyond fill-ingestion latency (stream, reconnect gap-fill, persisted
 # order recovery) and shorter than the engine's 30-minute pending-close page.
 EXTERNAL_CLOSE_APPROXIMATE_AFTER = timedelta(minutes=15)
+# Review: the lot repair must commit before the artifact releases the gate. A
+# failed repair keeps the close pending under this hold reason; every pass
+# retries it.
+EXTERNAL_CLOSE_LOT_REPAIR_FAILED_REASON = "external_close_lot_repair_failed"
 
 
 def _replacement_pending(meta: dict[str, Any]) -> None:
@@ -184,6 +191,9 @@ class _LifetimeLegs:
     exit_orders: int
     close_route_orders: int
     finished: bool
+    # Close-route rows in the window, filled or not (a refused or canceled
+    # operator Close that raced the engine's own exit has no fill).
+    close_route_rows: int = 0
 
 
 def _lifetime_legs(
@@ -215,7 +225,7 @@ def _lifetime_legs(
         exit_side = "sell" if direction > 0 else "buy"
         seen_ids, seen_broker_ids = set(), set()
         entries = exits = entry_cash = exit_cash = Decimal(0)
-        exit_orders = close_route_orders = 0
+        exit_orders = close_route_orders = close_route_rows = 0
         finished = False
         for row in selected:
             attributes = row.get("attributes") or {}
@@ -236,6 +246,7 @@ def _lifetime_legs(
                 return None
             if status == "filled" and qty != requested:
                 return None
+            close_route_rows += int(close_route)
             if qty == 0:
                 if status == "filled":
                     return None
@@ -265,7 +276,7 @@ def _lifetime_legs(
                 return None
             finished = entries > 0 and entries == exits
         return _LifetimeLegs(entries, entry_cash, exits, exit_cash,
-                             exit_orders, close_route_orders, finished)
+                             exit_orders, close_route_orders, finished, close_route_rows)
     except (KeyError, ValueError, TypeError, AttributeError, InvalidOperation):
         return None
 
@@ -360,13 +371,18 @@ def _external_close(
     """Classify a lifetime that exact accounting refused (audit 2026-10-05 C06-01).
 
     ``rows`` are the symbol's orders from the entry on, with no upper bound.
-    Exact: platform close-route legs complete the lifetime flat-to-flat by
-    ``closed_at``. Unbooked: every leg up to ``closed_at`` is attributable and
-    terminal and the lifetime is still open in the DB, although the broker is
-    flat (the caller asks only for symbols it saw flat). Any order after
-    ``closed_at`` refuses the unbooked case: it could hold the missing legs (a
-    late exit of this lifetime, an operator trade) and cannot be attributed
-    here. None refuses: the close stays pending.
+    Exact: the lifetime is flat-to-flat by ``closed_at`` and a platform
+    close-route row is among its legs. Either such legs booked (part of) the
+    close, or an operator Close raced the engine's own exit and was refused
+    (the outbox exit guard) or canceled without a fill; exact strategy
+    accounting refuses any non-organism row, so the DB cash flows are recorded
+    as an artifact instead of leaving the close pending for good. Unbooked:
+    every leg up to ``closed_at`` is attributable and terminal and the lifetime
+    is still open in the DB, although the broker is flat (the caller asks only
+    for symbols it saw flat). Any order after ``closed_at`` refuses the
+    unbooked case: it could hold the missing legs (a late exit of this
+    lifetime, an operator trade) and cannot be attributed here. None refuses:
+    the close stays pending.
     """
     legs = _lifetime_legs(rows, entry_order_id=entry_order_id, symbol=symbol,
                           direction=direction, closed_at=closed_at, close_route_exits=True)
@@ -374,7 +390,7 @@ def _external_close(
         if legs is None or legs.entries <= 0 or legs.entries != legs.entries.to_integral_value():
             return None
         if legs.finished:
-            if not legs.close_route_orders:
+            if not (legs.close_route_orders or legs.close_route_rows):
                 return None  # Every leg is the engine's own: exact accounting owns it.
         elif any(_as_utc(row["submitted_at"]) > _as_utc(closed_at) for row in rows):
             return None
@@ -563,11 +579,21 @@ class _FillLookupMixin:
     ) -> ExternalClose | None:
         """Audit 2026-10-05 C06-01: was this lifetime closed outside the engine?
 
-        Read-only, for an identified close the exact lookup refused and the
-        broker shows flat. The same holds as the exact lookup apply
-        (``_lifetime_held``), then ``_external_close`` classifies the symbol's
-        orders from the entry on. None (unknown identity, holds, DB failure,
-        ambiguous legs) leaves the close pending.
+        For an identified close the exact lookup refused and the broker shows
+        flat. The same holds as the exact lookup apply (``_lifetime_held``),
+        then ``_external_close`` classifies the symbol's orders from the entry
+        on. None (unknown identity, holds, DB failure, ambiguous legs) leaves
+        the close pending.
+
+        Review: once the evidence is recordable (exact, or unbooked after
+        EXTERNAL_CLOSE_APPROXIMATE_AFTER), the lot ledger is repaired and
+        committed here, before the caller's artifact commit releases the entry
+        gate (``_repair_external_close_lots``). Otherwise the lifetime's open
+        lot would block the next entry's pending identity and be FIFO-matched
+        by its exit. A failed repair returns None: the close stays pending and
+        gated (``EXTERNAL_CLOSE_LOT_REPAIR_FAILED_REASON``) and the next pass
+        retries. The caller measures the wait from its own earlier clock
+        reading, so it never records evidence this lookup still saw waiting.
         """
         if not self._sessionmaker or meta.get("entry_source") == "reconciliation_orphan":
             return None
@@ -576,6 +602,71 @@ class _FillLookupMixin:
             direction = float(meta.get("direction", 1.0))
         except (ValueError, TypeError):
             return None
+        evidence = await self._classify_external_close(
+            symbol, meta, entry_id=entry_id, direction=direction, closed_at=closed_at)
+        if evidence is not None and not evidence.waiting(closed_at, self._fill_lookup_now()):
+            if not await self._repair_external_close_lots(
+                    symbol, meta, entry_id=entry_id, direction=direction, closed_at=closed_at):
+                return None
+        pending = meta.get("pending_close")
+        if (isinstance(pending, dict)
+                and pending.get("accounting_hold_reason") == EXTERNAL_CLOSE_LOT_REPAIR_FAILED_REASON):
+            pending.pop("accounting_hold_reason", None)  # repaired, or not needed this pass
+        return evidence
+
+    def _fill_lookup_now(self) -> datetime:
+        now_fn = getattr(self, "_now_fn", None)
+        return now_fn() if callable(now_fn) else datetime.now(UTC)
+
+    async def _repair_external_close_lots(
+        self, symbol: str, meta: dict[str, Any], *, entry_id: uuid.UUID,
+        direction: float, closed_at: datetime,
+    ) -> bool:
+        """Commit the external close's lot repair; False keeps the close pending.
+
+        One WARNING per new failure (the hold reason carries it into status and
+        into the 30-minute page); a later success clears the reason.
+        """
+        from backend.integrations.alpaca_stream import repair_external_close_lots
+
+        pending = meta.get("pending_close")
+        try:
+            mark = float((pending or {}).get("observed_bar_close"))
+            if not 0.0 < mark < float("inf"):
+                mark = None
+        except (TypeError, ValueError, AttributeError):
+            mark = None
+        try:
+            async with self._sessionmaker() as session:
+                report = await repair_external_close_lots(
+                    session, symbol=symbol, entry_order_id=entry_id, closed_at=closed_at,
+                    direction=direction, mark=mark,
+                    mark_source="observed_bar_close" if mark is not None else "",
+                )
+                await session.commit()
+        except Exception as exc:  # noqa: BLE001 - the close stays pending and is retried
+            if isinstance(pending, dict):
+                if pending.get("accounting_hold_reason") != EXTERNAL_CLOSE_LOT_REPAIR_FAILED_REASON:
+                    logger.warning(
+                        "External close of %s held: %s (%s: %s); it stays pending and "
+                        "entry-gated and the repair is retried every pass",
+                        symbol, EXTERNAL_CLOSE_LOT_REPAIR_FAILED_REASON, type(exc).__name__, exc)
+                pending["accounting_hold_reason"] = EXTERNAL_CLOSE_LOT_REPAIR_FAILED_REASON
+            return False
+        if report["netted"] or report["written_off"]:
+            logger.warning(
+                "External close lot repair for %s (entry %s, owner %s): %d close-route "
+                "match(es) netted against the lifetime's lots, %d lot(s) written off "
+                "(no DB row closed them; position.adjusted audit rows); committed before "
+                "the artifact releases the entry gate",
+                symbol, entry_id, report["owner"], len(report["netted"]), len(report["written_off"]))
+        return True
+
+    async def _classify_external_close(
+        self, symbol: str, meta: dict[str, Any], *, entry_id: uuid.UUID,
+        direction: float, closed_at: datetime,
+    ) -> ExternalClose | None:
+        """Read-only holds and classification for ``_lookup_external_close_from_db``."""
         try:
             from sqlalchemy import select
             from backend.infra.schemas import Order

@@ -60,7 +60,9 @@ def load_trades(date_from: str, date_to: str) -> list[dict]:
                 continue
             day = closed[:10]
             if date_from <= day <= date_to:
-                if r.get("exit_reason") != "reconciliation_adjustment":
+                # Reconciliation artifacts are not strategy trades. 'external_close'
+                # (audit 2026-10-05 C06-01) keeps the lifetime's strategy fields.
+                if r.get("exit_reason") not in ("reconciliation_adjustment", "external_close"):
                     rows.append(r)
     return rows
 
