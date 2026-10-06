@@ -25,8 +25,12 @@ the engine loads the file). Other pickle files below a location (``*.pkl``,
 background trainer's rollback copy writes unsigned) are listed for information
 only: the engine never loads them.
 
+An engine-loaded pickle that is a symbolic link is an error: the engine follows
+the link, this check does not read through it.
+
 Exit status: 0 every engine-loaded pickle is signed; 1 at least one is unsigned
-or torn; 2 a requested location is missing or a file could not be read.
+or torn; 2 a requested location is missing, an engine-loaded pickle is a
+symbolic link, or a file could not be read.
 
 Usage:
     docker compose -f docker-compose.paper.yml exec api \\
@@ -73,9 +77,17 @@ def check_location(kind: str, root: Path) -> dict:
         rel = path.relative_to(root)
         if _skipped(rel) or path.suffix not in PICKLE_SUFFIXES:
             continue
+        loaded = len(rel.parts) == 1 and path.suffix == ".joblib"
+        if loaded and path.is_symlink():
+            # The engine's is_file()/read_bytes() follow a symlink; this check
+            # does not, so exit 0 could not vouch for it (C12 review).
+            result["errors"].append(
+                f"{rel}: symbolic link to {os.readlink(path)} (the engine "
+                "follows it; replace it with the regular file)"
+            )
+            continue
         if path.is_symlink() or not path.is_file():
             continue
-        loaded = len(rel.parts) == 1 and path.suffix == ".joblib"
         try:
             signed = is_signed_pickle(path.read_bytes())
         except OSError as exc:

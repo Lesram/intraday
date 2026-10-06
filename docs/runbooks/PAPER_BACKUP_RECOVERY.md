@@ -78,22 +78,43 @@ file present in both generations is never missing. The new generation's file lis
 is written into `.save_complete`, and then the journal is removed.
 
 A crash during the swap leaves the journal. The next load or save handles it in
-one of three ways:
+one of four ways:
 
 - Rolled forward (`C12-01 (...) rolled forward`, WARNING): HEAD still holds only
   the old or the staged version of every file the swap touches, so the swap is
-  completed.
+  completed. A timestamp `.save_complete` next to the journal is noted in that
+  line and does not block it: older code writes one whenever it loads the brain,
+  and so does this code when it loads a HEAD without a file list.
 - Stale (`C12-01 (...) STALE full-save swap journal`, CRITICAL): something wrote
   HEAD after the journal, so HEAD holds newer state than the staged generation.
   The writer is either pre-fix code after a rollback or a write outside a save.
-  The signal is a changed HEAD file, a new brain-owned file, or a timestamp
-  `.save_complete`, which only pre-fix code writes. HEAD is kept as it is and
-  the journal is retired. The engine's next brain save is a full save, which
-  rewrites every brain-owned file.
+  The signal is a changed HEAD file or a new brain-owned file (models, ensemble
+  files and the files the brain save writes). Other files, such as Finder's
+  `.DS_Store`, never count, and a swap never deletes them. A timestamp
+  `.save_complete` counts only when the swap includes a directory, which size
+  and SHA-256 cannot check. HEAD is kept as it is, `.full_save_required` is
+  written into HEAD, and the journal is retired. The engine's next brain save is
+  a full save, which rewrites every brain-owned file and removes the marker. The
+  marker survives restarts, so a restart before that full save still takes one.
+- HEAD lost a file (`C12-01 (...) left HEAD without file(s) it held before the
+  swap`, CRITICAL): a brain-owned file that HEAD had before the swap is missing.
+  This code's renames never cause that; an interrupted non-atomic writer or an
+  external deletion does. It wins over Stale, because a kept HEAD would load
+  that file as empty state. Load uses the newest complete engine backup, and the
+  journal stays as in the next case.
 - Cannot be completed (`C12-01 (...) cannot be completed`, CRITICAL): a staged
-  copy that is still needed, or an already published file, is missing or altered.
-  Load uses the newest complete engine backup. The journal stays until the next
-  full save replaces it with its own, so a crash before then is still detected.
+  copy that is still needed is missing or altered. Load uses the newest complete
+  engine backup. The journal stays until the next full save replaces it with its
+  own, so a crash before then is still detected.
+
+If another process holds `organism_brain/.brain.lock` for more than 20 seconds at
+startup while a journal exists, load uses the newest complete engine backup and
+leaves the journal. When the journal is rolled forward later (by the engine's
+standalone exit-level write or its next save), HEAD holds a generation that is
+newer than the restored state (`... NEWER than the in-memory state`, CRITICAL).
+That generation is copied into `backups/brain_gen<N>_*` before any save replaces
+it. If the copy fails, the full save is refused and retried on the next cycle.
+Review that backup; it is the only copy of the interrupted save.
 
 Before a journal is retired or replaced, the evidence is kept in
 `organism_brain/corrupt_head_<timestamp>_swap_journal/`. It holds the journal,
@@ -116,13 +137,18 @@ An essential save cannot repair such a HEAD and reports `Essential brain save NO
 persisted` (ERROR) instead.
 
 Essential saves take the brain lock, run only after an interrupted swap was
-completed or retired, and do not rewrite model files that have not changed. A
+completed or retired, and do not rewrite model files that have not changed.
+Under the research lock they never publish ensemble files at all: that
+publication is a sequence of renames, not a crash-safe commit, so model files
+are written only by the full save's journaled swap. A
 save that did not happen is not reported as one. Each failure logs `BRAIN SAVE
 NOT PERSISTED` (ERROR) and does not advance the brain-save watchdog. Every third
 consecutive failure logs `BRAIN SAVES FAILING REPEATEDLY` (CRITICAL), which the
 paper watchdog notifies. Check disk space, permissions, and other holders of
 `organism_brain/.brain.lock`. The engine's standalone exit-level write settles a
-pending journal before it touches `extra_counters.json`.
+pending journal before it touches `extra_counters.json`. If the journal cannot be
+settled, that write is skipped (`Exit-level standalone write SKIPPED`, ERROR) and
+the brain save that follows carries the same fields.
 
 Every model and cache pickle the engine writes is HMAC-signed. An unsigned or
 torn pickle is never unpickled (`C12-04: refusing to deserialize unsigned or
@@ -142,8 +168,9 @@ pickle that is unsigned or torn in HEAD, in `backups/brain_gen*`, and in the
 newest host archive snapshot (every snapshot with `--all-archives`). Pickles the
 engine never loads, such as `previous_model/*.pkl`, are listed for information
 only. Exit status 0 means every loaded pickle is signed, 1 means at least one is
-unsigned or torn, and 2 means a location could not be read. The archive is not
-mounted in the container, so check it on the host:
+unsigned or torn, and 2 means a location could not be read or a loaded pickle is
+a symbolic link (the engine follows the link; replace it with the regular file).
+The archive is not mounted in the container, so check it on the host:
 
 ```sh
 docker compose -f docker-compose.paper.yml exec api python scripts/ops/check_brain_pickles_signed.py
@@ -161,19 +188,21 @@ a brain that holds one:
 
 1. Stop the API with its normal 60-second grace and check whether
    `organism_brain/.brain_swap_journal.json` exists.
-2. If it exists, start the fixed image once, wait for `Brain loaded`, and stop it
-   gracefully. That load completes or retires the interrupted swap, and the
-   shutdown save writes a complete generation. If the fixed image cannot start,
+2. If it exists, start the fixed image once, wait for `Brain loaded` (after a
+   backup fallback the line is `PP-2: brain restored from backup` instead), and
+   stop it gracefully. That load completes or retires the interrupted swap, and
+   the shutdown save writes a complete generation. If the fixed image cannot start,
    restore a verified archive into the brain directory instead (see "Live
    recovery boundary").
 3. Confirm the journal is gone, then deploy the older image. If it is still
    there, restore a verified archive instead of rolling back onto it. That
    happens when startup was held or the swap could not be completed.
 
-If older code did run on a brain with a journal and the fixed code is deployed
-again, the fixed code refuses the stale journal (`STALE`, CRITICAL). It keeps the
-state the older code wrote and stores a forensic copy. Review that copy, then
-rely on the next full save.
+If older code did run on a brain with a journal and saved state, and the fixed
+code is deployed again, the fixed code refuses the stale journal (`STALE`,
+CRITICAL). It keeps the state the older code wrote and stores a forensic copy.
+Review that copy, then rely on the next full save. If the older code only loaded
+the brain, nothing it touched changed and the swap is rolled forward.
 
 ## Installing and checking schedules
 

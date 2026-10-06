@@ -8349,15 +8349,28 @@ class OrganismLiveEngine(
         journaled full-save swap. An interrupted swap is settled first (rolled
         forward, or retired with HEAD kept), so this write never changes a
         file under a pending journal and wedges the following essential saves.
+        When it cannot be settled (brain lock busy, swap not completable),
+        this write is skipped: it would turn a recoverable journal stale. The
+        brain save that follows (a full save while a swap is pending) carries
+        the same fields from ``_build_extra_counters``.
         """
         import json
         from backend.organism.brain_persistence import _write_text_atomic
         resolve = getattr(self.brain, "resolve_pending_swap", None)
         if callable(resolve):
             try:
-                resolve()
-            except Exception as e:  # noqa: BLE001 - never blocks this write
+                settled = resolve()
+            except Exception as e:  # noqa: BLE001 - reported, never raised into the tick
                 logger.error("Brain swap settlement before the exit-level write failed: %s", e)
+                settled = False
+            if settled is False:
+                logger.error(
+                    "Exit-level standalone write SKIPPED: an interrupted brain "
+                    "full-save swap is pending and could not be settled; the "
+                    "next brain save persists exit levels, entry metadata and "
+                    "pending entry ids"
+                )
+                return
         try:
             ec_path = self.brain.brain_dir / "extra_counters.json"
             if ec_path.is_file():

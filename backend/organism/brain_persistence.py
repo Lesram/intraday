@@ -99,8 +99,18 @@ SWAP_TRASH_DIR = ".brain_old"
 # and inside the existing prune of at most MAX_CORRUPT_HEAD_SNAPSHOTS.
 SWAP_FORENSIC_SUFFIX = "_swap_journal"
 MAX_CORRUPT_HEAD_SNAPSHOTS = 5
+# C12 review: written (durably) before a STALE swap journal is retired with
+# HEAD kept, and removed only when a full save (or a roll-forward) commits a
+# complete generation. HEAD may mix two generations meanwhile; the marker keeps
+# full_save_required() true across restarts. Not ".brain_"-prefixed, so the
+# host archive keeps it with the HEAD it describes; older code's full save
+# removes it together with every other file it replaces.
+FULL_SAVE_REQUIRED_MARKER = ".full_save_required"
+FULL_SAVE_REQUIRED_FORMAT = "brain-full-save-required-v1"
 # C12-02: an essential save stages a CHANGED ensemble here and publishes it only
-# when every model pair serialized (never a reduced ensemble_manifest.json).
+# when every model pair serialized (never a reduced ensemble_manifest.json). The
+# publication is a sequence of renames, not a crash-safe commit; under the
+# research lock (frozen models) essential saves never publish an ensemble.
 ENSEMBLE_STAGING_DIR = ".brain_ensemble_stage"
 CANDIDATE_FILTER_SHADOW_TELEMETRY_FILE = "candidate_filter_shadow_telemetry.jsonl"
 STRATEGY_EVIDENCE_TELEMETRY_FILE = "strategy_evidence_events.jsonl"
@@ -160,6 +170,40 @@ def _preserved_during_swap(name: str) -> bool:
         or name.startswith("corrupt_head_")
         or name.startswith(ARCHIVE_PREFIX)
         or name.endswith(QUARANTINED_SIDECAR_SUFFIX)
+    )
+
+
+# C12 review (P2): the HEAD files a save writes — the _save_* helpers' files
+# (the same names in every version of this module), the model pickles
+# (ml_*.joblib) and the ensemble files. Only these count toward a swap
+# journal's staleness, and a swap deletes no other file: anything else in HEAD
+# is foreign (Finder's .DS_Store on the macOS bind mount, an editor's swap file,
+# an operator's copy) and is left alone.
+_BRAIN_OWNED_FILES = frozenset({
+    MANIFEST_FILE,
+    "ml_state.json",
+    "evaluation_event_history.json",
+    "learning_state.json",
+    "reference_feats.csv",
+    "trade_history.csv",
+    "equity_curve.csv",
+    "epoch_metrics.csv",
+    "extra_counters.json",
+    "evolved_params.json",
+    "governance_state.json",
+    "regime_state.json",
+    "ensemble_manifest.json",
+})
+
+
+def _brain_owned(name: str) -> bool:
+    """Is ``name`` a HEAD file that a brain save writes (C12 review)?"""
+    if _preserved_during_swap(name):
+        return False
+    return (
+        name in _BRAIN_OWNED_FILES
+        or (name.startswith("ml_") and name.endswith(".joblib"))
+        or (name.startswith("ensemble_") and name.endswith(".joblib"))
     )
 
 
@@ -305,6 +349,12 @@ class OrganismBrain:
         # C12 review: set when HEAD was kept over a stale swap journal (it may
         # mix two generations) until the next full save rewrites every file.
         self._head_mixed_reason: str | None = None
+        # C12 review (P3): set when an interrupted swap was rolled forward
+        # while the in-memory state came from a backup (the load could not
+        # take the brain lock). HEAD then holds a complete generation newer
+        # than that state. It is copied into backups/ at once; while that copy
+        # is still owed, save() retries it and refuses to replace HEAD.
+        self._unbacked_roll_forward: str | None = None
 
         # ── Restored state containers ────────────────────────────
         # ML models (joblib objects)
@@ -415,6 +465,7 @@ class OrganismBrain:
         _sentinel = self.brain_dir / SAVE_COMPLETE_SENTINEL
         _manifest_file = self.brain_dir / MANIFEST_FILE
         self._loaded_from = None
+        self._unbacked_roll_forward = None
 
         try:
             # Audit 2026-10-05 C12-01: finish a full-save swap that a crash
@@ -425,7 +476,9 @@ class OrganismBrain:
             # journal is retired with a forensic copy. Without the lock
             # (another holder for 20 s) an in-flight swap cannot be resolved
             # safely: reject the HEAD (PP-2 backup fallback below) instead of
-            # reading it half-swapped.
+            # reading it half-swapped. The journal stays; when it is rolled
+            # forward later, that generation is copied into backups/ before
+            # any save replaces it with the restored state (C12 review).
             if (self.brain_dir / SWAP_JOURNAL_FILE).is_file():
                 if not lock_held:
                     raise BrainHeadIncomplete(
@@ -433,6 +486,15 @@ class OrganismBrain:
                         "is unavailable"
                     )
                 self._resolve_pending_swap(caller="load")
+
+            # C12 review: HEAD was kept over a stale swap journal and no full
+            # save has rewritten it since (possibly two generations mixed).
+            marker = _full_save_marker_reason(self.brain_dir)
+            if marker:
+                logger.warning(
+                    "C12-01: HEAD carries %s (%s); the engine's next brain "
+                    "save is a full save", FULL_SAVE_REQUIRED_MARKER, marker,
+                )
 
             # Audit 2026-06-09 finding 3.6: no sentinel (and no journal) means
             # either a legacy (pre-sentinel) brain or a save by older code
@@ -653,12 +715,15 @@ class OrganismBrain:
         a journal that the next load()/save() rolls forward to the new one.
         Backs up the previous brain before overwriting — unless HEAD is not a
         generation a restart would load (C12 review: a rejected HEAD never
-        displaces a good backup).
+        displaces a good backup). A generation that was rolled forward after
+        the state was restored from a backup is never replaced before it has
+        been copied into ``backups/`` (C12 review).
         Thread-safe via cross-platform file lock (Phase 3.1).
 
         Returns True when the new generation was published and False when no
-        save happened — the brain lock is held elsewhere or the trained-
-        overwrite guard blocked it (C12-06: never reported as a save). Write
+        save happened — the brain lock is held elsewhere, the trained-
+        overwrite guard blocked it, or that required backup of a rolled-
+        forward generation failed (C12-06: never reported as a save). Write
         failures raise.
 
         The ``force`` flag is audit-only: ``save()`` always performs the
@@ -767,6 +832,19 @@ class OrganismBrain:
                     )
                 return False
 
+            # C12 review (P3): a generation rolled forward after the state had
+            # been restored from a backup is newer than what this save writes.
+            # Its copy into backups/ is retried here when the immediate one
+            # failed; without that copy HEAD is not replaced.
+            owed_ok, owed_backup = self._back_up_unbacked_roll_forward()
+            if not owed_ok:
+                logger.error(
+                    "Brain save NOT performed: HEAD holds a rolled-forward "
+                    "generation that is newer than the restored state and has "
+                    "no copy in backups/ (the next save retries the copy)",
+                )
+                return False
+
             backup_skip: str | None = None
             if unusable_journal is not None:
                 # The interrupted generation cannot be published intact. Keep
@@ -785,13 +863,14 @@ class OrganismBrain:
                     forensic.name if forensic is not None else "not taken",
                 )
                 backup_skip = "an interrupted full-save swap could not be completed"
-            elif self.exists:
+            elif self.exists and owed_backup is None:
                 backup_skip = self._head_rejection_reason()
 
-            # 1. Backup current brain (if it exists as a complete generation)
-            if self.exists and backup_skip is None:
+            # 1. Backup current brain (if it exists as a complete generation;
+            # a rolled-forward generation was just copied above).
+            if self.exists and backup_skip is None and owed_backup is None:
                 self._create_backup()
-            elif self.exists:
+            elif self.exists and backup_skip is not None:
                 logger.warning(
                     "Pre-save backup skipped: %s (the PP-2 fallback must keep "
                     "its complete backups)", backup_skip,
@@ -831,6 +910,7 @@ class OrganismBrain:
                 # generation: a backup fallback or a kept stale HEAD is over.
                 self._loaded_from = self.brain_dir
                 self._head_mixed_reason = None
+                self._unbacked_roll_forward = None
 
                 gen = learner.state.generation if hasattr(learner, "state") else 0
                 eq_str = f", equity ${equity_curve[-1]:,.0f}" if equity_curve else ""
@@ -881,14 +961,16 @@ class OrganismBrain:
            publish order (``manifest.json`` last) with each file's size and
            sha256, plus the pre-swap identity (size, sha256; null = absent)
            of every HEAD file the swap replaces (``head``) or deletes
-           (``delete``). From here a crash is rolled FORWARD by the next
-           load()/save() (``_resolve_pending_swap``) — but only while every
-           one of those HEAD files is still either its pre-swap version or
-           its staged copy (C12 review: never over newer state).
+           (``delete``: the brain-owned files the new generation does not
+           have — a swap never deletes a foreign file). From here a crash is
+           rolled FORWARD by the next load()/save() (``_resolve_pending_swap``)
+           — but only while every one of those HEAD files is still either its
+           pre-swap version or its staged copy (C12 review: never over newer
+           state).
         2. ``_apply_swap``: drop the completion sentinel, replace each HEAD
            entry with its staged copy (files by ``os.replace`` — an entry
            present in both generations is never missing), delete the previous
-           generation's brain-owned entries the new one does not have, fsync
+           generation's brain-owned files the new one does not have, fsync
            HEAD, write the sentinel with the new inventory and remove the
            journal.
 
@@ -911,12 +993,7 @@ class OrganismBrain:
         delete: dict[str, dict[str, Any]] = {}
         for entry in brain_dir.iterdir():
             name = entry.name
-            if (
-                name in new_names
-                or name in (SAVE_COMPLETE_SENTINEL, SWAP_JOURNAL_FILE)
-                or _preserved_during_swap(name)
-                or name.endswith(".tmp")
-            ):
+            if name in new_names or not _brain_owned(name):
                 continue
             identity = _file_identity(entry)
             if identity is not None and "sha256" in identity:
@@ -944,6 +1021,8 @@ class OrganismBrain:
         repeated after an interruption. Staged entries already published are
         skipped, the deletions and the sentinel write are idempotent, and the
         journal is removed only after the sentinel records the new inventory.
+        HEAD then holds one complete generation, so a full-save-required
+        marker (C12 review) is removed before the journal.
         """
         brain_dir = self.brain_dir
         stage = brain_dir / SWAP_STAGING_DIR
@@ -953,8 +1032,10 @@ class OrganismBrain:
 
         # 3.6: no completion sentinel while HEAD is between generations. The
         # unlink is made durable before the first rename (C12 review), so a
-        # durable rename implies a durable unlink: a timestamp sentinel next to
-        # a journal can only have been written afterwards, by older code.
+        # durable rename implies a durable unlink. A timestamp sentinel next to
+        # a journal proves nothing on its own: a crash before this unlink
+        # leaves the previous one (older code, or this code's load of a HEAD
+        # without an inventory, writes timestamps).
         try:
             os.unlink(brain_dir / SAVE_COMPLETE_SENTINEL)
         except FileNotFoundError:
@@ -985,14 +1066,14 @@ class OrganismBrain:
             else:
                 os.replace(src, dest)
 
-        # The previous generation's brain-owned entries that this generation
-        # does not have (a break-glass reset cannot resurrect stale models).
+        # The previous generation's brain-owned files that this generation
+        # does not have (a break-glass reset cannot resurrect stale models)
+        # and this brain's own leftover ensemble staging dir. Nothing else is
+        # deleted (C12 review): foreign files stay where they are.
         for entry in list(brain_dir.iterdir()):
             name = entry.name
-            if (
-                name in new_names
-                or name == SAVE_COMPLETE_SENTINEL
-                or _preserved_during_swap(name)
+            if name in new_names or not (
+                _brain_owned(name) or name == ENSEMBLE_STAGING_DIR
             ):
                 continue
             if entry.is_dir() and not entry.is_symlink():
@@ -1012,6 +1093,14 @@ class OrganismBrain:
         _write_text_atomic(
             brain_dir / SAVE_COMPLETE_SENTINEL, json.dumps(inventory, sort_keys=True)
         )
+        # C12 review: one complete generation is committed — HEAD no longer
+        # mixes generations. Removed before the journal: a crash in between
+        # repeats this idempotent step on the next roll-forward.
+        try:
+            os.unlink(brain_dir / FULL_SAVE_REQUIRED_MARKER)
+        except FileNotFoundError:
+            pass
+        self._head_mixed_reason = None
         try:
             os.unlink(brain_dir / SWAP_JOURNAL_FILE)
         except FileNotFoundError:
@@ -1023,24 +1112,36 @@ class OrganismBrain:
     def _resolve_pending_swap(self, *, caller: str) -> str:
         """Settle a full-save swap that a crash or an error interrupted (C12-01).
 
-        Caller holds the brain lock. Returns:
+        Caller holds the brain lock. Every file the swap touches is checked by
+        size and sha256 against the journal (``_swap_journal_findings``).
+        Returns:
 
         * ``"none"`` — no journal;
-        * ``"rolled_forward"`` — the journaled generation was published;
+        * ``"rolled_forward"`` — the journaled generation was published. When
+          the in-memory state had been restored from a backup (a load without
+          the brain lock), that newer generation is copied into ``backups/``
+          at once, and save() does not replace it before a copy exists (C12
+          review);
         * ``"kept_head"`` — the journal is STALE (C12 review): HEAD changed
           after it was written — a file the swap replaces or deletes is
-          neither its recorded pre-swap version nor its staged copy, a
-          brain-owned file appeared, or a timestamp-format ``.save_complete``
-          (written only by pre-fix code) sits next to it. HEAD then holds
-          newer state than the staged generation (older code ran after a
-          rollback, or a write outside a save), so nothing is published:
-          HEAD is kept as it is, the journal is retired with a forensic copy
-          (CRITICAL) and the next full save rewrites every brain-owned file.
+          neither its recorded pre-swap version nor its staged copy, or a
+          brain-owned file appeared. Foreign files (Finder's ``.DS_Store``,
+          an editor's swap file) never count. HEAD then holds newer state
+          than the staged generation (older code ran after a rollback, or a
+          write outside a save), so nothing is published: HEAD is kept as it
+          is, a durable full-save-required marker is written, the journal is
+          retired with a forensic copy (CRITICAL) and the next full save
+          rewrites every brain-owned file. A timestamp-format
+          ``.save_complete`` makes a journal stale only where size and sha256
+          cannot decide (a staged directory); otherwise it is only logged.
 
-        Raises ``BrainHeadIncomplete`` when the journal is unreadable or the
-        staged generation can no longer be published intact (a staged copy
-        still needed, or a published copy, is missing or altered); the
-        journal and the staging dir are then left for the caller to decide.
+        Raises ``BrainHeadIncomplete`` when the journal is unreadable, when a
+        brain-owned file that HEAD held before the swap is missing (checked
+        first: kept as it is, that HEAD would load the file as empty state,
+        so load uses the newest complete backup instead), or when a journal
+        that is not stale can no longer be published intact (a staged copy
+        still needed is missing or altered); the journal and the staging dir
+        are then left for the caller to decide.
         """
         journal_path = self.brain_dir / SWAP_JOURNAL_FILE
         if not journal_path.is_file():
@@ -1066,15 +1167,35 @@ class OrganismBrain:
             )
             raise BrainHeadIncomplete(f"unreadable swap journal: {exc}") from exc
 
-        stale, incomplete = self._classify_swap_journal(journal)
+        findings = self._swap_journal_findings(journal)
+        started = journal.get("started_at")
+        missing, stale = findings["missing"], findings["stale"]
+        if missing:
+            # C12 review (P3): stale or not, never keep a HEAD that lacks a
+            # file it had — it would load as empty state (no inventory).
+            logger.critical(
+                "C12-01 (%s): the full brain save interrupted at %s left HEAD "
+                "without file(s) it held before the swap: %s%s. HEAD is never "
+                "loaded with that state empty (a load uses the newest complete "
+                "backup); only a full save rewrites it.",
+                caller, started, "; ".join(missing),
+                f" (HEAD was also changed: {'; '.join(stale)})" if stale else "",
+            )
+            raise BrainHeadIncomplete(
+                "interrupted swap left HEAD incomplete: " + "; ".join(missing)
+            )
         if stale:
+            mixed = (
+                f"HEAD was kept over a stale full-save swap journal "
+                f"({started}) and may mix two generations"
+            )
+            self._head_mixed_reason = mixed
+            # Durable before the journal goes (Copilot review): a restart
+            # before the next full save still knows that HEAD needs one.
+            self._write_full_save_marker(mixed, journal_started_at=started)
             forensic = self._quarantine_swap_journal(
                 reason=f"{caller}: stale swap journal: " + "; ".join(stale),
                 remove_journal=True,
-            )
-            self._head_mixed_reason = (
-                f"HEAD was kept over a stale full-save swap journal "
-                f"({journal.get('started_at')}) and may mix two generations"
             )
             logger.critical(
                 "C12-01 (%s): STALE full-save swap journal from %s: %s. HEAD "
@@ -1083,39 +1204,69 @@ class OrganismBrain:
                 "the roll-forward is REFUSED: HEAD is kept as it is and the "
                 "journal was retired (forensic copy: %s). The next full save "
                 "rewrites every brain-owned file.",
-                caller, journal.get("started_at"), "; ".join(stale),
+                caller, started, "; ".join(stale),
                 forensic.name if forensic is not None else "not taken",
             )
             return "kept_head"
-        if incomplete:
+        if findings["incomplete"]:
             logger.critical(
                 "C12-01 (%s): the full brain save interrupted at %s cannot be "
                 "completed: %s",
-                caller, journal.get("started_at"), "; ".join(incomplete),
+                caller, started, "; ".join(findings["incomplete"]),
             )
             raise BrainHeadIncomplete(
-                "interrupted swap cannot be completed: " + "; ".join(incomplete)
+                "interrupted swap cannot be completed: "
+                + "; ".join(findings["incomplete"])
             )
         self._apply_swap(journal)
         logger.warning(
             "C12-01 (%s): the full brain save interrupted at %s was rolled "
-            "forward — HEAD holds the complete new generation",
-            caller, journal.get("started_at"),
+            "forward — HEAD holds the complete new generation%s",
+            caller, started,
+            f" ({'; '.join(findings['notes'])})" if findings["notes"] else "",
         )
+        loaded_from = getattr(self, "_loaded_from", None)
+        if loaded_from is not None and loaded_from != self.brain_dir:
+            # C12 review (P3): the load could not take the lock and restored
+            # older state from a backup; HEAD now holds a newer generation.
+            self._unbacked_roll_forward = (
+                f"the full brain save interrupted at {started} was rolled "
+                f"forward after the state had been restored from "
+                f"{loaded_from.name}"
+            )
+            logger.critical(
+                "C12-01 (%s): %s — HEAD now holds a complete generation that "
+                "can be NEWER than the in-memory state; it is copied into "
+                "backups/ before any save replaces it",
+                caller, self._unbacked_roll_forward,
+            )
+            self._back_up_unbacked_roll_forward()
         return "rolled_forward"
 
-    def _classify_swap_journal(
+    def _swap_journal_findings(
         self, journal: dict[str, Any],
-    ) -> tuple[list[str], list[str]]:
-        """``(stale, incomplete)`` reasons for a journaled swap (C12-01).
+    ) -> dict[str, list[str]]:
+        """Check every file a journaled swap touches (C12-01, C12 review).
 
         Each file the swap replaces must be either its staged copy (already
         published) or its recorded pre-swap version (not yet published, so
-        its staged copy must still be intact); each file it deletes must be
-        gone or still its pre-swap version. Anything else in HEAD — another
-        version of such a file, a new brain-owned file, a timestamp-format
-        ``.save_complete`` — was written after the journal: STALE. A staged
-        copy or a published copy that is missing or altered: INCOMPLETE.
+        its staged copy must still be intact); each brain-owned file it
+        deletes must be gone or still its pre-swap version. Identity is size
+        and sha256, so a byte-identical rewrite carries no information.
+        Returns reason lists by kind:
+
+        * ``missing`` — a brain-owned file that HEAD held before the swap is
+          gone (this code's renames never leave a gap: an interrupted
+          non-atomic writer or an external deletion removed it);
+        * ``stale`` — HEAD was written after the journal: another version of
+          such a file, or a new brain-owned file. Anything else in HEAD is
+          foreign and never counts. A timestamp-format ``.save_complete``
+          (older code writes one on every load and full save, this code when
+          it loads a HEAD without an inventory) counts only together with an
+          entry that size and sha256 cannot check (a staged directory);
+        * ``incomplete`` — a staged copy that is still needed is missing or
+          altered (or a published file of a name that is not brain-owned);
+        * ``notes`` — that timestamp sentinel, when the checksums decided.
         """
         brain_dir = self.brain_dir
         stage = brain_dir / SWAP_STAGING_DIR
@@ -1123,19 +1274,17 @@ class OrganismBrain:
         head = journal["head"]
         delete = journal["delete"]
         entries = [str(name) for name in journal["entries"]]
+        missing: list[str] = []
         stale: list[str] = []
         incomplete: list[str] = []
-        if _sentinel_kind(brain_dir / SAVE_COMPLETE_SENTINEL) == "legacy":
-            stale.append(
-                f"{SAVE_COMPLETE_SENTINEL} is not an inventory written by this "
-                "code (pre-fix code writes a timestamp there whenever it loads "
-                "or saves the brain)"
-            )
+        notes: list[str] = []
+        unchecked: list[str] = []
         for name in entries:
             meta = files.get(name)
             published = brain_dir / name
             staged = stage / name
             if meta is None:  # a staged directory (preserved name, R7)
+                unchecked.append(name)
                 if not (staged.is_dir() or published.is_dir()):
                     incomplete.append(f"{name}: directory missing")
                 continue
@@ -1143,38 +1292,123 @@ class OrganismBrain:
             current = _file_identity(published)
             if current == target:
                 continue  # published, or unchanged between the generations
-            if current == head.get(name):
+            before = head.get(name)
+            if current == before:
                 # Not published yet and HEAD's copy is untouched.
+                if isinstance(before, dict) and "sha256" not in before:
+                    unchecked.append(name)  # not a regular file in HEAD
                 if _file_identity(staged) != target:
                     incomplete.append(f"{name}: staged copy missing or altered")
                 continue
-            if current is None:
+            if current is None and _brain_owned(name):
+                missing.append(f"{name}: missing although HEAD held it before the swap")
+            elif current is None:
                 incomplete.append(f"{name}: published copy missing")
             else:
                 stale.append(f"{name}: changed after the journal was written")
         for name, recorded in delete.items():
+            if not _brain_owned(str(name)):
+                continue  # a swap never deletes a foreign file
             current = _file_identity(brain_dir / str(name))
             if current is not None and current != recorded:
                 stale.append(f"{name}: changed after the journal was written")
         expected = set(entries) | {str(name) for name in delete}
         for entry in brain_dir.iterdir():
             name = entry.name
-            if (
-                name in expected
-                or name in (SAVE_COMPLETE_SENTINEL, SWAP_JOURNAL_FILE)
-                or _preserved_during_swap(name)
-                or name.endswith(".tmp")
-            ):
+            if name in expected or not _brain_owned(name):
                 continue
             if entry.is_file() and not entry.is_symlink():
                 stale.append(f"{name}: created after the journal was written")
-        return stale, incomplete
+        if _sentinel_kind(brain_dir / SAVE_COMPLETE_SENTINEL) == "legacy":
+            sentinel = (
+                f"{SAVE_COMPLETE_SENTINEL} holds a timestamp, not this code's "
+                "inventory (written by older code, or by a load of a HEAD "
+                "without an inventory)"
+            )
+            if unchecked:
+                stale.append(
+                    f"{sentinel}, and {sorted(set(unchecked))} cannot be "
+                    "checked by size and sha256"
+                )
+            else:
+                notes.append(f"{sentinel}; every file the swap touches checked out")
+        return {
+            "missing": missing, "stale": stale,
+            "incomplete": incomplete, "notes": notes,
+        }
+
+    def _classify_swap_journal(
+        self, journal: dict[str, Any],
+    ) -> tuple[list[str], list[str]]:
+        """``(stale, incomplete)`` view of ``_swap_journal_findings``, with a
+        missing published file counted as incomplete (tests, review probes)."""
+        findings = self._swap_journal_findings(journal)
+        return findings["stale"], findings["missing"] + findings["incomplete"]
 
     def _swap_journal_problems(self, journal: dict[str, Any]) -> list[str]:
         """Every reason a journaled generation must not be rolled forward
-        (stale and incomplete together; empty = the roll-forward is safe)."""
-        stale, incomplete = self._classify_swap_journal(journal)
-        return stale + incomplete
+        (missing, stale and incomplete together; empty = the roll-forward is
+        safe)."""
+        findings = self._swap_journal_findings(journal)
+        return findings["missing"] + findings["stale"] + findings["incomplete"]
+
+    def _write_full_save_marker(self, reason: str, **details: Any) -> None:
+        """Durably record that only a full save can repair HEAD (Copilot
+        review of C12): ``FULL_SAVE_REQUIRED_MARKER`` in HEAD, removed by
+        ``_apply_swap`` once a complete generation is committed. Best effort:
+        if the write fails, the in-memory reason still holds for this
+        process and the failure is logged."""
+        payload = {
+            "format": FULL_SAVE_REQUIRED_FORMAT,
+            "reason": reason,
+            "since": self._now_fn().isoformat(),
+            **details,
+        }
+        try:
+            _write_text_atomic(
+                self.brain_dir / FULL_SAVE_REQUIRED_MARKER,
+                json.dumps(payload, sort_keys=True, default=str),
+            )
+        except Exception as exc:
+            logger.error(
+                "C12-01: could not write %s (%s); until the next full save only "
+                "this process knows that HEAD may mix two generations",
+                FULL_SAVE_REQUIRED_MARKER, exc,
+            )
+
+    def _back_up_unbacked_roll_forward(self) -> tuple[bool, Path | None]:
+        """Copy a rolled-forward generation that is newer than the restored
+        in-memory state into ``backups/`` (C12 review, P3). Caller holds the
+        brain lock.
+
+        Returns ``(ok, backup)``: ``ok`` is False only while that copy is
+        owed and could not be made (save() then refuses to replace HEAD);
+        ``backup`` is the copy this call made. A HEAD that has meanwhile lost
+        a listed file is no loadable generation and is not copied.
+        """
+        reason = getattr(self, "_unbacked_roll_forward", None)
+        if not reason:
+            return True, None
+        problems = _generation_inventory_problems(self.brain_dir)
+        if problems:
+            logger.critical(
+                "C12-01: %s, but HEAD is no longer a complete generation (%s); "
+                "it is not copied into backups/", reason, "; ".join(problems),
+            )
+            self._unbacked_roll_forward = None
+            return True, None
+        backup = self._create_backup(generation=_manifest_generation(self.brain_dir))
+        if backup is None:
+            logger.error(
+                "C12-01: %s; copying that generation into backups/ failed", reason,
+            )
+            return False, None
+        logger.warning(
+            "C12-01: %s; that generation was copied to backups/%s before any "
+            "save replaces it", reason, backup.name,
+        )
+        self._unbacked_roll_forward = None
+        return True, backup
 
     def _quarantine_swap_journal(
         self, *, reason: str, remove_journal: bool,
@@ -1295,12 +1529,17 @@ class OrganismBrain:
         An essential save writes runtime state only — never models, caches
         or evolved params — so it cannot repair: a pending interrupted swap,
         a HEAD kept over a stale swap journal (possibly two generations
-        mixed), a HEAD the last load rejected (state restored from a backup),
-        or a HEAD whose completion inventory lists a missing, unsigned or
-        torn file. Reads only the directory, file sizes and pickle headers.
+        mixed; recorded durably in ``FULL_SAVE_REQUIRED_MARKER``, so this
+        holds across restarts until a full save commits), a HEAD the last
+        load rejected (state restored from a backup), or a HEAD whose
+        completion inventory lists a missing, unsigned or torn file. Reads
+        only the directory, the marker, file sizes and pickle headers.
         """
         if (self.brain_dir / SWAP_JOURNAL_FILE).is_file():
             return "an interrupted full-save swap is pending"
+        marker = _full_save_marker_reason(self.brain_dir)
+        if marker:
+            return marker
         mixed = getattr(self, "_head_mixed_reason", None)
         if mixed:
             return mixed
@@ -1623,8 +1862,12 @@ class OrganismBrain:
           - evolved_params.json        (evolved strategy params — only on gate pass)
 
         The RF/LGBM ensemble is written only when it differs from what HEAD
-        holds, all-or-nothing (audit 2026-10-05 C12-02); an unchanged
-        (research-locked) ensemble is never rewritten.
+        holds (audit 2026-10-05 C12-02) and only while models are not frozen:
+        under the research lock an essential save never publishes ensemble
+        files — the next full save writes them in its journaled swap (C12
+        review). Where it is published, a pair that cannot be serialized
+        publishes nothing, but the publication itself is a sequence of
+        renames, not a crash-safe commit (``_publish_ensemble``).
 
         Returns True when everything above was persisted and False when it
         was not — brain lock held elsewhere, the brain directory or its lock
@@ -1735,6 +1978,11 @@ class OrganismBrain:
             # C12-02: only when it changed since HEAD last received it —
             # re-pickling and re-signing an unchanged ensemble on every
             # essential save was pure risk (0-byte models on a kill).
+            # C12 review (Copilot): _publish_ensemble's renames are not one
+            # crash-safe commit, so under the research lock (frozen models:
+            # no production path retrains the ensemble) an essential save
+            # never publishes one. HEAD keeps the ensemble files it holds,
+            # and the next full save writes them in its journaled swap.
             ensemble_ok = True
             ensemble = getattr(signal_gen, "_ensemble", None)
             if (
@@ -1743,16 +1991,23 @@ class OrganismBrain:
                 and getattr(ensemble, "_is_trained", None) is not False
                 and not self._ensemble_unchanged_on_disk(ensemble)
             ):
-                key = _ensemble_state_key(ensemble)
-                try:
-                    ensemble_ok = self._publish_ensemble(ensemble)
-                except Exception as e:
-                    ensemble_ok = False
-                    logger.warning(
-                        "save_essential_state: ensemble persist failed: %s",
-                        e,
+                if _models_frozen():
+                    logger.info(
+                        "save_essential_state: the in-memory ensemble is not "
+                        "confirmed in HEAD; models are frozen (research lock), "
+                        "so it is left to the next full save's journaled swap",
                     )
-                self._ensemble_on_disk = key if ensemble_ok else None
+                else:
+                    key = _ensemble_state_key(ensemble)
+                    try:
+                        ensemble_ok = self._publish_ensemble(ensemble)
+                    except Exception as e:
+                        ensemble_ok = False
+                        logger.warning(
+                            "save_essential_state: ensemble persist failed: %s",
+                            e,
+                        )
+                    self._ensemble_on_disk = key if ensemble_ok else None
 
             # Manifest write through the unified guarded helper (F1/F2).
             # force=False: essential-save path is unconditionally guarded.
@@ -1823,14 +2078,19 @@ class OrganismBrain:
         )
 
     def _publish_ensemble(self, ensemble: Any) -> bool:
-        """C12-02: write a changed ensemble into HEAD, all-or-nothing.
+        """C12-02: write a changed ensemble into HEAD from an essential save.
 
         The ensemble is serialized into a private staging dir first; only
         when EVERY model pair and the manifest were written are the files
         renamed into HEAD (pairs first, ``ensemble_manifest.json`` last), so
-        a failure never publishes a reduced manifest or a truncated model.
-        Returns True when the ensemble was published, False when HEAD kept
-        its previous ensemble (untrained ensembles never reach this).
+        a serialization failure never publishes a reduced manifest or a
+        truncated model. The renames are NOT one crash-safe commit (C12
+        review): a kill between them leaves new pair files next to the old
+        manifest, and no journal completes or undoes them. Essential saves
+        therefore never call this under the research lock (frozen models);
+        only the full save's journaled swap is crash-safe. Returns True when
+        the ensemble was published, False when HEAD kept its previous
+        ensemble (untrained ensembles never reach this).
         """
         stage = self.brain_dir / ENSEMBLE_STAGING_DIR
         shutil.rmtree(stage, ignore_errors=True)
@@ -2997,8 +3257,13 @@ class OrganismBrain:
     #  PRIVATE — BACKUP
     # ═════════════════════════════════════════════════════════════
 
-    def _create_backup(self) -> None:
+    def _create_backup(self, *, generation: int | None = None) -> Path | None:
         """Backup current brain state before overwrite.
+
+        Returns the new backup directory, or None when the backup failed
+        (logged, non-fatal). ``generation`` names the backup when HEAD holds
+        another generation than the in-memory manifest (C12 review: a
+        rolled-forward generation after a backup fallback).
 
         V10 WW-2 / Wave-56 (2026-05-03): timestamp uses microsecond
         resolution so 5 backup attempts within one second don't
@@ -3018,7 +3283,7 @@ class OrganismBrain:
         candidate for the PP-2 fallback to load with missing files.
         """
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        gen = self._manifest.get("generation", 0)
+        gen = generation if generation is not None else self._manifest.get("generation", 0)
         backup_name = f"brain_gen{gen}_{ts}"
         backup_path = self.backup_dir / backup_name
         staging_path = self.backup_dir / f".partial_{backup_name}"
@@ -3056,10 +3321,12 @@ class OrganismBrain:
                 shutil.rmtree(old, ignore_errors=True)
 
             logger.info("Backup created: %s", backup_path.name)
+            return backup_path
 
         except Exception as e:
             logger.warning("Backup failed (non-fatal): %s", e)
             shutil.rmtree(staging_path, ignore_errors=True)
+            return None
 
     def get_trade_records(self) -> list[Any]:
         """Convert stored trade history dicts back to TradeRecord objects.
@@ -3358,6 +3625,36 @@ def _sentinel_kind(sentinel: Path) -> str:
     return "inventory" if _parse_head_inventory(text) is not None else "legacy"
 
 
+def _full_save_marker_reason(brain_dir: Path) -> str | None:
+    """The reason recorded in ``brain_dir``'s full-save-required marker (C12
+    review), or None when there is no marker. A marker that cannot be read or
+    parsed still counts: only a committed full save removes it."""
+    marker = brain_dir / FULL_SAVE_REQUIRED_MARKER
+    try:
+        text = marker.read_text(encoding="utf-8")
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    except (OSError, UnicodeDecodeError) as exc:
+        return f"{FULL_SAVE_REQUIRED_MARKER} is present but unreadable ({exc})"
+    try:
+        data = json.loads(text)
+    except ValueError:
+        data = None
+    reason = data.get("reason") if isinstance(data, dict) else None
+    if isinstance(reason, str) and reason:
+        return reason
+    return f"{FULL_SAVE_REQUIRED_MARKER} is present"
+
+
+def _manifest_generation(directory: Path) -> int | None:
+    """``generation`` recorded in ``directory``'s manifest.json, or None."""
+    try:
+        value = _read_json(directory / MANIFEST_FILE).get("generation")
+    except Exception:
+        return None
+    return value if type(value) is int else None
+
+
 def _file_identity(path: Path) -> dict[str, Any] | None:
     """``{"size", "sha256"}`` of a regular file, ``{"type": "other"}`` for
     any other kind of entry, None when nothing is there (C12-01 journal)."""
@@ -3463,6 +3760,14 @@ def _read_signed_brain_pickle(path: Path, component: str) -> tuple[bool, Any]:
         )
         return False, None
     return True, secure_loads(raw)
+
+
+def _models_frozen() -> bool:
+    """Are the models frozen by the research lock (no production path
+    retrains them)? Then an essential save never publishes an ensemble: only
+    the full save's journaled swap writes model files (C12 review)."""
+    from backend.organism import research_policy
+    return bool(research_policy.RESEARCH_POLICY_LOCKED)
 
 
 def _ensemble_state_key(ensemble: Any) -> tuple[Any, int] | None:
