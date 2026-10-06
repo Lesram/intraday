@@ -807,6 +807,64 @@ async def test_outage_beyond_the_cap_still_converges_by_late_netting(db, monkeyp
     assert str(exit_.id) in late[0].args and str(entry.id) in late[0].args
 
 
+def assert_netted_late(order, executions, realized, lots, entry, owner):
+    assert (order.status, order.filled_qty, len(executions)) == ("filled", 6, 1)
+    record = order.attributes["lot_accounting"]
+    assert (record["status"], record["unmatched_qty"], record["matched_late_qty"]) == (
+        "matched_late", "0.000000", "6.000000")
+    assert record["last_late_match"]["opening_order_id"] == str(entry.id)
+    assert [(x.open_order_id, x.user_id, x.qty, x.close_price, x.realized_pnl) for x in realized] == [
+        (entry.id, owner, 6, 101, 6)]
+    assert [(lot.order_id, lot.remaining_qty, lot.status) for lot in lots] == [(entry.id, 0, "closed")]
+
+
+async def test_gap_fill_nets_a_close_recorded_after_it_loaded_its_orders(db, monkeypatch):
+    """Reconnect gap-fill loads every recently updated order into one session
+    up front and keeps them. While it looks up the opening at the broker, the
+    stream records the close (no lot yet; a manual opening outside recovery
+    scope does not defer it). Netting the opening's lot must re-read the close
+    row, not trust the copy gap-fill loaded earlier (review mutant MN6)."""
+    from backend.services import order_recovery_service as recovery
+
+    opened, closed, touched = now_rows()
+    exit_ = make_row("TSLA", "sell", 6, at=closed, status="accepted", source=None,
+                     user="ops@example.com", updated=touched - timedelta(seconds=30))
+    entry = make_row("TSLA", "buy", 6, at=opened, status="accepted", source=None,
+                     user="ops@example.com", updated=touched)  # updated last: looked up first
+    await store(db, [entry, exit_])
+    log = MagicMock()
+    monkeypatch.setattr(stream, "logger", log)
+    monkeypatch.setattr(recovery, "recover_persisted_orders", AsyncMock())
+    snaps = {exit_.broker_order_id: broker_snapshot(exit_, filled=6, price=101),
+             entry.broker_order_id: broker_snapshot(entry, filled=6, price=100)}
+    looked_up = []
+
+    async def get(url, **kwargs):
+        broker_id = url.rsplit("/", 1)[-1]
+        looked_up.append(broker_id)
+        if broker_id == entry.broker_order_id:  # meanwhile the stream delivers the close's fill
+            await via_stream(db, monkeypatch, exit_, snaps[exit_.broker_order_id])
+        return httpx.Response(200, json=snaps[broker_id])
+
+    @asynccontextmanager
+    async def transport(*args, **kwargs):
+        yield SimpleNamespace(get=get)
+
+    stream_client(monkeypatch, db)
+    monkeypatch.setattr(httpx, "AsyncClient", transport)
+    client = stream.AlpacaStreamClient.__new__(stream.AlpacaStreamClient)
+    client._last_connected_at = 0
+    client._terminal_order_ids = set()
+    client.api_key, client.api_secret, client.is_paper = "synthetic", "synthetic", True
+    await client._gap_fill_after_reconnect()
+    assert looked_up == [entry.broker_order_id, exit_.broker_order_id]
+    assert_netted_late(*await ledger(db, exit_), entry, "ops@example.com")
+    pages = logged(log, "critical", "LOT ACCOUNTING DISCREPANCY")
+    late = logged(log, "warning", "LOT ACCOUNTING LATE MATCH")
+    assert len(pages) == len(late) == 1
+    assert "trade_update_stream" in pages[0].args and "reconnect_gap_fill" in late[0].args
+
+
 async def add_submission_lineage(db, row):
     async with db() as session:
         session.add(OutboxEvent(topic="order.submitted", status="sent",

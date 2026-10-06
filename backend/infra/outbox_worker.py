@@ -832,7 +832,10 @@ class OutboxWorker:
                     raise ValueError(f"Invalid order ID format: {order_id}") from e
 
                 # Serialize this acknowledgement with stream/recovery fill
-                # writers, then reread the row after acquiring its lock.
+                # writers, then reread the row after acquiring its lock. FOR NO
+                # KEY UPDATE, as on every fill path: foreign-key checks of rows
+                # referencing this order (a concurrent close's RealizedTrade)
+                # must not wait for it, or late lot netting could deadlock.
                 from sqlalchemy import select
                 from backend.infra.schemas import Order
 
@@ -840,7 +843,7 @@ class OutboxWorker:
                     await session.execute(
                         select(Order)
                         .where(Order.id == order_uuid)
-                        .with_for_update()
+                        .with_for_update(key_share=True)
                         .execution_options(populate_existing=True)
                     )
                 ).scalar_one_or_none()

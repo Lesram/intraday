@@ -128,7 +128,8 @@ def _order_user_id(order: Any) -> str:
 # Audit 2026-10-05 C07-01: ingestion paths are not globally ordered (recovery
 # pages by id, gap-fill by update time, startup sync runs recovery before its
 # page), so a close can be applied before the opening fill it consumes. Two
-# rules keep the lot ledger convergent whatever the delay:
+# rules let the lot ledger converge when the two legs of one round trip are
+# applied in either order, with any delay between them:
 # 1. Deferral. While an earlier same-owner opening that persisted-order
 #    recovery retries is unresolved, the close stays retryable as before. The
 #    window is anchored to the close (the opening was submitted at or before
@@ -141,7 +142,18 @@ def _order_user_id(order: Any) -> str:
 #    against that record (_net_recorded_unmatched_closes), so an opening that
 #    was never acknowledged, is outside recovery scope or is older than the cap
 #    cannot leave a phantom open lot either.
-# Both rules order legs by submission time; broker fill times are not ingested.
+# Concurrent ingestion of the two legs on two paths is serialized by row locks
+# (PostgreSQL; SQLite serializes writers): the netting locks every close-side
+# row of its window before reading records, and a close holds its own row from
+# its first statement, so one of the two transactions sees the other's commit.
+# Limits: legs are ordered by submission time (broker fill times are not
+# ingested) and must be at most LOT_ORDERING_GRACE apart. Two round trips of
+# one owner and symbol whose legs are applied out of order across lifetimes
+# (submitted A buy, B sell, C buy, D sell; applied A, D, B, C) can still end
+# with an unmatched record and an open lot, because FIFO consumes any open lot
+# while netting never consumes a close submitted before the opening. The engine
+# cannot produce that order (no new entry while the previous lifetime is
+# tracked); only manual UI/API orders can.
 LOT_ORDERING_GRACE = timedelta(days=5)
 LOT_ORDERING_MAX_AGE = timedelta(days=45)
 _LOT_QUANTUM = Decimal("0.000001")  # DECIMAL(18, 6), as the ledger columns
@@ -269,6 +281,11 @@ async def _close_position_lots_fifo(
     It is deferred (LotAccountingDeferred, before any change) only while an
     earlier same-owner opening fill can still be ingested
     (_unsettled_earlier_opening).
+
+    Only the lot rows are locked (FOR UPDATE OF position_lots). The opening's
+    order row is merely joined: locking it here, like a FOR UPDATE on any order
+    row, would conflict with an opening ingestion that holds its row while it
+    waits for this close's row (_net_recorded_unmatched_closes).
     """
     from backend.infra.schemas import Order, PositionLot
 
@@ -283,7 +300,7 @@ async def _close_position_lots_fifo(
             Order.side == open_side,
         )
         .order_by(PositionLot.open_date.asc())
-        .with_for_update()
+        .with_for_update(of=PositionLot)
     )
     result = await session.execute(stmt)
     open_lots = list(result.scalars().all())
@@ -419,47 +436,43 @@ async def _net_recorded_unmatched_closes(
     to ``matched_late`` once nothing remains unmatched. A close submitted before
     the opening never consumes it.
 
-    Locking: the caller already holds the opening row; each candidate close row
-    is locked and re-read here before its record changes, so a concurrent
-    ingestion of that close serializes with the netting. Should that ingestion
-    be FIFO-locking an earlier lot of this same opening, PostgreSQL reports a
-    deadlock and the losing transaction is retried by its ingress like any
-    other transient failure.
+    Locking: the caller already holds the opening row. Every close-side order
+    row of the window, whatever its record, is locked FOR NO KEY UPDATE in
+    submission order and re-read (populate_existing) before any record is
+    read. A close being ingested concurrently holds its own row from its first
+    statement, so either this netting waits for that close's commit and nets
+    the record it committed, or the close waits for this opening's commit and
+    its FIFO consumes the new lot. Every fill path locks order rows FOR NO KEY
+    UPDATE and the close FIFO locks lot rows only, so the foreign-key KEY
+    SHARE lock a concurrent close's RealizedTrade takes on this opening's row
+    does not wait for this transaction (no deadlock with an earlier lot of this
+    opening).
     """
     from backend.infra.schemas import Order
 
     opened_at = getattr(opening, "submitted_at", None)
     if opened_at is None or not lot.remaining_qty > 0:
         return []
-    candidates = await session.execute(
-        select(Order.id, Order.attributes)
-        .where(
-            Order.symbol == opening.symbol,
-            Order.side == close_side,
-            Order.id != opening.id,
-            Order.submitted_at >= opened_at,
-            Order.submitted_at <= opened_at + LOT_ORDERING_GRACE,
+    window = (
+        await session.execute(
+            select(Order)
+            .where(
+                Order.symbol == opening.symbol,
+                Order.side == close_side,
+                Order.id != opening.id,
+                Order.submitted_at >= opened_at,
+                Order.submitted_at <= opened_at + LOT_ORDERING_GRACE,
+            )
+            .order_by(Order.submitted_at.asc(), Order.id.asc())
+            .with_for_update(key_share=True)
+            .execution_options(populate_existing=True)
         )
-        .order_by(Order.submitted_at.asc(), Order.id.asc())
-    )
-    close_ids = [
-        order_id
-        for order_id, attributes in candidates.all()
-        if _open_unmatched_record(attributes, user_id, position_side) is not None
-    ]
+    ).scalars().all()
     matches: list[dict[str, Any]] = []
-    for close_id in close_ids:
+    for close in window:
         if not lot.remaining_qty > 0:
             break
-        close = (
-            await session.execute(
-                select(Order)
-                .where(Order.id == close_id)
-                .with_for_update()
-                .execution_options(populate_existing=True)
-            )
-        ).scalar_one_or_none()
-        record = _open_unmatched_record(getattr(close, "attributes", None), user_id, position_side)
+        record = _open_unmatched_record(close.attributes, user_id, position_side)
         if record is None:
             continue
         unmatched = _record_decimal(record, "unmatched_qty")
@@ -607,7 +620,12 @@ async def apply_incremental_fill_accounting(
     # Every ingestion path locks the same persisted order before reading its
     # accounting watermark. Locks remain held until the caller commits all
     # summary/execution/lot effects together (SQLite fixtures serialize writes).
-    locked = await session.execute(select(Order.id).where(Order.id == order.id).with_for_update())
+    # FOR NO KEY UPDATE still serializes every writer of this order, but not
+    # the foreign-key checks of rows that reference it, such as a concurrent
+    # close's RealizedTrade against this order's earlier lot (C07-01 review).
+    locked = await session.execute(
+        select(Order.id).where(Order.id == order.id).with_for_update(key_share=True)
+    )
     if locked.scalar_one_or_none() is None:
         raise ValueError("Cannot account a missing order")
 
@@ -800,7 +818,7 @@ async def apply_order_fill_snapshot(
     result = await session.execute(
         select(Order)
         .where(Order.id == order.id)
-        .with_for_update()
+        .with_for_update(key_share=True)  # FOR NO KEY UPDATE: see apply_incremental_fill_accounting
         .execution_options(populate_existing=True)
     )
     current = result.scalar_one_or_none()
