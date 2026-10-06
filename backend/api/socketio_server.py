@@ -35,8 +35,11 @@ _cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins=_cors_origins,
-    logger=True,
-    engineio_logger=True,  # Enable Engine.IO logging for debugging
+    # Packet/event tracing stays off (the libraries then log errors only):
+    # Engine.IO logs whole packets at INFO, and the CONNECT packet carries the
+    # client's access token. logging_setup also redacts these loggers.
+    logger=False,
+    engineio_logger=False,
     ping_interval=25,  # Send ping every 25 seconds
     ping_timeout=20,   # Wait 20 seconds for pong before disconnecting
 )
@@ -99,9 +102,13 @@ async def connect(sid: str, environ: dict, auth: dict | None):
                 return False  # Scoped monitoring tokens cannot open Socket.IO sessions.
 
             expiry, token_id = claims.get('exp'), claims.get('jti')
+            # Login session and credential fingerprint (logout / password change).
+            session_id = claims.get('sid') if isinstance(claims.get('sid'), str) else None
+            fingerprint = claims.get('cfp') if isinstance(claims.get('cfp'), str) else None
             if (type(expiry) not in (int, float) or not math.isfinite(expiry)
                     or expiry <= time.time() or not isinstance(token_id, str) or not token_id
-                    or await is_token_blacklisted(token_id)):
+                    or await is_token_blacklisted(token_id, session_id=session_id,
+                                                  fingerprint=fingerprint)):
                 return False
             logger.info("Socket.IO principal verified")
             logger.info(f"Client connected: {sid} (user: {user_id}, roles: {roles})")
@@ -113,6 +120,8 @@ async def connect(sid: str, environ: dict, auth: dict | None):
                 session['authenticated'] = True
                 session['expires_at'] = expiry
                 session['token_id'] = token_id
+                session['session_id'] = session_id
+                session['credential_fingerprint'] = fingerprint
 
             # Initialize subscription tracking
             client_subscriptions[sid] = set()
@@ -188,13 +197,16 @@ async def _session_authorized(sid: str, user_id: str | None = None) -> bool:
             expiry = session.get('expires_at')
             token_id = session.get('token_id')
             principal = session.get('user_id')
+            session_id = session.get('session_id')
+            fingerprint = session.get('credential_fingerprint')
             valid = (session.get('authenticated') is True and sid in client_subscriptions
                      and isinstance(principal, str) and bool(principal)
                      and (user_id is None or principal == user_id)
                      and 'paper_monitor' not in session.get('roles', [])
                      and type(expiry) in (int, float) and math.isfinite(expiry)
                      and expiry > time.time() and isinstance(token_id, str) and bool(token_id))
-        if valid and not await is_token_blacklisted(token_id):
+        if valid and not await is_token_blacklisted(token_id, session_id=session_id,
+                                                    fingerprint=fingerprint):
             return True
     except Exception:
         pass  # Failure to verify a session never authorizes delivery.

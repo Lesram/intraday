@@ -6,6 +6,7 @@ This module consolidates all authentication functionality into a single, compreh
 All endpoints use database-backed authentication with proper security measures.
 """
 
+import hmac
 import logging
 import os
 import re
@@ -21,8 +22,10 @@ from backend.infra.security import (
     AuthenticatedUser,
     create_access_token,
     create_refresh_token,
+    credential_fingerprint,
     decode_refresh_token,
     get_authenticated_user,
+    new_session_id,
 )
 from backend.infra.security import (
     verify_token as verify_jwt_token,
@@ -120,6 +123,11 @@ class TokenRefreshResponse(BaseModel):
     refresh_token: str  # New refresh token (token rotation for security)
     token_type: str = "bearer"
     expires_in: int
+
+
+class LogoutRequest(BaseModel):
+    """Optional logout body: the session's refresh token, revoked as well."""
+    refresh_token: str | None = None
 
 
 class LogoutResponse(BaseModel):
@@ -308,17 +316,26 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+        # Both tokens of this login share a session id (revoked together at
+        # logout) and the credential fingerprint of the current password.
+        session_id = new_session_id()
+        fingerprint = credential_fingerprint(user.username, getattr(user, "hashed_password", None))
+
         # Create access token for authenticated user
         token = create_access_token(
             sub=user.username,
             roles=user.roles,
-            expires_minutes=60
+            expires_minutes=60,
+            session_id=session_id,
+            fingerprint=fingerprint,
         )
 
         # Create refresh token for token renewal
         refresh_token = create_refresh_token(
             sub=user.username,
-            roles=user.roles
+            roles=user.roles,
+            session_id=session_id,
+            fingerprint=fingerprint,
         )
 
         # V8 AA-H-3 / Wave-30 (2026-05-03): audit successful login.
@@ -425,7 +442,12 @@ async def get_token(
             )
 
         # Create JWT token with user's actual roles from database
-        access_token = create_access_token(user.username, user.roles)
+        access_token = create_access_token(
+            user.username,
+            user.roles,
+            session_id=new_session_id(),
+            fingerprint=credential_fingerprint(user.username, getattr(user, "hashed_password", None)),
+        )
 
         return TokenResponse(
             access_token=access_token,
@@ -515,7 +537,7 @@ async def validate_token(request: Request) -> TokenValidationResponse:
 
 
 @router.post("/logout", response_model=LogoutResponse, openapi_extra={"security": []})
-async def logout(request: Request) -> LogoutResponse:
+async def logout(request: Request, body: LogoutRequest | None = None) -> LogoutResponse:
     """V9 AA3-1 / Wave-42 (2026-05-03): server-side token revocation.
 
     The previous implementation logged the username and returned 200 but
@@ -523,39 +545,60 @@ async def logout(request: Request) -> LogoutResponse:
     full TTL.  Now: blacklist_token(jti) is called on the bearer token's
     jti claim so subsequent requests bearing that token return 401.
 
+    Audit 2026-10-05: logout also ends the login session (``sid`` claim),
+    so the session's refresh token stops working even when the client does
+    not send it; a refresh token passed in the optional body is revoked too.
+    Each blacklist entry lasts until the token's expiry plus the JWT
+    clock-skew leeway. An expired bearer token whose signature verifies can
+    still end its session.
+
     Returns 200 even if no valid token is provided (compat: client may
     not have one anymore).
     """
+    from backend.infra.security import (
+        blacklist_token,
+        decode_token_for_revocation,
+        revocation_ttl,
+        revoke_session,
+    )
+
+    username = None
+    revoked: list[dict] = []
     authorization = request.headers.get("Authorization")
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ", 1)[1]
         try:
             claims = verify_jwt_token(token)
             username = getattr(claims, "sub", None)
-            jti = getattr(claims, "jti", None)
+            revoked.append({
+                "jti": getattr(claims, "jti", None),
+                "exp": getattr(claims, "exp", None),
+                "sid": getattr(claims, "sid", None),
+            })
+        except Exception:
+            # Expired or otherwise rejected: revoke what a valid signature
+            # still identifies; logout is otherwise client-side.
+            payload = decode_token_for_revocation(token)
+            if payload:
+                revoked.append(payload)
+    if body is not None and body.refresh_token:
+        payload = decode_token_for_revocation(body.refresh_token)
+        if payload:
+            revoked.append(payload)
+
+    for claims in revoked:
+        jti, session_id = claims.get("jti"), claims.get("sid")
+        try:
             # V9 AA3-1: blacklist this token's jti so it can't be reused.
             if jti:
-                from backend.infra.security import blacklist_token
-                # Pass remaining TTL so the blacklist entry expires when
-                # the token would have anyway (saves blacklist storage).
-                exp = getattr(claims, "exp", None)
-                expires_in = None
-                if exp:
-                    import time
-                    expires_in = max(1, int(exp - time.time()))
-                try:
-                    await blacklist_token(jti, expires_in=expires_in)
-                except Exception as _bl_err:
-                    logger.warning(
-                        "AA3-1: blacklist_token failed for jti=%s: %s",
-                        jti, _bl_err,
-                    )
-            if username:
-                return LogoutResponse(ok=True, message=f"Logged out: {username}")
-        except Exception:
-            # Ignore invalid/expired tokens; logout is client-side for stateless JWT.
-            pass
+                await blacklist_token(jti, expires_in=revocation_ttl(claims.get("exp")))
+            if session_id:
+                await revoke_session(session_id)
+        except Exception as _bl_err:
+            logger.warning("AA3-1: token revocation at logout failed: %s", type(_bl_err).__name__)
 
+    if username:
+        return LogoutResponse(ok=True, message=f"Logged out: {username}")
     return LogoutResponse(ok=True, message="Logged out")
 
 
@@ -714,6 +757,14 @@ async def register(
         )
 
 
+async def _load_refresh_user(username: str):
+    """Read the account for a token refresh, in its own database session."""
+    from backend.infra.db import get_sessionmaker
+
+    async with get_sessionmaker()() as session:
+        return await UserRepository(db_session=session).get_user(username)
+
+
 @router.post("/token/refresh", response_model=TokenRefreshResponse)
 async def refresh_token(
     request: TokenRefreshRequest,
@@ -721,9 +772,19 @@ async def refresh_token(
     """Refresh JWT access token using a valid refresh token.
 
     Implements secure token rotation:
-    - Validates the refresh token
-    - Issues a new access token
-    - Issues a new refresh token (rotation for security)
+    - Validates the refresh token (signature, expiry, type, session claims)
+    - Re-reads the user: the account must exist and be active, and the
+      token's credential fingerprint must match the stored password hash,
+      so a password change ends every session issued before it
+    - Refuses tokens whose login session was ended by logout
+    - Claims the presented token atomically (single use, also under
+      concurrent redemption)
+    - Issues a new access token and a new refresh token (rotation) carrying
+      the roles stored in the database, never the roles of the old token
+
+    The token is validated before the database is read. Refresh tokens
+    issued before session binding (no ``sid``/``cfp`` claims) are rejected;
+    their holders log in again.
 
     Args:
         request: TokenRefreshRequest with refresh_token
@@ -732,7 +793,8 @@ async def refresh_token(
         TokenRefreshResponse with new access and refresh tokens
 
     Raises:
-        HTTPException: 401 if refresh token is invalid or expired
+        HTTPException: 401 if refresh token is invalid, expired, revoked or
+            already used, or the account is missing or inactive
         HTTPException: 422 if refresh token is missing
     """
     try:
@@ -745,66 +807,84 @@ async def refresh_token(
         # Decode and validate the refresh token
         payload = decode_refresh_token(request.refresh_token)
 
-        # Extract user info from validated refresh token
         username = payload.get("sub")
-        roles = payload.get("roles", [])
+        old_jti = payload.get("jti")
+        session_id = payload.get("sid")
+        fingerprint = payload.get("cfp")
 
-        if not username:
+        if not username or not all(
+            isinstance(value, str) and value for value in (old_jti, session_id, fingerprint)
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="invalid_token"
             )
 
-        # V9 AA3-3 / Wave-42 (2026-05-03): enforce single-use refresh.
-        # Check the presented refresh's jti is not already blacklisted
-        # AND blacklist it now so the same refresh can never be redeemed
-        # twice. Combined with rotation below this gives true single-use.
-        old_jti = payload.get("jti")
-        if old_jti:
-            from backend.infra.security import (
-                is_token_blacklisted, blacklist_token,
-            )
-            try:
-                if await is_token_blacklisted(old_jti):
-                    logger.warning(
-                        "AA3-3: refresh token replay attempted for user=%s "
-                        "jti=%s — blacklisted",
-                        username, old_jti,
-                    )
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="refresh_token_already_used",
-                    )
-                # Blacklist the redeemed refresh token's jti so it can't
-                # be used again.  Pass remaining TTL.
-                exp = payload.get("exp")
-                expires_in = None
-                if exp:
-                    import time
-                    expires_in = max(1, int(exp - time.time()))
-                await blacklist_token(old_jti, expires_in=expires_in)
-            except HTTPException:
-                raise
-            except Exception as _bl_err:
-                logger.warning(
-                    "AA3-3: refresh-jti blacklist op failed for jti=%s: %s",
-                    old_jti, _bl_err,
-                )
+        from backend.infra.security import (
+            claim_token_once, is_token_blacklisted, revocation_ttl,
+        )
 
-        logger.info(f"Token refresh for user: {username}")
+        # V9 AA3-3 / Wave-42 (2026-05-03): enforce single-use refresh.
+        # A redeemed refresh token's jti is claimed below (atomically), so
+        # the same refresh can never be redeemed twice.
+        if await is_token_blacklisted(old_jti):
+            logger.warning(
+                "AA3-3: refresh token replay attempted for user=%s "
+                "jti=%s — blacklisted",
+                username, old_jti,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="refresh_token_already_used",
+            )
+        if await is_token_blacklisted(old_jti, session_id=session_id, fingerprint=fingerprint):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="refresh_token_revoked",
+            )
+
+        user = await _load_refresh_user(username)
+        if user is None or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_token"
+            )
+        current_fingerprint = credential_fingerprint(user.username, user.hashed_password)
+        if current_fingerprint is None or not hmac.compare_digest(current_fingerprint, fingerprint):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="refresh_token_revoked",
+            )
+
+        if not await claim_token_once(old_jti, revocation_ttl(payload.get("exp"))):
+            logger.warning(
+                "AA3-3: concurrent refresh token reuse refused for user=%s",
+                username,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="refresh_token_already_used",
+            )
+
+        logger.info("Token refresh for user: %s", user.username)
+        roles = list(user.roles)
 
         # Create new access token
         new_access_token = create_access_token(
-            sub=username,
+            sub=user.username,
             roles=roles,
-            expires_minutes=60
+            expires_minutes=60,
+            session_id=session_id,
+            fingerprint=current_fingerprint,
         )
 
-        # Create new refresh token (rotation for security)
-        # This invalidates the old refresh token by issuing a new one
+        # Create new refresh token (rotation for security); the presented
+        # one was claimed above and cannot be redeemed again.
         new_refresh_token = create_refresh_token(
-            sub=username,
-            roles=roles
+            sub=user.username,
+            roles=roles,
+            session_id=session_id,
+            fingerprint=current_fingerprint,
         )
 
         return TokenRefreshResponse(
@@ -817,7 +897,7 @@ async def refresh_token(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Token refresh failed: {str(e)}")
+        logger.error("Token refresh failed: %s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Token refresh failed"

@@ -7,8 +7,44 @@ exercise the decision logic without importing ``backend.api.main``.
 from __future__ import annotations
 
 from enum import Enum
+import logging
 import os
 from typing import Any
+
+from backend.utils.log_redaction import redact_credentials
+
+#: Third-party loggers that record raw request lines or protocol packets.
+#: uvicorn logs every HTTP request and WebSocket handshake path including its
+#: query string, and the dashboard's raw WebSockets authenticate with
+#: ``?token=``; Engine.IO/Socket.IO packet logs include the CONNECT auth payload.
+REDACTED_LOGGERS = ("uvicorn.error", "uvicorn.access", "engineio.server", "socketio.server")
+
+
+class SecretRedactionFilter(logging.Filter):
+    """Mask credential values in a record's message and string arguments.
+
+    Argument tuples keep their shape, so formatters that unpack them (such as
+    uvicorn's access formatter) still work. The filter never drops a record.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            record.msg = redact_credentials(record.msg)
+        args = record.args
+        if isinstance(args, tuple):
+            record.args = tuple(redact_credentials(a) if isinstance(a, str) else a for a in args)
+        elif isinstance(args, dict):
+            record.args = {k: redact_credentials(v) if isinstance(v, str) else v
+                           for k, v in args.items()}
+        return True
+
+
+def install_log_redaction() -> None:
+    """Attach :class:`SecretRedactionFilter` to :data:`REDACTED_LOGGERS` once."""
+    for name in REDACTED_LOGGERS:
+        target = logging.getLogger(name)
+        if not any(isinstance(existing, SecretRedactionFilter) for existing in target.filters):
+            target.addFilter(SecretRedactionFilter())
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -31,7 +67,9 @@ def configure_api_logging(settings: Any | None = None) -> bool:
 
     Returns ``True`` when configuration ran and ``False`` only when
     explicitly disabled via ``INTRA_CONFIGURE_STRUCTURED_LOGGING=0``.
+    Credential redaction on :data:`REDACTED_LOGGERS` is installed either way.
     """
+    install_log_redaction()
     if not _env_bool("INTRA_CONFIGURE_STRUCTURED_LOGGING", True):
         return False
 

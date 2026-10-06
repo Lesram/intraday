@@ -13,6 +13,8 @@ from typing import Any
 import structlog
 from structlog import get_logger
 
+from backend.utils.log_redaction import redact_credentials
+
 # ============================================================================
 # PII/Secret Scrubbing Processor
 # ============================================================================
@@ -106,7 +108,9 @@ def _mask_value(value: str) -> str:
 
 def _scrub_string(text: str) -> str:
     """Scrub sensitive patterns from a string value."""
-    result = text
+    # Credentials embedded in URLs (scheme://user:password@host) and
+    # credential query parameters (?token=...) are masked first.
+    result = redact_credentials(text)
 
     for pattern_name, pattern in SENSITIVE_PATTERNS.items():
         if pattern_name == "email":

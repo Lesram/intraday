@@ -58,7 +58,8 @@ async def test_aa4_2_lifespan_initializes_token_blacklist_backend(monkeypatch):
     monkeypatch.setattr(
         redis_async,
         "from_url",
-        lambda url, decode_responses=False: fake_client,
+        # Audit 2026-10-05: the client is also built with socket timeouts.
+        lambda url, decode_responses=False, **_timeouts: fake_client,
     )
     monkeypatch.setattr(
         security,

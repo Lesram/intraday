@@ -7,17 +7,41 @@ columns (e.g., roles) as strings, and timestamps as ISO strings. The repository
 normalizes these shapes so authentication works consistently across DB backends.
 """
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 import json
 
 from pydantic import BaseModel
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.infra.security import hash_password, verify_password
+from backend.infra.security import (
+    credential_fingerprint,
+    hash_password,
+    revoke_credential_fingerprint,
+    verify_password,
+)
 from backend.utils.logger import get_structured_logger
 
 logger = get_structured_logger(__name__)
+
+# bcrypt (cost 12, roughly 0.3 s per call) runs in this small dedicated pool,
+# never on the event loop that also runs the trading scheduler. Two workers
+# bound the CPU a burst of logins can take; further calls queue.
+_PASSWORD_HASH_WORKERS = 2
+_password_hash_executor: ThreadPoolExecutor | None = None
+
+
+async def _run_password_hash(func, *args):
+    """Run a bcrypt hash or verify call in the password-hash thread pool."""
+    global _password_hash_executor
+    if _password_hash_executor is None:
+        _password_hash_executor = ThreadPoolExecutor(
+            max_workers=_PASSWORD_HASH_WORKERS, thread_name_prefix="password-hash",
+        )
+    return await asyncio.get_running_loop().run_in_executor(_password_hash_executor, func, *args)
 
 
 class User(BaseModel):
@@ -100,18 +124,24 @@ class UserRepository:
             username: Unique username
             password: Plain text password (will be hashed with bcrypt)
             roles: List of user roles
-            email: User email address (optional)
+            email: User email address (required with a database: users.email
+                is NOT NULL and unique)
             use_fast_hash: DEPRECATED - Ignored for security. Always uses bcrypt.
 
         Returns:
             Created user
 
         Raises:
-            ValueError: If username already exists
-        
+            ValueError: If username already exists, the email is missing (with a
+                database), or the password exceeds bcrypt's 72-byte limit.
+                Raised before any database write.
+
         Security:
             SECURITY FIX (C-02): MD5 hashing removed. Always uses bcrypt.
         """
+        if self._db and not (isinstance(email, str) and email.strip()):
+            raise ValueError("An email address is required to create a user")
+
         # Check if user exists
         existing = await self.get_user(username)
         if existing:
@@ -121,7 +151,7 @@ class UserRepository:
         # MD5 is cryptographically broken and was removed
         if use_fast_hash:
             logger.warning("use_fast_hash parameter is deprecated and ignored for security")
-        hashed_password = hash_password(password)
+        hashed_password = await _run_password_hash(hash_password, password)
 
         # Insert into database
         if self._db:
@@ -141,23 +171,24 @@ class UserRepository:
                         "is_active": True
                     }
                 )
-                await self._db.commit()
                 row = result.fetchone()
+                await self._db.commit()
 
                 return User(
                     id=row[0],
                     username=row[1],
                     email=row[2],
                     hashed_password=row[3],
-                    roles=row[4],
-                    is_active=row[5],
+                    roles=self._normalize_roles(row[4]),
+                    is_active=bool(row[5]),
                     failed_login_attempts=row[6] or 0,
-                    locked_until=row[7],
-                    last_login=row[8]
+                    locked_until=self._normalize_datetime(row[7]),
+                    last_login=self._normalize_datetime(row[8]),
                 )
             except Exception as e:
                 await self._db.rollback()
-                logger.error(f"Failed to create user: {e}")
+                # Exception text can embed the bound parameters (the new hash).
+                logger.error("Failed to create user: %s", type(e).__name__)
                 raise
         else:
             # Fallback to in-memory
@@ -237,6 +268,15 @@ class UserRepository:
         Authenticate a user with username and password.
         Includes brute force protection with account lockout.
 
+        Every attempt is first counted as a failure by one atomic UPDATE that
+        also performs the lock check (_reserve_login_attempt), and the bcrypt
+        check only runs for attempts that were counted. Concurrent wrong
+        passwords therefore cannot all reach the bcrypt check: at most
+        MAX_FAILED_ATTEMPTS run before the account is locked for
+        LOCKOUT_DURATION_MINUTES. A correct password resets the counter. Once a
+        lock has expired the counter restarts and the correct password is
+        accepted again.
+
         Args:
             username: Username
             password: Plain text password
@@ -248,29 +288,32 @@ class UserRepository:
         if not user or not user.is_active:
             return None
 
-        # Check if account is locked
-        if user.locked_until and user.locked_until > datetime.now(UTC):
+        attempt = await self._reserve_login_attempt(username)
+        if attempt is None:
             logger.warning(
-                f"Login attempt for locked account: {username}",
-                extra={
-                    "username": username,
-                    "locked_until": user.locked_until.isoformat()
-                }
+                "Login attempt for locked account: %s", username,
+                extra={"username": username},
             )
             return None
+        attempt_number, current_hash = attempt
 
-        # Verify password
-        password_valid = verify_password(password, user.hashed_password)
+        # Verify password (off the event loop) against the hash read by the
+        # same statement that counted the attempt.
+        password_valid = await _run_password_hash(verify_password, password, current_hash)
 
         if password_valid:
             # Successful login - reset failed attempts and update last login
             await self._reset_failed_attempts(username)
             await self._update_last_login(username)
+            if current_hash != user.hashed_password:
+                user = user.model_copy(update={"hashed_password": current_hash})
             return user
-        else:
-            # Failed login - increment failed attempts
-            await self._increment_failed_attempts(username)
-            return None
+        if attempt_number >= self.MAX_FAILED_ATTEMPTS:
+            logger.warning(
+                "Account locked due to failed login attempts: %s", username,
+                extra={"username": username, "failed_attempts": attempt_number},
+            )
+        return None
 
     @staticmethod
     def _normalize_roles(value) -> list[str]:
@@ -327,57 +370,65 @@ class UserRepository:
                 return None
         return None
 
-    async def _increment_failed_attempts(self, username: str) -> None:
-        """Increment failed login attempts and lock account if threshold exceeded."""
-        if self._db:
-            try:
-                # Get current failed attempts
-                query = text("SELECT failed_login_attempts FROM users WHERE username = :username")
-                result = await self._db.execute(query, {"username": username})
-                row = result.fetchone()
+    async def _reserve_login_attempt(self, username: str) -> tuple[int, str] | None:
+        """Count a password attempt before it is checked.
 
-                if row:
-                    failed_attempts = (row[0] or 0) + 1
-                    locked_until = None
+        One UPDATE checks the lock and increments failed_login_attempts
+        atomically (the row lock serializes concurrent attempts), restarting
+        the counter when a previous lock has expired. The attempt that reaches
+        MAX_FAILED_ATTEMPTS sets locked_until in the same transaction, so later
+        attempts are refused without a password check. A successful check
+        resets the counter (_reset_failed_attempts).
 
-                    # Lock account if threshold exceeded
-                    if failed_attempts >= self.MAX_FAILED_ATTEMPTS:
-                        locked_until = datetime.now(UTC) + timedelta(minutes=self.LOCKOUT_DURATION_MINUTES)
-                        logger.warning(
-                            f"Account locked due to failed login attempts: {username}",
-                            extra={
-                                "username": username,
-                                "failed_attempts": failed_attempts,
-                                "locked_until": locked_until.isoformat()
-                            }
-                        )
-
-                    # Update database
-                    update_query = text("""
-                        UPDATE users
-                        SET failed_login_attempts = :attempts,
-                            locked_until = :locked_until
-                        WHERE username = :username
-                    """)
-                    await self._db.execute(
-                        update_query,
-                        {
-                            "attempts": failed_attempts,
-                            "locked_until": locked_until,
-                            "username": username
-                        }
-                    )
-                    await self._db.commit()
-            except Exception as e:
-                await self._db.rollback()
-                logger.error(f"Failed to increment failed attempts: {e}")
-        else:
-            # In-memory fallback
+        Returns:
+            (attempt number, current password hash), or None when the account
+            is locked or missing, or the attempt could not be recorded (the
+            password is then not checked).
+        """
+        now = datetime.now(UTC)
+        lock_until = now + timedelta(minutes=self.LOCKOUT_DURATION_MINUTES)
+        if not self._db:
             user = self._users.get(username)
-            if user:
-                user.failed_login_attempts += 1
-                if user.failed_login_attempts >= self.MAX_FAILED_ATTEMPTS:
-                    user.locked_until = datetime.now(UTC) + timedelta(minutes=self.LOCKOUT_DURATION_MINUTES)
+            if user is None or (user.locked_until is not None and user.locked_until > now):
+                return None
+            if user.locked_until is not None:  # lock expired: start counting again
+                user.failed_login_attempts, user.locked_until = 0, None
+            user.failed_login_attempts += 1
+            if user.failed_login_attempts >= self.MAX_FAILED_ATTEMPTS:
+                user.locked_until = lock_until
+            return user.failed_login_attempts, user.hashed_password
+        try:
+            result = await self._db.execute(
+                text("""
+                    UPDATE users
+                    SET failed_login_attempts = CASE
+                            WHEN locked_until IS NOT NULL AND locked_until <= :now THEN 1
+                            ELSE COALESCE(failed_login_attempts, 0) + 1
+                        END,
+                        locked_until = CASE
+                            WHEN locked_until IS NOT NULL AND locked_until <= :now THEN NULL
+                            ELSE locked_until
+                        END
+                    WHERE username = :username
+                      AND (locked_until IS NULL OR locked_until <= :now)
+                    RETURNING failed_login_attempts, hashed_password
+                """),
+                {"now": now, "username": username},
+            )
+            row = result.fetchone()
+            if row is not None and int(row[0] or 0) >= self.MAX_FAILED_ATTEMPTS:
+                await self._db.execute(
+                    text("UPDATE users SET locked_until = :locked_until WHERE username = :username"),
+                    {"locked_until": lock_until, "username": username},
+                )
+            await self._db.commit()
+        except SQLAlchemyError as e:
+            await self._db.rollback()
+            logger.error("Failed to record login attempt: %s", type(e).__name__)
+            return None
+        if row is None:
+            return None
+        return int(row[0] or 0), row[1]
 
     async def _reset_failed_attempts(self, username: str) -> None:
         """Reset failed login attempts after successful login."""
@@ -469,47 +520,132 @@ class UserRepository:
 
         Returns:
             True if password changed successfully, False if verification failed
+
+        The current-password check counts toward the login lockout like a
+        login attempt. After a change, every token issued under the previous
+        password is revoked (refresh compares the credential fingerprint with
+        the database; access tokens are rejected via the revoked fingerprint).
         """
         # Get user and verify current password
         user = await self.get_user(username)
         if not user or not user.is_active:
-            logger.warning(f"Password change failed: user not found or inactive: {username}")
+            logger.warning("Password change failed: user not found or inactive: %s", username)
             return False
+
+        attempt = await self._reserve_login_attempt(username)
+        if attempt is None:
+            logger.warning("Password change refused: account locked: %s", username)
+            return False
+        _, current_hash = attempt
 
         # Verify current password
-        if not verify_password(current_password, user.hashed_password):
-            logger.warning(f"Password change failed: incorrect current password for user: {username}")
+        if not await _run_password_hash(verify_password, current_password, current_hash):
+            logger.warning("Password change failed: incorrect current password for user: %s", username)
             return False
+        await self._reset_failed_attempts(username)
 
-        # Hash new password
-        new_hashed_password = hash_password(new_password)
+        # Hash new password (ValueError above bcrypt's 72-byte limit)
+        new_hashed_password = await _run_password_hash(hash_password, new_password)
 
         if self._db:
             try:
+                # Only replace the hash that was just verified.
                 query = text("""
                     UPDATE users
                     SET hashed_password = :hashed_password
-                    WHERE username = :username
+                    WHERE username = :username AND hashed_password = :current_hash
                 """)
                 result = await self._db.execute(
                     query,
-                    {"hashed_password": new_hashed_password, "username": username}
+                    {"hashed_password": new_hashed_password, "username": username,
+                     "current_hash": current_hash}
                 )
                 await self._db.commit()
-
-                if result.rowcount > 0:
-                    logger.info(f"Password changed successfully for user: {username}")
-                    return True
-                return False
-            except Exception as e:
+            except SQLAlchemyError as e:
                 await self._db.rollback()
-                logger.error(f"Failed to change password: {e}")
+                logger.error("Failed to change password: %s", type(e).__name__)
+                return False
+            if result.rowcount != 1:
                 return False
         else:
             # In-memory fallback
             user.hashed_password = new_hashed_password
-            logger.info(f"Password changed successfully for user: {username}")
+        await revoke_credential_fingerprint(credential_fingerprint(username, current_hash))
+        logger.info("Password changed successfully for user: %s", username)
+        return True
+
+    async def set_password(
+        self,
+        username: str,
+        new_password: str,
+        *,
+        roles: list[str] | None = None,
+        activate: bool = True,
+    ) -> bool:
+        """Replace a user's password in place (administrative reset).
+
+        One UPDATE in one transaction: the row (id, email, foreign-key data) is
+        kept, the lockout is cleared, and optionally the roles are replaced and
+        the account is (re)activated. The new password is hashed before the
+        database is touched, so a ValueError (over bcrypt's 72-byte limit)
+        leaves the row unchanged. Tokens issued under the previous password
+        stop working (see change_password).
+
+        The UPDATE replaces only the hash read just before it (compare and
+        swap, as in change_password). If a concurrent password change lands in
+        between, the reset re-reads the account and tries again, up to three
+        times, so the fingerprint it revokes is always the one it replaced.
+
+        Returns:
+            True if exactly one row was updated, False otherwise.
+        """
+        new_hashed_password = await _run_password_hash(hash_password, new_password)
+        for _attempt in range(3):
+            user = await self.get_user(username)
+            if user is None:
+                return False
+            old_hash = user.hashed_password
+            if not self._db:
+                # No await between the read above and these writes.
+                user.hashed_password = new_hashed_password
+                user.failed_login_attempts, user.locked_until = 0, None
+                if roles is not None:
+                    user.roles = list(roles)
+                if activate:
+                    user.is_active = True
+            else:
+                assignments = [
+                    "hashed_password = :hashed_password",
+                    "failed_login_attempts = 0",
+                    "locked_until = NULL",
+                ]
+                params: dict = {"hashed_password": new_hashed_password, "username": username,
+                                "old_hash": old_hash}
+                if roles is not None:
+                    assignments.append("roles = :roles")
+                    params["roles"] = list(roles)
+                if activate:
+                    assignments.append("is_active = TRUE")
+                try:
+                    # Fixed column assignments only; every value is a bound parameter.
+                    result = await self._db.execute(
+                        text(f"UPDATE users SET {', '.join(assignments)}"
+                             " WHERE username = :username AND hashed_password = :old_hash"),
+                        params,
+                    )
+                    if result.rowcount != 1:
+                        await self._db.rollback()
+                        continue  # the hash changed since it was read: re-read and retry
+                    await self._db.commit()
+                except SQLAlchemyError as e:
+                    await self._db.rollback()
+                    logger.error("Failed to set password: %s", type(e).__name__)
+                    return False
+            await revoke_credential_fingerprint(credential_fingerprint(username, old_hash))
             return True
+        logger.warning("Password reset not applied for %s: the password kept changing during the reset",
+                       username)
+        return False
 
     async def deactivate_user(self, username: str) -> bool:
         """
@@ -520,7 +656,14 @@ class UserRepository:
 
         Returns:
             True if deactivated successfully, False if user not found
+
+        Tokens already issued to the user stop working: refresh requires an
+        active account, and access tokens are rejected via the revoked
+        credential fingerprint.
         """
+        user = await self.get_user(username)
+        if user is None:
+            return False
         if self._db:
             try:
                 query = text("""
@@ -530,17 +673,16 @@ class UserRepository:
                 """)
                 result = await self._db.execute(query, {"username": username})
                 await self._db.commit()
-                return result.rowcount > 0
-            except Exception as e:
+            except SQLAlchemyError as e:
                 await self._db.rollback()
-                logger.error(f"Failed to deactivate user: {e}")
+                logger.error("Failed to deactivate user: %s", type(e).__name__)
+                return False
+            if result.rowcount <= 0:
                 return False
         else:
-            user = self._users.get(username)
-            if not user:
-                return False
             user.is_active = False
-            return True
+        await revoke_credential_fingerprint(credential_fingerprint(username, user.hashed_password))
+        return True
 
     async def list_users(self) -> list[User]:
         """
