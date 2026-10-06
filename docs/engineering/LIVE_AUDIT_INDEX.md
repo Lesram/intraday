@@ -1,26 +1,26 @@
 # Live Audit Index
 
-Generated: 2026-10-05T19:29:13Z
+Generated: 2026-10-06T00:34:27Z
 PR: n/a
-SHA: `78d5035f6a`
+SHA: `8512effe5f`
 Branch: `fix/close-accounting-unblock`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **34**
+Total distinct changed files: **41**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 5 | `backend/api/lifespan.py`, `backend/infra/outbox_worker.py`, `backend/integrations/alpaca_stream.py`, `backend/organism/live_engine_fills.py`, `backend/services/order_recovery_service.py` |
+| Backend | 6 | `backend/api/lifespan.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_stream.py`, `backend/organism/live_engine_fills.py`, `backend/services/order_recovery_service.py` |
 | Scripts | 1 | `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_audit_20261005_close_accounting_unblock.py` |
+| Tests | 2 | `tests/test_audit_20261005_close_accounting_unblock.py`, `tests/test_fill_accounting_postgres.py` |
 | Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md` |
-| Artifacts/evidence | 24 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
+| Artifacts/evidence | 29 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
@@ -42,6 +42,9 @@ Organism subset of Backend: **1** file(s).
 - `artifacts/replay_simulator.junit.xml`
 - `artifacts/replay_simulator.log`
 - `artifacts/replay_summary.json`
+- `artifacts/resolved_config_snapshot.json`
+- `artifacts/runtime_config_snapshot.json`
+- `artifacts/runtime_defaults_snapshot.json`
 - `artifacts/runtime_snapshot.log`
 - `artifacts/runtime_snapshot_summary.json`
 - `artifacts/safety_invariants.junit.xml`
@@ -51,10 +54,13 @@ Organism subset of Backend: **1** file(s).
 - `artifacts/semantic_invariants.junit.xml`
 - `artifacts/semantic_invariants.log`
 - `artifacts/semantic_invariants_summary.json`
+- `artifacts/spec_drift.log`
+- `artifacts/spec_drift_summary.json`
 - `artifacts/task_report.json`
 - `artifacts/test_summary.json`
 - `backend/api/lifespan.py`
 - `backend/infra/outbox_worker.py`
+- `backend/infra/repositories/orders.py`
 - `backend/integrations/alpaca_stream.py`
 - `backend/organism/live_engine_fills.py`
 - `backend/services/order_recovery_service.py`
@@ -63,6 +69,7 @@ Organism subset of Backend: **1** file(s).
 - `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`
 - `scripts/runtime/write_runtime_snapshot.py`
 - `tests/test_audit_20261005_close_accounting_unblock.py`
+- `tests/test_fill_accounting_postgres.py`
 
 ## Configuration resolution (not engine observation)
 

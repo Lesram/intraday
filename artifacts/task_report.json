@@ -1,7 +1,7 @@
 {
   "task_id": "audit-20261005-close-accounting-unblock",
-  "summary": "Audit 2026-10-05 C08-01/C07-01 close-accounting unblock on top of PR #36, with the PR review response: unresolved/replaced orders (pre-entry included) hold an exact close only while they could still execute in the lifetime (eligible NYSE session from basis plus a 5-minute cut-off slack, until 20:00 ET plus 1 h; blocking order named in pending_close.accounting_hold_reason) and the zero-fill cleanup scan is bounded to the observed close; a broker-confirmed close fill with no or too few owner lots is persisted with attributes.lot_accounting and one post-commit CRITICAL on all five fill paths; out-of-order ingestion converges after any delay (close-anchored 5-day deferral behind openings persisted-order recovery can settle, 45-day cap, late netting of later opening lots against recorded unmatched closes); runtime snapshot blocks close_accounting_holds and fill_lot_accounting; policy id unchanged; no frozen-surface change",
-  "sha": "78d5035f6a5d02deb7c542146545e15f2462b0a2",
+  "summary": "Audit 2026-10-05 C08-01/C07-01 close-accounting unblock on top of PR #36, with both PR review responses: unresolved/replaced orders (pre-entry included) hold an exact close only while they could still execute in the lifetime (eligible NYSE session from basis plus a 5-minute cut-off slack, until 20:00 ET plus 1 h; blocking order named in pending_close.accounting_hold_reason) and the zero-fill cleanup scan is bounded to the observed close; a broker-confirmed close fill with no or too few owner lots is persisted with attributes.lot_accounting and one post-commit CRITICAL on all five fill paths; a close applied before its opening is deferred (close-anchored 5-day window behind openings persisted-order recovery can settle, 45-day cap, one CRITICAL after 6.5 h of deferral) or netted when the opening lot lands; concurrent ingestion of an opening and its close is serialized by row locks (the netting locks every close row of its window; order rows FOR NO KEY UPDATE, close FIFO FOR UPDATE OF position_lots); documented limits: submission-time order within 5 days and out-of-order round trips across lifetimes (manual UI/API orders only); runtime snapshot blocks close_accounting_holds and fill_lot_accounting; policy id unchanged; no frozen-surface change",
+  "sha": "8512effe5f99ad00205445ec80c4d776e45bb03b",
   "branch": "fix/close-accounting-unblock",
   "change_scope": "base",
   "change_ref": "6a56d753...HEAD",
@@ -19,6 +19,9 @@
     "artifacts/replay_simulator.junit.xml",
     "artifacts/replay_simulator.log",
     "artifacts/replay_summary.json",
+    "artifacts/resolved_config_snapshot.json",
+    "artifacts/runtime_config_snapshot.json",
+    "artifacts/runtime_defaults_snapshot.json",
     "artifacts/runtime_snapshot.log",
     "artifacts/runtime_snapshot_summary.json",
     "artifacts/safety_invariants.junit.xml",
@@ -28,10 +31,13 @@
     "artifacts/semantic_invariants.junit.xml",
     "artifacts/semantic_invariants.log",
     "artifacts/semantic_invariants_summary.json",
+    "artifacts/spec_drift.log",
+    "artifacts/spec_drift_summary.json",
     "artifacts/task_report.json",
     "artifacts/test_summary.json",
     "backend/api/lifespan.py",
     "backend/infra/outbox_worker.py",
+    "backend/infra/repositories/orders.py",
     "backend/integrations/alpaca_stream.py",
     "backend/organism/live_engine_fills.py",
     "backend/services/order_recovery_service.py",
@@ -39,7 +45,8 @@
     "docs/engineering/LIVE_AUDIT_INDEX.md",
     "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
     "scripts/runtime/write_runtime_snapshot.py",
-    "tests/test_audit_20261005_close_accounting_unblock.py"
+    "tests/test_audit_20261005_close_accounting_unblock.py",
+    "tests/test_fill_accounting_postgres.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
@@ -61,6 +68,7 @@
   "runtime_behavior_changed": [
     "backend/api/lifespan.py",
     "backend/infra/outbox_worker.py",
+    "backend/infra/repositories/orders.py",
     "backend/integrations/alpaca_stream.py",
     "backend/organism/live_engine_fills.py",
     "backend/services/order_recovery_service.py"

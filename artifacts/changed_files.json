@@ -1,7 +1,7 @@
 {
   "scope": "base",
   "ref": "6a56d753...HEAD",
-  "total": 34,
+  "total": 41,
   "all": [
     "artifacts/algorithm_improvements.junit.xml",
     "artifacts/algorithm_improvements.log",
@@ -16,6 +16,9 @@
     "artifacts/replay_simulator.junit.xml",
     "artifacts/replay_simulator.log",
     "artifacts/replay_summary.json",
+    "artifacts/resolved_config_snapshot.json",
+    "artifacts/runtime_config_snapshot.json",
+    "artifacts/runtime_defaults_snapshot.json",
     "artifacts/runtime_snapshot.log",
     "artifacts/runtime_snapshot_summary.json",
     "artifacts/safety_invariants.junit.xml",
@@ -25,10 +28,13 @@
     "artifacts/semantic_invariants.junit.xml",
     "artifacts/semantic_invariants.log",
     "artifacts/semantic_invariants_summary.json",
+    "artifacts/spec_drift.log",
+    "artifacts/spec_drift_summary.json",
     "artifacts/task_report.json",
     "artifacts/test_summary.json",
     "backend/api/lifespan.py",
     "backend/infra/outbox_worker.py",
+    "backend/infra/repositories/orders.py",
     "backend/integrations/alpaca_stream.py",
     "backend/organism/live_engine_fills.py",
     "backend/services/order_recovery_service.py",
@@ -36,11 +42,13 @@
     "docs/engineering/LIVE_AUDIT_INDEX.md",
     "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
     "scripts/runtime/write_runtime_snapshot.py",
-    "tests/test_audit_20261005_close_accounting_unblock.py"
+    "tests/test_audit_20261005_close_accounting_unblock.py",
+    "tests/test_fill_accounting_postgres.py"
   ],
   "backend": [
     "backend/api/lifespan.py",
     "backend/infra/outbox_worker.py",
+    "backend/infra/repositories/orders.py",
     "backend/integrations/alpaca_stream.py",
     "backend/organism/live_engine_fills.py",
     "backend/services/order_recovery_service.py"
@@ -49,7 +57,8 @@
     "backend/organism/live_engine_fills.py"
   ],
   "tests": [
-    "tests/test_audit_20261005_close_accounting_unblock.py"
+    "tests/test_audit_20261005_close_accounting_unblock.py",
+    "tests/test_fill_accounting_postgres.py"
   ],
   "config": [],
   "docs": [
