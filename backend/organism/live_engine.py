@@ -56,7 +56,13 @@ from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
 from backend.organism import research_policy
 from backend.organism.live_engine_data import _DataFeederMixin
-from backend.organism.live_engine_fills import _FillLookupMixin
+from backend.organism.live_engine_fills import (
+    EXTERNAL_CLOSE_EXIT_REASON,
+    EXTERNAL_CLOSE_UNBOOKED_REASON,
+    ClosedPositionFills,
+    ExternalClose,
+    _FillLookupMixin,
+)
 from backend.organism.live_engine_state import _StateReconstructionMixin
 from backend.organism.live_engine_telemetry import _TelemetryRecordingMixin
 from backend.organism.experimental.alt_exit_engine import AltExitEngine
@@ -7025,6 +7031,10 @@ class OrganismLiveEngine(
             return None
         return str(pending.get("observed_at", "")), str(meta.get("entry_order_id") or "")
 
+    # Audit 2026-10-05 C06-01: a close pending this long after it was observed
+    # pages once per episode (EXE-03 uses the same 30 minutes for entries).
+    _UNRESOLVED_CLOSE_ESCALATE_SECONDS = 1800.0
+
     def _defer_unresolved_close(self, symbol: str, reason: str) -> None:
         """Audit 2026-09-29 R9: leave one close pending, never fabricated.
 
@@ -7032,19 +7042,107 @@ class OrganismLiveEngine(
         closes are still accounted this pass. One WARNING per symbol per
         pending episode; status() reports reason and age under
         close_accounting.unresolved. In-memory only (a restart re-warns once).
+        Audit 2026-10-05 C06-01: an episode still pending
+        ``_UNRESOLVED_CLOSE_ESCALATE_SECONDS`` after its observed close also
+        raises one CRITICAL (the watchdog pages on it; a restart re-pages once
+        if it is still unresolved). Nothing is finalized or retired here.
         """
         episode = self._close_episode(symbol)
         unresolved = getattr(self, "_unresolved_closes", None)
         if unresolved is None:
             unresolved = self._unresolved_closes = {}
         previous = unresolved.get(symbol)
-        unresolved[symbol] = {"episode": episode, "reason": reason}
-        if previous is None or previous["episode"] != episode:
+        same_episode = previous is not None and previous["episode"] == episode
+        item = unresolved[symbol] = {
+            "episode": episode, "reason": reason,
+            "escalated": bool(same_episode and previous.get("escalated")),
+        }
+        if not same_episode:
             logger.warning(
                 "Close accounting unresolved for %s (%s): close observed at %s "
                 "stays pending and entry-gated; later closes are still accounted",
                 symbol, reason, episode[0] if episode else "unknown",
             )
+        if item["escalated"] or episode is None:
+            return
+        try:
+            age = (self._now_fn() - datetime.fromisoformat(episode[0])).total_seconds()
+        except (TypeError, ValueError):
+            return
+        if age >= self._UNRESOLVED_CLOSE_ESCALATE_SECONDS:
+            item["escalated"] = True
+            logger.critical(
+                "CLOSE ACCOUNTING UNRESOLVED for %.0f min: %s (%s), close observed at %s "
+                "- no trade is recorded and the symbol stays entry-gated until it "
+                "resolves; check the order rows of this lifetime (status, fills, "
+                "attribution) against the broker",
+                age / 60.0, symbol, reason, episode[0],
+            )
+
+    @staticmethod
+    def _latest_bar_close(symbol: str, features_by_symbol: Any) -> "float | None":
+        """Last bar close for ``symbol``; None when missing, non-finite or not positive."""
+        try:
+            frame = (features_by_symbol or {}).get(symbol)
+            if frame is None or len(frame) == 0:
+                return None
+            value = float(frame["close"].iloc[-1])
+        except Exception:  # noqa: BLE001 - a missing mark means unknown, never an error
+            return None
+        return value if 0.0 < value < float("inf") else None
+
+    def _external_close_mark(
+        self, symbol: str, pending: dict[str, Any], features_by_symbol: Any,
+    ) -> "tuple[float | None, str]":
+        """Audit 2026-10-05 C06-01: best available price for an unbooked close.
+
+        The bar close seen when the close was first observed, else the current
+        bar close, else the streaming provider's cached quote (mid, bid, ask).
+        Never another leg's or lifetime's fill. ``(None, "")`` means unknown.
+        """
+        def positive(value: Any) -> "float | None":
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                return None
+            return value if 0.0 < value < float("inf") else None
+
+        observed = positive((pending or {}).get("observed_bar_close"))
+        if observed is not None:
+            return observed, "observed_bar_close"
+        current = self._latest_bar_close(symbol, features_by_symbol)
+        if current is not None:
+            return current, "bar_close"
+        bid = ask = None
+        try:
+            provider = getattr(self, "_streaming_provider", None)
+            quote = provider.get_latest_quote(symbol) if provider is not None else None
+            if isinstance(quote, dict):
+                bid, ask = positive(quote.get("bid")), positive(quote.get("ask"))
+        except Exception as exc:  # noqa: BLE001 - price unknown
+            logger.warning("External close mark for %s: quote read failed (%s)",
+                           symbol, type(exc).__name__)
+        if bid is not None and ask is not None:
+            return (bid + ask) / 2.0, "quote_mid"
+        if bid is not None:
+            return bid, "quote_bid"
+        if ask is not None:
+            return ask, "quote_ask"
+        return None, ""
+
+    def _external_close_fills(
+        self, symbol: str, pending: dict[str, Any], external: ExternalClose,
+        features_by_symbol: Any,
+    ) -> "ClosedPositionFills | None":
+        """Audit 2026-10-05 C06-01: cash flows of a close outside the engine.
+
+        Exact when platform close-route legs booked the whole close; otherwise
+        the unbooked quantity is priced at ``_external_close_mark`` and the
+        price source names that rung. None (no mark) keeps the close pending.
+        """
+        if external.unbooked_qty <= 0:
+            return external.fills()
+        return external.fills(*self._external_close_mark(symbol, pending, features_by_symbol))
 
     def _unresolved_close_status(self) -> dict[str, Any]:
         """Stuck pending closes for status(): reason and age in seconds."""
@@ -7225,6 +7323,8 @@ class OrganismLiveEngine(
                         "regime": self._last_regime if self._last_regime != "unknown" else getattr(self.regime_detector, "current_regime", "unknown"),
                         "exit_level": dict(vars(lvl)) if lvl is not None else None,
                         "status": "awaiting_complete_position_fills",
+                        # C06-01: the mark nearest the close, should no DB leg book it.
+                        "observed_bar_close": self._latest_bar_close(sym, features_by_symbol),
                     }
             if newly_closed:
                 try:
@@ -7272,12 +7372,27 @@ class OrganismLiveEngine(
                         close_accounting.restore(self, before_zero)
                         raise
                 continue
+            external = None
             if position_fills is None and meta.get("entry_source") != "reconciliation_orphan":
-                # Unknown attribution, DB errors and incomplete fills stay
-                # visible/pending (R9: skipped, later closes still run).
-                self._defer_unresolved_close(
-                    sym, pending.get("accounting_hold_reason") or "exact_fills_unavailable")
-                continue
+                # Audit 2026-10-05 C06-01: closed outside the engine's exit
+                # orders (a platform close route, the Alpaca dashboard, a
+                # broker liquidation). Close-route legs that complete the
+                # lifetime are exact now; a quantity no DB leg booked is priced
+                # at the best mark once EXTERNAL_CLOSE_APPROXIMATE_AFTER has
+                # passed. Either becomes a reconciliation artifact below.
+                evidence = await self._lookup_external_close_from_db(sym, meta, closed_at=closed_at)
+                waiting = evidence is not None and evidence.waiting(closed_at, observed_at)
+                if evidence is not None and not waiting:
+                    external = self._external_close_fills(sym, pending, evidence, features_by_symbol)
+                if external is None:
+                    # Unknown attribution, DB errors and incomplete fills stay
+                    # visible/pending (R9: skipped, later closes still run).
+                    self._defer_unresolved_close(sym, (
+                        EXTERNAL_CLOSE_UNBOOKED_REASON if waiting
+                        else "no_exit_price" if evidence is not None
+                        else pending.get("accounting_hold_reason") or "exact_fills_unavailable"))
+                    continue
+                position_fills = external
             # Orphan bookkeeping retains its exclusion from all learning.
             # Fetch legacy fallbacks outside the serialized no-await commit.
             fallback_exit = fallback_entry = None
@@ -7447,7 +7562,12 @@ class OrganismLiveEngine(
                     # broker without a normal exit order.  These are cross-session
                     # carryover cleanups or orphan metadata, not strategy trades.
                     _is_reconciliation = False
-                    if position_fills is None and _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
+                    if external is not None:
+                        # C06-01: not the strategy's exit; kept out of every
+                        # learning consumer exactly like orphan artifacts.
+                        _exit_reason = EXTERNAL_CLOSE_EXIT_REASON
+                        _is_reconciliation = True
+                    elif position_fills is None and _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
                         _exit_reason = "reconciliation_adjustment"
                         _is_reconciliation = True
                         logger.warning(
@@ -7639,6 +7759,13 @@ class OrganismLiveEngine(
                         "LONG" if direction > 0 else "SHORT",
                         pnl,
                     )
+                    if external is not None:
+                        logger.warning(
+                            "External close of %s recorded as a reconciliation artifact "
+                            "(%s, %d shares, pnl=$%.2f, pending exit reason %s); "
+                            "excluded from learning, entry gate released",
+                            sym, _price_source, shares, pnl, pending["exit_reason"],
+                        )
 
                 except Exception as exc:
                     close_accounting.restore(self, before_commit)

@@ -237,6 +237,45 @@ def _build_defaults_snapshot() -> dict:
                 "hold_warning": "once_per_new_reason_cleared_on_resolution",
                 "zero_fill_cleanup_scan": "orders_submitted_from_entry_to_pending_close_observed_at_else_unbounded",
             },
+            # Audit 2026-10-05 C06-01: an identified strategy position closed
+            # outside the engine's exit orders (policy id unchanged).
+            "external_close_accounting": {
+                "close_route_leg": "attributes.close_position_true_without_organism_source_exit_side_only",
+                "exact": "flat_to_flat_by_the_observed_close_with_a_close_route_row_in_the_window_filled_or_refused_or_canceled_unfilled_recorded_at_once",
+                "unbooked": "every_leg_to_the_observed_close_attributable_and_terminal_db_still_open_broker_flat_no_later_order",
+                "approximate_after_seconds": int(_fill_lookup.EXTERNAL_CLOSE_APPROXIMATE_AFTER.total_seconds()),
+                "approximate_mark": "observed_bar_close_then_current_bar_close_then_streaming_quote_mid_bid_ask",
+                "approximate_mark_age": "not_bounded_a_late_first_observation_is_priced_when_recorded",
+                "approximate_cash": "db_legs_exact_plus_unbooked_qty_at_mark",
+                "no_mark": "stays_pending_no_exit_price",
+                "exit_reason": _fill_lookup.EXTERNAL_CLOSE_EXIT_REASON,
+                "exact_price_source": _fill_lookup.EXTERNAL_CLOSE_EXACT_SOURCE,
+                "approximate_price_source": _fill_lookup.EXTERNAL_CLOSE_APPROXIMATE_SOURCE_PREFIX + "<rung>",
+                "wait_reason": _fill_lookup.EXTERNAL_CLOSE_UNBOOKED_REASON,
+                "classification": "reconciliation_artifact_no_learner_kelly_calibration_symbol_counts_bans_evolution_edge_monitor_or_phase2_forward_verdict_corpus",
+                "holds": "same_as_exact_accounting_see_close_accounting_holds",
+                "entry_gate": "released_when_recorded",
+                "reentry_cooldown": "none",
+                "pending_entry_release": "flat_branch_accepts_external_close_artifact_same_identity_quantity_entry_cost_without_exhausted_lots",
+                # Review: the lifetime's lots are closed before the artifact
+                # releases the gate (alpaca_stream.repair_external_close_lots).
+                "lot_repair": {
+                    "when": "evidence_recordable_exact_or_unbooked_after_approximate_after",
+                    "ordering": "committed_before_gate_release",
+                    "scope": "entry_owner_open_lots_of_the_symbol_on_the_lifetime_side_opened_by_orders_submitted_at_or_before_the_observed_close",
+                    "netting": "unmatched_close_route_records_submitted_entry_to_observed_close_fifo_across_owners_at_record_unmatched_vwap",
+                    "netting_basis": _fill_ingestion.EXTERNAL_CLOSE_REPAIR_BASIS,
+                    "write_off": "remainder_closed_without_realized_trade_one_position_adjusted_audit_row_per_lot",
+                    "write_off_reason": _fill_ingestion.EXTERNAL_CLOSE_WRITE_OFF_REASON,
+                    "audit_actor": _fill_ingestion.EXTERNAL_CLOSE_REPAIR_ACTOR,
+                    "locks": "window_close_order_rows_for_no_key_update_then_lots_for_update_of_position_lots",
+                    "idempotent": "no_open_lot_in_scope_no_write",
+                    "failure": "close_stays_pending_and_gated_retried_every_pass",
+                    "hold_reason": _fill_lookup.EXTERNAL_CLOSE_LOT_REPAIR_FAILED_REASON,
+                },
+                "escalate_after_seconds": OrganismLiveEngine._UNRESOLVED_CLOSE_ESCALATE_SECONDS,
+                "escalation": "one_critical_per_pending_episode_per_process_nothing_finalized",
+            },
             # Audit 2026-10-05 C07-01: lot-ledger effects of broker-confirmed fills.
             "fill_lot_accounting": {
                 "unmatched_close": "persist_summary_execution_and_matched_lots_record_attributes.lot_accounting",
@@ -588,6 +627,7 @@ def _build_resolved_config_snapshot() -> dict:
         "order_dispatch_guards": defaults.get("order_dispatch_guards"),
         "order_dead_letter_lifecycle": defaults.get("order_dead_letter_lifecycle"),
         "close_accounting_holds": defaults.get("close_accounting_holds"),
+        "external_close_accounting": defaults.get("external_close_accounting"),
         "fill_lot_accounting": defaults.get("fill_lot_accounting"),
         "runtime_config_hash_env": defaults.get("runtime_config_hash_env"),
         "entry_freshness": defaults.get("entry_freshness"),

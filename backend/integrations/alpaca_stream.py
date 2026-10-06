@@ -970,6 +970,220 @@ async def apply_order_fill_snapshot(
     return {**accounting, "status": status}
 
 
+# Audit 2026-10-05 C06-01 (review): a strategy lifetime closed outside the
+# engine's exit orders leaves its owner's lots open. A platform close route
+# books its leg under the operator's owner, so the owner-scoped FIFO records it
+# unmatched (LOT ACCOUNTING DISCREPANCY at ingestion); the Alpaca dashboard and
+# broker liquidations book no row at all. The live engine runs this repair, and
+# commits it, before the external-close artifact releases the symbol's entry
+# gate, so the next entry starts from a clean ledger.
+EXTERNAL_CLOSE_REPAIR_BASIS = "external_close_repair"
+EXTERNAL_CLOSE_WRITE_OFF_REASON = "external_close_unbooked_write_off"
+EXTERNAL_CLOSE_REPAIR_ACTOR = "system:external_close_repair"
+
+
+async def repair_external_close_lots(
+    session: AsyncSession,
+    *,
+    symbol: str,
+    entry_order_id: Any,
+    closed_at: datetime,
+    direction: float,
+    mark: float | None = None,
+    mark_source: str = "",
+) -> dict[str, Any]:
+    """Close the lots an external close left open; the caller commits.
+
+    For an identified lifetime the engine classified as closed outside its exit
+    orders (live_engine_fills._external_close), once that close is recordable.
+
+    Scope: the entry owner's open lots of ``symbol`` on the lifetime's position
+    side whose opening order was submitted at or before ``closed_at``, the
+    observed close. The broker was flat then and every order submitted by then
+    is terminal (the classification's preconditions), so none of these lots can
+    still be held. The owner's older lots are included because its FIFO would
+    consume them before a new lifetime's own lot. Lots opened by later orders (a
+    new lifetime) and lots of other owners are never touched.
+
+    1. Netting: every close-route leg (``close_position`` true, not organism
+       sourced) on the closing side, submitted from the entry to ``closed_at``,
+       whose ``lot_accounting`` record still has unmatched quantity for this
+       position side, is matched FIFO against those lots across owners at the
+       record's unmatched VWAP. One RealizedTrade per match (the lot's owner,
+       ``lot_accounting = external_close_repair``, the record's owner as
+       ``close_owner``); the record moves to ``matched_late`` with repair
+       ``none`` once nothing remains unmatched.
+    2. Write-off: a remainder no DB row closed has no price. The lot is closed
+       without a RealizedTrade and one ``position.adjusted`` audit row per lot
+       records the quantity, identities, observed close and mark when known.
+
+    Idempotent: without an open lot in scope nothing is written, so a record
+    or row is never touched twice. Locks follow the fill paths: the closing-side
+    order rows of the window FOR NO KEY UPDATE in submission order (as late
+    netting does), then the lots FOR UPDATE OF position_lots (as the close FIFO
+    does). Any error propagates; the caller rolls back and keeps the close
+    pending.
+    """
+    from backend.infra.schemas import Order, PositionLot
+    from backend.organism.live_engine_fills import _is_close_route_leg
+    from backend.services.audit_service import AuditAction, AuditEntity, ComplianceAuditService
+
+    if float(direction) not in (1.0, -1.0):
+        raise ValueError(f"External close lot repair needs a direction of +1 or -1, not {direction!r}")
+    entry = (
+        await session.execute(select(Order).where(Order.id == entry_order_id))
+    ).scalar_one_or_none()
+    if entry is None or entry.symbol != symbol or entry.submitted_at is None:
+        raise ValueError(f"External close lot repair: entry order {entry_order_id} of {symbol} not found")
+    owner = _order_user_id(entry)
+    if float(direction) > 0:
+        open_side, close_side, position_side = "buy", "sell", "long"
+    else:
+        open_side, close_side, position_side = "sell", "buy", "short"
+    closes = (
+        await session.execute(
+            select(Order)
+            .where(
+                Order.symbol == symbol,
+                Order.side == close_side,
+                Order.submitted_at >= entry.submitted_at,
+                Order.submitted_at <= closed_at,
+            )
+            .order_by(Order.submitted_at.asc(), Order.id.asc())
+            .with_for_update(key_share=True)
+            .execution_options(populate_existing=True)
+        )
+    ).scalars().all()
+    lots = list(
+        (
+            await session.execute(
+                select(PositionLot)
+                .join(Order, PositionLot.order_id == Order.id)
+                .where(
+                    PositionLot.user_id == owner,
+                    PositionLot.symbol == symbol,
+                    PositionLot.status == "open",
+                    PositionLot.remaining_qty > 0,
+                    Order.side == open_side,
+                    Order.submitted_at <= closed_at,
+                )
+                .order_by(PositionLot.open_date.asc(), PositionLot.id.asc())
+                .with_for_update(of=PositionLot)
+                .execution_options(populate_existing=True)
+            )
+        ).scalars().all()
+    )
+    report: dict[str, Any] = {
+        "symbol": symbol, "owner": owner, "position_side": position_side,
+        "entry_order_id": str(entry.id), "netted": [], "written_off": [],
+    }
+    if not lots:
+        return report
+    for close in closes:
+        attributes = close.attributes if isinstance(close.attributes, dict) else {}
+        record = attributes.get("lot_accounting")
+        if not (
+            _is_close_route_leg(attributes)
+            and isinstance(record, dict)
+            and record.get("status") == "unmatched"
+            and record.get("position_side") == position_side
+        ):
+            continue
+        unmatched = _record_decimal(record, "unmatched_qty")
+        if not unmatched > 0:
+            continue
+        notional = _record_decimal(
+            record, "unmatched_notional", unmatched * _record_decimal(record, "last_fill_price")
+        )
+        price = (notional / unmatched).quantize(_LOT_QUANTUM)
+        if not price.is_finite() or price <= 0:
+            continue  # A malformed record stays unmatched for repair.
+        matched = Decimal("0")
+        for lot in lots:
+            if matched >= unmatched:
+                break
+            if not lot.remaining_qty > 0:
+                continue
+            qty = min(lot.remaining_qty, unmatched - matched)
+            trade = _realized_trade(
+                lot=lot,
+                qty=qty,
+                close_price=price,
+                close_order_id=close.id,
+                close_date=close.submitted_at,
+                user_id=lot.user_id,
+                symbol=symbol,
+                position_side=position_side,
+                attributes={
+                    "lot_accounting": EXTERNAL_CLOSE_REPAIR_BASIS,
+                    "close_owner": record.get("owner"),
+                },
+            )
+            session.add(trade)
+            lot.remaining_qty -= qty
+            if lot.remaining_qty == 0:
+                lot.status = "closed"
+            matched += qty
+            report["netted"].append({
+                "lot_id": str(lot.id), "open_order_id": str(lot.order_id),
+                "close_order_id": str(close.id), "qty": _quantized(qty),
+                "price": _quantized(price), "realized_pnl": str(trade.realized_pnl),
+                "close_owner": record.get("owner"),
+            })
+        if not matched:
+            continue
+        left = unmatched - matched
+        updated = {
+            **record,
+            "status": "unmatched" if left > 0 else "matched_late",
+            "repair": "required" if left > 0 else "none",
+            "unmatched_qty": _quantized(left),
+            "unmatched_notional": _quantized(notional - matched * price if left > 0 else Decimal("0")),
+            "matched_late_qty": _quantized(_record_decimal(record, "matched_late_qty") + matched),
+            "late_matches": _record_count(record, "late_matches") + 1,
+            "last_late_match": {
+                "basis": EXTERNAL_CLOSE_REPAIR_BASIS,
+                "entry_order_id": str(entry.id),
+                "qty": _quantized(matched),
+                "price": _quantized(price),
+                "matched_at": datetime.now(UTC).isoformat(),
+            },
+        }
+        await OrdersRepo(session).attach_broker_result(close.id, attributes={"lot_accounting": updated})
+    audit = ComplianceAuditService(session)
+    for lot in lots:
+        if not lot.remaining_qty > 0:
+            continue
+        qty = lot.remaining_qty
+        lot.remaining_qty = Decimal("0")
+        lot.status = "closed"
+        await audit.log(
+            action=AuditAction.POSITION_ADJUSTED,
+            entity=AuditEntity.POSITION,
+            entity_id=str(lot.id),
+            actor=EXTERNAL_CLOSE_REPAIR_ACTOR,
+            payload={
+                "reason": EXTERNAL_CLOSE_WRITE_OFF_REASON,
+                "symbol": symbol,
+                "owner": lot.user_id,
+                "position_side": position_side,
+                "lot_id": str(lot.id),
+                "order_id": str(lot.order_id),
+                "qty": _quantized(qty),
+                "cost_basis": _quantized(lot.cost_basis),
+                "entry_order_id": str(entry.id),
+                "observed_close": closed_at.isoformat(),
+                "mark": mark,
+                "mark_source": mark_source or None,
+            },
+        )
+        report["written_off"].append({
+            "lot_id": str(lot.id), "order_id": str(lot.order_id), "qty": _quantized(qty),
+        })
+    await session.flush()
+    return report
+
+
 class AlpacaStreamClient:
     """
     WebSocket client for Alpaca trade updates stream.

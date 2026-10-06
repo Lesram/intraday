@@ -4,6 +4,85 @@
 
 ---
 
+## Candidate external-close accounting (audit 2026-10-05 C06-01) — NOT deployed
+
+Stacked on the merged exit-safety and close-accounting candidates below.
+Frozen decision sources change: `research_policy_sources.broker_state_safety`
+(`_reconcile_fills`) and `research_policy_sources.entry_cancellation`
+(`operator_cancellation.py`, `_accounted_entry_fill` only), on top of the base's
+own `broker_state_safety` and `entry_gates_dispatch` drift. Marsel signed off on
+these frozen-code fixes on 2026-10-05; they take effect only through a new
+activation. No strategy parameter, threshold, feed, sizing or entry-decision
+change. The policy id stays `exact_position_fills_or_pending_v1` (strategy
+outcomes still need exact organism legs; the new records are reconciliation
+artifacts, as orphan bookkeeping already is under v1).
+
+- **Problem.** An identified strategy position closed by anything other than an
+  organism exit order (the platform's close routes, the Alpaca dashboard after
+  the EOD page says "manual intervention recommended", a broker liquidation)
+  stayed pending forever: no trade, the symbol entry-gated across restarts.
+- **Close-route legs are exact.** `POST /positions/{symbol}/close` and
+  `POST /orders/{id}/close-position` book their leg with `close_position: true`
+  and no organism source. When the lifetime is flat-to-flat by the observed
+  close with such an exit-side row among its legs (all legs terminal and
+  attributable; the holds of exact accounting apply), the close is recorded at
+  once with the DB cash flows (`price_source=external_close_db_fills`). That
+  includes an operator Close that raced the engine's own exit and was refused
+  by the outbox exit guard or canceled without a fill: strategy accounting
+  refuses any non-organism row, so the engine's exact legs are recorded as the
+  artifact instead of staying pending for good.
+- **No DB leg (dashboard, liquidation) is approximate.** When every leg up to
+  the observed close is attributable and terminal, the DB lifetime is still
+  open, the broker is flat and no later order exists for the symbol, the close
+  waits `EXTERNAL_CLOSE_APPROXIMATE_AFTER` (15 min, reason
+  `external_close_unbooked`). Then the DB legs count exactly and the unbooked
+  quantity is priced at the bar close kept when the close was first observed
+  (`pending_close.observed_bar_close`), else the current bar close, else the
+  streaming quote (`price_source=external_close_approximate_<rung>`). No mark:
+  it stays pending (`no_exit_price`). The mark's age is not bounded: a close
+  first observed long after it happened (engine downtime, or a close already
+  pending before this release, which has no `observed_bar_close`) is priced at
+  the bar or quote of the recording pass, and the rung does not show the age.
+  Check `status().close_accounting.unresolved` before activation.
+- **Never strategy evidence.** Both carry `exit_reason=external_close` and
+  `is_reconciliation_artifact=true`: no learner, Kelly, calibration, symbol
+  counts, bans, evolution, edge-monitor or Phase-2 forward verdict corpus input
+  (`phase2_gate.load_forward_corpus` drops artifacts by the flag, and by exit
+  reason or orphan source for ledgers without the column, so the verdict CLI,
+  the attribution report and the daily evidence pack's native gate exclude
+  them). Tracking is cleared (entry gate released, no re-entry cooldown) and the
+  completed identity persists across restarts. The daily evidence check still
+  flags every forward row whose price source is not `db_position_fills`, so
+  after an external close every later daily report of the epoch carries
+  `unqualified_price_source`.
+- **Lot repair before the gate opens.** Once the close is recordable,
+  `_lookup_external_close_from_db` commits
+  `alpaca_stream.repair_external_close_lots` before returning, so before the
+  artifact commit releases the gate. Scope: the entry owner's open lots of the
+  symbol on the lifetime's side whose opening order was submitted at or before
+  the observed close (older stale lots included; later lifetimes and other
+  owners never). The operator's unmatched close-route records of the window are
+  netted FIFO against them at the record's unmatched VWAP (RealizedTrade
+  `lot_accounting=external_close_repair`, record `matched_late`); a remainder
+  no DB row closed is written off with one `position.adjusted` audit row per lot
+  (`external_close_unbooked_write_off`). Idempotent. A failed repair keeps the
+  close pending and gated (`external_close_lot_repair_failed`, retried every
+  pass). The next entry therefore releases its identity and its exit realizes
+  against its own lot.
+- **Pending entry identity.** `_accounted_entry_fill`'s flat branch accepts the
+  `external_close` artifact (same identity, quantity and entry cost) without
+  requiring exhausted lots; after the repair they are exhausted anyway.
+- **Escalation.** A close still pending 30 min after it was observed raises one
+  CRITICAL per episode (`_UNRESOLVED_CLOSE_ESCALATE_SECONDS`, in
+  `_defer_unresolved_close`; a restart re-pages once). Genuinely ambiguous closes
+  (holds, unattributed or still-working legs, an order after the observed close,
+  a failed lot repair) stay pending. A close-route fill of an engine position
+  still pages `LOT ACCOUNTING DISCREPANCY` (CRITICAL) at ingestion, because it is
+  booked under the operator's owner; the repair nets it when the close is
+  recorded. Snapshot: `external_close_accounting`.
+
+---
+
 ## Candidate dispatch lifecycle fixes (audit 2026-10-05) — NOT deployed
 
 Stacked on the exit-safety and close-accounting candidates below. One more frozen
@@ -1800,6 +1879,28 @@ AttributeError aborted reconciliation and the rest of every tick (pending-entry
 release, age escalation, retrain, the periodic brain save), across restarts.
 Now no quote, or any failure reading or parsing it, means "price unknown": the
 close stays pending (`no_exit_price`) and the tick continues.
+
+**Closes outside the engine (candidate, audit 2026-10-05 C06-01, a frozen-surface
+change in `_reconcile_fills` and `_accounted_entry_fill`).** Same policy id. When
+exact accounting refuses an identified close and the entry is not verified
+unfilled, `_lookup_external_close_from_db` classifies the symbol's orders from the
+entry on (same holds). A lifetime that is flat-to-flat by the observed close with
+a platform close-route row among its legs (`attributes.close_position` true, no
+organism source, exit side; filled, or refused or canceled without a fill when it
+raced the engine's own exit) is recorded at once (`external_close_db_fills`). A
+lifetime whose attributable, terminal legs leave quantity open while the broker is
+flat, with no later order for the symbol, waits
+`EXTERNAL_CLOSE_APPROXIMATE_AFTER` (15 min) and is then recorded with the unbooked
+quantity at `observed_bar_close`, the current bar close or the streaming quote
+(`external_close_approximate_<rung>`; the mark's age is not bounded). Before
+either is recorded the lookup commits the lot repair
+(`alpaca_stream.repair_external_close_lots`: the lifetime owner's lots opened by
+then are netted against the operator's unmatched close-route records, the rest
+written off with an audit row; a failure keeps the close pending as
+`external_close_lot_repair_failed`). Both are `external_close` reconciliation
+artifacts excluded from every learning consumer and from the Phase-2 forward
+verdict corpus; tracking is cleared. Everything else stays pending; one CRITICAL
+per episode after 30 min. Snapshot: `external_close_accounting`.
 
 Replay uses its own executed-order adapter for the same conserved-cashflow
 contract; its outcomes carry `simulated_position_fills`, distinct from paper

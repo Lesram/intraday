@@ -169,6 +169,25 @@
       "hold_warning": "once_per_new_reason_cleared_on_resolution",
       "zero_fill_cleanup_scan": "orders_submitted_from_entry_to_pending_close_observed_at_else_unbounded"
     },
+    "external_close_accounting": {
+      "close_route_leg": "attributes.close_position_true_without_organism_source_exit_side_only",
+      "exact": "close_route_legs_complete_the_lifetime_flat_to_flat_by_the_observed_close_recorded_at_once",
+      "unbooked": "every_leg_to_the_observed_close_attributable_and_terminal_db_still_open_broker_flat_no_later_order",
+      "approximate_after_seconds": 900,
+      "approximate_mark": "observed_bar_close_then_current_bar_close_then_streaming_quote_mid_bid_ask",
+      "approximate_cash": "db_legs_exact_plus_unbooked_qty_at_mark",
+      "no_mark": "stays_pending_no_exit_price",
+      "exit_reason": "external_close",
+      "exact_price_source": "external_close_db_fills",
+      "approximate_price_source": "external_close_approximate_<rung>",
+      "wait_reason": "external_close_unbooked",
+      "classification": "reconciliation_artifact_no_learner_kelly_calibration_symbol_counts_bans_evolution_or_edge_monitor",
+      "holds": "same_as_exact_accounting_see_close_accounting_holds",
+      "entry_gate": "released_when_recorded",
+      "pending_entry_release": "flat_branch_accepts_external_close_artifact_same_identity_quantity_entry_cost_lots_may_stay_open",
+      "escalate_after_seconds": 1800.0,
+      "escalation": "one_critical_per_pending_episode_per_process_nothing_finalized"
+    },
     "fill_lot_accounting": {
       "unmatched_close": "persist_summary_execution_and_matched_lots_record_attributes.lot_accounting",
       "lot_matching": "owner_scoped_fifo",
