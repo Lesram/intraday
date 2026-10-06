@@ -591,49 +591,61 @@ class UserRepository:
         leaves the row unchanged. Tokens issued under the previous password
         stop working (see change_password).
 
+        The UPDATE replaces only the hash read just before it (compare and
+        swap, as in change_password). If a concurrent password change lands in
+        between, the reset re-reads the account and tries again, up to three
+        times, so the fingerprint it revokes is always the one it replaced.
+
         Returns:
             True if exactly one row was updated, False otherwise.
         """
-        user = await self.get_user(username)
-        if user is None:
-            return False
-        old_hash = user.hashed_password
         new_hashed_password = await _run_password_hash(hash_password, new_password)
-        if not self._db:
-            user.hashed_password = new_hashed_password
-            user.failed_login_attempts, user.locked_until = 0, None
-            if roles is not None:
-                user.roles = list(roles)
-            if activate:
-                user.is_active = True
-        else:
-            assignments = [
-                "hashed_password = :hashed_password",
-                "failed_login_attempts = 0",
-                "locked_until = NULL",
-            ]
-            params: dict = {"hashed_password": new_hashed_password, "username": username}
-            if roles is not None:
-                assignments.append("roles = :roles")
-                params["roles"] = list(roles)
-            if activate:
-                assignments.append("is_active = TRUE")
-            try:
-                # Fixed column assignments only; every value is a bound parameter.
-                result = await self._db.execute(
-                    text(f"UPDATE users SET {', '.join(assignments)} WHERE username = :username"),
-                    params,
-                )
-                if result.rowcount != 1:
-                    await self._db.rollback()
-                    return False
-                await self._db.commit()
-            except SQLAlchemyError as e:
-                await self._db.rollback()
-                logger.error("Failed to set password: %s", type(e).__name__)
+        for _attempt in range(3):
+            user = await self.get_user(username)
+            if user is None:
                 return False
-        await revoke_credential_fingerprint(credential_fingerprint(username, old_hash))
-        return True
+            old_hash = user.hashed_password
+            if not self._db:
+                # No await between the read above and these writes.
+                user.hashed_password = new_hashed_password
+                user.failed_login_attempts, user.locked_until = 0, None
+                if roles is not None:
+                    user.roles = list(roles)
+                if activate:
+                    user.is_active = True
+            else:
+                assignments = [
+                    "hashed_password = :hashed_password",
+                    "failed_login_attempts = 0",
+                    "locked_until = NULL",
+                ]
+                params: dict = {"hashed_password": new_hashed_password, "username": username,
+                                "old_hash": old_hash}
+                if roles is not None:
+                    assignments.append("roles = :roles")
+                    params["roles"] = list(roles)
+                if activate:
+                    assignments.append("is_active = TRUE")
+                try:
+                    # Fixed column assignments only; every value is a bound parameter.
+                    result = await self._db.execute(
+                        text(f"UPDATE users SET {', '.join(assignments)}"
+                             " WHERE username = :username AND hashed_password = :old_hash"),
+                        params,
+                    )
+                    if result.rowcount != 1:
+                        await self._db.rollback()
+                        continue  # the hash changed since it was read: re-read and retry
+                    await self._db.commit()
+                except SQLAlchemyError as e:
+                    await self._db.rollback()
+                    logger.error("Failed to set password: %s", type(e).__name__)
+                    return False
+            await revoke_credential_fingerprint(credential_fingerprint(username, old_hash))
+            return True
+        logger.warning("Password reset not applied for %s: the password kept changing during the reset",
+                       username)
+        return False
 
     async def deactivate_user(self, username: str) -> bool:
         """

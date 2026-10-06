@@ -38,12 +38,17 @@ BEARER_PATTERN = re.compile(r"(?P<prefix>\bBearer\s+)[A-Za-z0-9\-._~+/]+=*", re.
 
 JWT_PATTERN = re.compile(r"eyJ[A-Za-z0-9_\-]*\.eyJ[A-Za-z0-9_\-]*\.[A-Za-z0-9_\-]*")
 
-_TRIGGERS = ("://", "=", '"', "earer", "eyJ")
+# Matched against the case-folded text: HTTP auth schemes are case-insensitive
+# ("BEARER", "bearer"), like BEARER_PATTERN itself.
+_TRIGGERS = ("://", "=", '"', "bearer", "eyj")
 
 
 def redact_credentials(text: str) -> str:
     """Return ``text`` with credential values masked (non-strings pass through)."""
-    if not isinstance(text, str) or not any(trigger in text for trigger in _TRIGGERS):
+    if not isinstance(text, str):
+        return text
+    folded = text.casefold()
+    if not any(trigger in folded for trigger in _TRIGGERS):
         return text
     result = URL_USERINFO_PATTERN.sub(lambda m: f"{m.group('scheme')}{MASK}@", text)
     result = SENSITIVE_QUERY_PARAM_PATTERN.sub(lambda m: f"{m.group('prefix')}{MASK}", result)

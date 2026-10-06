@@ -547,6 +547,38 @@ async def test_admin_script_force_resets_the_password_in_place(users_db, admin_s
     assert await refresh_refusal(tokens.refresh_token) == "refresh_token_revoked"
 
 
+async def test_admin_reset_compare_and_swaps_on_the_hash_it_read(users_db, monkeypatch):
+    """PR #39 review: a password change that commits between the reset's read and its
+    UPDATE is never overwritten blindly. The reset re-reads the account and revokes
+    the fingerprint of the hash it actually replaced."""
+    first, reset_to = new_password(), new_password()
+    await add_user(users_db, "ops", first)
+    first_hash = (await user_row(users_db, "ops")).hashed_password
+    intervening_hash = security.hash_password(new_password())
+    async with users_db.sessionmaker() as session:
+        repo = UserRepository(db_session=session)
+        real_execute = session.execute
+        injected = {"done": False}
+
+        async def execute(statement, params=None, *args, **kwargs):
+            if not injected["done"] and "UPDATE users SET hashed_password" in str(statement):
+                injected["done"] = True
+                # Another request changes the password after the reset read the row.
+                await real_execute(text("UPDATE users SET hashed_password = :h WHERE username = 'ops'"),
+                                   {"h": intervening_hash})
+                await session.commit()
+            return await real_execute(statement, params, *args, **kwargs)
+
+        monkeypatch.setattr(session, "execute", execute)
+        assert await repo.set_password("ops", reset_to) is True
+
+    assert injected["done"]
+    assert security.verify_password(reset_to, (await user_row(users_db, "ops")).hashed_password)
+    assert await security.is_token_blacklisted(
+        "probe", fingerprint=security.credential_fingerprint("ops", intervening_hash))
+    assert first_hash != intervening_hash
+
+
 async def login_after_unlock(db, username, password):
     """Log in once (clearing the seeded lock first), then re-apply the lock."""
     row = await user_row(db, username)
@@ -716,6 +748,17 @@ async def test_blacklist_startup_log_omits_the_redis_password(monkeypatch):
     assert "redis://redis:6379/0" in text_logged and sentinel not in text_logged
     url, kwargs = built[0]
     assert kwargs["socket_timeout"] == kwargs["socket_connect_timeout"] == 1.0
+
+
+@pytest.mark.parametrize("scheme", ["Bearer", "bearer", "BEARER", "BeArEr"])
+def test_bearer_redaction_ignores_the_scheme_case(scheme):
+    """PR #39 review: HTTP auth schemes are case-insensitive, so the fast-path
+    trigger must not let an upper- or mixed-case scheme skip redaction."""
+    from backend.utils.log_redaction import MASK, redact_credentials
+
+    token = "tok" + secrets.token_hex(16)  # no '=', '"' or '://' in the line
+    redacted = redact_credentials(f"authorization header {scheme} {token} received")
+    assert token not in redacted and MASK in redacted
 
 
 def test_log_scrubber_masks_credentials_in_urls():
