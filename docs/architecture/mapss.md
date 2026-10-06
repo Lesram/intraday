@@ -4,6 +4,32 @@
 
 ---
 
+## Candidate surface regime isolation (audit 2026-10-05 C09-01) — NOT deployed
+
+Stacked on the exit-safety fixes below. Frozen decision source change:
+`source_hashes.regime_detector` (the `RegimeDetector` class); the one changed
+line in `_live_tick_inner` falls in `source_hashes.entry_gates_dispatch`, which
+the exit-safety fixes already change. Marsel signed off on the frozen-code fixes
+on 2026-10-05; this takes effect only through a new activation. No strategy
+parameter, threshold, feed, sizing or entry change. Details: §6, "Routed Label
+and Detector State".
+
+- **Detector state cannot leak into later labels.** The SPY-only fallback
+  calls `detect_isolated()`, and the per-ETF loop of
+  `detect_cross_asset_regime` restores the running state in a `finally`
+  (review follow-up), so neither a SPY-only tick nor a per-ETF `detect()` that
+  raises can leave a prior in the shared detector. Labels change only after
+  such a tick: the SPY-only tick's own label is unchanged, later ticks no
+  longer follow its prior, and consecutive SPY-only ticks (a multi-tick
+  XLK/XLE outage) no longer blend tick to tick (measured label impact nil).
+  Without a SPY-only tick or a raising `detect()`, every label is unchanged.
+- **Release note, before activation:** confirm that the host's
+  `organism_brain/regime_state.json` has empty `smoothed_probs` and `history`.
+  This release does not clear a prior that is already persisted:
+  `OrganismBrain.apply_regime_state` would restore it and every routed label
+  would keep blending it (the startup guard is a follow-up). After activation,
+  the first tick must not log `REGIME PRIOR TRIPWIRE`.
+
 ## Candidate surface exit-safety fixes (audit 2026-10-05) — NOT deployed
 
 Stacked on the outbox exit guard below (PR #36). Frozen decision sources change:
@@ -853,19 +879,34 @@ DETECT REGIME (only if features sufficient)
 
 - Every per-symbol and per-ETF `detect()` inside the cross-asset and
   market-aggregate paths starts from the detector's running prior
-  (`_smoothed_probs`) and the prior is restored afterwards. In production that
-  prior is empty, so the routed label is the plain argmax of the averaged
-  single-shot probabilities, then sector-breadth conditioning: the EMA
-  (α=0.3) and the DD2-4 hysteresis band (0.05) do not carry across ticks. The
-  forward verdict is measured on this behaviour; aggregate smoothing would be a
-  strategy change.
+  (`_smoothed_probs`) and the prior is restored afterwards, in a `finally`, so
+  also when a `detect()` raises. In production that prior is empty, so the
+  routed label is the plain argmax of the averaged single-shot probabilities,
+  then sector-breadth conditioning: the EMA (α=0.3) and the DD2-4 hysteresis
+  band (0.05) do not carry across ticks. The forward verdict is measured on this
+  behaviour; aggregate smoothing would be a strategy change.
 - Audit 2026-10-05 C09-01: the SPY-only fallback used to leave its SPY vector
   in the shared detector, which then pinned every later routed label and was
   persisted to `regime_state.json`. It now calls
-  `RegimeDetector.detect_isolated()`, which restores the running state. A
-  consequence outside production: in a universe with no sector ETF (every tick
-  takes the SPY-only branch, e.g. the replay-simulator test universes),
-  consecutive SPY labels are no longer EMA-smoothed tick to tick.
+  `RegimeDetector.detect_isolated()`, which restores the running state. Side
+  effect: consecutive SPY-only ticks are no longer EMA-smoothed tick to tick.
+  That also applies in production, during a multi-tick XLK/XLE outage or if
+  XLK/XLE are dropped from `ORGANISM_LIVE_SYMBOLS` (C09-07), not only in a
+  universe with no sector ETF (every tick takes the SPY-only branch, e.g. the
+  replay-simulator test universes). Measured label impact on real 1-minute
+  bars at production cadence (about 4 ticks per bar): nil, 0 of 1,180 ticks in
+  28 outage windows of 1 to 200 ticks and 0 of 18,672 ticks with no sector ETF
+  (at a coarser 5-minute step, 15 of 4,697 labels differ).
+- C09-01 review follow-up: the per-ETF loop in `detect_cross_asset_regime`
+  used to restore `_smoothed_probs`, `_history` and `_last_state` only after
+  the loop, so a per-ETF `detect()` that raised after smoothing left its prior
+  in the detector, where it pinned every later routed label. The loop now
+  restores them in a `finally`, like `detect_market_regime`. Ticks without an
+  exception are unchanged: the review replay rerun on real 1-minute bars (61
+  sessions) with and without the `finally` gives identical labels,
+  probabilities, confidence, churn and detector state (persisted state
+  included) on all 4,697 cross-asset ticks and in the outage, market-path and
+  no-sector scenarios.
 - Tripwire: after each tick, `live_tick` logs `REGIME PRIOR TRIPWIRE` at
   CRITICAL (once per process) if `_smoothed_probs` or `_history` is non-empty,
   e.g. an old `regime_state.json` restored at startup (a startup guard in

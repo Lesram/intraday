@@ -625,16 +625,21 @@ class RegimeDetector:
         saved_probs = dict(self._smoothed_probs) if self._smoothed_probs is not None else {}
         saved_history = list(self._history)
         saved_last = self._last_state
-        for etf, feat_df in sector_features.items():
-            if feat_df is not None and len(feat_df) >= 10:
-                # Restore pristine state before each detect to prevent cross-contamination
-                self._smoothed_probs = dict(saved_probs)
-                self._history = list(saved_history)
-                sr = self.detect(feat_df)
-                sector_regimes.append(sr)
-        self._smoothed_probs = saved_probs
-        self._history = saved_history
-        self._last_state = saved_last
+        try:
+            for etf, feat_df in sector_features.items():
+                if feat_df is not None and len(feat_df) >= 10:
+                    # Restore pristine state before each detect to prevent cross-contamination
+                    self._smoothed_probs = dict(saved_probs)
+                    self._history = list(saved_history)
+                    sr = self.detect(feat_df)
+                    sector_regimes.append(sr)
+        finally:
+            # Audit 2026-10-05 (C09-01 review): restore even if a per-ETF
+            # detect() raises after writing its prior, as detect_market_regime
+            # and detect_isolated do, so the prior cannot pin later labels.
+            self._smoothed_probs = saved_probs
+            self._history = saved_history
+            self._last_state = saved_last
 
         if not sector_regimes:
             return base

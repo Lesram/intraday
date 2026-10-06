@@ -22,6 +22,11 @@ unchanged; nothing is left behind for later ticks. Unhashed observability:
 (``_last_regime``), and a CRITICAL tripwire logs once if the main detector's
 prior is ever non-empty.
 
+Review follow-up (same hazard class, pre-existing): the per-ETF loop in
+``detect_cross_asset_regime`` restored the running state only after the loop, so
+a per-ETF ``detect()`` that raised after smoothing left its prior behind. It now
+restores ``_smoothed_probs``, ``_history`` and ``_last_state`` in a ``finally``.
+
 The engine runs the REAL ``_live_tick_inner`` with the REAL RegimeDetector;
 only external services (broker, data fetch, brain save) are faked.
 """
@@ -289,6 +294,78 @@ def test_the_tick_never_calls_stateful_detect_on_the_shared_detector():
     start = src.index("elif spy_features is not None and len(spy_features) >= 10:")
     branch = src[start:src.index("else:", start)]
     assert "self.regime_detector.detect_isolated(spy_features)" in branch
+
+
+# ── review follow-up: the cross-asset sector loop restores state on failure ──
+# A cross-asset tick (both sector ETFs usable) whose XLK reads high_vol.
+SECTOR_FAILURE_TICK = {"SPY": "quiet", "MSFT": "quiet", "GOOGL": "quiet",
+                       "XLK": "high_vol", "XLE": "quiet"}
+
+
+def fail_late_in_sector_loop(mp: pytest.MonkeyPatch, detector, nth_sector: int) -> list[str]:
+    """Make the nth per-ETF detect() of detect_cross_asset_regime's sector loop
+    raise after it wrote the prior and appended its history (_compute_churn runs
+    after both). Per-symbol detects in detect_market_regime are left alone.
+    Returns the sector-loop calls seen so the test can check the failure fired."""
+    real = detector._compute_churn
+    seen: list[str] = []
+
+    def flaky():
+        caller = inspect.currentframe().f_back.f_back.f_code.co_name  # flaky <- detect <- caller
+        if caller == "detect_cross_asset_regime":
+            seen.append(caller)
+            if len(seen) == nth_sector:
+                raise ValueError("late failure inside a sector detect")
+        return real()
+
+    mp.setattr(detector, "_compute_churn", flaky)
+    return seen
+
+
+@pytest.mark.parametrize("nth_sector", [1, 2], ids=["first_sector_XLK", "last_sector_XLE"])
+def test_cross_asset_sector_loop_restores_state_when_a_detect_fails_late(monkeypatch, nth_sector):
+    """Same hazard class as C09-01 (reviewer probe rv_cross_exc.py): the sector
+    loop had no finally, so a per-ETF detect() that raised after smoothing left
+    its prior, history and _last_state in the shared detector, and every later
+    routed label followed that prior. It now restores them like the other paths."""
+    detector = new_detector()
+    with monkeypatch.context() as mp:
+        seen = fail_late_in_sector_loop(mp, detector, nth_sector)
+        with pytest.raises(ValueError, match="late failure"):
+            cross_asset(detector, frames(SECTOR_FAILURE_TICK))
+    assert len(seen) == nth_sector
+
+    assert detector._smoothed_probs == {}
+    assert detector._history == []
+    # _last_state is this tick's market-aggregate state, as the sector loop found it.
+    assert detector._last_state.features_used == {"symbols_aggregated": len(SECTOR_FAILURE_TICK)}
+    later = [cross_asset(detector, frames(kinds)).primary for kinds in SEQUENCE]
+    assert later == SEQUENCE_LABELS
+    assert detector._smoothed_probs == {} and detector._history == []
+
+
+async def test_failed_sector_detect_in_the_tick_leaves_no_prior(tmp_path, monkeypatch, caplog):
+    """The real tick: its handler records the failure, the shared detector keeps
+    no prior (the tripwire stays silent) and later routed labels are the clean ones."""
+    engine, clock = make_engine(tmp_path)
+    detector = engine.regime_detector
+    clock["now"] = NOW + timedelta(seconds=CYCLE_S)
+    engine._fetch_and_compute_features = AsyncMock(
+        return_value=frames(SECTOR_FAILURE_TICK, clock["now"]))
+    with caplog.at_level(logging.CRITICAL):
+        with monkeypatch.context() as mp, \
+             patch("backend.organism.live_engine.LONG_ONLY", True):
+            seen = fail_late_in_sector_loop(mp, detector, 2)  # the XLE detect
+            result = await engine.live_tick()
+        assert len(seen) == 2
+        assert any("late failure inside a sector detect" in e for e in result.errors)
+        assert detector._smoothed_probs == {} and detector._history == []
+        labels = []
+        for i, kinds in enumerate(SEQUENCE, start=2):
+            await tick(engine, clock, i, kinds)
+            labels.append(engine._last_regime)
+    assert labels == SEQUENCE_LABELS
+    assert tripwire_records(caplog) == []
 
 
 # ── observability: the routed label, not the detector's frozen 'unknown' ─────
