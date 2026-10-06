@@ -1,7 +1,7 @@
 {
-  "status": "fail",
-  "passed": 27,
-  "failed": 1,
+  "status": "pass",
+  "passed": 28,
+  "failed": 0,
   "errors": 0,
   "skipped": 0,
   "total": 28,
@@ -96,7 +96,7 @@
     },
     {
       "name": "test_replay_intraday_timeframe_uses_tight_stops",
-      "status": "failed"
+      "status": "passed"
     },
     {
       "name": "test_bar_provider_lookback_200_gives_more_ticks",
@@ -119,10 +119,10 @@
       "status": "passed"
     }
   ],
-  "exit_code": 1,
+  "exit_code": 0,
   "timed_out": false,
-  "error": "pytest exited with code 1",
+  "error": "",
   "output_file": "artifacts/replay_simulator.log",
-  "output_tail": "_df_trends\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_lookback_200_gives_more_ticks\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_returns_correct_window\n0.00s teardown tests/test_replay_simulator.py::test_replay_engine_custom_lookback\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_current_price\n0.00s teardown tests/test_replay_simulator.py::test_make_features_dict\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_exhaustion\n=========================== short test summary info ============================\nFAILED tests/test_replay_simulator.py::test_replay_intraday_timeframe_uses_tight_stops - Failed: Timeout (>180.0s) from pytest-timeout.\n============= 1 failed, 27 passed, 1 warning in 1086.26s (0:18:06) =============\n",
+  "output_tail": "haustion\n0.00s teardown tests/test_replay_simulator.py::test_make_features_dict\n0.00s setup    tests/test_replay_simulator.py::test_bar_provider_current_price\n0.00s setup    tests/test_replay_simulator.py::test_bar_provider_advances_correctly\n0.00s teardown tests/test_replay_simulator.py::test_replay_engine_daily_default_lookback\n0.00s call     tests/test_replay_simulator.py::test_replay_result_metrics\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_advances_correctly\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_current_price\n0.00s teardown tests/test_replay_simulator.py::test_bar_provider_exhaustion\n0.00s teardown tests/test_replay_simulator.py::test_replay_result_metrics\n================== 28 passed, 1 warning in 585.42s (0:09:45) ===================\n",
   "junit_file": "artifacts/replay_simulator.junit.xml"
 }

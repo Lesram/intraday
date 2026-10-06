@@ -1,8 +1,8 @@
 # Live Audit Index
 
-Generated: 2026-10-06T17:53:21Z
+Generated: 2026-10-06T19:58:12Z
 PR: n/a
-SHA: `237d3413c8`
+SHA: `f8b0c5fc54`
 Branch: `fix/brain-crash-safety`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)

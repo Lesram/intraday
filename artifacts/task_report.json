@@ -1,7 +1,7 @@
 {
-  "task_id": "audit-20261005-brain-crash-safety",
+  "task_id": "evidence-repair",
   "summary": "Audit 2026-10-05 C12 brain crash safety, with both independent reviews and the Copilot review addressed: journaled full-save swap rolled forward after a crash only while HEAD holds no newer state (only brain-owned files count: foreign files such as .DS_Store are ignored and never deleted; a timestamp sentinel blocks the roll-forward only where checksums cannot decide); a stale journal is retired with a forensic copy, HEAD kept and a durable .full_save_required marker written until a full save commits; a missing file that HEAD held before the swap falls back to the newest complete backup; a generation rolled forward after a backup fallback is copied into backups/ before any save replaces it; generation inventory rejects missing, unsigned or torn listed files (backup fallback); after a fallback the engine takes a full save and never backs up or essential-saves into a rejected HEAD; ml_state.json written once per save; essential saves report OSError and never publish an ensemble under the research lock; standalone exit-level write settles a pending journal and is skipped when it cannot; read-only unsigned-pickle pre-deploy check (symlinked pickles are errors); trained-overwrite guard; unsigned pickles never deserialized; saves that did not happen are reported; renames fsynced",
-  "sha": "237d3413c843902626e296e96b9713b01ef8ded2",
+  "sha": "f8b0c5fc54697f42b45566c10a77a2caa19587f1",
   "branch": "fix/brain-crash-safety",
   "change_scope": "base",
   "change_ref": "6a56d753...HEAD",
@@ -45,32 +45,19 @@
     "python scripts/runtime/write_runtime_snapshot.py",
     "python scripts/ci/generate_artifacts.py full",
     "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
-    "python scripts/ci/check_spec_drift.py --json",
-    "pytest -q -p no:cacheprovider tests/test_audit_20261005_brain_crash_safety.py tests/test_apr8_patch_e_trained_state_guard.py",
-    "pytest -q -p no:cacheprovider <62 test files importing or naming brain_persistence|secure_pickle|model_fingerprint|ensemble_models|close_accounting, the reviewer's _save_brain/force_save_brain set and test_remediation_wave_b (standalone exit-level write); includes tests/test_audit_20260930_safety_release.py>",
-    "second-review probes rerun against 237d3413: probes/probe_{a,b,b2,c,c2,c3,e,f,h,i,j}*.py and probes_g/probe_g2_rf_repickle.py (pre-fix tree ee023515 for a/c/c2/c3/i)",
-    "mutation run on a git-archive copy of 237d3413 (C12 test file, fork crash matrices deselected, -x): 2 second-review survivors + 14 mutants of the new behaviour",
-    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json python scripts/phase2_freeze.py --verify --candidate"
+    "python scripts/ci/check_spec_drift.py --json"
   ],
   "tests_passed": [
+    "organism_live_engine",
+    "organism_engine_scenarios",
     "multi_tick_state",
     "safety_invariants",
     "self_evolution",
     "algorithm_improvements",
     "semantic_invariants",
-    "test_audit_20261005_brain_crash_safety + test_apr8_patch_e_trained_state_guard (72 passed, 0 skipped: production-copy and pre-fix ee023515 tests ran)",
-    "62 brain-related test files incl. test_audit_20260930_safety_release: 1238 passed, 17 skipped (conditional skip markers), 0 failed",
-    "second-review probes: H0/H1/H1b/H2 roll forward to the complete generation (foreign .DS_Store kept); H3 falls back to the gen-5 backup (evolved_params not empty); H4 kept with a second forensic copy; I rolls forward (classification empty); J copies generation 7 into backups/ before the forced full save; A/B/B2/C/C2/C3/F/G2 as in the review; E essential 0.272 s (18 fsyncs), full 1.003 s (48 fsyncs)",
-    "mutation run (C12 test file, fork crash matrices deselected, -x, git-archive copy of 237d3413): control 57 passed / 4 skipped; 16/16 mutants killed - M1 delete-check dropped (test_delete_listed_file_changed_after_the_crash_is_kept), M2 incomplete before stale (test_stale_journal_without_its_staging_dir_keeps_head), missing-after-stale, timestamp always/never stale, foreign files counted, swap deletes foreign files, no copy at roll-forward, save ignores the owed copy, no unbacked flag, no marker write, marker ignored, marker never cleared, standalone write not aborted, ensemble published under the lock, symlink skipped",
-    "test_organism_engine_scenarios standalone (no generator suite budget): 31 passed in 238 s",
-    "test_replay_simulator.py::test_replay_no_throttle_blocking standalone with -p no:timeout: passed in 173 s",
-    "test_organism_live_engine (incl. TestMultiRunRegression::test_brain_persistence_across_runs) in the 62-file batch without a per-test timeout: passed"
-  ],
-  "tests_failed": [
-    "organism_live_engine",
-    "organism_engine_scenarios",
     "replay_simulator"
   ],
+  "tests_failed": [],
   "runtime_behavior_changed": [
     "backend/api/lifespan.py",
     "backend/organism/brain_persistence.py",
@@ -96,15 +83,14 @@
     "Known limit 'startup lock timeout' (PR description): load still proceeds without the brain lock after 20 s and runs on the newest backup while a journal is pending. The interrupted generation is now copied into backups/ before any save replaces it, but restoring it is a manual decision; consider waiting longer or retrying once before that fallback when a journal is present.",
     "Second review P3 (live_engine._save_brain): when full_save_required() is set and the forced full save fails, the cycle persists nothing; fall back to save_essential_state in the same cycle when brain._head_rejection_reason() is None (a HEAD kept over a stale journal, or a journal that can be settled).",
     "Second review test gap: a behavioural test for the path where _loaded_from is the only rejection signal (fallback from a HEAD without an inventory, e.g. an unsigned main model, then a refused essential save and a gated full save); mutant M3 is still killed only by a message assertion.",
-    "Optional docs (second review): mapss sections 15/48 still say 'IF gate rejects -> DO NOT SAVE'; describe the journaled swap, inventory rejection, the full-save triggers and .full_save_required. No trading invariant changed, so AGENTS.md does not require it."
+    "Optional docs (second review): mapss sections 15/48 still say 'IF gate rejects -> DO NOT SAVE'; describe the journaled swap, inventory rejection, the full-save triggers and .full_save_required. No trading invariant changed, so AGENTS.md does not require it.",
+    "Third review (P3) R3-1: the .full_save_required marker write is best effort; if it fails (disk full, I/O error) the stale journal is still retired and a restart no longer requests the full save. Retry the marker write while the requirement exists only in memory, or keep the journal in that case.",
+    "Third review (P3) R3-2: after a busy-lock backup fallback where the immediate backup copy fails, resolve_pending_swap() still returns True, so the standalone exit-level write can overwrite the rolled-forward generation's extra_counters before save() copies it. Return False while the copy is owed.",
+    "Third review (P3) R3-3: while the owed copy keeps failing nothing persists and the engine message blames 'lock held or guard blocked'; bound or name the cause, and document that essential saves are refused too.",
+    "Third review (P3) R3-4: add kill tests for retiring a stale journal and for R3-1/R3-2; fix one misleading test docstring; move two test-only helpers out of production code.",
+    "Third review (P3) R3-5: runbook rollback step 3 should also check that .full_save_required is gone."
   ],
-  "artifact_pack_status": "fail",
-  "artifact_pack_errors": [
-    "test_summary.json: required check failed",
-    "replay_summary.json: required check failed"
-  ],
-  "timing_ab": "Same machine, same moment, 5acf6bef vs 237d3413: test_replay_with_crash_data 127.8 s vs 123.7 s, test_brain_persistence_across_runs 50.3 s vs 50.7 s. On 2026-10-05 (5acf6bef artifact pack) the same tests took 47.1 s and 19.7 s, organism_engine_scenarios 148 s, test_replay_no_throttle_blocking 112.9 s: this runner is about 1.6-2x slower today, independent of the change.",
-  "artifact_pack_note": "artifact_pack_status is 'fail' only through the generator's fixed time budgets on today's slower runner (two full runs, same outcome class): organism_engine_scenarios exceeded the 180 s suite budget (31/31 pass standalone in 238 s); TestMultiRunRegression::test_brain_persistence_across_runs exceeded the 30 s per-test timeout (30.8 s; 19.7 s on 2026-10-05; passes without the limit); one replay test exceeded its 180 s marker timeout, a different one per run (run 1 test_replay_no_throttle_blocking, run 2 test_replay_intraday_timeframe_uses_tight_stops; each passed in the other run, 27/28 per run; the first also passes standalone without the limit in 173 s). No assertion failed anywhere; grep assertions, runtime snapshot, semantic invariants (20/20) and spec drift (0) pass. Regenerate the pack on a faster runner (or in CI) before merge if a 'pass' status is required.",
+  "artifact_pack_status": "pass",
   "tests_updated": [
     "test_timestamp_sentinel_next_to_a_journal_blocks_the_roll_forward -> test_timestamp_sentinel_next_to_a_journal_alone_does_not_block_the_roll_forward: it asserted the mixed HEAD (second review P2); it now asserts the roll-forward, plus the H2 case (timestamp already in HEAD, crash before its unlink).",
     "test_changed_ensemble_is_written_atomically_by_the_essential_save -> test_changed_ensemble_is_published_by_the_essential_save_when_models_are_not_frozen, and test_partially_serializable_changed_ensemble_never_reaches_head: both now switch the research lock off explicitly (Copilot review: essential saves never publish an ensemble under the lock).",
@@ -113,5 +99,7 @@
   "freeze_verify": {
     "candidate": "pass (exit 0): CANDIDATE DRIFT-VERIFY OK: decision surface matches reference (boundary=2026-10-01T17:38:43.379848+00:00; read-only)",
     "hashed_sources": "none changed; _persist_exit_levels_standalone (changed) is not hashed, _persist_daily_loss_state (hashed) is untouched"
-  }
+  },
+  "timing_ab": "Same machine, same moment, 5acf6bef vs 237d3413: test_replay_with_crash_data 127.8 s vs 123.7 s, test_brain_persistence_across_runs 50.3 s vs 50.7 s. On 2026-10-05 (5acf6bef artifact pack) the same tests took 47.1 s and 19.7 s, organism_engine_scenarios 148 s, test_replay_no_throttle_blocking 112.9 s: this runner is about 1.6-2x slower today, independent of the change.",
+  "artifact_pack_regenerated": "Regenerated on an idle runner at f8b0c5fc (2026-10-06): status pass, all suites green, replay 28/28; the earlier fail was time budgets only (independent review pr-brain3)."
 }
