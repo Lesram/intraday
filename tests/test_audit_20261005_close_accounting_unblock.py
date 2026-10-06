@@ -637,6 +637,60 @@ async def test_deferred_close_is_untouched_and_retryable_on_every_ingress(db, mo
     assert [(x.qty, x.realized_pnl) for x in realized] == [(6, 6)]
 
 
+async def test_close_deferred_for_about_a_session_pages_once(db, monkeypatch):
+    """Review item: an in-scope opening recovery cannot settle (the broker
+    reports 'replaced') holds a broker-filled close until the opening is
+    LOT_ORDERING_MAX_AGE old. Each deferral is only a retry; once the close has
+    been deferred for about one trading session in this process it pages once
+    (CRITICAL), on whatever ingress, and the episode ends when it is applied."""
+    from backend.services import order_recovery_service as recovery
+
+    assert stream.LOT_DEFERRAL_ESCALATE_AFTER == timedelta(hours=6, minutes=30)
+    opened, closed, _ = now_rows()
+    entry = make_row("TSLA", "buy", 6, at=opened, status="accepted")
+    exit_ = make_row("TSLA", "sell", 6, at=closed, status="accepted")
+    await store(db, [entry, exit_])
+    start = datetime.now(UTC)
+    clock = [start]
+    monkeypatch.setattr(stream, "_deferral_now", lambda: clock[0])
+    monkeypatch.setattr(stream, "_deferred_closes", {})
+    log = MagicMock()
+    monkeypatch.setattr(stream, "logger", log)
+    stuck = {**broker_snapshot(entry, filled=0, price=100), "status": "replaced", "filled_avg_price": None}
+    snapshots = {exit_.broker_order_id: broker_snapshot(exit_, filled=6, price=101),
+                 entry.broker_order_id: stuck}
+    service = recovery.OrderRecoveryService()
+    fetch = AsyncMock(side_effect=lambda broker_id: snapshots[broker_id])
+    escalations = lambda: logged(log, "critical", "LOT ACCOUNTING DEFERRAL ESCALATED")  # noqa: E731
+    for elapsed in (timedelta(0), timedelta(hours=3), timedelta(hours=6, minutes=29)):
+        clock[0] = start + elapsed
+        result = await service.recover(db, fetch)
+        assert (result["errors"], result["reconciled"]) == (2, 0)  # opening invalid, close deferred
+    assert escalations() == [] and not log.critical.called
+    clock[0] = start + timedelta(hours=6, minutes=31)
+    await service.recover(db, fetch)
+    pages = escalations()
+    assert len(pages) == 1 and str(exit_.id) in pages[0].args and str(entry.id) in pages[0].args
+    assert pages[0].kwargs["deferred_since"] == start.isoformat()
+    # Once per close: a later pass and another ingress keep deferring silently.
+    clock[0] = start + timedelta(hours=30)
+    await service.recover(db, fetch)
+    with pytest.raises(stream.LotAccountingDeferred, match=str(entry.id)):
+        await via_stream(db, monkeypatch, exit_, snapshots[exit_.broker_order_id])
+    assert len(escalations()) == 1
+    order, executions, _, lots = await ledger(db, exit_)
+    assert (order.status, order.filled_qty, executions, lots) == ("accepted", 0, [], [])
+    # The opening resolves: the close is applied (recorded unmatched) and its episode ends.
+    snapshots[entry.broker_order_id] = {**stuck, "status": "canceled"}
+    for _ in range(2):
+        await service.recover(db, fetch)
+    order, executions, _, _ = await ledger(db, exit_)
+    assert (order.status, len(executions)) == ("filled", 1)
+    assert order.attributes["lot_accounting"]["status"] == "unmatched"
+    assert str(exit_.id) not in stream._deferred_closes
+    assert len(escalations()) == 1
+
+
 @pytest.mark.parametrize("opening", ["stale", "unacknowledged", "other_owner", "terminal"])
 async def test_openings_that_cannot_settle_do_not_hold_a_confirmed_close(db, opening):
     opened, closed, _ = now_rows()
@@ -816,6 +870,31 @@ def assert_netted_late(order, executions, realized, lots, entry, owner):
     assert [(x.open_order_id, x.user_id, x.qty, x.close_price, x.realized_pnl) for x in realized] == [
         (entry.id, owner, 6, 101, 6)]
     assert [(lot.order_id, lot.remaining_qty, lot.status) for lot in lots] == [(entry.id, 0, "closed")]
+
+
+async def test_startup_sync_nets_a_close_it_applied_before_its_opening(db, monkeypatch):
+    """Startup sync applies its whole page in one session (expire_on_commit=False).
+    Manual UI/API legs are outside recovery scope, so nothing defers the close.
+    The opening reached the broker after the close, so the oldest-first loop
+    applies the close first: it is recorded unmatched (and pages), then the
+    opening's lot is netted against it in the same session."""
+    from backend.api.lifespan import _sync_orders
+
+    opened, closed, _ = now_rows()
+    entry = make_row("TSLA", "buy", 6, at=opened, status="accepted", source=None, user="ops@example.com")
+    exit_ = make_row("TSLA", "sell", 6, at=closed, status="accepted", source=None, user="ops@example.com")
+    await store(db, [entry, exit_])
+    log = MagicMock()
+    monkeypatch.setattr(stream, "logger", log)
+    snaps = {exit_.broker_order_id: broker_snapshot(exit_, filled=6, price=101),
+             entry.broker_order_id: broker_snapshot(entry, filled=6, price=100)}
+    page = [snaps[entry.broker_order_id], snaps[exit_.broker_order_id]]  # newest first
+    await _sync_orders(real_startup_app(monkeypatch, db, page, snaps))
+    assert_netted_late(*await ledger(db, exit_), entry, "ops@example.com")
+    pages = logged(log, "critical", "LOT ACCOUNTING DISCREPANCY")
+    late = logged(log, "warning", "LOT ACCOUNTING LATE MATCH")
+    assert len(pages) == len(late) == 1
+    assert "startup_order_sync" in pages[0].args and "startup_order_sync" in late[0].args
 
 
 async def test_gap_fill_nets_a_close_recorded_after_it_loaded_its_orders(db, monkeypatch):
@@ -1000,6 +1079,38 @@ async def test_late_netting_is_partial_fifo_and_priced_at_the_unmatched_vwap(db)
             record["late_matches"]) == ("matched_late", "none", "0.000000", "4.000000", 2)
     assert sorted((x.qty, x.close_price, x.realized_pnl) for x in realized) == [(1, 51, 3), (3, 51, 6)]
     assert sorted((lot.qty, lot.remaining_qty, lot.status) for lot in lots) == [(1, 0, "closed"), (3, 0, "closed")]
+
+
+async def test_new_unmatched_leg_after_a_late_match_keeps_the_record_history(db):
+    """A close recorded unmatched, netted late, then filled further with no lot:
+    the record reopens (unmatched, repair required) but keeps its late-match
+    history and cumulative counts for the repair (review mutant MN10)."""
+    t = datetime.now(UTC) - timedelta(minutes=40)
+    first = make_row("TSLA", "buy", 2, at=t, status="accepted", broker=False)
+    second = make_row("TSLA", "buy", 2, at=t + timedelta(minutes=1), status="accepted", broker=False)
+    exit_ = make_row("TSLA", "sell", 4, at=t + timedelta(minutes=10), status="accepted")
+    await store(db, [first, second, exit_])
+
+    async def record():
+        return (await ledger(db, exit_))[0].attributes["lot_accounting"]
+
+    await apply_snapshot(db, exit_, filled=2, price=50, status="partially_filled")
+    await apply_snapshot(db, first, filled=2, price=48)
+    assert (await record())["status"] == "matched_late"
+    await apply_snapshot(db, exit_, filled=4, price=51)  # second leg: 2 @ 52, no open lot
+    reopened = await record()
+    assert (reopened["status"], reopened["repair"], reopened["unmatched_qty"],
+            reopened["unmatched_notional"], reopened["matched_qty"], reopened["events"]) == (
+        "unmatched", "required", "2.000000", "104.000000", "0.000000", 2)
+    assert (reopened["matched_late_qty"], reopened["late_matches"]) == ("2.000000", 1)
+    assert reopened["last_late_match"]["opening_order_id"] == str(first.id)
+    await apply_snapshot(db, second, filled=2, price=49)
+    final = await record()
+    assert (final["status"], final["repair"], final["unmatched_qty"], final["matched_late_qty"],
+            final["late_matches"], final["events"]) == ("matched_late", "none", "0.000000", "4.000000", 2, 2)
+    assert final["last_late_match"]["opening_order_id"] == str(second.id)
+    _, _, realized, _ = await ledger(db, exit_)
+    assert sorted((x.qty, x.close_price, x.realized_pnl) for x in realized) == [(2, 50, 4), (2, 52, 6)]
 
 
 async def test_late_netting_consumes_recorded_closes_in_submission_order(db):

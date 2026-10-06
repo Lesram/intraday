@@ -136,7 +136,7 @@ def _order_user_id(order: Any) -> str:
 #    it and at most LOT_ORDERING_GRACE earlier), so a restart after any outage
 #    shorter than LOT_ORDERING_MAX_AGE still applies both legs in order. The
 #    cap bounds how long a stuck opening row can keep a broker-confirmed close
-#    unpersisted.
+#    unpersisted; a close deferred for LOT_DEFERRAL_ESCALATE_AFTER pages once.
 # 2. Late netting. Otherwise the close is persisted and its deficit recorded
 #    in attributes.lot_accounting. An opening lot ingested later is netted
 #    against that record (_net_recorded_unmatched_closes), so an opening that
@@ -156,6 +156,8 @@ def _order_user_id(order: Any) -> str:
 # tracked); only manual UI/API orders can.
 LOT_ORDERING_GRACE = timedelta(days=5)
 LOT_ORDERING_MAX_AGE = timedelta(days=45)
+# About one regular NYSE session (09:30-16:00 ET).
+LOT_DEFERRAL_ESCALATE_AFTER = timedelta(hours=6, minutes=30)
 _LOT_QUANTUM = Decimal("0.000001")  # DECIMAL(18, 6), as the ledger columns
 
 
@@ -211,6 +213,52 @@ async def _unsettled_earlier_opening(
         if _owner(attributes, column_user_id) == user_id:
             return order_id
     return None
+
+
+# Process-local deferral episodes, keyed by close order id: like recovery's
+# cursor, a restart starts a new clock. An episode ends when the close passes
+# the deferral check, or after LOT_ORDERING_MAX_AGE (no opening can defer a
+# close for longer).
+_deferred_closes: dict[str, dict[str, Any]] = {}
+
+
+def _deferral_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _note_close_deferral(
+    *,
+    close_order_id: Any,
+    pending_open: Any,
+    user_id: str,
+    symbol: str,
+    position_side: str,
+    qty_to_close: Decimal,
+) -> None:
+    """Page once (CRITICAL) when a broker-filled close stays deferred too long.
+
+    Each deferral is otherwise only a retry (a WARNING per recovery pass, the
+    stream's DLQ record). An opening that recovery cannot settle (a 'replaced'
+    or unknown broker status, a failed lookup) or that keeps working (a resting
+    GTC limit) holds the close until that opening is LOT_ORDERING_MAX_AGE old,
+    so the episode escalates after LOT_DEFERRAL_ESCALATE_AFTER instead.
+    """
+    now = _deferral_now()
+    for key in [k for k, v in _deferred_closes.items() if now - v["since"] > LOT_ORDERING_MAX_AGE]:
+        del _deferred_closes[key]
+    episode = _deferred_closes.setdefault(str(close_order_id), {"since": now, "escalated": False})
+    deferred_for = now - episode["since"]
+    if episode["escalated"] or deferred_for < LOT_DEFERRAL_ESCALATE_AFTER:
+        return
+    episode["escalated"] = True
+    logger.critical(
+        "LOT ACCOUNTING DEFERRAL ESCALATED: the broker-confirmed fill of close order %s "
+        "(%s %s, %s, owner %s) has been deferred for %.1f h behind unresolved opening "
+        "order %s and stays unpersisted until that opening settles or is %d days old",
+        str(close_order_id), str(qty_to_close), symbol, position_side, user_id,
+        deferred_for.total_seconds() / 3600, str(pending_open), LOT_ORDERING_MAX_AGE.days,
+        deferred_since=episode["since"].isoformat(),
+    )
 
 
 def _realized_trade(
@@ -316,11 +364,20 @@ async def _close_position_lots_fifo(
             open_side=open_side,
         )
         if pending_open is not None:
+            _note_close_deferral(
+                close_order_id=close_order_id,
+                pending_open=pending_open,
+                user_id=user_id,
+                symbol=symbol,
+                position_side=position_side,
+                qty_to_close=qty_to_close,
+            )
             raise LotAccountingDeferred(
                 f"Close of {qty_to_close} {symbol} for {user_id} deferred: "
                 f"{total_available} open {position_side} lots while earlier "
                 f"opening order {pending_open} is unresolved"
             )
+    _deferred_closes.pop(str(close_order_id), None)
 
     remaining_to_close = qty_to_close
     realized_trades = []
