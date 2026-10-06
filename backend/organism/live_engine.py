@@ -2460,6 +2460,46 @@ class OrganismLiveEngine(
                             self._last_pipeline_diagnostics, sort_keys=True, allow_nan=False))
                     except Exception:
                         logger.warning("Pipeline diagnostics unavailable")
+                # Audit 2026-10-05 C09-01: log-only tripwire, outside the
+                # hashed tick; it never raises into the tick.
+                self._check_regime_prior_tripwire()
+
+    def _check_regime_prior_tripwire(self) -> None:
+        """Log CRITICAL once if the main regime detector carries a prior.
+
+        Audit 2026-10-05 C09-01. Every per-symbol and per-ETF detect behind the
+        routed label starts from ``regime_detector._smoothed_probs`` and the
+        aggregate paths put it back afterwards, so in production that prior
+        and ``_history`` must stay empty: the routed label is the plain argmax
+        of single-shot probabilities, as the forward sample was measured. A
+        non-empty prior (a restored brain, or any caller of ``detect()`` on the
+        shared detector) is blended into every later label and never decays.
+        Observability only: no decision reads this, and it never raises.
+        """
+        if getattr(self, "_regime_prior_tripwire_fired", False):
+            return
+        try:
+            detector = getattr(self, "regime_detector", None)
+            probs = getattr(detector, "_smoothed_probs", None)
+            history = getattr(detector, "_history", None)
+            has_probs = isinstance(probs, dict) and bool(probs)
+            has_history = isinstance(history, list) and bool(history)
+            if not (has_probs or has_history):
+                return
+            shown_probs = dict(probs) if has_probs else {}
+            history_len = len(history) if has_history else 0
+            last_label = history[-1] if has_history else None
+            self._regime_prior_tripwire_fired = True
+            logger.critical(
+                "REGIME PRIOR TRIPWIRE (audit 2026-10-05 C09-01): the live regime "
+                "detector's running state is not empty (smoothed_probs=%s, history_len=%d, "
+                "last=%s). A non-empty smoothed_probs is blended into every per-symbol "
+                "detect behind the routed label and never decays; both are saved to "
+                "regime_state.json and restored at startup. Logged once per process.",
+                shown_probs, history_len, last_label,
+            )
+        except Exception:  # noqa: BLE001 - observability must never break a tick
+            logger.debug("Regime prior tripwire check failed", exc_info=True)
 
     # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted helper.
     # The full pipeline-split of `_live_tick_inner` is multi-day
@@ -3463,7 +3503,7 @@ class OrganismLiveEngine(
                         features_by_symbol, sector_features=sector_features,
                     )
                 elif spy_features is not None and len(spy_features) >= 10:
-                    regime_state = self.regime_detector.detect(spy_features)
+                    regime_state = self.regime_detector.detect_isolated(spy_features)  # C09-01
                 else:
                     regime_state = self.regime_detector.detect_market_regime(
                         features_by_symbol
@@ -8410,9 +8450,11 @@ class OrganismLiveEngine(
             # Phase 4.7 — Record run into transfer knowledge
             try:
                 fi = self.signal_gen._get_feature_importance()
-                current_regime = self.regime_detector.current_regime
-                if current_regime == RegimeLabel.UNKNOWN:
-                    current_regime = "unknown"
+                # Audit 2026-10-05 C09-01: record the regime the last tick
+                # routed; the detector's current_regime is always 'unknown'.
+                current_regime = str(
+                    getattr(self, "_last_regime", RegimeLabel.UNKNOWN) or RegimeLabel.UNKNOWN
+                )
                 self.transfer_engine.record_run(
                     evolved_params=self.evolved_params,
                     trades=self._all_trades[-200:],
@@ -8946,7 +8988,12 @@ class OrganismLiveEngine(
             "ml_accuracy": round(ml_accuracy, 4),
             "ml_trained": self.signal_gen.is_trained,
             "training_history": training_history,
-            "regime": self.regime_detector.current_regime,
+            # Audit 2026-10-05 C09-01: the label the last tick routed. The
+            # detector's current_regime never advances on the aggregate path,
+            # so it read 'unknown' forever.
+            "regime": str(
+                getattr(self, "_last_regime", RegimeLabel.UNKNOWN) or RegimeLabel.UNKNOWN
+            ),
             "shorts_enabled": self.evolved_params.shorts_enabled,
             "data_stale": self._data_stale,
             # Audit 2026-09-29 (MDP-05): per-symbol admission state.
