@@ -466,10 +466,18 @@ class OrdersRepo:
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def lock_recovery_order(self, order_id: uuid.UUID) -> Order | None:
-        """Recheck eligibility after network IO, serialized with fill ingestion."""
+        """Recheck eligibility after network IO, serialized with fill ingestion.
+
+        FOR NO KEY UPDATE, like every fill path's order lock: it serializes the
+        writers of this order without blocking the foreign-key checks of rows
+        that reference it (a concurrent close's RealizedTrade), which could
+        otherwise deadlock with this order's late netting.
+        """
         stmt = select(Order).where(Order.id == order_id, *self._recovery_scope())
         return (
-            await self.session.execute(stmt.with_for_update().execution_options(populate_existing=True))
+            await self.session.execute(
+                stmt.with_for_update(key_share=True).execution_options(populate_existing=True)
+            )
         ).scalar_one_or_none()
 
     async def get_active_orders(self, limit: int = 100) -> list[Order]:

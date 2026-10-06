@@ -4,6 +4,39 @@
 
 ---
 
+## Candidate close-accounting unblock (audit 2026-10-05) — NOT deployed
+
+Stacked on the outbox exit guard below (PR #36). Fill ingestion and close
+accounting only: no strategy parameter, feed, risk threshold, sizing policy,
+order submission or frozen-surface source changes
+(`scripts/phase2_freeze.py --verify --candidate` passes unchanged). The policy id
+stays `exact_position_fills_or_pending_v1` (the close-accounting checkpoint and
+the daily evidence check require it); the runtime snapshot reports the new
+rules in `close_accounting_holds` and `fill_lot_accounting`.
+
+- **Stale history no longer holds closes (C08-01).** An unresolved or `replaced`
+  order holds a lifetime's exact close accounting only while it could still
+  execute during it (§13). Old dead letters no longer gate a symbol for good.
+- **Broker-confirmed closes are persisted (C07-01).** A close fill with no, or
+  too few, owner lots commits its status, quantity, price, execution and the
+  lots that match; the remainder is recorded in `orders.attributes.lot_accounting`
+  and pages once (CRITICAL) after the commit on all five ingress paths. Closes
+  that outran their opening are deferred or netted later (§51): the two legs of
+  one round trip converge in either order and after any delay between them, and
+  concurrent ingestion of both legs on two paths is serialized by row locks. A
+  close deferred for about one session (6.5 h) pages once.
+- **Assumptions and limits.** Legs are ordered by submission time (broker fill
+  times are not ingested) and at most 5 days apart. Two round trips of one
+  owner and symbol applied out of order across lifetimes can still leave an
+  unmatched record and an open lot; the engine cannot produce that order, only
+  manual UI/API orders can. A never-acknowledged row is bounded by its
+  submission session, and a replaced DAY predecessor by its own session (the
+  successor is assumed to keep a session-bounded TIF). The flat-to-flat check
+  of the lifetime's own legs remains the backstop. Details and remaining
+  limits: `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md` (October 5 section).
+
+---
+
 ## Candidate outbox exit guard (audit 2026-10-05) — NOT deployed
 
 Stacked on the 2026-09-30 candidate below (PR #35). Order path only: no strategy
@@ -1495,6 +1528,21 @@ historical precision.
 Explicitly adopted orphans retain their non-strategy classification and may
 retain labeled approximate bookkeeping; they never become strategy evidence.
 No strategy rule, risk threshold, exploration path or frozen hash changes.
+
+**Which orders hold an exact close (candidate, audit 2026-10-05 C08-01).** Same
+policy id. An unresolved or `replaced` order, pre-entry ones included, holds the
+close only while it could still execute during the lifetime. Session-bounded
+TIFs (`SESSION_BOUNDED_TIFS`: DAY, IOC, FOK, OPG, CLS) and rows without a broker
+id end at 20:00 ET of their eligible NYSE session plus `SESSION_END_SLACK` (1 h).
+That session is the first trading day (holidays and early closes from
+`market_hours`) whose regular close is after the basis plus
+`SESSION_CUTOFF_SLACK` (5 min). The basis is `max(submitted_at, updated_at)` when
+acknowledged, `submitted_at` otherwise. Acknowledged GTC/unknown-TIF rows,
+in-lifetime rows and pre-entry fills touched after the entry hold as before.
+The hold reason names the row (`ambiguous_order:<id>` or
+`replacement_lineage_unverified`, one WARNING per new reason); the zero-fill
+cleanup scans orders submitted from the entry to `pending_close.observed_at`.
+Snapshot: `close_accounting_holds`.
 
 Replay uses its own executed-order adapter for the same conserved-cashflow
 contract; its outcomes carry `simulated_position_fills`, distinct from paper
@@ -3999,6 +4047,26 @@ MultiStrategyLiveScheduler (background asyncio task):
 - Supports partial lot closes
 - RealizedTrade records with `realized_pnl_percent` for tax reporting
 - Tax-loss harvesting support (wash-sale detection via realized trades)
+- Broker fill ingestion (`alpaca_stream.apply_incremental_fill_accounting`, all
+  five ingress paths) creates long lots through `create_lot()` (short lots
+  directly) and closes them with its own owner-scoped FIFO matcher. Candidate (audit 2026-10-05 C07-01): a
+  close with missing lots is persisted and its remainder recorded in
+  `orders.attributes.lot_accounting` (CRITICAL after commit). It is deferred
+  instead (`LotAccountingDeferred`) while a same-owner opening that
+  persisted-order recovery retries is unresolved, submitted at or before the
+  close and at most `LOT_ORDERING_GRACE` (5 days) before it and less than
+  `LOT_ORDERING_MAX_AGE` (45 days) old; a close still deferred
+  `LOT_DEFERRAL_ESCALATE_AFTER` (6.5 h) after its first deferral in the running
+  process pages once (CRITICAL `LOT ACCOUNTING DEFERRAL ESCALATED`). An opening
+  lot ingested after its close was recorded is netted FIFO against the owner's
+  unmatched closes submitted at or after it within the grace, at the close's
+  unmatched VWAP (record `matched_late`, WARNING after commit). The netting
+  locks every close-side order row of that window before reading records; all
+  fill paths lock order rows `FOR NO KEY UPDATE` and the close FIFO locks lot
+  rows only (`FOR UPDATE OF position_lots`), so concurrent ingestion of an
+  opening and its close serializes without deadlock. Not converged: two round
+  trips of one owner and symbol applied out of order across lifetimes (manual
+  UI/API orders only). Snapshot: `fill_lot_accounting`.
 
 **InstitutionalAnalytics** (`trade_analytics_service.py`):
 - Sharpe, Sortino, Calmar ratios (annualized, √252)
