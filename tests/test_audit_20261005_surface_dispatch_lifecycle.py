@@ -2,12 +2,16 @@
 
 C04-01: a dead-lettered order is recorded on its row in the dead-letter
 transaction; after a settle delay, and only while no other delivery of the order
-is pending, the outbox worker looks it up by its client key. A definitive 404
-finalizes the row ('rejected', or 'expired' for a refused entry) with the
-absence proof, and only that proof lets the engine's hashed pending-entry
-resolution (operator_cancellation) release the identity, never on the tick that
-registered it. C01-04: a stale or after-session entry is refused at dispatch
-and goes through the same lifecycle; exits never are.
+is pending, the outbox worker looks it up by its client key. Two of Alpaca's
+order-not-found answers, at least DEAD_LETTER_CONFIRM_SECONDS apart and with no
+other answer between them, finalize the row ('rejected', or 'expired' for a
+refused entry) with the absence proof, and only that proof lets the engine's
+hashed pending-entry resolution (operator_cancellation) release the identity,
+never on the tick that registered it. Any other 404 is not absence. C01-04: a
+stale or after-session entry is refused at dispatch and goes through the same
+lifecycle; exits never are. Review follow-ups: a fill on a finalized row pages,
+one failing row never stops the sweep, refusals are counted and page once per
+session above the threshold.
 
 Offline: SQLite with ck_orders_status enforced by triggers built from the
 migration's allowed set, and a fake broker client. The real OrderService,
@@ -23,6 +27,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import importlib.util
+import json
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -30,6 +35,7 @@ from unittest.mock import AsyncMock, MagicMock
 import uuid
 
 from fastapi import HTTPException
+import httpx
 import pytest
 import pytest_asyncio
 from sqlalchemy import select, text, update
@@ -43,8 +49,12 @@ from backend.infra.repositories.orders import OrdersRepo
 from backend.infra.schemas import (
     AuditLog, Execution, Order, OutboxEvent, Position, PositionLot, RealizedTrade,
 )
-from backend.integrations import alpaca_outbox
-from backend.integrations.alpaca_broker import BROKER_ACK_STATE_PREFIX, BrokerAcknowledgementUnresolved
+from backend.integrations import alpaca_outbox, alpaca_stream
+from backend.integrations.alpaca_broker import (
+    BROKER_ACK_STATE_PREFIX,
+    BrokerAcknowledgementUnresolved,
+    ClientOrderNotFoundUnconfirmed,
+)
 from backend.organism import operator_cancellation as cancellation
 from backend.organism.live_engine import OrganismLiveEngine
 from backend.organism.live_engine_fills import ACCOUNTABLE_TERMINAL_STATUSES
@@ -58,6 +68,17 @@ BROKER_ID = "0f6b8c1e-2d4a-4c5b-9e7f-8a9b0c1d2e3f"
 # Tuesday 2026-10-06 10:30 ET: inside a regular NYSE session.
 T0 = datetime(2026, 10, 6, 14, 30, tzinfo=UTC)
 SETTLED = timedelta(seconds=worker_mod.DEAD_LETTER_SETTLE_SECONDS + 1)
+CONFIRMED = timedelta(seconds=worker_mod.DEAD_LETTER_CONFIRM_SECONDS)
+# Alpaca's order-not-found answer to GET /v2/orders:by_client_order_id, as evidence.
+NOT_FOUND = {"http_status": 404, "code": 40410000, "message": "order not found for organism_test"}
+
+
+def endpoint_404():
+    """A 404 that is not Alpaca's order-not-found answer (an unknown route)."""
+    return ClientOrderNotFoundUnconfirmed(
+        "message_mismatch", {"http_status": 404, "body": '{"code":40410000,"message":"endpoint not found"}'})
+
+
 BREAKER_OPEN = HTTPException(503, "Alpaca broker circuit breaker OPEN — refusing to submit; "
                                   "will resume after cooldown.")
 BUSINESS_403 = HTTPException(403, 'Alpaca API error: {"code":40310000,"message":"insufficient buying power"}')
@@ -116,6 +137,11 @@ class FakeBroker:
         if callable(outcome):
             return await outcome(client_order_id)
         return outcome
+
+    async def lookup_order_by_client_order_id(self, client_order_id):
+        """The absence check's strict lookup: None in ``lookups`` is Alpaca's order-not-found answer."""
+        found = await self.find_order_by_client_order_id(client_order_id)
+        return (found, None) if found is not None else (None, dict(NOT_FOUND))
 
     async def get_position(self, symbol):
         self.calls.append(("position", symbol))
@@ -287,6 +313,16 @@ async def advance_ticks(engine, n=1):
         await engine._reconcile_pending_entry_orders()
 
 
+async def finalize(worker, wired, at=None):
+    """The absence check to its end: an order-not-found answer, then its confirmation."""
+    wired.state.now = at or T0 + SETTLED
+    [first] = await worker.resolve_dead_letters()
+    assert first["outcome"] == "absence_awaiting_confirmation"
+    wired.state.now += CONFIRMED
+    [outcome] = await worker.resolve_dead_letters()
+    return outcome
+
+
 # ── C04-01: a dead-lettered entry is finalized, proven absent and released ─────
 @pytest.mark.parametrize("failure,posts,reason", [
     (BREAKER_OPEN, 3, "retries_exhausted"),
@@ -318,14 +354,28 @@ async def test_dead_lettered_entry_is_finalized_proven_absent_released_and_trade
     assert await worker.resolve_dead_letters() == []  # within the settle delay: no lookup
     assert broker.kinds() == ["POST"] * posts
     wired.state.now = T0 + SETTLED
+    [outcome] = await worker.resolve_dead_letters()  # one order-not-found answer is not proof
+    assert outcome["outcome"] == "absence_awaiting_confirmation" and broker.kinds()[-1] == "lookup"
+    order, _ = await load(wired.sessions, order_id)
+    assert (order.status, record_of(order)["state"]) == ("accepted", "absence_check_pending")
+    await advance_ticks(engine, 2)
+    assert engine._pending_entry_order_ids == {"MSFT": order_id}
+    wired.state.now += CONFIRMED - timedelta(seconds=1)
+    assert await worker.resolve_dead_letters() == []  # the confirming lookup is not due yet
+    assert broker.kinds().count("lookup") == 1
+    wired.state.now += timedelta(seconds=1)
     [outcome] = await worker.resolve_dead_letters()
-    assert outcome["outcome"] == "finalized" and broker.kinds()[-1] == "lookup"
+    assert outcome["outcome"] == "finalized" and broker.kinds().count("lookup") == 2
     order, _ = await load(wired.sessions, order_id)
     assert (order.status, order.broker_order_id, order.filled_qty) == ("rejected", None, Decimal(0))
     record = record_of(order)
     assert record["state"] == "finalized"
     assert record["absence"]["result"] == "not_found"
     assert record["absence"]["client_order_id"] == order.client_idempotency_key
+    first, second = record["absence"]["answers"]  # both answers, as Alpaca gave them
+    assert first == {"checked_at": (T0 + SETTLED).isoformat(), **NOT_FOUND}
+    assert second == {"checked_at": (T0 + SETTLED + CONFIRMED).isoformat(), **NOT_FOUND}
+    assert worker.dispatch_lifecycle_status()["counts"]["finalized"] == {"rejected": 1}
 
     await advance_ticks(engine, 4)
     assert engine._pending_entry_order_ids == {} and "MSFT" not in engine._pending_entry
@@ -347,8 +397,7 @@ async def test_a_dead_lettered_entry_proven_absent_completes_the_emergency_inven
     worker = wired.bind(FakeBroker(place_error=UNPROCESSABLE_422))
     order_id = await submit_entry(wired)
     await drive(worker)
-    wired.state.now = T0 + SETTLED
-    await worker.resolve_dead_letters()
+    assert (await finalize(worker, wired))["outcome"] == "finalized"
     broker = FakeBroker()
     order, _ = await load(wired.sessions, order_id)
     receipt = await cancellation._one_order(broker, order)
@@ -417,7 +466,8 @@ async def test_transport_error_never_releases_and_is_retried_with_backoff(wired,
         HTTPException(503, "Alpaca broker circuit breaker OPEN — refusing to submit"),
         BrokerAcknowledgementUnresolved("x", "lookup_not_confirmed"),  # a 200 that does not confirm
         hangs,  # a lookup that times out
-        None,   # finally a definitive 404
+        None,   # finally Alpaca's order-not-found answer, then its confirmation
+        None,
     ])
     worker = wired.bind(broker)
     order_id = await submit_entry(wired)
@@ -438,14 +488,24 @@ async def test_transport_error_never_releases_and_is_retried_with_backoff(wired,
         assert await worker.resolve_dead_letters() == [] and broker.kinds().count("lookup") == lookups
         wired.state.now += timedelta(seconds=1)
     [outcome] = await worker.resolve_dead_letters()
-    assert outcome["outcome"] == "finalized" and broker.kinds().count("lookup") == 4
+    assert outcome["outcome"] == "absence_awaiting_confirmation"
+    wired.state.now += CONFIRMED
+    [outcome] = await worker.resolve_dead_letters()
+    assert outcome["outcome"] == "finalized" and broker.kinds().count("lookup") == 5
     await advance_ticks(engine, 4)
     assert engine._pending_entry_order_ids == {}
+    assert worker.dispatch_lifecycle_status()["counts"]["absence_unverified"] == {
+        "lookup_failed": 1, "lookup_not_confirmed": 1, "lookup_timeout": 1}
 
 
 def test_backoff_is_capped():
     cap = worker_mod.DEAD_LETTER_MAX_BACKOFF_SECONDS
     assert min(worker_mod.DEAD_LETTER_SWEEP_SECONDS * 2 ** 10, cap) == cap == 300.0
+    # Driven through the retry state: the delay doubles to the cap and stays there,
+    # however long the broker stays unreachable (no float overflow).
+    worker = OutboxWorker.__new__(OutboxWorker)
+    delays = [worker._back_off_dead_letter("row", T0) for _ in range(1500)]
+    assert delays[:6] == [15.0, 30.0, 60.0, 120.0, 240.0, 300.0] and set(delays[5:]) == {cap}
 
 
 # ── Nothing is released on the submission tick ────────────────────────────────
@@ -453,8 +513,7 @@ async def test_nothing_is_released_on_the_tick_that_registered_the_identity(wire
     worker = wired.bind(FakeBroker(place_error=UNPROCESSABLE_422))
     order_id = await submit_entry(wired)
     await drive(worker)
-    wired.state.now = T0 + SETTLED
-    await worker.resolve_dead_letters()  # finalized with the absence proof
+    assert (await finalize(worker, wired))["outcome"] == "finalized"  # with the absence proof
     # The engine registers the identity on tick 600 (as _live_tick_inner does at
     # submission) and reconciles at the end of the same tick, then runs the EOD
     # cancellation in it: neither may release.
@@ -474,8 +533,7 @@ async def test_a_missing_registration_tick_never_releases(wired, tmp_path):
     worker = wired.bind(FakeBroker(place_error=UNPROCESSABLE_422))
     order_id = await submit_entry(wired)
     await drive(worker)
-    wired.state.now = T0 + SETTLED
-    await worker.resolve_dead_letters()
+    assert (await finalize(worker, wired))["outcome"] == "finalized"
     engine = await lifecycle_engine(wired, tmp_path, symbol="MSFT", order_id=order_id)
     engine._pending_entry = {}  # identity without its registration tick
     await engine._reconcile_pending_entry_orders()
@@ -511,11 +569,13 @@ async def test_stale_or_after_session_entry_is_expired_at_dispatch_and_released(
     assert any(message.startswith("Entry not sent: refused at dispatch") for message in warnings)
 
     engine = await lifecycle_engine(wired, tmp_path, symbol="MSFT", order_id=order_id)
-    wired.state.now = dispatched + SETTLED
-    [outcome] = await worker.resolve_dead_letters()
-    assert outcome["outcome"] == "finalized" and broker.kinds() == ["lookup"]
+    outcome = await finalize(worker, wired, at=dispatched + SETTLED)
+    assert outcome["outcome"] == "finalized" and broker.kinds() == ["lookup", "lookup"]
     order, _ = await load(wired.sessions, order_id)
     assert order.status == "expired" and record_of(order)["absence"]["result"] == "not_found"
+    status = worker.dispatch_lifecycle_status()  # review NB4: counted, one refusal does not page
+    assert status["entry_refusals"] == 1 and status["counts"]["entry_refused"] == {reason: 1}
+    assert status["counts"]["finalized"] == {"expired": 1} and status["refusal_paged"] is False
     await advance_ticks(engine, 4)
     assert engine._pending_entry_order_ids == {} and "MSFT" not in engine._entry_metadata
     assert gate(engine, "MSFT") == (True, "")
@@ -688,9 +748,7 @@ async def test_restart_preserves_the_outcome(wired, tmp_path):
     assert first.force_save_brain()["success"] is True
 
     restarted_worker = wired.bind(broker)  # fresh process: no in-memory state
-    wired.state.now = T0 + SETTLED
-    [outcome] = await restarted_worker.resolve_dead_letters()
-    assert outcome["outcome"] == "finalized"
+    assert (await finalize(restarted_worker, wired))["outcome"] == "finalized"
 
     second = await lifecycle_engine(wired, tmp_path, symbol="MSFT", order_id=None)
     # initialize() restored the identity and ran the startup cancellation on the
@@ -740,9 +798,7 @@ async def test_dead_lettered_sell_is_finalized_too(wired):
     assert event.status == "failed" and broker.kinds().count("POST") == 3
     assert criticals(wired.log)[0].startswith("EXIT ORDER DEAD-LETTERED")  # EXE-04 page unchanged
     assert record_of(order)["state"] == "absence_check_pending" and order.status == "accepted"
-    wired.state.now = T0 + SETTLED
-    [outcome] = await worker.resolve_dead_letters()
-    assert outcome["outcome"] == "finalized"
+    assert (await finalize(worker, wired))["outcome"] == "finalized"
     order, _ = await load(wired.sessions, order_id)
     assert order.status == "rejected" and order.status in ACCOUNTABLE_TERMINAL_STATUSES
     assert record_of(order)["absence"]["result"] == "not_found"
@@ -800,10 +856,8 @@ async def test_finalization_rechecks_the_row_under_its_lock(wired):
             await session.commit()
         return None
 
-    broker.lookups = [attached_meanwhile]
-    wired.state.now = T0 + SETTLED
-    [outcome] = await worker.resolve_dead_letters()
-    assert outcome["outcome"] == "order_row_changed"
+    broker.lookups = [None, attached_meanwhile]  # during the confirming lookup
+    assert (await finalize(worker, wired))["outcome"] == "order_row_changed"
     order, _ = await load(wired.sessions, order_id)
     assert (order.status, order.broker_order_id) == ("accepted", BROKER_ID)
     assert record_of(order)["state"] == "absence_check_pending"
@@ -823,10 +877,8 @@ async def test_a_requeued_event_blocks_finalization(wired, monkeypatch):
             await session.commit()
         return None
 
-    broker.lookups = [requeued]
-    wired.state.now = T0 + SETTLED
-    [outcome] = await worker.resolve_dead_letters()
-    assert outcome["outcome"] == "event_not_dead_lettered"
+    broker.lookups = [None, requeued]  # during the confirming lookup
+    assert (await finalize(worker, wired))["outcome"] == "event_not_dead_lettered"
     order, _ = await load(wired.sessions, order_id)
     assert order.status == "accepted"
 
@@ -839,12 +891,17 @@ async def test_sweep_bounds_lookups_per_run(wired, monkeypatch):
         await submit_entry(wired, symbol=symbol)
     await drive(worker)
     wired.state.now = T0 + SETTLED
+    awaiting = "absence_awaiting_confirmation"
+    assert [o["outcome"] for o in await worker.resolve_dead_letters()] == [awaiting] * 2
+    assert [o["outcome"] for o in await worker.resolve_dead_letters()] == [awaiting]
+    wired.state.now += CONFIRMED
     assert [o["outcome"] for o in await worker.resolve_dead_letters()] == ["finalized"] * 2
     assert [o["outcome"] for o in await worker.resolve_dead_letters()] == ["finalized"]
-    assert broker.kinds().count("lookup") == 3
+    assert broker.kinds().count("lookup") == 6
 
 
 async def test_dead_letter_loop_runs_and_stops(wired, monkeypatch):
+    monkeypatch.setattr(worker_mod, "DEAD_LETTER_CONFIRM_SECONDS", 0.0)  # the clock is frozen here
     worker = wired.bind(FakeBroker(place_error=UNPROCESSABLE_422))
     order_id = await submit_entry(wired)
     await drive(worker)
@@ -875,6 +932,344 @@ async def test_start_outbox_worker_wires_the_dead_letter_loop(sessions, monkeypa
     finally:
         await worker.stop()
     assert worker._dead_letter_task is None
+
+
+# ── Review NB1: only Alpaca's order-not-found answer, twice, is absence ───────
+KEY = "organism_MSFT_20261006_s1_t10_organism_entry_buy_q3_abc123"
+
+
+def _no_breaker(_name):
+    raise RuntimeError("no shared breaker state in this test")
+
+
+@pytest.mark.parametrize("status,body,state,detail", [
+    (404, '{"code":40410000,"message":"order not found for %s"}' % KEY, "absent", "not_found"),
+    (404, '{"code": 40410000, "message": "Order not found"}', "absent", "not_found"),
+    (404, '{"code":40410000,"message":"endpoint not found"}', "unknown",
+     "not_found_unconfirmed:message_mismatch"),
+    (404, '{"code":40410000,"message":"position does not exist"}', "unknown",
+     "not_found_unconfirmed:message_mismatch"),
+    (404, '{"code":40410000,"message":null}', "unknown", "not_found_unconfirmed:message_mismatch"),
+    (404, "<html>404 page not found</html>", "unknown", "not_found_unconfirmed:non_json_body"),
+    (404, "404 page not found", "unknown", "not_found_unconfirmed:non_json_body"),
+    (404, "", "unknown", "not_found_unconfirmed:no_body"),
+    (404, '{"code":40410001,"message":"order not found"}', "unknown", "not_found_unconfirmed:code_mismatch"),
+    (404, '{"code":"40410000","message":"order not found"}', "unknown", "not_found_unconfirmed:code_mismatch"),
+    (404, '{"message":"order not found"}', "unknown", "not_found_unconfirmed:code_mismatch"),
+    (404, '[{"code":40410000,"message":"order not found"}]', "unknown", "not_found_unconfirmed:not_an_object"),
+    (200, json.dumps(ack(KEY, "MSFT", "buy", 3)), "present", "found"),
+    (200, json.dumps(ack("organism_other", "MSFT", "buy", 3)), "unknown",
+     "lookup_not_confirmed:lookup_not_confirmed"),
+    (422, '{"code":42210000,"message":"invalid client_order_id"}', "unknown", "lookup_failed:HTTPException"),
+], ids=["order_not_found", "order_not_found_any_case", "endpoint_not_found", "other_resource",
+        "no_message", "html_page", "plain_text", "empty", "other_code", "code_as_string", "no_code",
+        "not_an_object", "found", "other_key", "other_4xx"])
+async def test_only_alpacas_order_not_found_answer_is_absence(monkeypatch, status, body, state, detail):
+    """Probe P4 on the real AlpacaBrokerClient: no other 404 counts (one GET, never a POST)."""
+    from backend.infra import resilience
+    from backend.integrations import alpaca_broker
+
+    monkeypatch.setattr(resilience, "get_or_create_circuit_breaker", _no_breaker)
+    requests = []
+
+    def answer(request):
+        requests.append(request)
+        return httpx.Response(status, text=body)
+
+    client = alpaca_broker.AlpacaBrokerClient.__new__(alpaca_broker.AlpacaBrokerClient)
+    client.api_key, client.api_secret, client.is_paper, client.base_url = "synthetic", "synthetic", True, PAPER
+    client.client = httpx.AsyncClient(transport=httpx.MockTransport(answer))
+    monkeypatch.setattr(alpaca_broker, "get_alpaca_broker_client", lambda: client)
+    try:
+        probe = await alpaca_outbox.probe_order_absence(KEY)
+    finally:
+        await client.client.aclose()
+    assert (probe.state, probe.detail) == (state, detail)
+    [request] = requests
+    assert (request.method, request.url.path) == ("GET", "/v2/orders:by_client_order_id")
+    assert request.url.params["client_order_id"] == KEY
+    if state == "absent":
+        assert probe.evidence == {"http_status": 404, "code": 40410000,
+                                  "message": json.loads(body)["message"]}
+    elif detail.startswith("not_found_unconfirmed"):
+        assert probe.evidence == {"http_status": 404, "body": body[:120]}
+    if state == "present":
+        assert probe.order["client_order_id"] == KEY
+
+
+@pytest.mark.parametrize("interruption", [
+    "restart", "unconfirmed_404", "transport_error", "pending_delivery", "new_dead_letter",
+])
+async def test_the_two_answers_must_be_consecutive(wired, interruption):
+    """Anything between the two order-not-found answers makes absence start over."""
+    broker = FakeBroker(place_error=UNPROCESSABLE_422)
+    worker = wired.bind(broker)
+    order_id = await submit_entry(wired)
+    await drive(worker)
+    wired.state.now = T0 + SETTLED
+    [outcome] = await worker.resolve_dead_letters()
+    assert outcome["outcome"] == "absence_awaiting_confirmation"
+    wired.state.now += CONFIRMED
+    if interruption == "restart":
+        worker = wired.bind(broker)  # a fresh process has no first answer
+    elif interruption in ("unconfirmed_404", "transport_error"):
+        broker.lookups = [endpoint_404() if interruption == "unconfirmed_404"
+                          else HTTPException(503, "Alpaca API unavailable after 3 retries")]
+        [outcome] = await worker.resolve_dead_letters()
+        assert outcome["outcome"] == "absence_unverified"
+        log = wired.log.error if interruption == "unconfirmed_404" else wired.log.warning
+        assert any(call.args[0].startswith("Dead-lettered order: broker absence unverified")
+                   for call in log.call_args_list)
+        wired.state.now += timedelta(seconds=worker_mod.DEAD_LETTER_SWEEP_SECONDS)
+    elif interruption == "pending_delivery":
+        order, _ = await load(wired.sessions, order_id)
+        async with wired.sessions() as session:  # an operator re-queued the order meanwhile
+            await OutboxRepo(session).add_order_submit_event(
+                order_id=order_id, symbol="MSFT", side="buy", qty="3", client_key=order.client_idempotency_key)
+            await session.commit()
+        [outcome] = await worker.resolve_dead_letters()
+        assert outcome["outcome"] == "pending_delivery_exists"
+        async with wired.sessions() as session:  # that delivery is over too
+            await session.execute(update(OutboxEvent).where(OutboxEvent.status == "pending")
+                                  .values(status="failed"))
+            await session.commit()
+    else:  # the order was dead-lettered again, by another event
+        async with wired.sessions() as session:
+            row = await session.get(Order, uuid.UUID(order_id))
+            attributes = dict(row.attributes)
+            attributes["outbox_dead_letter"] = {**attributes["outbox_dead_letter"],
+                                                "outbox_event_id": str(uuid.uuid4())}
+            row.attributes = attributes
+            await session.commit()
+    [outcome] = await worker.resolve_dead_letters()
+    assert outcome["outcome"] == "absence_awaiting_confirmation"  # a new first answer
+    first_at = wired.state.now
+    order, _ = await load(wired.sessions, order_id)
+    assert (order.status, record_of(order)["state"]) == ("accepted", "absence_check_pending")
+    wired.state.now += CONFIRMED - timedelta(seconds=1)
+    assert await worker.resolve_dead_letters() == []
+    wired.state.now += timedelta(seconds=1)
+    [outcome] = await worker.resolve_dead_letters()
+    assert outcome["outcome"] == "finalized"
+    order, _ = await load(wired.sessions, order_id)
+    assert record_of(order)["absence"]["answers"][0]["checked_at"] == first_at.isoformat()
+
+
+async def test_an_order_found_on_the_confirming_lookup_is_attached_not_finalized(wired):
+    """A POST the broker processed after the first answer (the race the second lookup is for)."""
+    broker = FakeBroker(place_error=UNPROCESSABLE_422)
+    worker = wired.bind(broker)
+    order_id = await submit_entry(wired)
+    await drive(worker)
+    order, _ = await load(wired.sessions, order_id)
+    broker.lookups = [None, ack(order.client_idempotency_key, "MSFT", "buy", 3, status="new")]
+    assert (await finalize(worker, wired))["outcome"] == "found_at_broker"
+    order, _ = await load(wired.sessions, order_id)
+    assert (order.status, order.broker_order_id) == ("submitted", BROKER_ID)
+    assert record_of(order)["state"] == "found_at_broker" and cancellation._never_sent(order) is False
+    [message] = criticals(wired.log)
+    assert message.startswith("DEAD-LETTERED ORDER FOUND AT THE BROKER, attached")
+
+
+def _stream_client(monkeypatch, wired):
+    """The real trade-update handler on the test store, with a recording logger."""
+    @asynccontextmanager
+    async def context():
+        async with wired.sessions() as session:
+            yield session
+
+    monkeypatch.setattr(alpaca_stream, "get_session_context", context)
+    monkeypatch.setitem(sys.modules, "backend.api.socketio_server",
+                        SimpleNamespace(broadcast_order_update=AsyncMock()))
+    log = MagicMock()
+    monkeypatch.setattr(alpaca_stream, "logger", log)
+    stream = alpaca_stream.AlpacaStreamClient.__new__(alpaca_stream.AlpacaStreamClient)
+    stream._terminal_order_ids = set()
+    return stream, log
+
+
+async def test_a_fill_on_a_finalized_order_pages(wired, monkeypatch):
+    """The residual race (a POST the broker processes after the proof) does not stay silent."""
+    broker = FakeBroker(place_error=UNPROCESSABLE_422)
+    worker = wired.bind(broker)
+    monkeypatch.setattr(worker_mod, "_outbox_worker", worker)
+    order_id = await submit_entry(wired)
+    await drive(worker)
+    assert (await finalize(worker, wired))["outcome"] == "finalized"
+    order, _ = await load(wired.sessions, order_id)
+    stream, log = _stream_client(monkeypatch, wired)
+    late = {**ack(order.client_idempotency_key, "MSFT", "buy", 3, status="partially_filled"),
+            "filled_qty": "1", "filled_avg_price": "500.20"}
+    await stream._process_trade_update({"data": {"event": "partial_fill", "order": late}})
+    [page] = log.critical.call_args_list
+    assert page.args[0].startswith("FILL ATTACHED TO A FINALIZED ORDER")
+    assert page.kwargs["order_id"] == order_id and page.kwargs["broker_order_id"] == BROKER_ID
+    assert (page.kwargs["previous_filled_qty"], page.kwargs["cumulative_filled_qty"]) == ("0", "1")
+    assert page.kwargs["finalized_status"] == "rejected"
+    order, _ = await load(wired.sessions, order_id)  # broker truth is still recorded
+    assert (order.status, order.broker_order_id, order.filled_qty) == ("partially_filled", BROKER_ID, Decimal(1))
+    assert worker.dispatch_lifecycle_status()["counts"]["finalized_order_attached"] == {"fill": 1}
+    await stream._process_trade_update({"data": {"event": "partial_fill", "order": late}})
+    assert len(log.critical.call_args_list) == 1  # the same snapshot again adds nothing
+
+
+@pytest.mark.parametrize("case,expected", [
+    ("acknowledgement", "BROKER ORDER ATTACHED TO A FINALIZED ORDER"),
+    ("no_new_information", None),
+    ("not_finalized", None),
+])
+async def test_only_new_broker_activity_on_a_finalized_order_pages(wired, monkeypatch, case, expected):
+    broker = FakeBroker(place_error=UNPROCESSABLE_422)
+    worker = wired.bind(broker)
+    order_id = await submit_entry(wired)
+    await drive(worker)
+    if case != "not_finalized":
+        assert (await finalize(worker, wired))["outcome"] == "finalized"
+    _stream, log = _stream_client(monkeypatch, wired)
+    async with wired.sessions() as session:
+        order = await session.get(Order, uuid.UUID(order_id))
+        await alpaca_stream.apply_order_fill_snapshot(
+            session, order, status="rejected" if case == "no_new_information" else "submitted",
+            cumulative_filled_qty="0", avg_fill_price=None,
+            broker_order_id=None if case == "no_new_information" else BROKER_ID,
+        )
+        await session.commit()
+    pages = [call.args[0] for call in log.critical.call_args_list]
+    if expected is None:
+        assert pages == []
+    else:
+        assert len(pages) == 1 and pages[0].startswith(expected)
+
+
+# ── Review NB2: fill evidence blocks a never-sent release (mutant M07) ────────
+@pytest.mark.parametrize("evidence", ["execution", "position_lot"])
+async def test_fill_evidence_blocks_a_never_sent_release(wired, tmp_path, evidence):
+    worker = wired.bind(FakeBroker(place_error=UNPROCESSABLE_422))
+    order_id = await submit_entry(wired)
+    await drive(worker)
+    assert (await finalize(worker, wired))["outcome"] == "finalized"
+    async with wired.sessions() as session:
+        if evidence == "execution":
+            session.add(Execution(id=uuid.uuid4(), order_id=uuid.UUID(order_id), fill_qty=Decimal(1),
+                                  fill_price=Decimal("500.25"), ts=datetime.now(UTC), venue="alpaca"))
+        else:
+            session.add(PositionLot(id=uuid.uuid4(), user_id="system", symbol="MSFT",
+                                    order_id=uuid.UUID(order_id), qty=Decimal(1), remaining_qty=Decimal(1),
+                                    cost_basis=Decimal("500.25"), open_date=datetime.now(UTC)))
+        await session.commit()
+    order, _ = await load(wired.sessions, order_id)
+    assert cancellation._never_sent(order) is True  # the row alone carries the proof
+    engine = await lifecycle_engine(wired, tmp_path, symbol="MSFT", order_id=order_id)
+    await advance_ticks(engine, 3)
+    assert engine._pending_entry_order_ids == {"MSFT": order_id}
+    [receipt] = engine._last_pending_entry_resolution["orders"]
+    assert receipt["never_sent"] is True and receipt["release_pending"] is False
+    assert receipt["resolution"] == "unverified"
+    assert gate(engine, "MSFT") == (False, "pending_entry")
+
+
+# ── Review NB3: one row never stops the sweep, and the page is never lost ─────
+async def test_an_outcome_write_failure_after_the_attach_still_pages_and_the_sweep_goes_on(
+        wired, monkeypatch):
+    """Probe P3: the attach commits, then recording the outcome fails."""
+    broker = FakeBroker(place_error=UNPROCESSABLE_422)
+    worker = wired.bind(broker)
+    found_id = await submit_entry(wired)
+    other_id = await submit_entry(wired, symbol="AAPL")
+    await drive(worker)
+    found, _ = await load(wired.sessions, found_id)
+
+    async def by_key(key):
+        return ack(key, "MSFT", "buy", 3, status="new") if key == found.client_idempotency_key else None
+
+    broker.lookups = [by_key] * 4
+    original = worker._write_dead_letter_outcome
+
+    async def failing_for_found(order_uuid, record, **kwargs):
+        if str(order_uuid) == found_id:
+            raise RuntimeError("injected outcome-write failure")
+        return await original(order_uuid, record, **kwargs)
+
+    monkeypatch.setattr(worker, "_write_dead_letter_outcome", failing_for_found)
+    wired.state.now = T0 + SETTLED
+    outcomes = {o["order_id"]: o["outcome"] for o in await worker.resolve_dead_letters()}
+    assert outcomes == {found_id: "check_failed", other_id: "absence_awaiting_confirmation"}
+    [page] = wired.log.critical.call_args_list
+    assert page.args[0].startswith("DEAD-LETTERED ORDER FOUND AT THE BROKER, attached")
+    assert page.kwargs["outcome"] == "outcome_not_recorded"
+    assert any(call.args[0].startswith("Dead-lettered order: absence check failed")
+               for call in wired.log.error.call_args_list)
+    found, _ = await load(wired.sessions, found_id)
+    assert found.broker_order_id == BROKER_ID  # attached: broker confirmation takes over
+    wired.state.now += CONFIRMED
+    [outcome] = await worker.resolve_dead_letters()
+    assert (outcome["order_id"], outcome["outcome"]) == (other_id, "finalized")
+
+
+async def test_a_failing_row_is_backed_off_and_never_starves_the_rows_behind_it(wired, monkeypatch):
+    broker = FakeBroker(place_error=UNPROCESSABLE_422)
+    worker = wired.bind(broker)
+    bad_id = await submit_entry(wired)
+    good_id = await submit_entry(wired, symbol="AAPL")
+    await drive(worker)
+    original = worker._other_pending_delivery
+
+    async def broken_for_bad(order_uuid):
+        if str(order_uuid) == bad_id:
+            raise RuntimeError("injected read failure")
+        return await original(order_uuid)
+
+    monkeypatch.setattr(worker, "_other_pending_delivery", broken_for_bad)
+    wired.state.now = T0 + SETTLED
+    outcomes = {o["order_id"]: o["outcome"] for o in await worker.resolve_dead_letters()}
+    assert outcomes == {bad_id: "check_failed", good_id: "absence_awaiting_confirmation"}
+    assert await worker.resolve_dead_letters() == []  # backed off, and awaiting confirmation
+    wired.state.now += timedelta(seconds=worker_mod.DEAD_LETTER_SWEEP_SECONDS)
+    assert [o["outcome"] for o in await worker.resolve_dead_letters()] == ["check_failed"]
+    wired.state.now = T0 + SETTLED + CONFIRMED
+    outcomes = {o["order_id"]: o["outcome"] for o in await worker.resolve_dead_letters()}
+    assert outcomes == {bad_id: "check_failed", good_id: "finalized"}
+
+
+# ── Review NB4: refusals are counted and page once per session ────────────────
+async def test_refusals_above_the_threshold_page_once_per_session(wired):
+    broker = FakeBroker()
+    worker = wired.bind(broker)
+    threshold = worker_mod.ENTRY_REFUSAL_PAGE_THRESHOLD
+    headline = "ENTRY DISPATCH REFUSALS ABOVE THRESHOLD"
+    symbols = iter(["MSFT", "AAPL", "XLE", "SPY", "QQQ", "IWM", "DIA", "XLF"])
+    for n in range(1, threshold + 3):
+        await submit_entry(wired, symbol=next(symbols), created_at=T0 - timedelta(minutes=5))
+        await drive(worker)
+        pages = [m for m in criticals(wired.log) if m.startswith(headline)]
+        assert len(pages) == (1 if n > threshold else 0)  # once, on the first refusal above it
+    assert broker.calls == []  # nothing was sent
+    status = worker.dispatch_lifecycle_status()
+    assert (status["session_date"], status["entry_refusals"], status["refusal_paged"]) == (
+        "2026-10-06", threshold + 2, True)
+    assert status["counts"]["entry_refused"] == status["counts"]["dead_lettered"] == {
+        "entry_stale": threshold + 2}
+    wired.state.now = T0 + timedelta(days=1)  # a new session date starts from zero
+    for _ in range(threshold + 1):
+        await submit_entry(wired, symbol=next(symbols), created_at=wired.state.now - timedelta(minutes=5))
+        await drive(worker)
+    assert len([m for m in criticals(wired.log) if m.startswith(headline)]) == 2
+    status = worker.dispatch_lifecycle_status()
+    assert (status["session_date"], status["entry_refusals"]) == ("2026-10-07", threshold + 1)
+
+
+async def test_engine_status_carries_the_dispatch_lifecycle_counts(wired, tmp_path, monkeypatch):
+    worker = wired.bind(FakeBroker())
+    monkeypatch.setattr(worker_mod, "_outbox_worker", worker)
+    await submit_entry(wired, created_at=T0 - timedelta(minutes=5))
+    await drive(worker)
+    engine = await lifecycle_engine(wired, tmp_path, symbol="MSFT", order_id=None)
+    lifecycle = engine.status()["order_dispatch_lifecycle"]
+    assert lifecycle == worker.dispatch_lifecycle_status()
+    assert lifecycle["entry_refusals"] == 1 and lifecycle["counts"]["entry_refused"] == {"entry_stale": 1}
+    assert json.loads(json.dumps(lifecycle)) == lifecycle
+    monkeypatch.setattr(worker_mod, "_outbox_worker", None)  # no worker running
+    assert engine.status()["order_dispatch_lifecycle"] is None
 
 
 # ── The status constraint and the remediation script ──────────────────────────

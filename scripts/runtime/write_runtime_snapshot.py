@@ -34,6 +34,7 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
         from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
         from backend.integrations import alpaca_outbox as _outbox_dispatch
+        from backend.integrations import alpaca_broker as _broker_client
         from backend.infra import outbox_worker as _outbox_worker
         from backend.integrations import alpaca_stream as _fill_ingestion
         from backend.organism import live_engine_fills as _fill_lookup
@@ -183,7 +184,11 @@ def _build_defaults_snapshot() -> dict:
                 "entry_age_basis": "outbox_event_created_at_intent_time_unchanged_by_retries",
                 "entry_session_rule": "created_in_a_regular_nyse_session_refused_once_that_session_closed_early_closes_included",
                 "entry_scope": "every_order_except_exits_and_lookup_only_events",
-                "entry_refusal": "dead_lettered_without_dispatch_attempt_notice_order_expired_warning_no_page",
+                "entry_refusal": "dead_lettered_without_dispatch_attempt_notice_order_expired_warning_counted",
+                # Review NB4: more refusals than the threshold in one ET date page once.
+                "entry_refusal_page_threshold": _outbox_worker.ENTRY_REFUSAL_PAGE_THRESHOLD,
+                "entry_refusal_page": "critical_once_per_et_date_when_refusals_exceed_threshold_process_local",
+                "counters": "engine_status_order_dispatch_lifecycle_process_local_per_et_date_reset_on_restart",
                 "entry_check_failure": "held_and_retried_never_sent_unchecked",
                 "record": "orders_attributes_outbox_dead_letter_in_the_dead_letter_transaction_unambiguous_unsent_rows_only",
                 "settle_seconds": _outbox_worker.DEAD_LETTER_SETTLE_SECONDS,
@@ -194,12 +199,22 @@ def _build_defaults_snapshot() -> dict:
                 "pending_event_scan_limit": _outbox_worker.DEAD_LETTER_PENDING_SCAN_LIMIT,
                 "retry_backoff": "doubling_from_sweep_interval_in_memory",
                 "max_backoff_seconds": _outbox_worker.DEAD_LETTER_MAX_BACKOFF_SECONDS,
-                "absence": "definitive_404_for_persisted_client_key_after_commit_and_settle_with_no_other_pending_event",
+                # Review NB1: only Alpaca's order-not-found answer, twice, counts.
+                "absence": "two_alpaca_order_not_found_answers_for_persisted_client_key_confirm_seconds_apart_no_other_answer_between_after_commit_and_settle_with_no_other_pending_event",
+                "absence_http_status": 404,
+                "absence_code": _broker_client.ALPACA_NOT_FOUND_CODE,
+                "absence_message_prefix": _broker_client.ALPACA_ORDER_NOT_FOUND_MESSAGE,
+                "absence_confirm_seconds": _outbox_worker.DEAD_LETTER_CONFIRM_SECONDS,
+                "absence_first_answer": "in_memory_restart_proves_absence_afresh",
+                "absence_record": "both_answers_with_http_status_code_message_and_checked_at",
+                "other_404": "unknown_retried_error_log_never_finalized",
                 "finalized_status": _outbox_worker.DEAD_LETTER_ORDER_STATUS,
                 "refused_entry_finalized_status": _outbox_worker.EXPIRED_ENTRY_ORDER_STATUS,
                 "finalize_recheck": "row_lock_unsent_row_and_event_still_dead_lettered",
-                "found_at_broker": "attached_by_client_key_through_acknowledgement_path_critical",
+                "found_at_broker": "attached_by_client_key_through_acknowledgement_path_critical_even_if_outcome_write_fails",
                 "unknown": "retried_never_finalized",
+                "row_failure": "logged_and_backed_off_other_rows_continue",
+                "finalized_order_activity": "critical_fill_or_broker_order_attached_to_a_finalized_order_all_fill_ingress",
                 "ambiguous_dead_letters": "not_recorded_unchanged_handling",
                 "dead_lettered_sells": "finalized_the_same_way_exe04_critical_unchanged",
             },

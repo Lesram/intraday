@@ -93,23 +93,56 @@ retries run out, the event is dead-lettered with `EXIT ORDER DEAD-LETTERED`.
 
 Dispatch lifecycle (candidate, audit 2026-10-05; not deployed until activated).
 An entry older than 120 s at dispatch, or created in a regular session that has
-since closed, is not sent (WARNING `Entry not sent: refused at dispatch`). Such
-an entry and any unambiguous dead letter are looked up by their client key at
-least 60 s later; a 404 finalizes the order row (`expired` for a refused entry,
-else `rejected`, with the proof in `attributes.outbox_dead_letter`) and the
-engine then releases the symbol's pending entry on its next tick.
+since closed, is not sent (WARNING `Entry not sent: refused at dispatch`). This
+covers every order that is not an exit, manual and API buys included: a manual
+GTC buy entered during the session and dispatched after the close is expired,
+not queued for the next session; enter it again after the close if it is still
+wanted. Such an entry and any unambiguous dead letter are looked up by their
+client key at least 60 s later.
+
+What counts as an absence proof: only Alpaca's order-not-found answer to
+`GET /v2/orders:by_client_order_id` (HTTP 404 with the JSON body
+`{"code": 40410000, "message": "order not found..."}`), twice, at least 300 s
+apart, with no other answer between them. Then the order row is finalized
+(`expired` for a refused entry, else `rejected`, with both answers in
+`attributes.outbox_dead_letter.absence.answers`) and the engine releases the
+symbol's pending entry on its next tick, about 6 minutes after the dead letter
+at the earliest. Any other 404 (an HTML page, another code, or
+`endpoint not found`) is not absence: it is retried and logged at ERROR
+(`broker absence unverified`, detail `not_found_unconfirmed:<reason>`, the body
+excerpt in `evidence`). If every lookup shows such a 404, the route or Alpaca's
+error format has changed: nothing is finalized until the classifier is fixed.
 
 - `DEAD-LETTERED ORDER FOUND AT THE BROKER, attached by its client key`: the
   outbox stopped delivery, but the order is live at Alpaca (an earlier attempt
   reached it). It is now tracked by its broker id like any order; check its fills
-  and the position at the broker.
+  and the position at the broker. With `outcome=outcome_not_recorded` the attach
+  succeeded but recording the outcome failed: the order row has its broker id,
+  while `attributes.outbox_dead_letter` still says `absence_check_pending`.
 - `DEAD-LETTERED ORDER FOUND AT THE BROKER, could not be attached`: the broker's
-  order does not match the row (symbol, side or quantity). Reconcile it by hand;
-  the symbol's pending entry stays until then.
+  order does not match the row (symbol, side or quantity), or recording it
+  failed (database or validation error; see `error`). Reconcile it by hand; the
+  symbol's pending entry stays until then.
+- `FILL ATTACHED TO A FINALIZED ORDER` (or `BROKER ORDER ATTACHED TO A FINALIZED
+  ORDER` without a fill): the residual race. The outbox finalized the order as
+  never placed after two order-not-found answers, but Alpaca processed it even
+  later. Its fills are recorded on the row as usual, but the engine may already
+  have released the entry (the position shows up as an orphan, excluded from
+  learning) and may have entered the symbol again. Check the position and open
+  orders at the broker, close or keep the position deliberately, and record the
+  event.
+- `ENTRY DISPATCH REFUSALS ABOVE THRESHOLD`: more than one entry was refused at
+  dispatch in one ET date (pages once per date and process). Entries are being
+  dropped: check outbox latency (a slow broker, a stranded claim lease), the
+  host and database clocks, and the market calendar. The counts are in the
+  organism status, `live_engine.engine.order_dispatch_lifecycle` (per process:
+  a restart starts from zero; each refusal is also in the log).
 
 While the lookup keeps failing (broker unreachable), the row stays unresolved and
 `PENDING ENTRY UNRESOLVED` pages after 30 minutes; nothing is retired until the
-broker answers. Ambiguous submissions (`ORDER SUBMISSION AMBIGUOUS`) are not
+broker answers. A row whose check fails (for example a database error) is logged
+at ERROR (`absence check failed, backing off`) and retried later; the other rows
+are still checked. Ambiguous submissions (`ORDER SUBMISSION AMBIGUOUS`) are not
 finalized this way. Rows dead-lettered before this release carry no record: a
 pending entry identity one of them still holds needs the brain repair (stop the
 api container, remove the symbol from `pending_entry`, `pending_entry_order_ids`

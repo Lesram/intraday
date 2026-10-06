@@ -11,11 +11,14 @@ Audit 2026-10-05 (C04-01, C01-04): a dead-lettered order, and an entry refused
 at dispatch because it is stale or its regular session has closed, is recorded
 on its order row (``attributes.outbox_dead_letter``) in the dead-letter
 transaction. Once that commit has settled, and only while no other delivery of
-the order is pending, a read-only client-key lookup decides: a definitive 404
-finalizes the row ('rejected', or 'expired' for a refused entry) with the
+the order is pending, read-only client-key lookups decide: two of Alpaca's
+order-not-found answers (HTTP 404, code 40410000, "order not found...") at
+least DEAD_LETTER_CONFIRM_SECONDS apart, with no other answer between them,
+finalize the row ('rejected', or 'expired' for a refused entry) with the
 absence proof; an order found at the broker is attached by its client key; any
-other answer is retried later. The organism engine releases a pending entry
-identity only for a row finalized this way.
+other answer, including any other 404, is retried later. The organism engine
+releases a pending entry identity only for a row finalized this way. Refusals
+and outcomes are counted per session (``dispatch_lifecycle_status``).
 """
 
 import asyncio
@@ -1210,6 +1213,10 @@ class OutboxWorker:
                             reason=dead_letter["reason"],
                             terminal_status=dead_letter["terminal_status"],
                         )
+                        self._count_lifecycle("dead_lettered", dead_letter["reason"])
+                    if error_result.get("dispatch_expired"):
+                        # Review NB4: a refused entry counts (and may page) once committed.
+                        self._note_entry_refusal(event, error_result)
 
                     # Uncertain acknowledgement is not broker rejection. The
                     # outbox delivery stops, while the order stays unresolved
@@ -1442,10 +1449,14 @@ class OutboxWorker:
         DEAD_LETTER_SETTLE_SECONDS old (a late-processed POST of the last
         attempt has time to show) and is due under its retry backoff, and
         only while no other delivery of the order is pending, the order is
-        looked up by its client key: a definitive 404 finalizes the row with
-        the absence proof, an order found at the broker is attached, and any
-        other answer is retried with a capped backoff. Returns one outcome per
-        row it acted on. Never submits an order.
+        looked up by its client key. Absence takes two of Alpaca's
+        order-not-found answers at least DEAD_LETTER_CONFIRM_SECONDS apart,
+        with no other answer between them (review NB1); the second finalizes
+        the row with the absence proof. An order found at the broker is
+        attached, and any other answer is retried with a capped backoff. A row
+        whose check raises is logged and backed off, and the sweep goes on
+        (review NB3). Returns one outcome per row it acted on. Never submits
+        an order.
         """
         now = now or _now_utc()
         outcomes = []
@@ -1453,11 +1464,63 @@ class OutboxWorker:
         for order_id, record in await self._dead_letter_candidates():
             if lookups >= DEAD_LETTER_SWEEP_BATCH:
                 break
-            outcome = await self._resolve_dead_letter(order_id, record, now)
+            try:
+                outcome = await self._resolve_dead_letter(order_id, record, now)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - one row never stops the sweep
+                outcome = self._dead_letter_check_failed(order_id, now, exc)
             if outcome is not None:
                 lookups += int(bool(outcome.get("lookup")))
                 outcomes.append(outcome)
         return outcomes
+
+    def _dead_letter_check_failed(self, order_id: Any, now: datetime,
+                                  exc: Exception) -> dict[str, Any]:
+        """Review NB3: a row whose check raised is backed off, so the rows behind it still run.
+
+        Counted as a lookup (it may have made one). A first order-not-found
+        answer it had is dropped: absence is proven afresh.
+        """
+        key = str(order_id)
+        self._dead_letter_first_answers().pop(key, None)
+        delay = self._back_off_dead_letter(key, now)
+        error = f"{type(exc).__name__}: {exc}"[:300]
+        logger.error(
+            "Dead-lettered order: absence check failed, backing off (audit 2026-10-05 C04-01)",
+            order_id=key, error=error, retry_in_seconds=delay,
+        )
+        return {"order_id": key, "outcome": "check_failed", "detail": error, "lookup": True}
+
+    def _dead_letter_retries(self) -> dict[str, tuple[datetime, int]]:
+        """Per-row retry state: ``order id -> (next due time, attempts)``; in memory."""
+        retries = getattr(self, "_dead_letter_retry", None)
+        if not isinstance(retries, dict):
+            retries = self._dead_letter_retry = {}
+        return retries
+
+    def _dead_letter_first_answers(self) -> dict[str, dict[str, Any]]:
+        """Review NB1: the first order-not-found answer per row, awaiting its confirmation.
+
+        ``order id -> {outbox_event_id, checked_at, answer}``; in memory, so a
+        restart proves absence afresh.
+        """
+        answers = getattr(self, "_dead_letter_absence", None)
+        if not isinstance(answers, dict):
+            answers = self._dead_letter_absence = {}
+        return answers
+
+    def _back_off_dead_letter(self, key: str, now: datetime) -> float:
+        """Schedule the row's next lookup: 15 s doubling to the 300 s cap."""
+        retries = self._dead_letter_retries()
+        retry = retries.get(key)
+        attempts = (retry[1] if retry is not None else 0) + 1
+        # The exponent is bounded: the delay is capped long before, and an
+        # unbounded power would overflow the float after about 1,000 attempts.
+        delay = min(DEAD_LETTER_SWEEP_SECONDS * 2 ** min(attempts - 1, 16),
+                    DEAD_LETTER_MAX_BACKOFF_SECONDS)
+        retries[key] = (now + timedelta(seconds=delay), attempts)
+        return delay
 
     async def _dead_letter_candidates(self) -> list[tuple[Any, Any]]:
         """Rows recorded by ``_record_dead_letter`` still awaiting the absence check."""
@@ -1499,56 +1562,87 @@ class OutboxWorker:
             return {"order_id": key, "outcome": "record_invalid"}
         if (now - dead_lettered_at).total_seconds() < DEAD_LETTER_SETTLE_SECONDS:
             return None
-        retries = getattr(self, "_dead_letter_retry", None)
-        if not isinstance(retries, dict):
-            retries = self._dead_letter_retry = {}
+        retries = self._dead_letter_retries()
         retry = retries.get(key)
         if retry is not None and now < retry[0]:
             return None
+        answers = self._dead_letter_first_answers()
+        first = answers.get(key)
+        if first is not None and first["outbox_event_id"] != record.get("outbox_event_id"):
+            answers.pop(key, None)  # another dead letter of the order: prove absence afresh
+            first = None
+        if first is not None and (now - first["checked_at"]).total_seconds() < DEAD_LETTER_CONFIRM_SECONDS:
+            return None  # review NB1: the confirming lookup is not due yet
         if await self._other_pending_delivery(order_uuid):
             # Another delivery could still place the order: absence now proves nothing.
+            answers.pop(key, None)
             return {"order_id": key, "outcome": "pending_delivery_exists"}
 
         from backend.integrations import alpaca_outbox
 
         try:
-            state, order, detail = await asyncio.wait_for(
+            probe = await asyncio.wait_for(
                 alpaca_outbox.probe_order_absence(client_key), DEAD_LETTER_LOOKUP_TIMEOUT_SECONDS,
             )
         except TimeoutError:
-            state, order, detail = "unknown", None, "lookup_timeout"
+            probe = alpaca_outbox.AbsenceProbe("unknown", None, "lookup_timeout")
         checked_at = now.isoformat()
-        if state == "absent":
+        if probe.state == "absent":
             retries.pop(key, None)
+            answer = dict(probe.evidence or {})
+            if first is None:
+                # Review NB1: one answer is not proof. Confirm it later, with no
+                # other answer between (a POST the broker processes late, or a
+                # read-path 404 during an incident, would then show).
+                answers[key] = {"outbox_event_id": record.get("outbox_event_id"),
+                                "checked_at": now, "answer": answer}
+                logger.info(
+                    "Dead-lettered order: the broker answered order not found; confirming "
+                    "with a second lookup (audit 2026-10-05 C04-01)",
+                    order_id=key, client_order_id=client_key, answer=answer,
+                    confirm_after_seconds=DEAD_LETTER_CONFIRM_SECONDS,
+                )
+                return {"order_id": key, "outcome": "absence_awaiting_confirmation",
+                        "detail": probe.detail, "lookup": True}
+            answers.pop(key, None)
             outcome = await self._write_dead_letter_outcome(
                 order_uuid, record, state=DEAD_LETTER_STATE_FINALIZED, status=terminal_status,
                 require_unsent=True, absence={
                     "result": "not_found", "checked_at": checked_at,
                     "client_order_id": client_key,
                     "lookup": "GET /v2/orders:by_client_order_id",
+                    "answers": [
+                        {"checked_at": first["checked_at"].isoformat(), **first["answer"]},
+                        {"checked_at": checked_at, **answer},
+                    ],
                 },
             )
             if outcome == DEAD_LETTER_STATE_FINALIZED:
+                self._count_lifecycle("finalized", terminal_status)
                 logger.warning(
-                    "Dead-lettered order finalized: the broker confirmed it was never placed "
-                    "(audit 2026-10-05 C04-01)",
+                    "Dead-lettered order finalized: the broker confirmed twice that it was never "
+                    "placed (audit 2026-10-05 C04-01)",
                     order_id=key, client_order_id=client_key, status=terminal_status,
                     reason=record.get("reason"), outbox_event_id=record.get("outbox_event_id"),
+                    first_checked_at=first["checked_at"].isoformat(), checked_at=checked_at,
                 )
-            return {"order_id": key, "outcome": outcome, "detail": detail, "lookup": True}
-        if state == "present":
+            return {"order_id": key, "outcome": outcome, "detail": probe.detail, "lookup": True}
+        answers.pop(key, None)  # any other answer: a first order-not-found answer no longer counts
+        if probe.state == "present":
             retries.pop(key, None)
-            outcome = await self._attach_dead_letter(order_uuid, record, order, checked_at)
-            return {"order_id": key, "outcome": outcome, "detail": detail, "lookup": True}
-        attempts = (retry[1] if retry is not None else 0) + 1
-        delay = min(DEAD_LETTER_SWEEP_SECONDS * 2 ** (attempts - 1), DEAD_LETTER_MAX_BACKOFF_SECONDS)
-        retries[key] = (now + timedelta(seconds=delay), attempts)
-        logger.warning(
+            outcome = await self._attach_dead_letter(order_uuid, record, probe.order, checked_at)
+            return {"order_id": key, "outcome": outcome, "detail": probe.detail, "lookup": True}
+        delay = self._back_off_dead_letter(key, now)
+        self._count_lifecycle("absence_unverified", probe.detail.split(":", 1)[0] or "unknown")
+        # A 404 that is not Alpaca's order-not-found answer (an unknown route, an
+        # HTML page) is a contract mismatch an operator must look at.
+        log = logger.error if probe.detail.startswith("not_found_unconfirmed") else logger.warning
+        log(
             "Dead-lettered order: broker absence unverified, retrying (audit 2026-10-05 C04-01)",
-            order_id=key, client_order_id=client_key, detail=detail,
-            attempts=attempts, retry_in_seconds=delay,
+            order_id=key, client_order_id=client_key, detail=probe.detail,
+            evidence=probe.evidence, attempts=retries[key][1], retry_in_seconds=delay,
         )
-        return {"order_id": key, "outcome": "absence_unverified", "detail": detail, "lookup": True}
+        return {"order_id": key, "outcome": "absence_unverified", "detail": probe.detail, "lookup": True}
 
     async def _other_pending_delivery(self, order_uuid: uuid.UUID) -> bool:
         """True when a pending order.submitted event for this order exists (or cannot be ruled out)."""
@@ -1653,19 +1747,96 @@ class OutboxWorker:
                    "broker_order_id": order.get("id"), "broker_status": order.get("status")}
         if error is not None:
             absence["error"] = error
-        outcome = await self._write_dead_letter_outcome(
-            order_uuid, record, state=state, absence=absence, require_unsent=False,
-        )
-        logger.critical(
-            ("DEAD-LETTERED ORDER FOUND AT THE BROKER, attached by its client key"
-             if error is None else
-             "DEAD-LETTERED ORDER FOUND AT THE BROKER, could not be attached")
-            + ": the outbox stopped delivery but the order is live; reconcile it",
-            order_id=str(order_uuid), client_order_id=record.get("client_order_id"),
-            broker_order_id=order.get("id"), broker_status=order.get("status"),
-            reason=record.get("reason"), outcome=outcome, error=error,
-        )
+        outcome = "outcome_not_recorded"
+        try:
+            outcome = await self._write_dead_letter_outcome(
+                order_uuid, record, state=state, absence=absence, require_unsent=False,
+            )
+        finally:
+            # Review NB3: the page never depends on recording the outcome. Should
+            # that write fail, the CRITICAL still goes out (outcome
+            # 'outcome_not_recorded') and the sweep backs the row off.
+            logger.critical(
+                ("DEAD-LETTERED ORDER FOUND AT THE BROKER, attached by its client key"
+                 if error is None else
+                 "DEAD-LETTERED ORDER FOUND AT THE BROKER, could not be attached")
+                + ": the outbox stopped delivery but the order is live; reconcile it",
+                order_id=str(order_uuid), client_order_id=record.get("client_order_id"),
+                broker_order_id=order.get("id"), broker_status=order.get("status"),
+                reason=record.get("reason"), outcome=outcome, error=error,
+            )
+            self._count_lifecycle("found_at_broker", state)
         return outcome
+
+    # ── Review NB4: process-local counts of the dispatch lifecycle ──
+
+    def _lifecycle_session(self) -> dict[str, Any]:
+        """This worker's counts for the current ET date; a new date starts from zero."""
+        from backend.utils.market_hours import ET
+
+        day = _now_utc().astimezone(ET).date().isoformat()
+        session = getattr(self, "_lifecycle_counts", None)
+        if not isinstance(session, dict) or session.get("session_date") != day:
+            session = self._lifecycle_counts = {"session_date": day, "counts": {},
+                                                "refusal_paged": False}
+        return session
+
+    def _count_lifecycle(self, kind: str, label: str) -> int:
+        """Count one lifecycle event; returns the session's total for ``kind``.
+
+        Monitoring only: a failure here never affects the lifecycle (returns 0).
+        """
+        try:
+            bucket = self._lifecycle_session()["counts"].setdefault(kind, {})
+            bucket[label] = bucket.get(label, 0) + 1
+            return sum(bucket.values())
+        except Exception as exc:  # noqa: BLE001 - counting is best-effort
+            logger.debug("Dispatch lifecycle count failed", kind=kind, error=str(exc))
+            return 0
+
+    def _note_entry_refusal(self, event: dict[str, Any], error_result: dict[str, Any]) -> None:
+        """Review NB4: count a committed entry refusal (C01-04) and page once per session.
+
+        A healthy outbox refuses nothing; refusals above
+        ENTRY_REFUSAL_PAGE_THRESHOLD in one session mean a slow outbox, a clock
+        or a calendar fault is dropping entries, which would otherwise show only
+        as missing trades.
+        """
+        reason = str(error_result.get("refusal_reason") or "unknown")
+        total = self._count_lifecycle("entry_refused", reason)
+        try:
+            session = self._lifecycle_session()
+            if total <= ENTRY_REFUSAL_PAGE_THRESHOLD or session.get("refusal_paged"):
+                return
+            session["refusal_paged"] = True
+            payload = _flat_payload(event.get("payload"))
+            logger.critical(
+                "ENTRY DISPATCH REFUSALS ABOVE THRESHOLD: entries are being refused at dispatch "
+                "(stale, or sent after their session closed) and are not traded; check outbox "
+                "latency, the clocks and the market calendar",
+                session_date=session.get("session_date"), refusals=total,
+                threshold=ENTRY_REFUSAL_PAGE_THRESHOLD,
+                by_reason=dict(session["counts"].get("entry_refused", {})),
+                last_order_id=payload.get("order_id"), last_symbol=payload.get("symbol"),
+                last_reason=reason,
+            )
+        except Exception as exc:  # noqa: BLE001 - monitoring never affects the dead letter
+            logger.debug("Entry refusal page failed", error=str(exc))
+
+    def dispatch_lifecycle_status(self) -> dict[str, Any]:
+        """Review NB4: this worker's lifecycle counts for its current session date."""
+        session = getattr(self, "_lifecycle_counts", None)
+        session = session if isinstance(session, dict) else {}
+        counts = {kind: dict(labels) for kind, labels in (session.get("counts") or {}).items()}
+        return {
+            "session_date": session.get("session_date"),
+            "scope": "process_local_et_date_reset_on_restart",
+            "entry_refusals": sum(counts.get("entry_refused", {}).values()),
+            "finalized": sum(counts.get("finalized", {}).values()),
+            "counts": counts,
+            "refusal_page_threshold": ENTRY_REFUSAL_PAGE_THRESHOLD,
+            "refusal_paged": bool(session.get("refusal_paged")),
+        }
 
 
 # Audit 2026-10-05 C01-04 / C04-01: entry dispatch limits and dead-letter
@@ -1674,6 +1845,8 @@ DEAD_LETTER_ORDER_STATUS = "rejected"     # a dead letter the broker confirmed i
 EXPIRED_ENTRY_ORDER_STATUS = "expired"    # an entry refused at dispatch, likewise confirmed
 ENTRY_DISPATCH_MAX_AGE_SECONDS = 120.0    # measured from OutboxEvent.created_at (intent time)
 DEAD_LETTER_SETTLE_SECONDS = 60.0         # dead letter to its first broker lookup
+DEAD_LETTER_CONFIRM_SECONDS = 300.0       # first order-not-found answer to its confirming lookup
+ENTRY_REFUSAL_PAGE_THRESHOLD = 1          # more entry refusals than this in one session page once
 DEAD_LETTER_SWEEP_SECONDS = 15.0          # sweep interval and first retry backoff
 DEAD_LETTER_MAX_BACKOFF_SECONDS = 300.0   # cap of the doubling retry backoff
 DEAD_LETTER_LOOKUP_TIMEOUT_SECONDS = 5.0  # per client-key lookup
@@ -1753,6 +1926,62 @@ def entry_dispatch_refusal(payload: Any, created_at: Any, *, now: datetime) -> t
             return ("entry_session_closed",
                     f"created in the regular session that closed at {session_end.isoformat()}")
     return None
+
+
+def dispatch_lifecycle_status() -> dict[str, Any] | None:
+    """Review NB4: the running outbox worker's lifecycle counts, None when none runs.
+
+    The organism engine's status carries it (``order_dispatch_lifecycle``), so
+    the paper monitor, the live-process runtime snapshot and the daily evidence
+    read it.
+    """
+    worker = _outbox_worker
+    return worker.dispatch_lifecycle_status() if worker is not None else None
+
+
+def finalized_order_attachment_alert(order: Any, *, previous_filled_qty: Decimal,
+                                     cumulative_filled_qty: Decimal,
+                                     broker_order_id: Any) -> dict[str, Any] | None:
+    """Audit 2026-10-05 C04-01 (review NB1): broker activity on a row this lifecycle finalized.
+
+    The absence proof leaves a residual race: a POST the broker processes even
+    later than the confirming lookup. Such an order surfaces as a fill, or a
+    broker order id, for a row finalized as never placed, after the engine may
+    have released its entry. ``apply_order_fill_snapshot`` (every fill
+    ingress) calls this before it stages the update; it returns the CRITICAL to
+    log, or None. Only new information pages: a larger cumulative fill, or the
+    first broker id.
+    """
+    attributes = getattr(order, "attributes", None)
+    record = attributes.get(DEAD_LETTER_ATTRIBUTE) if isinstance(attributes, dict) else None
+    if not isinstance(record, dict) or record.get("state") != DEAD_LETTER_STATE_FINALIZED:
+        return None
+    if cumulative_filled_qty > previous_filled_qty:
+        kind, headline = "fill", "FILL ATTACHED TO A FINALIZED ORDER"
+    elif broker_order_id and not getattr(order, "broker_order_id", None):
+        kind, headline = "acknowledgement", "BROKER ORDER ATTACHED TO A FINALIZED ORDER"
+    else:
+        return None
+    worker = _outbox_worker
+    if worker is not None:
+        worker._count_lifecycle("finalized_order_attached", kind)
+    absence = record.get("absence") if isinstance(record.get("absence"), dict) else {}
+    return {
+        "message": (headline + ": the outbox finalized this order as never placed after two "
+                    "order-not-found answers, but the broker reports it; the engine may have "
+                    "released its entry; reconcile the order and the position"),
+        "fields": {
+            "order_id": str(getattr(order, "id", "")), "symbol": getattr(order, "symbol", None),
+            "side": getattr(order, "side", None),
+            "client_order_id": getattr(order, "client_idempotency_key", None),
+            "broker_order_id": broker_order_id, "row_status": getattr(order, "status", None),
+            "finalized_status": record.get("terminal_status"),
+            "finalized_checked_at": absence.get("checked_at"),
+            "outbox_event_id": record.get("outbox_event_id"),
+            "previous_filled_qty": str(previous_filled_qty),
+            "cumulative_filled_qty": str(cumulative_filled_qty),
+        },
+    }
 
 
 # Audit 2026-10-05 C01-01: a refused exit's row status, and the statuses a
