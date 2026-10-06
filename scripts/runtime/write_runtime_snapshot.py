@@ -199,11 +199,17 @@ def _build_defaults_snapshot() -> dict:
                 "deferral_window": "opening_submitted_at_or_before_close_and_at_most_grace_before_it",
                 "lot_ordering_grace_seconds": int(_fill_ingestion.LOT_ORDERING_GRACE.total_seconds()),
                 "lot_ordering_max_age_seconds": int(_fill_ingestion.LOT_ORDERING_MAX_AGE.total_seconds()),
+                "deferral_escalation": "critical_once_per_close_deferral_episode_process_local",
+                "deferral_escalate_after_seconds": int(
+                    _fill_ingestion.LOT_DEFERRAL_ESCALATE_AFTER.total_seconds()
+                ),
                 "late_netting": "new_opening_lot_closes_owner_unmatched_closes_submitted_at_or_after_it_within_grace_fifo",
                 "late_match_price": "close_unmatched_vwap",
                 "record_statuses": ["unmatched", "matched_late"],
-                "record_decimal_places": 6,
+                "record_decimal_places": -_fill_ingestion._LOT_QUANTUM.as_tuple().exponent,
                 "ordering_basis": "submission_time_not_broker_fill_time",
+                "concurrent_ingestion": "netting_locks_every_window_close_row_order_rows_for_no_key_update_fifo_locks_lots_only",
+                "convergence_limit": "cross_lifetime_out_of_order_round_trips_same_owner_symbol_manual_orders_only",
                 "page": "critical_after_commit_all_five_ingress",
                 "late_match_log": "warning_after_commit_all_five_ingress",
                 "startup_page_order": "oldest_first_after_persisted_order_recovery",

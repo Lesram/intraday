@@ -21,14 +21,19 @@ rules in `close_accounting_holds` and `fill_lot_accounting`.
   too few, owner lots commits its status, quantity, price, execution and the
   lots that match; the remainder is recorded in `orders.attributes.lot_accounting`
   and pages once (CRITICAL) after the commit on all five ingress paths. Closes
-  that outran their opening are deferred or netted later (§51), so the lot
-  ledger converges after any ingestion delay.
-- **Assumptions.** Legs are ordered by submission time (broker fill times are
-  not ingested). A never-acknowledged row is bounded by its submission session,
-  and a replaced DAY predecessor by its own session (the successor is assumed
-  to keep a session-bounded TIF). The flat-to-flat check of the lifetime's own
-  legs remains the backstop. Details and remaining limits:
-  `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md` (October 5 section).
+  that outran their opening are deferred or netted later (§51): the two legs of
+  one round trip converge in either order and after any delay between them, and
+  concurrent ingestion of both legs on two paths is serialized by row locks. A
+  close deferred for about one session (6.5 h) pages once.
+- **Assumptions and limits.** Legs are ordered by submission time (broker fill
+  times are not ingested) and at most 5 days apart. Two round trips of one
+  owner and symbol applied out of order across lifetimes can still leave an
+  unmatched record and an open lot; the engine cannot produce that order, only
+  manual UI/API orders can. A never-acknowledged row is bounded by its
+  submission session, and a replaced DAY predecessor by its own session (the
+  successor is assumed to keep a session-bounded TIF). The flat-to-flat check
+  of the lifetime's own legs remains the backstop. Details and remaining
+  limits: `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md` (October 5 section).
 
 ---
 
@@ -4050,10 +4055,18 @@ MultiStrategyLiveScheduler (background asyncio task):
   instead (`LotAccountingDeferred`) while a same-owner opening that
   persisted-order recovery retries is unresolved, submitted at or before the
   close and at most `LOT_ORDERING_GRACE` (5 days) before it and less than
-  `LOT_ORDERING_MAX_AGE` (45 days) old. An opening lot ingested after its close
-  was recorded is netted FIFO against the owner's unmatched closes submitted at
-  or after it within the grace, at the close's unmatched VWAP (record
-  `matched_late`, WARNING after commit). Snapshot: `fill_lot_accounting`.
+  `LOT_ORDERING_MAX_AGE` (45 days) old; a close still deferred
+  `LOT_DEFERRAL_ESCALATE_AFTER` (6.5 h) after its first deferral in the running
+  process pages once (CRITICAL `LOT ACCOUNTING DEFERRAL ESCALATED`). An opening
+  lot ingested after its close was recorded is netted FIFO against the owner's
+  unmatched closes submitted at or after it within the grace, at the close's
+  unmatched VWAP (record `matched_late`, WARNING after commit). The netting
+  locks every close-side order row of that window before reading records; all
+  fill paths lock order rows `FOR NO KEY UPDATE` and the close FIFO locks lot
+  rows only (`FOR UPDATE OF position_lots`), so concurrent ingestion of an
+  opening and its close serializes without deadlock. Not converged: two round
+  trips of one owner and symbol applied out of order across lifetimes (manual
+  UI/API orders only). Snapshot: `fill_lot_accounting`.
 
 **InstitutionalAnalytics** (`trade_analytics_service.py`):
 - Sharpe, Sortino, Calmar ratios (annualized, √252)

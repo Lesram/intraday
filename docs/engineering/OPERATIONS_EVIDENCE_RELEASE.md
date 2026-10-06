@@ -212,7 +212,8 @@ Transient failures still roll back the whole order.
 
 Ingestion is not globally ordered (recovery pages by id; startup order sync
 runs recovery before its oldest-first page), so a close can be applied before
-its opening. Two rules make the lot ledger converge whatever the delay:
+its opening. Two rules make the two legs of one round trip converge when they
+are applied in either order, with any delay between them:
 
 - Deferral. While a same-owner opening that persisted-order recovery retries
   (unresolved, broker-acknowledged, organism or outbox lineage) was submitted
@@ -226,7 +227,15 @@ its opening. Two rules make the lot ledger converge whatever the delay:
   close against the opening's lot. The cap also bounds how long a stuck
   opening row can keep a broker-filled close unrecorded: until that opening
   is 45 days old (the close's row stays non-terminal meanwhile and holds its
-  lifetime's exact accounting).
+  lifetime's exact accounting). Such an opening is one recovery cannot settle
+  (a `replaced` or unknown broker status, a failed lookup) or one that keeps
+  working (a resting GTC limit). Each deferral is only a retry (a WARNING per
+  recovery pass, the stream's DLQ record), so a close still deferred 6.5 hours
+  (`LOT_DEFERRAL_ESCALATE_AFTER`, about one regular session) after its first
+  deferral pages once: CRITICAL `LOT ACCOUNTING DEFERRAL ESCALATED`, naming the
+  close and the opening that holds it. The clock is process-local (a restart
+  starts it again; the cap still applies) and the episode ends when the close
+  is applied.
 - Late netting. Otherwise the close is recorded as above. When an opening fill
   lands later (an opening that was never acknowledged, is outside recovery
   scope or is past the cap), its new lot is closed FIFO against the owner's
@@ -236,10 +245,35 @@ its opening. Two rules make the lot ledger converge whatever the delay:
   `last_late_match`) and a WARNING follows the commit. A close submitted before
   the opening never consumes it.
 
-Both rules order legs by submission time; broker fill times are not ingested
-(C07-07). An opening submitted before a close but filled after it (a resting
-limit order) would be matched to that close. Read-only check for records still
-needing repair:
+Concurrent ingestion. When an opening fill and its close fill are ingested at
+the same moment on two paths, row locks serialize them on PostgreSQL (SQLite
+serializes writers). The netting locks every close-side order row of its
+window, whatever its record, before reading records, and a close holds its own
+row from its first statement. Either the netting waits for the close's commit
+and nets the record it committed, or the close waits for the opening's commit
+and its FIFO consumes the new lot; a close that found no lot and is waiting to
+check for an earlier opening still sees that opening unresolved and defers.
+Every fill path (the snapshot, persisted-order recovery and the outbox
+acknowledgement) locks order rows `FOR NO KEY UPDATE`, and the close FIFO locks
+lot rows only (`FOR UPDATE OF position_lots`). The foreign-key check of a
+close's RealizedTrade on the opening row therefore never waits for an opening
+that is waiting for the close (no deadlock). Before this, an opening and its
+close ingested concurrently could leave a phantom open lot next to an unmatched
+record (reproduced on PostgreSQL 16).
+
+Limits. Both rules order legs by submission time; broker fill times are not
+ingested (C07-07). An opening submitted before a close but filled after it (a
+resting limit order) would be matched to that close, and legs more than
+`LOT_ORDERING_GRACE` apart are neither deferred nor netted. Two round trips of
+one owner and symbol applied out of order across lifetimes do not converge.
+With orders submitted as A buy 10, B sell 10, C buy 6, D sell 6 and applied in
+the order A, D, B, C: D consumes 6 of A's lot, B finds 4 shares and is
+recorded with 6 unmatched, and C's lot is never netted against B because B was
+submitted before C. The ledger then shows B unmatched 6 (paged) and C's lot
+open 6. The engine cannot
+produce that order, since it opens no new entry in a symbol while the previous
+lifetime is still tracked (its close accounting needs B's fill); only manual
+UI/API orders can. Read-only check for records still needing repair:
 
 ```sql
 SELECT id, symbol, side, user_id, submitted_at, attributes->'lot_accounting' AS lot_accounting
@@ -250,7 +284,10 @@ ORDER BY submitted_at;
 
 The runtime snapshot reports these rules in `close_accounting_holds` and
 `fill_lot_accounting`; the policy id stays `exact_position_fills_or_pending_v1`.
-Follow-ups: a repair path for records that stay `unmatched`, owner-agnostic
-lot matching for the single broker account (with or before C06-01, since a UI
-close of an engine position leaves the engine's `system` lot open), and an
-unmatched-record count in status and the daily evidence pack.
+Follow-ups: a repair path for records that stay `unmatched` (it would also
+cover the cross-lifetime limit, for example by netting an owner's remaining
+open lots against its remaining unmatched records of that side, whatever their
+order, once the broker position is flat), owner-agnostic lot matching for the
+single broker account (with or before C06-01, since a UI close of an engine
+position leaves the engine's `system` lot open), and an unmatched-record count
+in status and the daily evidence pack.
