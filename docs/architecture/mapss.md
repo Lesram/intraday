@@ -4,6 +4,141 @@
 
 ---
 
+## Candidate dispatch lifecycle fixes (audit 2026-10-05) — NOT deployed
+
+Stacked on the exit-safety and close-accounting candidates below. One more frozen
+decision source changes: `research_policy_sources.entry_cancellation`
+(`backend/organism/operator_cancellation.py`), next to the two keys the
+exit-safety branch already moves (`source_hashes.entry_gates_dispatch`,
+`research_policy_sources.broker_state_safety`). Marsel signed off on the frozen
+fixes on 2026-10-05; they take effect only through a new activation. No hashed
+engine method, strategy parameter, threshold, feed, sizing or entry-decision
+rule changes. New constants are in the outbox worker (not frozen) and in the
+runtime snapshot block `order_dead_letter_lifecycle`.
+
+- **A dead-lettered order no longer blocks its symbol for good (C04-01).**
+  Before, a dead letter marked only the outbox event `failed`; the order row
+  stayed `accepted` with no broker id, the engine's confirmation answered
+  `broker_dispatch_unresolved` forever, and the pending identity (saved in the
+  brain) refused the symbol across restarts. Now:
+  1. *Record.* In the dead-letter transaction the worker writes
+     `orders.attributes.outbox_dead_letter` (state `absence_check_pending`,
+     reason, event id, client key, time, the status to finalize to). Only an
+     unambiguous dead letter of a row still awaiting the broker (no broker id,
+     no fills, not terminal, same client key) is recorded; the row's status is
+     unchanged. A failed commit records nothing (the event is redelivered after
+     its lease, as before).
+  2. *Absence check.* A separate worker task (every 15 s) looks recorded rows up
+     by their persisted client key (`GET /v2/orders:by_client_order_id`), at the
+     earliest 60 s after the dead letter (a POST the broker processed late has
+     time to show) and only while no other `order.submitted` event for the
+     order is pending. *What counts as an absence proof* (review NB1): only
+     Alpaca's order-not-found answer to that lookup, an HTTP 404 whose body is
+     the JSON object `{"code": 40410000, "message": "order not found..."}`
+     (integer code; message matched as a prefix, any case;
+     `classify_client_order_404`), and only twice: a second such answer at
+     least 300 s after the first (`DEAD_LETTER_CONFIRM_SECONDS`) with no other
+     answer between them. Any other answer between the two (a found order, a
+     pending delivery, a failed or unconfirmed lookup), another dead letter of
+     the order, or a worker restart (the first answer is kept in memory) makes
+     absence start over. Any other 404 is not absence: an HTML or plain-text
+     page, a body without that code, or that code with another message (for
+     example `endpoint not found` from a wrong route); it is retried like a
+     failed lookup and logged at ERROR, because it means the broker contract or
+     the route changed. After the second answer, under the row lock and only if
+     the row is still unsent and its event still dead-lettered, the row becomes
+     `rejected` (`expired` for a refused entry) with the proof (`state:
+     finalized`, `absence: {result: not_found, client_order_id, checked_at,
+     answers: [{checked_at, http_status, code, message}, ...]}`). An order found
+     at the broker is attached through the normal acknowledgement path
+     (identity checks, fill accounting) and pages CRITICAL `DEAD-LETTERED ORDER
+     FOUND AT THE BROKER`, even if recording that outcome afterwards fails
+     (outcome `outcome_not_recorded`); from then on broker confirmation
+     resolves it. Any other answer (transport error, timeout, the open breaker,
+     a 5xx, a body that does not confirm the key, another 404) is retried with
+     a doubling backoff from 15 s to 300 s. A row whose check raises (for
+     example a database error) is logged at ERROR and backed off the same way;
+     the sweep goes on with the next row (review NB3). At most 5 lookups per
+     sweep, 5 s each. Nothing is ever submitted. A clean dead letter is
+     therefore finalized about 6 minutes after it happened, at the earliest.
+  3. *Release (frozen half).* `confirm_tracked_entries` treats a row without a
+     broker id as resolved only when the worker finalized it with that proof
+     (`_never_sent`), the row, its executions and its lots show no fill, and
+     the engine's tick is later than the one that registered or restored the
+     identity (so never on the submission tick, nor during the startup
+     cancellation). It is then `verified_unfilled`, which
+     `_reconcile_pending_entry_orders` releases at once; `_reconcile_fills`
+     clears the entry metadata through the unchanged zero-fill check, and the
+     symbol can trade again. A broker 404 alone, a status set by hand or by a
+     script, or a dead letter still awaiting its lookup releases nothing. The
+     emergency entry cancellation counts a proven never-sent entry as resolved.
+  4. *Sells.* A dead-lettered exit is finalized the same way (the EXE-04
+     CRITICAL is unchanged), so it no longer holds close accounting.
+- **Entries are not sent late (C01-04).** Before dispatch, the worker refuses
+  any order that is not an exit when it is older than 120 s
+  (`ENTRY_DISPATCH_MAX_AGE_SECONDS`, measured from `OutboxEvent.created_at`,
+  the intent time that retries do not change) or was created during a regular
+  NYSE session (early closes included) that has since closed: sent then, a DAY
+  order would be queued for the next session. An order created outside a
+  regular session is checked for age only. The event is dead-lettered without
+  a dispatch attempt (`DISPATCH_EXPIRED:<entry_stale|entry_session_closed>`,
+  notice `order.expired`, WARNING) and goes through the lifecycle above to
+  `expired`; an earlier attempt that did reach the broker is found and
+  attached. Exits (declared, close-position, or long-only sells) and lookup-only
+  (ambiguous) events are never refused here. If the check itself fails, the
+  order is held and retried, never sent unchecked. The refusal covers every
+  order that is not an exit, manual and API buys included: a manual GTC buy
+  created during the session and dispatched after the close is expired, not
+  queued for the next session (submit it again after the close if it is still
+  wanted).
+- **Counts and the refusal page (review NB4).** The outbox worker counts, per
+  ET date and per process (a restart starts from zero), entry refusals by
+  reason, recorded dead letters by reason, finalizations by status, orders
+  found at the broker, unverified lookups by kind and late broker activity on
+  finalized rows. The organism status carries the counts
+  (`OrganismLiveEngine.status`, not a hashed method;
+  `live_engine.engine.order_dispatch_lifecycle`: `session_date`,
+  `entry_refusals`, `finalized`, `counts`, `refusal_page_threshold`,
+  `refusal_paged`), so the paper monitor, the live-process runtime snapshot and
+  the daily evidence (`runtime_state`) record them. A healthy outbox refuses
+  nothing; more than `ENTRY_REFUSAL_PAGE_THRESHOLD` (1) refusals in one ET date
+  page once per date and process, CRITICAL `ENTRY DISPATCH REFUSALS ABOVE
+  THRESHOLD` (a slow outbox, a clock or a calendar fault would otherwise show
+  only as missing trades).
+- **Remediation script.** `scripts/db/phase7_data_integrity_remediation.py`
+  marks stale rows `rejected` (never `failed`), leaves rows whose dead letter is
+  ambiguous (listed in `ambiguous_stale_orders` for a broker lookup) and rows the
+  worker is settling. Its status carries no absence proof, so it releases no
+  engine identity.
+- **Known limits.** Ambiguous (lookup-only) dead letters are not finalized; they
+  keep their CRITICAL and need an operator (C04-03 follow-up). Rows dead-lettered
+  before this release carry no record, so a pending identity they still hold
+  needs the documented brain repair. A cause that rejects every attempt (for
+  example buying power) now cycles: each released entry may be re-submitted,
+  bounded by the engine's entry throttles; it does not page (only refusals do).
+  *Residual race and its page:* the two answers rule out a POST the broker
+  processes up to about 6 minutes after the worker's last attempt, and a single
+  read-path 404 during an Alpaca incident whose writes are backlogged. An order
+  processed even later than the confirming lookup (realistic only for a
+  failure that may have happened after the request was sent: a timeout, a 5xx,
+  a connection reset; until C01-05 the worker classifies these as unambiguous)
+  can still appear after the proof. The trade-update stream then attaches it by
+  client key to the finalized row; by then the engine may have released the
+  identity (the position is adopted as an orphan, excluded from learning) and
+  may have re-entered the symbol (at most one extra $2,000-notional entry per
+  event, its close accounting held by the late fill). This is no longer silent:
+  every fill ingress (`apply_order_fill_snapshot`) logs CRITICAL `FILL ATTACHED
+  TO A FINALIZED ORDER` (or `BROKER ORDER ATTACHED TO A FINALIZED ORDER` for an
+  acknowledgement without a fill) before it records the broker's truth, once
+  per new fill quantity or first broker id. The order-not-found shape (code
+  40410000, message starting `order not found`) follows Alpaca's error format
+  but has not yet been confirmed against the paper API; if paper answers with
+  another wording, absence is never proven (fail-closed: the symbol stays
+  blocked, `PENDING ENTRY UNRESOLVED` pages after 30 minutes, and the ERROR log
+  shows the body) and the classifier needs updating. Classifying more failures
+  as ambiguous (C01-05) keeps them out of this path; it does not conflict with
+  it.
+
 ## Candidate surface exit-safety fixes (audit 2026-10-05) — NOT deployed
 
 Stacked on the outbox exit guard below (PR #36). Frozen decision sources change:
@@ -121,9 +256,9 @@ rules in `close_accounting_holds` and `fill_lot_accounting`.
 Stacked on the 2026-09-30 candidate below (PR #35). Order path only: no strategy
 parameter, feed, risk threshold, sizing policy, entry behaviour or frozen-surface
 source changes (`scripts/phase2_freeze.py --verify --candidate` passes unchanged).
-Entries are dispatched exactly as before; the entry age/session refusal (C01-04)
-is deferred until it can ship with the sign-off-gated pending-entry release
-(C04-01).
+Entries are dispatched exactly as before here; the entry age/session refusal
+(C01-04) ships with the sign-off-gated pending-entry release (C04-01) in the
+dispatch lifecycle candidate above.
 
 - **Exit sells cannot open a short at dispatch (C01-01).**
   `OrderService.submit_symbol_order` writes `reduce_only` and `intent` (`exit` for
@@ -212,7 +347,9 @@ strategy parameter, feed, risk threshold or sizing policy changes.
   `ORGANISM_TICK_INTERVAL_SECONDS`); `status.pending_entries` shows ages.
 - **Dead-lettered orders (EXE-04).** A dead-lettered sell (exit) or an
   ambiguous submission logs CRITICAL with symbol, side, qty and client key.
-  Client-key reconciliation of the order row is unchanged.
+  Client-key reconciliation of the order row is unchanged. (Audit 2026-10-05
+  C04-01, candidate above: unambiguous dead letters are now finalized once the
+  broker confirms they were never placed.)
 - **API (SEC-03, SEC-04).** `/signals/act`, `/positions/{symbol}/close` and
   `/positions/import` need `trader` or `admin`. Self-registration is refused
   unless `AUTH_ALLOW_SELF_REGISTRATION=true`.
@@ -2991,6 +3128,9 @@ OUTBOX WORKER (background, 100ms poll):
   1. claim_batch(10) with FOR UPDATE SKIP LOCKED (no contention)
   2. For each event:
      ├── Route by topic: "order.submitted" → broker dispatch
+     ├── Not an exit and not lookup-only (audit 2026-10-05 C01-04): older than
+     │     120 s since OutboxEvent.created_at, or created in a regular session
+     │     that has closed → not sent; dead-lettered as DISPATCH_EXPIRED (see 3)
      ├── Shadow/dry_run/mock/real broker based on execution mode
      ├── Real broker, before the POST of an exit sell (exit guard, audit 2026-10-05):
      │     client-key lookup (found → attach) → broker position (qty_available) → send or refuse
@@ -3000,7 +3140,23 @@ OUTBOX WORKER (background, 100ms poll):
      │     + mark_failed() in one transaction, no retry, CRITICAL log after the commit
      ├── Retryable failure (incl. a failed exit-guard read) → mark_retry() with backoff
      └── Max retries (5) or validation error → DLQ
-  3. DLQ: mark_failed() + broadcast "order.rejected" via WebSocket
+  3. DLQ: mark_failed() + broadcast "order.rejected" ("order.expired" for a refused
+     entry) via WebSocket. Unambiguous dead letters also record
+     orders.attributes.outbox_dead_letter in the same transaction (C04-01).
+
+DEAD-LETTER ABSENCE LOOP (separate task, every 15 s; audit 2026-10-05 C04-01):
+  recorded rows, ≥ 60 s after the dead letter, no other pending event for the order
+  → GET /v2/orders:by_client_order_id (≤ 5 per sweep, 5 s timeout, read-only)
+     ├── Alpaca's order-not-found answer (404, code 40410000, "order not found…")
+     │     first → kept in memory, confirming lookup ≥ 300 s later
+     │     second, nothing else between → row rejected / expired + absence proof
+     │       with both answers (lets the engine release the entry)
+     ├── found → attached by client key through the acknowledgement path + CRITICAL
+     │     (logged even if recording the outcome fails)
+     └── anything else, any other 404 included → retried, backoff 15 s doubling
+           to 300 s; a row whose check raises is backed off, the sweep goes on
+  Any fill ingress on a finalized row → CRITICAL FILL ATTACHED TO A FINALIZED ORDER
+  Entry refusals > 1 in one ET date → CRITICAL once (counts in status.order_dispatch_lifecycle)
 ```
 
 ### Backoff Calculator

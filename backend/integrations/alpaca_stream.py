@@ -901,6 +901,16 @@ async def apply_order_fill_snapshot(
     ).scalar_one()
     if quantity < max(previous, Decimal(str(accounted))):
         return {"applied": False, "reason": "stale_snapshot", "status": current.status}
+    # Audit 2026-10-05 C04-01 (review NB1): a fill or broker order id for a row the
+    # outbox finalized as never placed pages before it is staged (every ingress).
+    from backend.infra.outbox_worker import finalized_order_attachment_alert
+
+    late = finalized_order_attachment_alert(
+        current, previous_filled_qty=previous, cumulative_filled_qty=quantity,
+        broker_order_id=broker_order_id,
+    )
+    if late is not None:
+        logger.critical(late["message"], **late["fields"])
     terminal = {"filled", "canceled", "cancelled", "expired", "rejected", "replaced"}
     if current.status in terminal and status not in terminal and quantity == previous:
         # A late acknowledgement cannot reopen a broker-terminal summary.

@@ -8744,6 +8744,13 @@ class OrganismLiveEngine(
             training_history = list(self.learner.generation_metrics)
 
         trading_phase = self._trading_phase
+        # Audit 2026-10-05 C01-04 / C04-01 (review NB4): the outbox worker's entry
+        # refusals and dead-letter outcomes this session; monitoring only.
+        try:
+            from backend.infra.outbox_worker import dispatch_lifecycle_status
+            order_dispatch_lifecycle = dispatch_lifecycle_status()
+        except Exception:  # noqa: BLE001 - never fails the status
+            order_dispatch_lifecycle = None
         return {
             "pipeline_diagnostics": getattr(self, "_last_pipeline_diagnostics", None),
             "initialized": self._initialized,
@@ -8777,6 +8784,7 @@ class OrganismLiveEngine(
                     if r["age_seconds"] >= self._pending_entry_escalate_after()
                 ][:10],
             },
+            "order_dispatch_lifecycle": order_dispatch_lifecycle,
             # Audit 2026-09-30 OPS-04: the day's loss baseline survives restarts.
             "daily_loss": {
                 "session_date": getattr(self, "_daily_loss_date", ""),

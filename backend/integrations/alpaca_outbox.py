@@ -10,8 +10,14 @@ delayed or retried exit could otherwise open a short. The exit is first looked
 up by its persisted client key; one that already reached the broker is
 attached and never sent again. A refused exit is returned as
 ``dispatch_refused`` and the outbox worker finalizes it; a guard read that
-fails returns ``retryable`` and nothing is sent. Entries are dispatched
-exactly as before.
+fails returns ``retryable`` and nothing is sent. Entries that reach this
+dispatcher are sent exactly as before; the outbox worker refuses stale or
+after-session entries before they get here (C01-04).
+
+Audit 2026-10-05 (C04-01): ``probe_order_absence`` is the read-only client-key
+lookup the outbox worker uses to prove that a dead-lettered order never reached
+the broker. Only Alpaca's order-not-found answer counts as absent (review NB1:
+not any 404); the worker needs two such answers, separated in time.
 """
 
 import asyncio
@@ -211,6 +217,47 @@ async def _exit_send_guard(broker_client: Any, event_data: dict[str, Any], *, sy
         return _GuardOutcome(result=_refused(event_data, reason=reason, detail=detail,
                                              intent=intent))
     return _GuardOutcome()
+
+
+class AbsenceProbe(NamedTuple):
+    """One client-key lookup of the dead-letter absence check (audit 2026-10-05 C04-01)."""
+
+    state: str                               # 'absent', 'present' or 'unknown'
+    order: dict[str, Any] | None = None      # the broker's order, when present
+    detail: str = ""
+    evidence: dict[str, Any] | None = None   # the 404's shape: the answer, or what was refused
+
+
+async def probe_order_absence(client_order_id: str) -> AbsenceProbe:
+    """Audit 2026-10-05 C04-01: is the order with this persisted client key at the broker?
+
+    ``state`` is 'absent' only for Alpaca's order-not-found answer to the
+    client-key lookup (HTTP 404, code 40410000, message "order not found...";
+    review NB1), with that answer as ``evidence``; 'present' (with the broker's
+    order) when the broker confirms the key; 'unknown' for anything else: any
+    other 404 (an unknown route, an HTML page, another code or message), a
+    transport error or timeout, the open breaker, a 5xx, missing credentials,
+    or a 200 that does not confirm the key. Read-only: never submits.
+    """
+    from backend.integrations.alpaca_broker import (
+        ClientOrderNotFoundUnconfirmed,
+        get_alpaca_broker_client,
+    )
+
+    try:
+        found, not_found = await get_alpaca_broker_client().lookup_order_by_client_order_id(
+            client_order_id)
+    except ClientOrderNotFoundUnconfirmed as exc:
+        return AbsenceProbe("unknown", None, f"not_found_unconfirmed:{exc.reason}", exc.evidence)
+    except BrokerAcknowledgementUnresolved as exc:
+        return AbsenceProbe("unknown", None, f"lookup_not_confirmed:{exc.reason}")
+    except Exception as exc:  # noqa: BLE001 - only the order-not-found answer proves absence
+        return AbsenceProbe("unknown", None, f"lookup_failed:{type(exc).__name__}")
+    if found is not None:
+        return AbsenceProbe("present", found, "found")
+    if not isinstance(not_found, dict):
+        return AbsenceProbe("unknown", None, "lookup_failed:no_answer")
+    return AbsenceProbe("absent", None, "not_found", not_found)
 
 
 def get_smart_tif(requested_tif: str | None = None) -> str:
