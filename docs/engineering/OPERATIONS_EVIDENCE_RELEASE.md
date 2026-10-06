@@ -457,3 +457,91 @@ ORDER BY symbol, open_date;
 
 The runtime snapshot reports these rules in `external_close_accounting`
 (`lot_repair` included).
+
+## October 6 frozen-code release (audit 2026-10-05): activation
+
+One pull request carries the frozen-code fixes C05-01, C05-02, C06-02 (exit
+safety), C04-01, C01-04 (dispatch lifecycle), C06-01 (external close), C09-01
+(regime isolation) and C11-01 (stream history), with Marsel's sign-off of
+2026-10-05. It is stacked on PR #37 (close-accounting unblock, not frozen),
+which merges first. Merging changes nothing on the host. The fixes take effect
+only when a release built from the merged commit is installed with a new
+activation, which restarts the forward verdict clock once.
+
+The release's candidate (`artifacts/phase2/candidate_param_freeze.json`,
+`--verify --candidate` exits 0) differs from PR #37's in exactly six keys:
+`research_policy_sources.broker_state_safety`,
+`research_policy_sources.entry_cancellation`,
+`source_hashes.entry_gates_dispatch`, `source_hashes.regime_detector`,
+`data_pipeline_sources.live_engine_data`,
+`data_pipeline_sources.streaming_data_provider`. Against the committed active
+freeze (FROZEN_AT 2026-09-25) it differs in 18 keys, because the surface
+changes merged after that freeze (up to PR #37's candidate) are not in that
+file; publish the full difference against the host's current active freeze. `surface.effective_policy_baseline`
+is identical, so `research_policy_baseline.json`, its sha256 and the
+effective policy hash stay as they are; the engine's startup baseline check
+fingerprints restored models and parameter values, not source, so it still
+verifies.
+
+Before activation (read-only):
+
+1. Marsel acknowledges the decision changes beyond the original findings:
+   the exit-safety regular-hours gate and fresh-bar veto on the broker-price
+   nets, window ticks not advancing trailing/MFE/MAE tracking, consecutive
+   SPY-only regime ticks no longer blending (measured label impact nil),
+   external closes recorded as labelled artifacts with no re-entry cooldown,
+   and entries refused at dispatch when older than 120 s or created in a
+   regular session that has closed (manual and API buys included).
+2. The paper account is flat: no positions, no open orders, paper endpoint
+   verified (the activation record requires it).
+3. `organism_brain/regime_state.json` has empty `smoothed_probs` and
+   `history` (this release does not clear a prior already persisted).
+4. `status().close_accounting.unresolved` is empty and the checkpoint holds
+   no pending close (one created before this release has no
+   `observed_bar_close` and would be priced at a much later mark).
+5. The forward-corpus host check of the October 5 external-close section
+   prints 0; otherwise report the rows to Marsel before activating.
+6. No pending entry identity is held by a row dead-lettered before this
+   release (such rows carry no dead-letter record); clear one with the brain
+   repair in `docs/runbooks/PAPER_UPTIME.md`.
+7. Informational: PR #37's records still `unmatched` and open `system` lots
+   of flat symbols (the read-only SQL in the two October 5 sections).
+8. One read-only lookup of an unknown client order id on the paper API
+   confirms the order-not-found answer (HTTP 404, JSON code 40410000, message
+   starting `order not found`). If paper answers differently, absence is never
+   proven (fail-closed) and the classifier must be updated first.
+
+Activation (the approved operation; `scripts/phase2_freeze.py` never writes
+the active file):
+
+9. Build and install the release image from the merged commit; record
+   source_sha, image_sha and image_digest.
+10. Publish the candidate surface as the host's active freeze with
+    `FROZEN_AT` = the activation time at the verified-flat transition,
+    `status: active`, `candidate_only: false`, `deployment_approved: true`,
+    `measurement_cutoff_changed: true`, `prior_active_cutoff` and
+    `prior_active_freeze_sha256` of the replaced active file, the activation
+    identity (id, source_sha, image_digest, approval reference) and
+    `approved_surface_paths` (the difference above). `scripts/phase2_freeze.py
+    --verify` on the host must then exit 0.
+11. Write the activation record: `activation_timestamp_utc` equal to
+    `FROZEN_AT`, `active_freeze_sha256` of the new active file, and
+    `broker_before_transition` (paper endpoint verified, 0 positions, 0 open
+    orders). The original activation stays as it is.
+12. Update the reviewed daily-evidence binding: approval reference and time,
+    source_sha, image_sha, image_digest, the freeze and activation paths and
+    sha256, `measurement_cutoff` = `FROZEN_AT`, and the `runtime_config_hash`
+    the running release reports (it changes with `BUILD_VERSION` or any
+    runtime-hash variable, for example `SCANNER_ENABLED`). The policy baseline
+    reference, the effective policy hash and the operator control path are
+    unchanged.
+13. If the market scanner is re-enabled with this release (the stream-history
+    fix is its precondition), flip `SCANNER_ENABLED` before step 12 so the
+    recorded runtime hash is the final one; the same activation covers it.
+
+After activation:
+
+14. The first tick logs no `REGIME PRIOR TRIPWIRE`; the startup baseline check
+    reports configured and verified with the bound sha256; the organism status
+    carries `order_dispatch_lifecycle`; the next daily evidence pack validates
+    against the new binding.

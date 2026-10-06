@@ -4,6 +4,29 @@
 
 ---
 
+## Candidate frozen-code release (audit 2026-10-05) — NOT deployed
+
+One pull request carries the five frozen-code fixes of the next five sections
+(external close C06-01, dispatch lifecycle C04-01/C01-04, regime isolation
+C09-01, stream history C11-01, exit safety C05-01/C05-02/C06-02). It is stacked
+on the close-accounting unblock (PR #37, not frozen), which merges first.
+Marsel signed off on 2026-10-05. Merging changes nothing on the host: the fixes
+take effect only when a release with a new activation is installed, which
+restarts the forward verdict clock once. The regenerated candidate
+(`artifacts/phase2/candidate_param_freeze.json`) differs from PR #37's in
+exactly six keys: `research_policy_sources.broker_state_safety`,
+`research_policy_sources.entry_cancellation`,
+`source_hashes.entry_gates_dispatch`, `source_hashes.regime_detector`,
+`data_pipeline_sources.live_engine_data` and
+`data_pipeline_sources.streaming_data_provider`; each section names only its
+own keys. `surface.effective_policy_baseline` is identical: the approved
+policy baseline is unchanged and still verifies at startup (it fingerprints
+restored models and parameter values, not source). The activation steps and
+host preconditions are collected in
+`docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md` (October 6 section).
+
+---
+
 ## Candidate external-close accounting (audit 2026-10-05 C06-01) — NOT deployed
 
 Stacked on the merged exit-safety and close-accounting candidates below.
