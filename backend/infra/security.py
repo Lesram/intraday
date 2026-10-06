@@ -5,7 +5,10 @@ Provides FastAPI dependencies for authentication and authorization.
 
 import base64
 from datetime import UTC, datetime, timedelta
+import hashlib
+import hmac
 import logging
+import math
 import os
 import secrets
 from typing import TYPE_CHECKING, Optional
@@ -23,6 +26,7 @@ from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 from passlib.context import CryptContext
 from pydantic import BaseModel
+from redis.exceptions import RedisError
 
 from backend.config import get_settings
 
@@ -31,10 +35,19 @@ JWT_ALGORITHM = "HS256"
 JWT_ISSUER = "algotrading-platform"
 JWT_AUDIENCE = "algotrading-api"
 JWT_CLOCK_SKEW = 60  # seconds
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # lifetime of tokens minted by login/refresh
 
 # Token blacklist configuration (H-01 fix)
 TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 TOKEN_BLACKLIST_TTL = 7 * 24 * 60 * 60  # 7 days (match refresh token expiry)
+
+# Session revocation (audit 2026-10-05): tokens minted together by one login
+# share a session id ("sid" claim); logout revokes the whole session. Tokens
+# also carry a credential fingerprint ("cfp" claim) derived from the stored
+# password hash; a password change or deactivation revokes the old fingerprint.
+# Both live in the same blacklist store as revoked jtis, under these prefixes.
+SESSION_REVOCATION_PREFIX = "sid:"
+CREDENTIAL_REVOCATION_PREFIX = "cfp:"
 
 # Module-level Redis client reference for token blacklist
 _token_blacklist_redis: Optional["Redis"] = None  # type: ignore
@@ -70,22 +83,10 @@ async def init_token_blacklist(redis_client) -> None:
     _blacklist_logger.info("Token blacklist initialized with Redis")
 
 
-async def blacklist_token(jti: str, expires_in: int | None = None) -> bool:
-    """
-    Add a token's JTI to the blacklist (H-01 fix).
-    
-    Args:
-        jti: JWT ID to blacklist
-        expires_in: TTL in seconds (default: TOKEN_BLACKLIST_TTL)
-        
-    Returns:
-        True if successfully blacklisted, False otherwise
-    """
-    ttl = expires_in or TOKEN_BLACKLIST_TTL
-    
-    # Always store in memory as fallback (fail-closed)
+def _remember_revocation(key: str, ttl: int) -> None:
+    """Record a revocation in the in-memory store (never shortens an entry)."""
     expiry = datetime.now(UTC).timestamp() + ttl
-    _memory_blacklist[jti] = expiry
+    _memory_blacklist[key] = max(_memory_blacklist.get(key, 0.0), expiry)
     # Evict oldest entries if memory blacklist exceeds max size
     if len(_memory_blacklist) > _MEMORY_BLACKLIST_MAX_SIZE:
         _cleanup_memory_blacklist()
@@ -94,60 +95,217 @@ async def blacklist_token(jti: str, expires_in: int | None = None) -> bool:
             sorted_items = sorted(_memory_blacklist.items(), key=lambda x: x[1])
             for k, _ in sorted_items[:_MEMORY_BLACKLIST_MAX_SIZE // 5]:
                 _memory_blacklist.pop(k, None)
-    
+
+
+async def blacklist_token(jti: str, expires_in: int | None = None) -> bool:
+    """
+    Add a token's JTI to the blacklist (H-01 fix).
+
+    Args:
+        jti: JWT ID to blacklist
+        expires_in: TTL in seconds (default: TOKEN_BLACKLIST_TTL)
+
+    Returns:
+        True if successfully blacklisted, False otherwise
+    """
+    ttl = expires_in or TOKEN_BLACKLIST_TTL
+
+    # Always store in memory as fallback (fail-closed)
+    _remember_revocation(jti, ttl)
+
     if not _token_blacklist_redis:
         _blacklist_logger.warning("Token blacklist Redis not initialized — using in-memory fallback only")
         return True
-    
+
     try:
         key = f"{TOKEN_BLACKLIST_PREFIX}{jti}"
         await _token_blacklist_redis.setex(key, ttl, "revoked")
-        _blacklist_logger.info(f"Token blacklisted: {jti[:8]}...")
+        _blacklist_logger.info("Token blacklisted: %s...", jti[:8])
         return True
-    except Exception as e:
-        _blacklist_logger.error(f"Failed to blacklist token in Redis (in-memory fallback active): {e}")
+    except (RedisError, OSError) as e:
+        _blacklist_logger.error("Failed to blacklist token in Redis (in-memory fallback active): %s", e)
         return True  # Still blacklisted in memory
 
 
-async def is_token_blacklisted(jti: str) -> bool:
+async def token_revocation_reason(
+    jti: str,
+    *,
+    session_id: str | None = None,
+    fingerprint: str | None = None,
+) -> str | None:
+    """Return why a token is revoked, or None.
+
+    Checks, in one pass: the token's own jti ("token"), its login session
+    ("session", revoked at logout) and its credential fingerprint
+    ("credentials", revoked by a password change or deactivation).
+
+    The in-memory store is checked first, then Redis in a single round trip.
+    Redis lookups are bounded by the client's socket timeouts (see
+    backend/api/lifespan.py). If Redis fails or times out, the check falls
+    back to the in-memory store only (fail-open for entries that only Redis
+    holds): every revocation made by this process is also kept in memory, so
+    what is skipped is limited to revocations recorded before the last restart
+    or by another process. Failing closed would turn a Redis outage into a
+    complete authentication outage, including the emergency-stop and halt
+    endpoints and every Socket.IO delivery.
     """
-    Check if a token's JTI is blacklisted (H-01 fix).
-    
-    Args:
-        jti: JWT ID to check
-        
-    Returns:
-        True if blacklisted, False otherwise
-        
-    Note:
-        Fail-CLOSED: if Redis is unavailable, checks in-memory blacklist.
-        If the token was blacklisted while Redis was up, it will be in both stores.
-    """
+    keys = [("token", jti)]
+    if session_id:
+        keys.append(("session", f"{SESSION_REVOCATION_PREFIX}{session_id}"))
+    if fingerprint:
+        keys.append(("credentials", f"{CREDENTIAL_REVOCATION_PREFIX}{fingerprint}"))
+
     # Always check in-memory first (fastest path and fail-closed fallback)
-    if jti in _memory_blacklist:
-        expiry = _memory_blacklist[jti]
-        if datetime.now(UTC).timestamp() < expiry:
-            return True  # Token is blacklisted in memory
-        else:
-            # Expired entry — clean up
-            _memory_blacklist.pop(jti, None)
-    
+    now = datetime.now(UTC).timestamp()
+    for reason, key in keys:
+        expiry = _memory_blacklist.get(key)
+        if expiry is not None:
+            if now < expiry:
+                return reason
+            _memory_blacklist.pop(key, None)  # Expired entry — clean up
+
     if not _token_blacklist_redis:
-        # No Redis available and not in memory blacklist.
         # Since blacklist_token() always writes to memory first, absence from
         # the memory blacklist means the token was never revoked in this process.
         _blacklist_logger.warning("Token blacklist Redis unavailable — cannot verify token revocation status")
-        return False  # Not in memory blacklist = was never revoked in this process
-    
+        return None
+
+    redis_keys = [f"{TOKEN_BLACKLIST_PREFIX}{key}" for _, key in keys]
     try:
-        key = f"{TOKEN_BLACKLIST_PREFIX}{jti}"
-        result = await _token_blacklist_redis.get(key)
-        return result is not None
-    except Exception as e:
-        _blacklist_logger.error(f"Failed to check token blacklist in Redis: {e}")
-        # Redis error but not in memory blacklist — fail closed for known-revoked tokens
-        # Since blacklist_token() always writes to memory, if it's not there, it wasn't revoked
+        if len(redis_keys) == 1:
+            values = [await _token_blacklist_redis.get(redis_keys[0])]
+        else:
+            values = await _token_blacklist_redis.mget(redis_keys)
+    except (RedisError, OSError) as e:
+        _blacklist_logger.error("Failed to check token blacklist in Redis: %s", e)
+        return None
+    for (reason, _), value in zip(keys, values or ()):
+        if value is not None:
+            return reason
+    return None
+
+
+async def is_token_blacklisted(
+    jti: str,
+    *,
+    session_id: str | None = None,
+    fingerprint: str | None = None,
+) -> bool:
+    """
+    Check if a token is revoked (H-01 fix).
+
+    Args:
+        jti: JWT ID to check
+        session_id: optional ``sid`` claim (session revoked at logout)
+        fingerprint: optional ``cfp`` claim (credentials changed)
+
+    Returns:
+        True if blacklisted, False otherwise
+
+    Note:
+        See token_revocation_reason for the Redis timeout / fallback behaviour.
+    """
+    reason = await token_revocation_reason(jti, session_id=session_id, fingerprint=fingerprint)
+    return reason is not None
+
+
+async def claim_token_once(jti: str, expires_in: int) -> bool:
+    """Mark a single-use token id (a refresh token's jti) as used.
+
+    Returns True only for the first caller. The in-memory claim is made before
+    any await, so concurrent requests in this process cannot both succeed; the
+    Redis ``SET NX`` extends the claim across restarts. If Redis fails, the
+    in-memory claim stands (the API runs a single worker process).
+    """
+    expiry = _memory_blacklist.get(jti)
+    if expiry is not None and datetime.now(UTC).timestamp() < expiry:
         return False
+    ttl = max(1, int(expires_in))
+    _remember_revocation(jti, ttl)
+    if not _token_blacklist_redis:
+        return True
+    try:
+        created = await _token_blacklist_redis.set(
+            f"{TOKEN_BLACKLIST_PREFIX}{jti}", "revoked", ex=ttl, nx=True,
+        )
+    except (RedisError, OSError) as e:
+        _blacklist_logger.error("Failed to record token use in Redis (in-memory claim stands): %s", e)
+        return True
+    return bool(created)
+
+
+def revocation_ttl(exp: object) -> int:
+    """Seconds a revocation entry for a token expiring at ``exp`` must live.
+
+    Covers the token's remaining lifetime plus the JWT_CLOCK_SKEW leeway that
+    decode_token accepts after ``exp``. Unknown expiry: the refresh lifetime.
+    """
+    if isinstance(exp, (int, float)) and not isinstance(exp, bool) and math.isfinite(exp):
+        return max(1, int(exp - datetime.now(UTC).timestamp()) + JWT_CLOCK_SKEW + 1)
+    return TOKEN_BLACKLIST_TTL + JWT_CLOCK_SKEW
+
+
+def new_session_id() -> str:
+    """Session id shared by the access and refresh tokens of one login."""
+    return secrets.token_urlsafe(16)
+
+
+def _jwt_secret() -> str | None:
+    settings = get_settings()
+    return getattr(settings.security, 'secret_key', None) or os.environ.get('SECURITY_JWT_SECRET')
+
+
+def credential_fingerprint(username: str, hashed_password: str | None) -> str | None:
+    """Keyed fingerprint of a user's stored password hash (``cfp`` claim).
+
+    bcrypt salts every hash, so the fingerprint changes whenever the password
+    is set, by any path. Refresh compares the token's fingerprint with the one
+    computed from the database row; access-token checks consult the revoked
+    fingerprints. HMAC-SHA256 keyed with the JWT secret, truncated to 18 bytes.
+    """
+    if (not isinstance(username, str) or not username
+            or not isinstance(hashed_password, str) or not hashed_password):
+        return None
+    secret = _jwt_secret()
+    if not secret:
+        return None
+    message = b"\x00".join((
+        b"intra-credential-fingerprint-v1",
+        username.encode("utf-8"),
+        hashed_password.encode("utf-8"),
+    ))
+    digest = hmac.new(secret.encode("utf-8"), message, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest[:18]).decode("ascii")
+
+
+def _access_token_lifetime_seconds() -> int:
+    configured = getattr(get_settings().security, "jwt_expire_minutes", ACCESS_TOKEN_EXPIRE_MINUTES)
+    minutes = ACCESS_TOKEN_EXPIRE_MINUTES
+    if isinstance(configured, (int, float)) and math.isfinite(configured):
+        minutes = max(minutes, configured)
+    return int(minutes * 60)
+
+
+async def revoke_session(session_id: str) -> None:
+    """Revoke every token of one login session (access and refresh)."""
+    if session_id:
+        await blacklist_token(
+            f"{SESSION_REVOCATION_PREFIX}{session_id}",
+            expires_in=TOKEN_BLACKLIST_TTL + JWT_CLOCK_SKEW,
+        )
+
+
+async def revoke_credential_fingerprint(fingerprint: str | None) -> None:
+    """Revoke every access token carrying ``fingerprint``.
+
+    Refresh tokens are checked against the database instead, so the entry only
+    has to outlive access tokens issued before the change.
+    """
+    if fingerprint:
+        await blacklist_token(
+            f"{CREDENTIAL_REVOCATION_PREFIX}{fingerprint}",
+            expires_in=_access_token_lifetime_seconds() + JWT_CLOCK_SKEW + 60,
+        )
 
 
 async def revoke_all_user_tokens(username: str) -> bool:
@@ -277,6 +435,8 @@ class UserClaims(BaseModel):
     exp: int  # expiration timestamp
     iat: int  # issued at timestamp
     jti: str  # JWT ID
+    sid: str | None = None  # login session id (shared with the refresh token)
+    cfp: str | None = None  # credential fingerprint (see credential_fingerprint)
 
 
 class AuthenticatedUser(BaseModel):
@@ -367,7 +527,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def create_access_token(sub: str, roles: list[str], expires_minutes: int | None = None) -> str:
+def create_access_token(
+    sub: str,
+    roles: list[str],
+    expires_minutes: int | None = None,
+    *,
+    session_id: str | None = None,
+    fingerprint: str | None = None,
+) -> str:
     """
     Create a JWT access token with normalized claims.
 
@@ -375,6 +542,8 @@ def create_access_token(sub: str, roles: list[str], expires_minutes: int | None 
         sub: Subject (username or user identifier) - required
         roles: List of user roles for RBAC
         expires_minutes: Token expiration in minutes (default from config)
+        session_id: login session id, added as the ``sid`` claim
+        fingerprint: credential fingerprint, added as the ``cfp`` claim
 
     Returns:
         Encoded JWT token string
@@ -419,6 +588,10 @@ def create_access_token(sub: str, roles: list[str], expires_minutes: int | None 
         "jti": secrets.token_urlsafe(16),  # Unique token ID
         "token_type": "access",
     }
+    if session_id:
+        claims["sid"] = session_id
+    if fingerprint:
+        claims["cfp"] = fingerprint
 
     try:
         encoded_jwt = jwt.encode(claims, secret, algorithm=JWT_ALGORITHM)
@@ -432,7 +605,14 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7  # Refresh tokens last 7 days
 REFRESH_TOKEN_TYPE = "refresh"
 
 
-def create_refresh_token(sub: str, roles: list[str], expires_days: int | None = None) -> str:
+def create_refresh_token(
+    sub: str,
+    roles: list[str],
+    expires_days: int | None = None,
+    *,
+    session_id: str | None = None,
+    fingerprint: str | None = None,
+) -> str:
     """
     Create a JWT refresh token with longer expiration.
 
@@ -440,6 +620,8 @@ def create_refresh_token(sub: str, roles: list[str], expires_days: int | None = 
         sub: Subject (username or user identifier) - required
         roles: List of user roles for RBAC
         expires_days: Token expiration in days (default 7)
+        session_id: login session id, added as the ``sid`` claim
+        fingerprint: credential fingerprint, added as the ``cfp`` claim
 
     Returns:
         Encoded JWT refresh token string
@@ -478,6 +660,10 @@ def create_refresh_token(sub: str, roles: list[str], expires_days: int | None = 
         "iat": int(now.timestamp()),
         "jti": secrets.token_urlsafe(16),  # Unique token ID for potential revocation
     }
+    if session_id:
+        claims["sid"] = session_id
+    if fingerprint:
+        claims["cfp"] = fingerprint
 
     try:
         encoded_jwt = jwt.encode(claims, secret, algorithm=JWT_ALGORITHM)
@@ -552,6 +738,37 @@ def decode_refresh_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid_token"
         )
+
+
+def decode_token_for_revocation(token: str) -> dict | None:
+    """Return the claims of an access or refresh token for revocation only.
+
+    Verifies signature, issuer and audience but not expiry, so logout can
+    still revoke the session of an expired access token. Returns None when the
+    token does not verify. Never use this to authenticate a request.
+    """
+    secret = _jwt_secret()
+    if not secret or not isinstance(token, str) or not token:
+        return None
+    try:
+        payload = jwt.decode(
+            token,
+            secret,
+            algorithms=[JWT_ALGORITHM],
+            options={
+                "verify_signature": True,
+                "verify_exp": False,
+                "verify_iss": True,
+                "verify_aud": True,
+            },
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+        )
+    except (JWTError, ValueError, TypeError):
+        return None
+    if not isinstance(payload, dict) or payload.get("token_type") not in (None, "access", REFRESH_TOKEN_TYPE):
+        return None
+    return payload
 
 
 def decode_token(token: str) -> dict:
@@ -738,9 +955,14 @@ async def get_current_user(
             claims = verify_token(credentials.credentials)
             # V9 AA3-1 / Wave-42 (2026-05-03): reject blacklisted tokens.
             # Logout / refresh-rotation blacklist the jti; this gate
-            # ensures a stolen token can be revoked.
+            # ensures a stolen token can be revoked.  Audit 2026-10-05:
+            # the same lookup covers the token's login session (ended by
+            # logout) and its credential fingerprint (revoked by a password
+            # change or deactivation).
             try:
-                if await is_token_blacklisted(claims.jti):
+                if await is_token_blacklisted(
+                    claims.jti, session_id=claims.sid, fingerprint=claims.cfp,
+                ):
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="token_revoked",

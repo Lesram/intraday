@@ -69,8 +69,12 @@ alembic -c alembic.ini upgrade head
 ## 5. Create Admin User
 
 ```bash
-python scripts/unlock_admin.py
+# Prompts for the password (12+ characters, at most 72 bytes)
+python scripts/db/create_admin_user.py --username admin --email admin@example.com
 ```
+
+To reset an existing admin's password later, add `--force` (the account and
+its data are kept). See [AUTHENTICATION.md](AUTHENTICATION.md).
 
 ## 6. Start the Platform
 

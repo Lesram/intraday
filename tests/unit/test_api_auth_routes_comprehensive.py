@@ -432,20 +432,39 @@ class TestTokenRefreshEndpoint:
     @patch('backend.api.routes.auth.create_access_token')
     @patch('backend.api.routes.auth.create_refresh_token')
     def test_refresh_valid_token(self, mock_create_refresh, mock_create_access, mock_decode, client):
-        """Test refresh with valid token."""
-        mock_decode.return_value = {"sub": "testuser", "roles": ["user"]}
+        """Test refresh with valid token.
+
+        Audit 2026-10-05: refresh re-reads the user and issues the roles stored
+        in the database; the token must carry its session id and credential
+        fingerprint (sid / cfp).
+        """
+        import secrets
+        import time
+
+        from backend.infra.security import credential_fingerprint
+        from backend.infra.users import User
+
+        stored = User(username="testuser", hashed_password="stored-hash", roles=["trader"])
+        mock_decode.return_value = {
+            "sub": "testuser", "roles": ["user"], "jti": secrets.token_urlsafe(8),
+            "sid": "session-1", "cfp": credential_fingerprint("testuser", "stored-hash"),
+            "exp": int(time.time()) + 3600,
+        }
         mock_create_access.return_value = "new_access_token"
         mock_create_refresh.return_value = "new_refresh_token"
-        
-        response = client.post("/auth/token/refresh", json={
-            "refresh_token": "valid_refresh_token"
-        })
-        
+
+        with patch('backend.api.routes.auth._load_refresh_user',
+                   new=AsyncMock(return_value=stored)):
+            response = client.post("/auth/token/refresh", json={
+                "refresh_token": "valid_refresh_token"
+            })
+
         assert response.status_code == 200
         data = response.json()
         assert data["access_token"] == "new_access_token"
         assert data["refresh_token"] == "new_refresh_token"
         assert data["token_type"] == "bearer"
+        assert mock_create_access.call_args.kwargs["roles"] == ["trader"]
 
     @patch('backend.api.routes.auth.decode_refresh_token')
     def test_refresh_invalid_token(self, mock_decode, client):
