@@ -48,6 +48,20 @@ MANIFEST = BRAIN_DIR / "manifest.json"
 LEARNING_STATE = BRAIN_DIR / "learning_state.json"
 
 
+# Same rule as backend.organism.phase2_gate._reconciliation_artifacts (a test keeps
+# the two in step): the persisted flag is authoritative; the exit reasons and the
+# orphan-adoption source cover ledgers written without the column.
+_ARTIFACT_EXIT_REASONS = frozenset({"reconciliation_adjustment", "external_close"})
+_ARTIFACT_ENTRY_SOURCES = frozenset({"reconciliation_orphan"})
+
+
+def is_reconciliation_artifact(row: dict) -> bool:
+    """True for ledger rows that are reconciliation bookkeeping, not strategy trades."""
+    return (str(row.get("is_reconciliation_artifact", "")).strip().lower() in {"1", "true", "yes", "y"}
+            or str(row.get("exit_reason", "")).strip() in _ARTIFACT_EXIT_REASONS
+            or str(row.get("entry_source", "")).strip() in _ARTIFACT_ENTRY_SOURCES)
+
+
 def load_trades(date_from: str, date_to: str) -> list[dict]:
     """Load trades from trade_history.csv within date range."""
     rows = []
@@ -60,7 +74,9 @@ def load_trades(date_from: str, date_to: str) -> list[dict]:
                 continue
             day = closed[:10]
             if date_from <= day <= date_to:
-                if r.get("exit_reason") != "reconciliation_adjustment":
+                # Reconciliation artifacts are not strategy trades. 'external_close'
+                # (audit 2026-10-05 C06-01) keeps the lifetime's strategy fields.
+                if not is_reconciliation_artifact(r):
                     rows.append(r)
     return rows
 

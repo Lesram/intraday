@@ -358,6 +358,30 @@ class RegimeDetector:
         self._last_state = state
         return state
 
+    def detect_isolated(self, features_df: pd.DataFrame) -> RegimeState:
+        """``detect()`` that leaves the running smoothing state as it found it.
+
+        Audit 2026-10-05 C09-01. The live engine's SPY-only fallback (a tick
+        with no usable sector ETF) used to call ``detect()`` on this shared
+        detector. That wrote ``_smoothed_probs`` and ``_history``, and
+        ``detect_market_regime`` / ``detect_cross_asset_regime`` then restored
+        the stale vector into every later per-symbol and per-ETF detect, so one
+        such tick pinned every later routed label and was persisted to
+        ``regime_state.json``. This returns exactly what ``detect()`` returns
+        from the current state (same prior, same hysteresis reference), then
+        puts ``_smoothed_probs`` and ``_history`` back, as the aggregate paths
+        do, even if ``detect()`` raises. ``_last_state`` is updated as on every
+        routed tick: decision snapshots read it, and the next ``detect()`` uses
+        it only as the hysteresis reference for its own primary.
+        """
+        saved_probs = dict(self._smoothed_probs or {})
+        saved_history = list(self._history or [])
+        try:
+            return self.detect(features_df)
+        finally:
+            self._smoothed_probs = saved_probs
+            self._history = saved_history
+
     def _compute_probabilities(
         self,
         *,
@@ -601,16 +625,21 @@ class RegimeDetector:
         saved_probs = dict(self._smoothed_probs) if self._smoothed_probs is not None else {}
         saved_history = list(self._history)
         saved_last = self._last_state
-        for etf, feat_df in sector_features.items():
-            if feat_df is not None and len(feat_df) >= 10:
-                # Restore pristine state before each detect to prevent cross-contamination
-                self._smoothed_probs = dict(saved_probs)
-                self._history = list(saved_history)
-                sr = self.detect(feat_df)
-                sector_regimes.append(sr)
-        self._smoothed_probs = saved_probs
-        self._history = saved_history
-        self._last_state = saved_last
+        try:
+            for etf, feat_df in sector_features.items():
+                if feat_df is not None and len(feat_df) >= 10:
+                    # Restore pristine state before each detect to prevent cross-contamination
+                    self._smoothed_probs = dict(saved_probs)
+                    self._history = list(saved_history)
+                    sr = self.detect(feat_df)
+                    sector_regimes.append(sr)
+        finally:
+            # Audit 2026-10-05 (C09-01 review): restore even if a per-ETF
+            # detect() raises after writing its prior, as detect_market_regime
+            # and detect_isolated do, so the prior cannot pin later labels.
+            self._smoothed_probs = saved_probs
+            self._history = saved_history
+            self._last_state = saved_last
 
         if not sector_regimes:
             return base

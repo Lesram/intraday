@@ -76,17 +76,20 @@ class TestPrefillSeedsRingBuffer:
         assert provider.has_data("AAPL")
 
     @pytest.mark.asyncio
-    async def test_prefill_calls_correct_params(self):
+    async def test_prefill_calls_correct_params(self, monkeypatch):
+        # Audit 2026-10-05 (C11-01): the prefill requests the engine's history
+        # window (live_engine.LIVE_LOOKBACK / LIVE_TIMEFRAME, resolved from
+        # ORGANISM_LIVE_LOOKBACK / ORGANISM_LIVE_TIMEFRAME at import) instead
+        # of re-reading the env with its own default (100 vs the engine's 500).
+        monkeypatch.setattr("backend.organism.live_engine.LIVE_LOOKBACK", 100)
+        monkeypatch.setattr("backend.organism.live_engine.LIVE_TIMEFRAME", "1Min")
         provider = StreamingDataProvider()
         client = _mock_data_client(_make_bars_df(3))
 
         with patch(
             "backend.organism.streaming_data_provider.AlpacaMarketDataStream",
             return_value=_mock_stream(),
-        ), patch.dict("os.environ", {
-            "ORGANISM_LIVE_LOOKBACK": "100",
-            "ORGANISM_LIVE_TIMEFRAME": "1Min",
-        }):
+        ):
             await provider.start(
                 symbols=["SPY"],
                 api_key="k",

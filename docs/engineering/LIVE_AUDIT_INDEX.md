@@ -1,31 +1,31 @@
 # Live Audit Index
 
-Generated: 2026-10-06T00:34:27Z
+Generated: 2026-10-07T20:47:08Z
 PR: n/a
-SHA: `8512effe5f`
-Branch: `fix/close-accounting-unblock`
+SHA: `479fbfc57e`
+Branch: `fix/surface-release-2026-10`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **41**
+Total distinct changed files: **71**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 6 | `backend/api/lifespan.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_stream.py`, `backend/organism/live_engine_fills.py`, `backend/services/order_recovery_service.py` |
-| Scripts | 1 | `scripts/runtime/write_runtime_snapshot.py` |
+| Backend | 15 | `backend/api/lifespan.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_broker.py`, `backend/integrations/alpaca_outbox.py`, `backend/integrations/alpaca_stream.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_data.py`, `backend/organism/live_engine_fills.py`, `backend/organism/operator_cancellation.py` |
+| Scripts | 3 | `scripts/db/phase7_data_integrity_remediation.py`, `scripts/generate_experiment_observation_report.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 0 | none |
-| Tests | 2 | `tests/test_audit_20261005_close_accounting_unblock.py`, `tests/test_fill_accounting_postgres.py` |
-| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md` |
-| Artifacts/evidence | 29 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
+| Tests | 19 | `tests/test_audit_20261005_close_accounting_unblock.py`, `tests/test_audit_20261005_outbox_dispatch_guards.py`, `tests/test_audit_20261005_surface_dispatch_lifecycle.py`, `tests/test_audit_20261005_surface_exit_safety.py`, `tests/test_audit_20261005_surface_external_close.py`, `tests/test_audit_20261005_surface_regime_isolation.py`, `tests/test_audit_20261005_surface_stream_history.py`, `tests/test_external_close_lot_repair_postgres.py`, `tests/test_fill_accounting_postgres.py`, `tests/test_multi_tick_state.py` |
+| Docs | 4 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_UPTIME.md` |
+| Artifacts/evidence | 30 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **1** file(s).
+Organism subset of Backend: **7** file(s).
 
 ### Full changed-file list
 
@@ -39,6 +39,7 @@ Organism subset of Backend: **1** file(s).
 - `artifacts/organism_engine_scenarios.log`
 - `artifacts/organism_live_engine.junit.xml`
 - `artifacts/organism_live_engine.log`
+- `artifacts/phase2/candidate_param_freeze.json`
 - `artifacts/replay_simulator.junit.xml`
 - `artifacts/replay_simulator.log`
 - `artifacts/replay_summary.json`
@@ -61,15 +62,44 @@ Organism subset of Backend: **1** file(s).
 - `backend/api/lifespan.py`
 - `backend/infra/outbox_worker.py`
 - `backend/infra/repositories/orders.py`
+- `backend/integrations/alpaca_broker.py`
+- `backend/integrations/alpaca_outbox.py`
 - `backend/integrations/alpaca_stream.py`
+- `backend/organism/live_engine.py`
+- `backend/organism/live_engine_data.py`
 - `backend/organism/live_engine_fills.py`
+- `backend/organism/operator_cancellation.py`
+- `backend/organism/phase2_gate.py`
+- `backend/organism/regime.py`
+- `backend/organism/streaming_data_provider.py`
 - `backend/services/order_recovery_service.py`
+- `backend/services/positions_service.py`
 - `docs/architecture/mapss.md`
 - `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`
+- `docs/runbooks/PAPER_UPTIME.md`
+- `scripts/db/phase7_data_integrity_remediation.py`
+- `scripts/generate_experiment_observation_report.py`
 - `scripts/runtime/write_runtime_snapshot.py`
 - `tests/test_audit_20261005_close_accounting_unblock.py`
+- `tests/test_audit_20261005_outbox_dispatch_guards.py`
+- `tests/test_audit_20261005_surface_dispatch_lifecycle.py`
+- `tests/test_audit_20261005_surface_exit_safety.py`
+- `tests/test_audit_20261005_surface_external_close.py`
+- `tests/test_audit_20261005_surface_regime_isolation.py`
+- `tests/test_audit_20261005_surface_stream_history.py`
+- `tests/test_external_close_lot_repair_postgres.py`
 - `tests/test_fill_accounting_postgres.py`
+- `tests/test_multi_tick_state.py`
+- `tests/test_paper_daily_evidence.py`
+- `tests/test_phase2_gate.py`
+- `tests/test_phase3_attribution_report.py`
+- `tests/test_phase7_data_integrity_remediation.py`
+- `tests/test_safety_invariants.py`
+- `tests/test_streaming_subscription_acknowledgement.py`
+- `tests/test_v12_baseline_invariants.py`
+- `tests/test_v13_w100_live_tick_coverage.py`
+- `tests/unit/test_streaming_data_provider.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -110,4 +140,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 1 organism file(s) changed — require replay verification
+- 7 organism file(s) changed — require replay verification

@@ -4,6 +4,409 @@
 
 ---
 
+## Candidate frozen-code release (audit 2026-10-05) — NOT deployed
+
+One pull request carries the five frozen-code fixes of the next five sections
+(external close C06-01, dispatch lifecycle C04-01/C01-04, regime isolation
+C09-01, stream history C11-01, exit safety C05-01/C05-02/C06-02). It is stacked
+on the close-accounting unblock (PR #37, not frozen), which merges first.
+Marsel signed off on 2026-10-05. Merging changes nothing on the host: the fixes
+take effect only when a release with a new activation is installed, which
+restarts the forward verdict clock once. The regenerated candidate
+(`artifacts/phase2/candidate_param_freeze.json`) differs from PR #37's in
+exactly six keys: `research_policy_sources.broker_state_safety`,
+`research_policy_sources.entry_cancellation`,
+`source_hashes.entry_gates_dispatch`, `source_hashes.regime_detector`,
+`data_pipeline_sources.live_engine_data` and
+`data_pipeline_sources.streaming_data_provider`; each section names only its
+own keys. `surface.effective_policy_baseline` is identical: the approved
+policy baseline is unchanged and still verifies at startup (it fingerprints
+restored models and parameter values, not source). The activation steps and
+host preconditions are collected in
+`docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md` (October 6 section).
+
+---
+
+## Candidate external-close accounting (audit 2026-10-05 C06-01) — NOT deployed
+
+Stacked on the merged exit-safety and close-accounting candidates below.
+Frozen decision sources change: `research_policy_sources.broker_state_safety`
+(`_reconcile_fills`) and `research_policy_sources.entry_cancellation`
+(`operator_cancellation.py`, `_accounted_entry_fill` only), on top of the base's
+own `broker_state_safety` and `entry_gates_dispatch` drift. Marsel signed off on
+these frozen-code fixes on 2026-10-05; they take effect only through a new
+activation. No strategy parameter, threshold, feed, sizing or entry-decision
+change. The policy id stays `exact_position_fills_or_pending_v1` (strategy
+outcomes still need exact organism legs; the new records are reconciliation
+artifacts, as orphan bookkeeping already is under v1).
+
+- **Problem.** An identified strategy position closed by anything other than an
+  organism exit order (the platform's close routes, the Alpaca dashboard after
+  the EOD page says "manual intervention recommended", a broker liquidation)
+  stayed pending forever: no trade, the symbol entry-gated across restarts.
+- **Close-route legs are exact.** `POST /positions/{symbol}/close` and
+  `POST /orders/{id}/close-position` book their leg with `close_position: true`
+  and no organism source. When the lifetime is flat-to-flat by the observed
+  close with such an exit-side row among its legs (all legs terminal and
+  attributable; the holds of exact accounting apply), the close is recorded at
+  once with the DB cash flows (`price_source=external_close_db_fills`). That
+  includes an operator Close that raced the engine's own exit and was refused
+  by the outbox exit guard or canceled without a fill: strategy accounting
+  refuses any non-organism row, so the engine's exact legs are recorded as the
+  artifact instead of staying pending for good.
+- **No DB leg (dashboard, liquidation) is approximate.** When every leg up to
+  the observed close is attributable and terminal, the DB lifetime is still
+  open, the broker is flat and no later order exists for the symbol, the close
+  waits `EXTERNAL_CLOSE_APPROXIMATE_AFTER` (15 min, reason
+  `external_close_unbooked`). Then the DB legs count exactly and the unbooked
+  quantity is priced at the bar close kept when the close was first observed
+  (`pending_close.observed_bar_close`), else the current bar close, else the
+  streaming quote (`price_source=external_close_approximate_<rung>`). No mark:
+  it stays pending (`no_exit_price`). The mark's age is not bounded: a close
+  first observed long after it happened (engine downtime, or a close already
+  pending before this release, which has no `observed_bar_close`) is priced at
+  the bar or quote of the recording pass, and the rung does not show the age.
+  Check `status().close_accounting.unresolved` before activation.
+- **Never strategy evidence.** Both carry `exit_reason=external_close` and
+  `is_reconciliation_artifact=true`: no learner, Kelly, calibration, symbol
+  counts, bans, evolution, edge-monitor or Phase-2 forward verdict corpus input
+  (`phase2_gate.load_forward_corpus` drops artifacts by the flag, and by exit
+  reason or orphan source for ledgers without the column, so the verdict CLI,
+  the attribution report and the daily evidence pack's native gate exclude
+  them). Tracking is cleared (entry gate released, no re-entry cooldown) and the
+  completed identity persists across restarts. The daily evidence check still
+  flags every forward row whose price source is not `db_position_fills`, so
+  after an external close every later daily report of the epoch carries
+  `unqualified_price_source`.
+- **Lot repair before the gate opens.** Once the close is recordable,
+  `_lookup_external_close_from_db` commits
+  `alpaca_stream.repair_external_close_lots` before returning, so before the
+  artifact commit releases the gate. Scope: the entry owner's open lots of the
+  symbol on the lifetime's side whose opening order was submitted at or before
+  the observed close (older stale lots included; later lifetimes and other
+  owners never). The operator's unmatched close-route records of the window are
+  netted FIFO against them at the record's unmatched VWAP (RealizedTrade
+  `lot_accounting=external_close_repair`, record `matched_late`); a remainder
+  no DB row closed is written off with one `position.adjusted` audit row per lot
+  (`external_close_unbooked_write_off`). Idempotent. A failed repair keeps the
+  close pending and gated (`external_close_lot_repair_failed`, retried every
+  pass). The next entry therefore releases its identity and its exit realizes
+  against its own lot.
+- **Pending entry identity.** `_accounted_entry_fill`'s flat branch accepts the
+  `external_close` artifact (same identity, quantity and entry cost) without
+  requiring exhausted lots; after the repair they are exhausted anyway.
+- **Escalation.** A close still pending 30 min after it was observed raises one
+  CRITICAL per episode (`_UNRESOLVED_CLOSE_ESCALATE_SECONDS`, in
+  `_defer_unresolved_close`; a restart re-pages once). Genuinely ambiguous closes
+  (holds, unattributed or still-working legs, an order after the observed close,
+  a failed lot repair) stay pending. A close-route fill of an engine position
+  still pages `LOT ACCOUNTING DISCREPANCY` (CRITICAL) at ingestion, because it is
+  booked under the operator's owner; the repair nets it when the close is
+  recorded. Snapshot: `external_close_accounting`.
+
+---
+
+## Candidate dispatch lifecycle fixes (audit 2026-10-05) — NOT deployed
+
+Stacked on the exit-safety and close-accounting candidates below. One more frozen
+decision source changes: `research_policy_sources.entry_cancellation`
+(`backend/organism/operator_cancellation.py`), next to the two keys the
+exit-safety branch already moves (`source_hashes.entry_gates_dispatch`,
+`research_policy_sources.broker_state_safety`). Marsel signed off on the frozen
+fixes on 2026-10-05; they take effect only through a new activation. No hashed
+engine method, strategy parameter, threshold, feed, sizing or entry-decision
+rule changes. New constants are in the outbox worker (not frozen) and in the
+runtime snapshot block `order_dead_letter_lifecycle`.
+
+- **A dead-lettered order no longer blocks its symbol for good (C04-01).**
+  Before, a dead letter marked only the outbox event `failed`; the order row
+  stayed `accepted` with no broker id, the engine's confirmation answered
+  `broker_dispatch_unresolved` forever, and the pending identity (saved in the
+  brain) refused the symbol across restarts. Now:
+  1. *Record.* In the dead-letter transaction the worker writes
+     `orders.attributes.outbox_dead_letter` (state `absence_check_pending`,
+     reason, event id, client key, time, the status to finalize to). Only an
+     unambiguous dead letter of a row still awaiting the broker (no broker id,
+     no fills, not terminal, same client key) is recorded; the row's status is
+     unchanged. A failed commit records nothing (the event is redelivered after
+     its lease, as before).
+  2. *Absence check.* A separate worker task (every 15 s) looks recorded rows up
+     by their persisted client key (`GET /v2/orders:by_client_order_id`), at the
+     earliest 60 s after the dead letter (a POST the broker processed late has
+     time to show) and only while no other `order.submitted` event for the
+     order is pending. *What counts as an absence proof* (review NB1): only
+     Alpaca's order-not-found answer to that lookup, an HTTP 404 whose body is
+     the JSON object `{"code": 40410000, "message": "order not found..."}`
+     (integer code; message matched as a prefix, any case;
+     `classify_client_order_404`), and only twice: a second such answer at
+     least 300 s after the first (`DEAD_LETTER_CONFIRM_SECONDS`) with no other
+     answer between them. Any other answer between the two (a found order, a
+     pending delivery, a failed or unconfirmed lookup), another dead letter of
+     the order, or a worker restart (the first answer is kept in memory) makes
+     absence start over. Any other 404 is not absence: an HTML or plain-text
+     page, a body without that code, or that code with another message (for
+     example `endpoint not found` from a wrong route); it is retried like a
+     failed lookup and logged at ERROR, because it means the broker contract or
+     the route changed. After the second answer, under the row lock and only if
+     the row is still unsent and its event still dead-lettered, the row becomes
+     `rejected` (`expired` for a refused entry) with the proof (`state:
+     finalized`, `absence: {result: not_found, client_order_id, checked_at,
+     answers: [{checked_at, http_status, code, message}, ...]}`). An order found
+     at the broker is attached through the normal acknowledgement path
+     (identity checks, fill accounting) and pages CRITICAL `DEAD-LETTERED ORDER
+     FOUND AT THE BROKER`, even if recording that outcome afterwards fails
+     (outcome `outcome_not_recorded`); from then on broker confirmation
+     resolves it. Any other answer (transport error, timeout, the open breaker,
+     a 5xx, a body that does not confirm the key, another 404) is retried with
+     a doubling backoff from 15 s to 300 s. A row whose check raises (for
+     example a database error) is logged at ERROR and backed off the same way;
+     the sweep goes on with the next row (review NB3). At most 5 lookups per
+     sweep, 5 s each. Nothing is ever submitted. A clean dead letter is
+     therefore finalized about 6 minutes after it happened, at the earliest.
+     The record and the finalization lock the order row `FOR NO KEY UPDATE`,
+     like every fill path (PR #37): they write only status and attributes, so
+     they still serialize with fill ingestion of the same order but never block
+     foreign-key checks of rows that reference it.
+  3. *Release (frozen half).* `confirm_tracked_entries` treats a row without a
+     broker id as resolved only when the worker finalized it with that proof
+     (`_never_sent`), the row, its executions and its lots show no fill, and
+     the engine's tick is later than the one that registered or restored the
+     identity (so never on the submission tick, nor during the startup
+     cancellation). It is then `verified_unfilled`, which
+     `_reconcile_pending_entry_orders` releases at once; `_reconcile_fills`
+     clears the entry metadata through the unchanged zero-fill check, and the
+     symbol can trade again. A broker 404 alone, a status set by hand or by a
+     script, or a dead letter still awaiting its lookup releases nothing. The
+     emergency entry cancellation counts a proven never-sent entry as resolved.
+  4. *Sells.* A dead-lettered exit is finalized the same way (the EXE-04
+     CRITICAL is unchanged), so it no longer holds close accounting.
+- **Entries are not sent late (C01-04).** Before dispatch, the worker refuses
+  any order that is not an exit when it is older than 120 s
+  (`ENTRY_DISPATCH_MAX_AGE_SECONDS`, measured from `OutboxEvent.created_at`,
+  the intent time that retries do not change) or was created during a regular
+  NYSE session (early closes included) that has since closed: sent then, a DAY
+  order would be queued for the next session. An order created outside a
+  regular session is checked for age only. The event is dead-lettered without
+  a dispatch attempt (`DISPATCH_EXPIRED:<entry_stale|entry_session_closed>`,
+  notice `order.expired`, WARNING) and goes through the lifecycle above to
+  `expired`; an earlier attempt that did reach the broker is found and
+  attached. Exits (declared, close-position, or long-only sells) and lookup-only
+  (ambiguous) events are never refused here. If the check itself fails, the
+  order is held and retried, never sent unchecked. The refusal covers every
+  order that is not an exit, manual and API buys included: a manual GTC buy
+  created during the session and dispatched after the close is expired, not
+  queued for the next session (submit it again after the close if it is still
+  wanted).
+- **Counts and the refusal page (review NB4).** The outbox worker counts, per
+  ET date and per process (a restart starts from zero), entry refusals by
+  reason, recorded dead letters by reason, finalizations by status, orders
+  found at the broker, unverified lookups by kind and late broker activity on
+  finalized rows. The organism status carries the counts
+  (`OrganismLiveEngine.status`, not a hashed method;
+  `live_engine.engine.order_dispatch_lifecycle`: `session_date`,
+  `entry_refusals`, `finalized`, `counts`, `refusal_page_threshold`,
+  `refusal_paged`), so the paper monitor, the live-process runtime snapshot and
+  the daily evidence (`runtime_state`) record them. A healthy outbox refuses
+  nothing; more than `ENTRY_REFUSAL_PAGE_THRESHOLD` (1) refusals in one ET date
+  page once per date and process, CRITICAL `ENTRY DISPATCH REFUSALS ABOVE
+  THRESHOLD` (a slow outbox, a clock or a calendar fault would otherwise show
+  only as missing trades).
+- **Remediation script.** `scripts/db/phase7_data_integrity_remediation.py`
+  marks stale rows `rejected` (never `failed`), leaves rows whose dead letter is
+  ambiguous (listed in `ambiguous_stale_orders` for a broker lookup) and rows the
+  worker is settling. Its status carries no absence proof, so it releases no
+  engine identity.
+- **Known limits.** Ambiguous (lookup-only) dead letters are not finalized; they
+  keep their CRITICAL and need an operator (C04-03 follow-up). Rows dead-lettered
+  before this release carry no record, so a pending identity they still hold
+  needs the documented brain repair. A cause that rejects every attempt (for
+  example buying power) now cycles: each released entry may be re-submitted,
+  bounded by the engine's entry throttles; it does not page (only refusals do).
+  *Residual race and its page:* the two answers rule out a POST the broker
+  processes up to about 6 minutes after the worker's last attempt, and a single
+  read-path 404 during an Alpaca incident whose writes are backlogged. An order
+  processed even later than the confirming lookup (realistic only for a
+  failure that may have happened after the request was sent: a timeout, a 5xx,
+  a connection reset; until C01-05 the worker classifies these as unambiguous)
+  can still appear after the proof. The trade-update stream then attaches it by
+  client key to the finalized row; by then the engine may have released the
+  identity (the position is adopted as an orphan, excluded from learning) and
+  may have re-entered the symbol (at most one extra $2,000-notional entry per
+  event, its close accounting held by the late fill). This is no longer silent:
+  every fill ingress (`apply_order_fill_snapshot`) logs CRITICAL `FILL ATTACHED
+  TO A FINALIZED ORDER` (or `BROKER ORDER ATTACHED TO A FINALIZED ORDER` for an
+  acknowledgement without a fill) before it records the broker's truth, once
+  per new fill quantity or first broker id. The order-not-found shape (code
+  40410000, message starting `order not found`) follows Alpaca's error format
+  but has not yet been confirmed against the paper API; if paper answers with
+  another wording, absence is never proven (fail-closed: the symbol stays
+  blocked, `PENDING ENTRY UNRESOLVED` pages after 30 minutes, and the ERROR log
+  shows the body) and the classifier needs updating. Classifying more failures
+  as ambiguous (C01-05) keeps them out of this path; it does not conflict with
+  it.
+
+## Candidate surface regime isolation (audit 2026-10-05 C09-01) — NOT deployed
+
+Stacked on the exit-safety fixes below. Frozen decision source change:
+`source_hashes.regime_detector` (the `RegimeDetector` class); the one changed
+line in `_live_tick_inner` falls in `source_hashes.entry_gates_dispatch`, which
+the exit-safety fixes already change. Marsel signed off on the frozen-code fixes
+on 2026-10-05; this takes effect only through a new activation. No strategy
+parameter, threshold, feed, sizing or entry change. Details: §6, "Routed Label
+and Detector State".
+
+- **Detector state cannot leak into later labels.** The SPY-only fallback
+  calls `detect_isolated()`, and the per-ETF loop of
+  `detect_cross_asset_regime` restores the running state in a `finally`
+  (review follow-up), so neither a SPY-only tick nor a per-ETF `detect()` that
+  raises can leave a prior in the shared detector. Labels change only after
+  such a tick: the SPY-only tick's own label is unchanged, later ticks no
+  longer follow its prior, and consecutive SPY-only ticks (a multi-tick
+  XLK/XLE outage) no longer blend tick to tick (measured label impact nil).
+  Without a SPY-only tick or a raising `detect()`, every label is unchanged.
+- **Release note, before activation:** confirm that the host's
+  `organism_brain/regime_state.json` has empty `smoothed_probs` and `history`.
+  This release does not clear a prior that is already persisted:
+  `OrganismBrain.apply_regime_state` would restore it and every routed label
+  would keep blending it (the startup guard is a follow-up). After activation,
+  the first tick must not log `REGIME PRIOR TRIPWIRE`.
+
+## Candidate surface stream-history fix (audit 2026-10-05) — NOT deployed
+
+Stacked on the exit-safety fixes below. Frozen decision sources change:
+`data_pipeline_sources.streaming_data_provider` and
+`data_pipeline_sources.live_engine_data`; nothing else in the surface moves
+beyond the two keys the exit-safety fixes already changed. Marsel signed off on
+the frozen-code fixes on 2026-10-05; this takes effect only through a new
+activation (the same release that re-enables the market scanner). No strategy
+parameter, threshold, feed, sizing, staleness admission or receipt rule changes.
+
+- **History after a provider restart and for late subscriptions (C11-01).**
+  A provider restart (`_retry_start` after the transport exhausts its
+  reconnects, or a failed initial start) clears every buffer, and symbols
+  subscribed after startup (scanner window names, newly held names) started
+  empty. The feeder switched from 500 REST bars to the live buffer as soon as it
+  held `MIN_BARS` (50) bars, so features, regime and scans ran on a truncated,
+  growing history for hours, and the alpha (50 rows) and breakout (60 rows)
+  scanners skipped 50-78-bar frames. Now:
+  - Each subscribed symbol gets one background REST history seed per session:
+    after a restart, after each new subscription, and for a symbol whose startup
+    prefill or seed failed. It reuses the startup prefill's merge (history only,
+    stream rows received meanwhile are kept and win their minute, never a
+    receipt), is generation-guarded (a restart, stop or stale-stream reconnect
+    discards the in-flight result; a symbol retired meanwhile is not
+    resurrected), and runs one request at a time in a background task outside
+    the 5-second subscription-sync deadline. A failed seed is retried no sooner
+    than `HISTORY_SEED_RETRY_S` (60 s); each request is capped at
+    `HISTORY_SEED_TIMEOUT_S` (30 s).
+  - The prefill and the seed request the engine's own window
+    (`LIVE_LOOKBACK` bars of `LIVE_TIMEFRAME`). The prefill used to re-read
+    `ORGANISM_LIVE_LOOKBACK` with its own default of 100 against the engine's 500.
+  - `_fetch_bars` serves a fresh live buffer only when it holds the history
+    window: its REST history was merged this session (REST can hold fewer than
+    500 bars for a sparse IEX name; the buffer then holds all of it), or it alone
+    holds `min(LIVE_LOOKBACK, ring capacity 2000)` bars. A shorter buffer is
+    replaced by REST within a budget of `HISTORY_FALLBACK_MAX_CALLS` (5) reads
+    per rolling `HISTORY_FALLBACK_WINDOW_S` (10 s, about one tick, so a tick
+    waits for at most one parallel round), each capped at
+    `HISTORY_FALLBACK_TIMEOUT_S` (5 s). Over budget, on timeout or failure, or
+    when REST returns fewer rows than the buffer, the short buffer is served
+    exactly as before. Below `MIN_BARS` the ordinary REST path is unchanged.
+  - Once seeded, a buffer gives the same frame as REST (481 feature rows with
+    the feature store), so features, regime routing and scanner eligibility match
+    a normally started engine.
+- **REST load.** One seed request per symbol after a restart (20 for the core
+  universe, sequential, as the startup prefill already does) and one per newly
+  subscribed name; zero short-buffer reads while seeds succeed. Worst case while
+  seeds keep failing: one retry per failing symbol per minute (at most 28/min)
+  plus at most 30 short-buffer reads per minute, against Alpaca's 200/min basic
+  limit (the unbounded alternative was 120/min for 20 symbols at 6 ticks/min).
+- **Known limits.** If REST already holds the newest closed bar when the seed
+  lands and the stream delivers that bar afterwards, the stream bar is a
+  same-minute correction, so the symbol's first receipt waits for the next bar
+  (up to a minute longer excluded from entries; fail-closed, as with the startup
+  prefill). The startup prefill still runs inside the 25-second startup bound
+  (3-8 s measured). The feature store's 19-row warm-up trim is unchanged (C11-05).
+
+## Candidate surface exit-safety fixes (audit 2026-10-05) — NOT deployed
+
+Stacked on the outbox exit guard below (PR #36). Frozen decision sources change:
+`source_hashes.entry_gates_dispatch` (`_live_tick_inner`) and
+`research_policy_sources.broker_state_safety` (`_position_dict`,
+`_submit_exit_order`, `_reconcile_fills`); nothing else in the surface moves.
+Marsel signed off on these frozen-code fixes on 2026-10-05; they take effect only
+through a new activation. No strategy parameter, threshold, feed, sizing or entry
+behaviour changes, and no new constant. The approved policy baseline
+(`artifacts/phase2/research_policy_baseline.json`) is unchanged and still
+verifies at startup: it fingerprints restored parameters and models, not source.
+
+- **Broker price for the safety nets (C05-01).** `_position_dict` now carries
+  Alpaca's `current_price` and `qty_available`. Before, the dict had no price, so
+  the no-features max-loss net and the pending-exit net (DD2-1) read 0 and could
+  never fire live (replay and tests supplied the field by hand). A missing, zero,
+  negative or non-finite price is 0.0: no net fires on it and each logs a
+  WARNING. An unreported or malformed `qty_available` is None.
+- **Exit window keeps the stop (C05-02).** After an exit that leaves shares open
+  (partial take-profit, `ml_reversal`, a blocked or failed exit) the 3-tick
+  pending window and the 10-tick DD3-3 cooldown skipped the hard stop and
+  max-loss for about 2.5 minutes at the measured cycle. Routine exits stay
+  suspended in the window, but every tick now runs exactly the exit engine's
+  max-loss and hard stop (`check_exit(..., is_new_bar=False)`) on the bar close
+  and the DD2-1 max-loss net on the broker price. The exit engine checks a copy
+  of the position's `ExitLevels`, so a window tick changes no exit state: the
+  trailing anchor (`highest_favorable`) and the MFE/MAE tracking
+  (`worst_adverse`) move only on routine ticks, as before the fix. A breach sells
+  only the shares that no exit of the window has claimed and that the broker
+  reports free of open orders (`qty_available`; a long's negative value counts as
+  0 free shares, as in the outbox guard, and a short uses its absolute value).
+  `_submit_exit_order` records the unclaimed remainder after every submission
+  that neither raised nor came back `blocked`, so an exit in flight is never sent
+  twice (the outbox guard of PR #36 stays the last line). A failed or blocked exit
+  claims nothing, so its position is protected from the next tick; a blocked
+  window exit is not counted as an order. A window exit re-arms `_pending_exit`,
+  so the EOD flatten and the overnight forced exit later in the same tick skip
+  the symbol, and logs `Exit window <reason> exit: ...` with its real reason.
+- **A lone broker mark never sells.** Both broker-price nets (the window's DD2-1
+  net and the no-features net) act on a broker-price max-loss breach only in
+  regular trading hours (`backend.utils.market_hours.is_market_open`: the NYSE
+  calendar with holidays and 13:00 ET early closes). The scheduler also ticks at
+  09:28-09:30 and 16:00-16:01 ET (13:00-16:01 on early-close days); a breach seen
+  there is logged at WARNING and not acted on. In regular hours, when the symbol
+  has a fresh bar this tick, the bar close must breach max-loss too, or the
+  breach is logged at WARNING and skipped. A fresh bar is the symbol's feature
+  frame for this tick with a usable close, for a symbol the per-symbol staleness
+  admission (`_stale_entry_symbols`: no stream bar within 120 s) does not list.
+  With no fresh bar (no frame, an unusable close, or a symbol listed stale) the
+  broker price alone triggers: that is what the nets are for. The no-features net
+  never has a bar, so only the hours apply to it. When the broker price itself is
+  unusable, the window net still falls back to the bar close, as before.
+- **Exit-price quote rung (C06-02).** See PHASE 10: the rung reads the streaming
+  provider's cached quote instead of a method the production data client lacks;
+  any failure leaves the close pending (`no_exit_price`) without aborting the tick.
+- **Known limits.** Trailing-stop tracking stays frozen during the window: prices
+  seen on window ticks never reach the trailing anchor or the MFE/MAE fields, so
+  a window peak cannot tighten a later trailing stop. Whether window ticks should
+  advance that tracking is an owner decision for later. The unclaimed-share
+  record lives in memory only: after a restart a restored window is bounded by
+  the broker quantity and `qty_available` (startup cancels open broker orders).
+  An exit still queued in the outbox, not yet at Alpaca, is invisible to
+  `qty_available`, so after a restart a window breach can send a second exit for
+  the same shares; the outbox guard of PR #36 then decides, and it can lose the
+  race with a lagging position endpoint. The base code had the same exposure at
+  tick N+10 (a routine full exit). Without a bar the window checks only the 8%
+  max-loss on the broker price, like the no-features net. Without a streaming
+  provider (REST-only mode, tests, replay) no symbol is listed stale, so the
+  tick's frame counts as a fresh bar. Outside regular hours the bar-based checks
+  run as before. An exit that is refused or rejected downstream stays claimed
+  until its window ends, as before. A routine or no-features exit that comes back
+  `blocked` is still counted as an order and arms the window (unchanged; the
+  verifier rated that return practically unreachable there, and a blocked exit
+  claims no shares). `bars_held` still skips minute boundaries crossed during the
+  window. An orphan close that never finds a price stays pending (no terminal
+  path yet).
+
+---
+
 ## Candidate close-accounting unblock (audit 2026-10-05) — NOT deployed
 
 Stacked on the outbox exit guard below (PR #36). Fill ingestion and close
@@ -42,9 +445,9 @@ rules in `close_accounting_holds` and `fill_lot_accounting`.
 Stacked on the 2026-09-30 candidate below (PR #35). Order path only: no strategy
 parameter, feed, risk threshold, sizing policy, entry behaviour or frozen-surface
 source changes (`scripts/phase2_freeze.py --verify --candidate` passes unchanged).
-Entries are dispatched exactly as before; the entry age/session refusal (C01-04)
-is deferred until it can ship with the sign-off-gated pending-entry release
-(C04-01).
+Entries are dispatched exactly as before here; the entry age/session refusal
+(C01-04) ships with the sign-off-gated pending-entry release (C04-01) in the
+dispatch lifecycle candidate above.
 
 - **Exit sells cannot open a short at dispatch (C01-01).**
   `OrderService.submit_symbol_order` writes `reduce_only` and `intent` (`exit` for
@@ -133,7 +536,9 @@ strategy parameter, feed, risk threshold or sizing policy changes.
   `ORGANISM_TICK_INTERVAL_SECONDS`); `status.pending_entries` shows ages.
 - **Dead-lettered orders (EXE-04).** A dead-lettered sell (exit) or an
   ambiguous submission logs CRITICAL with symbol, side, qty and client key.
-  Client-key reconciliation of the order row is unchanged.
+  Client-key reconciliation of the order row is unchanged. (Audit 2026-10-05
+  C04-01, candidate above: unambiguous dead letters are now finalized once the
+  broker confirms they were never placed.)
 - **API (SEC-03, SEC-04).** `/signals/act`, `/positions/{symbol}/close` and
   `/positions/import` need `trader` or `admin`. Self-registration is refused
   unless `AUTH_ALLOW_SELF_REGISTRATION=true`.
@@ -276,7 +681,9 @@ request). A sync is reported `complete` only when every desired symbol is
 admitted. An unconfirmed non-critical symbol is excluded individually
 (`unadmitted_symbol`); provider loss or an unconfirmed critical/held symbol
 blocks every new entry (`stream_subscription_sync`); protective exits still
-execute. New subscriptions do not seed REST bars or claim freshness.
+execute. New subscriptions never claim freshness. (Candidate 2026-10-05: their
+REST history is seeded in the background, history only; see the stream-history
+fix at the top.)
 
 Staleness is per symbol (MDP-03): aggregate stream loss or a stale critical
 benchmark blocks every entry (`stale_data`); any other stale symbol is rejected
@@ -715,9 +1122,14 @@ START TICK
 
 | Cooldown | Ticks | Real Time (~10s ticks) | Purpose |
 |---|---|---|---|
-| `_EXIT_COOLDOWN_TICKS` | 10 | ~100s | Prevents re-entering a recently exited symbol |
+| `_EXIT_COOLDOWN_TICKS` | 10 | ~100s | Prevents re-entering a recently exited symbol; suspends routine exits (DD3-3) |
 | `_PENDING_ENTRY_TICKS` | 30 | ~5 min | Prevents duplicate entry submissions |
-| `_PENDING_EXIT_TICKS` | 3 | ~30s | Prevents duplicate exit submissions |
+| `_PENDING_EXIT_TICKS` | 3 | ~30s | Prevents duplicate exit submissions (routine exits) |
+
+Candidate audit 2026-10-05 (C05-02): in the exit window (pending exit or exit
+cooldown) the hard stop and max-loss still run every tick on the shares no exit
+of the window has claimed; see PHASE 5. At the measured ~15.7 s production
+cycle the 10-tick cooldown lasts about 2.5 minutes.
 
 ---
 
@@ -778,7 +1190,10 @@ FETCH DATA
   │
   ├── For each symbol in universe (parallelized, semaphore=10):
   │   ├── Priority 1: Streaming provider (fast-path)
-  │   │   └── Falls through to REST if unavailable or < MIN_BARS
+  │   │   ├── Falls through to REST if unavailable, stale or < MIN_BARS
+  │   │   └── Candidate 2026-10-05: a buffer >= MIN_BARS without the history
+  │   │       window (not seeded, < min(LIVE_LOOKBACK, 2000) bars) is replaced
+  │   │       by bounded REST (5 reads / 10 s, 5 s each), else served as before
   │   ├── Priority 2: REST API (get_historical_bars_df or get_historical_data)
   │   │
   │   ├── Minimum bars check:
@@ -825,12 +1240,55 @@ DETECT REGIME (only if features sufficient)
   │   │   └── stress_pct > 0.4 → boost stress × (1 + 0.5 × stress_pct)
   │   └── Re-normalize probabilities
   │
-  ├── Priority 2: SPY-Based
-  │   └── detect(spy_features) — needs SPY with >= 10 bars
+  ├── Priority 2: SPY-Based (no usable sector ETF this tick)
+  │   └── detect_isolated(spy_features) — needs SPY with >= 10 bars. It is
+  │       detect() with the detector's running state (_smoothed_probs,
+  │       _history) saved and restored (audit 2026-10-05 C09-01): same label
+  │       on that tick, no prior carried into later ticks or regime_state.json
   │
   └── Priority 3: Market Aggregate
       └── Average regime probabilities across all symbols
 ```
+
+### Routed Label and Detector State (as frozen)
+
+- Every per-symbol and per-ETF `detect()` inside the cross-asset and
+  market-aggregate paths starts from the detector's running prior
+  (`_smoothed_probs`) and the prior is restored afterwards, in a `finally`, so
+  also when a `detect()` raises. In production that prior is empty, so the
+  routed label is the plain argmax of the averaged single-shot probabilities,
+  then sector-breadth conditioning: the EMA (α=0.3) and the DD2-4 hysteresis
+  band (0.05) do not carry across ticks. The forward verdict is measured on this
+  behaviour; aggregate smoothing would be a strategy change.
+- Audit 2026-10-05 C09-01: the SPY-only fallback used to leave its SPY vector
+  in the shared detector, which then pinned every later routed label and was
+  persisted to `regime_state.json`. It now calls
+  `RegimeDetector.detect_isolated()`, which restores the running state. Side
+  effect: consecutive SPY-only ticks are no longer EMA-smoothed tick to tick.
+  That also applies in production, during a multi-tick XLK/XLE outage or if
+  XLK/XLE are dropped from `ORGANISM_LIVE_SYMBOLS` (C09-07), not only in a
+  universe with no sector ETF (every tick takes the SPY-only branch, e.g. the
+  replay-simulator test universes). Measured label impact on real 1-minute
+  bars at production cadence (about 4 ticks per bar): nil, 0 of 1,180 ticks in
+  28 outage windows of 1 to 200 ticks and 0 of 18,672 ticks with no sector ETF
+  (at a coarser 5-minute step, 15 of 4,697 labels differ).
+- C09-01 review follow-up: the per-ETF loop in `detect_cross_asset_regime`
+  used to restore `_smoothed_probs`, `_history` and `_last_state` only after
+  the loop, so a per-ETF `detect()` that raised after smoothing left its prior
+  in the detector, where it pinned every later routed label. The loop now
+  restores them in a `finally`, like `detect_market_regime`. Ticks without an
+  exception are unchanged: the review replay rerun on real 1-minute bars (61
+  sessions) with and without the `finally` gives identical labels,
+  probabilities, confidence, churn and detector state (persisted state
+  included) on all 4,697 cross-asset ticks and in the outage, market-path and
+  no-sector scenarios.
+- Tripwire: after each tick, `live_tick` logs `REGIME PRIOR TRIPWIRE` at
+  CRITICAL (once per process) if `_smoothed_probs` or `_history` is non-empty,
+  e.g. an old `regime_state.json` restored at startup (a startup guard in
+  `OrganismBrain.apply_regime_state` is a follow-up). Log-only.
+- `status()['regime']` and the transfer-learning record report the label the
+  last tick routed (`_last_regime`); `RegimeDetector.current_regime` stays
+  `unknown` on the aggregate path.
 
 ### Regime Classification Logic
 
@@ -847,7 +1305,7 @@ From feature data, 5 signals are extracted:
 
 **Intraday threshold scaling**: `tf_scale = 1 / sqrt(bars_per_day)`. For 1-min bars (390 bpd), tf_scale ≈ 0.0507. This scales per-bar thresholds to match the magnitude of single-bar returns/volatility at that timeframe. Lookback periods are separately scaled 4× via `is_intraday`.
 
-Scores → softmax → EMA smoothing (α=0.3) → argmax = primary regime.
+Scores → softmax → EMA smoothing (α=0.3, from the detector's running prior) → argmax (hysteresis band 0.05) = primary regime of one `detect()` call. The routed market label does not carry that smoothing across ticks (see "Routed Label and Detector State" above).
 
 ### Regime Labels
 
@@ -891,13 +1349,38 @@ GET POSITIONS + EQUITY
 FOR EACH OPEN POSITION:
   │
   ├── FILTER: LONG_ONLY and side != "long" → SKIP (artifact short)
-  ├── FILTER: sym in _pending_exit → SKIP (exit already submitted)
+  │
+  ├── EXIT WINDOW: sym in _pending_exit (3 ticks) or _exit_cooldown (10 ticks)
+  │   │   (candidate audit 2026-10-05 C05-02; before it the window skipped
+  │   │    everything, and the broker-price net below could not fire live)
+  │   ├── Routine exits stay SUSPENDED (no profit/trailing/time/ML exit, no bars_held)
+  │   ├── Every tick, exactly the always-on risk exits still run:
+  │   │   ├── bar + exit_levels → check_exit(copy of exit_levels, ..., is_new_bar=False):
+  │   │   │   max_loss_limit / stop_loss on the bar close; the copy keeps the
+  │   │   │   trailing anchor and MFE/MAE tracking frozen (window ticks never move them)
+  │   │   └── DD2-1 net: pnl vs broker avg_entry on the broker current_price
+  │   │       (bar close if the broker price is unusable) <= -max_loss_pct (8%)
+  │   │       → reason "safety_net_pending_exit_breach". A broker-price breach
+  │   │       acts only in regular hours (market_hours.is_market_open), and a
+  │   │       fresh bar (frame with a usable close, symbol not in
+  │   │       _stale_entry_symbols) must breach too; otherwise WARNING, no exit
+  │   ├── A breach sells only shares no exit of this window has claimed
+  │   │   (_exit_unclaimed_qty, recorded by _submit_exit_order after a
+  │   │   submission that did not raise or come back "blocked") and that the
+  │   │   broker reports free of open orders (qty_available, when reported;
+  │   │   a long's negative value → 0) → an exit in flight is never sent twice;
+  │   │   0 left → nothing sent
+  │   ├── A window exit re-arms _pending_exit and _exit_cooldown: the EOD flatten
+  │   │   and the overnight forced exit later in this tick skip the symbol
+  │   └── Neither a bar nor a valid broker price → WARNING, nothing evaluated
   │
   ├── PATH A: No features available for this symbol
-  │   ├── Get broker_price and avg_entry from position data
+  │   ├── Get broker_price (position current_price) and avg_entry
+  │   │   (missing, zero, negative or non-finite price → 0.0 → WARNING, no exit)
   │   ├── Compute pnl_pct = (broker_price - entry) / entry × direction
-  │   ├── IF pnl_pct <= -max_loss_pct (8%) → SAFETY NET EXIT
-  │   │   └── Submit full exit, reason: "safety_net_no_features"
+  │   ├── IF pnl_pct <= -max_loss_pct (8%):
+  │   │   ├── outside regular hours (market_hours.is_market_open) → WARNING, no exit
+  │   │   └── in regular hours → SAFETY NET EXIT, full exit, "safety_net_no_features"
   │   └── ELSE → no action (can't evaluate without features)
   │
   ├── PATH B: Features available but NO exit_levels for this symbol
@@ -1014,6 +1497,7 @@ FOR EACH OPEN POSITION:
           ├── Submit exit order via _submit_exit_order():
           │   ├── Store exit reason in _last_exit_reason[symbol] for trade attribution
           │   ├── Capture synchronous fill price in _last_exit_fill_price[symbol]
+          │   ├── Record the shares the exit window leaves unclaimed (_exit_unclaimed_qty)
           │   └── Set cooldowns (_exit_cooldown, _pending_exit)
           └── Reasons: "stop_loss", "trailing_stop", "take_profit", "partial_take_profit",
               "failure_to_follow", "loser_time_stop", "ml_reversal", "max_loss_limit",
@@ -1544,6 +2028,38 @@ The hold reason names the row (`ambiguous_order:<id>` or
 cleanup scans orders submitted from the entry to `pending_close.observed_at`.
 Snapshot: `close_accounting_holds`.
 
+Without exact fills an orphan close is priced from a DB exit fill, then the
+bar close, then the streaming provider's cached quote (`quote_mid`/`quote_bid`/
+`quote_ask`). Candidate audit 2026-10-05 (C06-02, a frozen-surface change in
+`_reconcile_fills`): the quote rung used to call `get_latest_quote` on the data
+client, which the production `AlpacaDataClient` does not have; the
+AttributeError aborted reconciliation and the rest of every tick (pending-entry
+release, age escalation, retrain, the periodic brain save), across restarts.
+Now no quote, or any failure reading or parsing it, means "price unknown": the
+close stays pending (`no_exit_price`) and the tick continues.
+
+**Closes outside the engine (candidate, audit 2026-10-05 C06-01, a frozen-surface
+change in `_reconcile_fills` and `_accounted_entry_fill`).** Same policy id. When
+exact accounting refuses an identified close and the entry is not verified
+unfilled, `_lookup_external_close_from_db` classifies the symbol's orders from the
+entry on (same holds). A lifetime that is flat-to-flat by the observed close with
+a platform close-route row among its legs (`attributes.close_position` true, no
+organism source, exit side; filled, or refused or canceled without a fill when it
+raced the engine's own exit) is recorded at once (`external_close_db_fills`). A
+lifetime whose attributable, terminal legs leave quantity open while the broker is
+flat, with no later order for the symbol, waits
+`EXTERNAL_CLOSE_APPROXIMATE_AFTER` (15 min) and is then recorded with the unbooked
+quantity at `observed_bar_close`, the current bar close or the streaming quote
+(`external_close_approximate_<rung>`; the mark's age is not bounded). Before
+either is recorded the lookup commits the lot repair
+(`alpaca_stream.repair_external_close_lots`: the lifetime owner's lots opened by
+then are netted against the operator's unmatched close-route records, the rest
+written off with an audit row; a failure keeps the close pending as
+`external_close_lot_repair_failed`). Both are `external_close` reconciliation
+artifacts excluded from every learning consumer and from the Phase-2 forward
+verdict corpus; tracking is cleared. Everything else stays pending; one CRITICAL
+per episode after 30 min. Snapshot: `external_close_accounting`.
+
 Replay uses its own executed-order adapter for the same conserved-cashflow
 contract; its outcomes carry `simulated_position_fills`, distinct from paper
 `db_position_fills`. A separate broker PnL log cannot establish that engine
@@ -1987,7 +2503,13 @@ Scores → Softmax → Probabilities (sum to 1.0)
 
 Probabilities → EMA Smoothing (α=0.3) → prevent whipsaw
 
-Smoothed → argmax → Primary Regime Label
+Smoothed → argmax → Primary Regime Label   (per detect() call)
+
+Routed market label (cross-asset / aggregate): each per-symbol and per-ETF
+detect() starts from the empty production prior and the prior is restored
+afterwards, so no smoothing or hysteresis carries across ticks (§6, "Routed
+Label and Detector State"). The SPY-only fallback uses detect_isolated(),
+which restores it too (C09-01).
 ```
 
 ### Additional Components
@@ -2871,6 +3393,9 @@ OUTBOX WORKER (background, 100ms poll):
   1. claim_batch(10) with FOR UPDATE SKIP LOCKED (no contention)
   2. For each event:
      ├── Route by topic: "order.submitted" → broker dispatch
+     ├── Not an exit and not lookup-only (audit 2026-10-05 C01-04): older than
+     │     120 s since OutboxEvent.created_at, or created in a regular session
+     │     that has closed → not sent; dead-lettered as DISPATCH_EXPIRED (see 3)
      ├── Shadow/dry_run/mock/real broker based on execution mode
      ├── Real broker, before the POST of an exit sell (exit guard, audit 2026-10-05):
      │     client-key lookup (found → attach) → broker position (qty_available) → send or refuse
@@ -2880,7 +3405,23 @@ OUTBOX WORKER (background, 100ms poll):
      │     + mark_failed() in one transaction, no retry, CRITICAL log after the commit
      ├── Retryable failure (incl. a failed exit-guard read) → mark_retry() with backoff
      └── Max retries (5) or validation error → DLQ
-  3. DLQ: mark_failed() + broadcast "order.rejected" via WebSocket
+  3. DLQ: mark_failed() + broadcast "order.rejected" ("order.expired" for a refused
+     entry) via WebSocket. Unambiguous dead letters also record
+     orders.attributes.outbox_dead_letter in the same transaction (C04-01).
+
+DEAD-LETTER ABSENCE LOOP (separate task, every 15 s; audit 2026-10-05 C04-01):
+  recorded rows, ≥ 60 s after the dead letter, no other pending event for the order
+  → GET /v2/orders:by_client_order_id (≤ 5 per sweep, 5 s timeout, read-only)
+     ├── Alpaca's order-not-found answer (404, code 40410000, "order not found…")
+     │     first → kept in memory, confirming lookup ≥ 300 s later
+     │     second, nothing else between → row rejected / expired + absence proof
+     │       with both answers (lets the engine release the entry)
+     ├── found → attached by client key through the acknowledgement path + CRITICAL
+     │     (logged even if recording the outcome fails)
+     └── anything else, any other 404 included → retried, backoff 15 s doubling
+           to 300 s; a row whose check raises is backed off, the sweep goes on
+  Any fill ingress on a finalized row → CRITICAL FILL ATTACHED TO A FINALIZED ORDER
+  Entry refusals > 1 in one ET date → CRITICAL once (counts in status.order_dispatch_lifecycle)
 ```
 
 ### Backoff Calculator
@@ -3524,7 +4065,11 @@ StreamingDataProvider:
   │
   ├── Manages Alpaca WebSocket bar stream
   ├── Ring buffer per symbol (size: 2000 entries ≈ 33 hours of 1-min bars)
-  ├── Prefill from REST on subscribe (ORGANISM_LIVE_LOOKBACK=100, ORGANISM_LIVE_TIMEFRAME)
+  ├── Prefill from REST at startup (engine LIVE_LOOKBACK bars of LIVE_TIMEFRAME;
+  │   candidate 2026-10-05, previously ORGANISM_LIVE_LOOKBACK with default 100)
+  ├── Candidate 2026-10-05: one background REST history seed per symbol after a
+  │   provider restart, a new subscription or a failed prefill/seed (history
+  │   only, never a receipt; retry after 60 s; 30 s per request)
   │
   ├── On new bar:
   │   ├── Append to ring buffer

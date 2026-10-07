@@ -34,10 +34,13 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
         from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
         from backend.integrations import alpaca_outbox as _outbox_dispatch
+        from backend.integrations import alpaca_broker as _broker_client
+        from backend.infra import outbox_worker as _outbox_worker
         from backend.integrations import alpaca_stream as _fill_ingestion
         from backend.organism import live_engine_fills as _fill_lookup
         from backend.organism.streaming_data_provider import StreamingDataProvider
         from backend.organism import streaming_data_provider as _provider_module
+        from backend.organism import live_engine_data as _feeder_module
         from backend.organism import live_engine as _engine_module
         from backend.infra import runtime_identity as _runtime_identity
         from backend.organism import operator_cancellation
@@ -98,6 +101,9 @@ def _build_defaults_snapshot() -> dict:
                 "age_escalation_min_seconds": OrganismLiveEngine._PENDING_ENTRY_ESCALATE_SECONDS,
                 "age_escalation": "one_critical_per_identity_older_than_max(min_seconds,2x_pending_entry_ticks_x_tick_interval)_first_seen_persisted_across_restarts",
                 "release": "broker_terminal_and_exact_accounting_exposure_confirmation",
+                # Audit 2026-10-05 C04-01: an entry the outbox never delivered.
+                "never_sent_release": "outbox_worker_finalized_absence_proof_and_zero_fills_on_a_later_tick_than_registration_or_restore",
+                "never_sent_statuses": list(operator_cancellation.NEVER_SENT_STATUSES),
                 "ordinary_reconciliation": "read_only_after_fill_accounting",
                 "retry_order": "resume_after_last_attempted_identity",
             },
@@ -124,9 +130,25 @@ def _build_defaults_snapshot() -> dict:
                 "required_confirmed": "critical_and_held_symbols_else_block_all_entries",
                 "provider_symbol_limit": "refused_symbols_dropped_from_desired_never_replayed_not_resent_until_capacity_freed",
                 "protected_request": "benchmarks_and_held_requested_first_on_their_own_never_skipped_as_refused",
-                "new_symbols": "wait_for_actual_bars_no_REST_prefill",
+                "new_symbols": "freshness_waits_for_actual_bars_background_REST_history_seed",
                 "global_staleness_policy": "aggregate_stream_loss_or_critical_symbol_stale_blocks_entries",
                 "per_symbol_staleness_policy": "stale_or_unadmitted_symbol_rejected_by_shared_entry_gate",
+            },
+            # Audit 2026-10-05 C11-01: live buffers carry the engine's history
+            # window after provider restarts and for late subscriptions.
+            "stream_history": {
+                "history_window": "engine_lookback_bars_of_engine_timeframe_same_as_feeder_REST_path",
+                "ring_capacity_bars": _provider_module._DEFAULT_BUFFER_SIZE,
+                "seed": "one_background_REST_seed_per_subscribed_symbol_per_session_after_provider_restart_new_subscription_or_failed_prefill",
+                "seed_merge": "startup_prefill_merge_history_only_stream_rows_kept_never_a_receipt_generation_guarded",
+                "seed_concurrency": "one_request_at_a_time_outside_subscription_sync_deadline",
+                "seed_timeout_seconds": StreamingDataProvider.HISTORY_SEED_TIMEOUT_S,
+                "seed_retry_after_failure_seconds": StreamingDataProvider.HISTORY_SEED_RETRY_S,
+                "stream_buffer_served_when": "fresh_and_min_bars_and_(history_seeded_or_at_least_min(history_window,ring_capacity))",
+                "short_buffer": "REST_within_budget_else_short_buffer_as_before",
+                "short_buffer_rest_max_calls": _feeder_module.HISTORY_FALLBACK_MAX_CALLS,
+                "short_buffer_rest_window_seconds": _feeder_module.HISTORY_FALLBACK_WINDOW_S,
+                "short_buffer_rest_timeout_seconds": _feeder_module.HISTORY_FALLBACK_TIMEOUT_S,
             },
             # Audit 2026-09-30 safety release (EXE-05, EXE-06, OPS-04, CFG-01).
             "broker_position_reads": {
@@ -160,7 +182,7 @@ def _build_defaults_snapshot() -> dict:
                 "exit_scope": "declared_exit_or_close_position_or_undeclared_sell_when_long_only",
                 "exit_size_policy": "refuse_not_clamp",
                 "buy_to_cover": "not_checked",
-                "entries": "unchanged_no_dispatch_guard",
+                "entries": "no_exit_guard_reads_age_and_session_limits_in_outbox_worker_see_order_dead_letter_lifecycle",
                 "refused_order_status": _outbox_dispatch.REFUSED_ORDER_STATUS,
                 "refusal_reasons": [
                     "exit_position_flat", "exit_position_short",
@@ -171,6 +193,47 @@ def _build_defaults_snapshot() -> dict:
                 "failed_guard_read": "not_sent_event_retried",
                 "refusal_record": "order_attributes_dispatch_refusal_and_event_dead_lettered_in_one_transaction",
                 "page": "critical_after_commit_duplicate_flat_exit_has_its_own_headline",
+            },
+            # Audit 2026-10-05 C01-04 / C04-01: entry dispatch limits and the
+            # dead-letter lifecycle (outbox worker, not frozen surface).
+            "order_dead_letter_lifecycle": {
+                "entry_dispatch_max_age_seconds": _outbox_worker.ENTRY_DISPATCH_MAX_AGE_SECONDS,
+                "entry_age_basis": "outbox_event_created_at_intent_time_unchanged_by_retries",
+                "entry_session_rule": "created_in_a_regular_nyse_session_refused_once_that_session_closed_early_closes_included",
+                "entry_scope": "every_order_except_exits_and_lookup_only_events",
+                "entry_refusal": "dead_lettered_without_dispatch_attempt_notice_order_expired_warning_counted",
+                # Review NB4: more refusals than the threshold in one ET date page once.
+                "entry_refusal_page_threshold": _outbox_worker.ENTRY_REFUSAL_PAGE_THRESHOLD,
+                "entry_refusal_page": "critical_once_per_et_date_when_refusals_exceed_threshold_process_local",
+                "counters": "engine_status_order_dispatch_lifecycle_process_local_per_et_date_reset_on_restart",
+                "entry_check_failure": "held_and_retried_never_sent_unchecked",
+                "record": "orders_attributes_outbox_dead_letter_in_the_dead_letter_transaction_unambiguous_unsent_rows_only",
+                "settle_seconds": _outbox_worker.DEAD_LETTER_SETTLE_SECONDS,
+                "sweep_interval_seconds": _outbox_worker.DEAD_LETTER_SWEEP_SECONDS,
+                "lookup_timeout_seconds": _outbox_worker.DEAD_LETTER_LOOKUP_TIMEOUT_SECONDS,
+                "lookups_per_sweep": _outbox_worker.DEAD_LETTER_SWEEP_BATCH,
+                "candidates_per_sweep": _outbox_worker.DEAD_LETTER_CANDIDATE_LIMIT,
+                "pending_event_scan_limit": _outbox_worker.DEAD_LETTER_PENDING_SCAN_LIMIT,
+                "retry_backoff": "doubling_from_sweep_interval_in_memory",
+                "max_backoff_seconds": _outbox_worker.DEAD_LETTER_MAX_BACKOFF_SECONDS,
+                # Review NB1: only Alpaca's order-not-found answer, twice, counts.
+                "absence": "two_alpaca_order_not_found_answers_for_persisted_client_key_confirm_seconds_apart_no_other_answer_between_after_commit_and_settle_with_no_other_pending_event",
+                "absence_http_status": 404,
+                "absence_code": _broker_client.ALPACA_NOT_FOUND_CODE,
+                "absence_message_prefix": _broker_client.ALPACA_ORDER_NOT_FOUND_MESSAGE,
+                "absence_confirm_seconds": _outbox_worker.DEAD_LETTER_CONFIRM_SECONDS,
+                "absence_first_answer": "in_memory_restart_proves_absence_afresh",
+                "absence_record": "both_answers_with_http_status_code_message_and_checked_at",
+                "other_404": "unknown_retried_error_log_never_finalized",
+                "finalized_status": _outbox_worker.DEAD_LETTER_ORDER_STATUS,
+                "refused_entry_finalized_status": _outbox_worker.EXPIRED_ENTRY_ORDER_STATUS,
+                "finalize_recheck": "row_lock_unsent_row_and_event_still_dead_lettered",
+                "found_at_broker": "attached_by_client_key_through_acknowledgement_path_critical_even_if_outcome_write_fails",
+                "unknown": "retried_never_finalized",
+                "row_failure": "logged_and_backed_off_other_rows_continue",
+                "finalized_order_activity": "critical_fill_or_broker_order_attached_to_a_finalized_order_all_fill_ingress",
+                "ambiguous_dead_letters": "not_recorded_unchanged_handling",
+                "dead_lettered_sells": "finalized_the_same_way_exe04_critical_unchanged",
             },
             # Audit 2026-10-05 C08-01: which unresolved or replaced orders hold an
             # identified lifetime's exact close accounting (policy id unchanged).
@@ -190,6 +253,45 @@ def _build_defaults_snapshot() -> dict:
                 "hold_reason": "ambiguous_order:<id>|replacement_lineage_unverified",
                 "hold_warning": "once_per_new_reason_cleared_on_resolution",
                 "zero_fill_cleanup_scan": "orders_submitted_from_entry_to_pending_close_observed_at_else_unbounded",
+            },
+            # Audit 2026-10-05 C06-01: an identified strategy position closed
+            # outside the engine's exit orders (policy id unchanged).
+            "external_close_accounting": {
+                "close_route_leg": "attributes.close_position_true_without_organism_source_exit_side_only",
+                "exact": "flat_to_flat_by_the_observed_close_with_a_close_route_row_in_the_window_filled_or_refused_or_canceled_unfilled_recorded_at_once",
+                "unbooked": "every_leg_to_the_observed_close_attributable_and_terminal_db_still_open_broker_flat_no_later_order",
+                "approximate_after_seconds": int(_fill_lookup.EXTERNAL_CLOSE_APPROXIMATE_AFTER.total_seconds()),
+                "approximate_mark": "observed_bar_close_then_current_bar_close_then_streaming_quote_mid_bid_ask",
+                "approximate_mark_age": "not_bounded_a_late_first_observation_is_priced_when_recorded",
+                "approximate_cash": "db_legs_exact_plus_unbooked_qty_at_mark",
+                "no_mark": "stays_pending_no_exit_price",
+                "exit_reason": _fill_lookup.EXTERNAL_CLOSE_EXIT_REASON,
+                "exact_price_source": _fill_lookup.EXTERNAL_CLOSE_EXACT_SOURCE,
+                "approximate_price_source": _fill_lookup.EXTERNAL_CLOSE_APPROXIMATE_SOURCE_PREFIX + "<rung>",
+                "wait_reason": _fill_lookup.EXTERNAL_CLOSE_UNBOOKED_REASON,
+                "classification": "reconciliation_artifact_no_learner_kelly_calibration_symbol_counts_bans_evolution_edge_monitor_or_phase2_forward_verdict_corpus",
+                "holds": "same_as_exact_accounting_see_close_accounting_holds",
+                "entry_gate": "released_when_recorded",
+                "reentry_cooldown": "none",
+                "pending_entry_release": "flat_branch_accepts_external_close_artifact_same_identity_quantity_entry_cost_without_exhausted_lots",
+                # Review: the lifetime's lots are closed before the artifact
+                # releases the gate (alpaca_stream.repair_external_close_lots).
+                "lot_repair": {
+                    "when": "evidence_recordable_exact_or_unbooked_after_approximate_after",
+                    "ordering": "committed_before_gate_release",
+                    "scope": "entry_owner_open_lots_of_the_symbol_on_the_lifetime_side_opened_by_orders_submitted_at_or_before_the_observed_close",
+                    "netting": "unmatched_close_route_records_submitted_entry_to_observed_close_fifo_across_owners_at_record_unmatched_vwap",
+                    "netting_basis": _fill_ingestion.EXTERNAL_CLOSE_REPAIR_BASIS,
+                    "write_off": "remainder_closed_without_realized_trade_one_position_adjusted_audit_row_per_lot",
+                    "write_off_reason": _fill_ingestion.EXTERNAL_CLOSE_WRITE_OFF_REASON,
+                    "audit_actor": _fill_ingestion.EXTERNAL_CLOSE_REPAIR_ACTOR,
+                    "locks": "window_close_order_rows_for_no_key_update_then_lots_for_update_of_position_lots",
+                    "idempotent": "no_open_lot_in_scope_no_write",
+                    "failure": "close_stays_pending_and_gated_retried_every_pass",
+                    "hold_reason": _fill_lookup.EXTERNAL_CLOSE_LOT_REPAIR_FAILED_REASON,
+                },
+                "escalate_after_seconds": OrganismLiveEngine._UNRESOLVED_CLOSE_ESCALATE_SECONDS,
+                "escalation": "one_critical_per_pending_episode_per_process_nothing_finalized",
             },
             # Audit 2026-10-05 C07-01: lot-ledger effects of broker-confirmed fills.
             "fill_lot_accounting": {
@@ -535,12 +637,15 @@ def _build_resolved_config_snapshot() -> dict:
         "candidate_data_pipeline_sources": defaults.get("candidate_data_pipeline_sources"),
         "composite_feature_columns": defaults.get("composite_feature_columns"),
         "streaming_subscription_sync": defaults.get("streaming_subscription_sync"),
+        "stream_history": defaults.get("stream_history"),
         "pending_entry_resolution": defaults.get("pending_entry_resolution"),
         "broker_position_reads": defaults.get("broker_position_reads"),
         "eod_session": defaults.get("eod_session"),
         "daily_loss_baseline": defaults.get("daily_loss_baseline"),
         "order_dispatch_guards": defaults.get("order_dispatch_guards"),
+        "order_dead_letter_lifecycle": defaults.get("order_dead_letter_lifecycle"),
         "close_accounting_holds": defaults.get("close_accounting_holds"),
+        "external_close_accounting": defaults.get("external_close_accounting"),
         "fill_lot_accounting": defaults.get("fill_lot_accounting"),
         "runtime_config_hash_env": defaults.get("runtime_config_hash_env"),
         "entry_freshness": defaults.get("entry_freshness"),

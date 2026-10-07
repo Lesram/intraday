@@ -7,10 +7,19 @@ WITHOUT running real infrastructure — all dependencies are mocked.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+# The broker-price safety nets act only in regular trading hours (audit
+# 2026-10-05 review), so ticks that exercise them run on a pinned clock.
+_REGULAR_HOURS = datetime(2026, 10, 1, 15, 0, 5, tzinfo=UTC)  # Thursday 11:00:05 ET
+
+
+def _pin_regular_hours(engine) -> None:
+    engine._now_fn = lambda: _REGULAR_HOURS
 
 
 def _make_engine_with_mocks(**overrides):
@@ -74,6 +83,7 @@ class TestSafetyInvariants:
         It must NOT return early.  entries_blocked is set, but exits run.
         """
         engine, mocks = _make_engine_with_mocks()
+        _pin_regular_hours(engine)
 
         # Simulate one open position at the broker with a 20% loss
         mocks["positions_service"].get_all_positions = AsyncMock(return_value={
@@ -438,6 +448,7 @@ class TestSafetyInvariants:
         """The main exit loop must skip SHORT positions when LONG_ONLY is active.
         It should log a warning and continue to the next position."""
         engine, mocks = _make_engine_with_mocks()
+        _pin_regular_hours(engine)
 
         # Mix of long and short positions from broker
         mocks["positions_service"].get_all_positions = AsyncMock(return_value={

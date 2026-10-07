@@ -51,6 +51,33 @@ _STRATEGY_MAP = {
 }
 MOMENTUM_TREND_REGIMES = {"trending_up", "high_vol"}  # regime-conditional verdict
 
+# Reconciliation bookkeeping is never strategy evidence (audit 2026-10-05 C06-01
+# review). Orphan adoptions carry the unmapped source 'reconciliation_orphan',
+# but a close made outside the engine's exit orders ('external_close') keeps the
+# lifetime's mapped entry_source, as old 'reconciliation_adjustment' rows can.
+# The persisted flag is authoritative; the exit reasons and the orphan source
+# cover ledgers written without the column (as
+# brain_persistence._is_reconciliation_artifact_trade does).
+_ARTIFACT_EXIT_REASONS = frozenset({"reconciliation_adjustment", "external_close"})
+_ARTIFACT_ENTRY_SOURCES = frozenset({"reconciliation_orphan"})
+
+
+def _truthy(value) -> bool:
+    """CSV flag parse shared with edge_monitor and strategy_health."""
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _reconciliation_artifacts(df: pd.DataFrame) -> pd.Series:
+    """Boolean mask of ledger rows that are reconciliation artifacts."""
+    mask = pd.Series(False, index=df.index)
+    if "is_reconciliation_artifact" in df.columns:
+        mask |= df["is_reconciliation_artifact"].map(_truthy)
+    if "exit_reason" in df.columns:
+        mask |= df["exit_reason"].astype(str).str.strip().isin(_ARTIFACT_EXIT_REASONS)
+    if "entry_source" in df.columns:
+        mask |= df["entry_source"].astype(str).str.strip().isin(_ARTIFACT_ENTRY_SOURCES)
+    return mask.astype(bool)
+
 
 def cluster_robust_t(pnl, sessions) -> float:
     """Session-cluster-robust (CR1) t-stat for the mean. Within-session correlation
@@ -116,13 +143,16 @@ def evaluate_gate(net_pnl, sessions) -> dict:
 def load_forward_corpus(trade_history_path: str, frozen_at: str,
                         cost_bps: float = DEFAULT_COST_BPS) -> pd.DataFrame:
     """Trades taken STRICTLY AFTER frozen_at, costed, mapped to framework strategy +
-    session. Pre-cutoff rows are REJECTED (disjointness). Empty is valid."""
+    session. Pre-cutoff rows are REJECTED (disjointness). Reconciliation artifacts
+    (orphan adoption, stale adjustments, closes outside the engine's exit orders)
+    are not strategy trades and are dropped before the mapping. Empty is valid."""
     df = pd.read_csv(trade_history_path)
     cutoff = pd.Timestamp(frozen_at)
     if cutoff.tzinfo is None:
         cutoff = cutoff.tz_localize("UTC")
     closed = pd.to_datetime(df["closed_at"], utc=True, errors="coerce")
-    df = df[closed.notna() & (closed > cutoff)].copy()   # DISJOINTNESS: strictly after
+    forward = closed.notna() & (closed > cutoff)              # DISJOINTNESS: strictly after
+    df = df[forward & ~_reconciliation_artifacts(df)].copy()  # never strategy evidence
     if len(df) == 0:
         return pd.DataFrame(columns=["strategy", "regime", "session", "net_pnl", "closed_at"])
     df["closed_at"] = closed[df.index]
