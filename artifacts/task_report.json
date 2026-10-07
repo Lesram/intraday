@@ -1,8 +1,8 @@
 {
-  "task_id": "audit-20261005-frozen-code-release",
-  "summary": "One FROZEN SURFACE release of the 2026-10-05 audit's frozen decision-code fixes (owner sign-off 2026-10-05): exit safety C05-01/C05-02/C06-02, dispatch lifecycle C04-01/C01-04, external close C06-01, regime isolation C09-01, stream history C11-01, merged --no-ff onto PR #37 (84df340a) in that order, plus the dead-letter FOR NO KEY UPDATE lock harmonization. Candidate freeze regenerated once; it differs from PR #37's in exactly six keys. Nothing changes on the host until a release with a new activation is installed (one forward-clock restart).",
-  "sha": "862012eeb52970446eaa7897d0056d1d9a0e83e0",
-  "branch": "fix/surface-release-2026-10-r2",
+  "task_id": "evidence-repair",
+  "summary": "One FROZEN SURFACE release of the 2026-10-05 audit's frozen decision-code fixes (owner sign-off 2026-10-05): exit safety C05-01/C05-02/C06-02, dispatch lifecycle C04-01/C01-04, external close C06-01, regime isolation C09-01, stream history C11-01, merged --no-ff onto PR #37 (84df340a) in that order, plus the dead-letter FOR NO KEY UPDATE lock harmonization. Candidate freeze regenerated once; it differs from PR #37's in exactly six keys. Nothing changes on the host until a release with a new activation is installed (one forward-clock restart). PR #40 review follow-up 479fbfc5: lifecycle status rolls to today's ET date; the observation report uses the forward-corpus artifact rule; activation checklist steps 8 (shipped lookup), 8a (candidate verify on the merged commit), 14 (non-null lifecycle status with today's date) and 15 (abort path).",
+  "sha": "479fbfc57e3487604da04cdc31135463fd9d9da5",
+  "branch": "fix/surface-release-2026-10",
   "change_scope": "base",
   "change_ref": "6a56d753...HEAD",
   "files_changed": [
@@ -82,16 +82,7 @@
     "python scripts/runtime/write_runtime_snapshot.py",
     "python scripts/ci/generate_artifacts.py full",
     "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
-    "python scripts/ci/check_spec_drift.py --json",
-    "git merge --no-ff 6bac0d20 cba8571c 8c0d6e29 8a96bec8 b96b5cff (one merge commit each, in this order) onto 84df340a",
-    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json python scripts/phase2_freeze.py  (once) then --verify --candidate (exit 0)",
-    "python -m pytest -p no:cacheprovider <116 files: AGENTS.md organism + integrations suites, every tests/test_audit_2026093*/2026100* file, every test file the branches named or changed, source-pinning/snapshot/stream suites>  (2767 passed, 28 skipped, 3 failed: see tests_failed)",
-    "TESTING=true USE_MOCK_DATA=true USE_MOCK_BROKER=true python -m pytest -p no:cacheprovider tests/test_cross_asset_alignment_replay.py  (2 passed)",
-    "INTRA_FILL_TEST_DATABASE_URL=<disposable PostgreSQL 16.13> python -m pytest -p no:cacheprovider tests/test_fill_accounting_postgres.py tests/test_external_close_lot_repair_postgres.py  (23 passed)",
-    "python -m pytest -p no:cacheprovider tests/test_phase2_freeze.py  (63 passed after the regeneration)",
-    "PostgreSQL 16.13 lock probe of OutboxWorker._record_dead_letter/_write_dead_letter_outcome (FK insert does not wait, fill-path lock waits, finalization completes): OK",
-    "INTRA_DIFF_BASE=6a56d753 python scripts/ci/generate_artifacts.py full",
-    "INTRA_DIFF_BASE=6a56d753 python scripts/ci/generate_audit_index.py"
+    "python scripts/ci/check_spec_drift.py --json"
   ],
   "tests_passed": [
     "organism_live_engine",
@@ -101,23 +92,31 @@
     "self_evolution",
     "algorithm_improvements",
     "semantic_invariants",
-    "replay_simulator",
-    "release_main_batch_116_files (2767 passed, 28 skipped)",
-    "cross_asset_alignment_replay (isolated testing env, 2 passed)",
-    "fill_accounting_postgres + external_close_lot_repair_postgres on PostgreSQL 16.13 (23 passed)",
-    "phase2_freeze (63 passed)",
-    "candidate_freeze_verify (exit 0)",
-    "dead_letter_lock_probe_postgresql (OK)"
+    "replay_simulator"
   ],
-  "tests_failed": [
-    "pre-existing, not in this change: tests/test_order_recovery_service.py::test_total_deadline_covers_database_waits[commit] fails identically on exports of 6a56d753 and 84df340a in this environment (in-memory SQLite fixture without a static pool)"
+  "tests_failed": [],
+  "runtime_behavior_changed": [
+    "backend/api/lifespan.py",
+    "backend/infra/outbox_worker.py",
+    "backend/infra/repositories/orders.py",
+    "backend/integrations/alpaca_broker.py",
+    "backend/integrations/alpaca_outbox.py",
+    "backend/integrations/alpaca_stream.py",
+    "backend/organism/live_engine.py",
+    "backend/organism/live_engine_data.py",
+    "backend/organism/live_engine_fills.py",
+    "backend/organism/operator_cancellation.py",
+    "backend/organism/phase2_gate.py",
+    "backend/organism/regime.py",
+    "backend/organism/streaming_data_provider.py",
+    "backend/services/order_recovery_service.py",
+    "backend/services/positions_service.py"
   ],
-  "runtime_behavior_changed": true,
   "docs_updated": [
     "docs/architecture/mapss.md",
+    "docs/engineering/LIVE_AUDIT_INDEX.md",
     "docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md",
-    "docs/runbooks/PAPER_UPTIME.md",
-    "docs/engineering/LIVE_AUDIT_INDEX.md"
+    "docs/runbooks/PAPER_UPTIME.md"
   ],
   "risks": [
     "7 organism file(s) changed \u2014 replay verification required",

@@ -1,9 +1,9 @@
 # Live Audit Index
 
-Generated: 2026-10-06T19:39:44Z
+Generated: 2026-10-07T20:47:08Z
 PR: n/a
-SHA: `862012eeb5`
-Branch: `fix/surface-release-2026-10-r2`
+SHA: `479fbfc57e`
+Branch: `fix/surface-release-2026-10`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)
 
