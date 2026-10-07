@@ -1834,9 +1834,17 @@ class OutboxWorker:
             logger.debug("Entry refusal page failed", error=str(exc))
 
     def dispatch_lifecycle_status(self) -> dict[str, Any]:
-        """Review NB4: this worker's lifecycle counts for its current session date."""
-        session = getattr(self, "_lifecycle_counts", None)
-        session = session if isinstance(session, dict) else {}
+        """Review NB4: this worker's lifecycle counts for the current ET session date.
+
+        Rolls to today's date first (PR #40 review), so a running worker that has
+        recorded nothing yet, or has been idle since midnight, reports today's date
+        with zero counts instead of null or yesterday's counts.
+        """
+        try:
+            session = self._lifecycle_session()
+        except Exception as exc:  # noqa: BLE001 - status is monitoring only
+            logger.debug("Dispatch lifecycle status failed", error=str(exc))
+            session = {}
         counts = {kind: dict(labels) for kind, labels in (session.get("counts") or {}).items()}
         return {
             "session_date": session.get("session_date"),

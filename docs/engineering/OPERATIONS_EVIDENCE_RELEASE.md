@@ -507,9 +507,17 @@ Before activation (read-only):
 7. Informational: PR #37's records still `unmatched` and open `system` lots
    of flat symbols (the read-only SQL in the two October 5 sections).
 8. One read-only lookup of an unknown client order id on the paper API
-   confirms the order-not-found answer (HTTP 404, JSON code 40410000, message
-   starting `order not found`). If paper answers differently, absence is never
-   proven (fail-closed) and the classifier must be updated first.
+   confirms the order-not-found answer: inside the API container, on the paper
+   endpoint, `AlpacaBrokerClient.lookup_order_by_client_order_id(
+   'activation-probe-<uuid>')` returns `(None, {'http_status': 404, 'code':
+   40410000, 'message': 'order not found...'})`. `ClientOrderNotFoundUnconfirmed`
+   means stop: absence would never be proven (fail-closed) and the classifier
+   must be updated first.
+8a. On the exact merged commit the image is built from, run
+   `scripts/phase2_freeze.py --verify --candidate` with the documented
+   environment; it must exit 0. Otherwise regenerate the candidate on that
+   commit first, so the installed image and the published surface come from
+   the same tree.
 
 Activation (the approved operation; `scripts/phase2_freeze.py` never writes
 the active file):
@@ -543,5 +551,11 @@ After activation:
 
 14. The first tick logs no `REGIME PRIOR TRIPWIRE`; the startup baseline check
     reports configured and verified with the bound sha256; the organism status
-    carries `order_dispatch_lifecycle`; the next daily evidence pack validates
-    against the new binding.
+    carries a non-null `order_dispatch_lifecycle` whose `session_date` is
+    today's ET date (null means no outbox worker runs in the engine's process,
+    so the counts and the refusal page would be dead); the next daily evidence
+    pack validates against the new binding.
+15. Abort path: if the step-10 verify or any step-14 check fails, set the
+    operator halt, reinstall the prior image and the prior active freeze file,
+    restore the prior daily-evidence binding, and record the activation as
+    aborted (with the failing check) next to the activation record.

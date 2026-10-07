@@ -1258,6 +1258,20 @@ async def test_refusals_above_the_threshold_page_once_per_session(wired):
     assert (status["session_date"], status["entry_refusals"]) == ("2026-10-07", threshold + 1)
 
 
+def test_status_reports_todays_session_date_before_any_event_and_after_midnight(monkeypatch):
+    """PR #40 review: the activation check expects today's date; a worker that has
+    recorded nothing yet, or holds yesterday's counts, must report today with zeros."""
+    now = {"t": datetime(2026, 10, 8, 14, 0, tzinfo=UTC)}
+    monkeypatch.setattr(worker_mod, "_now_utc", lambda: now["t"])
+    worker = OutboxWorker.__new__(OutboxWorker)  # nothing recorded yet
+    status = worker.dispatch_lifecycle_status()
+    assert (status["session_date"], status["entry_refusals"], status["finalized"]) == ("2026-10-08", 0, 0)
+    worker._lifecycle_counts = {"session_date": "2026-10-07", "counts": {"entry_refused": {"entry_stale": 3}},
+                                "refusal_paged": True}
+    status = worker.dispatch_lifecycle_status()  # idle since yesterday
+    assert (status["session_date"], status["entry_refusals"], status["refusal_paged"]) == ("2026-10-08", 0, False)
+
+
 async def test_engine_status_carries_the_dispatch_lifecycle_counts(wired, tmp_path, monkeypatch):
     worker = wired.bind(FakeBroker())
     monkeypatch.setattr(worker_mod, "_outbox_worker", worker)

@@ -1053,6 +1053,29 @@ def test_observation_report_skips_external_close_artifacts(tmp_path, monkeypatch
     assert [row["symbol"] for row in report.load_trades("2026-10-06", "2026-10-06")] == ["AMD"]
 
 
+def test_observation_report_uses_the_forward_corpus_artifact_rule(tmp_path, monkeypatch):
+    """PR #40 review: the report's filter matches phase2_gate's three-part rule
+    (persisted flag, artifact exit reasons, orphan-adoption source)."""
+    from backend.organism import phase2_gate
+    from scripts import generate_experiment_observation_report as report
+
+    frame = pd.DataFrame({
+        "symbol": ["AMD", "FLAG", "ORPH", "EXT", "ADJ", "NOFLAG"],
+        "closed_at": ["2026-10-06T15:00:00+00:00"] * 6,
+        "exit_reason": ["trailing_stop", "stop_loss", "max_holding_period", "external_close",
+                        "reconciliation_adjustment", "stop_loss"],
+        "entry_source": ["alpha", "alpha", "reconciliation_orphan", "alpha", "breakout", "alpha"],
+        "is_reconciliation_artifact": ["False", "True", "", "True", "", "0"],
+        "pnl": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    })
+    path = tmp_path / "trade_history.csv"
+    frame.to_csv(path, index=False)
+    monkeypatch.setattr(report, "TRADE_HISTORY", path)
+    expected = frame.loc[~phase2_gate._reconciliation_artifacts(frame), "symbol"].tolist()
+    assert expected == ["AMD", "NOFLAG"]
+    assert [row["symbol"] for row in report.load_trades("2026-10-06", "2026-10-06")] == expected
+
+
 # ── classification (pure) ───────────────────────────────────────────────────
 
 ENTRY_ID = uuid.UUID("e7c1ffff-aaaa-4bbb-8ccc-000000000001")
