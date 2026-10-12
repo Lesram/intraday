@@ -147,6 +147,9 @@ export interface TradingExecutionModeResponse {
   alpaca_paper: boolean;
   alpaca_base_url: string;
   use_mock_broker: boolean;
+  /** Whether PUT would be accepted now (refused under the research lock or while the engine runs). */
+  override_allowed?: boolean;
+  override_blocked_reason?: string | null;
 }
 
 export interface FeatureImportance {

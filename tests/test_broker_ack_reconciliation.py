@@ -294,13 +294,16 @@ async def test_first_marker_commit_failure_cannot_downgrade_retry(database, monk
 @pytest.mark.asyncio
 @pytest.mark.parametrize("order_type", ["market", "limit"])
 async def test_simulated_broker_uses_module_environment_and_returns_expected_result(monkeypatch, order_type):
-    """Exercise the real mock branch, including its production-environment guard."""
+    """Exercise the real mock branch, including its production-environment guard.
+
+    Audit 2026-10-05 A3-01: the mock broker acknowledges every order without a
+    fill; it no longer answers market orders 'filled' at a hard-coded price.
+    """
     from backend.infra import outbox_worker
     monkeypatch.setenv("ENVIRONMENT", "testing")
     monkeypatch.setenv("MOCK_BROKER_FAILURE_RATE", "0")
     sleep = AsyncMock()
     monkeypatch.setattr(outbox_worker.asyncio, "sleep", sleep)
-    monkeypatch.setattr(outbox_worker.random, "uniform", lambda _low, _high: 0)
     worker = OutboxWorker.__new__(OutboxWorker)
     payload = {"order_id": "offline-id", "symbol": "AAPL", "side": "buy",
                "qty": "2", "order_type": order_type}
@@ -308,12 +311,9 @@ async def test_simulated_broker_uses_module_environment_and_returns_expected_res
     assert result["success"] is True
     assert result["broker"] == "mock"
     assert result["broker_order_id"].startswith("MOCK_AAPL_")
-    assert result["status"] == ("filled" if order_type == "market" else "accepted")
-    if order_type == "market":
-        assert result["filled_qty"] == 2.0
-        assert result["avg_fill_price"] == 150
-    else:
-        assert "filled_qty" not in result
+    assert result["status"] == "accepted"
+    assert "filled_qty" not in result
+    assert "avg_fill_price" not in result
     sleep.reset_mock()
     monkeypatch.setenv("ENVIRONMENT", "production")
     with pytest.raises(RuntimeError, match="PRODUCTION"):

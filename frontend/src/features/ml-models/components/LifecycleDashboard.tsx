@@ -78,14 +78,23 @@ export const LifecycleDashboard: React.FC = () => {
     if (executionMode?.mode) setSelectedMode(executionMode.mode);
   }, [executionMode?.mode]);
 
+  // Audit 2026-10-05 A3-01: the override applies to manual orders only and is
+  // refused while the research lock is on or the engine runs.
+  const overrideAllowed = executionMode?.override_allowed !== false;
+  const overrideBlockedReason = executionMode?.override_blocked_reason;
+
   const setMode = useMutation({
     mutationFn: (mode: TradingExecutionMode) => mlApi.setTradingExecutionMode(mode),
     onSuccess: (res: TradingExecutionModeResponse) => {
       appMessage.success(`Execution mode set to: ${res.mode}`);
       queryClient.invalidateQueries({ queryKey: mlQueryKeys.tradingExecutionMode() });
     },
-    onError: () => {
-      appMessage.error('Failed to update execution mode (admin only)');
+    onError: (error: unknown) => {
+      const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+      const text =
+        typeof detail === 'string' ? detail : (detail as { message?: string } | undefined)?.message;
+      appMessage.error(text || 'Failed to update execution mode');
+      queryClient.invalidateQueries({ queryKey: mlQueryKeys.tradingExecutionMode() });
     },
   });
 
@@ -139,8 +148,12 @@ export const LifecycleDashboard: React.FC = () => {
             <Tooltip
               title={
                 isAdmin
-                  ? 'Controls whether outbox submits orders to the broker'
-                  : 'Admin-only: controls whether orders are submitted to broker'
+                  ? overrideAllowed
+                    ? 'Runtime override for manual orders only; the trading engine always follows ' +
+                      'the configured mode. In shadow/dry_run manual orders are not sent and are ' +
+                      'recorded as rejected with no fill.'
+                    : `Override disabled: ${overrideBlockedReason ?? 'not allowed right now'}`
+                  : 'Admin-only: runtime execution mode for manual orders'
               }
             >
               <Space>
@@ -154,12 +167,12 @@ export const LifecycleDashboard: React.FC = () => {
                       style={{ width: 140 }}
                       options={allowedModes.map((m) => ({ value: m, label: m }))}
                       onChange={(v) => setSelectedMode(v)}
-                      disabled={isLoadingExecutionMode || setMode.isPending}
+                      disabled={isLoadingExecutionMode || setMode.isPending || !overrideAllowed}
                     />
                     <Button
                       onClick={() => setMode.mutate(selectedMode)}
                       loading={setMode.isPending}
-                      disabled={isLoadingExecutionMode}
+                      disabled={isLoadingExecutionMode || !overrideAllowed}
                     >
                       Apply
                     </Button>
