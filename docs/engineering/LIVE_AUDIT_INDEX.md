@@ -1,36 +1,58 @@
 # Live Audit Index
 
-Generated: 2026-10-05T13:05:50Z
+Generated: 2026-10-12T21:51:13Z
 PR: n/a
-SHA: `1c5be55965`
-Branch: `fix/outbox-dispatch-guards`
+SHA: `6ce6e95146`
+Branch: `fix/ui-loop-and-execution-mode`
 Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **2**
+Total distinct changed files: **24**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 1 | `backend/integrations/alpaca_outbox.py` |
+| Backend | 9 | `backend/api/routes/admin_trading.py`, `backend/api/routes/scanner.py`, `backend/api/routes/watchlists.py`, `backend/data/alpaca_client.py`, `backend/infra/outbox_worker.py`, `backend/services/auto_breakout_scanner.py`, `backend/services/dashboard_market_data.py`, `backend/services/scanner_universe.py`, `backend/services/trading_execution_mode.py` |
 | Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_audit_20261005_outbox_dispatch_guards.py` |
-| Docs | 0 | none |
+| Tests | 4 | `tests/test_admin_trading_execution_mode.py`, `tests/test_audit_20261005_ui_loop_and_execution_mode.py`, `tests/test_broker_ack_reconciliation.py`, `tests/test_outbox_shadow_mode.py` |
+| Docs | 2 | `docs/architecture/mapss.md`, `docs/runbooks/PAPER_TRADING_ROLLOUT.md` |
 | Artifacts/evidence | 0 | none |
 | Reports | 0 | none |
-| Configuration | 0 | none |
-| Other | 0 | none |
+| Configuration | 1 | `.env.example` |
+| Other | 8 | `frontend/src/components/layout/AppSidebar.tsx`, `frontend/src/components/market/Scanner.tsx`, `frontend/src/components/market/WatchlistSymbolCard.tsx`, `frontend/src/features/ml-models/components/LifecycleDashboard.tsx`, `frontend/src/hooks/useWatchlists.ts`, `frontend/src/pages/ScannerPage.tsx`, `frontend/src/services/watchlistApi.ts`, `frontend/src/types/ml.ts` |
 
 Organism subset of Backend: **0** file(s).
 
 ### Full changed-file list
 
-- `backend/integrations/alpaca_outbox.py`
-- `tests/test_audit_20261005_outbox_dispatch_guards.py`
+- `.env.example`
+- `backend/api/routes/admin_trading.py`
+- `backend/api/routes/scanner.py`
+- `backend/api/routes/watchlists.py`
+- `backend/data/alpaca_client.py`
+- `backend/infra/outbox_worker.py`
+- `backend/services/auto_breakout_scanner.py`
+- `backend/services/dashboard_market_data.py`
+- `backend/services/scanner_universe.py`
+- `backend/services/trading_execution_mode.py`
+- `docs/architecture/mapss.md`
+- `docs/runbooks/PAPER_TRADING_ROLLOUT.md`
+- `frontend/src/components/layout/AppSidebar.tsx`
+- `frontend/src/components/market/Scanner.tsx`
+- `frontend/src/components/market/WatchlistSymbolCard.tsx`
+- `frontend/src/features/ml-models/components/LifecycleDashboard.tsx`
+- `frontend/src/hooks/useWatchlists.ts`
+- `frontend/src/pages/ScannerPage.tsx`
+- `frontend/src/services/watchlistApi.ts`
+- `frontend/src/types/ml.ts`
+- `tests/test_admin_trading_execution_mode.py`
+- `tests/test_audit_20261005_ui_loop_and_execution_mode.py`
+- `tests/test_broker_ack_reconciliation.py`
+- `tests/test_outbox_shadow_mode.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -71,4 +93,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 1 backend runtime file(s) changed — require targeted verification
+- 9 backend runtime file(s) changed — require targeted verification

@@ -1,18 +1,56 @@
 {
-  "scope": "task",
-  "ref": "HEAD",
-  "total": 2,
+  "scope": "base",
+  "ref": "6a56d753...HEAD",
+  "total": 24,
   "all": [
-    "backend/integrations/alpaca_outbox.py",
-    "tests/test_audit_20261005_outbox_dispatch_guards.py"
+    ".env.example",
+    "backend/api/routes/admin_trading.py",
+    "backend/api/routes/scanner.py",
+    "backend/api/routes/watchlists.py",
+    "backend/data/alpaca_client.py",
+    "backend/infra/outbox_worker.py",
+    "backend/services/auto_breakout_scanner.py",
+    "backend/services/dashboard_market_data.py",
+    "backend/services/scanner_universe.py",
+    "backend/services/trading_execution_mode.py",
+    "docs/architecture/mapss.md",
+    "docs/runbooks/PAPER_TRADING_ROLLOUT.md",
+    "frontend/src/components/layout/AppSidebar.tsx",
+    "frontend/src/components/market/Scanner.tsx",
+    "frontend/src/components/market/WatchlistSymbolCard.tsx",
+    "frontend/src/features/ml-models/components/LifecycleDashboard.tsx",
+    "frontend/src/hooks/useWatchlists.ts",
+    "frontend/src/pages/ScannerPage.tsx",
+    "frontend/src/services/watchlistApi.ts",
+    "frontend/src/types/ml.ts",
+    "tests/test_admin_trading_execution_mode.py",
+    "tests/test_audit_20261005_ui_loop_and_execution_mode.py",
+    "tests/test_broker_ack_reconciliation.py",
+    "tests/test_outbox_shadow_mode.py"
   ],
   "backend": [
-    "backend/integrations/alpaca_outbox.py"
+    "backend/api/routes/admin_trading.py",
+    "backend/api/routes/scanner.py",
+    "backend/api/routes/watchlists.py",
+    "backend/data/alpaca_client.py",
+    "backend/infra/outbox_worker.py",
+    "backend/services/auto_breakout_scanner.py",
+    "backend/services/dashboard_market_data.py",
+    "backend/services/scanner_universe.py",
+    "backend/services/trading_execution_mode.py"
   ],
   "organism": [],
   "tests": [
-    "tests/test_audit_20261005_outbox_dispatch_guards.py"
+    "tests/test_admin_trading_execution_mode.py",
+    "tests/test_audit_20261005_ui_loop_and_execution_mode.py",
+    "tests/test_broker_ack_reconciliation.py",
+    "tests/test_outbox_shadow_mode.py"
   ],
-  "config": [],
-  "docs": []
+  "config": [
+    ".env.example"
+  ],
+  "docs": [
+    "docs/architecture/mapss.md",
+    "docs/runbooks/PAPER_TRADING_ROLLOUT.md"
+  ]
 }

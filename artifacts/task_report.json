@@ -1,19 +1,47 @@
 {
-  "task_id": "evidence-repair",
-  "summary": "fix: limit insufficient-qty finalization to exit sells (PR #36 review)",
-  "sha": "1c5be559653f39137180b696a90bba2ccd1ee01d",
-  "branch": "fix/outbox-dispatch-guards",
-  "change_scope": "task",
-  "change_ref": "HEAD",
+  "task_id": "audit-20261005-p1ui-ui-loop-and-execution-mode",
+  "summary": "Dashboard scanner off by default and off the event loop (A6-01); watchlist quotes from one batched off-loop request with a shared cache (A8-01); runtime execution-mode override scoped to manual orders, no invented fills (A3-01)",
+  "sha": "6ce6e951466e8bbd6bbac48bd40cb1c07571f5c8",
+  "branch": "fix/ui-loop-and-execution-mode",
+  "change_scope": "base",
+  "change_ref": "6a56d753...HEAD",
   "files_changed": [
-    "backend/integrations/alpaca_outbox.py",
-    "tests/test_audit_20261005_outbox_dispatch_guards.py"
+    ".env.example",
+    "backend/api/routes/admin_trading.py",
+    "backend/api/routes/scanner.py",
+    "backend/api/routes/watchlists.py",
+    "backend/data/alpaca_client.py",
+    "backend/infra/outbox_worker.py",
+    "backend/services/auto_breakout_scanner.py",
+    "backend/services/dashboard_market_data.py",
+    "backend/services/scanner_universe.py",
+    "backend/services/trading_execution_mode.py",
+    "docs/architecture/mapss.md",
+    "docs/runbooks/PAPER_TRADING_ROLLOUT.md",
+    "frontend/src/components/layout/AppSidebar.tsx",
+    "frontend/src/components/market/Scanner.tsx",
+    "frontend/src/components/market/WatchlistSymbolCard.tsx",
+    "frontend/src/features/ml-models/components/LifecycleDashboard.tsx",
+    "frontend/src/hooks/useWatchlists.ts",
+    "frontend/src/pages/ScannerPage.tsx",
+    "frontend/src/services/watchlistApi.ts",
+    "frontend/src/types/ml.ts",
+    "tests/test_admin_trading_execution_mode.py",
+    "tests/test_audit_20261005_ui_loop_and_execution_mode.py",
+    "tests/test_broker_ack_reconciliation.py",
+    "tests/test_outbox_shadow_mode.py"
   ],
   "commands": [
     "python scripts/runtime/write_runtime_snapshot.py",
     "python scripts/ci/generate_artifacts.py full",
     "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
-    "python scripts/ci/check_spec_drift.py --json"
+    "python scripts/ci/check_spec_drift.py --json",
+    "python -m pytest tests/test_audit_20261005_ui_loop_and_execution_mode.py",
+    "python -m pytest <52 existing test files touching scanner/watchlists/admin_trading/trading_execution_mode/alpaca_client/outbox_worker/quote_manager> tests/test_order_integrity_comprehensive.py tests/test_position_reconciliation.py tests/test_position_reconciliation_comprehensive.py",
+    "python -m pytest tests/test_settings_comprehensive.py tests/test_config_coordinator_comprehensive.py tests/test_system_integration.py tests/test_v13_w92_deploy_parity.py",
+    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify",
+    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify --candidate",
+    "git merge-tree --write-tree HEAD <310e7704|2679c4ff|435670e5|84df340a>"
   ],
   "tests_passed": [
     "organism_live_engine",
@@ -27,13 +55,102 @@
   ],
   "tests_failed": [],
   "runtime_behavior_changed": [
-    "backend/integrations/alpaca_outbox.py"
+    "backend/api/routes/admin_trading.py",
+    "backend/api/routes/scanner.py",
+    "backend/api/routes/watchlists.py",
+    "backend/data/alpaca_client.py",
+    "backend/infra/outbox_worker.py",
+    "backend/services/auto_breakout_scanner.py",
+    "backend/services/dashboard_market_data.py",
+    "backend/services/scanner_universe.py",
+    "backend/services/trading_execution_mode.py"
   ],
-  "docs_updated": [],
+  "docs_updated": [
+    "docs/architecture/mapss.md",
+    "docs/runbooks/PAPER_TRADING_ROLLOUT.md"
+  ],
   "risks": [
-    "1 backend runtime file(s) changed \u2014 targeted verification required"
+    "9 backend runtime file(s) changed \u2014 targeted verification required",
+    "1 config file(s) changed \u2014 runtime drift check required",
+    "Organism dispatch now follows the configured mode, never the override; consistent with the engine's startup guard because the engine is constructed once at API startup, before any override can exist (process-local, lost on restart).",
+    "Watchlist prices come from the latest two-sided quote of the configured feed (IEX in production); outside regular hours IEX quotes are often one-sided, so prices show as null with error 'no_two_sided_quote'.",
+    "The mock broker (USE_MOCK_BROKER=true, tests/local only) no longer fills market orders; local flows that relied on simulated fills will see orders stay 'accepted'.",
+    "Frontend changes were syntax-checked only (no node_modules offline).",
+    "scripts/phase2_freeze.py --verify (active) exits 1 on this branch exactly as on the base; candidate verify exits 0."
   ],
-  "follow_ups": [],
+  "follow_ups": [
+    "If the dashboard scanner is ever enabled, give it an indicator backend (pandas_ta or backend/services/indicators.py); without one every scan returns empty.",
+    "Include the effective execution mode in runtime_config_hash and fix its upper-case attribute lookups (runtime_identity.py, out of scope here).",
+    "Owner: before deploy, check the production DB for organism rows left by past use of the switch (status 'accepted' with broker_order_id NULL or LIKE 'MOCK_%')."
+  ],
   "artifact_pack_status": "pass",
-  "artifact_pack_errors": []
+  "artifact_pack_errors": [],
+  "base": "6a56d7538c8c6b3ceabd54955a706b251155094b",
+  "trading_decisions_changed": false,
+  "operator_visible_changes": [
+    "Market Scanner removed from the sidebar; /market-data shows a static 'disabled' notice unless DASHBOARD_SCANNER_ENABLED=true. POST /scanner/scan and /scanner/export/* return 503 and WS /scanner/ws is closed before accept while disabled.",
+    "Watchlist quotes: GET /watchlists/{id}/quotes returns {symbol: {symbol, price, change, changePercent, bid, ask, timestamp[, error]}} from one batched request (10 s shared cache, 50-symbol cap); the Trading page polls every 20 s (was 5 s) and now shows prices; change/changePercent are null.",
+    "PUT /admin/trading/execution-mode returns 423 while RESEARCH_POLICY_LOCKED (always, this release), 409 while the organism scheduler runs, 422 for unknown modes; the dashboard control is disabled with the reason shown.",
+    "Manual orders in a configured shadow/dry_run mode end 'rejected' with zero fill and attributes.execution_mode (no 'shadow' status, no simulated fill); the mock broker (USE_MOCK_BROKER) acknowledges without a fill.",
+    "Watchlist polling no longer logs AlpacaClient initialisation and account details."
+  ],
+  "targeted_test_runs": {
+    "new_tests": {
+      "file": "tests/test_audit_20261005_ui_loop_and_execution_mode.py",
+      "passed": 34,
+      "failed": 0,
+      "on_base_commit": "31 of 34 fail on 6a56d753 (the 3 that pass exercise only the new helper module or the always-accepting base websocket)"
+    },
+    "affected_existing_plus_order_paths": {
+      "passed": 1172,
+      "failed": 1,
+      "skipped": 86,
+      "pre_existing_failures": [
+        "tests/unit/test_service_modules.py::TestQuoteManager::test_get_quote (QuoteManager() needs Alpaca credentials; fails identically on 6a56d753: 1 failed, 1136 passed, 86 skipped)"
+      ]
+    },
+    "config_env_suites": {
+      "passed": 52,
+      "failed": 0,
+      "skipped": 4
+    },
+    "route_registry_and_security": {
+      "passed": 177,
+      "failed": 0,
+      "skipped": 1
+    },
+    "merge_result_with_pr40_310e7704": {
+      "passed": 308,
+      "failed": 0
+    },
+    "merge_result_with_pr39_435670e5": {
+      "passed": 109,
+      "failed": 0
+    },
+    "frontend": "no node_modules installed (offline); tsc/vitest not run; changed .ts/.tsx files pass a TypeScript 6.0.3 transpile syntax check"
+  },
+  "frozen_verify": {
+    "command": "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify [--candidate]",
+    "active": {
+      "exit_code": 1,
+      "note": "pre-existing: exits 1 with byte-identical output on the base 6a56d753 (the branch carries the pending candidate surface)"
+    },
+    "candidate": {
+      "exit_code": 0,
+      "output": "CANDIDATE DRIFT-VERIFY OK"
+    },
+    "hashed_sources_touched": []
+  },
+  "merge_tree_check": {
+    "310e7704 (PR #40, contains #37)": "clean for source and docs commits",
+    "2679c4ff (PR #38)": "clean for source and docs commits",
+    "435670e5 (PR #39)": "clean for source and docs commits",
+    "84df340a (PR #37)": "clean for source and docs commits",
+    "artifacts_commit": "conflicts expected only in artifacts/ and docs/engineering/LIVE_AUDIT_INDEX.md"
+  },
+  "deviations": [
+    "A3-01 (a): organism orders are exempt from the runtime override and follow the configured TRADING_EXECUTION_MODE (default_mode), instead of 'dispatch regardless of mode'. In production (execute) they dispatch normally whatever the override; a deployment configured shadow/dry_run (including the fail-closed default when the variable is missing, audit 2026-06-09 finding 3.3) still never sends them, because the engine's startup guard only checks the loss breakers in execute mode.",
+    "A6-01/A8-01: SDK calls run via loop.run_in_executor on a dedicated 3-thread pool with a copied context (the asyncio.to_thread mechanism) under asyncio.wait_for, so dashboard calls cannot occupy the default executor threads the engine uses (positions reads, features, brain saves).",
+    "A3-01 (c): the override is not persisted and runtime_identity.py is unchanged (excluded by the task); the override cannot be set during the research period."
+  ]
 }
