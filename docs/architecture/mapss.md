@@ -4122,19 +4122,22 @@ Controls how orders flow through the outbox worker to the broker.
 ```
 EXECUTION MODE ROUTING (outbox_worker._process_order_submitted):
   │
+  ├── Mode per order (audit 2026-10-05 A3-01):
+  │   ├── attributes.source == "organism" → configured mode (default_mode,
+  │   │   TRADING_EXECUTION_MODE); the runtime override never applies
+  │   └── any other (manual) order → effective mode (override, else configured)
+  │
+  ├── Lookup-only replay of an unresolved submission → broker lookup in any mode
+  │
   ├── "execute" (real mode):
   │   └── Orders sent to Alpaca broker (real or paper API)
   │
-  ├── "shadow" (intent-only):
-  │   └── Records intent in DB, skips broker entirely
-  │       └── Used for monitoring model performance without risk
+  ├── "shadow" / "dry_run" (not sent, nothing simulated):
+  │   └── Order row finalized 'rejected', zero fill, no broker id,
+  │       attributes.execution_mode = mode; outbox event marked sent
   │
-  ├── "dry_run" (simulated):
-  │   └── Simulates broker response (_simulate_broker_order)
-  │       └── Returns fake fill at current price
-  │
-  └── Additional: USE_MOCK_BROKER=true
-      └── Uses mock broker client (testing)
+  └── Additional: USE_MOCK_BROKER=true (tests / local development)
+      └── Acknowledged 'accepted' with a MOCK_ broker id, no fill
 ```
 
 ### Mode Management
@@ -4145,15 +4148,19 @@ TradingExecutionModeState:
   ├── mode: "execute" | "shadow" | "dry_run"
   ├── source: "override" | "env"
   │
-  ├── Override (runtime, thread-safe):
+  ├── Override (runtime, process-local, thread-safe):
   │   ├── set_trading_execution_mode_override(mode, actor="admin")
+  │   │   └── refused (ExecutionModeOverrideRefused) while RESEARCH_POLICY_LOCKED
   │   └── clear_trading_execution_mode_override(actor="admin")
   │
-  └── Default: from environment or "execute"
+  └── Default: TRADING_EXECUTION_MODE; missing or unrecognized → "shadow" (fail closed)
       └── Aliases: "paper" → "execute", "live" → "execute"
 ```
 
-Admin API: `GET/PUT/DELETE /api/v1/admin/execution-mode`
+Admin API: `GET/PUT/DELETE /api/v1/admin/trading/execution-mode`. PUT answers 423
+while the research policy lock is on, 409 while the organism scheduler is running
+and 422 for an unknown mode; GET reports `override_allowed` and
+`override_blocked_reason`.
 
 ---
 
