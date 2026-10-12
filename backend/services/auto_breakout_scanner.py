@@ -7,8 +7,8 @@ from typing import Any
 
 import pandas as pd
 
-from backend.api.routes.scanner import SCANNABLE_SYMBOLS
 from backend.features.feature_engineering import FeatureEngineer
+from backend.services.scanner_universe import SCANNABLE_SYMBOLS
 from backend.utils.logger import get_logger
 
 
