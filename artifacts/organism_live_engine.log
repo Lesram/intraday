@@ -1,7 +1,84 @@
-..........................                                               [100%]
+...................F......                                                                  [100%]
+=================================== FAILURES ===================================
+E   Failed: Timeout (>30.0s) from pytest-timeout.
+----------------------------- Captured stdout call -----------------------------
+  💾 Brain saved: generation 0, 0 trades, equity $100,000
+  🧠 Brain loaded: generation 0, 1 previous runs, 0 historical trades
+     Last saved: 2026-10-14T21:16:53.110028+00:00
+  💾 Brain saved: generation 0, 0 trades, equity $100,000
+  🧠 Brain loaded: generation 0, 2 previous runs, 0 historical trades
+     Last saved: 2026-10-14T21:17:05.334809+00:00
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~ Stack of asyncio_5 (140165385287360) ~~~~~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 89, in _worker
+    work_item = work_queue.get(block=True)
+~~~~~~~~~~~~~~~~~~~~~ Stack of asyncio_4 (140165670491840) ~~~~~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 89, in _worker
+    work_item = work_queue.get(block=True)
+~~~~~~~~~~~~~~~~~~~~~ Stack of asyncio_3 (140165804299968) ~~~~~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 89, in _worker
+    work_item = work_queue.get(block=True)
+~~~~~~~~~~~~~~~~~~~~~ Stack of asyncio_2 (140165678884544) ~~~~~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 89, in _worker
+    work_item = work_queue.get(block=True)
+~~~~~~~~~~~~~~~~~~~~~ Stack of asyncio_1 (140165687277248) ~~~~~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 89, in _worker
+    work_item = work_queue.get(block=True)
+~~~~~~~~~~~~~~~~~~~~~ Stack of asyncio_0 (140165812692672) ~~~~~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 89, in _worker
+    work_item = work_queue.get(block=True)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+------------------------------ Captured log call -------------------------------
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+WARNING  backend.organism.market_scanner:market_scanner.py:507 {"event": "Scanner batch failed: 403 Forbidden", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-10-14T21:17:01.379263Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:507 {"event": "Scanner batch failed: 403 Forbidden", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-10-14T21:17:01.380326Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:507 {"event": "Scanner batch failed: 403 Forbidden", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-10-14T21:17:01.380592Z"}
+WARNING  backend.organism.market_scanner:market_scanner.py:514 {"event": "Scanner: no stocks passed initial filters", "logger": "backend.organism.market_scanner", "level": "warning", "timestamp": "2026-10-14T21:17:01.380704Z"}
+WARNING  backend.organism.live_engine:live_engine.py:3381 {"event": "Market scan failed or degraded: Scanner completed with endpoint or snapshot errors", "logger": "backend.organism.live_engine", "level": "warning", "timestamp": "2026-10-14T21:17:01.380832Z"}
+WARNING  backend.organism.trading_phase:trading_phase.py:200 Full production promotion blocked: reviewed_paper_baseline_requires_explicit_promotion
+/usr/lib/python3.12/copy.py:196: Failed: Timeout (>30.0s) from pytest-timeout.
 =============================== warnings summary ===============================
 tests/test_organism_live_engine.py::TestOrganismLiveEngine::test_initialize_fresh
   <string>:15: RuntimeWarning: SECRET_KEY not set — using generated ephemeral key. Set SECRET_KEY env var for production.
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-26 passed, 1 warning in 51.97s
+=========================== short test summary info ============================
+FAILED tests/test_organism_live_engine.py::TestMultiRunRegression::test_brain_persistence_across_runs
+1 failed, 25 passed, 1 warning in 86.78s (0:01:26)

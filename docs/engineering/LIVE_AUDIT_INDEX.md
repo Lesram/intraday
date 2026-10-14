@@ -1,15 +1,15 @@
 # Live Audit Index
 
-Generated: 2026-10-12T21:51:13Z
+Generated: 2026-10-14T21:53:16Z
 PR: n/a
-SHA: `6ce6e95146`
+SHA: `2759bdb00d`
 Branch: `fix/ui-loop-and-execution-mode`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **24**
+Total distinct changed files: **50**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
@@ -19,8 +19,8 @@ Category counts below partition that total. File previews show at most ten paths
 | Scripts | 0 | none |
 | CI | 0 | none |
 | Tests | 4 | `tests/test_admin_trading_execution_mode.py`, `tests/test_audit_20261005_ui_loop_and_execution_mode.py`, `tests/test_broker_ack_reconciliation.py`, `tests/test_outbox_shadow_mode.py` |
-| Docs | 2 | `docs/architecture/mapss.md`, `docs/runbooks/PAPER_TRADING_ROLLOUT.md` |
-| Artifacts/evidence | 0 | none |
+| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/runbooks/PAPER_TRADING_ROLLOUT.md` |
+| Artifacts/evidence | 25 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 1 | `.env.example` |
 | Other | 8 | `frontend/src/components/layout/AppSidebar.tsx`, `frontend/src/components/market/Scanner.tsx`, `frontend/src/components/market/WatchlistSymbolCard.tsx`, `frontend/src/features/ml-models/components/LifecycleDashboard.tsx`, `frontend/src/hooks/useWatchlists.ts`, `frontend/src/pages/ScannerPage.tsx`, `frontend/src/services/watchlistApi.ts`, `frontend/src/types/ml.ts` |
@@ -30,6 +30,31 @@ Organism subset of Backend: **0** file(s).
 ### Full changed-file list
 
 - `.env.example`
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/task-report.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
 - `backend/api/routes/admin_trading.py`
 - `backend/api/routes/scanner.py`
 - `backend/api/routes/watchlists.py`
@@ -40,6 +65,7 @@ Organism subset of Backend: **0** file(s).
 - `backend/services/scanner_universe.py`
 - `backend/services/trading_execution_mode.py`
 - `docs/architecture/mapss.md`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `docs/runbooks/PAPER_TRADING_ROLLOUT.md`
 - `frontend/src/components/layout/AppSidebar.tsx`
 - `frontend/src/components/market/Scanner.tsx`
