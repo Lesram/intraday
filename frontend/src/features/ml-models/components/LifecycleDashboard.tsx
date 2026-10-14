@@ -79,7 +79,7 @@ export const LifecycleDashboard: React.FC = () => {
   }, [executionMode?.mode]);
 
   // Audit 2026-10-05 A3-01: the override applies to manual orders only and is
-  // refused while the research lock is on or the engine runs.
+  // refused while the research lock is on or the API hosts the organism scheduler.
   const overrideAllowed = executionMode?.override_allowed !== false;
   const overrideBlockedReason = executionMode?.override_blocked_reason;
 

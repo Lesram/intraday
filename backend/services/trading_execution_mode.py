@@ -16,6 +16,11 @@ Notes:
   (``RESEARCH_POLICY_LOCKED``, hard-coded True for the research period), so the
   switch is disabled for the whole research period. Clearing it, which can only
   return to the configured mode, stays allowed.
+- PUT /admin/trading/execution-mode (the setter's only caller) also refuses it
+  whenever the process hosts an organism scheduler, running or not, because the
+  engine evaluates the effective mode whenever it is constructed (process start,
+  POST /settings/restart-engine). That check needs ``app.state``, so it lives in
+  the route.
 """
 
 from __future__ import annotations

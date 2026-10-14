@@ -4158,9 +4158,11 @@ TradingExecutionModeState:
 ```
 
 Admin API: `GET/PUT/DELETE /api/v1/admin/trading/execution-mode`. PUT answers 423
-while the research policy lock is on, 409 while the organism scheduler is running
-and 422 for an unknown mode; GET reports `override_allowed` and
-`override_blocked_reason`.
+while the research policy lock is on, 409 whenever the process hosts an organism
+scheduler (running or not: `OrganismScheduler.start()` constructs a new engine at
+process start and on `POST /api/v1/settings/restart-engine`, and the engine's
+risk-limit guard evaluates the effective mode at that moment) and 422 for an
+unknown mode; GET reports `override_allowed` and `override_blocked_reason`.
 
 ---
 

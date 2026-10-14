@@ -103,9 +103,11 @@ def _dispatch_mode(mode_state: Any, organism_order: bool) -> str:
 
     Audit 2026-10-05 A3-01: the runtime override (PUT
     /admin/trading/execution-mode) applies to manual orders only. The engine
-    resolves the mode once, at startup, where its risk-limit guard checks the
-    loss breakers for execute mode, and is never told about a runtime flip. Its
-    entries, exits and EOD flatten therefore follow the configured mode
+    evaluates the effective mode whenever it is constructed (process start,
+    POST /settings/restart-engine), where its risk-limit guard checks the loss
+    breakers for execute mode, and is never told about a later flip (PUT is
+    refused whenever the process hosts an organism scheduler). Its entries,
+    exits and EOD flatten therefore follow the configured mode
     (``default_mode``: TRADING_EXECUTION_MODE), never the override, in either
     direction.
     """

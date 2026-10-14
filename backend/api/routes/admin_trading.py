@@ -8,8 +8,17 @@ Security:
 Audit 2026-10-05 A3-01: the runtime execution-mode override governs manual
 orders only; the organism engine's own orders follow the configured mode. PUT
 is refused with 423 while the research policy lock is on (the whole research
-period) and with 409 while the organism engine is running; an unknown mode is
-a 422. GET reports whether a PUT would be accepted (``override_allowed``).
+period) and with 409 whenever this process hosts an organism scheduler,
+running or not; an unknown mode is a 422. GET reports whether a PUT would be
+accepted (``override_allowed``).
+
+The scheduler builds a new engine on every start (process start and POST
+/settings/restart-engine), and the engine's risk-limit guard evaluates the
+effective mode at that moment, so a stopped, restarting or crashed scheduler
+must refuse the override as much as a running one.
+
+The lock refusal is 423 here although /settings answers 403 for the same lock:
+on this route 403 already means that the admin role gate refused the caller.
 """
 
 from __future__ import annotations
@@ -34,8 +43,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/trading", tags=["Admin - Trading"])
 
-ENGINE_RUNNING_MESSAGE = (
-    "The execution-mode override is refused while the organism engine is running."
+SCHEDULER_PRESENT_CODE = "organism_scheduler_present"
+SCHEDULER_PRESENT_MESSAGE = (
+    "The execution-mode override is refused while this process hosts the organism "
+    "scheduler, running or not: the engine evaluates the execution mode whenever it "
+    "is constructed, including on POST /api/v1/settings/restart-engine."
 )
 
 
@@ -65,14 +77,15 @@ class TradingExecutionModeUpdateRequest(BaseModel):
         return normalize_trading_execution_mode(value)
 
 
-def _organism_engine_running(request: Request) -> bool:
-    scheduler = getattr(request.app.state, "organism_scheduler", None)
-    if scheduler is None:
-        return False
-    try:
-        return bool(scheduler.is_running)
-    except Exception:  # noqa: BLE001 - unknown state counts as running (refuse)
-        return True
+def _organism_scheduler_present(request: Request) -> bool:
+    """Whether this process hosts an organism scheduler, running or not.
+
+    ``is_running`` is not enough: OrganismScheduler.start() constructs a new
+    engine (POST /settings/restart-engine stops and starts it; a crashed task
+    leaves the scheduler stopped but restartable), and the engine's startup
+    risk-limit guard reads the effective mode, override included.
+    """
+    return getattr(request.app.state, "organism_scheduler", None) is not None
 
 
 def _override_block(request: Request) -> tuple[int, str, str] | None:
@@ -80,8 +93,8 @@ def _override_block(request: Request) -> tuple[int, str, str] | None:
     refusal = override_refusal()
     if refusal is not None:
         return status.HTTP_423_LOCKED, refusal.code, refusal.message
-    if _organism_engine_running(request):
-        return status.HTTP_409_CONFLICT, "organism_engine_running", ENGINE_RUNNING_MESSAGE
+    if _organism_scheduler_present(request):
+        return status.HTTP_409_CONFLICT, SCHEDULER_PRESENT_CODE, SCHEDULER_PRESENT_MESSAGE
     return None
 
 

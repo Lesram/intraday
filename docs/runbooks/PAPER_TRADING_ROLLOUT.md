@@ -43,15 +43,17 @@ Notes:
 Runtime override (manual orders only):
 - An admin can view the runtime override via ML Models → Lifecycle Dashboard →
   "Execution" control or `GET/PUT/DELETE /api/v1/admin/trading/execution-mode`.
-- The override applies to manual orders only. The organism engine reads the mode once
-  at startup (its risk-limit guard checks the loss breakers in `execute` mode), so its
-  own orders (entries, exits, EOD flatten) always follow the configured
-  `TRADING_EXECUTION_MODE`, never the runtime override. Change the configured mode
-  with a restart.
+- The override applies to manual orders only. The organism engine evaluates the
+  effective mode whenever it is constructed (process start and
+  `POST /api/v1/settings/restart-engine`; its risk-limit guard checks the loss
+  breakers in `execute` mode), so its own orders (entries, exits, EOD flatten)
+  always follow the configured `TRADING_EXECUTION_MODE`, never the runtime override.
+  Change the configured mode with a restart.
 - `PUT` is refused with HTTP 423 while the research policy lock is on (the whole
-  research period), with HTTP 409 while the organism engine is running, and with
-  HTTP 422 for an unknown mode. `GET` reports `override_allowed` and
-  `override_blocked_reason`. `DELETE` (back to the configured mode) stays allowed.
+  research period), with HTTP 409 whenever the process hosts the organism scheduler
+  (running, stopped, mid-restart or after its task crashed), and with HTTP 422 for an
+  unknown mode. `GET` reports `override_allowed` and `override_blocked_reason`.
+  `DELETE` (back to the configured mode) stays allowed.
 - The override is per-process and is lost on restart.
 
 ### Phase 1: Paper Execution (real broker submission to paper)

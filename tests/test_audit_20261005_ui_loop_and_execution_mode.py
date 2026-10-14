@@ -738,15 +738,17 @@ async def test_execution_mode_override_is_refused_under_the_research_lock(monkey
         assert "research policy lock" in current["override_blocked_reason"]
         assert (await http.put(url, json={"mode": "pause"})).status_code == 422
 
-        # After the lock lifts, a running engine still refuses the switch.
+        # After the lock lifts, a process hosting the organism scheduler still
+        # refuses the switch (running here; stopped ones in the next test).
         monkeypatch.setattr(research_policy, "RESEARCH_POLICY_LOCKED", False)
         app.state.organism_scheduler = SimpleNamespace(is_running=True)
         busy = await http.put(url, json={"mode": "shadow"})
         assert busy.status_code == 409
-        assert busy.json()["detail"]["code"] == "organism_engine_running"
+        assert busy.json()["detail"]["code"] == "organism_scheduler_present"
         assert (await http.get(url)).json()["override_allowed"] is False
 
-        app.state.organism_scheduler = SimpleNamespace(is_running=False)
+        # Only a process without an organism scheduler accepts it.
+        app.state.organism_scheduler = None
         accepted = await http.put(url, json={"mode": "shadow"})
         assert accepted.status_code == 200
         assert (accepted.json()["mode"], accepted.json()["overridden"]) == ("shadow", True)
@@ -757,4 +759,70 @@ async def test_execution_mode_override_is_refused_under_the_research_lock(monkey
     monkeypatch.setattr(research_policy, "RESEARCH_POLICY_LOCKED", True)
     with pytest.raises(tem.ExecutionModeOverrideRefused):
         tem.set_trading_execution_mode_override("dry_run", actor="synthetic-script")
+    assert tem.get_trading_execution_mode().overridden is False
+
+
+class NotRunningScheduler:
+    """An organism scheduler that exists but is not running.
+
+    Stopped, between stop() and start() of POST /settings/restart-engine, or
+    left behind by a crashed task. Like OrganismScheduler, start() constructs a
+    new engine, whose startup risk-limit guard reads the effective execution
+    mode at that moment; this records the mode each new engine would see.
+    """
+
+    def __init__(self, *, crashed: bool):
+        self._task = SimpleNamespace(done=lambda: True) if crashed else None
+        self.modes_seen_by_new_engines: list[str] = []
+
+    @property
+    def is_running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
+    async def stop(self) -> None:
+        self._task = None
+
+    async def start(self) -> None:
+        self.modes_seen_by_new_engines.append(tem.get_trading_execution_mode().mode)
+        self._task = SimpleNamespace(done=lambda: False)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("crashed", [False, True], ids=["stopped", "crashed_task"])
+async def test_execution_mode_override_is_refused_while_a_stopped_scheduler_is_present(monkeypatch, crashed):
+    from backend.api.routes import settings as settings_routes
+    from backend.infra.security import AuthenticatedUser, require_admin
+
+    for name in ("_override_mode", "_override_set_by", "_override_set_at"):
+        monkeypatch.setattr(tem, name, None)
+    monkeypatch.setenv("TRADING_EXECUTION_MODE", "paper")
+    # The research lock alone blocks the switch today; lift it to reach the scheduler check.
+    monkeypatch.setattr(research_policy, "RESEARCH_POLICY_LOCKED", False)
+    app = FastAPI()
+    app.include_router(admin_trading.router, prefix="/api/v1")
+    app.include_router(settings_routes.router, prefix="/api/v1")
+    app.dependency_overrides[require_admin] = lambda: AuthenticatedUser(
+        username="synthetic-admin", roles=["admin"], token_id="synthetic")
+    scheduler = NotRunningScheduler(crashed=crashed)
+    assert scheduler.is_running is False
+    app.state.organism_scheduler = scheduler
+    url = "/api/v1/admin/trading/execution-mode"
+
+    async with asgi_client(app) as http:
+        for mode in ("shadow", "dry_run"):
+            refused = await http.put(url, json={"mode": mode})
+            assert refused.status_code == 409
+            assert refused.json()["detail"]["code"] == "organism_scheduler_present"
+        current = (await http.get(url)).json()
+        assert current["overridden"] is False and current["override_allowed"] is False
+        assert "running or not" in current["override_blocked_reason"]
+
+        # A restart (stop, then start: a new engine) builds the engine under the
+        # configured mode, never a shadow/dry_run override that would skip its
+        # loss-breaker check while its orders follow the configured execute mode.
+        restarted = await http.post("/api/v1/settings/restart-engine")
+        assert restarted.status_code == 200 and restarted.json()["running"] is True
+        assert (await http.put(url, json={"mode": "dry_run"})).status_code == 409
+
+    assert scheduler.modes_seen_by_new_engines == ["execute"]
     assert tem.get_trading_execution_mode().overridden is False
