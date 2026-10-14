@@ -4133,8 +4133,10 @@ EXECUTION MODE ROUTING (outbox_worker._process_order_submitted):
   │   └── Orders sent to Alpaca broker (real or paper API)
   │
   ├── "shadow" / "dry_run" (not sent, nothing simulated):
-  │   └── Order row finalized 'rejected', zero fill, no broker id,
-  │       attributes.execution_mode = mode; outbox event marked sent
+  │   ├── Order row finalized 'rejected', zero fill, no broker id,
+  │   │   attributes.execution_mode = mode; outbox event marked sent
+  │   └── Logged at ERROR for organism orders (only the configured mode,
+  │       e.g. the fail-closed default, holds them back), WARNING for manual
   │
   └── Additional: USE_MOCK_BROKER=true (tests / local development)
       └── Acknowledged 'accepted' with a MOCK_ broker id, no fill
@@ -4163,6 +4165,10 @@ scheduler (running or not: `OrganismScheduler.start()` constructs a new engine a
 process start and on `POST /api/v1/settings/restart-engine`, and the engine's
 risk-limit guard evaluates the effective mode at that moment) and 422 for an
 unknown mode; GET reports `override_allowed` and `override_blocked_reason`.
+The `PUT /api/v1/settings/{organism,trading,ml}` routes answer 403 for the same
+research lock (`backend/api/routes/settings.py`, part of the frozen surface). The
+execution-mode route uses 423 because 403 there already means the admin role gate
+refused the caller.
 
 ---
 
@@ -4318,9 +4324,10 @@ Emergency stop workflow:
 │  OutboxWorker._dispatcher() (100ms poll loop)                            │
 │       │                                                                   │
 │       ├── 5. Claim batch (10 events, FOR UPDATE SKIP LOCKED)             │
-│       ├── 6. Resolve execution mode (execute/shadow/dry_run)             │
-│       │       ├── shadow → record intent, skip broker                    │
-│       │       ├── dry_run → simulate fill                                │
+│       ├── 6. Resolve execution mode per order (§53)                      │
+│       │       ├── organism order → configured mode, never the override   │
+│       │       ├── shadow / dry_run → not sent, nothing simulated:        │
+│       │       │     row 'rejected', zero fill, no broker id; event sent  │
 │       │       └── execute → continue to broker                           │
 │       ├── 7. Call AlpacaOutboxDispatcher                                 │
 │       │       └── broker.place_order() → Alpaca REST API                 │
@@ -5219,18 +5226,25 @@ StalenessReasons (enum):
 
 ### Scanner (`/api/v1/scanner/`)
 
+The dashboard Market Scanner is off unless `DASHBOARD_SCANNER_ENABLED=true` (default
+off, read per request; unrelated to the engine's own `SCANNER_ENABLED`). While it is
+off, `POST /scan` and `POST /export/*` answer 503 after authentication and `WS /ws` is
+closed with code 4503 before accept (after the token checks). `/status`, `/presets`,
+`/symbols` and the custom-preset routes make no market-data requests and stay available.
+
 | Method | Endpoint | Purpose |
 |---|---|---|
-| POST | `/scan` | Run market scan |
+| GET | `/status` | Whether the dashboard scanner is enabled here (no market-data requests) |
+| POST | `/scan` | Run market scan (503 unless `DASHBOARD_SCANNER_ENABLED=true`) |
 | GET | `/presets` | Built-in presets |
-| POST | `/export/csv` | Export scan as CSV |
-| POST | `/export/json` | Export scan as JSON |
+| POST | `/export/csv` | Export scan as CSV (503 unless enabled) |
+| POST | `/export/json` | Export scan as JSON (503 unless enabled) |
 | GET | `/presets/custom` | Custom presets |
 | POST | `/presets/custom` | Create custom preset |
 | PUT | `/presets/custom/{id}` | Update preset |
 | DELETE | `/presets/custom/{id}` | Delete preset |
 | GET | `/symbols` | Scannable symbols |
-| WS | `/ws` | Scanner WebSocket stream |
+| WS | `/ws` | Scanner WebSocket stream (closed with 4503 before accept unless enabled) |
 
 ### Watchlists (`/api/v1/watchlists/`)
 

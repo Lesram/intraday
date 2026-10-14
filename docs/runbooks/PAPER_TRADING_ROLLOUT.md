@@ -22,6 +22,10 @@ Notes:
   unrecognized value resolves to `shadow` (fail closed).
 - There is no `shadow` order status: the database status constraint does not allow
   it, so non-executed orders are recorded as `rejected` (audit 2026-10-05 A3-01).
+- Each organism order that a `shadow`/`dry_run` configuration does not send is
+  logged at ERROR ("Organism order NOT sent to the broker", with the raw
+  `TRADING_EXECUTION_MODE` value), so a host that fell back to the default `shadow`
+  shows up in the logs before the close. Manual orders held back are logged at WARNING.
 - `USE_MOCK_BROKER` (legacy; tests and local development) makes the outbox worker
   acknowledge orders as `accepted` with a `MOCK_` broker id. It does not simulate
   fills or prices.
@@ -54,6 +58,9 @@ Runtime override (manual orders only):
   (running, stopped, mid-restart or after its task crashed), and with HTTP 422 for an
   unknown mode. `GET` reports `override_allowed` and `override_blocked_reason`.
   `DELETE` (back to the configured mode) stays allowed.
+- The settings API (`PUT /api/v1/settings/...`) answers HTTP 403 for the same
+  research lock. The execution-mode route uses 423 because a 403 there means the
+  caller is not an admin.
 - The override is per-process and is lost on restart.
 
 ### Phase 1: Paper Execution (real broker submission to paper)
