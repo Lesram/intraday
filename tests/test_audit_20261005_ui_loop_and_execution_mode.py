@@ -103,11 +103,14 @@ class FakeMarketDataAPI:
         self._guard = threading.Lock()
         self._bars_in_flight = 0
         self.max_bars_in_flight = 0
+        self.on_request = None  # optional probe, called on the HTTP thread
 
     def request(self, method, url, **opts):
         path = url.split("/v2", 1)[-1]
         params = dict(opts.get("params") or {})
         bars = path == "/stocks/bars"
+        if self.on_request is not None:
+            self.on_request()
         with self._guard:
             self.calls.append(SimpleNamespace(
                 method=method, path=path, params=params, timeout=opts.get("timeout"),
@@ -419,6 +422,28 @@ async def test_watchlist_quotes_never_block_the_event_loop(fake_market_api, watc
     assert lag < 0.15
     # Only the batched quote request: no account call, no per-symbol requests.
     assert [call.path for call in fake_market_api.calls] == ["/stocks/quotes/latest"]
+
+
+@pytest.mark.asyncio
+async def test_watchlist_quotes_release_the_db_connection_before_the_fetch(
+    fake_market_api, watchlist_db, no_alpaca_client,
+):
+    await seed_watchlist(watchlist_db, 1, 1, ["AAPL", "MSFT"])
+    fake_market_api.quotes = {"AAPL": (189.0, 189.2), "MSFT": (409.0, 410.0)}
+    fake_market_api.delay = 0.3  # a slow market-data round trip
+    pool = watchlist_db.kw["bind"].pool  # the request session's connection pool
+    checked_out_during_fetch: list[int] = []
+    fake_market_api.on_request = lambda: checked_out_during_fetch.append(pool.checkedout())
+
+    async with asgi_client(watchlist_app(watchlist_db, 1)) as http:
+        response = await http.get("/api/v1/watchlists/1/quotes")
+
+    assert response.status_code == 200
+    assert response.json()["MSFT"]["price"] == 409.5
+    # The session gave its pooled connection back before the market-data
+    # request ran, so a stalled fetch cannot hold one.
+    assert checked_out_during_fetch == [0]
+    assert pool.checkedout() == 0
 
 
 @pytest.mark.asyncio

@@ -432,7 +432,8 @@ async def get_watchlist_quotes(
     call runs on the event loop. All symbols share ONE batched latest-quote
     request on the dashboard pool (timeout, no SDK retry sleeps) behind a
     process-wide 10 s cache, and at most WATCHLIST_QUOTE_SYMBOL_LIMIT symbols
-    are looked up per request.
+    are looked up per request. The DB session is closed before the fetch is
+    awaited.
     """
     result = await db.execute(
         select(Watchlist)
@@ -453,6 +454,10 @@ async def get_watchlist_quotes(
     symbols = list(dict.fromkeys(
         s.symbol.strip().upper() for s in watchlist.symbols if s.symbol and s.symbol.strip()
     ))
+    # The symbols are copied: end the read transaction and hand the pooled
+    # connection (the pool the trading engine uses too) back before awaiting
+    # market data, so a stalled quote fetch never holds a DB connection.
+    await db.close()
     quotable = [s for s in symbols if _QUOTABLE_SYMBOL.fullmatch(s)]
     requested = quotable[:WATCHLIST_QUOTE_SYMBOL_LIMIT]
     batch = await dashboard_market_data.get_latest_quotes(requested) if requested else None
