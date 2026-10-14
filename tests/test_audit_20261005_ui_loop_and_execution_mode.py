@@ -104,6 +104,9 @@ class FakeMarketDataAPI:
         self._bars_in_flight = 0
         self.max_bars_in_flight = 0
         self.on_request = None  # optional probe, called on the HTTP thread
+        # Symbols the quotes endpoint refuses with HTTP 400 (the whole request).
+        self.refuse: set[str] = set()
+        self.refusal_names_symbol = True
 
     def request(self, method, url, **opts):
         path = url.split("/v2", 1)[-1]
@@ -125,6 +128,11 @@ class FakeMarketDataAPI:
                 return FakeResponse(self.status, {"message": "synthetic error"})
             symbols = str(params.get("symbols", "")).split(",")
             if path == "/stocks/quotes/latest":
+                refused = [s for s in symbols if s in self.refuse]
+                if refused:
+                    message = (f"invalid symbol: {refused[0]}" if self.refusal_names_symbol
+                               else "invalid request")
+                    return FakeResponse(400, {"code": 40010001, "message": message})
                 return FakeResponse(200, {"quotes": {
                     s: {"t": QUOTE_TIME, "bp": self.quotes[s][0], "bs": 1,
                         "ap": self.quotes[s][1], "as": 1}
@@ -393,7 +401,7 @@ async def test_watchlist_quotes_use_one_batched_request_and_the_ui_shape(
 
 @pytest.mark.asyncio
 async def test_watchlist_quotes_cap_symbols_per_request(fake_market_api, watchlist_db, no_alpaca_client):
-    symbols = [f"S{i:03d}" for i in range(60)] + ["BTC/USD"]
+    symbols = [f"Q{chr(65 + i // 26)}{chr(65 + i % 26)}" for i in range(60)] + ["BTC/USD"]
     await seed_watchlist(watchlist_db, 1, 1, symbols)
     fake_market_api.quotes = {s: (10.0, 10.2) for s in symbols[:60]}
 
@@ -407,6 +415,85 @@ async def test_watchlist_quotes_cap_symbols_per_request(fake_market_api, watchli
     assert all(body[s]["price"] == 10.1 for s in symbols[:50])
     assert all((body[s]["price"], body[s]["error"]) == (None, "symbol_limit") for s in symbols[50:60])
     assert (body["BTC/USD"]["price"], body["BTC/USD"]["error"]) == (None, "unsupported_symbol")
+
+
+@pytest.mark.asyncio
+async def test_watchlist_quotes_answer_malformed_symbols_without_asking_the_api(
+    fake_market_api, watchlist_db, no_alpaca_client,
+):
+    malformed = ["A-", "A..B", "BRK.", ".B", "TOOLONG", "S000", "BRK.ABC", "BTC/USD"]
+    await seed_watchlist(watchlist_db, 1, 1, ["AAPL", *malformed, "BRK.B", "BF-B"])
+    fake_market_api.quotes = {"AAPL": (189.0, 189.2), "BRK.B": (470.0, 470.4), "BF-B": (40.0, 40.2)}
+
+    async with asgi_client(watchlist_app(watchlist_db, 1)) as http:
+        body = (await http.get("/api/v1/watchlists/1/quotes")).json()
+
+    [call] = fake_market_api.calls
+    assert call.params["symbols"] == "AAPL,BRK.B,BF-B"
+    assert all((body[s]["price"], body[s]["error"]) == (None, "unsupported_symbol") for s in malformed)
+    assert (body["AAPL"]["price"], body["BRK.B"]["price"], body["BF-B"]["price"]) == (189.1, 470.2, 40.1)
+
+
+@pytest.mark.asyncio
+async def test_a_symbol_the_data_api_refuses_does_not_take_the_other_prices_down(
+    fake_market_api, watchlist_db, no_alpaca_client, monkeypatch,
+):
+    # A short TTL, so a refresh after the TTL but within the refusal hold is observable.
+    monkeypatch.setattr(dashboard_market_data, "quote_cache",
+                        dashboard_market_data.LatestQuoteCache(ttl_s=0.05))
+    await seed_watchlist(watchlist_db, 1, 1, ["AAPL", "BF-B", "MSFT"])
+    fake_market_api.quotes = {"AAPL": (189.0, 189.2), "MSFT": (409.0, 410.0)}
+    fake_market_api.refuse = {"BF-B"}  # well-formed, but refused by the API
+
+    async with asgi_client(watchlist_app(watchlist_db, 1)) as http:
+        body = (await http.get("/api/v1/watchlists/1/quotes")).json()
+        # One retry without the refused symbol, inside the same pool call.
+        assert [c.params["symbols"] for c in fake_market_api.calls] == ["AAPL,BF-B,MSFT", "AAPL,MSFT"]
+        assert all(c.thread.startswith("dashboard-marketdata") for c in fake_market_api.calls)
+        assert (body["AAPL"]["price"], body["MSFT"]["price"]) == (189.1, 409.5)
+        assert (body["BF-B"]["price"], body["BF-B"]["error"]) == (None, "unsupported_symbol")
+
+        await asyncio.sleep(0.1)  # past the TTL, within REFUSED_SYMBOL_HOLD_S
+        again = (await http.get("/api/v1/watchlists/1/quotes")).json()
+    # The next refresh leaves the refused symbol out: no refusal per refresh.
+    assert [c.params["symbols"] for c in fake_market_api.calls][2:] == ["AAPL,MSFT"]
+    assert again["BF-B"]["error"] == "unsupported_symbol" and again["AAPL"]["price"] == 189.1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("refuse,names_symbol,expected_requests", [
+    ({"BF-B"}, False, ["AAPL,BF-B,BRK-A,MSFT"]),
+    ({"BF-B", "BRK-A"}, True, ["AAPL,BF-B,BRK-A,MSFT", "AAPL,BRK-A,MSFT"]),
+], ids=["refusal_names_no_requested_symbol", "retry_refused_again"])
+async def test_a_refused_quote_request_is_retried_at_most_once(
+    fake_market_api, watchlist_db, no_alpaca_client, refuse, names_symbol, expected_requests,
+):
+    await seed_watchlist(watchlist_db, 1, 1, ["AAPL", "BF-B", "BRK-A", "MSFT"])
+    fake_market_api.quotes = {"AAPL": (189.0, 189.2), "MSFT": (409.0, 410.0)}
+    fake_market_api.refuse = refuse
+    fake_market_api.refusal_names_symbol = names_symbol
+
+    async with asgi_client(watchlist_app(watchlist_db, 1)) as http:
+        body = (await http.get("/api/v1/watchlists/1/quotes")).json()
+        again = (await http.get("/api/v1/watchlists/1/quotes")).json()
+
+    # No further retry, then the usual one-TTL back-off after a failed refresh.
+    assert [c.params["symbols"] for c in fake_market_api.calls] == expected_requests
+    assert all(entry["error"] == "market_data_unavailable" for entry in (*body.values(), *again.values()))
+
+
+def test_refused_symbols_are_whole_words_of_an_http_400_body():
+    class Refusal(Exception):
+        status_code = 400
+
+    class RateLimited(Exception):
+        status_code = 429
+
+    body = '{"code":40010001,"message":"invalid symbol: BF-B."}'
+    requested = ["AAPL", "BF", "B", "BF-B", "CODE"]
+    assert dashboard_market_data.refused_symbols(Refusal(body), requested) == ["BF-B"]
+    assert dashboard_market_data.refused_symbols(RateLimited(body), requested) == []
+    assert dashboard_market_data.refused_symbols(RuntimeError(body), requested) == []
 
 
 @pytest.mark.asyncio

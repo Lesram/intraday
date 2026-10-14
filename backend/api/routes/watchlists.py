@@ -28,8 +28,10 @@ router = APIRouter(prefix="/watchlists", tags=["watchlists"])
 # Audit 2026-10-05 A8-01: most symbols one quotes request looks up (one batched
 # latest-quote request; further symbols are answered with error "symbol_limit").
 WATCHLIST_QUOTE_SYMBOL_LIMIT = 50
-# US equity tickers as the latest-quote endpoint accepts them (e.g. BRK.B).
-_QUOTABLE_SYMBOL = re.compile(r"[A-Z][A-Z0-9.\-]{0,9}")
+# US equity tickers: 1-5 letters with an optional class or unit suffix (BRK.B,
+# ACAH.WS). Anything else is answered "unsupported_symbol" without reaching the
+# data API, so one malformed symbol cannot make it refuse the whole batch.
+_QUOTABLE_SYMBOL = re.compile(r"[A-Z]{1,5}(?:[.-][A-Z]{1,2})?")
 
 
 @router.get("/", response_model=list[WatchlistResponse])
@@ -425,15 +427,16 @@ async def get_watchlist_quotes(
     that quote's own exchange time; ``change``/``changePercent`` are null (a
     latest quote has no previous close). ``error`` explains a null price:
     ``no_quote``, ``no_two_sided_quote``, ``market_data_unavailable``,
-    ``symbol_limit`` or ``unsupported_symbol``.
+    ``symbol_limit`` or ``unsupported_symbol`` (not a US equity ticker, or
+    refused by the data API).
 
     Audit 2026-10-05 A8-01: no AlpacaClient is built per request (its
     constructor called get_account and logged account data) and no blocking
     call runs on the event loop. All symbols share ONE batched latest-quote
-    request on the dashboard pool (timeout, no SDK retry sleeps) behind a
-    process-wide 10 s cache, and at most WATCHLIST_QUOTE_SYMBOL_LIMIT symbols
-    are looked up per request. The DB session is closed before the fetch is
-    awaited.
+    request on the dashboard pool (timeout, no SDK retry sleeps; retried once
+    without any symbol the data API refuses) behind a process-wide 10 s
+    cache, and at most WATCHLIST_QUOTE_SYMBOL_LIMIT symbols are looked up per
+    request. The DB session is closed before the fetch is awaited.
     """
     result = await db.execute(
         select(Watchlist)
@@ -470,7 +473,9 @@ async def get_watchlist_quotes(
             error = "symbol_limit" if _QUOTABLE_SYMBOL.fullmatch(symbol) else "unsupported_symbol"
         else:
             quote = batch.quotes.get(symbol)
-            if quote is None:
+            if symbol in batch.refused:
+                error = "unsupported_symbol"  # the data API refused it
+            elif quote is None:
                 error = "market_data_unavailable" if symbol in batch.unavailable else "no_quote"
             else:
                 error = None if quote.price is not None else "no_two_sided_quote"

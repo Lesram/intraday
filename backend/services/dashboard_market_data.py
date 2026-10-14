@@ -18,7 +18,11 @@ therefore read market data only through this module:
 * latest quotes come from ONE batched ``StockLatestQuoteRequest`` per refresh,
   behind a process-wide cache with a short TTL and a single in-flight fetch,
   so several open tabs and users share one request. A failed refresh is not
-  retried for one TTL.
+  retried for one TTL;
+* if the data API refuses a batch (HTTP 400) and names some of its symbols,
+  the request is retried once without them, and those symbols stay out of
+  batches for ``REFUSED_SYMBOL_HOLD_S``, so one symbol the API does not accept
+  cannot take every other price down with it.
 
 Nothing here is read by the trading engine.
 """
@@ -35,6 +39,7 @@ import functools
 import logging
 import math
 import os
+import re
 import threading
 import time
 from typing import Any, TypeVar
@@ -54,8 +59,15 @@ POOL_WORKERS = 3
 QUOTE_CACHE_TTL_S = 10.0
 # Most symbols one batched latest-quote request carries.
 MAX_BATCH_SYMBOLS = 100
+# Symbols the data API refused stay out of batched requests this long, so a bad
+# symbol costs one extra request per hold instead of one per refresh.
+REFUSED_SYMBOL_HOLD_S = 600.0
 # Cache entries kept before expired ones are dropped.
 _CACHE_PRUNE_AT = 2048
+# HTTP status of a request the data API refuses (for example an invalid symbol).
+_REFUSED_REQUEST_STATUS = 400
+# Whole words of an error body, compared with the requested symbols.
+_ERROR_TOKEN = re.compile(r"[A-Za-z0-9./\-]+")
 
 
 class MarketDataUnavailable(RuntimeError):
@@ -206,19 +218,65 @@ class LatestQuote:
 class QuoteBatch:
     quotes: dict[str, LatestQuote]  # symbols the API returned a quote for
     unavailable: frozenset[str]  # requested symbols that cannot be read right now
+    refused: frozenset[str] = frozenset()  # requested symbols the data API refused
 
 
-def fetch_latest_quotes_blocking(symbols: Sequence[str]) -> dict[str, LatestQuote]:
-    """ONE batched latest-quote request for ``symbols`` (runs on the dashboard pool)."""
+@dataclass(frozen=True)
+class FetchedQuotes:
+    """The outcome of one fetch: quotes, and the symbols the data API refused."""
+
+    quotes: dict[str, LatestQuote]
+    refused: frozenset[str] = frozenset()
+
+
+def refused_symbols(error: BaseException, symbols: Sequence[str]) -> list[str]:
+    """The requested symbols that an HTTP 400 refusal names in its error body.
+
+    alpaca-py raises ``APIError`` with the response body as its text and the
+    HTTP status in ``status_code``. Comparing whole words of the body with the
+    requested symbols (case-sensitive) does not depend on the exact message.
+    Any other error, or a refusal that names none of them, gives ``[]``.
+    """
+    if getattr(error, "status_code", None) != _REFUSED_REQUEST_STATUS:
+        return []
+    words = {word.strip(".-") for word in _ERROR_TOKEN.findall(str(error))}
+    return [symbol for symbol in symbols if symbol in words]
+
+
+def _latest_quote_request(symbols: Sequence[str]) -> Any:
     from alpaca.data.requests import StockLatestQuoteRequest
 
     fields: dict[str, Any] = {"symbol_or_symbols": list(symbols)}
     feed = _configured_feed()
     if feed is not None:
         fields["feed"] = feed
-    response = stock_data_client().get_stock_latest_quote(StockLatestQuoteRequest(**fields))
+    return stock_data_client().get_stock_latest_quote(StockLatestQuoteRequest(**fields))
+
+
+def fetch_latest_quotes_blocking(symbols: Sequence[str]) -> FetchedQuotes:
+    """ONE batched latest-quote request for ``symbols`` (runs on the dashboard pool).
+
+    If the data API refuses the request (HTTP 400) and names some of the
+    requested symbols, it is retried once without them; a second refusal, or
+    one that names none of them, is raised.
+    """
+    requested = list(symbols)
+    refused: list[str] = []
+    try:
+        response = _latest_quote_request(requested)
+    except Exception as exc:  # noqa: BLE001 - only a 400 that names requested symbols is retried
+        refused = refused_symbols(exc, requested)
+        if not refused:
+            raise
+        requested = [symbol for symbol in requested if symbol not in refused]
+        logger.warning(
+            "Data API refused %d symbol(s) in a latest-quote request (%s); "
+            "retrying once without them",
+            len(refused), ",".join(refused)[:200],
+        )
+        response = _latest_quote_request(requested) if requested else {}
     quotes: dict[str, LatestQuote] = {}
-    for symbol in symbols:
+    for symbol in requested:
         quote = response.get(symbol) if isinstance(response, dict) else None
         if quote is None:
             continue
@@ -228,7 +286,7 @@ def fetch_latest_quotes_blocking(symbols: Sequence[str]) -> dict[str, LatestQuot
             ask=_positive(getattr(quote, "ask_price", None)),
             timestamp=_iso(getattr(quote, "timestamp", None)),
         )
-    return quotes
+    return FetchedQuotes(quotes=quotes, refused=frozenset(refused))
 
 
 class LatestQuoteCache:
@@ -237,11 +295,14 @@ class LatestQuoteCache:
     def __init__(
         self,
         ttl_s: float = QUOTE_CACHE_TTL_S,
-        fetch: Callable[[Sequence[str]], dict[str, LatestQuote]] = fetch_latest_quotes_blocking,
+        fetch: Callable[[Sequence[str]], FetchedQuotes] = fetch_latest_quotes_blocking,
+        refused_hold_s: float = REFUSED_SYMBOL_HOLD_S,
     ) -> None:
         self._ttl = ttl_s
         self._fetch = fetch
+        self._refused_hold = refused_hold_s
         self._entries: dict[str, tuple[float, LatestQuote | None]] = {}
+        self._refused_until: dict[str, float] = {}
         self._retry_at = 0.0
         self._lock = PerLoopLock()
         self.fetches = 0  # batched requests issued (diagnostics and tests)
@@ -250,13 +311,19 @@ class LatestQuoteCache:
         entry = self._entries.get(symbol)
         return entry is not None and now - entry[0] < self._ttl
 
+    def _refused(self, symbol: str, now: float) -> bool:
+        return self._refused_until.get(symbol, 0.0) > now
+
     async def get(self, symbols: Iterable[str]) -> QuoteBatch:
         ordered = list(dict.fromkeys(s.strip().upper() for s in symbols if s and s.strip()))
-        wanted, overflow = ordered[:MAX_BATCH_SYMBOLS], ordered[MAX_BATCH_SYMBOLS:]
-        if wanted and not all(self._fresh(s, time.monotonic()) for s in wanted):
+        now = time.monotonic()
+        held_out = {s for s in ordered if self._refused(s, now)}
+        candidates = [s for s in ordered if s not in held_out]
+        wanted, overflow = candidates[:MAX_BATCH_SYMBOLS], candidates[MAX_BATCH_SYMBOLS:]
+        if wanted and not all(self._fresh(s, now) for s in wanted):
             async with self._lock():
                 now = time.monotonic()
-                missing = [s for s in wanted if not self._fresh(s, now)]
+                missing = [s for s in wanted if not self._fresh(s, now) and not self._refused(s, now)]
                 if missing and now >= self._retry_at:
                     self.fetches += 1
                     try:
@@ -270,24 +337,35 @@ class LatestQuoteCache:
                         )
                     else:
                         stamp = time.monotonic()
+                        for symbol in fetched.refused:
+                            self._refused_until[symbol] = stamp + self._refused_hold
                         for symbol in missing:
-                            self._entries[symbol] = (stamp, fetched.get(symbol))
+                            if symbol not in fetched.refused:
+                                self._entries[symbol] = (stamp, fetched.quotes.get(symbol))
                         self._prune(stamp)
         now = time.monotonic()
         quotes: dict[str, LatestQuote] = {}
         unavailable = set(overflow)
+        refused = set(held_out)
         for symbol in wanted:
             entry = self._entries.get(symbol)
-            if entry is None or now - entry[0] >= self._ttl:
+            if self._refused(symbol, now):
+                refused.add(symbol)
+            elif entry is None or now - entry[0] >= self._ttl:
                 unavailable.add(symbol)
             elif entry[1] is not None:
                 quotes[symbol] = entry[1]
-        return QuoteBatch(quotes=quotes, unavailable=frozenset(unavailable))
+        return QuoteBatch(
+            quotes=quotes, unavailable=frozenset(unavailable), refused=frozenset(refused),
+        )
 
     def _prune(self, now: float) -> None:
         if len(self._entries) > _CACHE_PRUNE_AT:
             for symbol in [s for s, (at, _) in self._entries.items() if now - at >= self._ttl]:
                 del self._entries[symbol]
+        if len(self._refused_until) > _CACHE_PRUNE_AT:
+            for symbol in [s for s, until in self._refused_until.items() if until <= now]:
+                del self._refused_until[symbol]
 
 
 quote_cache = LatestQuoteCache()
