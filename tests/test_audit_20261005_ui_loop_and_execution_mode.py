@@ -685,6 +685,29 @@ def execution(monkeypatch, order_sessions):
     return SimpleNamespace(configure=configure, bind=bind, sessions=order_sessions)
 
 
+@pytest.fixture
+def outbox_log(monkeypatch):
+    """Every outbox worker log call as (level, event, fields); still logged for real."""
+    from backend.infra import outbox_worker
+
+    real, calls = outbox_worker.logger, []
+
+    class Recorder:
+        def __getattr__(self, name):
+            method = getattr(real, name)
+            if name not in {"debug", "info", "warning", "error", "critical", "exception"}:
+                return method
+
+            def record(event, *args, **fields):
+                calls.append((name, event, fields))
+                return method(event, *args, **fields)
+
+            return record
+
+    monkeypatch.setattr(outbox_worker, "logger", Recorder())
+    return calls
+
+
 async def submit_organism_exit(sessions, qty=10, symbol="AAPL"):
     """What OrganismLiveEngine._submit_exit_order sends to OrderService (EOD flatten)."""
     result = await OrderService(sessionmaker=sessions).submit_symbol_order(
@@ -771,7 +794,7 @@ async def test_organism_entry_submission_dispatches_normally_whatever_the_overri
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("configured", ["shadow", "dry_run"])
-async def test_engine_orders_follow_the_configured_mode_never_a_runtime_flip(execution, configured):
+async def test_engine_orders_follow_the_configured_mode_never_a_runtime_flip(execution, outbox_log, configured):
     # A runtime flip to execute must not make an engine started in a non-execute
     # mode (whose startup guard skipped the loss-breaker check) trade.
     mode = execution.configure(configured=configured, override="execute")
@@ -788,12 +811,42 @@ async def test_engine_orders_follow_the_configured_mode_never_a_runtime_flip(exe
     assert order.filled_qty == 0 and order.avg_fill_price is None
     assert order.attributes["execution_mode"] == configured
     assert order.attributes["source"] == "organism"  # original attributes kept
+    # An engine order the configured mode holds back is an ERROR, once.
+    [(_, event_text, fields)] = [call for call in outbox_log if call[0] == "error"]
+    assert "Organism order NOT sent" in event_text
+    assert (fields["order_id"], fields["execution_mode"], fields["order_reason"]) == (
+        order_id, configured, "eod_flatten")
+    assert fields["trading_execution_mode_env"] == configured
+
+
+@pytest.mark.asyncio
+async def test_unsent_engine_orders_are_errors_when_the_mode_falls_back_to_shadow(
+    execution, outbox_log, monkeypatch,
+):
+    # TRADING_EXECUTION_MODE missing on the host: fail-closed 'shadow'. The EOD
+    # flatten is not sent, and the log says so at ERROR before the close.
+    monkeypatch.delenv("TRADING_EXECUTION_MODE", raising=False)
+    assert tem.get_trading_execution_mode().default_mode == "shadow"
+    broker = FakeBroker(position=long_position(10))
+    worker = execution.bind(broker)
+    order_id = await submit_organism_exit(execution.sessions)
+
+    await process_one(worker)
+
+    assert broker.calls == []
+    order, event = await state(execution.sessions, order_id)
+    assert (event.status, order.status) == ("sent", "rejected")
+    [(_, _, fields)] = [call for call in outbox_log if call[0] == "error"]
+    assert (fields["order_id"], fields["execution_mode"]) == (order_id, "shadow")
+    assert fields["trading_execution_mode_env"] is None
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("override", ["shadow", "dry_run"])
 @pytest.mark.parametrize("order_type", ["market", "limit"])
-async def test_manual_orders_in_non_execute_modes_end_rejected_with_no_fill(execution, override, order_type):
+async def test_manual_orders_in_non_execute_modes_end_rejected_with_no_fill(
+    execution, outbox_log, override, order_type,
+):
     execution.configure(configured="paper", override=override)
     broker = FakeBroker()
     worker = execution.bind(broker)
@@ -802,6 +855,10 @@ async def test_manual_orders_in_non_execute_modes_end_rejected_with_no_fill(exec
     await process_one(worker)
 
     assert broker.calls == []
+    # A manual order held back by the operator's override is a WARNING, not an ERROR.
+    assert [call for call in outbox_log if call[0] == "error"] == []
+    assert any(level == "warning" and "Order not sent to the broker" in text
+               for level, text, _ in outbox_log)
     order, event = await state(execution.sessions, order_id)
     # Accountable terminal state (the constraint has no 'shadow'); nothing invented.
     assert event.status == "sent"

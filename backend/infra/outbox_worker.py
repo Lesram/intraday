@@ -654,16 +654,34 @@ class OutboxWorker:
                     # 'rejected' with zero fill and attributes.execution_mode;
                     # the event is then marked sent.
                     result = _unsubmitted_order_result(payload, mode, organism_order)
-                    logger.warning(
-                        "Order not sent to the broker (non-execute mode); finalizing it "
-                        "as rejected with no fill",
-                        execution_mode=mode,
-                        order_id=order_id,
-                        symbol=symbol,
-                        side=side,
-                        qty=qty,
-                        organism_order=organism_order,
-                    )
+                    if organism_order:
+                        # Engine orders (exits and EOD flatten included) are only
+                        # held back by the configured mode, e.g. a host that fell
+                        # back to the fail-closed default: say so loudly.
+                        logger.error(
+                            "Organism order NOT sent to the broker: the configured "
+                            "execution mode is not execute (TRADING_EXECUTION_MODE; "
+                            "unset or unrecognized resolves to shadow); finalizing it "
+                            "as rejected with no fill",
+                            execution_mode=mode,
+                            trading_execution_mode_env=os.environ.get("TRADING_EXECUTION_MODE"),
+                            order_id=order_id,
+                            symbol=symbol,
+                            side=side,
+                            qty=qty,
+                            order_reason=payload["attributes"].get("reason"),
+                        )
+                    else:
+                        logger.warning(
+                            "Order not sent to the broker (non-execute mode); finalizing it "
+                            "as rejected with no fill",
+                            execution_mode=mode,
+                            order_id=order_id,
+                            symbol=symbol,
+                            side=side,
+                            qty=qty,
+                            organism_order=organism_order,
+                        )
                 elif self.use_mock_broker:
                     # Simulate broker order submission
                     result = await self._simulate_broker_order(payload)
