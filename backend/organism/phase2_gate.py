@@ -21,6 +21,13 @@ Binding constraints (from the build checklist):
 
 Forward-only (Task 2): the corpus is trades taken STRICTLY AFTER FROZEN_AT. Any
 pre-cutoff row is rejected. Empty-until-enough is a valid state.
+
+Attribution (audit O2-02): the engine labels pure breakouts 'alpha+breakout', so
+that label alone does not identify a strategy. While ML is isolated,
+`attribute_trades` splits those rows by their recorded predicted_return; a row it
+cannot split makes the momentum and breakout states AMBIGUOUS_ATTRIBUTION (never
+PASS or FAIL). Every gate result carries `n_by_source` (alpha / pure_breakout /
+ambiguous).
 """
 from __future__ import annotations
 
@@ -41,8 +48,12 @@ OBF_C = 1.871                     # calibrated against the CLUSTERED null (the b
 Z_BOUNDARY = {LOOKS[i]: OBF_C / (INFO_FRACS[i] ** 0.5) for i in range(len(LOOKS))}
 
 INSUFFICIENT, PASS, FAIL = "INSUFFICIENT", "PASS", "FAIL"
+# Audit O2-02: the slice holds trades that cannot be attributed between momentum
+# and breakout; no statistic is computed (never PASS or FAIL).
+AMBIGUOUS_ATTRIBUTION = "AMBIGUOUS_ATTRIBUTION"
 
-# entry_source -> framework strategy (eod is parked → ignored)
+# entry_source -> framework strategy (eod is parked → ignored). 'alpha+breakout'
+# also labels pure breakouts: attribute_trades resolves it per row (audit O2-02).
 _STRATEGY_MAP = {
     "alpha": "momentum", "alpha+breakout": "momentum",
     "breakout": "breakout",
@@ -139,6 +150,98 @@ def evaluate_gate(net_pnl, sessions) -> dict:
             "t": round(t2, 3), "boundary": round(Z_BOUNDARY[n120], 3)}
 
 
+# ── Strategy attribution while ML is isolated (audit O2-02) ────────────
+# live_engine._entry_identity_from_size labels a sized entry 'breakout' only when
+# its predicted_return is below 0.003, otherwise 'alpha+breakout' once its
+# breakout_score is >= 0.4. A pure breakout (composite >= 0.55) therefore carries
+# 'alpha+breakout' whenever its predicted_return is >= 0.003 — every time while ML
+# is isolated. Mapping that label to momentum let pure breakouts fill the momentum
+# verdict and left the breakout verdict empty.
+#
+# Isolation test, per row: `ml_spoke` is recorded false, i.e. ML did not produce
+# the row's predicted_return (persisted since the 2026-06-11 measurement-integrity
+# audit, well before the active forward cutoffs). While ML is isolated every
+# main-book row passes it: the alpha scanner drops ML signals and the pure-breakout
+# path uses its heuristic. predicted_return is then one of two engine values that
+# cannot overlap:
+#   alpha candidate  0.01 exactly        (`c.ml_signal.predicted_return if c.ml_signal else 0.01`)
+#   pure breakout    0.005 + 0.015 * composite, composite in [0.55, 1.0] -> 0.01325 .. 0.0200
+# An 'alpha+breakout' row is split by that value; any other row with that label
+# (ml_spoke true or not recorded, predicted_return missing or outside both values)
+# is AMBIGUOUS. Labels 'alpha' (needs breakout_score < 0.4, which no pure breakout
+# has), 'breakout', 'orb' and 'mr' keep their meaning.
+#
+# This is a reporting guard only. The root fix (label pure breakouts at the source
+# and persist fw_strategy) changes _live_tick_inner and, through the label, which
+# entries the bad-regime filter blocks: an owner-signed frozen-surface change.
+ATTRIBUTION_RULE = "ml_isolation_signature_v1"
+AMBIGUOUS = "ambiguous"            # corpus strategy of a row that cannot be split
+SPLIT_LABEL = "alpha+breakout"
+ALPHA_ISOLATED_PREDICTED_RETURN = 0.01
+PURE_BREAKOUT_SIGNATURE = (0.005 + 0.015 * 0.55, 0.005 + 0.015 * 1.0)  # (0.01325, 0.0200)
+SIGNATURE_TOLERANCE = 1e-9         # the ledger CSV rounds predicted_return to 6 decimals
+SOURCES = ("alpha", "pure_breakout", "ambiguous")
+_SOURCE_OF_STRATEGY = {"momentum": "alpha", "breakout": "pure_breakout", AMBIGUOUS: "ambiguous",
+                       "orb": "orb", "mean_reversion": "mean_reversion"}
+_AMBIGUOUS_CANDIDATES = frozenset({"momentum", "breakout"})
+
+
+def _recorded_false(value) -> bool:
+    """True only for a flag recorded as false. A missing or unreadable cell is not
+    evidence that ML stayed silent."""
+    if isinstance(value, (bool, np.bool_)):
+        return not bool(value)
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        return value == 0                       # NaN is not equal to 0
+    return str(value).strip().lower() in {"false", "0", "no", "n"}
+
+
+def attribute_trades(trades: pd.DataFrame) -> pd.Series:
+    """Framework strategy of each ledger row: momentum, breakout, orb,
+    mean_reversion, AMBIGUOUS for an 'alpha+breakout' row the isolation signature
+    cannot split, or NaN for a label the verdict does not map (the row is dropped).
+
+    The single attribution rule behind load_forward_corpus, so behind every verdict
+    output: scripts/phase2_gate.py, scripts/phase3_attribution_report.py and the
+    daily evidence pack (scripts/ops/paper_daily_evidence.py)."""
+    labels = trades["entry_source"]
+    strategy = labels.map(_STRATEGY_MAP)          # same values and dtype as before O2-02
+    split = labels.eq(SPLIT_LABEL)
+    if not split.any():
+        return strategy
+    if "ml_spoke" in trades:
+        silent = trades["ml_spoke"].map(_recorded_false).astype(bool)
+    else:
+        silent = pd.Series(False, index=trades.index)
+    if "predicted_return" in trades:
+        predicted = pd.to_numeric(trades["predicted_return"], errors="coerce")
+    else:
+        predicted = pd.Series(np.nan, index=trades.index)
+    alpha = (predicted - ALPHA_ISOLATED_PREDICTED_RETURN).abs() <= SIGNATURE_TOLERANCE
+    low, high = PURE_BREAKOUT_SIGNATURE
+    breakout = predicted.between(low - SIGNATURE_TOLERANCE, high + SIGNATURE_TOLERANCE)
+    strategy.loc[split] = AMBIGUOUS
+    strategy.loc[split & silent & alpha] = "momentum"
+    strategy.loc[split & silent & breakout] = "breakout"
+    return strategy
+
+
+def attribution_counts(corpus: pd.DataFrame) -> dict:
+    """Forward trades per source: alpha (momentum), pure_breakout (breakout),
+    ambiguous, orb, mean_reversion. All regimes."""
+    counts = dict.fromkeys(_SOURCE_OF_STRATEGY.values(), 0)
+    if "strategy" in corpus:
+        for strategy, n in corpus["strategy"].value_counts().items():
+            source = _SOURCE_OF_STRATEGY.get(strategy, strategy)
+            counts[source] = counts.get(source, 0) + int(n)
+    return counts
+
+
+def format_n_by_source(counts: dict) -> str:
+    """'alpha=4 pure_breakout=10 ambiguous=0' for the CLI outputs."""
+    return " ".join(f"{source}={n}" for source, n in counts.items())
+
+
 # ── Task 2: forward-only corpus ────────────────────────────────────────
 def load_forward_corpus(trade_history_path: str, frozen_at: str,
                         cost_bps: float = DEFAULT_COST_BPS) -> pd.DataFrame:
@@ -157,7 +260,9 @@ def load_forward_corpus(trade_history_path: str, frozen_at: str,
         return pd.DataFrame(columns=["strategy", "regime", "session", "net_pnl", "closed_at"])
     df["closed_at"] = closed[df.index]
     df["session"] = df["closed_at"].dt.date.astype(str)
-    df["strategy"] = df["entry_source"].map(_STRATEGY_MAP)
+    # Audit O2-02: 'alpha+breakout' rows are split by the isolation signature;
+    # unsplittable rows stay in the corpus as AMBIGUOUS (see attribute_trades).
+    df["strategy"] = attribute_trades(df)
     df = df[df["strategy"].notna()]
     df["net_pnl"] = apply_costs(df, cost_bps)["net_pnl"]
     return df[["strategy", "regime_at_entry", "session", "net_pnl", "closed_at"]].rename(
@@ -177,9 +282,22 @@ def strategy_slice(corpus: pd.DataFrame, strategy: str,
 def gate_for_strategy(corpus: pd.DataFrame, strategy: str,
                       regimes: set | None = None) -> dict:
     s = strategy_slice(corpus, strategy, regimes)
-    out = evaluate_gate(s["net_pnl"].to_numpy(), s["session"].to_numpy())
+    # An AMBIGUOUS row is alpha or pure breakout: it withholds both verdicts in
+    # the slice it would fall into (momentum: trend regimes only).
+    ambiguous = (len(strategy_slice(corpus, AMBIGUOUS, regimes))
+                 if strategy in _AMBIGUOUS_CANDIDATES else 0)
+    if ambiguous:
+        out = {"state": AMBIGUOUS_ATTRIBUTION, "n": len(s), "look": None, "t": None,
+               "note": (f"{ambiguous} 'alpha+breakout' trade(s) could be alpha or pure "
+                        "breakout; no statistic until attribution is resolved")}
+    else:
+        out = evaluate_gate(s["net_pnl"].to_numpy(), s["session"].to_numpy())
     out["strategy"] = strategy
     out["regime_conditional"] = sorted(regimes) if regimes else None
+    out["n_by_source"] = {**dict.fromkeys(SOURCES, 0),
+                          _SOURCE_OF_STRATEGY.get(strategy, strategy): len(s),
+                          "ambiguous": ambiguous}
+    out["attribution_rule"] = ATTRIBUTION_RULE
     return out
 
 

@@ -97,6 +97,195 @@ def test_forward_corpus_rejects_pre_cutoff(tmp_path):
     assert (corpus["net_pnl"] < corpus.assign(g=[10.0, -3.0])["g"]).all()  # costs applied
 
 
+# ── Audit O2-02: 'alpha+breakout' attribution while ML is isolated ──────
+# Engine facts behind the rule (pinned against the source below): while ML is
+# isolated every main-book row records ml_spoke False; an alpha candidate records
+# predicted_return 0.01 exactly and a pure breakout 0.005 + 0.015 * composite with
+# composite in [0.55, 1.0], both labelled 'alpha+breakout' once breakout_score is
+# >= 0.4. The ledger CSV rounds predicted_return to 6 decimals.
+_O2_CUTOFF = "2026-10-01T00:00:00+00:00"
+
+
+def _isolated_breakout_return(composite):
+    return round(0.005 + 0.015 * composite, 6)
+
+
+def _o2_stamp(i, per_session=5):
+    """closed_at of trade i, `per_session` trades per session (cluster)."""
+    day = pd.Timestamp("2026-10-05T14:00:00+00:00") + pd.Timedelta(days=i // per_session)
+    return (day + pd.Timedelta(minutes=i % per_session)).isoformat()
+
+
+def _o2_ledger(tmp_path, rows, name="o2.csv"):
+    """Synthetic ledger rows (closed_at, entry_source, regime_at_entry,
+    predicted_return, ml_spoke, pnl) under the paper ledger's column names."""
+    frame = pd.DataFrame(rows, columns=["closed_at", "entry_source", "regime_at_entry",
+                                        "predicted_return", "ml_spoke", "pnl"])
+    frame["entry_price"], frame["shares"] = 100.0, 6
+    path = tmp_path / name
+    frame.to_csv(path, index=False)
+    return path
+
+
+def test_isolation_signature_splits_alpha_breakout_between_momentum_and_breakout(tmp_path):
+    from backend.organism import phase2_gate as p2
+    rows = [
+        (_o2_stamp(0), "alpha", "trending_up", 0.01, False, 4.0),
+        (_o2_stamp(1), "alpha+breakout", "trending_up", 0.01, False, 3.0),       # alpha
+        (_o2_stamp(2), "alpha+breakout", "trending_up", _isolated_breakout_return(0.55), False, -2.0),
+        (_o2_stamp(3), "alpha+breakout", "high_vol", _isolated_breakout_return(0.66), False, -1.0),
+        (_o2_stamp(4), "alpha+breakout", "low_vol", _isolated_breakout_return(1.0), False, 1.0),
+        (_o2_stamp(5), "breakout", "chop", 0.01, False, 2.0),                    # label kept
+        (_o2_stamp(6), "orb", "chop", 0.01, False, 1.0),
+        (_o2_stamp(7), "mr", "chop", 0.01, False, 1.0),
+        (_o2_stamp(8), "reconciliation_orphan", "chop", 0.01, False, 9.0),       # unmapped
+    ]
+    corpus = load_forward_corpus(str(_o2_ledger(tmp_path, rows)), _O2_CUTOFF)
+    assert corpus["strategy"].tolist() == ["momentum", "momentum", "breakout", "breakout",
+                                           "breakout", "breakout", "orb", "mean_reversion"]
+    assert p2.attribution_counts(corpus) == {"alpha": 2, "pure_breakout": 4, "ambiguous": 0,
+                                             "orb": 1, "mean_reversion": 1}
+    momentum = p2.gate_for_strategy(corpus, "momentum", p2.MOMENTUM_TREND_REGIMES)
+    assert momentum["state"] == INSUFFICIENT and momentum["n"] == 2
+    assert momentum["n_by_source"] == {"alpha": 2, "pure_breakout": 0, "ambiguous": 0}
+    breakout = p2.gate_for_strategy(corpus, "breakout")
+    assert breakout["state"] == INSUFFICIENT and breakout["n"] == 4
+    assert breakout["n_by_source"] == {"alpha": 0, "pure_breakout": 4, "ambiguous": 0}
+    assert p2.gate_for_strategy(corpus, "orb")["n_by_source"] == {
+        "alpha": 0, "pure_breakout": 0, "ambiguous": 0, "orb": 1}
+    assert momentum["attribution_rule"] == breakout["attribution_rule"] == p2.ATTRIBUTION_RULE
+
+
+@pytest.mark.parametrize("predicted_return,ml_spoke", [
+    (0.01, True),                   # ML produced the value: not an isolation signature
+    (0.0142, True),
+    (0.01, ""),                     # ml_spoke not recorded
+    (0.01325 - 1e-6, False),        # below the band (pure breakouts need composite >= 0.55)
+    (0.0201, False),                # above the band (composite cannot exceed 1.0)
+    (0.010001, False),              # not 0.01 at the ledger's 6-decimal precision
+    (0.012, False),                 # between the two signatures
+    (0.005, False),                 # sizer floor for an ML value of ~0, not an isolation value
+    (None, False),                  # predicted_return missing
+])
+def test_alpha_breakout_rows_outside_the_isolation_signature_are_ambiguous(
+    tmp_path, predicted_return, ml_spoke,
+):
+    from backend.organism import phase2_gate as p2
+    rows = [(_o2_stamp(0), "alpha+breakout", "trending_up", predicted_return, ml_spoke, 1.0),
+            (_o2_stamp(1), "alpha", "trending_up", predicted_return, ml_spoke, 1.0),
+            (_o2_stamp(2), "breakout", "chop", predicted_return, ml_spoke, 1.0)]
+    corpus = load_forward_corpus(str(_o2_ledger(tmp_path, rows)), _O2_CUTOFF)
+    # Only the 'alpha+breakout' label is re-attributed; 'alpha' and 'breakout' keep theirs.
+    assert corpus["strategy"].tolist() == [p2.AMBIGUOUS, "momentum", "breakout"]
+    assert p2.attribution_counts(corpus)["ambiguous"] == 1
+
+
+def test_ledger_without_ml_spoke_or_predicted_return_cannot_split(tmp_path):
+    from backend.organism import phase2_gate as p2
+    rows = [(_o2_stamp(0), "alpha+breakout", "trending_up", 0.01, False, 1.0),
+            (_o2_stamp(1), "alpha+breakout", "trending_up", 0.0155, False, 1.0)]
+    path = _o2_ledger(tmp_path, rows)
+    assert load_forward_corpus(str(path), _O2_CUTOFF)["strategy"].tolist() == ["momentum", "breakout"]
+    full = pd.read_csv(path)
+    for column in ("ml_spoke", "predicted_return"):
+        full.drop(columns=[column]).to_csv(path, index=False)
+        assert load_forward_corpus(str(path), _O2_CUTOFF)["strategy"].tolist() == [p2.AMBIGUOUS] * 2
+
+
+@pytest.mark.parametrize("edge,state_without_ambiguity", [(0.8, PASS), (-0.8, FAIL)])
+def test_ambiguous_trade_withholds_momentum_and_breakout_verdicts(
+    tmp_path, edge, state_without_ambiguity,
+):
+    from backend.organism import phase2_gate as p2
+    n = 130
+    pnl = np.random.default_rng(7).normal(edge, 1.0, n)
+    rows = [(_o2_stamp(i), "alpha+breakout", "trending_up", 0.01, False, float(p))
+            for i, p in enumerate(pnl)]
+    corpus = load_forward_corpus(str(_o2_ledger(tmp_path, rows)), _O2_CUTOFF)
+    clean = p2.gate_for_strategy(corpus, "momentum", p2.MOMENTUM_TREND_REGIMES)
+    assert clean["state"] == state_without_ambiguity and clean["n"] == n
+    # One later 'alpha+breakout' trade that ML spoke on cannot be split.
+    rows.append((_o2_stamp(n), "alpha+breakout", "high_vol", 0.0142, True, 0.5))
+    corpus = load_forward_corpus(str(_o2_ledger(tmp_path, rows)), _O2_CUTOFF)
+    momentum = p2.gate_for_strategy(corpus, "momentum", p2.MOMENTUM_TREND_REGIMES)
+    assert momentum["state"] == p2.AMBIGUOUS_ATTRIBUTION
+    assert momentum["t"] is None and momentum["look"] is None and momentum["n"] == n
+    assert momentum["n_by_source"] == {"alpha": n, "pure_breakout": 0, "ambiguous": 1}
+    assert "1 'alpha+breakout' trade(s)" in momentum["note"]
+    breakout = p2.gate_for_strategy(corpus, "breakout")
+    assert breakout["state"] == p2.AMBIGUOUS_ATTRIBUTION and breakout["n"] == 0
+    assert breakout["n_by_source"] == {"alpha": 0, "pure_breakout": 0, "ambiguous": 1}
+    for name in ("orb", "mean_reversion"):
+        assert p2.gate_for_strategy(corpus, name)["state"] == INSUFFICIENT
+
+
+def test_ambiguous_trade_outside_the_trend_slice_withholds_only_breakout(tmp_path):
+    from backend.organism import phase2_gate as p2
+    pnl = np.random.default_rng(8).normal(0.8, 1.0, 70)
+    rows = [(_o2_stamp(i), "alpha", "trending_up", 0.01, False, float(p)) for i, p in enumerate(pnl)]
+    rows.append((_o2_stamp(70), "alpha+breakout", "chop", 0.012, False, -3.0))
+    corpus = load_forward_corpus(str(_o2_ledger(tmp_path, rows)), _O2_CUTOFF)
+    momentum = p2.gate_for_strategy(corpus, "momentum", p2.MOMENTUM_TREND_REGIMES)
+    # Alpha or pure breakout, a chop trade is outside the momentum trend slice.
+    assert momentum["state"] == PASS
+    assert momentum["n_by_source"] == {"alpha": 70, "pure_breakout": 0, "ambiguous": 0}
+    breakout = p2.gate_for_strategy(corpus, "breakout")
+    assert breakout["state"] == p2.AMBIGUOUS_ATTRIBUTION
+    assert breakout["n_by_source"] == {"alpha": 0, "pure_breakout": 0, "ambiguous": 1}
+
+
+def test_label_map_shape_moves_pure_breakouts_from_momentum_to_breakout(tmp_path):
+    """Synthetic rows with the structure the O2-02 verification found in the
+    September 2026 paper ledger (ML isolated): 4 alpha-signature trades and 10
+    pure-breakout-signature trades, 12 of the 14 labelled 'alpha+breakout'. The
+    label map put 11 in the momentum trend slice (7 pure breakouts), 0 in breakout."""
+    from backend.organism import phase2_gate as p2
+    alpha = [("alpha", "trending_up"), ("alpha", "trending_up"),
+             ("alpha+breakout", "trending_up"), ("alpha+breakout", "trending_up")]
+    composites = (0.56, 0.58, 0.6, 0.62, 0.65, 0.7, 0.75, 0.8, 0.9, 0.95)
+    regimes = ["trending_up"] * 7 + ["low_vol"] * 3
+    rows = [(_o2_stamp(i), label, regime, 0.01, False, 1.0) for i, (label, regime) in enumerate(alpha)]
+    rows += [(_o2_stamp(4 + i), "alpha+breakout", regime, _isolated_breakout_return(c), False, -1.0)
+             for i, (c, regime) in enumerate(zip(composites, regimes))]
+    path = _o2_ledger(tmp_path, rows)
+    raw = pd.read_csv(path)
+    by_label = raw["entry_source"].map(p2._STRATEGY_MAP)
+    trend = raw["regime_at_entry"].isin(p2.MOMENTUM_TREND_REGIMES)
+    assert ((by_label == "momentum") & trend).sum() == 11 and (by_label == "breakout").sum() == 0
+    corpus = load_forward_corpus(str(path), _O2_CUTOFF)
+    momentum = p2.gate_for_strategy(corpus, "momentum", p2.MOMENTUM_TREND_REGIMES)
+    breakout = p2.gate_for_strategy(corpus, "breakout")
+    assert momentum["n_by_source"] == {"alpha": 4, "pure_breakout": 0, "ambiguous": 0}
+    assert breakout["n_by_source"] == {"alpha": 0, "pure_breakout": 10, "ambiguous": 0}
+    assert (corpus.loc[corpus["strategy"] == "momentum", "net_pnl"] > 0).all()
+
+
+def test_isolation_signatures_match_the_engine_source():
+    """attribute_trades relies on these engine expressions. Changing any of them is a
+    frozen-surface change (or edits the unhashed label helper) and must revisit the
+    rule. A value outside both signatures only makes rows ambiguous (fail closed)."""
+    from pathlib import Path
+    from backend.organism import phase2_gate as p2
+    organism = Path(__file__).resolve().parents[1] / "backend" / "organism"
+    engine = (organism / "live_engine.py").read_text()
+    for expression in (
+        "c.ml_signal.predicted_return if c.ml_signal else 0.01",   # alpha value without ML
+        "pred_ret = 0.005 + 0.015 * bs.composite_score",           # pure-breakout heuristic
+        "if bs.composite_score < 0.55:",                           # pure-breakout entry floor
+        '"ml_spoke": _bo_ret_source == "calibrated_breakout"',      # breakout ml_spoke
+        "breakout_score >= 0.55 and predicted_return < 0.003",     # the only 'breakout' label
+        "predicted_return = abs(sz.predicted_return) if sz.predicted_return else 0.01",  # recorded
+    ):
+        assert expression in engine, expression
+    scanner = (organism / "alpha_scanner.py").read_text()
+    assert "None if (learning_mode or derive_direction_from_observables) else ml_sig" in scanner
+    assert p2.ALPHA_ISOLATED_PREDICTED_RETURN == 0.01
+    assert p2.PURE_BREAKOUT_SIGNATURE == pytest.approx((0.01325, 0.0200))
+    low = p2.PURE_BREAKOUT_SIGNATURE[0] - p2.SIGNATURE_TOLERANCE
+    assert low > p2.ALPHA_ISOLATED_PREDICTED_RETURN + p2.SIGNATURE_TOLERANCE  # no overlap
+    assert p2.SIGNATURE_TOLERANCE < 0.5e-6        # finer than the CSV's 6-decimal rounding
+
+
 def test_empty_forward_corpus_is_valid(tmp_path):
     rows = pd.DataFrame({
         "closed_at": ["2026-06-01T10:00:00+00:00"], "entry_source": ["alpha"],
