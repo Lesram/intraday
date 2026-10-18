@@ -1,31 +1,31 @@
 # Live Audit Index
 
-Generated: 2026-10-07T20:47:08Z
+Generated: 2026-10-18T18:33:28Z
 PR: n/a
-SHA: `479fbfc57e`
-Branch: `fix/surface-release-2026-10`
+SHA: `71d1669829`
+Branch: `release/combined-audit-2026-10`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **71**
+Total distinct changed files: **91**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 15 | `backend/api/lifespan.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_broker.py`, `backend/integrations/alpaca_outbox.py`, `backend/integrations/alpaca_stream.py`, `backend/organism/live_engine.py`, `backend/organism/live_engine_data.py`, `backend/organism/live_engine_fills.py`, `backend/organism/operator_cancellation.py` |
-| Scripts | 3 | `scripts/db/phase7_data_integrity_remediation.py`, `scripts/generate_experiment_observation_report.py`, `scripts/runtime/write_runtime_snapshot.py` |
+| Backend | 25 | `backend/api/lifespan.py`, `backend/api/logging_setup.py`, `backend/api/routes/auth.py`, `backend/api/socketio_server.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/infra/security.py`, `backend/infra/users.py`, `backend/integrations/alpaca_broker.py`, `backend/integrations/alpaca_outbox.py` |
+| Scripts | 5 | `scripts/db/create_admin_user.py`, `scripts/db/phase7_data_integrity_remediation.py`, `scripts/generate_experiment_observation_report.py`, `scripts/ops/check_brain_pickles_signed.py`, `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 0 | none |
-| Tests | 19 | `tests/test_audit_20261005_close_accounting_unblock.py`, `tests/test_audit_20261005_outbox_dispatch_guards.py`, `tests/test_audit_20261005_surface_dispatch_lifecycle.py`, `tests/test_audit_20261005_surface_exit_safety.py`, `tests/test_audit_20261005_surface_external_close.py`, `tests/test_audit_20261005_surface_regime_isolation.py`, `tests/test_audit_20261005_surface_stream_history.py`, `tests/test_external_close_lot_repair_postgres.py`, `tests/test_fill_accounting_postgres.py`, `tests/test_multi_tick_state.py` |
-| Docs | 4 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_UPTIME.md` |
+| Tests | 24 | `tests/test_apr8_patch_e_trained_state_guard.py`, `tests/test_audit_20261005_brain_crash_safety.py`, `tests/test_audit_20261005_close_accounting_unblock.py`, `tests/test_audit_20261005_outbox_dispatch_guards.py`, `tests/test_audit_20261005_session_log_hardening.py`, `tests/test_audit_20261005_surface_dispatch_lifecycle.py`, `tests/test_audit_20261005_surface_exit_safety.py`, `tests/test_audit_20261005_surface_external_close.py`, `tests/test_audit_20261005_surface_regime_isolation.py`, `tests/test_audit_20261005_surface_stream_history.py` |
+| Docs | 7 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_BACKUP_RECOVERY.md`, `docs/runbooks/PAPER_UPTIME.md`, `docs/setup/AUTHENTICATION.md`, `docs/setup/QUICK_START.md` |
 | Artifacts/evidence | 30 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **7** file(s).
+Organism subset of Backend: **9** file(s).
 
 ### Full changed-file list
 
@@ -60,11 +60,18 @@ Organism subset of Backend: **7** file(s).
 - `artifacts/task_report.json`
 - `artifacts/test_summary.json`
 - `backend/api/lifespan.py`
+- `backend/api/logging_setup.py`
+- `backend/api/routes/auth.py`
+- `backend/api/socketio_server.py`
 - `backend/infra/outbox_worker.py`
 - `backend/infra/repositories/orders.py`
+- `backend/infra/security.py`
+- `backend/infra/users.py`
 - `backend/integrations/alpaca_broker.py`
 - `backend/integrations/alpaca_outbox.py`
 - `backend/integrations/alpaca_stream.py`
+- `backend/organism/brain_persistence.py`
+- `backend/organism/ensemble_models.py`
 - `backend/organism/live_engine.py`
 - `backend/organism/live_engine_data.py`
 - `backend/organism/live_engine_fills.py`
@@ -74,15 +81,26 @@ Organism subset of Backend: **7** file(s).
 - `backend/organism/streaming_data_provider.py`
 - `backend/services/order_recovery_service.py`
 - `backend/services/positions_service.py`
+- `backend/utils/log_redaction.py`
+- `backend/utils/logger.py`
+- `backend/utils/secure_pickle.py`
 - `docs/architecture/mapss.md`
 - `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`
+- `docs/runbooks/PAPER_BACKUP_RECOVERY.md`
 - `docs/runbooks/PAPER_UPTIME.md`
+- `docs/setup/AUTHENTICATION.md`
+- `docs/setup/QUICK_START.md`
+- `scripts/db/create_admin_user.py`
 - `scripts/db/phase7_data_integrity_remediation.py`
 - `scripts/generate_experiment_observation_report.py`
+- `scripts/ops/check_brain_pickles_signed.py`
 - `scripts/runtime/write_runtime_snapshot.py`
+- `tests/test_apr8_patch_e_trained_state_guard.py`
+- `tests/test_audit_20261005_brain_crash_safety.py`
 - `tests/test_audit_20261005_close_accounting_unblock.py`
 - `tests/test_audit_20261005_outbox_dispatch_guards.py`
+- `tests/test_audit_20261005_session_log_hardening.py`
 - `tests/test_audit_20261005_surface_dispatch_lifecycle.py`
 - `tests/test_audit_20261005_surface_exit_safety.py`
 - `tests/test_audit_20261005_surface_external_close.py`
@@ -99,6 +117,8 @@ Organism subset of Backend: **7** file(s).
 - `tests/test_streaming_subscription_acknowledgement.py`
 - `tests/test_v12_baseline_invariants.py`
 - `tests/test_v13_w100_live_tick_coverage.py`
+- `tests/test_wave50_fixes.py`
+- `tests/unit/test_api_auth_routes_comprehensive.py`
 - `tests/unit/test_streaming_data_provider.py`
 
 ## Configuration resolution (not engine observation)
@@ -140,4 +160,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 7 organism file(s) changed — require replay verification
+- 9 organism file(s) changed — require replay verification
