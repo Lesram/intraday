@@ -268,6 +268,17 @@ async def _step_database(app) -> None:
         app.state.db_sessionmaker = None
 
 
+# Token-blacklist Redis client bounds (audit 2026-10-05). Every authenticated
+# request and every Socket.IO delivery, including the scheduler's tick
+# broadcast, waits on a blacklist lookup, so a Redis that keeps the connection
+# open but stops answering must fail within these limits rather than block.
+# A failed or timed-out lookup falls back to the in-process blacklist
+# (fail-open for revocations only Redis holds; see
+# backend.infra.security.token_revocation_reason for the rationale).
+TOKEN_BLACKLIST_REDIS_TIMEOUT_S = 1.0
+TOKEN_BLACKLIST_REDIS_PING_TIMEOUT_S = 3.0
+
+
 async def _step_token_blacklist(app) -> None:
     # ── V10 AA4-2 / Wave-50 (2026-05-03): Token Blacklist Redis init ─
     # The blacklist machinery in backend/infra/security.py was orphan —
@@ -276,32 +287,52 @@ async def _step_token_blacklist(app) -> None:
     # backend was permanently None, so the blacklist was in-memory only
     # and wiped on every container restart.  Now: connect to Redis on
     # startup so AA3-1 logout actually persists revocations.
+    _redis_client = None
     try:
         import redis.asyncio as _redis
         from backend.infra.security import init_token_blacklist
+        from backend.utils.log_redaction import safe_url
         _redis_url = (
             os.environ.get("REDIS_URL")
             or "redis://localhost:6379/0"
         )
-        _redis_client = _redis.from_url(_redis_url, decode_responses=False)
-        # Ping to fail fast if Redis is unreachable.
-        await _redis_client.ping()
+        _redis_client = _redis.from_url(
+            _redis_url,
+            decode_responses=False,
+            socket_timeout=TOKEN_BLACKLIST_REDIS_TIMEOUT_S,
+            socket_connect_timeout=TOKEN_BLACKLIST_REDIS_TIMEOUT_S,
+            health_check_interval=30,
+        )
+        # Ping to fail fast if Redis is unreachable or not answering.
+        await asyncio.wait_for(
+            _redis_client.ping(), timeout=TOKEN_BLACKLIST_REDIS_PING_TIMEOUT_S,
+        )
         await init_token_blacklist(_redis_client)
         app.state.redis = _redis_client
+        # Logged without userinfo: REDIS_URL embeds the Redis password.
         logger.info(
             "AA4-2: token blacklist Redis backend initialized at %s",
-            _redis_url,
+            safe_url(_redis_url),
         )
     except Exception as _redis_err:
         # In-memory fallback is still active; warn but don't fail-fast
         # so paper / dev still boot when Redis is down.  Production
         # would benefit from a stricter gate but that's a follow-up.
         logger.warning(
-            "AA4-2: token blacklist Redis init failed (%s); "
+            "AA4-2: token blacklist Redis init failed (%s: %s); "
             "falling back to in-memory only (wipes on restart)",
-            _redis_err,
+            type(_redis_err).__name__, _redis_err,
         )
         app.state.redis = None
+        if _redis_client is not None:
+            from redis.exceptions import RedisError
+            try:
+                await asyncio.wait_for(
+                    _redis_client.aclose(), timeout=TOKEN_BLACKLIST_REDIS_TIMEOUT_S,
+                )
+            except (RedisError, OSError, RuntimeError, AttributeError) as _close_err:
+                logger.debug("AA4-2: closing the unused Redis client failed: %s",
+                             type(_close_err).__name__)
 
 
 async def _step_outbox_worker(app, ctx: dict, flags: "BootFlags") -> None:
