@@ -86,11 +86,20 @@ class EnsemblePredictor:
         # Model pairs: (classifier, regressor, name, weight)
         self._models: list[tuple[Any, Any, str, float]] = []
         self._is_trained = False
+        # Audit 2026-10-05 C12-02: bumped by every change to the model pairs
+        # or their weights, so the brain's essential save can tell an
+        # ensemble that is already on disk unchanged (never rewritten) from
+        # one that changed since it was last written.
+        self._state_version = 0
 
         self._build_models()
 
+    def _bump_state_version(self) -> None:
+        self._state_version = getattr(self, "_state_version", 0) + 1
+
     def _build_models(self) -> None:
         """Instantiate all available model pairs."""
+        self._bump_state_version()
         self._models.clear()
 
         # 1. XGBoost
@@ -220,6 +229,8 @@ class EnsemblePredictor:
         """
         results: dict[str, bool] = {}
         any_trained = False
+        # C12-02: fit() mutates the model objects in place.
+        self._bump_state_version()
 
         for clf, reg, name, _w in self._models:
             try:
@@ -295,9 +306,13 @@ class EnsemblePredictor:
         ``ensemble_<name>_reg.joblib``, plus a manifest of names+weights.
 
         Returns True iff at least one model pair was saved.
+
+        Every file is replaced atomically (audit 2026-10-05 C12-02): model
+        files through ``secure_dump_to_path`` and the manifest, written last,
+        through ``atomic_write_bytes``. File names and bytes are unchanged.
         """
         from pathlib import Path
-        from backend.utils.secure_pickle import secure_dump_to_path
+        from backend.utils.secure_pickle import atomic_write_bytes, secure_dump_to_path
         import json
 
         target = Path(target_dir)
@@ -323,13 +338,15 @@ class EnsemblePredictor:
         if not manifest:
             return False
 
-        with open(target / "ensemble_manifest.json", "w") as f:
-            json.dump({
+        atomic_write_bytes(
+            target / "ensemble_manifest.json",
+            json.dumps({
                 "n_estimators": self._n_estimators,
                 "max_depth": self._max_depth,
                 "learning_rate": self._lr,
                 "models": manifest,
-            }, f, indent=2)
+            }, indent=2).encode("utf-8"),
+        )
 
         logger.info(
             "EnsemblePredictor saved: %d model pairs (%s)",
@@ -344,12 +361,14 @@ class EnsemblePredictor:
         Returns True iff at least one model pair was restored. Sets
         ``_is_trained=True`` if any pairs loaded — same semantics as
         post-train state.
+
+        Audit 2026-10-05 C12-04: only HMAC-signed files are deserialized.
+        An unsigned model file is never unpickled (pickle executes code on
+        load); it is logged at CRITICAL and its pair is skipped exactly like
+        a pair whose files are missing.
         """
         from pathlib import Path
-        from backend.utils.secure_pickle import (
-            secure_load_from_path, is_signed_pickle,
-        )
-        import joblib
+        from backend.utils.secure_pickle import is_signed_pickle, secure_loads
         import json
 
         source = Path(source_dir)
@@ -373,13 +392,20 @@ class EnsemblePredictor:
             if not (clf_path.is_file() and reg_path.is_file()):
                 continue
             try:
-                def _safe_load(p: Path) -> Any:
-                    raw = p.read_bytes()
-                    if is_signed_pickle(raw):
-                        return secure_load_from_path(p)
-                    return joblib.load(p)
-                clf = _safe_load(clf_path)
-                reg = _safe_load(reg_path)
+                raw_pair = (clf_path.read_bytes(), reg_path.read_bytes())
+                unsigned = [
+                    p.name for p, raw in zip((clf_path, reg_path), raw_pair)
+                    if not is_signed_pickle(raw)
+                ]
+                if unsigned:
+                    logger.critical(
+                        "C12-04: refusing to deserialize unsigned ensemble "
+                        "model file(s) %s in %s; pair '%s' handled as missing",
+                        unsigned, source, name,
+                    )
+                    continue
+                clf = secure_loads(raw_pair[0])
+                reg = secure_loads(raw_pair[1])
                 loaded.append((clf, reg, name, weight))
             except Exception as e:
                 logger.warning(
@@ -391,6 +417,7 @@ class EnsemblePredictor:
 
         self._models = loaded
         self._is_trained = True
+        self._bump_state_version()
         logger.info(
             "EnsemblePredictor restored: %d model pairs",
             len(loaded),
@@ -418,6 +445,7 @@ class EnsemblePredictor:
         total = sum(w for _, _, _, w in updated)
         if total > 0:
             self._models = [(c, r, n, w / total) for c, r, n, w in updated]
+            self._bump_state_version()
 
         logger.info(
             "Ensemble weights updated: %s",
@@ -439,3 +467,4 @@ class EnsemblePredictor:
         total = sum(w for _, _, _, w in updated)
         if total > 0:
             self._models = [(c, r, n, w / total) for c, r, n, w in updated]
+            self._bump_state_version()

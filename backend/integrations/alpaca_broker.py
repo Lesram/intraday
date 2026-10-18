@@ -8,7 +8,9 @@ Used when USE_MOCK_BROKER=False to place real orders through Alpaca.
 import asyncio
 from collections.abc import Callable
 from functools import wraps
+import json
 import os
+import re
 from typing import Any, TypeVar
 import uuid
 
@@ -35,6 +37,58 @@ class BrokerAcknowledgementUnresolved(HTTPException):
         self.client_order_id = client_order_id
         self.reason = reason
         super().__init__(status_code=503, detail="Broker acknowledgement unresolved: " + reason)
+
+
+# Audit 2026-10-05 C04-01 (review NB1): Alpaca's answer when no order carries the
+# client key asked for is HTTP 404 with the JSON error body
+# {"code": 40410000, "message": "order not found..."}. 40410000 is Alpaca's
+# generic not-found code, not specific to orders (another resource, or a route
+# that does not exist, can answer 404 too), so the message must also say that
+# the order was not found. The wording is matched as a prefix, any case.
+ALPACA_NOT_FOUND_CODE = 40410000
+ALPACA_ORDER_NOT_FOUND_MESSAGE = "order not found"
+_ORDER_NOT_FOUND = re.compile(re.escape(ALPACA_ORDER_NOT_FOUND_MESSAGE) + r"\b", re.IGNORECASE)
+_API_ERROR_PREFIX = "Alpaca API error: "  # how _make_request_with_retry wraps a 4xx body
+
+
+class ClientOrderNotFoundUnconfirmed(HTTPException):
+    """A 404 from the client-key lookup that is not Alpaca's order-not-found answer.
+
+    Audit 2026-10-05 C04-01 (review NB1). Raised as a 502, so nothing can read
+    it as absence; ``evidence`` keeps the 404's shape (a short body excerpt).
+    """
+
+    def __init__(self, reason: str, evidence: dict[str, Any]):
+        self.reason = reason
+        self.evidence = evidence
+        super().__init__(status_code=502, detail="Client order lookup 404 not confirmed: " + reason)
+
+
+def classify_client_order_404(body: Any) -> tuple[dict[str, Any] | None, str]:
+    """``(evidence, reason)`` for the body of a 404 from GET /v2/orders:by_client_order_id.
+
+    Evidence (``{"http_status": 404, "code": 40410000, "message": ...}``) only
+    for Alpaca's order-not-found answer: a JSON object whose ``code`` is the
+    integer 40410000 and whose ``message`` starts with "order not found" (any
+    case). Anything else returns ``(None, reason)``: no body, a body that is not
+    JSON (an HTML error page), not an object, another code, or another message
+    ("endpoint not found" from an unknown route, "position not found", ...).
+    """
+    if not isinstance(body, str) or not body.strip():
+        return None, "no_body"
+    try:
+        data = json.loads(body)
+    except (TypeError, ValueError, RecursionError):
+        return None, "non_json_body"
+    if not isinstance(data, dict):
+        return None, "not_an_object"
+    code = data.get("code")
+    if type(code) is not int or code != ALPACA_NOT_FOUND_CODE:
+        return None, "code_mismatch"
+    message = data.get("message")
+    if not isinstance(message, str) or not _ORDER_NOT_FOUND.match(message.strip()):
+        return None, "message_mismatch"
+    return {"http_status": 404, "code": code, "message": message.strip()[:200]}, "order_not_found"
 
 
 def _valid_order_acknowledgement(data: Any, client_order_id: str, *, lookup: bool) -> bool:
@@ -593,6 +647,55 @@ class AlpacaBrokerClient:
         if not _valid_order_acknowledgement(data, client_order_id, lookup=True):
             raise BrokerAcknowledgementUnresolved(client_order_id, "lookup_not_confirmed")
         return data
+
+    async def lookup_order_by_client_order_id(
+        self, client_order_id: str,
+    ) -> tuple[dict | None, dict | None]:
+        """Client-key lookup for an absence proof: ``(order, None)`` or ``(None, not_found)``.
+
+        Audit 2026-10-05 C04-01 (review NB1): the outbox's dead-letter absence
+        check needs more than "a 404". ``order`` is the broker's order confirmed
+        for this exact client key. ``not_found`` is returned only for Alpaca's
+        order-not-found answer (``classify_client_order_404``), as evidence.
+        Every other answer raises: a 404 that is not that answer raises
+        ClientOrderNotFoundUnconfirmed, a 200 that does not confirm the key
+        raises BrokerAcknowledgementUnresolved, and a transport error, the open
+        breaker, a 5xx or missing credentials raise HTTPException. Read-only.
+        The exit guard keeps using ``find_order_by_client_order_id``.
+        """
+        if not isinstance(client_order_id, str) or not client_order_id.strip():
+            raise BrokerAcknowledgementUnresolved(None, "missing_client_order_id")
+        try:
+            response = await self._make_request_with_retry(
+                "GET", f"{self.base_url}/v2/orders:by_client_order_id",
+                params={"client_order_id": client_order_id},
+            )
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            detail = exc.detail if isinstance(exc.detail, str) else ""
+            body = detail[len(_API_ERROR_PREFIX):] if detail.startswith(_API_ERROR_PREFIX) else None
+        else:
+            if response.status_code != 404:
+                if response.status_code != 200:
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"Unexpected client order lookup status {response.status_code}",
+                    )
+                try:
+                    data = response.json()
+                except (TypeError, ValueError, RecursionError):
+                    data = None
+                if not _valid_order_acknowledgement(data, client_order_id, lookup=True):
+                    raise BrokerAcknowledgementUnresolved(client_order_id, "lookup_not_confirmed")
+                return data, None
+            body = response.text
+        evidence, reason = classify_client_order_404(body)
+        if evidence is None:
+            raise ClientOrderNotFoundUnconfirmed(reason, {
+                "http_status": 404, "body": str(body or "")[:120],
+            })
+        return None, evidence
 
     async def get_order(self, order_id: str) -> dict:
         """

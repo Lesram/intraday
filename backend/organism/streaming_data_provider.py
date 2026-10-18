@@ -54,6 +54,12 @@ class StreamingDataProvider:
 
     STARTUP_RETRY_INTERVAL_S = 30.0
     STARTUP_TIMEOUT_S = 25.0
+    # Audit 2026-10-05 (C11-01): background REST history seed. One request per
+    # symbol per session, one request at a time, each bounded by
+    # HISTORY_SEED_TIMEOUT_S; a failed seed is retried no sooner than
+    # HISTORY_SEED_RETRY_S later.
+    HISTORY_SEED_TIMEOUT_S = 30.0
+    HISTORY_SEED_RETRY_S = 60.0
 
     def __init__(
         self,
@@ -90,6 +96,15 @@ class StreamingDataProvider:
         self._recovery_enabled = False
         self._recovery_due_at = 0.0
         self._transport_generation: int | None = None
+        # Audit 2026-10-05 (C11-01): symbols whose buffer holds their REST
+        # history in this session (startup prefill or background seed), the
+        # queued seeds in request order, the symbol being fetched, the last
+        # failed seed per symbol (monotonic) and the single seed worker.
+        self._history_seeded: set[str] = set()
+        self._seed_queue: dict[str, None] = {}
+        self._seed_inflight: str | None = None
+        self._seed_failed_at: dict[str, float] = {}
+        self._seed_task: asyncio.Task | None = None
 
     # ── Lifecycle ─────────────────────────────────────────────────
 
@@ -199,6 +214,14 @@ class StreamingDataProvider:
         self._last_bar_ts.clear()
         self.last_update_time = None
         self._transport_generation = None
+        # Seeds belong to the session whose buffers they fill.
+        self._history_seeded.clear()
+        self._seed_queue.clear()
+        self._seed_failed_at.clear()
+        self._seed_inflight = None
+        task, self._seed_task = self._seed_task, None
+        if task is not None and not task.done():
+            task.cancel()
 
     async def _disconnect_stream(self, stream) -> None:
         if stream is not None:
@@ -231,7 +254,7 @@ class StreamingDataProvider:
             self._last_bar_ts.clear()
             self.last_update_time = None
 
-    async def _retry_start(self) -> bool:
+    async def _retry_start(self, order: list[str] | None = None) -> bool:
         if not self._recovery_enabled or not self._start_config:
             return False
         if time.monotonic() < self._recovery_due_at:
@@ -240,13 +263,18 @@ class StreamingDataProvider:
         symbols = sorted(self._desired_symbols)
         try:
             # Retry runs inside the engine's shorter subscription-sync bound.
-            # Restore confirmations promptly; the ordinary feeder supplies REST
-            # history while this live buffer warms up. Preserve the client for
-            # an explicit future start without manufacturing live provenance.
-            return await self.start(symbols, **config, _prefill_history=False)
+            # Restore confirmations promptly without fetching history inline.
+            started = await self.start(symbols, **config, _prefill_history=False)
         except Exception:
             logger.exception("Streaming startup retry failed; entries remain blocked")
             return False
+        if started is True:
+            # Audit 2026-10-05 (C11-01): the restart cleared every buffer. Seed
+            # each symbol's REST history in the background, outside the
+            # caller's deadline; until a symbol is seeded the feeder keeps
+            # reading REST instead of a short live buffer.
+            self._schedule_history_seed(order if order is not None else symbols)
+        return started
 
     @property
     def is_running(self) -> bool:
@@ -366,8 +394,10 @@ class StreamingDataProvider:
         them down with it.
 
         A successful transport update is not bar freshness. New symbols remain
-        stale until an advancing, timely streaming bar arrives. No REST seed
-        is performed here. Partial failures retain state for the next retry.
+        stale until an advancing, timely streaming bar arrives. Each newly
+        subscribed symbol gets one background REST history seed (history only,
+        never a receipt) that runs outside this call and its caller's deadline.
+        Partial failures retain state for the next retry.
         """
         ordered = self._bounded(symbols)
         if self._recovery_enabled:
@@ -377,7 +407,7 @@ class StreamingDataProvider:
                     # The transport's own bounded reconnect owns recovery; a
                     # provider restart here would kill it and wipe buffers.
                     return False
-                if not await self._retry_start():
+                if not await self._retry_start(ordered):
                     return False
         async with self._lifecycle_lock:
             return await self._update_subscriptions(ordered, protected)
@@ -427,6 +457,10 @@ class StreamingDataProvider:
 
         current_set = current_quotes | current_bars | self._subscribed_symbols
         self._subscribed_symbols.update(current_quotes | current_bars)
+        # Audit 2026-10-05 (C11-01): desired symbols already subscribed but
+        # still without history (failed seed or startup prefill) are queued
+        # before any awaited request, so a slow request cannot starve them.
+        self._schedule_history_seed(ordered)
 
         to_remove = sorted((current_set | transport_desired) - new_set)
         complete = True
@@ -447,6 +481,9 @@ class StreamingDataProvider:
                     self._bars.pop(symbol, None)
                     self._quotes.pop(symbol, None)
                     self._last_bar_ts.pop(symbol, None)
+                    self._history_seeded.discard(symbol)
+                    self._seed_queue.pop(symbol, None)
+                    self._seed_failed_at.pop(symbol, None)
                 self.last_update_time = max(self._last_bar_ts.values(), default=None)
                 logger.info("Streaming unsubscribed: -%d symbols", len(to_remove))
             else:
@@ -477,6 +514,7 @@ class StreamingDataProvider:
                 else:
                     self._subscribed_symbols.update(bars)
                     self._retired_symbols.difference_update(bars)
+                    self._schedule_history_seed(bars)
             if quotes:
                 added = await stream.subscribe_quotes(quotes)
                 if not self._is_current_session(stream, generation):
@@ -494,13 +532,11 @@ class StreamingDataProvider:
     async def _prefill(self, symbols: list[str], data_client: Any) -> None:
         """Seed ring buffers with historical bars so engine can trade immediately.
 
-        Fetches LIVE_LOOKBACK bars per symbol via REST.  Individual failures
-        are logged and skipped — remaining symbols still get pre-filled.
+        Fetches the engine's LIVE_LOOKBACK bars per symbol via REST.  Individual
+        failures are logged and skipped — remaining symbols still get pre-filled
+        (and are seeded later in the background, see ``_schedule_history_seed``).
         """
-        import os
-
-        lookback = int(os.getenv("ORGANISM_LIVE_LOOKBACK", "100"))
-        timeframe = os.getenv("ORGANISM_LIVE_TIMEFRAME", "1Day")
+        lookback, timeframe = self._history_window()
         filled = 0
         generation = self._session_generation
 
@@ -513,48 +549,161 @@ class StreamingDataProvider:
                     return
                 if df is None or df.empty:
                     continue
-
-                # Historical arrival is not evidence of a fresh bar. Validate
-                # every timestamp before replacing any existing stream state.
-                now = self._time_fn()
-                rows_by_time: dict[pd.Timestamp, dict[str, Any]] = {}
-                for _, row in df.iterrows():
-                    timestamp = pd.Timestamp(row.get("timestamp"))
-                    if pd.isna(timestamp) or timestamp.tzinfo is None:
-                        raise ValueError("prefill timestamp must be timezone-aware")
-                    timestamp = timestamp.tz_convert("UTC")
-                    if timestamp.timestamp() > now:
-                        raise ValueError("prefill timestamp is in the future")
-                    rows_by_time[timestamp] = {
-                        "timestamp": timestamp.isoformat(),
-                        "open": row.get("open"),
-                        "high": row.get("high"),
-                        "low": row.get("low"),
-                        "close": row.get("close"),
-                        "volume": row.get("volume"),
-                    }
-                # Subscription callbacks can run while REST is awaited. Keep
-                # their newer data (and any same-minute stream correction).
-                existing = self._bars.get(symbol, ())
-                for row in existing:
-                    timestamp = pd.Timestamp(row.get("timestamp"))
-                    if pd.isna(timestamp) or timestamp.tzinfo is None:
-                        raise ValueError("existing stream timestamp must be timezone-aware")
-                    timestamp = timestamp.tz_convert("UTC")
-                    if timestamp.timestamp() > now:
-                        raise ValueError("existing stream timestamp is in the future")
-                    rows_by_time[timestamp] = row
-                self._bars[symbol] = deque(
-                    (rows_by_time[timestamp] for timestamp in sorted(rows_by_time)),
-                    maxlen=self._buffer_size,
-                )
-                # REST supports warmup history, never current-session stream
-                # provenance. Only advancing live callbacks establish receipts.
+                self._merge_history(symbol, df)
+                self._history_seeded.add(symbol)
                 filled += 1
             except Exception as e:
                 logger.warning("Pre-fill failed for %s: %s", symbol, e)
 
         logger.info("Pre-filled %d/%d symbols", filled, len(symbols))
+
+    @staticmethod
+    def _history_window() -> tuple[int, str]:
+        """The engine's REST history window: LIVE_LOOKBACK bars of LIVE_TIMEFRAME.
+
+        Audit 2026-10-05 (C11-01): the prefill used to read
+        ORGANISM_LIVE_LOOKBACK with its own default of 100 while the engine
+        defaults to 500. Prefill and seeds now request exactly what the
+        feeder's REST path requests. Imported lazily (import cycle).
+        """
+        from backend.organism.live_engine import LIVE_LOOKBACK, LIVE_TIMEFRAME
+
+        return int(LIVE_LOOKBACK), str(LIVE_TIMEFRAME)
+
+    def _merge_history(self, symbol: str, df: pd.DataFrame) -> None:
+        """Merge REST history into *symbol*'s ring buffer (prefill and seeds).
+
+        Raises ValueError, before any state changes, on an invalid timestamp.
+        """
+        # Historical arrival is not evidence of a fresh bar. Validate
+        # every timestamp before replacing any existing stream state.
+        now = self._time_fn()
+        rows_by_time: dict[pd.Timestamp, dict[str, Any]] = {}
+        for _, row in df.iterrows():
+            timestamp = pd.Timestamp(row.get("timestamp"))
+            if pd.isna(timestamp) or timestamp.tzinfo is None:
+                raise ValueError("prefill timestamp must be timezone-aware")
+            timestamp = timestamp.tz_convert("UTC")
+            if timestamp.timestamp() > now:
+                raise ValueError("prefill timestamp is in the future")
+            rows_by_time[timestamp] = {
+                "timestamp": timestamp.isoformat(),
+                "open": row.get("open"),
+                "high": row.get("high"),
+                "low": row.get("low"),
+                "close": row.get("close"),
+                "volume": row.get("volume"),
+            }
+        # Subscription callbacks can run while REST is awaited. Keep
+        # their newer data (and any same-minute stream correction).
+        existing = self._bars.get(symbol, ())
+        for row in existing:
+            timestamp = pd.Timestamp(row.get("timestamp"))
+            if pd.isna(timestamp) or timestamp.tzinfo is None:
+                raise ValueError("existing stream timestamp must be timezone-aware")
+            timestamp = timestamp.tz_convert("UTC")
+            if timestamp.timestamp() > now:
+                raise ValueError("existing stream timestamp is in the future")
+            rows_by_time[timestamp] = row
+        self._bars[symbol] = deque(
+            (rows_by_time[timestamp] for timestamp in sorted(rows_by_time)),
+            maxlen=self._buffer_size,
+        )
+        # REST supports warmup history, never current-session stream
+        # provenance. Only advancing live callbacks establish receipts.
+
+    def _schedule_history_seed(self, symbols: list[str]) -> None:
+        """Queue a one-time background REST history seed per symbol (C11-01).
+
+        Audit 2026-10-05: after a provider restart (``_retry_start`` clears
+        every buffer) and for every symbol subscribed after startup, the
+        feeder would otherwise switch to a short live buffer as soon as it
+        held MIN_BARS bars. Only subscribed symbols without history in this
+        session are queued, never one already queued or being fetched, and a
+        failed one only HISTORY_SEED_RETRY_S after its failure. The merge is
+        the startup prefill's (history only, stream rows kept, no receipt).
+        One worker task fetches one symbol at a time, outside every caller's
+        deadline; nothing here awaits.
+        """
+        client = (self._start_config or {}).get("data_client")
+        if client is None or not hasattr(client, "get_historical_bars_df"):
+            return
+        now = time.monotonic()
+        for symbol in symbols:
+            symbol = str(symbol).upper()
+            failed_at = self._seed_failed_at.get(symbol)
+            if (symbol not in self._subscribed_symbols
+                    or symbol in self._retired_symbols
+                    or symbol in self._history_seeded
+                    or symbol in self._seed_queue
+                    or symbol == self._seed_inflight
+                    or (failed_at is not None and now - failed_at < self.HISTORY_SEED_RETRY_S)):
+                continue
+            self._seed_queue[symbol] = None
+        if self._seed_queue and (self._seed_task is None or self._seed_task.done()):
+            self._seed_task = asyncio.create_task(
+                self._run_history_seed(self._session_generation, client),
+            )
+
+    async def _run_history_seed(self, generation: int, client: Any) -> None:
+        """Fetch queued history one symbol at a time (see ``_schedule_history_seed``).
+
+        Generation-guarded like the prefill: a restart, stop or stale-stream
+        reconnect ends the worker without writing (an invalidation also cancels
+        it), and a symbol retired while its request was in flight is skipped.
+        A failure is recorded for the bounded retry; the feeder meanwhile reads
+        REST for that symbol.
+        """
+        lookback, timeframe = self._history_window()
+        seeded = failed = 0
+        try:
+            while self._seed_queue and generation == self._session_generation:
+                symbol = next(iter(self._seed_queue))
+                del self._seed_queue[symbol]
+                self._seed_inflight = symbol
+                try:
+                    async with asyncio.timeout(self.HISTORY_SEED_TIMEOUT_S):
+                        df = await client.get_historical_bars_df(
+                            symbol, lookback=lookback, timeframe=timeframe,
+                        )
+                    if generation != self._session_generation:
+                        return
+                    if symbol not in self._subscribed_symbols or symbol in self._retired_symbols:
+                        continue
+                    if df is None or df.empty:
+                        raise ValueError("no historical bars")
+                    self._merge_history(symbol, df)
+                    self._history_seeded.add(symbol)
+                    self._seed_failed_at.pop(symbol, None)
+                    seeded += 1
+                except Exception as e:
+                    if generation != self._session_generation:
+                        return
+                    self._seed_failed_at[symbol] = time.monotonic()
+                    failed += 1
+                    logger.warning("History seed failed for %s: %s", symbol, e)
+                finally:
+                    if self._seed_task is asyncio.current_task():
+                        self._seed_inflight = None
+        finally:
+            if self._seed_task is asyncio.current_task():
+                self._seed_task = None
+            if seeded or failed:
+                logger.info("History seed: %d symbol(s) seeded, %d failed", seeded, failed)
+
+    def history_complete(self, symbol: str, lookback: int) -> bool:
+        """True when *symbol*'s buffer holds the engine's history window.
+
+        Audit 2026-10-05 (C11-01): either its REST history was merged in this
+        session (REST may hold fewer than *lookback* bars for a sparse symbol;
+        the buffer then holds everything REST does), or the buffer alone holds
+        min(*lookback*, ring capacity) bars.
+        """
+        symbol = symbol.upper()
+        if symbol in self._history_seeded:
+            return True
+        buf = self._bars.get(symbol)
+        return bool(buf) and len(buf) >= max(1, min(int(lookback), self._buffer_size))
 
     # ── Internal Callbacks ────────────────────────────────────────
 

@@ -168,12 +168,17 @@ def test_guard_allows_existing_trades_incoming_trained(tmp_path):
 
 
 # ─────────────────────────────────────────────────────────────
-# 6. Existing ml_is_trained=True + incoming trades>0 → allowed
+# 6. Existing ml_is_trained=True + incoming UNTRAINED with trades>0 → blocked
+#    Audit 2026-10-05 C12-03: this used to be allowed, and it is exactly the
+#    state of an engine whose brain load failed after close_accounting restored
+#    its learner totals (untrained models, generation 0, trades > 0). Its first
+#    full save deleted the trained model files. A trained model is never
+#    replaced by an untrained one outside the break-glass triad.
 # ─────────────────────────────────────────────────────────────
 
-def test_guard_allows_existing_trained_incoming_trades(tmp_path):
+def test_guard_blocks_existing_trained_incoming_untrained_with_trades(tmp_path):
     brain = _seed_brain(tmp_path, total_trades=195, ml_trained=True)
-    brain.save(
+    saved = brain.save(
         signal_gen=_make_signal_gen(is_trained=False, feature_count=0),
         learner=_make_learner(total_trades=10),
         equity_curve=[100000.0],
@@ -181,8 +186,10 @@ def test_guard_allows_existing_trained_incoming_trades(tmp_path):
         epoch_metrics=[],
         force=False,
     )
+    assert saved is False
     m = _read_manifest(brain)
-    assert m["total_trades"] == 10
+    assert m["total_trades"] == 195
+    assert m["ml_is_trained"] is True
 
 
 # ─────────────────────────────────────────────────────────────
