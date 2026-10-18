@@ -10,6 +10,17 @@ token and intentionally fixes only low-ambiguity issues:
 
 It does not attempt to repair partial-fill accounting groups, rebuild PnL, or
 delete outbox history.  Those require a separate accounting backfill plan.
+
+Audit 2026-10-05 (C04-01): a stale order is marked ``rejected``, an accountable
+terminal status (``failed`` is not one, so it kept holding close accounting and
+the emergency inventory). Two kinds of rows are left alone: a dead letter whose
+event carries the ambiguous-acknowledgement marker (the order may be live; it is
+reported in ``ambiguous_stale_orders`` for a broker lookup), and a row the
+outbox worker is already settling (``attributes.outbox_dead_letter``). The
+status this script writes carries no broker absence proof, so it does not
+release an engine pending-entry identity; only the outbox worker's own
+finalization does. The report keys ``stale_orders_to_mark_failed`` and
+``marked_failed_order_ids`` keep their names (failed submissions).
 """
 from __future__ import annotations
 
@@ -35,6 +46,10 @@ from backend.infra.db import init_db
 from backend.infra.schemas import Order, OutboxEvent, Position, RealizedTrade
 
 CONFIRM_TOKEN = "PHASE7_DATA_INTEGRITY_REMEDIATE"
+# Audit 2026-10-05 C04-01: allowed by ck_orders_status and accountable terminal
+# (never 'failed'). The outbox's ambiguous-acknowledgement marker prefix.
+STALE_ORDER_STATUS = "rejected"
+AMBIGUOUS_ACK_PREFIX = "INTRA_BROKER_ACK"
 
 
 @dataclass
@@ -82,6 +97,7 @@ class RemediationReport:
     exact_duplicate_groups: list[ExactDuplicateGroup] = field(default_factory=list)
     relation_duplicate_groups: list[RelationDuplicateGroup] = field(default_factory=list)
     stale_accepted_orders: list[StaleAcceptedOrder] = field(default_factory=list)
+    ambiguous_stale_orders: list[StaleAcceptedOrder] = field(default_factory=list)
     exact_duplicate_rows_to_remove: int = 0
     stale_orders_to_mark_failed: int = 0
     deleted_realized_trade_ids: list[str] = field(default_factory=list)
@@ -239,7 +255,8 @@ async def _stale_accepted_orders(
     *,
     min_age: timedelta,
     now: datetime,
-) -> list[StaleAcceptedOrder]:
+) -> tuple[list[StaleAcceptedOrder], list[StaleAcceptedOrder]]:
+    """``(stale, ambiguous)``: rows safe to mark terminal, and rows that need a broker lookup."""
     failed_by_order = await _failed_outbox_by_order(session)
     result = await session.execute(
         select(Order).where(
@@ -249,6 +266,7 @@ async def _stale_accepted_orders(
         )
     )
     stale: list[StaleAcceptedOrder] = []
+    ambiguous: list[StaleAcceptedOrder] = []
     for order in result.scalars().all():
         created = _aware(order.created_at) or now
         if now - created < min_age:
@@ -256,18 +274,22 @@ async def _stale_accepted_orders(
         event = failed_by_order.get(str(order.id))
         if event is None:
             continue
-        stale.append(
-            StaleAcceptedOrder(
-                order_id=str(order.id),
-                symbol=order.symbol,
-                side=order.side,
-                qty=_decimal_key(order.qty),
-                created_at=_iso(order.created_at),
-                outbox_event_id=str(event.id),
-                last_error=(event.last_error or "")[:240],
-            )
+        if isinstance(order.attributes, dict) and "outbox_dead_letter" in order.attributes:
+            continue  # the outbox worker is settling this dead letter
+        row = StaleAcceptedOrder(
+            order_id=str(order.id),
+            symbol=order.symbol,
+            side=order.side,
+            qty=_decimal_key(order.qty),
+            created_at=_iso(order.created_at),
+            outbox_event_id=str(event.id),
+            last_error=(event.last_error or "")[:240],
         )
-    return stale
+        if (event.last_error or "").startswith(AMBIGUOUS_ACK_PREFIX):
+            ambiguous.append(row)
+        else:
+            stale.append(row)
+    return stale, ambiguous
 
 
 async def collect_report(
@@ -279,7 +301,7 @@ async def collect_report(
     now = now or datetime.now(UTC)
     rows = await _all_realized(session)
     exact_groups = _group_exact_duplicates(rows)
-    stale_orders = await _stale_accepted_orders(
+    stale_orders, ambiguous_orders = await _stale_accepted_orders(
         session,
         min_age=timedelta(hours=min_stale_order_age_hours),
         now=now,
@@ -292,6 +314,7 @@ async def collect_report(
     report.exact_duplicate_groups = exact_groups
     report.relation_duplicate_groups = _group_relation_duplicates(rows, exact_groups)
     report.stale_accepted_orders = stale_orders
+    report.ambiguous_stale_orders = ambiguous_orders
     report.exact_duplicate_rows_to_remove = sum(
         len(group.duplicate_ids) for group in exact_groups
     )
@@ -339,13 +362,13 @@ async def run_remediation(
             attrs = dict(order.attributes or {})
             attrs["phase7_data_integrity_cleanup"] = {
                 "previous_status": order.status,
-                "new_status": "failed",
+                "new_status": STALE_ORDER_STATUS,
                 "reason": "failed_outbox_no_broker_id_zero_fill",
                 "outbox_event_id": stale.outbox_event_id,
                 "cleaned_at": datetime.now(UTC).isoformat(),
             }
             order.attributes = attrs
-            order.status = "failed"
+            order.status = STALE_ORDER_STATUS
             report.marked_failed_order_ids.append(str(order.id))
 
     await session.commit()
