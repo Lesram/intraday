@@ -1,15 +1,15 @@
 # Live Audit Index
 
-Generated: 2026-10-18T18:33:28Z
+Generated: 2026-10-18T19:29:19Z
 PR: n/a
-SHA: `71d1669829`
+SHA: `fb1a9b0f2f`
 Branch: `release/combined-audit-2026-10`
 Scope: **backend_logic**
 Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **91**
+Total distinct changed files: **92**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
@@ -20,7 +20,7 @@ Category counts below partition that total. File previews show at most ten paths
 | CI | 0 | none |
 | Tests | 24 | `tests/test_apr8_patch_e_trained_state_guard.py`, `tests/test_audit_20261005_brain_crash_safety.py`, `tests/test_audit_20261005_close_accounting_unblock.py`, `tests/test_audit_20261005_outbox_dispatch_guards.py`, `tests/test_audit_20261005_session_log_hardening.py`, `tests/test_audit_20261005_surface_dispatch_lifecycle.py`, `tests/test_audit_20261005_surface_exit_safety.py`, `tests/test_audit_20261005_surface_external_close.py`, `tests/test_audit_20261005_surface_regime_isolation.py`, `tests/test_audit_20261005_surface_stream_history.py` |
 | Docs | 7 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`, `docs/runbooks/PAPER_BACKUP_RECOVERY.md`, `docs/runbooks/PAPER_UPTIME.md`, `docs/setup/AUTHENTICATION.md`, `docs/setup/QUICK_START.md` |
-| Artifacts/evidence | 30 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
+| Artifacts/evidence | 31 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/audit/v12/lint_baseline.json`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
@@ -31,6 +31,7 @@ Organism subset of Backend: **9** file(s).
 
 - `artifacts/algorithm_improvements.junit.xml`
 - `artifacts/algorithm_improvements.log`
+- `artifacts/audit/v12/lint_baseline.json`
 - `artifacts/changed_files.json`
 - `artifacts/live_process_runtime_snapshot.json`
 - `artifacts/multi_tick_state.junit.xml`

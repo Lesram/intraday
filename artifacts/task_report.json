@@ -1,13 +1,14 @@
 {
   "task_id": "combined-audit-release-2026-10",
-  "summary": "Combined audit release: PRs #37 (84df340a), #40 (310e7704, FROZEN SURFACE, contains #37), #38 (2679c4ff) and #39 (435670e5) merged onto intra-2.0-phase1 at 6a56d753 for one activation with the reviewed release helper (Way 1). Source files merged cleanly; only generated artifacts and LIVE_AUDIT_INDEX.md conflicted and were regenerated.",
-  "sha": "71d1669829e3650a8468c97da443954413b90782",
+  "summary": "Combined audit release: PRs #37 (84df340a), #40 (5cb0224e, FROZEN SURFACE, contains #37; includes the lint-ceiling update for its C11-01 history seed), #38 (2679c4ff) and #39 (435670e5) merged onto intra-2.0-phase1 at 6a56d753 for one activation with the reviewed release helper (Way 1). Source files merged cleanly; only generated artifacts and LIVE_AUDIT_INDEX.md conflicted and were regenerated.",
+  "sha": "fb1a9b0f2fd496f5088bfdd32bdead982a8084e0",
   "branch": "release/combined-audit-2026-10",
   "change_scope": "base",
   "change_ref": "6a56d753...HEAD",
   "files_changed": [
     "artifacts/algorithm_improvements.junit.xml",
     "artifacts/algorithm_improvements.log",
+    "artifacts/audit/v12/lint_baseline.json",
     "artifacts/changed_files.json",
     "artifacts/live_process_runtime_snapshot.json",
     "artifacts/multi_tick_state.junit.xml",
@@ -154,10 +155,11 @@
   "risks": [
     "9 organism file(s) changed \u2014 replay verification required",
     "Frozen-surface change via #40 (owner sign-off 2026-10-05): restarts the forward verdict clock once at activation.",
-    "Takes effect only through the release helper (release_combined.py 4abd6405); its identity check accepted this branch read-only (61 files match)."
+    "Takes effect only through the release helper; its identity check (manifest #40 head 5cb0224e) accepted this branch read-only (62 files match)."
   ],
   "follow_ups": [
     "After the install: --post-open-check after the first ticks; everyone logs in again (PR #39); SEC-02 admin password reset (helper README \u00a78); SEC-01 key rotation.",
+    "Copilot #42 follow-ups: deactivation fingerprint race (users.py), dead-letter candidate rotation (outbox_worker.py).",
     "Draft #41 and the verdict-attribution draft merge only after the install (second, smaller install)."
   ],
   "artifact_pack_status": "pass",

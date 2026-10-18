@@ -1,10 +1,11 @@
 {
   "scope": "base",
   "ref": "6a56d753...HEAD",
-  "total": 91,
+  "total": 92,
   "all": [
     "artifacts/algorithm_improvements.junit.xml",
     "artifacts/algorithm_improvements.log",
+    "artifacts/audit/v12/lint_baseline.json",
     "artifacts/changed_files.json",
     "artifacts/live_process_runtime_snapshot.json",
     "artifacts/multi_tick_state.junit.xml",
