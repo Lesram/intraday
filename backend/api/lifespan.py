@@ -537,8 +537,16 @@ async def _shut_brain_save(app, ctx: dict) -> None:
     scheduler = ctx.get("organism_scheduler")
     if scheduler and getattr(scheduler, "_engine", None) is not None:
         try:
-            scheduler._engine.force_save_brain()
-            logger.info("Brain saved at shutdown (lifespan defensive save)")
+            result = scheduler._engine.force_save_brain()
+            # Audit 2026-10-05 C12-06: force_save_brain reports a save that did
+            # not happen as success False (it does not raise).
+            if isinstance(result, dict) and result.get("success") is False:
+                logger.error(
+                    "Defensive brain save at shutdown did NOT persist: %s",
+                    result.get("error"),
+                )
+            else:
+                logger.info("Brain saved at shutdown (lifespan defensive save)")
         except Exception as e:
             logger.error(f"Defensive brain save failed at shutdown: {e}")
 
