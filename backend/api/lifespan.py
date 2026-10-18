@@ -806,7 +806,10 @@ async def _sync_orders(app):
 
         from backend.infra.repositories.orders import OrdersRepo
         from backend.integrations.alpaca_broker import get_alpaca_broker_client
-        from backend.integrations.alpaca_stream import apply_order_fill_snapshot
+        from backend.integrations.alpaca_stream import (
+            apply_order_fill_snapshot,
+            log_lot_accounting_discrepancy,
+        )
 
         logger.info("Starting initial order sync from Alpaca...")
         broker_client = get_alpaca_broker_client()
@@ -845,7 +848,10 @@ async def _sync_orders(app):
 
         async with app.state.sessionmaker() as session:
             repo = OrdersRepo(session)
-            for ao in alpaca_orders:
+            # Apply oldest first (the page is fetched newest first): a close
+            # replayed before its opening fill would be recorded as an
+            # unmatched lot close instead of consuming that opening lot.
+            for ao in reversed(alpaca_orders):
                 broker_id = ao.get("id")
                 db_order = await repo.get_by_broker_order_id(broker_id)
                 if not db_order:
@@ -868,6 +874,7 @@ async def _sync_orders(app):
                         broker_order_data=ao,
                     )
                     await session.commit()
+                    log_lot_accounting_discrepancy(accounting, ingress="startup_order_sync")
                 except (
                     SQLAlchemyError,
                     ValueError,

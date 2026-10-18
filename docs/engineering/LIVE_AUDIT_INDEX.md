@@ -1,36 +1,75 @@
 # Live Audit Index
 
-Generated: 2026-10-05T13:05:50Z
+Generated: 2026-10-06T00:34:27Z
 PR: n/a
-SHA: `1c5be55965`
-Branch: `fix/outbox-dispatch-guards`
+SHA: `8512effe5f`
+Branch: `fix/close-accounting-unblock`
 Scope: **backend_logic**
-Change scope: `task` (`HEAD`)
+Change scope: `base` (`6a56d753...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **2**
+Total distinct changed files: **41**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 1 | `backend/integrations/alpaca_outbox.py` |
-| Scripts | 0 | none |
+| Backend | 6 | `backend/api/lifespan.py`, `backend/infra/outbox_worker.py`, `backend/infra/repositories/orders.py`, `backend/integrations/alpaca_stream.py`, `backend/organism/live_engine_fills.py`, `backend/services/order_recovery_service.py` |
+| Scripts | 1 | `scripts/runtime/write_runtime_snapshot.py` |
 | CI | 0 | none |
-| Tests | 1 | `tests/test_audit_20261005_outbox_dispatch_guards.py` |
-| Docs | 0 | none |
-| Artifacts/evidence | 0 | none |
+| Tests | 2 | `tests/test_audit_20261005_close_accounting_unblock.py`, `tests/test_fill_accounting_postgres.py` |
+| Docs | 3 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md`, `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md` |
+| Artifacts/evidence | 29 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
 
-Organism subset of Backend: **0** file(s).
+Organism subset of Backend: **1** file(s).
 
 ### Full changed-file list
 
-- `backend/integrations/alpaca_outbox.py`
-- `tests/test_audit_20261005_outbox_dispatch_guards.py`
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/resolved_config_snapshot.json`
+- `artifacts/runtime_config_snapshot.json`
+- `artifacts/runtime_defaults_snapshot.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/spec_drift.log`
+- `artifacts/spec_drift_summary.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
+- `backend/api/lifespan.py`
+- `backend/infra/outbox_worker.py`
+- `backend/infra/repositories/orders.py`
+- `backend/integrations/alpaca_stream.py`
+- `backend/organism/live_engine_fills.py`
+- `backend/services/order_recovery_service.py`
+- `docs/architecture/mapss.md`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
+- `docs/engineering/OPERATIONS_EVIDENCE_RELEASE.md`
+- `scripts/runtime/write_runtime_snapshot.py`
+- `tests/test_audit_20261005_close_accounting_unblock.py`
+- `tests/test_fill_accounting_postgres.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -71,4 +110,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 1 backend runtime file(s) changed — require targeted verification
+- 1 organism file(s) changed — require replay verification

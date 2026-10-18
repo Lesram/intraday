@@ -34,6 +34,8 @@ def _build_defaults_snapshot() -> dict:
         from backend.organism.entry_freshness import ENTRY_TIMEFRAME, MAX_ENTRY_BAR_AGE_SECONDS
         from backend.integrations.alpaca_market_data_stream import AlpacaMarketDataStream
         from backend.integrations import alpaca_outbox as _outbox_dispatch
+        from backend.integrations import alpaca_stream as _fill_ingestion
+        from backend.organism import live_engine_fills as _fill_lookup
         from backend.organism.streaming_data_provider import StreamingDataProvider
         from backend.organism import streaming_data_provider as _provider_module
         from backend.organism import live_engine as _engine_module
@@ -169,6 +171,49 @@ def _build_defaults_snapshot() -> dict:
                 "failed_guard_read": "not_sent_event_retried",
                 "refusal_record": "order_attributes_dispatch_refusal_and_event_dead_lettered_in_one_transaction",
                 "page": "critical_after_commit_duplicate_flat_exit_has_its_own_headline",
+            },
+            # Audit 2026-10-05 C08-01: which unresolved or replaced orders hold an
+            # identified lifetime's exact close accounting (policy id unchanged).
+            "close_accounting_holds": {
+                "session_bounded_tifs": sorted(_fill_lookup.SESSION_BOUNDED_TIFS),
+                "session_cutoff_slack_seconds": int(_fill_lookup.SESSION_CUTOFF_SLACK.total_seconds()),
+                "session_end_slack_seconds": int(_fill_lookup.SESSION_END_SLACK.total_seconds()),
+                "session_search_days": _fill_lookup._SESSION_SEARCH_DAYS,
+                "session_end": "20:00_et_of_first_nyse_trading_day_whose_regular_close_is_after_basis_plus_cutoff_slack",
+                "acknowledged_basis": "max(submitted_at, updated_at)",
+                "unacknowledged_basis": "submitted_at",
+                "unacknowledged_limit": "ambiguous_submission_without_persisted_broker_id_untracked_flat_to_flat_backstop",
+                "gtc_or_unknown_tif": "hold_until_terminal",
+                "in_lifetime": "always_hold",
+                "late_pre_entry_fill": "hold_unbounded",
+                "replaced_day_predecessor": "session_bounded_assumes_successor_kept_session_bounded_tif",
+                "hold_reason": "ambiguous_order:<id>|replacement_lineage_unverified",
+                "hold_warning": "once_per_new_reason_cleared_on_resolution",
+                "zero_fill_cleanup_scan": "orders_submitted_from_entry_to_pending_close_observed_at_else_unbounded",
+            },
+            # Audit 2026-10-05 C07-01: lot-ledger effects of broker-confirmed fills.
+            "fill_lot_accounting": {
+                "unmatched_close": "persist_summary_execution_and_matched_lots_record_attributes.lot_accounting",
+                "lot_matching": "owner_scoped_fifo",
+                "deferral": "close_retryable_while_same_owner_opening_in_recovery_scope_unresolved",
+                "deferral_window": "opening_submitted_at_or_before_close_and_at_most_grace_before_it",
+                "lot_ordering_grace_seconds": int(_fill_ingestion.LOT_ORDERING_GRACE.total_seconds()),
+                "lot_ordering_max_age_seconds": int(_fill_ingestion.LOT_ORDERING_MAX_AGE.total_seconds()),
+                "deferral_escalation": "critical_once_per_close_deferral_episode_process_local",
+                "deferral_escalate_after_seconds": int(
+                    _fill_ingestion.LOT_DEFERRAL_ESCALATE_AFTER.total_seconds()
+                ),
+                "late_netting": "new_opening_lot_closes_owner_unmatched_closes_submitted_at_or_after_it_within_grace_fifo",
+                "late_match_price": "close_unmatched_vwap",
+                "record_statuses": ["unmatched", "matched_late"],
+                "record_decimal_places": -_fill_ingestion._LOT_QUANTUM.as_tuple().exponent,
+                "ordering_basis": "submission_time_not_broker_fill_time",
+                "concurrent_ingestion": "netting_locks_every_window_close_row_order_rows_for_no_key_update_fifo_locks_lots_only",
+                "convergence_limit": "cross_lifetime_out_of_order_round_trips_same_owner_symbol_manual_orders_only",
+                "page": "critical_after_commit_all_five_ingress",
+                "late_match_log": "warning_after_commit_all_five_ingress",
+                "startup_page_order": "oldest_first_after_persisted_order_recovery",
+                "transient_failure": "whole_order_rolled_back_and_retried",
             },
             "runtime_config_hash_env": list(_runtime_identity.RUNTIME_HASH_ENV),
             "entry_freshness": {
@@ -495,6 +540,8 @@ def _build_resolved_config_snapshot() -> dict:
         "eod_session": defaults.get("eod_session"),
         "daily_loss_baseline": defaults.get("daily_loss_baseline"),
         "order_dispatch_guards": defaults.get("order_dispatch_guards"),
+        "close_accounting_holds": defaults.get("close_accounting_holds"),
+        "fill_lot_accounting": defaults.get("fill_lot_accounting"),
         "runtime_config_hash_env": defaults.get("runtime_config_hash_env"),
         "entry_freshness": defaults.get("entry_freshness"),
         "drawdown_kill_pct": _resolve_float(
