@@ -150,6 +150,71 @@ Therefore:
   forward corpus's ACTUAL fills, never synthetic/pre-cutoff/re-derived;
   (4) momentum's t is computed regime-conditionally.
 
+### Strategy attribution while ML is isolated (audit O2-02, 2026-10)
+- **Problem:** the ledger's `entry_source` comes from
+  `live_engine._entry_identity_from_size`. It is `breakout` only when the sized
+  `predicted_return` is below 0.003; otherwise `alpha+breakout` once
+  `breakout_score` is at least 0.4. While ML is isolated every pure breakout
+  records `predicted_return` of at least 0.01325, so every pure breakout is
+  labelled `alpha+breakout`. The gate mapped that label to momentum: the momentum
+  verdict counted pure breakouts (about half of the paper momentum trend slice
+  since June 2026) and the breakout verdict could never fill.
+- **Rule** (`phase2_gate.attribute_trades`, id `ml_isolation_signature_v1`). It
+  runs inside `load_forward_corpus`, so `scripts/phase2_gate.py`,
+  `scripts/phase3_attribution_report.py` and the daily evidence pack
+  (`scripts/ops/paper_daily_evidence.py`) all use it:
+  - `alpha` → momentum. The label needs `breakout_score` below 0.4, and no pure
+    breakout has that (they enter at composite 0.55 or more).
+  - `breakout` → breakout; `orb`/`orb_sip` → orb; `mr`/`mean_reversion` →
+    mean_reversion. These labels keep their meaning.
+  - `alpha+breakout` → split by the recorded `predicted_return`, but only on rows
+    that pass the isolation test (`ml_spoke` recorded false):
+    - `predicted_return` = 0.01 (±1e-9) → momentum (source `alpha`);
+    - `predicted_return` in [0.01325, 0.0200] (±1e-9) → breakout (source
+      `pure_breakout`);
+    - anything else (`ml_spoke` true or not recorded, `predicted_return` missing
+      or outside both values) → `ambiguous`.
+- **Isolation test, per row: `ml_spoke` is recorded false.** That means ML did
+  not produce the row's `predicted_return`. While ML is isolated every main-book
+  row passes the test: the alpha scanner drops ML signals and the pure-breakout
+  path uses its heuristic. `predicted_return` is then one of two fixed engine
+  values: 0.01 for an alpha candidate (`c.ml_signal.predicted_return if
+  c.ml_signal else 0.01`) and `0.005 + 0.015 × composite` for a pure breakout,
+  with composite in [0.55, 1.0], so 0.01325 to 0.0200. The two ranges do not
+  overlap. The ledger CSV rounds to 6 decimals, so the 1e-9 tolerance matches
+  values exactly. `ml_spoke` has been persisted since the 2026-06-11
+  measurement-integrity audit, well before the active forward cutoffs.
+- **State `AMBIGUOUS_ATTRIBUTION`:** an `ambiguous` row could be alpha or a pure
+  breakout. Any such row in the slice it could join (momentum: trend regimes
+  only; breakout: all regimes) makes that strategy's state
+  `AMBIGUOUS_ATTRIBUTION`. No statistic is computed, so the state is never PASS
+  or FAIL and carries no Rule A capital authority. orb and mean_reversion are not
+  affected. Looks, boundaries, the cost assumptions and the other states are
+  unchanged.
+- **Outputs:** every gate result carries `n_by_source` (`alpha`,
+  `pure_breakout`, `ambiguous`; orb and mean_reversion add their own key) and
+  `attribution_rule`. Both CLIs print the corpus split and n per source for each
+  strategy. The daily pack carries the same fields in `strategy_gate`. The
+  phase-3 capital section lists trades that cannot be split as strategy
+  `ambiguous`.
+- **Limits:** the split works only while ML is isolated and the engine values
+  stay as they are. `tests/test_phase2_gate.py::test_isolation_signatures_match_the_engine_source`
+  pins the expressions. If ML influence returns, `alpha+breakout` rows with
+  `ml_spoke` true are ambiguous, and the momentum and breakout verdicts stay
+  withheld until the root fix lands. While ML is isolated the engine cannot
+  produce the `breakout` label (both values are above 0.003).
+- **Root fix (separate, owner-signed frozen-surface change):** label pure
+  breakouts at the source by setting `entry_source_override='breakout'` and
+  persisting `fw_strategy` in the pure-breakout candidate inside
+  `_live_tick_inner` (hashed as `entry_gates_dispatch`; this resets the forward
+  clock). The same change decides the defensive bad-regime filter coverage. The
+  filter keys on the inferred label (`ORGANISM_BAD_REGIME_FILTER_SOURCES`
+  defaults to `alpha+breakout`), so once pure breakouts are labelled `breakout`
+  they are no longer blocked in chop/trending_down unless `breakout` is added to
+  the filter sources. Do not change the unhashed helpers
+  `_entry_identity_from_size` or `candidate_shadow_telemetry.infer_entry_source`
+  quietly instead.
+
 ## The prior (so the timeline isn't a surprise)
 Honest forward estimator from live trend trades: **t≈1.0 at n≈18**. Clearing
 t≥2 needs roughly **50–70 more OOS trend trades** — ~1–2 quarters at the current

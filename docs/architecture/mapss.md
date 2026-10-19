@@ -2086,6 +2086,25 @@ coverage, and the authoritative checkpoint. Any unresolved integrity issue
 blocks exposure of a strategy verdict. Its primary modeled cost is explicitly
 6 bps; runtime cost and the registered statistical thresholds remain unchanged.
 
+### Verdict attribution while ML is isolated (audit O2-02)
+
+The engine labels every pure breakout `alpha+breakout` while ML is isolated:
+its `predicted_return` is `0.005 + 0.015 × composite`, at least 0.01325, and
+the `breakout` label needs less than 0.003. The verdict instrument
+(`backend/organism/phase2_gate.py`: the gate CLI, the phase-3 attribution
+report and this daily pack) therefore no longer maps that label to momentum. It
+splits each `alpha+breakout` row whose `ml_spoke` is recorded false by its
+`predicted_return`. Exactly 0.01 means alpha (momentum); 0.01325 to 0.0200
+means pure breakout. Any other row with that label is `ambiguous`, and an
+ambiguous trade makes the momentum and breakout states `AMBIGUOUS_ATTRIBUTION`
+(never PASS or FAIL). Each gate reports `n_by_source` (alpha / pure_breakout /
+ambiguous). Entry labelling, gates, the bad-regime filter and the frozen surface
+are unchanged. Labelling pure breakouts at the source (which also decides the
+bad-regime filter coverage that depends on the label) is a separate
+owner-signed frozen-surface change. Full rule:
+`docs/architecture/phase2_precondition.md`, "Strategy attribution while ML is
+isolated".
+
 ---
 
 ## 14. PHASE 11: RETRAIN & EVOLVE

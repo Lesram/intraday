@@ -126,3 +126,75 @@ raise SystemExit(module.main())
             assert "exp=+1.9000" in result.stdout  # gross mean 2.5 minus 0.6
     assert (freeze.read_bytes(), trades.read_bytes()) == before
     assert os.environ.get("ORGANISM_COST_BPS") == parent_cost
+
+
+def _block(output, header):
+    """Lines of the phase2_gate CLI block that starts with `header`."""
+    lines = output.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith(header))
+    return [line.strip() for line in lines[start + 1:start + 4]]
+
+
+def test_reports_print_n_per_source_and_withhold_ambiguous_verdicts(tmp_path, monkeypatch, capsys):
+    # Audit O2-02: while ML is isolated a pure breakout is recorded as
+    # 'alpha+breakout' with predicted_return 0.005 + 0.015 * composite
+    # (0.01325-0.0200); alpha trades carry exactly 0.01. Both with ml_spoke False.
+    freeze = tmp_path / "param_freeze.json"
+    freeze.write_text(json.dumps({"FROZEN_AT": "2026-08-03T14:00:00+00:00"}))
+    trades = tmp_path / "trade_history.csv"
+    ledger = pd.DataFrame({
+        "closed_at": [f"2026-08-03T14:0{m}:00+00:00" for m in range(1, 6)],
+        "entry_source": ["alpha", "alpha+breakout", "alpha+breakout", "alpha+breakout", "breakout"],
+        "regime_at_entry": ["trending_up", "trending_up", "trending_up", "low_vol", "chop"],
+        "predicted_return": [0.01, 0.01, 0.013544, 0.0175, 0.01],
+        "ml_spoke": [False] * 5,
+        "pnl": [2.0, 3.0, -1.0, 1.0, 0.5], "entry_price": [100.0] * 5, "shares": [10] * 5,
+    })
+    ledger.to_csv(trades, index=False)
+    for module in (gate_report, attribution):
+        monkeypatch.setattr(module, "FREEZE", freeze)
+        monkeypatch.setattr(module, "TRADES", trades)
+    monkeypatch.setattr(attribution, "EVIDENCE", tmp_path / "no-shadow-feed.jsonl")
+    split = "n per source: alpha=2 pure_breakout=3 ambiguous=0 orb=0 mean_reversion=0"
+
+    assert gate_report.main() == 0
+    output = capsys.readouterr().out
+    assert "forward trades=5" in output and split in output
+    assert _block(output, "momentum")[:2] == ["state=INSUFFICIENT  n=2  look=None  t=None",
+                                             "n per source: alpha=2 pure_breakout=0 ambiguous=0"]
+    assert _block(output, "breakout")[:2] == ["state=INSUFFICIENT  n=3  look=None  t=None",
+                                             "n per source: alpha=0 pure_breakout=3 ambiguous=0"]
+    assert attribution.main() == 0
+    output = capsys.readouterr().out
+    assert "forward corpus: 5 trades" in output and split in output
+    capital = {tuple(line.split()[:2]): line for line in output.splitlines() if "exp=" in line}
+    assert "n=2 " in capital[("momentum", "trending_up")]
+    assert "n=1 " in capital[("breakout", "trending_up")] and "n=1 " in capital[("breakout", "low_vol")]
+    gates = {line.split()[0]: line for line in output.splitlines() if " state=" in line}
+    assert "n=2  [n per source: alpha=2 pure_breakout=0 ambiguous=0]" in gates["momentum"]
+    assert "n=3  [n per source: alpha=0 pure_breakout=3 ambiguous=0]" in gates["breakout"]
+
+    # An 'alpha+breakout' trade ML spoke on cannot be split: both verdicts withheld.
+    ledger.loc[len(ledger)] = ["2026-08-03T14:06:00+00:00", "alpha+breakout", "high_vol",
+                               0.0142, True, 1.0, 100.0, 10]
+    ledger.to_csv(trades, index=False)
+    assert gate_report.main() == 0
+    output = capsys.readouterr().out
+    assert "n per source: alpha=2 pure_breakout=3 ambiguous=1 orb=0 mean_reversion=0" in output
+    momentum, breakout = _block(output, "momentum"), _block(output, "breakout")
+    assert momentum[0] == "state=AMBIGUOUS_ATTRIBUTION  n=2  look=None  t=None"
+    assert momentum[1] == "n per source: alpha=2 pure_breakout=0 ambiguous=1"
+    assert momentum[2].startswith("1 'alpha+breakout' trade(s) could be alpha or pure breakout")
+    assert breakout[0] == "state=AMBIGUOUS_ATTRIBUTION  n=3  look=None  t=None"
+    assert breakout[1] == "n per source: alpha=0 pure_breakout=3 ambiguous=1"
+    assert "state=INSUFFICIENT" in _block(output, "orb")[0]
+    assert attribution.main() == 0
+    output = capsys.readouterr().out
+    assert any(line.split()[:2] == ["ambiguous", "high_vol"] and "n=1" in line
+               for line in output.splitlines())
+    gates = {line.split()[0]: line for line in output.splitlines() if " state=" in line}
+    assert "state=AMBIGUOUS_ATTRIBUTION n=2  [n per source: alpha=2 pure_breakout=0 ambiguous=1]" \
+        in gates["momentum"]
+    assert "state=AMBIGUOUS_ATTRIBUTION n=3  [n per source: alpha=0 pure_breakout=3 ambiguous=1]" \
+        in gates["breakout"]
+    assert "PASS" not in output and "FAIL" not in output

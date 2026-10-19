@@ -4,9 +4,12 @@
 Three sections:
   1. CAPITAL (forward corpus): n / costed net expectancy / t / clustered-t
      per strategy per regime, strictly-after-FROZEN_AT trades only — the
-     same corpus the verdict gate consumes.
+     same corpus the verdict gate consumes. While ML is isolated,
+     'alpha+breakout' trades are split by their recorded predicted_return
+     (audit O2-02); trades that cannot be split are listed as 'ambiguous'.
   2. GATE STATES: the phase2_gate verdict per strategy (regime-conditional
-     momentum), i.e. what would/does route capital (Rule A).
+     momentum), i.e. what would/does route capital (Rule A), with n per
+     source; AMBIGUOUS_ATTRIBUTION withholds the momentum/breakout verdict.
   3. SHADOW: framework shadow-signal counts per strategy per regime from the
      strategy evidence feed (fw_<name>_shadow) — the un-routed strategies'
      accumulating comparison data.
@@ -24,7 +27,8 @@ import pandas as pd
 from backend.organism.confidence_lab import _cluster_tstat, _tstat  # CR + iid t
 from backend.organism.freeze_contract import load_active_freeze
 from backend.organism.phase2_gate import (
-    LOOKS, MOMENTUM_TREND_REGIMES, gate_for_strategy, load_forward_corpus,
+    AMBIGUOUS_ATTRIBUTION, LOOKS, MOMENTUM_TREND_REGIMES, attribution_counts, format_n_by_source,
+    gate_for_strategy, load_forward_corpus,
 )
 
 FREEZE = Path("artifacts/phase2/param_freeze.json")
@@ -46,6 +50,7 @@ def main() -> int:
     corpus = (load_forward_corpus(str(TRADES), frozen_at)
               if TRADES.exists() else pd.DataFrame())
     print(f"\n[1] CAPITAL — forward corpus: {len(corpus)} trades")
+    print(f"  n per source: {format_n_by_source(attribution_counts(corpus))}")
     if len(corpus):
         for (strat, regime), sub in corpus.groupby(["strategy", "regime"]):
             net = sub["net_pnl"].to_numpy(dtype=float)
@@ -60,7 +65,10 @@ def main() -> int:
     for strat, regimes in [("momentum", MOMENTUM_TREND_REGIMES), ("breakout", None),
                            ("mean_reversion", None), ("orb", None)]:
         r = gate_for_strategy(corpus, strat, regimes)
-        print(f"  {strat:16s} state={r['state']:14s} n={r['n']}")
+        print(f"  {strat:16s} state={r['state']:14s} n={r['n']}  "
+              f"[n per source: {format_n_by_source(r['n_by_source'])}]")
+        if r["state"] == AMBIGUOUS_ATTRIBUTION:
+            print(f"    {r['note']}")
 
     print("\n[3] SHADOW — framework un-routed signal accumulation")
     if EVIDENCE.exists():

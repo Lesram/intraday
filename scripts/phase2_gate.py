@@ -6,6 +6,11 @@ forward-only corpus (trades strictly after FROZEN_AT), and prints the gate state
 per strategy. Expected output for a long time: INSUFFICIENT — the corpus fills
 from zero at the freeze. This is the deliverable: a trustworthy instrument that
 currently says "not yet", not an answer.
+
+It also prints n per source (alpha, pure_breakout, ambiguous): while ML is
+isolated, 'alpha+breakout' trades are split by their recorded predicted_return
+(audit O2-02, phase2_gate.attribute_trades); a trade that cannot be split makes
+the momentum and breakout states AMBIGUOUS_ATTRIBUTION.
 """
 from __future__ import annotations
 
@@ -13,7 +18,8 @@ from pathlib import Path
 
 from backend.organism.freeze_contract import load_active_freeze
 from backend.organism.phase2_gate import (
-    LOOKS, MOMENTUM_TREND_REGIMES, gate_for_strategy, load_forward_corpus,
+    ATTRIBUTION_RULE, LOOKS, MOMENTUM_TREND_REGIMES, attribution_counts, format_n_by_source,
+    gate_for_strategy, load_forward_corpus,
 )
 
 FREEZE = Path("artifacts/phase2/param_freeze.json")
@@ -34,6 +40,9 @@ def main() -> int:
     print("PHASE-2 VERDICT GATE STATUS")
     print("=" * 66)
     print(f"FROZEN_AT={frozen_at}  forward trades={len(corpus)}  looks={LOOKS}")
+    print(f"n per source: {format_n_by_source(attribution_counts(corpus))}")
+    print(f"    attribution {ATTRIBUTION_RULE}: 'alpha+breakout' split by predicted_return "
+          "while ML is isolated")
     print("-" * 66)
     # momentum is regime-conditional (trend slice); the rest unconditional.
     for strat, regimes in [("momentum", MOMENTUM_TREND_REGIMES), ("breakout", None),
@@ -42,6 +51,7 @@ def main() -> int:
         tag = "" if regimes is None else f" [trend slice: {sorted(regimes)}]"
         print(f"{strat:16s}{tag}")
         print(f"    state={r['state']}  n={r['n']}  look={r['look']}  t={r['t']}")
+        print(f"    n per source: {format_n_by_source(r['n_by_source'])}")
         if r.get("note"):
             print(f"    {r['note']}")
     print("=" * 66)

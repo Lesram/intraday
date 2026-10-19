@@ -275,6 +275,14 @@ def approved_baseline(inputs: dict[str, bytes], activation: dict, ledger: list[d
 
 
 def native_gates(ledger_bytes: bytes, cutoff: str) -> dict:
+    """Registered gate per strategy on the forward corpus at the primary 6 bps.
+
+    Each result carries n_by_source (alpha / pure_breakout / ambiguous). While ML
+    is isolated, 'alpha+breakout' trades are attributed by their recorded
+    predicted_return (audit O2-02, phase2_gate.attribute_trades); a trade that
+    cannot be attributed makes the momentum and breakout states
+    AMBIGUOUS_ATTRIBUTION, never PASS or FAIL.
+    """
     from backend.organism.phase2_gate import MOMENTUM_TREND_REGIMES, gate_for_strategy, load_forward_corpus
     with tempfile.TemporaryDirectory(prefix="intra-evidence-corpus-") as temporary:
         path = Path(temporary) / "trades.csv"
