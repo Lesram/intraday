@@ -13,7 +13,7 @@ import pytest
 
 from backend.organism.costing import DEFAULT_COST_BPS, apply_costs
 from backend.organism.phase2_gate import (
-    FAIL, INSUFFICIENT, LOOKS, MOMENTUM_TREND_REGIMES, PASS, Z_BOUNDARY, _STRATEGY_MAP,
+    FAIL, INSUFFICIENT, LOOKS, MOMENTUM_TREND_REGIMES, PASS, Z_BOUNDARY, attribute_trades,
     cluster_robust_t, evaluate_gate, gate_for_strategy, load_forward_corpus, null_simulation,
 )
 
@@ -353,7 +353,7 @@ def _pre_review_load_forward_corpus(path, frozen_at, cost_bps=DEFAULT_COST_BPS):
         return pd.DataFrame(columns=["strategy", "regime", "session", "net_pnl", "closed_at"])
     df["closed_at"] = closed[df.index]
     df["session"] = df["closed_at"].dt.date.astype(str)
-    df["strategy"] = df["entry_source"].map(_STRATEGY_MAP)
+    df["strategy"] = attribute_trades(df)  # O2-02: the loader's attribution; only the artifact rule differs
     df = df[df["strategy"].notna()]
     df["net_pnl"] = apply_costs(df, cost_bps)["net_pnl"]
     return df[["strategy", "regime_at_entry", "session", "net_pnl", "closed_at"]].rename(
