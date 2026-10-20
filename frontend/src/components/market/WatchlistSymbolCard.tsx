@@ -40,6 +40,9 @@ const WatchlistSymbolCard: React.FC<WatchlistSymbolCardProps> = ({
   };
 
   const quote = quotes?.[symbol.symbol];
+  const price = quote?.price;
+  const change = quote?.change;
+  const changePercent = quote?.changePercent;
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,18 +85,21 @@ const WatchlistSymbolCard: React.FC<WatchlistSymbolCardProps> = ({
               <Text strong style={{ fontSize: compact ? 14 : 16 }}>
                 {symbol.symbol}
               </Text>
-              {quote && (
+              {/* Audit 2026-10-05 A8-01: price/change can be null; render numbers only. */}
+              {typeof price === 'number' && (
                 <Space size="small">
                   <Text style={{ fontSize: compact ? 12 : 14 }}>
-                    ${quote.price.toFixed(2)}
+                    ${price.toFixed(2)}
                   </Text>
-                  <Text
-                    type={quote.change >= 0 ? 'success' : 'danger'}
-                    style={{ fontSize: compact ? 11 : 13 }}
-                  >
-                    {quote.change >= 0 ? '+' : ''}
-                    {quote.changePercent.toFixed(2)}%
-                  </Text>
+                  {typeof change === 'number' && typeof changePercent === 'number' && (
+                    <Text
+                      type={change >= 0 ? 'success' : 'danger'}
+                      style={{ fontSize: compact ? 11 : 13 }}
+                    >
+                      {change >= 0 ? '+' : ''}
+                      {changePercent.toFixed(2)}%
+                    </Text>
+                  )}
                 </Space>
               )}
             </Space>

@@ -6,6 +6,21 @@ Notes:
 - The default mode comes from the canonical settings (AppSettings.trading_execution_mode).
 - The override is process-local (per worker). In multi-worker deployments, use a
   shared store (DB/Redis) or restart all workers with updated env.
+- Audit 2026-10-05 A3-01: the override governs manual orders only. The outbox
+  worker dispatches the organism engine's own orders (attributes.source ==
+  'organism') under the configured mode (``default_mode``), never the
+  override. In shadow and dry_run nothing is sent and nothing is simulated:
+  the order row is finalized 'rejected' with zero fill and
+  attributes.execution_mode.
+- Setting the override is refused while the research policy lock is on
+  (``RESEARCH_POLICY_LOCKED``, hard-coded True for the research period), so the
+  switch is disabled for the whole research period. Clearing it, which can only
+  return to the configured mode, stays allowed.
+- PUT /admin/trading/execution-mode (the setter's only caller) also refuses it
+  whenever the process hosts an organism scheduler, running or not, because the
+  engine evaluates the effective mode whenever it is constructed (process start,
+  POST /settings/restart-engine). That check needs ``app.state``, so it lives in
+  the route.
 """
 
 from __future__ import annotations
@@ -62,6 +77,36 @@ def _normalize_mode(mode: str) -> str:
     return mode
 
 
+def normalize_trading_execution_mode(mode: str) -> str:
+    """Public alias of the mode validation (raises ValueError for unknown modes)."""
+    return _normalize_mode(mode)
+
+
+class ExecutionModeOverrideRefused(RuntimeError):
+    """The runtime override cannot be set now (audit 2026-10-05 A3-01)."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+def override_refusal() -> ExecutionModeOverrideRefused | None:
+    """Why setting the runtime override is refused for every caller, or None.
+
+    Audit 2026-10-05 A3-01: refused while the research policy lock is on.
+    """
+    from backend.organism import research_policy
+
+    if research_policy.RESEARCH_POLICY_LOCKED:
+        return ExecutionModeOverrideRefused(
+            "research_policy_locked",
+            "The execution-mode override is disabled while the research policy lock is on "
+            f"({research_policy.RESEARCH_POLICY_REASON}).",
+        )
+    return None
+
+
 def _build_state(effective_mode: str) -> TradingExecutionModeState:
     settings = get_settings()
     default_mode = getattr(settings, "trading_execution_mode", "execute")
@@ -107,8 +152,20 @@ def get_trading_execution_mode() -> TradingExecutionModeState:
 
 
 def set_trading_execution_mode_override(mode: str, *, actor: str) -> TradingExecutionModeState:
-    """Set a process-local override for the trading execution mode."""
+    """Set a process-local override for the trading execution mode.
+
+    Raises ``ExecutionModeOverrideRefused`` while the research policy lock is on.
+    """
     normalized = _normalize_mode(mode)
+    refusal = override_refusal()
+    if refusal is not None:
+        logger.warning(
+            "Trading execution mode override refused",
+            actor=actor,
+            mode=normalized,
+            reason=refusal.code,
+        )
+        raise refusal
     now = datetime.now(UTC)
 
     with _lock:

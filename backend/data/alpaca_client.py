@@ -31,7 +31,9 @@ try:
     from alpaca.data.live import CryptoDataStream, StockDataStream
     from alpaca.data.requests import (
         CryptoBarsRequest,
+        CryptoLatestBarRequest,
         StockBarsRequest,
+        StockLatestBarRequest,
         StockLatestQuoteRequest,
     )
     from alpaca.data.timeframe import TimeFrame
@@ -836,13 +838,18 @@ class AlpacaClient:
         Returns:
             Current price or None if not available
         """
+        # Audit 2026-10-05 A8-01: the latest-bar calls below passed
+        # symbol_or_symbols= straight to alpaca-py 0.43 methods that take a
+        # request object, so they raised TypeError (swallowed) and the fallback
+        # never ran. They now build the request objects. This method is
+        # synchronous; async callers must run it off the event loop.
         try:
             self._rate_limit()
 
             if "/" in symbol:
                 # Crypto - use latest bar
                 bars = self.crypto_data_client.get_crypto_latest_bar(
-                    symbol_or_symbols=symbol
+                    CryptoLatestBarRequest(symbol_or_symbols=symbol)
                 )
                 if symbol in bars:
                     return float(bars[symbol].close)
@@ -861,7 +868,9 @@ class AlpacaClient:
                     pass
                 # Fallback: try latest bar close
                 try:
-                    bars = self.stock_data_client.get_stock_latest_bar(symbol_or_symbols=symbol)
+                    bars = self.stock_data_client.get_stock_latest_bar(
+                        StockLatestBarRequest(symbol_or_symbols=symbol)
+                    )
                     if symbol in bars:
                         return float(bars[symbol].close)
                 except Exception:

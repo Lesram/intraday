@@ -10,13 +10,25 @@
   - `true` = use Alpaca paper endpoint
   - `false` = use Alpaca live endpoint
 - `TRADING_EXECUTION_MODE`:
-  - `shadow` = do not submit to broker; orders are recorded and marked `shadow`
+  - `shadow` = do not submit to broker; the order row is finalized as `rejected`
+    with zero fill and `attributes.execution_mode = "shadow"`, and its outbox event
+    is marked sent
   - `execute` = normal behavior (submits to broker; paper/live controlled by `ALPACA_PAPER`)
-  - `dry_run` = simulate broker submission (no Alpaca call)
+  - `dry_run` = same as `shadow` (no Alpaca call, no simulated fill), recorded with
+    `attributes.execution_mode = "dry_run"`
 
 Notes:
-- `TRADING_EXECUTION_MODE=paper` or `live` is treated as `execute`.
-- `USE_MOCK_BROKER` (legacy) forces the outbox worker to simulate broker responses.
+- `TRADING_EXECUTION_MODE=paper` or `live` is treated as `execute`. A missing or
+  unrecognized value resolves to `shadow` (fail closed).
+- There is no `shadow` order status: the database status constraint does not allow
+  it, so non-executed orders are recorded as `rejected` (audit 2026-10-05 A3-01).
+- Each organism order that a `shadow`/`dry_run` configuration does not send is
+  logged at ERROR ("Organism order NOT sent to the broker", with the raw
+  `TRADING_EXECUTION_MODE` value), so a host that fell back to the default `shadow`
+  shows up in the logs before the close. Manual orders held back are logged at WARNING.
+- `USE_MOCK_BROKER` (legacy; tests and local development) makes the outbox worker
+  acknowledge orders as `accepted` with a `MOCK_` broker id. It does not simulate
+  fills or prices.
 
 ## Recommended Rollout
 
@@ -28,17 +40,28 @@ Notes:
 2. Start backend + outbox worker.
 3. Let strategies run normally.
 4. Verify:
-   - Orders appear in DB/UI with status `shadow`
-   - Outbox events are processed successfully
+   - Orders appear in DB/UI with status `rejected` and `attributes.execution_mode = "shadow"`
+   - Outbox events are processed successfully (status `sent`)
    - No broker orders appear in Alpaca
 
-Tip (runtime toggle):
-- If you're logged in as an admin, you can flip execution mode at runtime (no restart)
-  via:
-  - UI: ML Models → Lifecycle Dashboard → "Execution" control
-  - API: `GET/PUT/DELETE /api/v1/admin/trading/execution-mode`
-  - Note: this override is per-process (if you run multiple workers, set env vars
-    consistently or add a shared override store).
+Runtime override (manual orders only):
+- An admin can view the runtime override via ML Models → Lifecycle Dashboard →
+  "Execution" control or `GET/PUT/DELETE /api/v1/admin/trading/execution-mode`.
+- The override applies to manual orders only. The organism engine evaluates the
+  effective mode whenever it is constructed (process start and
+  `POST /api/v1/settings/restart-engine`; its risk-limit guard checks the loss
+  breakers in `execute` mode), so its own orders (entries, exits, EOD flatten)
+  always follow the configured `TRADING_EXECUTION_MODE`, never the runtime override.
+  Change the configured mode with a restart.
+- `PUT` is refused with HTTP 423 while the research policy lock is on (the whole
+  research period), with HTTP 409 whenever the process hosts the organism scheduler
+  (running, stopped, mid-restart or after its task crashed), and with HTTP 422 for an
+  unknown mode. `GET` reports `override_allowed` and `override_blocked_reason`.
+  `DELETE` (back to the configured mode) stays allowed.
+- The settings API (`PUT /api/v1/settings/...`) answers HTTP 403 for the same
+  research lock. The execution-mode route uses 423 because a 403 there means the
+  caller is not an admin.
+- The override is per-process and is lost on restart.
 
 ### Phase 1: Paper Execution (real broker submission to paper)
 1. Set:

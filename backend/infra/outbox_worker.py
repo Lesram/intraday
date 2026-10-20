@@ -97,6 +97,64 @@ def serialize_datetime_recursive(obj: Any) -> Any:
         return obj
 
 
+# Audit 2026-10-05 A3-01: execution modes in which an order is not sent to any
+# broker. Such an order is finalized as 'rejected' (an allowed, accountable
+# terminal status; ck_orders_status has no 'shadow') with zero fill and
+# attributes.execution_mode, and its outbox event is marked sent. No broker id,
+# status or fill is invented.
+_UNSUBMITTED_EXECUTION_MODES = frozenset({"shadow", "dry_run"})
+_UNSUBMITTED_ORDER_STATUS = "rejected"
+
+
+def _is_organism_order(payload: dict[str, Any]) -> bool:
+    """An order the organism engine placed (OrderService attributes.source)."""
+    attributes = payload.get("attributes")
+    return isinstance(attributes, dict) and attributes.get("source") == "organism"
+
+
+def _dispatch_mode(mode_state: Any, organism_order: bool) -> str:
+    """The execution mode that governs one order.
+
+    Audit 2026-10-05 A3-01: the runtime override (PUT
+    /admin/trading/execution-mode) applies to manual orders only. The engine
+    evaluates the effective mode whenever it is constructed (process start,
+    POST /settings/restart-engine), where its risk-limit guard checks the loss
+    breakers for execute mode, and is never told about a later flip (PUT is
+    refused whenever the process hosts an organism scheduler). Its entries,
+    exits and EOD flatten therefore follow the configured mode
+    (``default_mode``: TRADING_EXECUTION_MODE), never the override, in either
+    direction.
+    """
+    effective = str(getattr(mode_state, "mode", None) or "execute")
+    if organism_order:
+        effective = str(getattr(mode_state, "default_mode", None) or effective)
+    return effective.strip().lower()
+
+
+def _unsubmitted_order_result(payload: dict[str, Any], mode: str, organism_order: bool) -> dict[str, Any]:
+    """Outcome for an order not sent because of the execution mode (no broker call)."""
+    return {
+        "success": True,
+        "status": _UNSUBMITTED_ORDER_STATUS,
+        "broker": "none",
+        "execution_mode": mode,
+        "skipped": True,
+        "organism_order": organism_order,
+        "order_id": payload.get("order_id"),
+        "symbol": payload.get("symbol"),
+        "side": payload.get("side"),
+        "qty": payload.get("qty"),
+        # What _update_order_status merges into the order row's attributes.
+        # "broker": "none" keeps its guard against relabelling a row that
+        # already carries a real broker identity.
+        "order_details": {
+            "broker": "none",
+            "execution_mode": mode,
+            "not_submitted": "execution_mode",
+        },
+    }
+
+
 class OutboxWorker:
     """
     Background worker for processing outbox events.
@@ -636,7 +694,8 @@ class OutboxWorker:
             from backend.services.trading_execution_mode import get_trading_execution_mode
 
             mode_state = get_trading_execution_mode()
-            mode = (mode_state.mode or "execute").strip().lower()
+            organism_order = _is_organism_order(payload)
+            mode = _dispatch_mode(mode_state, organism_order)
 
             logger.info(
                 "Resolved trading execution mode",
@@ -644,6 +703,7 @@ class OutboxWorker:
                 trading_execution_mode=mode,
                 source=mode_state.source,
                 overridden=mode_state.overridden,
+                organism_order=organism_order,
             )
 
             with trace_span("order.broker_dispatch", {"order_id": order_id or "", "mode": mode, "symbol": symbol or ""}):
@@ -651,25 +711,40 @@ class OutboxWorker:
                     # A mode flip cannot turn an unresolved real submission
                     # into a successful mock/shadow acknowledgement.
                     result = await self._submit_real_broker_order(payload)
-                elif mode == "shadow":
-                    # Shadow mode: record intent but do not submit to broker.
-                    result = {
-                        "success": True,
-                        "status": "shadow",
-                        "execution_mode": "shadow",
-                        "broker": "none",
-                        "shadow": True,
-                        "skipped": True,
-                        "order_id": order_id,
-                        "symbol": symbol,
-                        "side": side,
-                        "qty": qty,
-                    }
-                elif mode == "dry_run":
-                    # Dry-run mode: simulate broker behavior (no real submission).
-                    result = await self._simulate_broker_order(payload)
-                    # Make it explicit this came from dry-run, not the mock broker toggle.
-                    result = {**result, "broker": "dry_run", "dry_run": True, "execution_mode": "dry_run"}
+                elif mode in _UNSUBMITTED_EXECUTION_MODES:
+                    # Audit 2026-10-05 A3-01: shadow and dry_run send nothing
+                    # and invent nothing. The row is finalized below as
+                    # 'rejected' with zero fill and attributes.execution_mode;
+                    # the event is then marked sent.
+                    result = _unsubmitted_order_result(payload, mode, organism_order)
+                    if organism_order:
+                        # Engine orders (exits and EOD flatten included) are only
+                        # held back by the configured mode, e.g. a host that fell
+                        # back to the fail-closed default: say so loudly.
+                        logger.error(
+                            "Organism order NOT sent to the broker: the configured "
+                            "execution mode is not execute (TRADING_EXECUTION_MODE; "
+                            "unset or unrecognized resolves to shadow); finalizing it "
+                            "as rejected with no fill",
+                            execution_mode=mode,
+                            trading_execution_mode_env=os.environ.get("TRADING_EXECUTION_MODE"),
+                            order_id=order_id,
+                            symbol=symbol,
+                            side=side,
+                            qty=qty,
+                            order_reason=payload["attributes"].get("reason"),
+                        )
+                    else:
+                        logger.warning(
+                            "Order not sent to the broker (non-execute mode); finalizing it "
+                            "as rejected with no fill",
+                            execution_mode=mode,
+                            order_id=order_id,
+                            symbol=symbol,
+                            side=side,
+                            qty=qty,
+                            organism_order=organism_order,
+                        )
                 elif self.use_mock_broker:
                     # Simulate broker order submission
                     result = await self._simulate_broker_order(payload)
@@ -693,7 +768,7 @@ class OutboxWorker:
                         order_id=order_id,
                         status=final_status,
                         broker_order_id=result.get("broker_order_id"),
-                        details=result
+                        details=result.get("order_details") or result
                     )
 
                 logger.info("Completed order status update",
@@ -728,7 +803,13 @@ class OutboxWorker:
 
     async def _simulate_broker_order(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
-        Simulate broker order submission for testing / paper-trading only.
+        Acknowledge an order on the mock broker (USE_MOCK_BROKER=true: tests and
+        local development only). No fill is simulated.
+
+        Audit 2026-10-05 A3-01: market orders used to come back 'filled' at a
+        hard-coded price table, which wrote invented fill prices into order
+        rows and close accounting. Every order is now acknowledged 'accepted'
+        with a MOCK_ broker id and no fill; fills only come from a broker.
 
         PRODUCTION GUARD: This method must never be invoked when
         ENVIRONMENT=production. If it is, we raise immediately.
@@ -737,7 +818,7 @@ class OutboxWorker:
             payload: Order payload
 
         Returns:
-            Simulated broker result
+            Simulated acknowledgement (no fill fields)
         """
         env = os.environ.get("ENVIRONMENT", "").lower()
         if env == "production":
@@ -747,7 +828,7 @@ class OutboxWorker:
             )
 
         logger.warning(
-            "Using simulated broker (paper-trading mode)",
+            "Using simulated broker (mock broker, no fills)",
             extra={"order_id": payload.get("order_id"), "environment": env},
         )
 
@@ -756,9 +837,6 @@ class OutboxWorker:
 
         order_id = payload.get("order_id")
         symbol = payload.get("symbol")
-        order_type = payload.get("order_type", "market")
-        qty = payload.get("qty")
-        payload.get("side")
 
         # Generate mock broker order ID
         broker_order_id = f"MOCK_{symbol}_{int(time.time())}"
@@ -772,52 +850,17 @@ class OutboxWorker:
                 "order_id": order_id
             }
 
-        logger.info("Mock broker order submitted",
+        logger.info("Mock broker order accepted (no fill simulated)",
                    order_id=order_id,
                    broker_order_id=broker_order_id,
                    symbol=symbol)
 
-        # In paper trading, market orders are immediately filled
-        if order_type.lower() == "market":
-            # Simulate immediate fill after brief delay
-            await asyncio.sleep(0.2)
-
-            # Mock fill price (use simple simulation)
-            base_prices = {"SPY": 400, "AAPL": 150, "TSLA": 200, "MSFT": 300}
-            mock_price = base_prices.get(symbol, 100) + random.uniform(-2, 2)
-
-            # Store fill details for the main processing to use
-            # Don't update database here - let main processing handle it
-            fill_details = {
-                "filled_qty": float(qty),
-                "avg_fill_price": mock_price,
-                "fill_time": time.time(),
-                "broker": "mock"
-            }
-
-            logger.info("Mock order filled",
-                       order_id=order_id,
-                       broker_order_id=broker_order_id,
-                       symbol=symbol,
-                       qty=qty,
-                       price=mock_price)
-
-        # Return the result with proper status and fill details
-        if order_type.lower() == "market":
-            return {
-                "success": True,
-                "broker_order_id": broker_order_id,
-                "status": "filled",
-                "broker": "mock",
-                **fill_details  # Include fill details
-            }
-        else:
-            return {
-                "success": True,
-                "broker_order_id": broker_order_id,
-                "status": "accepted",
-                "broker": "mock"
-            }
+        return {
+            "success": True,
+            "broker_order_id": broker_order_id,
+            "status": "accepted",
+            "broker": "mock"
+        }
 
     async def _submit_real_broker_order(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
