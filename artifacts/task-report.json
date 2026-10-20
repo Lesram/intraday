@@ -1,37 +1,13 @@
 {
   "task_id": "audit-20261005-p1ui-ui-loop-and-execution-mode",
   "summary": "Dashboard scanner off by default and off the event loop (A6-01); watchlist quotes from one batched off-loop request with a shared cache, strict ticker shapes, one retry without refused symbols, DB session released before the fetch (A8-01); runtime execution-mode override scoped to manual orders and refused whenever an organism scheduler exists, no invented fills, unsent organism orders logged at ERROR (A3-01)",
-  "sha": "2759bdb00d2152331d9cd2a0e06f076a7584da32",
+  "sha": "3c0181419e43643aafbb3ee13c7f0c04046eb718",
   "branch": "fix/ui-loop-and-execution-mode",
   "change_scope": "base",
-  "change_ref": "6a56d753...HEAD",
+  "change_ref": "53bd8a11...HEAD",
   "files_changed": [
     ".env.example",
-    "artifacts/algorithm_improvements.junit.xml",
-    "artifacts/algorithm_improvements.log",
-    "artifacts/changed_files.json",
-    "artifacts/live_process_runtime_snapshot.json",
-    "artifacts/multi_tick_state.junit.xml",
-    "artifacts/multi_tick_state.log",
-    "artifacts/organism_engine_scenarios.junit.xml",
-    "artifacts/organism_engine_scenarios.log",
-    "artifacts/organism_live_engine.junit.xml",
-    "artifacts/organism_live_engine.log",
-    "artifacts/replay_simulator.junit.xml",
-    "artifacts/replay_simulator.log",
-    "artifacts/replay_summary.json",
-    "artifacts/runtime_snapshot.log",
-    "artifacts/runtime_snapshot_summary.json",
-    "artifacts/safety_invariants.junit.xml",
-    "artifacts/safety_invariants.log",
-    "artifacts/self_evolution.junit.xml",
-    "artifacts/self_evolution.log",
-    "artifacts/semantic_invariants.junit.xml",
-    "artifacts/semantic_invariants.log",
-    "artifacts/semantic_invariants_summary.json",
     "artifacts/task-report.json",
-    "artifacts/task_report.json",
-    "artifacts/test_summary.json",
     "backend/api/routes/admin_trading.py",
     "backend/api/routes/scanner.py",
     "backend/api/routes/watchlists.py",
@@ -42,7 +18,6 @@
     "backend/services/scanner_universe.py",
     "backend/services/trading_execution_mode.py",
     "docs/architecture/mapss.md",
-    "docs/engineering/LIVE_AUDIT_INDEX.md",
     "docs/runbooks/PAPER_TRADING_ROLLOUT.md",
     "frontend/src/components/layout/AppSidebar.tsx",
     "frontend/src/components/market/Scanner.tsx",
@@ -62,14 +37,15 @@
     "python scripts/ci/generate_artifacts.py full",
     "python -m pytest tests/test_semantic_invariants.py -v --timeout=30",
     "python scripts/ci/check_spec_drift.py --json",
-    "python -m pytest tests/test_audit_20261005_ui_loop_and_execution_mode.py",
-    "python -m pytest <52 existing test files touching scanner/watchlists/admin_trading/trading_execution_mode/alpaca_client/outbox_worker/quote_manager> tests/test_audit_20261005_ui_loop_and_execution_mode.py tests/test_order_integrity_comprehensive.py tests/test_safety_invariants.py",
-    "python -m pytest tests/test_settings_comprehensive.py tests/test_config_coordinator_comprehensive.py tests/test_system_integration.py tests/test_v13_w92_deploy_parity.py tests/test_route_registry.py tests/test_routes_registry.py tests/test_phase7_security_sanity.py tests/test_operator_emergency_stop.py tests/test_v12_w78_deploy_health.py",
-    "python -m pytest tests/test_order_integrity_comprehensive.py tests/test_position_reconciliation.py tests/test_position_reconciliation_comprehensive.py",
-    "git merge-tree --write-tree HEAD 310e7704 -> git archive <tree> -> python -m pytest <14 outbox/order-path files>",
-    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify",
-    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify --candidate",
-    "git merge-tree --write-tree --name-only HEAD <84df340a|2679c4ff|435670e5|310e7704>"
+    "git merge --no-ff --no-commit 53bd8a11 && git checkout --theirs -- <25 conflicted generated paths> && git add <same> && git commit  (merge commit; nothing rebased)",
+    "PYTHONPATH=$PWD python -m pytest <52 files of the reviewed affected list> tests/test_order_integrity_comprehensive.py tests/test_safety_invariants.py [tests/test_audit_20261005_ui_loop_and_execution_mode.py]  (base 53bd8a11 and this branch)",
+    "PYTHONPATH=$PWD python -m pytest <24 outbox/dispatch test files> [new file]  (base and branch)",
+    "PYTHONPATH=$PWD python -m pytest tests/test_settings_comprehensive.py tests/test_config_coordinator_comprehensive.py tests/test_system_integration.py tests/test_v13_w92_deploy_parity.py tests/test_route_registry.py tests/test_routes_registry.py tests/test_phase7_security_sanity.py tests/test_operator_emergency_stop.py tests/test_v12_w78_deploy_health.py tests/test_order_integrity_comprehensive.py tests/test_position_reconciliation.py tests/test_position_reconciliation_comprehensive.py  (base and branch)",
+    "paper-readiness.yml operational-safety selections (operational, frozen repairs, nightly harness, candidate surface) with the workflow's job env  (base and branch)",
+    "python scripts/ci/lint_ratchet.py; python -m ruff check <changed .py files>  (base and branch)",
+    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify   (base and branch)",
+    "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify --candidate   (base and branch)",
+    "git merge-tree --write-tree --name-only HEAD f5325d51  (PR #43)"
   ],
   "tests_passed": [
     "multi_tick_state",
@@ -96,32 +72,47 @@
   ],
   "docs_updated": [
     "docs/architecture/mapss.md",
-    "docs/engineering/LIVE_AUDIT_INDEX.md",
     "docs/runbooks/PAPER_TRADING_ROLLOUT.md"
   ],
   "risks": [
     "9 backend runtime file(s) changed \u2014 targeted verification required",
     "1 config file(s) changed \u2014 runtime drift check required",
-    "The committed artifact pack reports organism_live_engine and organism_engine_scenarios as failed because this host exceeds the generator's fixed 30 s per-test and 180 s per-suite budgets (same on 67d316ea today; both suites pass uncapped). Rerun the pack on a faster host or rely on CI before merge.",
-    "Organism dispatch follows the configured mode, never the override. The engine evaluates the effective mode whenever it is constructed (process start, POST /settings/restart-engine); the two agree because the override is refused under the research lock and, after it, whenever the process hosts an organism scheduler (running or not).",
+    "scripts/phase2_freeze.py --verify (active, committed 2026-09-25 reference, 18 keys) exits 1 on this branch exactly as on 53bd8a11 (byte-identical output); candidate verify exits 0 on both.",
+    "#43 (fix/verdict-attribution-guard) is also based on 53bd8a11; the two conflict only in generated files (artifacts/, docs/engineering/LIVE_AUDIT_INDEX.md). Whichever merges second regenerates the pack and the index.",
+    "In a shadow/dry_run configuration a stale entry is expired by the base's dispatch refusal (WARNING 'Entry not sent: refused at dispatch', counted per session) before this branch's routing, so it does not get the A3-01 ERROR line, and the base's dead-letter check then looks it up read-only by client key. Fresh entries and all exits still log the ERROR. Base behaviour, unchanged by the merge.",
+    "The committed task_report.json records the merge commit's SHA (the pack is built at the commit before the artifact commit); re-validating it at the artifact commit without regenerating reports a SHA mismatch.",
     "Watchlist prices come from the latest two-sided quote of the configured feed (IEX in production); outside regular hours IEX quotes are often one-sided, so prices show as null with error 'no_two_sided_quote'.",
-    "Refused-symbol detection matches whole words of the data API's HTTP 400 body against the requested symbols; a 400 that names none of them still fails the whole refresh (one-TTL back-off), as before. The real Alpaca error format was not checked (offline).",
-    "The strict ticker pattern answers symbols outside 1-5 letters plus an optional 1-2 letter suffix (for example digits) as unsupported_symbol.",
-    "The mock broker (USE_MOCK_BROKER=true, tests/local only) no longer fills market orders; local flows that relied on simulated fills will see orders stay 'accepted'.",
-    "Frontend changes were syntax-checked only (no node_modules offline).",
-    "scripts/phase2_freeze.py --verify (active) exits 1 on this branch exactly as on the base; candidate verify exits 0."
+    "Refused-symbol detection matches whole words of the data API's HTTP 400 body against the requested symbols; the real Alpaca error format was not checked (offline).",
+    "The mock broker (USE_MOCK_BROKER=true, tests/local only) no longer fills market orders."
   ],
   "follow_ups": [
-    "If the dashboard scanner is ever enabled: give it an indicator backend (pandas_ta or backend/services/indicators.py; without one every scan returns empty), one multi-symbol bars request with feed=ALPACA_DATA_FEED and a session-date cache, indicator math on the pool, and one live scan task per user.",
+    "Whichever of #41 and #43 merges second: regenerate the AGENTS.md artifact pack and docs/engineering/LIVE_AUDIT_INDEX.md on the result.",
+    "If the dashboard scanner is ever enabled: give it an indicator backend (pandas_ta or backend/services/indicators.py), one multi-symbol bars request with feed=ALPACA_DATA_FEED and a session-date cache, indicator math on the pool, and one live scan task per user.",
     "Include the effective execution mode in runtime_config_hash and fix its upper-case attribute lookups (runtime_identity.py, out of scope here).",
     "Owner: before deploy, check the production DB for organism rows left by past use of the switch (status 'accepted' with broker_order_id NULL or LIKE 'MOCK_%').",
-    "Add a test that runs close accounting and recovery scope over an unsubmitted 'rejected' row (covered by existing logic, verified by reading only)."
+    "Add a test that runs close accounting and recovery scope over an unsubmitted 'rejected' row."
   ],
   "artifact_pack_status": "fail",
   "artifact_pack_errors": [
     "test_summary.json: required check failed"
   ],
-  "base": "6a56d7538c8c6b3ceabd54955a706b251155094b",
+  "base": "53bd8a11807badef4e653f4b20da10f8398e8ef6",
+  "previous_base": "6a56d7538c8c6b3ceabd54955a706b251155094b",
+  "merge": {
+    "commit": "3c0181419e43643aafbb3ee13c7f0c04046eb718",
+    "parents": [
+      "92d398bb22c60567a05605d19f8853ad8e7af8d7 (this branch, first parent; pushed, unchanged)",
+      "53bd8a11807badef4e653f4b20da10f8398e8ef6 (origin/intra-2.0-phase1, combined audit release)"
+    ],
+    "method": "git merge --no-ff --no-commit 53bd8a11; each conflicted path: git checkout --theirs + git add; git commit. Nothing rebased or rewritten.",
+    "conflicts": "25 generated paths only (24 under artifacts/, plus docs/engineering/LIVE_AUDIT_INDEX.md), including the modify/delete of artifacts/organism_engine_scenarios.junit.xml (deleted by 92d398bb, modified on the base); all resolved to the base's blob (checked path by path) and regenerated in the next commit",
+    "non_generated_conflicts": [],
+    "auto_merged_on_both_sides": {
+      "backend/infra/outbox_worker.py": "clean; merged-vs-base diff has the same patch-id as the branch's own change (cb9be8c03d96) and merged-vs-branch the same as the base's (1ace5fa0208e); no function changed on both sides",
+      "docs/architecture/mapss.md": "clean; same patch-id property (daafa0ea453a / 6a9ae4c69fb6); the branch's hunks are in sections 53, 56 and the scanner route table, the base's in the candidate-release preamble"
+    },
+    "protected_files": "artifacts/phase2/param_freeze.json, artifacts/phase2/research_policy_baseline.json and backend/organism/live_engine.py equal 53bd8a11's blobs; artifacts/phase2/frozen_surface_reference.json is not tracked on either side"
+  },
   "trading_decisions_changed": false,
   "operator_visible_changes": [
     "Market Scanner removed from the sidebar; /market-data shows a static 'disabled' notice unless DASHBOARD_SCANNER_ENABLED=true. POST /scanner/scan and /scanner/export/* return 503 and WS /scanner/ws is closed before accept while disabled; new GET /scanner/status.",
@@ -132,58 +123,6 @@
     "Manual orders in a shadow/dry_run mode end 'rejected' with zero fill and attributes.execution_mode (no 'shadow' status, no simulated fill); organism orders a shadow/dry_run configuration holds back are logged at ERROR ('Organism order NOT sent to the broker'), manual ones at WARNING; the mock broker (USE_MOCK_BROKER) acknowledges without a fill.",
     "Watchlist polling no longer logs AlpacaClient initialisation and account details."
   ],
-  "targeted_test_runs": {
-    "new_tests": {
-      "file": "tests/test_audit_20261005_ui_loop_and_execution_mode.py",
-      "passed": 43,
-      "failed": 0,
-      "review_follow_up": "9 tests added (stopped/crashed scheduler x2, DB connection released, malformed symbols, refused symbol, retry at most once x2, 400-body matching, fail-closed shadow ERROR log); 8 of them fail against the previous code (per-item mutation checks); the ninth checks that a refusal naming no requested symbol still fails the refresh as before"
-    },
-    "affected_existing_plus_order_paths": {
-      "files": "52 implementer-listed files + new file + test_order_integrity_comprehensive + test_safety_invariants",
-      "passed": 1210,
-      "failed": 1,
-      "skipped": 86,
-      "pre_existing_failures": [
-        "tests/unit/test_service_modules.py::TestQuoteManager::test_get_quote (QuoteManager() needs Alpaca credentials; fails identically on 6a56d753 and 67d316ea)"
-      ]
-    },
-    "config_route_security_suites": {
-      "passed": 139,
-      "failed": 0,
-      "skipped": 5
-    },
-    "order_path_suites_agents_md": {
-      "passed": 80,
-      "failed": 0
-    },
-    "merge_result_with_pr40_310e7704": {
-      "passed": 453,
-      "failed": 0
-    },
-    "frontend": "no node_modules installed (offline); tsc/vitest not run; the two .ts/.tsx files changed in the follow-up (comments only) pass a TypeScript 6.0.3 transpile syntax check"
-  },
-  "frozen_verify": {
-    "command": "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify [--candidate]",
-    "active": {
-      "exit_code": 1,
-      "note": "pre-existing: byte-identical output on 6a56d753, 67d316ea and this head (the branch carries the pending candidate surface)",
-      "output_sha256": "b697a87528e8a3885cf484dee4071c24f5a62148782208398b5d5878151d219c"
-    },
-    "candidate": {
-      "exit_code": 0,
-      "output": "CANDIDATE DRIFT-VERIFY OK",
-      "output_sha256": "ef7ef2579ed068caf51ada1132aeaadf95a6cf01a6b605154a7bf5e03c5aa1e4"
-    },
-    "hashed_sources_touched": []
-  },
-  "merge_tree_check": {
-    "method": "git merge-tree --write-tree --name-only HEAD <head>",
-    "84df340a (PR #37)": "conflicts only in artifacts/ and docs/engineering/LIVE_AUDIT_INDEX.md",
-    "2679c4ff (PR #38)": "conflicts only in artifacts/ and docs/engineering/LIVE_AUDIT_INDEX.md",
-    "435670e5 (PR #39)": "conflicts only in artifacts/ and docs/engineering/LIVE_AUDIT_INDEX.md",
-    "310e7704 (PR #40, contains #37)": "conflicts only in artifacts/ and docs/engineering/LIVE_AUDIT_INDEX.md; outbox_worker.py and mapss.md auto-merge"
-  },
   "deviations": [
     "A3-01 (a): organism orders are exempt from the runtime override and follow the configured TRADING_EXECUTION_MODE (default_mode), instead of 'dispatch regardless of mode'. In production (execute) they dispatch normally whatever the override; a deployment configured shadow/dry_run (including the fail-closed default when the variable is missing, audit 2026-06-09 finding 3.3) still never sends them, because the engine's startup guard only checks the loss breakers in execute mode.",
     "A6-01/A8-01: SDK calls run via loop.run_in_executor on a dedicated 3-thread pool with a copied context (the asyncio.to_thread mechanism) under asyncio.wait_for, so dashboard calls cannot occupy the default executor threads the engine uses (positions reads, features, brain saves).",
@@ -191,13 +130,186 @@
     "Review follow-up 1: the scheduler-presence refusal lives in the route; the service-level guard (override_refusal) only enforces the research lock because it has no view of app.state, and the route is the setter's only caller.",
     "Review follow-up 6: the research-lock refusal stays 423 on the execution-mode route (403 there is the admin role gate); the 403 of the frozen settings API for the same lock is documented in mapss 53 and the runbook."
   ],
+  "targeted_test_runs": {
+    "where": "base = 53bd8a11 in a temporary worktree; branch = merge commit 3c018141 (the pack commit changes only artifacts/ and the audit index)",
+    "affected_52_files_plus_order_integrity_and_safety_invariants": {
+      "base": {
+        "exit": 1,
+        "passed": 1165,
+        "failed": 1,
+        "skipped": 93
+      },
+      "branch_with_new_file": {
+        "exit": 1,
+        "passed": 1210,
+        "failed": 1,
+        "skipped": 93
+      },
+      "pre_existing_failure": "tests/unit/test_service_modules.py::TestQuoteManager::test_get_quote (no Alpaca credentials; QuoteManager unchanged; fails identically on the base)"
+    },
+    "outbox_and_dispatch_24_files": {
+      "base": {
+        "exit": 0,
+        "passed": 652,
+        "failed": 0,
+        "skipped": 32
+      },
+      "branch_with_new_file": {
+        "exit": 0,
+        "passed": 697,
+        "failed": 0,
+        "skipped": 32
+      },
+      "skips": "the 32 skips are the PostgreSQL-only cases (INTRA_FILL_TEST_DATABASE_URL not supplied) and are identical on both; CI's fill-accounting-postgres job runs them"
+    },
+    "config_route_security_and_order_path_12_files": {
+      "base": {
+        "exit": 0,
+        "passed": 219,
+        "failed": 0,
+        "skipped": 5
+      },
+      "branch": {
+        "exit": 0,
+        "passed": 219,
+        "failed": 0,
+        "skipped": 5
+      }
+    },
+    "paper_readiness_selections": {
+      "env": "paper-readiness.yml jobs.operational-safety env, read from the workflow at run time",
+      "base": {
+        "operational": {
+          "exit": 0,
+          "files": 79,
+          "passed": 2130,
+          "failed": 0,
+          "skipped": 1
+        },
+        "frozen_repairs": {
+          "exit": 0,
+          "files": 7,
+          "passed": 241,
+          "failed": 0,
+          "skipped": 0
+        },
+        "paired_replay": {
+          "not_run_locally": "rewrites the tracked artifacts/composite_indicator_repair/replay/paired_summary.json; engine replay is covered by the artifact pack's replay_simulator"
+        },
+        "nightly_harness": {
+          "exit": 1,
+          "files": 17,
+          "passed": 316,
+          "failed": 2,
+          "skipped": 0
+        },
+        "candidate_surface": {
+          "exit": 0
+        }
+      },
+      "branch": {
+        "operational": {
+          "exit": 0,
+          "files": 79,
+          "passed": 2131,
+          "failed": 0,
+          "skipped": 1
+        },
+        "frozen_repairs": {
+          "exit": 0,
+          "files": 7,
+          "passed": 241,
+          "failed": 0,
+          "skipped": 0
+        },
+        "paired_replay": {
+          "not_run_locally": "rewrites the tracked artifacts/composite_indicator_repair/replay/paired_summary.json; engine replay is covered by the artifact pack's replay_simulator"
+        },
+        "nightly_harness": {
+          "exit": 1,
+          "files": 17,
+          "passed": 316,
+          "failed": 2,
+          "skipped": 0
+        },
+        "candidate_surface": {
+          "exit": 0
+        }
+      },
+      "nightly_harness_failures": "tests/test_wave48_fixes.py::test_z7_1_pytest_collection_clean and tests/test_organism_integration_smoke.py::TestMultiTickLifecycleInvariants::test_10_tick_invariants hit the workflow's 30 s per-test timeout on this 2-vCPU host, identically on the base; see the refresh report for the uncapped reruns"
+    },
+    "semantic_invariants": {
+      "base": {
+        "exit": 0,
+        "passed": 20
+      },
+      "branch": {
+        "exit": 0,
+        "passed": 20
+      }
+    },
+    "outbox_interplay_probe": "scratch-only test on an export of 3c018141 (not committed): 6 passed",
+    "artifact_pack_suites": "organism_live_engine 25, organism_engine_scenarios 0, multi_tick_state 9, safety_invariants 29, self_evolution 15, algorithm_improvements 58, replay_simulator 28, semantic_invariants 20 passed; grep assertions 15/15; spec drift 0 drifts; not counted as passed because of the generator's time limits on this host: organism_live_engine: 1 failed, timed_out=False (pytest exited with code 1); organism_engine_scenarios: 0 failed, timed_out=True (command timed out after 180s; invalid pytest evidence: [Errno 2] No such file or directory: '/home/claude/wt-fix-p1ui/artifacts/organism_engine_scenarios.junit.xml') (see artifact_pack_environment_note)"
+  },
+  "outbox_semantic_check": {
+    "result": "both behaviours survive; no function was changed on both sides",
+    "function_provenance": {
+      "unchanged_everywhere": 15,
+      "base_side_only_and_merged_equals_base": 30,
+      "branch_side_only_and_merged_equals_branch": 5,
+      "changed_on_both_sides": 0,
+      "other": 0
+    },
+    "branch_side_functions": [
+      "OutboxWorker._process_order_submitted",
+      "OutboxWorker._simulate_broker_order",
+      "_dispatch_mode",
+      "_is_organism_order",
+      "_unsubmitted_order_result"
+    ],
+    "ordering": "OutboxWorker._process_event (base, C01-04) refuses a stale or after-session entry before _process_order_submitted (branch, A3-01) resolves the per-order execution mode. In a shadow/dry_run configuration a stale entry is therefore expired through the dead-letter path and a fresh one is finalized 'rejected'; exits are never age-refused. Nothing is sent in any of these cases.",
+    "evidence_lines_merged_file": {
+      "branch_A3_01": "backend/infra/outbox_worker.py:105-155 (_UNSUBMITTED_EXECUTION_MODES, _is_organism_order, _dispatch_mode, _unsubmitted_order_result), :697-698 (per-order mode), :714-747 (shadow/dry_run not sent; ERROR 'Organism order NOT sent to the broker' at :724-736, WARNING for manual orders at :738-747), :771 (details=order_details), :804-863 (_simulate_broker_order: 'accepted', MOCK_ id, no fill)",
+      "base_C01_04_C04_01_37": "backend/infra/outbox_worker.py:518-533 (entry_dispatch_refusal before processing), :952 (FOR NO KEY UPDATE in _update_order_status), :1033-1041 (synthetic acknowledgement guard incl. broker 'none'), :1058-1062 (terminal rows keep their status), :1079-1084 (lot accounting discrepancy log), :1194-1230 (_move_to_dlq + _record_dead_letter), :1408-1429 (_expire_entry_at_dispatch), :1431-1492 (_record_dead_letter skips terminal rows), :1574-1595 (_dead_letter_candidates exclude terminal statuses), :1959-1990 (entry_dispatch_refusal; exits never refused at :1976), :2051-2053 (_TERMINAL_ORDER_STATUSES includes 'rejected'), :2086 (dlq_exposure_alert), :2189 (start_outbox_worker starts the dead-letter loop), :241-248 (stop cancels it)"
+    }
+  },
+  "frozen_verify": {
+    "command": "env -u ORGANISM_FRAMEWORK_ROUTING ALPACA_DATA_FEED=iex ORGANISM_FRAMEWORK_ROUTING_V2=true ORGANISM_MIN_AVG_DOLLAR_VOLUME=50000 ORGANISM_ROUTING_RANK_POLICY=flat_policy ORGANISM_APPROVED_POLICY_BASELINE=/app/artifacts/phase2/research_policy_baseline.json ORGANISM_OPERATOR_CONTROL_STATE=/app/data/operator_control_state.json PYTHONPATH=$PWD python scripts/phase2_freeze.py --verify [--candidate]",
+    "active": {
+      "exit_base": 1,
+      "exit_branch": 1,
+      "byte_identical": true,
+      "output_sha256": "595bd344c1495b323d52f6142ce2c95075ab5ce3a1b72ed1a8d73085d05855a4",
+      "note": "pre-existing: 18 keys against the committed 2026-09-25 active reference"
+    },
+    "candidate": {
+      "exit_base": 0,
+      "exit_branch": 0,
+      "byte_identical": true,
+      "output_sha256": "d4120cbbb126d62de9606b5302bc56538e30b389b92b85b950f588be9c6354bc",
+      "output": "CANDIDATE DRIFT-VERIFY OK: decision surface matches reference (boundary=2026-10-06T19:21:15.901848+00:00; read-only)"
+    },
+    "hashed_sources_touched": []
+  },
+  "merge_tree_check": {
+    "method": "git merge-tree --write-tree --name-only HEAD f5325d51 (PR #43)",
+    "at_merge_commit_3c018141": "exit 1; 1 conflicted path: artifacts/task-report.json; docs/architecture/mapss.md auto-merges",
+    "after_this_pack_commit": "both branches carry a regenerated pack, so the generated files conflict; the final check (conflicts only in artifacts/ and docs/engineering/LIVE_AUDIT_INDEX.md) is in the refresh report"
+  },
+  "lint": {
+    "lint_ratchet": {
+      "base": "exit 0, Lint ratchet \u2014 current=3566, baseline=3604; Lint ratchet PASS: no new violations vs baseline.",
+      "branch": "exit 0, Lint ratchet \u2014 current=3562, baseline=3604; Lint ratchet PASS: no new violations vs baseline."
+    },
+    "ruff_changed_py": "13 changed .py files: 32 findings on the branch, 36 on the base's 10 existing files; no (file, rule) count increases; the 3 new files have none"
+  },
   "artifact_pack_environment_note": {
-    "status": "artifact_pack_status 'fail' comes only from the generator's fixed time budgets on a slower host; no test fails on its assertions and no organism file changed on this branch",
-    "host": "2 vCPU Intel Xeon @ 2.80GHz, idle during the runs (CPU steal about 1%); the pack was run twice, the second time on an idle machine, with the same result",
-    "organism_engine_scenarios": "generator budget 180 s per suite -> timed out. Uncapped today: 31 passed in 233.6 s on this head and 31 passed in 235.9 s on 67d316ea (its committed pack, run on 2026-10-12: 132.4 s)",
-    "organism_live_engine": "generator limit 30 s per test -> test_brain_persistence_across_runs fails at 30.77 s. Same 1 failed / 25 passed on 67d316ea today; 26 passed on this head with --timeout=300 (committed 67d316ea pack: 26 passed in 52.0 s)",
-    "replay_simulator": "28 passed in 1051 s (598 s on 2026-10-12), within its 1200 s budget",
-    "other": "multi_tick_state 9, safety_invariants 29, self_evolution 15, algorithm_improvements 58, semantic_invariants 20 passed; grep assertions 15/15; spec drift none",
-    "audit_index": "generate_audit_index.py was run after the generator's non-zero exit so that the index matches the committed pack"
+    "status": "artifact_pack_status 'fail' comes only from the generator's fixed time budgets on a slower host; no test fails on its assertions, and 53bd8a11 gives the same results on this host today",
+    "host": "2 vCPU Intel Xeon @ 2.80GHz, idle apart from these runs (CPU steal under 1%); replay_simulator took 1050 s here against 726.7 s in #43's pack on 2026-10-19, so the host ran about 1.45x slower",
+    "organism_engine_scenarios": "generator budget 180 s per suite -> timed out after 28 of 31 tests. Uncapped (--timeout=30, no suite budget): 31 passed in 235.65 s on this branch's code and 31 passed in 234.22 s on 53bd8a11 (its committed pack, 2026-10-18: 139.1 s)",
+    "organism_live_engine": "generator limit 30 s per test -> test_brain_persistence_across_runs fails on the timeout. Same 1 failed / 25 passed (85.17 s) on 53bd8a11 today; 26 passed (87.44 s) on this branch's code with --timeout=300 (53bd8a11's committed pack: 26 passed in 52.7 s)",
+    "other": "multi_tick_state 9, safety_invariants 29, self_evolution 15, algorithm_improvements 58, replay_simulator 28 (1050.2 s of its 1200 s budget), semantic_invariants 20 passed; grep assertions 15/15; spec drift none; runtime snapshot content unchanged apart from its timestamp",
+    "audit_index": "generate_audit_index.py ran after the generator's non-zero exit, so the index matches this pack",
+    "ci": "the paper-readiness run on the previous head 92d398bb passed its 'Full safety and replay artifact pack' step on GitHub's runner"
   }
 }
