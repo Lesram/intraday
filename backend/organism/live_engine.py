@@ -1678,7 +1678,15 @@ class OrganismLiveEngine(
         #    threshold; same as current).
         symbol_fitness_map = self.evolved_params.symbol_fitness or {}
         _sym_trade_count = self.evolved_params.symbol_trade_counts.get(symbol, 0)
-        if symbol in symbol_fitness_map:
+        # Audit 2026-10-20 (C13-02): while the research policy is locked,
+        # evolution never runs, so symbol_fitness is frozen at its pre-cutoff
+        # values while trade counts keep rising. The hard gate then became a
+        # permanent ban fitted on as few as 10 old trades (XLE/XLK blocked,
+        # COST at its 10th close). Skip the HARD gate while locked; the soft
+        # fitness multiplier in AlphaScanner still applies.
+        if research_policy.RESEARCH_POLICY_LOCKED:
+            sym_fitness = symbol_fitness_map.get(symbol, 0.5)
+        elif symbol in symbol_fitness_map:
             sym_fitness = symbol_fitness_map[symbol]
         elif (
             not self._is_learning_mode
@@ -1697,6 +1705,7 @@ class OrganismLiveEngine(
             sym_fitness = 0.5  # learning-mode default; gate disabled anyway
         if (
             not self._is_learning_mode
+            and not research_policy.RESEARCH_POLICY_LOCKED
             and _sym_trade_count >= min_trades_for_fitness
             and sym_fitness < fitness_gate
         ):
@@ -4726,7 +4735,12 @@ class OrganismLiveEngine(
                 _planned_entries: set[str] = set()
 
                 # Store gate thresholds for telemetry
-                self._last_eff_fitness_gate = 0.0 if self._is_learning_mode else _MAIN_FITNESS_GATE
+                # Audit 2026-10-20 (C13-02): no hard fitness gate while the
+                # research policy is locked (see _passes_entry_gates).
+                self._last_eff_fitness_gate = (
+                    0.0 if (self._is_learning_mode or research_policy.RESEARCH_POLICY_LOCKED)
+                    else _MAIN_FITNESS_GATE
+                )
                 self._last_eff_conf_gate = _MAIN_CONF_BASELINE
                 self._last_burst_remaining = _burst_remaining
 

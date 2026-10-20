@@ -1688,6 +1688,8 @@ ENTRY SCANNING PIPELINE
   │   ├── Gate 6: Sector gate (max 4 per sector)? → REJECT
   │   ├── Gate 7: Symbol fitness gate (improve9 B1: unified canonical system):
   │   │   ├── Learning mode: NO hard gate (fitness = soft ranking only, A5)
+  │   │   ├── Research-locked (audit 2026-10-20, C13-02): NO hard gate — fitness is frozen
+  │   │   │   while locked, so the gate would be a permanent ban; soft ranking only
   │   │   └── Production: REJECT if fitness < 0.45 AND symbol has 10+ closed trades
   │   ├── Gate 8: Liquidity gate (avg 20-bar volume < 10,000)? → REJECT
   │   ├── Gate 9: Symbol circuit breaker (improve7/8)? → REJECT
@@ -1723,7 +1725,7 @@ ENTRY SCANNING PIPELINE
   │   │   ├── Not in exit cooldown, pending entry, or entry_metadata
   │   │   ├── Not in _symbol_banned (circuit breaker, improve7)
   │   │   ├── composite_score >= 0.55
-  │   │   ├── fitness gate: learning=pass always, production=0.45 for 10+ trades (B1)
+  │   │   ├── fitness gate: learning=pass always, research-locked=pass always (2026-10-20), production=0.45 for 10+ trades (B1)
   │   │   ├── Liquidity gate (shared with alpha path)
   │   │   ├── Confidence threshold gate (shared with alpha path)
   │   │   ├── Sector gate allows
@@ -2791,7 +2793,7 @@ Per-tick transparency layer capturing every indicator, threshold, and decision g
 SymbolAlphaDetail:
   - 7-factor alpha breakdown with composite score
   - min_composite_threshold: 0.15
-  - fitness_gate: 0.0 (learning, no gate) / 0.45 (production, 10+ trades only); telemetry uses matching value
+  - fitness_gate: 0.0 (learning or research-locked, no gate) / 0.45 (production, 10+ trades only); telemetry uses matching value
 
 SymbolBreakoutDetail:
   - 6-pattern breakout breakdown (squeeze, volume, contraction, RS, pivot, flow)
@@ -2828,7 +2830,7 @@ FilteringSummary:
     exposes `all_records_expectancy` and `excluded_reconciliation_artifacts`
     so operators can reconcile headline strategy PnL against raw ledger PnL.
   - effective_max_entries_per_hour: int (12 in learning, max(3, 6-open_positions) in production)
-  - effective_fitness_gate: float (0.0 in learning = no gate, 0.45 in production for 10+ trade symbols)
+  - effective_fitness_gate: float (0.0 in learning or research-locked = no gate, 0.45 in production for 10+ trade symbols)
   - burst_cap_remaining: int (entries left in rolling 15-min window, max 4)
   - cost_gate and min_notional wired from kelly_sizer._exploration_rejects
 
@@ -5394,7 +5396,7 @@ StalenessReasons (enum):
 | Full production promotion gate (retained unlocked primitive only) | strategy-only total_pnl ≥ 0, last_50_mean_pnl ≥ 0, last_50_win_rate ≥ 0.35, sharpe_per_trade ≥ 0 | trading_phase + `/api/v1/health/strategy` | Mature losing brains stay in production_guarded: strict entry gates remain, ML influence and Kelly remain disabled; reconciliation bookkeeping is exposed separately as all-record expectancy |
 | Strategy live-order gate | `StrategyGovernor.authorize_signal(..., live_intent=True)` must allow before OrderService entry submission | live_engine + strategy_governor | Blocks unknown, shadow-only, live-disabled, insufficient-evidence strategy IDs before any entry order can reach the broker path |
 | Phase 9D portfolio construction gate | ≥2 portfolio-eligible strategies from ≥2 independent families, each with positive after-cost alpha, positive avg R, PF ≥1.20, concentration within limits, correlation ≤0.75, weighted beta ≤0.35 | `evidence/portfolio_construction.py` + `scripts/phase9d_portfolio_construction.py` | Advisory only: no live sizing/order/promotion changes; blocks portfolio scaling when evidence is replay-only or one-family |
-| Symbol fitness gate | **0 (learning, no gate)** / 0.45 (production, 10+ trades) | live_engine | improve9 B1: unified canonical system. Learning = soft ranking only. Production = hard reject for established losers |
+| Symbol fitness gate | **0 (learning, no gate)** / 0.45 (production, 10+ trades) | live_engine | improve9 B1: unified canonical system. Learning = soft ranking only. Production = hard reject for established losers. Research-locked (audit 2026-10-20, C13-02): no hard gate, soft ranking only |
 | Liquidity gate | 10K avg vol/bar | live_engine | Block illiquid symbols (per-bar, not daily) |
 | ML confidence reversal | 0.60 (intraday) / 0.65 (daily) | live_engine | ML reversal exit — partial exit 30%/25% of position |
 | Min hold before profit exits | dynamic: max(H//3, 3) = **5 bars** (5 min) for H=15 | adaptive_exits | _min_hold_bars(prediction_horizon) — suppresses all profit exits |
