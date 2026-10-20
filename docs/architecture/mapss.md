@@ -1729,7 +1729,8 @@ ENTRY SCANNING PIPELINE
   │   │   ├── Sector gate allows
   │   │   └── ML direction not negative, only when ML influence is enabled
   │   │   (NOTE: skips missingness gate; uses baseline confidence only, not defensive tier)
-  │   ├── Forced direction = +1.0 (always long)
+  │   ├── Scanner direction must be +1 (audit 2026-10-20: breakdowns -1 and directionless 0
+  │   │   are skipped, no longer forced long); entered LONG (+1.0)
   │   └── predicted_return:
   │       ├── Full production + ML present: pass through ML return if direction agrees
   │       └── ML-isolated / ML absent: 0.005 + 0.015 × breakout_score
@@ -2257,6 +2258,8 @@ Requires 10+ predictions per bin before adjusting.
 
 **Composite Indicators (7):** comp_squeeze_momentum, comp_vol_price_div, comp_trend_alignment, comp_institutional_acc, comp_mean_rev_extreme, comp_breakout_readiness, comp_momentum_quality
 
+Audit 2026-10-20 (indicator check): `comp_breakout_readiness` uses Wilder's ADX for its "ADX < 25 and turning" part (the `adx_14` feature is EMA-smoothed, ~1.4× Wilder, and stays unchanged for the saved models). Readiness and `comp_squeeze_momentum` score 0 when the price has not moved (zero true range over the last 5 / 20 bars).
+
 ### Global NaN Safety
 
 All features: `inf → NaN → 0.0` (at the end of compute_ml_features)
@@ -2352,7 +2355,7 @@ COMPOSITE = 0.25 × squeeze
 
 | Detector | Weight | Key Threshold | Signal |
 |---|---|---|---|
-| Squeeze | 0.25 | BB inside KC, width < 35th pctile, expanding | [0, 1] + fired bool |
+| Squeeze | 0.25 | BB inside KC (half-width 2σ vs half-width 1.5·ATR; fixed 2026-10-20, was full KC width), width < 35th pctile, expanding | [0, 1] + fired bool |
 | Volume Surge | 0.25 | (max_3bar / avg_20bar - 1) / 4 | [0, 1] + ratio |
 | Range Contraction | 0.15 | 1 - ATR_10 / ATR_50 | [0, 1] |
 | Relative Strength | 0.15 | Cross-sectional return rank | [0, 1] |

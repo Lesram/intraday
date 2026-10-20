@@ -60,6 +60,40 @@ def _sma(s: pd.Series, window: int) -> pd.Series:
     return s.rolling(window, min_periods=1).mean()
 
 
+def _adx_wilder(
+    h: pd.Series, l: pd.Series, c: pd.Series, period: int = 14,
+) -> pd.Series:
+    """Wilder's ADX — the convention the textbook "ADX < 25" level assumes.
+
+    Audit 2026-10-20 (indicator check): the shared ``adx_14`` feature
+    (``ml_features._adx``) smooths ±DM and DX with an EMA of span 14
+    (alpha 2/15), which reads ~1.4x Wilder's ADX on 1-minute bars, and its
+    -DM rule credits ties to -DM. Readiness compares ADX with 25, so it
+    needs Wilder's ADX. ``adx_14`` itself is left unchanged because the
+    saved ML models were trained on it.
+
+    Wilder's rules: +DM = up-move if it exceeds the down-move and is
+    positive, else 0; -DM likewise; ties count zero on both sides. TR, ±DM
+    and DX are smoothed with Wilder's average (alpha = 1/period). DX is 0
+    where +DI and -DI are both 0 (no directional movement), as in TA-Lib.
+    """
+    up = h.diff()
+    down = -l.diff()
+    plus_dm = up.where((up > down) & (up > 0), 0.0)
+    minus_dm = down.where((down > up) & (down > 0), 0.0)
+    tr = pd.concat([
+        h - l,
+        (h - c.shift(1)).abs(),
+        (l - c.shift(1)).abs(),
+    ], axis=1).max(axis=1)
+    alpha = 1.0 / period
+    atr = tr.ewm(alpha=alpha, adjust=False).mean()
+    plus_di = 100 * _safe_div(plus_dm.ewm(alpha=alpha, adjust=False).mean(), atr)
+    minus_di = 100 * _safe_div(minus_dm.ewm(alpha=alpha, adjust=False).mean(), atr)
+    dx = (100 * _safe_div((plus_di - minus_di).abs(), plus_di + minus_di)).fillna(0.0)
+    return dx.ewm(alpha=alpha, adjust=False).mean()
+
+
 # ═══════════════════════════════════════════════════════════════════
 # 1. SQUEEZE MOMENTUM COMPOSITE
 # ═══════════════════════════════════════════════════════════════════
@@ -122,6 +156,15 @@ def squeeze_momentum_composite(df: pd.DataFrame) -> pd.Series:
         + 0.25 * energy_score
         + 0.20 * vol_score
     ).clip(0, 1)
+
+    # Audit 2026-10-20 (indicator check): a price that has not moved for the
+    # whole 20-bar Bollinger window is not a squeeze. Zero-width bands sit
+    # inside any Keltner channel and rank as the tightest width, which scored
+    # ~0.58 on 20 identical bars.
+    # Zero true range on every bar of the window = one unchanged price.
+    # (Rolling max is exact; rolling std can leave a tiny non-zero residual.)
+    no_movement = tr.rolling(20, min_periods=1).max() <= 0.0
+    composite = composite.where(~no_movement, 0.0)
 
     return composite.fillna(0.0)
 
@@ -413,16 +456,11 @@ def breakout_readiness_index(df: pd.DataFrame) -> pd.Series:
     vol_buildup = vol_near_res.rolling(5, min_periods=1).mean().clip(0, 3) / 3
 
     # 4. ADX turning up (energy building after consolidation)
-    if "adx_14" in df.columns:
-        adx = df["adx_14"]
-    else:
-        plus_dm = h.diff().where((h.diff() > -l.diff()) & (h.diff() > 0), 0.0)
-        minus_dm = (-l.diff()).where((-l.diff() > h.diff()) & (-l.diff() > 0), 0.0)
-        atr14 = tr.ewm(alpha=1/14, adjust=False).mean()
-        plus_di = _safe_div(100 * _ema(plus_dm, 14), atr14)
-        minus_di = _safe_div(100 * _ema(minus_dm, 14), atr14)
-        dx = _safe_div(100 * (plus_di - minus_di).abs(), plus_di + minus_di)
-        adx = _ema(dx, 14)
+    # Audit 2026-10-20 (indicator check): "< 25" is Wilder's level, so use
+    # Wilder's ADX here rather than the EMA-smoothed ``adx_14`` feature
+    # (which reads ~1.4x higher and made this component available on about
+    # 24% of bars instead of about 58%).
+    adx = _adx_wilder(h, l, c, 14)
 
     adx_slope = adx - adx.shift(3)
     adx_turning = ((adx < 25) & (adx_slope > 0)).astype(float)
@@ -433,6 +471,14 @@ def breakout_readiness_index(df: pd.DataFrame) -> pd.Series:
         + 0.25 * vol_buildup
         + 0.20 * adx_turning
     ).clip(0, 1)
+
+    # Audit 2026-10-20 (indicator check): no price movement is no signal.
+    # When the last 5 bars sit at one price, atr_short is 0, so compression
+    # and near_resistance saturate: 20 identical bars scored 0.57 and fired
+    # the buy rule (the 0/0 guard only engaged after 40 identical bars).
+    # Rolling max is exact; a rolling-mean residual can stay just above 0.
+    no_movement = tr.rolling(5, min_periods=1).max() <= 0.0
+    composite = composite.where(~no_movement, 0.0)
 
     return composite.fillna(0.0)
 

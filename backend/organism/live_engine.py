@@ -5058,6 +5058,12 @@ class OrganismLiveEngine(
                         continue
                     if bs.composite_score < 0.55:
                         continue
+                    # Audit 2026-10-20 (indicator check): this path only ever
+                    # enters LONG, so it takes only signals the scanner calls
+                    # upward. Breakdowns below the pivot low (-1) and
+                    # directionless signals (0) were previously bought long.
+                    if float(getattr(bs, "direction", 1.0) or 0.0) <= 0.0:
+                        continue
                     # Shared entry gates (same helper as alpha path)
                     _gate_ok, _gate_reason = self._passes_entry_gates(
                         bs.symbol, 1.0, features_by_symbol,
