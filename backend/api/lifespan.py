@@ -268,6 +268,17 @@ async def _step_database(app) -> None:
         app.state.db_sessionmaker = None
 
 
+# Token-blacklist Redis client bounds (audit 2026-10-05). Every authenticated
+# request and every Socket.IO delivery, including the scheduler's tick
+# broadcast, waits on a blacklist lookup, so a Redis that keeps the connection
+# open but stops answering must fail within these limits rather than block.
+# A failed or timed-out lookup falls back to the in-process blacklist
+# (fail-open for revocations only Redis holds; see
+# backend.infra.security.token_revocation_reason for the rationale).
+TOKEN_BLACKLIST_REDIS_TIMEOUT_S = 1.0
+TOKEN_BLACKLIST_REDIS_PING_TIMEOUT_S = 3.0
+
+
 async def _step_token_blacklist(app) -> None:
     # ── V10 AA4-2 / Wave-50 (2026-05-03): Token Blacklist Redis init ─
     # The blacklist machinery in backend/infra/security.py was orphan —
@@ -276,32 +287,52 @@ async def _step_token_blacklist(app) -> None:
     # backend was permanently None, so the blacklist was in-memory only
     # and wiped on every container restart.  Now: connect to Redis on
     # startup so AA3-1 logout actually persists revocations.
+    _redis_client = None
     try:
         import redis.asyncio as _redis
         from backend.infra.security import init_token_blacklist
+        from backend.utils.log_redaction import safe_url
         _redis_url = (
             os.environ.get("REDIS_URL")
             or "redis://localhost:6379/0"
         )
-        _redis_client = _redis.from_url(_redis_url, decode_responses=False)
-        # Ping to fail fast if Redis is unreachable.
-        await _redis_client.ping()
+        _redis_client = _redis.from_url(
+            _redis_url,
+            decode_responses=False,
+            socket_timeout=TOKEN_BLACKLIST_REDIS_TIMEOUT_S,
+            socket_connect_timeout=TOKEN_BLACKLIST_REDIS_TIMEOUT_S,
+            health_check_interval=30,
+        )
+        # Ping to fail fast if Redis is unreachable or not answering.
+        await asyncio.wait_for(
+            _redis_client.ping(), timeout=TOKEN_BLACKLIST_REDIS_PING_TIMEOUT_S,
+        )
         await init_token_blacklist(_redis_client)
         app.state.redis = _redis_client
+        # Logged without userinfo: REDIS_URL embeds the Redis password.
         logger.info(
             "AA4-2: token blacklist Redis backend initialized at %s",
-            _redis_url,
+            safe_url(_redis_url),
         )
     except Exception as _redis_err:
         # In-memory fallback is still active; warn but don't fail-fast
         # so paper / dev still boot when Redis is down.  Production
         # would benefit from a stricter gate but that's a follow-up.
         logger.warning(
-            "AA4-2: token blacklist Redis init failed (%s); "
+            "AA4-2: token blacklist Redis init failed (%s: %s); "
             "falling back to in-memory only (wipes on restart)",
-            _redis_err,
+            type(_redis_err).__name__, _redis_err,
         )
         app.state.redis = None
+        if _redis_client is not None:
+            from redis.exceptions import RedisError
+            try:
+                await asyncio.wait_for(
+                    _redis_client.aclose(), timeout=TOKEN_BLACKLIST_REDIS_TIMEOUT_S,
+                )
+            except (RedisError, OSError, RuntimeError, AttributeError) as _close_err:
+                logger.debug("AA4-2: closing the unused Redis client failed: %s",
+                             type(_close_err).__name__)
 
 
 async def _step_outbox_worker(app, ctx: dict, flags: "BootFlags") -> None:
@@ -537,8 +568,16 @@ async def _shut_brain_save(app, ctx: dict) -> None:
     scheduler = ctx.get("organism_scheduler")
     if scheduler and getattr(scheduler, "_engine", None) is not None:
         try:
-            scheduler._engine.force_save_brain()
-            logger.info("Brain saved at shutdown (lifespan defensive save)")
+            result = scheduler._engine.force_save_brain()
+            # Audit 2026-10-05 C12-06: force_save_brain reports a save that did
+            # not happen as success False (it does not raise).
+            if isinstance(result, dict) and result.get("success") is False:
+                logger.error(
+                    "Defensive brain save at shutdown did NOT persist: %s",
+                    result.get("error"),
+                )
+            else:
+                logger.info("Brain saved at shutdown (lifespan defensive save)")
         except Exception as e:
             logger.error(f"Defensive brain save failed at shutdown: {e}")
 
@@ -806,7 +845,10 @@ async def _sync_orders(app):
 
         from backend.infra.repositories.orders import OrdersRepo
         from backend.integrations.alpaca_broker import get_alpaca_broker_client
-        from backend.integrations.alpaca_stream import apply_order_fill_snapshot
+        from backend.integrations.alpaca_stream import (
+            apply_order_fill_snapshot,
+            log_lot_accounting_discrepancy,
+        )
 
         logger.info("Starting initial order sync from Alpaca...")
         broker_client = get_alpaca_broker_client()
@@ -845,7 +887,10 @@ async def _sync_orders(app):
 
         async with app.state.sessionmaker() as session:
             repo = OrdersRepo(session)
-            for ao in alpaca_orders:
+            # Apply oldest first (the page is fetched newest first): a close
+            # replayed before its opening fill would be recorded as an
+            # unmatched lot close instead of consuming that opening lot.
+            for ao in reversed(alpaca_orders):
                 broker_id = ao.get("id")
                 db_order = await repo.get_by_broker_order_id(broker_id)
                 if not db_order:
@@ -868,6 +913,7 @@ async def _sync_orders(app):
                         broker_order_data=ao,
                     )
                     await session.commit()
+                    log_lot_accounting_discrepancy(accounting, ingress="startup_order_sync")
                 except (
                     SQLAlchemyError,
                     ValueError,

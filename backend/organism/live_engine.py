@@ -26,6 +26,7 @@ Wire into the live server scheduler for automatic bar-by-bar execution.
 from __future__ import annotations
 
 import asyncio
+import copy
 import os
 import time
 import threading
@@ -55,7 +56,13 @@ from backend.organism.governance import GovernanceController
 from backend.organism.kelly_sizer import KellySizer
 from backend.organism import research_policy
 from backend.organism.live_engine_data import _DataFeederMixin
-from backend.organism.live_engine_fills import _FillLookupMixin
+from backend.organism.live_engine_fills import (
+    EXTERNAL_CLOSE_EXIT_REASON,
+    EXTERNAL_CLOSE_UNBOOKED_REASON,
+    ClosedPositionFills,
+    ExternalClose,
+    _FillLookupMixin,
+)
 from backend.organism.live_engine_state import _StateReconstructionMixin
 from backend.organism.live_engine_telemetry import _TelemetryRecordingMixin
 from backend.organism.experimental.alt_exit_engine import AltExitEngine
@@ -103,6 +110,7 @@ from backend.organism.background_trainer import BackgroundTrainer
 from backend.organism.market_scanner import MarketScanner, SCAN_INTERVAL_TICKS
 from backend.strategies.types import TradingSignal
 from backend.utils.logger import get_logger
+from backend.utils.market_hours import is_market_open
 from backend.organism.pipeline_diagnostics import (
     PipelineDiagnostics, finite_age, entry_frame_age, subscription_state,
 )
@@ -613,6 +621,21 @@ def trim_feature_frames_asof(
         symbol: _trim_frame_asof(frame, now)
         for symbol, frame in features_by_symbol.items()
     }
+
+
+def _brain_full_save_reason(brain: Any) -> str | None:
+    """Audit 2026-10-05 C12 review: why only a full save can leave a HEAD that
+    a restart loads (the brain's ``full_save_required``), or None. Anything but
+    a non-empty string (no such method, a stub) counts as None. Never raises."""
+    check = getattr(brain, "full_save_required", None)
+    if not callable(check):
+        return None
+    try:
+        reason = check()
+    except Exception as e:  # noqa: BLE001 - a check must not break the save
+        logger.warning("Brain full-save requirement check failed: %s", e)
+        return None
+    return reason if isinstance(reason, str) and reason else None
 
 
 class OrganismLiveEngine(
@@ -2452,6 +2475,46 @@ class OrganismLiveEngine(
                             self._last_pipeline_diagnostics, sort_keys=True, allow_nan=False))
                     except Exception:
                         logger.warning("Pipeline diagnostics unavailable")
+                # Audit 2026-10-05 C09-01: log-only tripwire, outside the
+                # hashed tick; it never raises into the tick.
+                self._check_regime_prior_tripwire()
+
+    def _check_regime_prior_tripwire(self) -> None:
+        """Log CRITICAL once if the main regime detector carries a prior.
+
+        Audit 2026-10-05 C09-01. Every per-symbol and per-ETF detect behind the
+        routed label starts from ``regime_detector._smoothed_probs`` and the
+        aggregate paths put it back afterwards, so in production that prior
+        and ``_history`` must stay empty: the routed label is the plain argmax
+        of single-shot probabilities, as the forward sample was measured. A
+        non-empty prior (a restored brain, or any caller of ``detect()`` on the
+        shared detector) is blended into every later label and never decays.
+        Observability only: no decision reads this, and it never raises.
+        """
+        if getattr(self, "_regime_prior_tripwire_fired", False):
+            return
+        try:
+            detector = getattr(self, "regime_detector", None)
+            probs = getattr(detector, "_smoothed_probs", None)
+            history = getattr(detector, "_history", None)
+            has_probs = isinstance(probs, dict) and bool(probs)
+            has_history = isinstance(history, list) and bool(history)
+            if not (has_probs or has_history):
+                return
+            shown_probs = dict(probs) if has_probs else {}
+            history_len = len(history) if has_history else 0
+            last_label = history[-1] if has_history else None
+            self._regime_prior_tripwire_fired = True
+            logger.critical(
+                "REGIME PRIOR TRIPWIRE (audit 2026-10-05 C09-01): the live regime "
+                "detector's running state is not empty (smoothed_probs=%s, history_len=%d, "
+                "last=%s). A non-empty smoothed_probs is blended into every per-symbol "
+                "detect behind the routed label and never decays; both are saved to "
+                "regime_state.json and restored at startup. Logged once per process.",
+                shown_probs, history_len, last_label,
+            )
+        except Exception:  # noqa: BLE001 - observability must never break a tick
+            logger.debug("Regime prior tripwire check failed", exc_info=True)
 
     # V8 HH R-1 partial / Wave-29 (2026-05-03): extracted helper.
     # The full pipeline-split of `_live_tick_inner` is multi-day
@@ -3455,7 +3518,7 @@ class OrganismLiveEngine(
                         features_by_symbol, sector_features=sector_features,
                     )
                 elif spy_features is not None and len(spy_features) >= 10:
-                    regime_state = self.regime_detector.detect(spy_features)
+                    regime_state = self.regime_detector.detect_isolated(spy_features)  # C09-01
                 else:
                     regime_state = self.regime_detector.detect_market_regime(
                         features_by_symbol
@@ -3894,6 +3957,11 @@ class OrganismLiveEngine(
             self.exit_engine.learning_mode = self._is_learning_mode
             _MAX_LOSS_PCT = self.exit_engine.max_loss_pct
             exits_submitted = 0
+            _rth = is_market_open(self._now_fn())  # broker-price nets act only in regular hours
+            # Audit 2026-10-05 C05-02: unclaimed-share records live as long as their window.
+            if getattr(self, "_exit_unclaimed_qty", None):
+                self._exit_unclaimed_qty = {s: q for s, q in self._exit_unclaimed_qty.items()
+                                            if s in self._pending_exit or s in self._exit_cooldown}
             for sym, pos_data in list(current_positions.items()):
                 # LONG_ONLY guard: skip exit processing for SHORT positions.
                 # Short positions should not exist when LONG_ONLY=true; they
@@ -3907,69 +3975,101 @@ class OrganismLiveEngine(
                         sym, pos_data.get("qty", "?"),
                     )
                     continue
+                # Audit 2026-10-05 C05-01: broker price for the safety nets; missing, zero,
+                # negative or non-finite reads 0.0, which no net fires on (WARNING instead).
+                try:
+                    _broker_price = float(pos_data.get("current_price") or 0.0)
+                except (TypeError, ValueError):
+                    _broker_price = 0.0
+                _broker_price = _broker_price if 0.0 < _broker_price < float("inf") else 0.0
                 # V9 DD3-3 / Wave-43 (2026-05-03): consult _exit_cooldown
                 # on the exit path. The 3-tick `_pending_exit` TTL can
                 # expire BEFORE a slow broker fill arrives; without this
                 # gate, the next tick re-fires the exit for full broker
                 # qty -> oversell race. `_exit_cooldown` has a longer TTL
-                # (typically 6 ticks) so it catches the gap. We still
-                # let the V8 DD2-1 max-loss safety check below run since
-                # that path is a true breach.
-                if (
+                # (10 ticks) so it catches the gap: routine exits stay
+                # suspended for the whole window.
+                _exit_window = (
                     sym in self._exit_cooldown
-                    and sym not in self._pending_exit
                     and (self._tick_count - self._exit_cooldown[sym])
                         < self._EXIT_COOLDOWN_TICKS
-                ):
-                    logger.debug(
-                        "DD3-3: skipping routine exit for %s — exit_cooldown "
-                        "active (tick %d, set %d)",
-                        sym, self._tick_count, self._exit_cooldown[sym],
-                    )
-                    continue
+                )
 
                 # V8 / DD2-1 / Wave-32 (2026-05-03): hard safety net even when
                 # a pending exit is in flight.  The 3-tick `_pending_exit`
                 # cooldown was previously skipping ALL exit checks including
                 # max-loss; the unsold portion of a partial-TP / ML-reversal
                 # exit could blow through max_loss_pct during that 30s window.
-                # Now: routine exit logic still skipped, but max-loss STILL
-                # checked against broker price.
+                # Audit 2026-10-05 C05-02: so could the whole window, and this net never
+                # fired live (C05-01). Each window tick runs only the always-on risk exits:
+                # (a) the exit engine's max-loss and hard stop on the bar close, checked on a
+                # copy of the levels (no trailing/MAE update); (b) this max-loss net on the
+                # broker price, in regular hours only and confirmed by a fresh bar. A breach
+                # sells only unclaimed shares (_submit_exit_order) the broker reports free.
                 if sym in self._pending_exit:
-                    broker_price = float(pos_data.get("current_price", 0))
+                    _exit_window = True
+                if _exit_window:
+                    _win_feat, _win_levels = features_by_symbol.get(sym), self._exit_levels.get(sym)
+                    _win_bar = (float(_win_feat["close"].iloc[-1])
+                                if _win_feat is not None and len(_win_feat) >= 1 else 0.0)
+                    _win_bar = _win_bar if 0.0 < _win_bar < float("inf") else 0.0
                     avg_entry = float(pos_data.get("avg_entry_price", 0))
-                    if broker_price > 0 and avg_entry > 0:
-                        side = pos_data.get("side", "long")
-                        _dir = 1.0 if side == "long" else -1.0
-                        pnl_pct = (broker_price - avg_entry) / avg_entry * _dir
-                        if pnl_pct <= -_MAX_LOSS_PCT:
-                            qty = abs(float(pos_data.get("qty", 0)))
-                            sell_shares = int(qty)
-                            if sell_shares > 0:
-                                try:
-                                    await self._submit_exit_order(
-                                        sym, sell_shares,
-                                        "safety_net_pending_exit_breach",
-                                        direction=_dir,
-                                        broker_positions=current_positions,
-                                    )
-                                    self._exit_cooldown[sym] = self._tick_count
-                                    exits_submitted += 1
-                                    result.orders_submitted += 1
-                                    logger.warning(
-                                        "DD2-1 breach: %s pnl=%.2f%% past max_loss "
-                                        "during pending-exit window — safety net fired",
-                                        sym, pnl_pct * 100,
-                                    )
-                                except Exception as e:
-                                    result.errors.append(
-                                        f"DD2-1 safety net failed for {sym}: {e}"
-                                    )
-                    logger.debug(
-                        "Skipping routine exit check for %s — pending exit "
-                        "from tick %d (no breach)",
-                        sym, self._pending_exit[sym],
-                    )
+                    _dir = 1.0 if pos_data.get("side", "long") == "long" else -1.0
+                    _win_reason, _win_price = "", _broker_price or _win_bar
+                    if _win_bar > 0 and _win_levels is not None:  # (a): risk exits only
+                        _win_sig = self.exit_engine.check_exit(  # a copy: tracking stays frozen
+                            copy.copy(_win_levels), _win_bar, regime, is_new_bar=False)
+                        if _win_sig.should_exit:
+                            _win_reason, _win_price = _win_sig.reason, _win_bar
+                    if not _win_reason and _win_price > 0 and avg_entry > 0:  # (b)
+                        pnl_pct = (_win_price - avg_entry) / avg_entry * _dir
+                        _bar_ok = (_win_bar <= 0 or sym in self._stale_entry_symbols  # fresh bar
+                                   or (_win_bar - avg_entry) / avg_entry * _dir <= -_MAX_LOSS_PCT)
+                        if pnl_pct <= -_MAX_LOSS_PCT and (not _broker_price or (_rth and _bar_ok)):
+                            _win_reason = "safety_net_pending_exit_breach"
+                        elif pnl_pct <= -_MAX_LOSS_PCT:  # a lone broker mark: logged, not acted on
+                            logger.warning("Exit window for %s: broker-price breach at %.2f not "
+                                           "acted on (regular hours=%s, bar close=%.2f)",
+                                           sym, _broker_price, _rth, _win_bar)
+                    elif not _win_reason and not (_win_bar > 0 and _win_levels is not None):
+                        logger.warning("Exit window for %s: no valid bar or broker price (or "
+                                       "entry) — hard stop and max-loss not evaluated", sym)
+                    sell_shares = int(abs(float(pos_data.get("qty", 0)))) if _win_reason else 0
+                    try:  # never more than the broker reports free of open orders (long: >= 0)
+                        _qa = float(pos_data["qty_available"])
+                        sell_shares = min(sell_shares, int(max(0.0, _qa) if _dir > 0 else abs(_qa)))
+                    except (KeyError, TypeError, ValueError, OverflowError):
+                        pass  # qty_available not reported
+                    _unclaimed = (getattr(self, "_exit_unclaimed_qty", None) or {}).get(sym)
+                    if _unclaimed is not None:
+                        sell_shares = min(sell_shares, _unclaimed)
+                    if sell_shares > 0:
+                        try:
+                            _win_result = await self._submit_exit_order(
+                                sym, sell_shares, _win_reason, direction=_dir,
+                                broker_positions=current_positions,
+                            )
+                            if not (isinstance(_win_result, dict)
+                                    and _win_result.get("status") == "blocked"):
+                                self._exit_cooldown[sym] = self._tick_count
+                                self._pending_exit[sym] = self._tick_count
+                                exits_submitted += 1
+                                result.orders_submitted += 1
+                                logger.warning("Exit window %s exit: %s at %.2f — %d unclaimed "
+                                               "share(s) sent",
+                                               _win_reason, sym, _win_price, sell_shares)
+                                result.activity.append(ActivityEvent(
+                                    event_type="exit", symbol=sym, timestamp=now_iso,
+                                    message=f"EXIT: {sym} — {_win_reason} "
+                                            f"(exit window, {sell_shares} shares)",
+                                    details={"reason": _win_reason, "shares": sell_shares,
+                                             "exit_window": True},
+                                ))
+                        except Exception as e:
+                            result.errors.append(f"Exit window {_win_reason} failed for {sym}: {e}")
+                    elif _win_reason:
+                        logger.debug("Exit window for %s: %s, no unclaimed free share to sell",
+                                     sym, _win_reason)
                     continue
                 feat_df = features_by_symbol.get(sym)
                 if feat_df is None or len(feat_df) < 1:
@@ -3977,14 +4077,16 @@ class OrganismLiveEngine(
                     # even when feature computation fails.  We NEVER skip exit
                     # checks for open positions — data outages must not disable
                     # risk management.
-                    broker_price = float(pos_data.get("current_price", 0))
+                    broker_price = _broker_price
                     avg_entry = float(pos_data.get("avg_entry_price", 0))
                     if broker_price > 0 and avg_entry > 0:
                         side = pos_data.get("side", "long")
                         _dir = 1.0 if side == "long" else -1.0
                         pnl_pct = (broker_price - avg_entry) / avg_entry * _dir
-                        if pnl_pct <= -_MAX_LOSS_PCT:
-                            from backend.organism.adaptive_exits import ExitSignal
+                        if pnl_pct <= -_MAX_LOSS_PCT and not _rth:  # no bar here: hours decide
+                            logger.warning("SAFETY NET (no features) for %s: broker breach at %.2f "
+                                           "not acted on outside regular hours", sym, broker_price)
+                        elif pnl_pct <= -_MAX_LOSS_PCT:
                             qty = abs(float(pos_data.get("qty", 0)))
                             sell_shares = int(qty)
                             if sell_shares > 0:
@@ -6929,6 +7031,28 @@ class OrganismLiveEngine(
             self._total_exits_submitted += 1
         except Exception:
             pass
+        # Audit 2026-10-05 C05-02: record how many shares of the position no
+        # exit of its current exit window has claimed yet; the window's
+        # stop/max-loss check in _live_tick_inner sells at most these, so an
+        # exit in flight is never sent twice. A held or raising exit claims
+        # nothing; holdings that cannot be read claim every share.
+        try:
+            _held_map = broker_positions if broker_positions is not None else (
+                getattr(self, "_last_positions", None) or {})
+            try:
+                _held = int(abs(float((_held_map.get(symbol) or {}).get("qty", 0) or 0)))
+            except (TypeError, ValueError):
+                _held = 0
+            _unclaimed = getattr(self, "_exit_unclaimed_qty", None)
+            if _unclaimed is None:
+                _unclaimed = self._exit_unclaimed_qty = {}
+            _prior = (_unclaimed.get(symbol)
+                      if symbol in self._pending_exit or symbol in self._exit_cooldown
+                      else None)
+            _unclaimed[symbol] = max(
+                0, (_held if _prior is None else min(_held, _prior)) - int(shares))
+        except Exception:  # noqa: BLE001 - bookkeeping never fails a sent exit
+            logger.warning("Exit window bookkeeping failed for %s", symbol, exc_info=True)
         # V4 H-2 / Wave-16c (2026-05-02): the sync `submit_symbol_order`
         # response carries no `avg_fill_price` (the broker submission
         # is async — sync response → outbox → broker → WS
@@ -6962,6 +7086,10 @@ class OrganismLiveEngine(
             return None
         return str(pending.get("observed_at", "")), str(meta.get("entry_order_id") or "")
 
+    # Audit 2026-10-05 C06-01: a close pending this long after it was observed
+    # pages once per episode (EXE-03 uses the same 30 minutes for entries).
+    _UNRESOLVED_CLOSE_ESCALATE_SECONDS = 1800.0
+
     def _defer_unresolved_close(self, symbol: str, reason: str) -> None:
         """Audit 2026-09-29 R9: leave one close pending, never fabricated.
 
@@ -6969,19 +7097,107 @@ class OrganismLiveEngine(
         closes are still accounted this pass. One WARNING per symbol per
         pending episode; status() reports reason and age under
         close_accounting.unresolved. In-memory only (a restart re-warns once).
+        Audit 2026-10-05 C06-01: an episode still pending
+        ``_UNRESOLVED_CLOSE_ESCALATE_SECONDS`` after its observed close also
+        raises one CRITICAL (the watchdog pages on it; a restart re-pages once
+        if it is still unresolved). Nothing is finalized or retired here.
         """
         episode = self._close_episode(symbol)
         unresolved = getattr(self, "_unresolved_closes", None)
         if unresolved is None:
             unresolved = self._unresolved_closes = {}
         previous = unresolved.get(symbol)
-        unresolved[symbol] = {"episode": episode, "reason": reason}
-        if previous is None or previous["episode"] != episode:
+        same_episode = previous is not None and previous["episode"] == episode
+        item = unresolved[symbol] = {
+            "episode": episode, "reason": reason,
+            "escalated": bool(same_episode and previous.get("escalated")),
+        }
+        if not same_episode:
             logger.warning(
                 "Close accounting unresolved for %s (%s): close observed at %s "
                 "stays pending and entry-gated; later closes are still accounted",
                 symbol, reason, episode[0] if episode else "unknown",
             )
+        if item["escalated"] or episode is None:
+            return
+        try:
+            age = (self._now_fn() - datetime.fromisoformat(episode[0])).total_seconds()
+        except (TypeError, ValueError):
+            return
+        if age >= self._UNRESOLVED_CLOSE_ESCALATE_SECONDS:
+            item["escalated"] = True
+            logger.critical(
+                "CLOSE ACCOUNTING UNRESOLVED for %.0f min: %s (%s), close observed at %s "
+                "- no trade is recorded and the symbol stays entry-gated until it "
+                "resolves; check the order rows of this lifetime (status, fills, "
+                "attribution) against the broker",
+                age / 60.0, symbol, reason, episode[0],
+            )
+
+    @staticmethod
+    def _latest_bar_close(symbol: str, features_by_symbol: Any) -> "float | None":
+        """Last bar close for ``symbol``; None when missing, non-finite or not positive."""
+        try:
+            frame = (features_by_symbol or {}).get(symbol)
+            if frame is None or len(frame) == 0:
+                return None
+            value = float(frame["close"].iloc[-1])
+        except Exception:  # noqa: BLE001 - a missing mark means unknown, never an error
+            return None
+        return value if 0.0 < value < float("inf") else None
+
+    def _external_close_mark(
+        self, symbol: str, pending: dict[str, Any], features_by_symbol: Any,
+    ) -> "tuple[float | None, str]":
+        """Audit 2026-10-05 C06-01: best available price for an unbooked close.
+
+        The bar close seen when the close was first observed, else the current
+        bar close, else the streaming provider's cached quote (mid, bid, ask).
+        Never another leg's or lifetime's fill. ``(None, "")`` means unknown.
+        """
+        def positive(value: Any) -> "float | None":
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                return None
+            return value if 0.0 < value < float("inf") else None
+
+        observed = positive((pending or {}).get("observed_bar_close"))
+        if observed is not None:
+            return observed, "observed_bar_close"
+        current = self._latest_bar_close(symbol, features_by_symbol)
+        if current is not None:
+            return current, "bar_close"
+        bid = ask = None
+        try:
+            provider = getattr(self, "_streaming_provider", None)
+            quote = provider.get_latest_quote(symbol) if provider is not None else None
+            if isinstance(quote, dict):
+                bid, ask = positive(quote.get("bid")), positive(quote.get("ask"))
+        except Exception as exc:  # noqa: BLE001 - price unknown
+            logger.warning("External close mark for %s: quote read failed (%s)",
+                           symbol, type(exc).__name__)
+        if bid is not None and ask is not None:
+            return (bid + ask) / 2.0, "quote_mid"
+        if bid is not None:
+            return bid, "quote_bid"
+        if ask is not None:
+            return ask, "quote_ask"
+        return None, ""
+
+    def _external_close_fills(
+        self, symbol: str, pending: dict[str, Any], external: ExternalClose,
+        features_by_symbol: Any,
+    ) -> "ClosedPositionFills | None":
+        """Audit 2026-10-05 C06-01: cash flows of a close outside the engine.
+
+        Exact when platform close-route legs booked the whole close; otherwise
+        the unbooked quantity is priced at ``_external_close_mark`` and the
+        price source names that rung. None (no mark) keeps the close pending.
+        """
+        if external.unbooked_qty <= 0:
+            return external.fills()
+        return external.fills(*self._external_close_mark(symbol, pending, features_by_symbol))
 
     def _unresolved_close_status(self) -> dict[str, Any]:
         """Stuck pending closes for status(): reason and age in seconds."""
@@ -7162,6 +7378,8 @@ class OrganismLiveEngine(
                         "regime": self._last_regime if self._last_regime != "unknown" else getattr(self.regime_detector, "current_regime", "unknown"),
                         "exit_level": dict(vars(lvl)) if lvl is not None else None,
                         "status": "awaiting_complete_position_fills",
+                        # C06-01: the mark nearest the close, should no DB leg book it.
+                        "observed_bar_close": self._latest_bar_close(sym, features_by_symbol),
                     }
             if newly_closed:
                 try:
@@ -7209,12 +7427,27 @@ class OrganismLiveEngine(
                         close_accounting.restore(self, before_zero)
                         raise
                 continue
+            external = None
             if position_fills is None and meta.get("entry_source") != "reconciliation_orphan":
-                # Unknown attribution, DB errors and incomplete fills stay
-                # visible/pending (R9: skipped, later closes still run).
-                self._defer_unresolved_close(
-                    sym, pending.get("accounting_hold_reason") or "exact_fills_unavailable")
-                continue
+                # Audit 2026-10-05 C06-01: closed outside the engine's exit
+                # orders (a platform close route, the Alpaca dashboard, a
+                # broker liquidation). Close-route legs that complete the
+                # lifetime are exact now; a quantity no DB leg booked is priced
+                # at the best mark once EXTERNAL_CLOSE_APPROXIMATE_AFTER has
+                # passed. Either becomes a reconciliation artifact below.
+                evidence = await self._lookup_external_close_from_db(sym, meta, closed_at=closed_at)
+                waiting = evidence is not None and evidence.waiting(closed_at, observed_at)
+                if evidence is not None and not waiting:
+                    external = self._external_close_fills(sym, pending, evidence, features_by_symbol)
+                if external is None:
+                    # Unknown attribution, DB errors and incomplete fills stay
+                    # visible/pending (R9: skipped, later closes still run).
+                    self._defer_unresolved_close(sym, (
+                        EXTERNAL_CLOSE_UNBOOKED_REASON if waiting
+                        else "no_exit_price" if evidence is not None
+                        else pending.get("accounting_hold_reason") or "exact_fills_unavailable"))
+                    continue
+                position_fills = external
             # Orphan bookkeeping retains its exclusion from all learning.
             # Fetch legacy fallbacks outside the serialized no-await commit.
             fallback_exit = fallback_entry = None
@@ -7252,11 +7485,30 @@ class OrganismLiveEngine(
                                 exit_price = float(feat_df["close"].iloc[-1])
                                 _price_source = "bar_close"
                             else:
-                                # Try latest quote from streaming data provider
-                                quote = self._data_client.get_latest_quote(sym)
-                                bid = quote.get("bid")
-                                ask = quote.get("ask")
-                                if bid and ask and bid > 0 and ask > 0:
+                                # Try latest quote from streaming data provider.
+                                # Audit 2026-10-05 C06-02: the production data
+                                # client (AlpacaDataClient) has no quote method; the
+                                # AttributeError aborted this pass and the rest of
+                                # every tick. The cached quote lives in the
+                                # streaming provider. Any failure here means "price
+                                # unknown": the close stays pending (no_exit_price).
+                                bid = ask = 0.0
+                                try:
+                                    provider = self._streaming_provider
+                                    quote = (provider.get_latest_quote(sym)
+                                             if provider is not None else None)
+                                    if isinstance(quote, dict):
+                                        bid = float(quote.get("bid") or 0.0)
+                                        ask = float(quote.get("ask") or 0.0)
+                                except Exception as exc:  # noqa: BLE001 - price unknown
+                                    logger.warning(
+                                        "Exit price for %s: quote fallback failed (%s) "
+                                        "— price unknown", sym, type(exc).__name__,
+                                    )
+                                    bid = ask = 0.0
+                                bid = bid if 0.0 < bid < float("inf") else 0.0
+                                ask = ask if 0.0 < ask < float("inf") else 0.0
+                                if bid > 0 and ask > 0:
                                     exit_price = (bid + ask) / 2.0
                                     _price_source = "quote_mid"
                                     logger.info(
@@ -7264,10 +7516,10 @@ class OrganismLiveEngine(
                                         "(no bar features available)",
                                         sym, exit_price,
                                     )
-                                elif bid and bid > 0:
+                                elif bid > 0:
                                     exit_price = bid
                                     _price_source = "quote_bid"
-                                elif ask and ask > 0:
+                                elif ask > 0:
                                     exit_price = ask
                                     _price_source = "quote_ask"
 
@@ -7365,7 +7617,12 @@ class OrganismLiveEngine(
                     # broker without a normal exit order.  These are cross-session
                     # carryover cleanups or orphan metadata, not strategy trades.
                     _is_reconciliation = False
-                    if position_fills is None and _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
+                    if external is not None:
+                        # C06-01: not the strategy's exit; kept out of every
+                        # learning consumer exactly like orphan artifacts.
+                        _exit_reason = EXTERNAL_CLOSE_EXIT_REASON
+                        _is_reconciliation = True
+                    elif position_fills is None and _exit_reason == "live_close" and real_fill is None and _bars_held == 0:
                         _exit_reason = "reconciliation_adjustment"
                         _is_reconciliation = True
                         logger.warning(
@@ -7557,6 +7814,13 @@ class OrganismLiveEngine(
                         "LONG" if direction > 0 else "SHORT",
                         pnl,
                     )
+                    if external is not None:
+                        logger.warning(
+                            "External close of %s recorded as a reconciliation artifact "
+                            "(%s, %d shares, pnl=$%.2f, pending exit reason %s); "
+                            "excluded from learning, entry gate released",
+                            sym, _price_source, shares, pnl, pending["exit_reason"],
+                        )
 
                 except Exception as exc:
                     close_accounting.restore(self, before_commit)
@@ -7981,7 +8245,7 @@ class OrganismLiveEngine(
             )
 
             # Full save — bypass the gate, same kwargs block as _save_brain
-            self.brain.save(
+            saved = self.brain.save(
                 signal_gen=self.signal_gen,
                 learner=self.learner,
                 equity_curve=self._equity_curve,
@@ -7994,6 +8258,20 @@ class OrganismLiveEngine(
                 regime_detector=self.regime_detector,
                 force=True,
             )
+            if saved is False:
+                # Audit 2026-10-05 C12-06: lock held elsewhere or the
+                # trained-overwrite guard blocked it — nothing was written.
+                detail = ("brain.save() did not publish (brain lock held "
+                          "elsewhere or trained-overwrite guard blocked it)")
+                self._record_brain_save_failure("forced full save", detail)
+                return {
+                    "success": False,
+                    "forced": True,
+                    "error": detail,
+                    "tick": self._tick_count,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            self._record_brain_save_success()
             # C4 watchdog: truth-source update
             self._watchdog_last_brain_save_tick = self._tick_count
 
@@ -8016,6 +8294,7 @@ class OrganismLiveEngine(
             }
         except Exception as e:
             logger.error("force_save_brain failed: %s", e, exc_info=True)
+            self._record_brain_save_failure("forced full save", str(e))
             return {
                 "success": False,
                 "forced": True,
@@ -8100,6 +8379,9 @@ class OrganismLiveEngine(
                             _disk_trades,
                             "".join(_tb2.format_stack()),
                         )
+                        self._record_brain_save_failure(
+                            "save", "forensic guard: learner state regressed",
+                        )
                         return  # Abort save entirely
                 except Exception:
                     pass  # If we can't read disk, let the guarded helper decide
@@ -8140,7 +8422,17 @@ class OrganismLiveEngine(
                 # the .save_complete sentinel cannot drift behind in-memory
                 # state indefinitely. This changes only WHEN state persists.
                 self._consecutive_wf_skips += 1
-                if self._consecutive_wf_skips < self._max_wf_save_skips:
+                # Audit 2026-10-05 C12 review: an essential save never writes
+                # models, caches or evolved params, so it cannot repair a HEAD
+                # that a restart would not load as one complete generation
+                # (state restored from a backup, an interrupted swap, HEAD kept
+                # over a stale swap journal, a listed file missing/unsigned).
+                # Take the gated full save now instead of persisting into it.
+                full_save_reason = _brain_full_save_reason(self.brain)
+                if (
+                    self._consecutive_wf_skips < self._max_wf_save_skips
+                    and not full_save_reason
+                ):
                     logger.warning(
                         "Full brain save SKIPPED by walk-forward gate "
                         "(%d/%d consecutive): %s — persisting all runtime "
@@ -8148,7 +8440,7 @@ class OrganismLiveEngine(
                         self._consecutive_wf_skips, self._max_wf_save_skips,
                         reason,
                     )
-                    self.brain.save_essential_state(
+                    saved = self.brain.save_essential_state(
                         signal_gen=self.signal_gen,
                         learner=self.learner,
                         all_trades=self._all_trades,
@@ -8159,14 +8451,32 @@ class OrganismLiveEngine(
                         governance_controller=self.governance,
                         regime_detector=self.regime_detector,
                     )
+                    if saved is False:
+                        # Audit 2026-10-05 C12-06: a save that did not happen
+                        # does not advance the C4 watchdog.
+                        self._record_brain_save_failure(
+                            "essential save",
+                            "save_essential_state reported the state was not "
+                            "persisted (see the preceding brain_persistence log)",
+                        )
+                        return
+                    self._record_brain_save_success()
                     self._watchdog_last_brain_save_tick = self._tick_count
                     return
-                logger.warning(
-                    "Walk-forward gate has blocked %d consecutive full brain "
-                    "saves — forcing a gated full save (gated_save=true) to "
-                    "bound restart state-loss. Gate reason: %s",
-                    self._consecutive_wf_skips, reason,
-                )
+                if full_save_reason:
+                    logger.warning(
+                        "Walk-forward gate blocked the full brain save, but %s "
+                        "— taking a gated full save (gated_save=true) so a "
+                        "restart loads one complete generation. Gate reason: %s",
+                        full_save_reason, reason,
+                    )
+                else:
+                    logger.warning(
+                        "Walk-forward gate has blocked %d consecutive full brain "
+                        "saves — forcing a gated full save (gated_save=true) to "
+                        "bound restart state-loss. Gate reason: %s",
+                        self._consecutive_wf_skips, reason,
+                    )
 
             # Full brain save. When reached via the bounded-skip ceiling,
             # `force=True` is AUDIT-ONLY: save() performs the identical atomic
@@ -8175,7 +8485,7 @@ class OrganismLiveEngine(
             # a gated save can still never wipe a trained brain with fresh
             # state. It only tags the save as a bounded gated save.
             gated_save = not should_save
-            self.brain.save(
+            saved = self.brain.save(
                 signal_gen=self.signal_gen,
                 learner=self.learner,
                 equity_curve=self._equity_curve,
@@ -8188,6 +8498,18 @@ class OrganismLiveEngine(
                 regime_detector=self.regime_detector,
                 force=gated_save,
             )
+            if saved is False:
+                # Audit 2026-10-05 C12-06: lock held elsewhere or the
+                # trained-overwrite guard blocked it. Not a landed save: the
+                # skip counter and the C4 watchdog stay where they are, so
+                # the next cycle retries the full save.
+                self._record_brain_save_failure(
+                    "full save",
+                    "brain.save() did not publish (brain lock held elsewhere "
+                    "or trained-overwrite guard blocked it)",
+                )
+                return
+            self._record_brain_save_success()
             # C4: Update brain save watchdog tick; reset the skip counter now
             # that a full save (clean or gated) has landed.
             self._consecutive_wf_skips = 0
@@ -8201,9 +8523,11 @@ class OrganismLiveEngine(
             # Phase 4.7 — Record run into transfer knowledge
             try:
                 fi = self.signal_gen._get_feature_importance()
-                current_regime = self.regime_detector.current_regime
-                if current_regime == RegimeLabel.UNKNOWN:
-                    current_regime = "unknown"
+                # Audit 2026-10-05 C09-01: record the regime the last tick
+                # routed; the detector's current_regime is always 'unknown'.
+                current_regime = str(
+                    getattr(self, "_last_regime", RegimeLabel.UNKNOWN) or RegimeLabel.UNKNOWN
+                )
                 self.transfer_engine.record_run(
                     evolved_params=self.evolved_params,
                     trades=self._all_trades[-200:],
@@ -8216,6 +8540,45 @@ class OrganismLiveEngine(
                 logger.debug("Transfer knowledge save skipped: %s", te)
         except Exception as e:
             logger.error("Brain save failed: %s", e)
+            self._record_brain_save_failure("save", str(e))
+
+    # Audit 2026-10-05 C12-06: consecutive brain-save failures at which (and at
+    # every multiple of which) a CRITICAL line is logged for the watchdog scan.
+    _BRAIN_SAVE_FAILURE_CRITICAL_EVERY = 3
+
+    def _record_brain_save_success(self) -> None:
+        """C12-06: a brain save landed; close any run of failures."""
+        failures = getattr(self, "_brain_save_consecutive_failures", 0)
+        if failures:
+            logger.warning(
+                "Brain save persisted again after %d consecutive failed "
+                "attempt(s)", failures,
+            )
+        self._brain_save_consecutive_failures = 0
+
+    def _record_brain_save_failure(self, kind: str, detail: str) -> None:
+        """C12-06: report a brain save that did not happen — never as a save.
+
+        Every failure logs an ERROR (the C4 watchdog is not advanced by the
+        caller). Repeated failures log CRITICAL — at the threshold and every
+        multiple of it — which the paper watchdog's CRITICAL log scan pages
+        on. Never raises into the tick.
+        """
+        failures = getattr(self, "_brain_save_consecutive_failures", 0) + 1
+        self._brain_save_consecutive_failures = failures
+        logger.error(
+            "BRAIN SAVE NOT PERSISTED (%s, %d consecutive): %s",
+            kind, failures, detail,
+        )
+        every = self._BRAIN_SAVE_FAILURE_CRITICAL_EVERY
+        if failures % every == 0:
+            logger.critical(
+                "BRAIN SAVES FAILING REPEATEDLY: %d consecutive brain save "
+                "attempts did not persist (latest: %s: %s). The in-memory "
+                "engine state is not on disk; a restart now would restore "
+                "older brain state.",
+                failures, kind, detail,
+            )
 
     @close_accounting.serialized
     def _persist_exit_levels_standalone(
@@ -8232,9 +8595,33 @@ class OrganismLiveEngine(
         atomically. The previous in-place ``open(path, "w")`` left truncated,
         invalid JSON on a crash or serializer error mid-write (a forced backup
         restore on the next start). Serialization is unchanged.
+
+        Audit 2026-10-05 C12 review: extra_counters.json is part of the brain's
+        journaled full-save swap. An interrupted swap is settled first (rolled
+        forward, or retired with HEAD kept), so this write never changes a
+        file under a pending journal and wedges the following essential saves.
+        When it cannot be settled (brain lock busy, swap not completable),
+        this write is skipped: it would turn a recoverable journal stale. The
+        brain save that follows (a full save while a swap is pending) carries
+        the same fields from ``_build_extra_counters``.
         """
         import json
         from backend.organism.brain_persistence import _write_text_atomic
+        resolve = getattr(self.brain, "resolve_pending_swap", None)
+        if callable(resolve):
+            try:
+                settled = resolve()
+            except Exception as e:  # noqa: BLE001 - reported, never raised into the tick
+                logger.error("Brain swap settlement before the exit-level write failed: %s", e)
+                settled = False
+            if settled is False:
+                logger.error(
+                    "Exit-level standalone write SKIPPED: an interrupted brain "
+                    "full-save swap is pending and could not be settled; the "
+                    "next brain save persists exit levels, entry metadata and "
+                    "pending entry ids"
+                )
+                return
         try:
             ec_path = self.brain.brain_dir / "extra_counters.json"
             if ec_path.is_file():
@@ -8662,6 +9049,13 @@ class OrganismLiveEngine(
             training_history = list(self.learner.generation_metrics)
 
         trading_phase = self._trading_phase
+        # Audit 2026-10-05 C01-04 / C04-01 (review NB4): the outbox worker's entry
+        # refusals and dead-letter outcomes this session; monitoring only.
+        try:
+            from backend.infra.outbox_worker import dispatch_lifecycle_status
+            order_dispatch_lifecycle = dispatch_lifecycle_status()
+        except Exception:  # noqa: BLE001 - never fails the status
+            order_dispatch_lifecycle = None
         return {
             "pipeline_diagnostics": getattr(self, "_last_pipeline_diagnostics", None),
             "initialized": self._initialized,
@@ -8695,6 +9089,7 @@ class OrganismLiveEngine(
                     if r["age_seconds"] >= self._pending_entry_escalate_after()
                 ][:10],
             },
+            "order_dispatch_lifecycle": order_dispatch_lifecycle,
             # Audit 2026-09-30 OPS-04: the day's loss baseline survives restarts.
             "daily_loss": {
                 "session_date": getattr(self, "_daily_loss_date", ""),
@@ -8729,7 +9124,12 @@ class OrganismLiveEngine(
             "ml_accuracy": round(ml_accuracy, 4),
             "ml_trained": self.signal_gen.is_trained,
             "training_history": training_history,
-            "regime": self.regime_detector.current_regime,
+            # Audit 2026-10-05 C09-01: the label the last tick routed. The
+            # detector's current_regime never advances on the aggregate path,
+            # so it read 'unknown' forever.
+            "regime": str(
+                getattr(self, "_last_regime", RegimeLabel.UNKNOWN) or RegimeLabel.UNKNOWN
+            ),
             "shorts_enabled": self.evolved_params.shorts_enabled,
             "data_stale": self._data_stale,
             # Audit 2026-09-29 (MDP-05): per-symbol admission state.

@@ -11,7 +11,7 @@ A strategy close is not finalized until attributed entry/exit cashflows conserve
 
 Definitively unfilled/rejected entries can be removed only after zero execution is verified. Unknown attribution remains unknown; orphan exclusions remain. A reappearing broker position retains position management. Deferred resolution across sessions retains the true close time without contaminating the current day's counters or creating a fresh cooldown from yesterday's outcome.
 
-Replacement-order lineage is not reliably persisted by the current broker stream. A `replaced` predecessor is terminal, but does not prove its successor is finished or absent. Such lifetimes remain pending with `replacement_lineage_unverified`, and forward replaced orders block daily evidence qualification. This includes zero-fill predecessors. Supporting automatic replacement-chain accounting requires a separate ingestion/attribution repair; this release does not fabricate lineage or silently clear that hold.
+Replacement-order lineage is not reliably persisted by the current broker stream. A `replaced` predecessor is terminal, but does not prove its successor is finished or absent. Such lifetimes remain pending with `replacement_lineage_unverified` while the predecessor could still affect them, and forward replaced orders block daily evidence qualification. This includes zero-fill predecessors. Since the October 5 addendum below, a replaced DAY (or other session-bounded) predecessor stops holding after its own NYSE session. That rule assumes the successor kept a session-bounded TIF: Alpaca's replace can change the TIF and the successor is not ingested, so a GTC successor would go unseen. The backstop is the flat-to-flat check of the lifetime's own legs. Supporting automatic replacement-chain accounting requires a separate ingestion/attribution repair; this release does not fabricate lineage, and clears the hold only by that documented session bound.
 
 Pending records must survive startup's flat-symbol cleanup. Finalization needs one authoritative durable accounting state, or a replayable journal with consumer receipts. A separate 'applied ID' file alongside independently written CSV and learner state is not a transaction. Failure injection at persistence boundaries must restore either the old coherent state with a pending close or the new coherent state. Do not claim crash consistency from clean-save tests.
 
@@ -158,3 +158,404 @@ that no intervening candidate trading occurred. The original six decision-source
 groups, strategy/feed/exit configuration and historical ledger remain unchanged.
 This addendum records the repair contract; actual corrected runtime acceptance
 and natural-session evidence are still pending.
+
+## October 5 close-accounting unblock (audit C08-01, C07-01)
+
+Exact-fills-or-pending is unchanged; two defects that made it permanent are
+repaired outside the frozen surface (`backend/organism/live_engine_fills.py`,
+`backend/integrations/alpaca_stream.py` and its five ingress callers).
+
+An unresolved or `replaced` order, including one submitted before the entry,
+holds a close only while it could still execute during that lifetime. DAY,
+IOC, FOK, OPG and CLS orders, and any order the broker never acknowledged (no
+broker order id), stop working at 20:00 ET of their eligible NYSE session, plus
+one hour of slack (`SESSION_END_SLACK`). The eligible session is the first
+trading day (early closes included) whose regular close is after the basis
+time plus five minutes (`SESSION_CUTOFF_SLACK`: POST latency and app-clock lag
+at the cut-off, so an order entered or acknowledged at 15:57 also holds the
+next session). The basis is the submission, or for an acknowledged order the
+later of its submission and last update (a delayed delivery is acknowledged
+later). A later touch of a never-acknowledged row, such as a remediation
+status, does not revive it. After-hours, weekend and holiday submissions
+therefore still hold the next session.
+Acknowledged GTC or unknown-TIF orders, in-lifetime rows and pre-entry fills
+recorded after the entry still hold as before. Old dead letters (for example
+the four April XLE rows marked `failed`) no longer hold every later close of
+the symbol. The hold names its evidence in `pending_close.accounting_hold_reason`
+(`ambiguous_order:<order id>` or `replacement_lineage_unverified`), with one
+WARNING per new reason. The zero-fill entry cleanup likewise considers only
+orders submitted between the entry and the observed close
+(`pending_close.observed_at`); a later order for the symbol no longer keeps a
+verified-unfilled entry pending. No historical row is rewritten.
+
+Limits of the session rule. A never-acknowledged row is bounded by the session
+of its submission because the row shows no later delivery. An ambiguous
+submission (EXE-04) that reached Alpaca later without a persisted broker id
+may still work after that session and is not seen by this rule (follow-up:
+use the `order.submitted` event's last activity as the basis while the event
+exists). A replaced DAY predecessor is bounded on the successor-TIF assumption
+stated above. For both, exits are sized from the broker position and
+`_closed_position_fills` still requires the lifetime's own legs to be terminal
+and flat-to-flat, so a stray fill keeps the close pending (no wrong P&L, at
+worst an unneeded hold). Pre-entry fills touched after the entry still hold
+that lifetime without a time bound.
+
+A broker-confirmed close fill whose owner has no, or too few, open lots is no
+longer rolled back. The order status, filled quantity, price and execution are
+committed together with any lots that do match (FIFO, owner-scoped as before).
+The remainder is recorded in `orders.attributes.lot_accounting`
+(`status=unmatched`, `repair=required`, cumulative matched and unmatched
+quantity and unmatched notional, stored at 6 dp), and one CRITICAL line is
+logged after the commit on every ingress: trade-update stream, persisted-order
+recovery, reconnect gap-fill, startup order sync and outbox acknowledgement.
+Transient failures still roll back the whole order.
+
+Ingestion is not globally ordered (recovery pages by id; startup order sync
+runs recovery before its oldest-first page), so a close can be applied before
+its opening. Two rules make the two legs of one round trip converge when they
+are applied in either order, with any delay between them:
+
+- Deferral. While a same-owner opening that persisted-order recovery retries
+  (unresolved, broker-acknowledged, organism or outbox lineage) was submitted
+  at or before the close and at most five days before it
+  (`LOT_ORDERING_GRACE`, anchored to the close, not to the wall clock), the
+  close stays retryable as before (`LotAccountingDeferred`, a `ValueError`
+  raised before anything is staged). An opening older than 45 days
+  (`LOT_ORDERING_MAX_AGE`) no longer defers. After a restart that follows an
+  outage shorter than that, recovery defers the close and settles the
+  opening, and the startup page (or the next recovery pass) then applies the
+  close against the opening's lot. The cap also bounds how long a stuck
+  opening row can keep a broker-filled close unrecorded: until that opening
+  is 45 days old (the close's row stays non-terminal meanwhile and holds its
+  lifetime's exact accounting). Such an opening is one recovery cannot settle
+  (a `replaced` or unknown broker status, a failed lookup) or one that keeps
+  working (a resting GTC limit). Each deferral is only a retry (a WARNING per
+  recovery pass, the stream's DLQ record), so a close still deferred 6.5 hours
+  (`LOT_DEFERRAL_ESCALATE_AFTER`, about one regular session) after its first
+  deferral pages once: CRITICAL `LOT ACCOUNTING DEFERRAL ESCALATED`, naming the
+  close and the opening that holds it. The clock is process-local (a restart
+  starts it again; the cap still applies) and the episode ends when the close
+  is applied.
+- Late netting. Otherwise the close is recorded as above. When an opening fill
+  lands later (an opening that was never acknowledged, is outside recovery
+  scope or is past the cap), its new lot is closed FIFO against the owner's
+  recorded unmatched closes of that symbol and side submitted at or after the
+  opening and within `LOT_ORDERING_GRACE`, at the close's unmatched VWAP. The
+  close's record becomes `matched_late` (`repair=none`, `matched_late_qty`,
+  `last_late_match`) and a WARNING follows the commit. A close submitted before
+  the opening never consumes it.
+
+Concurrent ingestion. When an opening fill and its close fill are ingested at
+the same moment on two paths, row locks serialize them on PostgreSQL (SQLite
+serializes writers). The netting locks every close-side order row of its
+window, whatever its record, before reading records, and a close holds its own
+row from its first statement. Either the netting waits for the close's commit
+and nets the record it committed, or the close waits for the opening's commit
+and its FIFO consumes the new lot; a close that found no lot and is waiting to
+check for an earlier opening still sees that opening unresolved and defers.
+Every fill path (the snapshot, persisted-order recovery and the outbox
+acknowledgement) locks order rows `FOR NO KEY UPDATE`, and the close FIFO locks
+lot rows only (`FOR UPDATE OF position_lots`). The foreign-key check of a
+close's RealizedTrade on the opening row therefore never waits for an opening
+that is waiting for the close (no deadlock). Before this, an opening and its
+close ingested concurrently could leave a phantom open lot next to an unmatched
+record (reproduced on PostgreSQL 16).
+
+Limits. Both rules order legs by submission time; broker fill times are not
+ingested (C07-07). An opening submitted before a close but filled after it (a
+resting limit order) would be matched to that close, and legs more than
+`LOT_ORDERING_GRACE` apart are neither deferred nor netted. Two round trips of
+one owner and symbol applied out of order across lifetimes do not converge.
+With orders submitted as A buy 10, B sell 10, C buy 6, D sell 6 and applied in
+the order A, D, B, C: D consumes 6 of A's lot, B finds 4 shares and is
+recorded with 6 unmatched, and C's lot is never netted against B because B was
+submitted before C. The ledger then shows B unmatched 6 (paged) and C's lot
+open 6. The engine cannot
+produce that order, since it opens no new entry in a symbol while the previous
+lifetime is still tracked (its close accounting needs B's fill); only manual
+UI/API orders can. Read-only check for records still needing repair:
+
+```sql
+SELECT id, symbol, side, user_id, submitted_at, attributes->'lot_accounting' AS lot_accounting
+FROM orders
+WHERE attributes->'lot_accounting'->>'status' = 'unmatched'
+ORDER BY submitted_at;
+```
+
+The runtime snapshot reports these rules in `close_accounting_holds` and
+`fill_lot_accounting`; the policy id stays `exact_position_fills_or_pending_v1`.
+Follow-ups: a repair path for records that stay `unmatched` (it would also
+cover the cross-lifetime limit, for example by netting an owner's remaining
+open lots against its remaining unmatched records of that side, whatever their
+order, once the broker position is flat), owner-agnostic lot matching for the
+single broker account (with or before C06-01, since a UI close of an engine
+position leaves the engine's `system` lot open), and an unmatched-record count
+in status and the daily evidence pack.
+
+## October 5 external-close accounting (audit C06-01)
+
+A strategy close that no organism exit order booked used to stay pending for
+good: no trade, the symbol entry-gated across restarts, one WARNING. This
+repair changes the frozen `_reconcile_fills` and
+`operator_cancellation._accounted_entry_fill` (owner sign-off 2026-10-05;
+effective only through a new activation). The classification, the lot repair
+and the escalation live outside the frozen surface (`live_engine_fills.py`,
+`alpaca_stream.repair_external_close_lots`, `_defer_unresolved_close`), as does
+the forward-corpus exclusion (`phase2_gate.load_forward_corpus`). The policy id
+stays `exact_position_fills_or_pending_v1`: strategy outcomes still require
+exact organism legs, and the new records are reconciliation artifacts, the
+class v1 already uses for orphan bookkeeping. The checkpoint format, its reader
+and the daily evidence check are unchanged.
+
+Exact. The platform's close routes (`POST /positions/{symbol}/close`,
+`POST /orders/{id}/close-position`) book a market leg with
+`attributes.close_position = true`, no `source`, under the operator's owner.
+When such legs are exit-side, terminal, filled with a broker id and complete
+the lifetime flat-to-flat by the observed close, the close is recorded at once
+with the DB cash flows (`price_source = external_close_db_fills`). The anchor,
+quantity and hold checks are those of exact accounting, and orders after the
+observed close are outside the window, as there. The same applies when an
+operator Close raced the engine's own exit: the exit filled and the route leg
+was refused by the outbox exit guard (PR #36) or canceled without a fill, which
+is the likely outcome of a click during the 15:58 flatten. Strategy accounting
+refuses any non-organism row in the window, so the engine's exact legs are
+recorded as the `external_close` artifact instead of staying pending for good.
+
+Approximate. When every order from the entry to the observed close is
+attributable (organism, or a close-route exit leg) and terminal, the DB
+lifetime is still open and the broker is flat, part of the quantity was closed
+with no DB row: the Alpaca dashboard or app, or a broker liquidation (the
+platform itself never closes without a row). If any order for the symbol was
+submitted after the observed close, nothing is recorded, because it could hold
+the missing legs (for example a late engine exit, C06-04). Otherwise the close
+waits `EXTERNAL_CLOSE_APPROXIMATE_AFTER` (15 minutes from the observed close,
+status reason `external_close_unbooked`). It is then recorded with the DB legs
+exact and the unbooked quantity at the best available mark: the bar close kept
+when the close was first observed (`pending_close.observed_bar_close`), else
+the current bar close, else the streaming provider's cached quote (mid, bid,
+ask); `price_source = external_close_approximate_<rung>`. Without a mark it
+stays pending (`no_exit_price`). Another leg's or lifetime's fill price is
+never used. The mark's age is not bounded. The observed bar close is captured
+at the first flat observation, normally within one tick of the real close, but
+a close first observed long after it happened (hours of engine downtime) is
+priced at the bar or quote of that later pass, and a close already pending
+before this release has no `observed_bar_close` at all, so on the first pass
+after activation it would be priced at the current bar close or quote, possibly
+weeks late. The rung does not show the mark's age. Before activation, check
+`status().close_accounting.unresolved` and the pending closes in the
+checkpoint; the host had none when this was written.
+
+Both records carry `exit_reason = external_close`,
+`is_reconciliation_artifact = true`, the original observed close time, the
+entry identity and strategy, and the DB entry cost. They never reach the
+learner, Kelly, calibration, symbol counts, bans, evolution, the edge monitor
+or the Phase-2 forward verdict corpus; the daily-loss breaker still sees broker
+equity. The symbol's tracking is cleared and its completed identity persisted
+in one checkpoint replace, so the entry gate is released and a restart keeps
+the outcome. There is no re-entry cooldown after an external close: the engine
+may re-enter the symbol on the next tick, including right after an operator
+flattened it on purpose; use the operator halt for that. The daily evidence
+check still flags every forward row whose price source is not
+`db_position_fills` (`unqualified_price_source`), as it does for orphan
+artifacts. It checks every forward row since the activation cutoff, so after an
+external close every later daily report of the epoch carries the issue, not
+only that session's report.
+
+Forward verdict corpus. An external-close artifact keeps the lifetime's mapped
+`entry_source` (alpha, breakout, ...), so `phase2_gate.load_forward_corpus`,
+which mapped rows by `entry_source` alone, would have counted it as a strategy
+trade in the verdict CLI (`scripts/phase2_gate.py`), the attribution report
+(`scripts/phase3_attribution_report.py`) and the daily evidence pack's native
+gate. The loader now drops reconciliation artifacts before the mapping: the
+`is_reconciliation_artifact` flag, and for ledgers without that column the exit
+reasons `external_close` and `reconciliation_adjustment` and the source
+`reconciliation_orphan` (the experiment observation report skips
+`external_close` rows the same way). No historical verdict changes. The
+September 28 brain snapshot holds eight artifact rows, seven of them
+`reconciliation_adjustment` rows with mapped sources, all closed in April or
+May, before the first freeze cutoff (2026-06-27); the old and new loaders give
+identical corpora and gate states at all twelve committed `FROZEN_AT` values,
+at 3 and 6 bps. On base code every later artifact is an orphan with an
+unmapped source. Read-only host check before activation, self-contained so it
+runs on the current image (use the host's active freeze file); it must print 0,
+otherwise those rows were already counted in the verdict and their removal must
+be reported to Marsel:
+
+```sh
+python - <<'EOF'
+from pathlib import Path
+import pandas as pd
+from backend.organism.freeze_contract import load_active_freeze
+df = pd.read_csv("organism_brain/trade_history.csv")
+cutoff = pd.Timestamp(load_active_freeze(Path("artifacts/phase2/param_freeze.json"))["FROZEN_AT"])
+closed = pd.to_datetime(df["closed_at"], utc=True, errors="coerce")
+flag = df.get("is_reconciliation_artifact", pd.Series("", index=df.index)).astype(str)
+artifact = (flag.str.strip().str.lower().isin({"1", "true", "yes", "y"})
+            | df["exit_reason"].astype(str).str.strip().isin({"external_close", "reconciliation_adjustment"}))
+mapped = df["entry_source"].isin({"alpha", "alpha+breakout", "breakout", "orb", "orb_sip", "mr", "mean_reversion"})
+print(int(((closed > cutoff) & artifact & mapped).sum()))
+EOF
+```
+
+Lot repair. A close-route leg is booked under the operator's owner, so the
+owner-scoped FIFO records it unmatched at ingestion (`LOT ACCOUNTING
+DISCREPANCY`, CRITICAL, still paged for every close-route close of an engine
+position), and a dashboard close or liquidation books nothing. Left alone, the
+engine's own (`system`) lot would stay open: the next entry could never release
+its pending identity (owner lots above the broker quantity, EXE-03 page and a
+permanent `pending_entry` gate) and its exit would be FIFO-matched against the
+stale lot. Once an external close is recordable (exact, or unbooked after the
+15 minutes), `_lookup_external_close_from_db` therefore runs
+`alpaca_stream.repair_external_close_lots` in its own transaction and commits
+it before returning, so before the artifact commit releases the gate. Scope:
+the entry owner's open lots of the symbol on the lifetime's side whose opening
+order was submitted at or before the observed close. The broker was flat then
+and every order submitted by then is terminal, so none of them can still be
+held; older stale lots are included because the owner's FIFO would consume them
+first, while lots of later orders and of other owners are never touched. First,
+each unmatched close-route record of the window (submitted from the entry to
+the observed close, same position side) is netted FIFO against those lots at
+its unmatched VWAP: one RealizedTrade per match (lot owner,
+`lot_accounting = external_close_repair`, `close_owner`), and the record moves
+to `matched_late` with repair `none` and `last_late_match.basis =
+external_close_repair`. Then any remainder, which no DB row priced, is closed
+without a RealizedTrade and recorded by one `position.adjusted` audit row per
+lot (actor `system:external_close_repair`, reason
+`external_close_unbooked_write_off`, lot, order, quantity, entry, observed
+close and, when known, the observed bar close). Locks follow the fill paths:
+the window's closing-side order rows FOR NO KEY UPDATE in submission order,
+then the lots FOR UPDATE OF position_lots. The repair is idempotent (no open lot
+in scope, no write). If it fails, the close stays pending and gated with hold
+reason `external_close_lot_repair_failed` (one WARNING, the 30-minute page if it
+persists) and every pass retries it. When a recordable close then waits for a
+mark (`no_exit_price`), the ledger is already repaired, which is harmless
+because the broker is flat.
+
+The pending-entry release (`_accounted_entry_fill`, flat branch) accepts an
+`external_close` artifact with the same identity, quantity and entry cost
+without requiring exhausted lots; after the repair they are exhausted anyway.
+Other artifacts, and strategy trades whose lots are not exhausted, are still
+refused.
+
+A close still pending 30 minutes after it was observed raises one CRITICAL
+per episode (`_UNRESOLVED_CLOSE_ESCALATE_SECONDS`; a restart re-pages once if
+it is still unresolved). The page finalizes nothing. Genuinely ambiguous closes
+(holds, an unattributed or still-working leg, an order after the observed
+close, no entry identity, DB failures, a failed lot repair) stay pending with
+one WARNING per episode.
+
+Legacy. Stale `system` lots that already exist for flat symbols are outside the
+repair's scope. Read-only check; an open `system` lot for a symbol the broker
+shows flat is such a leftover:
+
+```sql
+SELECT id, order_id, symbol, qty, remaining_qty, open_date
+FROM position_lots
+WHERE user_id = 'system' AND remaining_qty > 0
+ORDER BY symbol, open_date;
+```
+
+The runtime snapshot reports these rules in `external_close_accounting`
+(`lot_repair` included).
+
+## October 6 frozen-code release (audit 2026-10-05): activation
+
+One pull request carries the frozen-code fixes C05-01, C05-02, C06-02 (exit
+safety), C04-01, C01-04 (dispatch lifecycle), C06-01 (external close), C09-01
+(regime isolation) and C11-01 (stream history), with Marsel's sign-off of
+2026-10-05. It is stacked on PR #37 (close-accounting unblock, not frozen),
+which merges first. Merging changes nothing on the host. The fixes take effect
+only when a release built from the merged commit is installed with a new
+activation, which restarts the forward verdict clock once.
+
+The release's candidate (`artifacts/phase2/candidate_param_freeze.json`,
+`--verify --candidate` exits 0) differs from PR #37's in exactly six keys:
+`research_policy_sources.broker_state_safety`,
+`research_policy_sources.entry_cancellation`,
+`source_hashes.entry_gates_dispatch`, `source_hashes.regime_detector`,
+`data_pipeline_sources.live_engine_data`,
+`data_pipeline_sources.streaming_data_provider`. Against the committed active
+freeze (FROZEN_AT 2026-09-25) it differs in 18 keys, because the surface
+changes merged after that freeze (up to PR #37's candidate) are not in that
+file; publish the full difference against the host's current active freeze. `surface.effective_policy_baseline`
+is identical, so `research_policy_baseline.json`, its sha256 and the
+effective policy hash stay as they are; the engine's startup baseline check
+fingerprints restored models and parameter values, not source, so it still
+verifies.
+
+Before activation (read-only):
+
+1. Marsel acknowledges the decision changes beyond the original findings:
+   the exit-safety regular-hours gate and fresh-bar veto on the broker-price
+   nets, window ticks not advancing trailing/MFE/MAE tracking, consecutive
+   SPY-only regime ticks no longer blending (measured label impact nil),
+   external closes recorded as labelled artifacts with no re-entry cooldown,
+   and entries refused at dispatch when older than 120 s or created in a
+   regular session that has closed (manual and API buys included).
+2. The paper account is flat: no positions, no open orders, paper endpoint
+   verified (the activation record requires it).
+3. `organism_brain/regime_state.json` has empty `smoothed_probs` and
+   `history` (this release does not clear a prior already persisted).
+4. `status().close_accounting.unresolved` is empty and the checkpoint holds
+   no pending close (one created before this release has no
+   `observed_bar_close` and would be priced at a much later mark).
+5. The forward-corpus host check of the October 5 external-close section
+   prints 0; otherwise report the rows to Marsel before activating.
+6. No pending entry identity is held by a row dead-lettered before this
+   release (such rows carry no dead-letter record); clear one with the brain
+   repair in `docs/runbooks/PAPER_UPTIME.md`.
+7. Informational: PR #37's records still `unmatched` and open `system` lots
+   of flat symbols (the read-only SQL in the two October 5 sections).
+8. One read-only lookup of an unknown client order id on the paper API
+   confirms the order-not-found answer: inside the API container, on the paper
+   endpoint, `AlpacaBrokerClient.lookup_order_by_client_order_id(
+   'activation-probe-<uuid>')` returns `(None, {'http_status': 404, 'code':
+   40410000, 'message': 'order not found...'})`. `ClientOrderNotFoundUnconfirmed`
+   means stop: absence would never be proven (fail-closed) and the classifier
+   must be updated first.
+8a. On the exact merged commit the image is built from, run
+   `scripts/phase2_freeze.py --verify --candidate` with the documented
+   environment; it must exit 0. Otherwise regenerate the candidate on that
+   commit first, so the installed image and the published surface come from
+   the same tree.
+
+Activation (the approved operation; `scripts/phase2_freeze.py` never writes
+the active file):
+
+9. Build and install the release image from the merged commit; record
+   source_sha, image_sha and image_digest.
+10. Publish the candidate surface as the host's active freeze with
+    `FROZEN_AT` = the activation time at the verified-flat transition,
+    `status: active`, `candidate_only: false`, `deployment_approved: true`,
+    `measurement_cutoff_changed: true`, `prior_active_cutoff` and
+    `prior_active_freeze_sha256` of the replaced active file, the activation
+    identity (id, source_sha, image_digest, approval reference) and
+    `approved_surface_paths` (the difference above). `scripts/phase2_freeze.py
+    --verify` on the host must then exit 0.
+11. Write the activation record: `activation_timestamp_utc` equal to
+    `FROZEN_AT`, `active_freeze_sha256` of the new active file, and
+    `broker_before_transition` (paper endpoint verified, 0 positions, 0 open
+    orders). The original activation stays as it is.
+12. Update the reviewed daily-evidence binding: approval reference and time,
+    source_sha, image_sha, image_digest, the freeze and activation paths and
+    sha256, `measurement_cutoff` = `FROZEN_AT`, and the `runtime_config_hash`
+    the running release reports (it changes with `BUILD_VERSION` or any
+    runtime-hash variable, for example `SCANNER_ENABLED`). The policy baseline
+    reference, the effective policy hash and the operator control path are
+    unchanged.
+13. If the market scanner is re-enabled with this release (the stream-history
+    fix is its precondition), flip `SCANNER_ENABLED` before step 12 so the
+    recorded runtime hash is the final one; the same activation covers it.
+
+After activation:
+
+14. The first tick logs no `REGIME PRIOR TRIPWIRE`; the startup baseline check
+    reports configured and verified with the bound sha256; the organism status
+    carries a non-null `order_dispatch_lifecycle` whose `session_date` is
+    today's ET date (null means no outbox worker runs in the engine's process,
+    so the counts and the refusal page would be dead); the next daily evidence
+    pack validates against the new binding.
+15. Abort path: if the step-10 verify or any step-14 check fails, set the
+    operator halt, reinstall the prior image and the prior active freeze file,
+    restore the prior daily-evidence binding, and record the activation as
+    aborted (with the failing check) next to the activation record.

@@ -465,6 +465,26 @@ def test_native_reporting_uses_six_bps_without_mutating_runtime_default(tmp_path
     assert DEFAULT_COST_BPS == 3.0 and dict(os.environ) == before
 
 
+def test_native_gates_never_count_reconciliation_artifacts():
+    # Audit 2026-10-05 C06-01 review: an external close keeps the lifetime's
+    # mapped entry_source; the native gate must not count it as a trade.
+    strategy = {'symbol': 'XYZ', 'closed_at': '2026-09-21T16:00:20Z', 'shares': 6,
+                'entry_price': 100, 'exit_price': 99.6667, 'pnl': -2, 'had_partial_exits': True,
+                'entry_source': 'alpha', 'regime_at_entry': 'trending_up',
+                'price_source': 'db_position_fills', 'entry_order_id': 'database-entry-id',
+                'exit_reason': 'trailing_stop', 'is_reconciliation_artifact': False}
+    artifact = {**strategy, 'symbol': 'TSLA', 'closed_at': '2026-09-21T16:05:00Z', 'pnl': -18,
+                'exit_price': 97, 'had_partial_exits': False, 'price_source': 'external_close_db_fills',
+                'entry_order_id': 'database-entry-2', 'exit_reason': 'external_close',
+                'is_reconciliation_artifact': True}
+    stream = io.StringIO()
+    writer = csv.DictWriter(stream, fieldnames=FIELDS + ['exit_reason', 'is_reconciliation_artifact'])
+    writer.writeheader()
+    writer.writerows([strategy, artifact])
+    gates = daily.native_gates(stream.getvalue().encode(), CUTOFF)
+    assert gates['momentum']['n'] == 1 and gates['breakout']['n'] == 0
+
+
 def test_missing_fixed_endpoint_acquisition_receipt_blocks_retained_payload(host):
     inputs, collection, _ = run_host(host)
     collection['requests'] = [r for r in collection['requests'] if r['input'] != 'runtime/deploy.json']

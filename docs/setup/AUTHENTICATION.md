@@ -18,14 +18,23 @@ The platform uses **database-backed authentication** with JWT tokens. All authen
 ### 2. **Brute-Force Protection**
 - Account locked after 5 failed login attempts
 - 15-minute lockout period
-- Automatic unlock after timeout
+- Automatic unlock after timeout; the failure count restarts after an expired lock
 - Failed attempts reset on successful login
+- Each attempt is counted before the password is checked, so concurrent
+  guesses cannot exceed the limit; wrong current passwords on
+  `/auth/password-change` count too
 
 ### 3. **JWT Token Security**
 - HS256 algorithm
-- 60-minute token expiration
+- 60-minute access tokens; 7-day refresh tokens, single use and rotated on every refresh
 - Secure token generation with secret key
-- Role-based access control (RBAC)
+- Role-based access control (RBAC); a refresh re-reads the account and issues the
+  roles stored in the database
+- Logout ends the whole login session (access and refresh token)
+- A password change (API or `scripts/db/create_admin_user.py --force`) or a
+  deactivation ends every session issued before it
+- Refresh tokens issued before session binding existed (no `sid`/`cfp` claims)
+  are refused: after upgrading to that release, log in again
 
 ### 4. **Audit Trail**
 - Last login timestamp tracking
@@ -84,26 +93,39 @@ export TEST_ADMIN_PASSWORD=TestP@ssw0rd123
 
 ### Step 2: Create Admin User
 
+`scripts/db/create_admin_user.py` creates a user, or with `--force` resets an
+existing user's password **in place**: one UPDATE in one transaction keeps the
+row, its id, email and linked data (watchlists, risk limits, history), clears
+the lockout and reactivates the account. It never deletes a user; if the reset
+fails, nothing changes. Passwords need at least 12 characters and at most 72
+bytes of UTF-8 (bcrypt's limit; longer passwords are rejected, never truncated).
+Run it where `DATABASE_URL` points at the platform database, e.g. inside the api
+container (`docker compose -f docker-compose.paper.yml exec api ...`).
+
 #### Option A: Using Setup Script (Recommended)
 
 ```bash
-# Set credentials via environment
-export ADMIN_USERNAME=admin
-export ADMIN_PASSWORD='MyStr0ng!P@ssw0rd123'
-export DATABASE_URL=postgresql+asyncpg://trading:trading_password@localhost:5432/algotrading
+# Prompts for the password (not echoed, not kept in shell history)
+python scripts/db/create_admin_user.py --username admin --email admin@example.com
 
-# Run setup script
-python scripts/create_admin_user.py
+# Or non-interactively, credentials from the environment
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD='<new password>'
+export ADMIN_EMAIL=admin@example.com   # new users only; default <username>@localhost
+python scripts/db/create_admin_user.py
 ```
 
-#### Option B: Using Command-Line Arguments
+#### Option B: Reset an Existing Admin's Password
 
 ```bash
-python scripts/create_admin_user.py \
-  --username admin \
-  --password 'MyStr0ng!P@ssw0rd123' \
-  --roles admin,trader
+# Replaces the password in place; keeps the account and its data
+python scripts/db/create_admin_user.py --username admin --force
 ```
+
+Sessions issued under the old password stop working: refresh tokens at once,
+access tokens at once when `REDIS_URL` is reachable from where the script runs
+(otherwise when they expire, within 60 minutes). Avoid `--password` on the
+command line; it is visible in the process list.
 
 #### Option C: Using Kubernetes Job
 
@@ -121,7 +143,7 @@ spec:
       containers:
       - name: create-admin
         image: algotrading-platform:latest
-        command: ["python", "scripts/create_admin_user.py"]
+        command: ["python", "scripts/db/create_admin_user.py"]
         env:
         - name: ADMIN_USERNAME
           valueFrom:
@@ -340,7 +362,7 @@ return LoginResponse(access_token=token, ...)
 - [x] Remove hardcoded admin creation from `backend/infra/users.py`
 - [x] Add `ADMIN_USERNAME` and `ADMIN_PASSWORD` to `k8s/secrets.yaml`
 - [x] Add admin credentials to `.env.example`
-- [x] Create `scripts/create_admin_user.py` setup script
+- [x] Create `scripts/db/create_admin_user.py` setup script
 - [x] Add `TEST_ADMIN_USERNAME` and `TEST_ADMIN_PASSWORD` to `pytest.ini`
 - [x] Create `test/test_credentials.py` helper module
 - [ ] **TODO: Update existing test files to use `test.test_credentials`**
@@ -371,7 +393,8 @@ return LoginResponse(access_token=token, ...)
 
 2. **Rotate Credentials Regularly**
    - Schedule: Every 90 days
-   - Method: Update user password in database
+   - Method: `/auth/password-change`, or `python scripts/db/create_admin_user.py --username <user> --force`
+     (in place; ends sessions issued under the old password)
    - Documentation: Keep audit trail
 
 3. **Secure Secret Storage**
@@ -414,13 +437,13 @@ async def check():
     async with sm() as session:
         repo = UserRepository(session)
         user = await repo.get_user('admin')
-        print(f'User found: {user}')
+        print('User found:', bool(user), user and (user.is_active, user.locked_until))
     await engine.dispose()
 asyncio.run(check())
 "
 
-# Recreate user if needed
-python scripts/create_admin_user.py --force
+# Reset the password in place if needed (never deletes the user; clears the lock)
+python scripts/db/create_admin_user.py --username admin --force
 ```
 
 ### Issue: "Account is locked"
@@ -428,7 +451,9 @@ python scripts/create_admin_user.py --force
 **Cause:** Too many failed login attempts (5+)
 
 **Solution:**
-Wait 15 minutes or reset manually:
+Wait 15 minutes (the failure count restarts after the lock expires), reset the
+password with `scripts/db/create_admin_user.py --username admin --force`, or
+reset manually:
 
 ```python
 # Reset failed attempts

@@ -5,7 +5,8 @@ migration's allowed set) and a fake broker client. No network, no credentials.
 Orders are created through the real OrderService (or, for events queued before
 this release, in the old payload shape), dispatched by the real OutboxWorker
 and AlpacaOutboxDispatcher, and acknowledgements are persisted by the real
-_update_order_status. Entries must dispatch exactly as before.
+_update_order_status. Entries get no exit-guard reads (the C01-04 entry age and
+session limits are covered in test_audit_20261005_surface_dispatch_lifecycle.py).
 """
 from __future__ import annotations
 
@@ -427,19 +428,26 @@ async def test_refusal_never_overwrites_a_row_with_broker_evidence(wired):
     assert criticals(wired.log)[0].startswith("EXIT REFUSAL CONFLICTS WITH BROKER EVIDENCE")
 
 
-# ── Entries are dispatched exactly as before ──────────────────────────────────
+# ── Entries get no exit-guard reads ───────────────────────────────────────────
+# Audit 2026-10-05 C01-04 (the follow-up branch): an entry older than the
+# dispatch age limit, or created in a regular session that has closed, is now
+# expired by the outbox worker before dispatch; see
+# tests/test_audit_20261005_surface_dispatch_lifecycle.py. An entry within those
+# limits still goes straight to the POST, off-hours TIF selection included.
 @pytest.mark.parametrize("legacy", [False, True], ids=["declared", "pre_release_payload"])
-async def test_entries_are_dispatched_as_before_even_late_and_after_hours(wired, monkeypatch, legacy):
+async def test_entries_within_the_dispatch_limits_go_straight_to_the_post(wired, monkeypatch, legacy):
     monkeypatch.setattr(alpaca_outbox, "is_market_open", lambda *a, **k: False)
+    # Created outside a regular session: only the age limit applies (no clock edge).
+    monkeypatch.setattr("backend.utils.market_hours.is_market_open", lambda *a, **k: False)
     broker = FakeBroker()
     worker = wired.bind(broker)
     if legacy:
-        order_id = await enqueue_legacy(wired.sessions, side="buy", qty=10, age=timedelta(minutes=10))
+        order_id = await enqueue_legacy(wired.sessions, side="buy", qty=10, age=timedelta(seconds=30))
     else:
         order_id = await submit_entry(wired.sessions)
         async with wired.sessions() as session:
             await session.execute(update(OutboxEvent).values(
-                created_at=datetime.now(UTC) - timedelta(minutes=10)))
+                created_at=datetime.now(UTC) - timedelta(seconds=30)))
             await session.commit()
     await process_one(worker)
     assert broker.kinds() == ["POST"]  # no guard reads, no refusal

@@ -8,6 +8,7 @@ internal/broker desync.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,8 +16,16 @@ import numpy as np
 import pandas as pd
 import pytest
 
+# The broker-price safety nets act only in regular trading hours (audit
+# 2026-10-05 review), so ticks that exercise them run on a pinned clock.
+_REGULAR_HOURS = datetime(2026, 10, 1, 15, 0, 5, tzinfo=UTC)  # Thursday 11:00:05 ET
+
 
 # ── Helpers ──────────────────────────────────────────────────────
+
+def _pin_regular_hours(engine) -> None:
+    engine._now_fn = lambda: _REGULAR_HOURS
+
 
 def _make_engine_with_mocks(**overrides):
     """
@@ -92,6 +101,7 @@ class TestMultiTickState:
         """Tick 1: exit fires for AAPL. Between ticks: position closes at broker.
         Tick 2: no sell order should be submitted. Total sells = exactly 1."""
         engine, mocks = _make_engine_with_mocks()
+        _pin_regular_hours(engine)
         exit_submissions = []
 
         async def track_exit(symbol, shares, reason="exit", direction=1.0, **kwargs):
@@ -345,6 +355,7 @@ class TestMultiTickState:
     async def test_pending_exit_breach_triggers_safety_net(self):
         """DD2-1: max-loss breach must fire even during _pending_exit."""
         engine, mocks = _make_engine_with_mocks()
+        _pin_regular_hours(engine)
         exit_submissions = []
 
         async def track_exit(symbol, shares, reason="exit", direction=1.0, **kwargs):

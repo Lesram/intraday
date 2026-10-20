@@ -491,7 +491,9 @@ async def test_failed_start_retry_does_not_repeat_slow_prefill_inside_sync_deadl
         # Scale only the caller deadline; the defect is repeated historical
         # warmup on a healthy reconnect, not a changed production gate/bound.
         assert await asyncio.wait_for(provider.update_subscriptions(['SPY']), timeout=.04)
-        client.get_historical_bars_df.assert_not_awaited()
+        # Audit 2026-10-05 (C11-01): the retry seeds history in a background
+        # task, after the sync returned, never inside its deadline.
+        assert provider.bar_count('SPY') == 0
         assert provider._start_config['data_client'] is client
         assert provider.get_bar_age('SPY') == float('inf')
         await socket.push({'T': 'b', 'S': 'SPY', 't': now.isoformat(), 'o': 100, 'h': 101, 'l': 99, 'c': 100, 'v': 1})
@@ -504,7 +506,17 @@ async def test_failed_start_retry_does_not_repeat_slow_prefill_inside_sync_deadl
         feeder._data_client = client
         result = await feeder._fetch_bars('SPY')
         pd.testing.assert_frame_equal(result, historical)
-        client.get_historical_bars_df.assert_awaited_once()
         assert feeder._last_bar_fetch_sources['SPY'] == 'rest'
+        # One background seed request plus the feeder's one REST read. The
+        # seed lands as history only: the live row wins its minute and the
+        # receipt is the live bar's.
+        for _ in range(100):
+            if provider.history_complete('SPY', 1_000_000):
+                break
+            await asyncio.sleep(.01)
+        assert client.get_historical_bars_df.await_count == 2
+        assert provider.bar_count('SPY') == len(historical)
+        assert provider._bars['SPY'][-1]['volume'] == 1
+        assert provider.get_bar_age('SPY') == 0
     finally:
         await provider.stop()
