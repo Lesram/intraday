@@ -87,7 +87,7 @@ class BreakoutStrategy(Strategy):
             # was forced LONG, so breakdowns below the pivot low (direction
             # -1) and directionless signals (0) were bought as breakouts.
             if long_only:
-                if sig.direction <= 0:
+                if not (sig.direction > 0):  # fail closed on 0, -1 and NaN
                     continue
                 direction = 1.0
             else:

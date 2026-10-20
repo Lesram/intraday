@@ -104,7 +104,7 @@ def test_squeeze_keltner_side_is_half_width():
 
 def test_live_pure_breakout_loop_skips_non_upward_signals():
     src = inspect.getsource(OrganismLiveEngine._live_tick_inner)
-    guard = 'if float(getattr(bs, "direction", 1.0) or 0.0) <= 0.0:'
+    guard = 'if not (float(getattr(bs, "direction", 0.0) or 0.0) > 0.0):'
     assert guard in src
     # The guard sits inside the pure-breakout loop, after the 0.55 gate and
     # before the shared entry gates.
@@ -201,3 +201,65 @@ def test_moving_price_still_scores():
     q = squeeze_momentum_composite(d)
     assert float(r.iloc[200:].max()) > 0.0
     assert float(q.iloc[200:].min()) > 0.0
+
+
+# ── 2b. Behaviour through the live v2 adapter ───────────────────────
+
+
+class _StubBreakoutScanner:
+    """Stands in for the engine's injected BreakoutScanner."""
+
+    def __init__(self, signals):
+        self._signals = signals
+
+    def scan(self, data, spy=None):
+        return list(self._signals)
+
+
+class _StubEmptyScanner:
+    def scan(self, data, now=None):
+        return []
+
+
+class _V2Shim:
+    """Carries only the state the v2 pure-breakout adapter touches."""
+
+    _scan_all_strategies_v2 = OrganismLiveEngine._scan_all_strategies_v2
+    _get_strategy_selector_v2 = OrganismLiveEngine._get_strategy_selector_v2
+    _v2_raws = OrganismLiveEngine.__dict__["_v2_raws"]  # keep the staticmethod
+    _v2_breakout_raws = OrganismLiveEngine._v2_breakout_raws
+
+    def __init__(self, signals):
+        self.breakout_scanner = _StubBreakoutScanner(signals)
+        self._mean_reversion_scanner = _StubEmptyScanner()
+        self._orb_scanner = _StubEmptyScanner()
+        self._tick_count = 1
+
+    def _record_framework_shadow_candidates(self, *args, **kwargs):
+        return None
+
+    def _now_fn(self):
+        return pd.Timestamp("2026-10-19 15:31", tz="UTC").to_pydatetime()
+
+
+def test_live_v2_breakout_adapter_routes_only_upward_signals():
+    from backend.organism.breakout_scanner import BreakoutSignal
+
+    def sig(symbol, composite, direction):
+        return BreakoutSignal(
+            symbol=symbol, composite_score=composite, squeeze_score=0.0,
+            volume_score=0.0, contraction_score=0.0, rs_score=0.0,
+            pivot_score=0.0, flow_score=0.0, direction=direction,
+            squeeze_fired=False, volume_ratio=1.0,
+        )
+
+    signals = [
+        sig("UP", 0.80, 1.0),
+        sig("DN", 0.90, -1.0),           # breakdown: was entered long before
+        sig("FLAT", 0.70, 0.0),          # directionless: was entered long before
+        sig("NAN", 0.75, float("nan")),  # fail closed
+    ]
+    shim = _V2Shim(signals)
+    feats = {"UP": _walk(n=120, seed=1)}
+    raws = shim._v2_breakout_raws(feats, "trending_up")
+    assert [r.symbol for r in raws] == ["UP"]

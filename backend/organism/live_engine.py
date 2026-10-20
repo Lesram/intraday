@@ -5076,7 +5076,8 @@ class OrganismLiveEngine(
                     # enters LONG, so it takes only signals the scanner calls
                     # upward. Breakdowns below the pivot low (-1) and
                     # directionless signals (0) were previously bought long.
-                    if float(getattr(bs, "direction", 1.0) or 0.0) <= 0.0:
+                    # Fail closed: a missing or NaN direction is not upward.
+                    if not (float(getattr(bs, "direction", 0.0) or 0.0) > 0.0):
                         continue
                     # Shared entry gates (same helper as alpha path)
                     _gate_ok, _gate_reason = self._passes_entry_gates(
@@ -6253,8 +6254,14 @@ class OrganismLiveEngine(
         for c in full_alpha:
             sym_fitness = self.evolved_params.symbol_fitness.get(c.symbol, 0.5)
             _sym_tc = self.evolved_params.symbol_trade_counts.get(c.symbol, 0)
-            # B1: fitness gate only applies in production with 10+ trades
-            fitness_gate = 0.45 if (not self._is_learning_mode and _sym_tc >= 10) else 0.0
+            # B1: fitness gate only applies in production with 10+ trades.
+            # Audit 2026-10-20 (C13-02): and not while the research policy is
+            # locked (the gate is skipped in _passes_entry_gates).
+            fitness_gate = 0.45 if (
+                not self._is_learning_mode
+                and not research_policy.RESEARCH_POLICY_LOCKED
+                and _sym_tc >= 10
+            ) else 0.0
             ad = SymbolAlphaDetail(
                 symbol=c.symbol,
                 composite_score=c.composite_score,

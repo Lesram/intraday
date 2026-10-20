@@ -98,7 +98,12 @@ def test_realdata_adapter_surfaces_scanner_signals():
     ref.BB_PERIOD, ref.ATR_SHORT, ref.ATR_LONG, ref.VOL_AVG_PERIOD = (
         cfg["bb_period"], cfg["atr_short"], cfg["atr_long"], cfg["vol_avg_period"])
     data = {s: df for s, df in feats.items()}
-    ref_syms = {sig.symbol for sig in ref.scan(data, feats.get("SPY")) if sig.direction > 0}
+    ref_all = ref.scan(data, feats.get("SPY"))
+    ref_syms = {sig.symbol for sig in ref_all if sig.direction > 0}
+    # The fixture exercises both sides of the rule: upward signals pass and
+    # at least one breakdown/directionless signal is dropped.
+    assert ref_syms
+    assert {sig.symbol for sig in ref_all} - ref_syms
 
     s = _strat(entry_composite_threshold=cfg["min_breakout_score"])  # surface all
     cands = s.scan(feats, "trending_up")
