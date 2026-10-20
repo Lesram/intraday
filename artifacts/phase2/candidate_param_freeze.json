@@ -1,10 +1,10 @@
 {
-  "VALIDATED_AT": "2026-10-20T21:54:55.382038+00:00",
+  "VALIDATED_AT": "2026-10-20T22:21:26.749630+00:00",
   "_note_status": "new candidate validation boundary; no active clock change",
   "active_forward_cutoff": "2026-09-25T21:11:46.270521+00:00",
   "candidate_only": true,
   "deployment_approved": false,
-  "git_sha": "052512477d2f408c8123790e08e616fb40e2ad3e",
+  "git_sha": "d815d768a34e04197c936c60c5d7397530fec56e",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -246,7 +246,7 @@
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "78f1bdf23ccaff42c4dda983d26511d11068f2c2fc9ebe1270a547319f27b446",
+      "entry_gates_dispatch": "ae14b51ecf7762fd390165b15cf66a99a2d93eed47cd8aae37d1ba4d0c8e5926",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
       "regime_detector": "b7fbcf60eaf18b46ce25328245b6097ab54aa681216e35f9e817c08628a08196",
