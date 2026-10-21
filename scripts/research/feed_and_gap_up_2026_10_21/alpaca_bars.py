@@ -6,6 +6,7 @@ printed, logged or written anywhere. Nothing here imports the live engine.
 """
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import ssl
@@ -69,7 +70,8 @@ def get_bars(params: dict, key: str, sec: str) -> dict[str, list[dict]]:
                     time.sleep(5 * (attempt + 1))
                     continue
                 sys.exit(f"HTTP {e.code}: {e.read()[:200]!r}")
-            except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException,
+                    json.JSONDecodeError) as e:
                 if attempt < 3:
                     time.sleep(5 * (attempt + 1))
                     continue
