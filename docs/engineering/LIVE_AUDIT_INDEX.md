@@ -1,15 +1,15 @@
 # Live Audit Index
 
-Generated: 2026-10-20T23:30:52Z
+Generated: 2026-10-21T00:42:05Z
 PR: n/a
-SHA: `ffca39b697`
+SHA: `974348fa58`
 Branch: `fix/indicator-corrections`
 Scope: **backend_logic**
 Change scope: `base` (`53bd8a1...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **11**
+Total distinct changed files: **41**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
@@ -18,9 +18,9 @@ Category counts below partition that total. File previews show at most ten paths
 | Backend | 5 | `backend/organism/breakout_scanner.py`, `backend/organism/composite_indicators.py`, `backend/organism/live_engine.py`, `backend/organism/strategies/breakout.py`, `backend/organism/strategies/strategy_config.py` |
 | Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 4 | `tests/test_audit_0_5_pyramid_gates_idem_keys.py`, `tests/test_breakout_strategy.py`, `tests/test_fitness_gate_research_lock.py`, `tests/test_indicator_corrections_20261020.py` |
-| Docs | 1 | `docs/architecture/mapss.md` |
-| Artifacts/evidence | 1 | `artifacts/phase2/candidate_param_freeze.json` |
+| Tests | 6 | `tests/test_audit_0_5_pyramid_gates_idem_keys.py`, `tests/test_breakout_strategy.py`, `tests/test_fitness_gate_research_lock.py`, `tests/test_indicator_corrections_20261020.py`, `tests/test_v12_baseline_invariants.py`, `tests/test_v13_w100_live_tick_coverage.py` |
+| Docs | 2 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Artifacts/evidence | 28 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
 | Configuration | 0 | none |
 | Other | 0 | none |
@@ -29,17 +29,47 @@ Organism subset of Backend: **5** file(s).
 
 ### Full changed-file list
 
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
 - `artifacts/phase2/candidate_param_freeze.json`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/resolved_config_snapshot.json`
+- `artifacts/runtime_config_snapshot.json`
+- `artifacts/runtime_defaults_snapshot.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
 - `backend/organism/breakout_scanner.py`
 - `backend/organism/composite_indicators.py`
 - `backend/organism/live_engine.py`
 - `backend/organism/strategies/breakout.py`
 - `backend/organism/strategies/strategy_config.py`
 - `docs/architecture/mapss.md`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
 - `tests/test_audit_0_5_pyramid_gates_idem_keys.py`
 - `tests/test_breakout_strategy.py`
 - `tests/test_fitness_gate_research_lock.py`
 - `tests/test_indicator_corrections_20261020.py`
+- `tests/test_v12_baseline_invariants.py`
+- `tests/test_v13_w100_live_tick_coverage.py`
 
 ## Configuration resolution (not engine observation)
 
