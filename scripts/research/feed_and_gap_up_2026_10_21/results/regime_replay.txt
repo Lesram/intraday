@@ -1,0 +1,47 @@
+Installed regime label replayed on IEX and SIP bars, 26 sessions 2026-09-15..2026-10-20.
+Shares are of the 09:45-15:44 ET entry window (360 minutes). UP_min = trending_up minutes; up_am = before 13:00 ET.
+live=iex% compares the IEX replay with the engine's logged tick labels (only sessions on the replayed release, 10-19 onward).
+
+  day  gap%  spy_day%  UP_min_iex  UP_min_sip  up_am_iex  up_am_sip  DOWN%_iex  DOWN%_sip  hivol%_iex  hivol%_sip  lovol%_iex  lovol%_sip  chop%_iex  chop%_sip  agree%  live=iex%
+09-15 -0.09     -0.36           0           0          0          0        0.0        0.0         0.0         0.0         0.0         0.0      100.0      100.0   100.0        NaN
+09-16  0.28     -0.71           0           0          0          0        0.0        0.0         0.0         0.0         0.0         0.0      100.0      100.0   100.0        NaN
+09-17  1.20     -0.07          44           0         44          0        0.0        0.0         1.1         0.8         0.6         0.0       86.1       99.2    86.9        NaN
+09-18 -0.17      0.04           0           0          0          0        0.0        0.0         0.0         0.6         0.0         0.0      100.0       99.4    99.4        NaN
+09-21  0.61      0.94         150           0        149          0        0.0        0.0         0.6         0.8         1.7         0.0       56.1       99.2    56.4        NaN
+09-22  0.07     -0.09           0           0          0          0        0.0        0.0         0.6         0.3         0.0         0.0       99.4       99.7    99.7        NaN
+09-23 -0.07     -0.65           0           0          0          0        0.0        0.0         1.4         0.6         0.0         0.0       98.6       99.4    99.2        NaN
+09-24 -0.48      0.42           0           0          0          0        0.0        0.0         0.3         0.3         0.6         0.0       99.2       99.7    99.4        NaN
+09-25  0.20      0.33           0           0          0          0        0.0        0.0         0.6         0.8         0.0         0.0       99.4       99.2    99.7        NaN
+09-28 -0.38     -0.37           0           0          0          0        2.2        0.0         0.8         1.4         0.6         0.0       96.4       98.6    96.7        NaN
+09-29  0.16     -0.34           0           0          0          0        0.0        0.0         0.6         0.0         0.0         0.0       99.4      100.0    99.4        NaN
+09-30  0.29     -0.52           0           0          0          0        0.0        0.0         0.0         0.0         0.0         0.0      100.0      100.0   100.0        NaN
+10-01  0.25     -0.04           0           0          0          0        0.0        0.0         1.1         3.3         0.0         0.0       98.9       96.7    97.8        NaN
+10-02  0.86     -0.12          11           0         11          0        0.0        0.0         1.4         0.3         0.0         0.0       95.6       99.7    95.8        NaN
+10-05  0.00      0.68           0           0          0          0        0.0        0.0         0.0         1.1         0.0         0.0      100.0       98.9    98.9        NaN
+10-06  0.42      0.13           0           0          0          0        0.0        0.0         0.0         0.8         0.0         0.0      100.0       99.2    99.2        NaN
+10-07 -0.43      0.18           0           0          0          0        1.1        0.0         0.3         0.6         0.3         0.0       98.3       99.4    98.3        NaN
+10-08 -0.30     -0.13           0           0          0          0        1.1        0.0         0.3         0.0         0.8         0.0       97.8      100.0    97.8        NaN
+10-09  0.30      0.30           5           0          5          0        0.0        0.0         1.1         1.4         0.8         0.0       96.7       98.6    97.5        NaN
+10-12  0.03     -0.09           0           0          0          0        0.0        0.0         0.0         0.0         0.0         0.0      100.0      100.0   100.0        NaN
+10-13 -0.09      0.09           0           0          0          0        0.0        0.0         1.7         0.0         0.0         0.0       98.3      100.0    98.3        NaN
+10-14 -0.40     -0.69           0           0          0          0       14.4        5.3         0.0         0.6         6.1         0.0       79.4       94.2    75.3        NaN
+10-15 -0.44      0.72           0           0          0          0        8.3        0.0         5.6         7.5         0.0         0.0       86.1       92.5    91.7        NaN
+10-16  0.19     -1.29           0           0          0          0       13.3        6.7         1.4         2.2         0.0         0.0       85.3       91.1    88.6        NaN
+10-19  0.52     -0.09          40           0         40          0        0.0        0.0         1.1         0.8         0.0         0.0       87.8       99.2    88.6      100.0
+10-20 -0.09      0.41           0           0          0          0        0.0        0.0         1.7         1.4         0.0         0.0       98.3       98.1    99.2      100.0
+
+sessions 26
+trending_up minutes total: iex 250 sip 0 | before 13:00 ET: iex 249 sip 0
+days with any trending_up: iex 5 sip 0
+DOWN mean % of entry window: iex 1.6 sip 0.5
+hivol mean % of entry window: iex 0.8 sip 1.0
+lovol mean % of entry window: iex 0.4 sip 0.0
+chop mean % of entry window: iex 94.5 sip 98.5
+mean agreement % 94.8  min 56.4
+
+Mechanism check, 2026-10-19 15:31-16:14 UTC (the live trending-up stretch): mean span of the
+209 bars the trend slope uses was ~4,130 minutes on IEX for every symbol (back to Friday
+afternoon; IEX has ~1 pre-market bar a day) vs ~208 minutes on SIP. 10-point SMA slope, IEX vs
+SIP: AMD 0.154% vs 0.033%, AVGO 0.120% vs 0.000%, NVDA 0.102% vs 0.020%, XLK 0.101% vs 0.030%
+(trend bar 0.1013%). Market P(trending_up) averaged 0.301 on IEX vs 0.219 on SIP.
+Engine trade log (older release): trending_up entries on 09-16, 09-21, 10-02, 10-09, 10-19.
