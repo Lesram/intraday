@@ -90,7 +90,12 @@ def test_pyramid_mode_still_blocks_banned_symbol():
     assert not ok and reason == "circuit_breaker"
 
 
-def test_pyramid_mode_still_enforces_fitness_gate():
+def test_pyramid_mode_still_enforces_fitness_gate(monkeypatch):
+    # The hard fitness gate applies only outside the research lock (audit
+    # 2026-10-20, C13-02: frozen fitness made it a permanent ban; the locked
+    # case is covered in test_fitness_gate_research_lock.py).
+    from backend.organism import research_policy
+    monkeypatch.setattr(research_policy, "RESEARCH_POLICY_LOCKED", False)
     shim = _GateShim(
         learning=False,
         fitness={"NVDA": 0.10},        # collapsed fitness

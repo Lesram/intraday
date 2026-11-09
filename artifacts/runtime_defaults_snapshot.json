@@ -13,7 +13,7 @@
     "streaming_subscription_timeout": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362",
     "pipeline_diagnostics": "8d6b9bfdf4bacd75bd640d30f1d3558045ef8a3a504a324ff6d0096cd832454d",
     "ml_features": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
-    "composite_indicators": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85"
+    "composite_indicators": "65d27c9752606944680f740117a91a828009613a31c48c0c2109fa9fe648030b"
   },
   "composite_feature_columns": [
     "comp_squeeze_momentum",

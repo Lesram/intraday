@@ -1,59 +1,75 @@
 # Live Audit Index
 
-Generated: 2026-10-20T21:39:01Z
+Generated: 2026-10-21T00:42:05Z
 PR: n/a
-SHA: `3c0181419e`
-Branch: `fix/ui-loop-and-execution-mode`
+SHA: `974348fa58`
+Branch: `fix/indicator-corrections`
 Scope: **backend_logic**
-Change scope: `base` (`53bd8a11...HEAD`)
+Change scope: `base` (`53bd8a1...HEAD`)
 
 ## Changed files
 
-Total distinct changed files: **25**
+Total distinct changed files: **41**
 
 Category counts below partition that total. File previews show at most ten paths per category; the full list follows.
 
 | Category | Count | Files (preview) |
 |----------|-------|-----------------|
-| Backend | 9 | `backend/api/routes/admin_trading.py`, `backend/api/routes/scanner.py`, `backend/api/routes/watchlists.py`, `backend/data/alpaca_client.py`, `backend/infra/outbox_worker.py`, `backend/services/auto_breakout_scanner.py`, `backend/services/dashboard_market_data.py`, `backend/services/scanner_universe.py`, `backend/services/trading_execution_mode.py` |
+| Backend | 5 | `backend/organism/breakout_scanner.py`, `backend/organism/composite_indicators.py`, `backend/organism/live_engine.py`, `backend/organism/strategies/breakout.py`, `backend/organism/strategies/strategy_config.py` |
 | Scripts | 0 | none |
 | CI | 0 | none |
-| Tests | 4 | `tests/test_admin_trading_execution_mode.py`, `tests/test_audit_20261005_ui_loop_and_execution_mode.py`, `tests/test_broker_ack_reconciliation.py`, `tests/test_outbox_shadow_mode.py` |
-| Docs | 2 | `docs/architecture/mapss.md`, `docs/runbooks/PAPER_TRADING_ROLLOUT.md` |
-| Artifacts/evidence | 1 | `artifacts/task-report.json` |
+| Tests | 6 | `tests/test_audit_0_5_pyramid_gates_idem_keys.py`, `tests/test_breakout_strategy.py`, `tests/test_fitness_gate_research_lock.py`, `tests/test_indicator_corrections_20261020.py`, `tests/test_v12_baseline_invariants.py`, `tests/test_v13_w100_live_tick_coverage.py` |
+| Docs | 2 | `docs/architecture/mapss.md`, `docs/engineering/LIVE_AUDIT_INDEX.md` |
+| Artifacts/evidence | 28 | `artifacts/algorithm_improvements.junit.xml`, `artifacts/algorithm_improvements.log`, `artifacts/changed_files.json`, `artifacts/live_process_runtime_snapshot.json`, `artifacts/multi_tick_state.junit.xml`, `artifacts/multi_tick_state.log`, `artifacts/organism_engine_scenarios.junit.xml`, `artifacts/organism_engine_scenarios.log`, `artifacts/organism_live_engine.junit.xml`, `artifacts/organism_live_engine.log` |
 | Reports | 0 | none |
-| Configuration | 1 | `.env.example` |
-| Other | 8 | `frontend/src/components/layout/AppSidebar.tsx`, `frontend/src/components/market/Scanner.tsx`, `frontend/src/components/market/WatchlistSymbolCard.tsx`, `frontend/src/features/ml-models/components/LifecycleDashboard.tsx`, `frontend/src/hooks/useWatchlists.ts`, `frontend/src/pages/ScannerPage.tsx`, `frontend/src/services/watchlistApi.ts`, `frontend/src/types/ml.ts` |
+| Configuration | 0 | none |
+| Other | 0 | none |
 
-Organism subset of Backend: **0** file(s).
+Organism subset of Backend: **5** file(s).
 
 ### Full changed-file list
 
-- `.env.example`
-- `artifacts/task-report.json`
-- `backend/api/routes/admin_trading.py`
-- `backend/api/routes/scanner.py`
-- `backend/api/routes/watchlists.py`
-- `backend/data/alpaca_client.py`
-- `backend/infra/outbox_worker.py`
-- `backend/services/auto_breakout_scanner.py`
-- `backend/services/dashboard_market_data.py`
-- `backend/services/scanner_universe.py`
-- `backend/services/trading_execution_mode.py`
+- `artifacts/algorithm_improvements.junit.xml`
+- `artifacts/algorithm_improvements.log`
+- `artifacts/changed_files.json`
+- `artifacts/live_process_runtime_snapshot.json`
+- `artifacts/multi_tick_state.junit.xml`
+- `artifacts/multi_tick_state.log`
+- `artifacts/organism_engine_scenarios.junit.xml`
+- `artifacts/organism_engine_scenarios.log`
+- `artifacts/organism_live_engine.junit.xml`
+- `artifacts/organism_live_engine.log`
+- `artifacts/phase2/candidate_param_freeze.json`
+- `artifacts/replay_simulator.junit.xml`
+- `artifacts/replay_simulator.log`
+- `artifacts/replay_summary.json`
+- `artifacts/resolved_config_snapshot.json`
+- `artifacts/runtime_config_snapshot.json`
+- `artifacts/runtime_defaults_snapshot.json`
+- `artifacts/runtime_snapshot.log`
+- `artifacts/runtime_snapshot_summary.json`
+- `artifacts/safety_invariants.junit.xml`
+- `artifacts/safety_invariants.log`
+- `artifacts/self_evolution.junit.xml`
+- `artifacts/self_evolution.log`
+- `artifacts/semantic_invariants.junit.xml`
+- `artifacts/semantic_invariants.log`
+- `artifacts/semantic_invariants_summary.json`
+- `artifacts/task_report.json`
+- `artifacts/test_summary.json`
+- `backend/organism/breakout_scanner.py`
+- `backend/organism/composite_indicators.py`
+- `backend/organism/live_engine.py`
+- `backend/organism/strategies/breakout.py`
+- `backend/organism/strategies/strategy_config.py`
 - `docs/architecture/mapss.md`
-- `docs/runbooks/PAPER_TRADING_ROLLOUT.md`
-- `frontend/src/components/layout/AppSidebar.tsx`
-- `frontend/src/components/market/Scanner.tsx`
-- `frontend/src/components/market/WatchlistSymbolCard.tsx`
-- `frontend/src/features/ml-models/components/LifecycleDashboard.tsx`
-- `frontend/src/hooks/useWatchlists.ts`
-- `frontend/src/pages/ScannerPage.tsx`
-- `frontend/src/services/watchlistApi.ts`
-- `frontend/src/types/ml.ts`
-- `tests/test_admin_trading_execution_mode.py`
-- `tests/test_audit_20261005_ui_loop_and_execution_mode.py`
-- `tests/test_broker_ack_reconciliation.py`
-- `tests/test_outbox_shadow_mode.py`
+- `docs/engineering/LIVE_AUDIT_INDEX.md`
+- `tests/test_audit_0_5_pyramid_gates_idem_keys.py`
+- `tests/test_breakout_strategy.py`
+- `tests/test_fitness_gate_research_lock.py`
+- `tests/test_indicator_corrections_20261020.py`
+- `tests/test_v12_baseline_invariants.py`
+- `tests/test_v13_w100_live_tick_coverage.py`
 
 ## Configuration resolution (not engine observation)
 
@@ -94,4 +110,4 @@ These values describe this generator's configuration inputs. Offline runs can co
 ## Open risks
 
 - Displayed configuration is expected configuration, not observed engine state; inspect the separate live-process evidence and its reachability.
-- 9 backend runtime file(s) changed — require targeted verification
+- 5 organism file(s) changed — require replay verification

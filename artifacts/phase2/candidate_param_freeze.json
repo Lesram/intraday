@@ -1,10 +1,10 @@
 {
-  "VALIDATED_AT": "2026-10-06T19:21:15.901848+00:00",
+  "VALIDATED_AT": "2026-10-20T22:21:26.749630+00:00",
   "_note_status": "new candidate validation boundary; no active clock change",
   "active_forward_cutoff": "2026-09-25T21:11:46.270521+00:00",
   "candidate_only": true,
   "deployment_approved": false,
-  "git_sha": "7e228630e8c93df9a6e041291827913b5cbe0ba5",
+  "git_sha": "d815d768a34e04197c936c60c5d7397530fec56e",
   "n_target": 60,
   "n_target_range": [
     50,
@@ -15,7 +15,7 @@
   "surface": {
     "data_pipeline_sources": {
       "alpaca_market_data_stream": "f99338fab383d483e49f80a675cf4062f572554762f44557ffbf5a7470a49a57",
-      "composite_indicators": "0b2831da7e18e3f6014c6666384c23d7dc19a3e3283662304021b0b8cdc04d85",
+      "composite_indicators": "65d27c9752606944680f740117a91a828009613a31c48c0c2109fa9fe648030b",
       "live_engine_data": "360417e4f0cd17aef0ab352a0288f75e731d653f2664dd18258371bdd4efab03",
       "market_scanner": "2532a052188fa56b8ce1b19c5686136270614621e6717651bf9ac5dbd7aae90f",
       "ml_features": "18444f5e3cf142a10c7b990b4c76f8beedd222cc5e35024e703708ff166ed5d4",
@@ -215,7 +215,7 @@
       "entry_admission": "5e3ac62e8058d1ead9974fd9d5204736a83e890eaa4ac8293c136f69a126631b",
       "entry_cancellation": "770c6bb36ee66b1924ab25d97c64a9fc38c4acae026162bece172005c903772b",
       "entry_evidence": "e5c303a49974d8a14a0d54ab8488dc67427ae194a21cd5b675ee8df769e229e9",
-      "entry_frame_capture": "74616be7ec8aa822b88c67a79d9fc94eb9ffa031ad54716264276c3b03da0074",
+      "entry_frame_capture": "df131445d2216c9c31a86fa4a634e489640c0d328579a6cafb1b5edc1e079f88",
       "entry_freshness": "a6c0d218e61ba42413d087701890980531347f0ca8f53413fa2c3817d01dd782",
       "entry_submission": "434cb6e6ee14d8ad5008334cc60ba7c6931faa001e0bdebb65a7ae76b99a2714",
       "eod_escalation": "e53b30df2807ab71b2aa635513da90c5250011711c7f3dcf8374a364c0251c73",
@@ -246,7 +246,7 @@
     },
     "source_hashes": {
       "entry_direction": "12d65c08efcdaaa6d2440858e568ee6813fc543287c631e5ba106dc796aad790",
-      "entry_gates_dispatch": "48a6ea227f8d762d85c987b438ff3a7de81d12c6b1b0e16ff063cd156d333a7f",
+      "entry_gates_dispatch": "ae14b51ecf7762fd390165b15cf66a99a2d93eed47cd8aae37d1ba4d0c8e5926",
       "exit_engine": "33310e3a2bb5ecf291d1edbfa99f43a9d29b0a2df608816313dfa8439363f0ed",
       "kelly_sizer": "2a5d52aff866ce3425ca1d787ce3416895634adf61529e3989369bccc3a664bc",
       "regime_detector": "b7fbcf60eaf18b46ce25328245b6097ab54aa681216e35f9e817c08628a08196",

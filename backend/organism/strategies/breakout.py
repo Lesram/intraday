@@ -8,8 +8,10 @@ _observable_direction never does. So it becomes its own Strategy.
 Faithful extraction (thin-seam discipline, same as momentum step 5): this adapter
 wraps the existing, unchanged `BreakoutScanner` — the single source of the
 composite — and reproduces only the live ENTRY decision: the pure-breakout path
-(`live_engine` ~4302-4371) takes scanner signals with `composite >= 0.55`, forces
-LONG (`direction=1.0`), and routes them. Selector-level concerns (dedup vs the
+(`live_engine` ~4302-4371) takes scanner signals with `composite >= 0.55` whose
+scanner direction is upward (+1) and routes them LONG (`direction=1.0`); since the
+2026-10-20 indicator check, breakdowns (-1) and directionless signals (0) are
+skipped instead of being forced long. Selector-level concerns (dedup vs the
 momentum candidates, the per-tick cap of 2, ranking interplay) are NOT the
 strategy's job — they belong to the selector/engine routing step (deferred,
 named in docs/architecture/intra_2.0_phase1.md). Confidence ownership for live
@@ -80,10 +82,18 @@ class BreakoutStrategy(Strategy):
         for sig in signals:
             if sig.composite_score < threshold:
                 continue
-            # Live entry path forces LONG regardless of the scanner's direction.
-            direction = 1.0 if long_only else sig.direction
-            if direction == 0.0:
-                continue
+            # Audit 2026-10-20 (indicator check): a long-only book takes only
+            # signals the scanner itself calls upward. Previously every signal
+            # was forced LONG, so breakdowns below the pivot low (direction
+            # -1) and directionless signals (0) were bought as breakouts.
+            if long_only:
+                if not (sig.direction > 0):  # fail closed on 0, -1 and NaN
+                    continue
+                direction = 1.0
+            else:
+                direction = sig.direction
+                if direction == 0.0:
+                    continue
             out.append(Candidate(
                 symbol=sig.symbol,
                 direction=direction,

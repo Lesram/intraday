@@ -261,9 +261,16 @@ class BreakoutScanner:
         percentile = np.sum(recent_widths <= current_width) / len(recent_widths)
         squeeze_score = 1.0 - percentile  # Invert: tightest squeeze = highest score
 
-        # Keltner Channel check — uses rolling ATR for correct historical comparison
+        # Keltner Channel check — uses rolling ATR for correct historical comparison.
+        # Audit 2026-10-20 (indicator check): compare like with like.
+        # ``bb_width`` above is the Bollinger HALF-width (2σ / SMA), so the
+        # Keltner side must be its half-width too (1.5·ATR / SMA). The
+        # previous ``2.0 * 1.5 * ATR`` was the FULL channel width, i.e. a 2σ
+        # band inside a 3·ATR channel, which marked ~83% of bars as squeezed
+        # (vs ~29% for the textbook BB-inside-KC test) and handed the 1.3×
+        # squeeze bonus to most signals.
         atr_arr = self._rolling_atr(high, low, close, self.ATR_SHORT)
-        kc_width = 2.0 * 1.5 * atr_arr / (sma + 1e-10)
+        kc_width = 1.5 * atr_arr / (sma + 1e-10)
 
         # Squeeze "fires" when BB was inside KC and is now expanding
         was_squeezed = bb_width[-5] < kc_width[-5] if len(kc_width) >= 5 else False
