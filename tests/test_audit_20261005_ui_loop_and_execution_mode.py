@@ -69,12 +69,28 @@ async def max_loop_lag_during(awaitable, interval: float = 0.01):
             lags.append(loop.time() - started - interval)
 
     task = asyncio.create_task(probe())
+    # Let the probe arm its first timer before the operation starts. Without this
+    # yield, blocking work before the operation's first suspension is never measured.
+    await asyncio.sleep(0)
     try:
         result = await awaitable
     finally:
         done.set()
         await task
     return result, max(lags, default=0.0)
+
+
+@pytest.mark.asyncio
+async def test_loop_lag_probe_sees_blocking_before_the_first_suspension():
+    """The probe must catch a call that blocks the loop and returns without ever yielding."""
+    async def blocks_then_returns():
+        time.sleep(0.2)  # synchronous on purpose: this is the defect the probe exists to catch
+        return "done"
+
+    result, lag = await max_loop_lag_during(blocks_then_returns())
+
+    assert result == "done"
+    assert lag >= 0.15
 
 
 class FakeResponse:
