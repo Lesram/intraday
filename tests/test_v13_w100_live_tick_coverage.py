@@ -79,7 +79,13 @@ LIVE_ENGINE_PATH = REPO_ROOT / "backend" / "organism" / "live_engine.py"
 # The run-on-a-copy fix for the window's stop check is line-neutral. Same reason
 # to stay inline: the hashed helpers are the order seam (_submit_exit_order) or
 # another surface key (market_hours, under eod_escalation).
-LIVE_TICK_INNER_LOC_CEILING = 2_805 + 18 + 1 + 28 + 27 + 10
+# Audit 2026-10-20 indicator check (draft PR #44, frozen surface): the
+# pure-breakout loop's upward-only direction guard (7 lines with its comment)
+# and the C13-02 research-lock term in the fitness-gate telemetry (5 lines)
+# grow the function from 2889 to 2901 lines. Both stay inline for the same
+# reason: a helper outside _live_tick_inner would sit outside the
+# frozen-surface hash. Exact ceiling, no spare tolerance.
+LIVE_TICK_INNER_LOC_CEILING = 2_805 + 18 + 1 + 28 + 27 + 10 + 12
 
 
 def _find_live_tick_inner_loc() -> int:

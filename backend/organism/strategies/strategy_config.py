@@ -102,7 +102,7 @@ STRATEGY_CONFIG: dict[str, dict[str, Any]] = {
         # Live pure-breakout ENTRY rule (live_engine ~4307/4321/4371):
         "entry_composite_threshold": 0.55,  # engine gate, above the scanner floor
         "max_pure_breakout": 2,             # per-tick cap (selector/routing concern)
-        "long_only": True,                  # entry path forces direction=1.0
+        "long_only": True,                  # entry path takes scanner direction +1 only, entered long (2026-10-20)
         # No hard regime gate live (runs every tick, gated by _MIN_MAIN_CONF +
         # shared entry gates). eligible_regimes here is the framework view; the
         # engine's real regime behavior is authoritative until 5c reconciliation.

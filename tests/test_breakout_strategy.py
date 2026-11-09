@@ -2,10 +2,13 @@
 
 BreakoutStrategy wraps the unchanged BreakoutScanner and reproduces the live
 pure-breakout ENTRY decision: surface scanner signals with composite >=
-entry_composite_threshold as LONG candidates (direction forced to +1, mirroring
-live_engine ~4371). These tests prove the threshold filter, the long-only force,
-fail-closed config, and that the adapter faithfully surfaces the scanner's
-signals (real-data parity) — without depending on a particular synthetic bar set
+entry_composite_threshold as LONG candidates. Since the 2026-10-20 indicator
+check, a long-only book takes only signals the scanner itself calls upward
+(direction +1); breakdowns (-1) and directionless signals (0) are skipped
+instead of being forced long (mirroring live_engine's pure-breakout loop).
+These tests prove the threshold filter, the upward-only rule, fail-closed
+config, and that the adapter faithfully surfaces the scanner's upward signals
+(real-data parity) — without depending on a particular synthetic bar set
 clearing the live 0.55 gate.
 """
 from __future__ import annotations
@@ -50,23 +53,25 @@ def test_validate_config_fail_closed():
         BreakoutStrategy({"eligible_regimes": ["x"]})  # missing scanner params
 
 
-def test_long_only_forces_direction_and_threshold_filters(monkeypatch):
+def test_long_only_takes_upward_signals_and_threshold_filters(monkeypatch):
     """Deterministic: stub the scanner so the mapping is exercised regardless of
-    data — a short, high-composite signal must come out LONG; a sub-threshold one
-    must be dropped."""
+    data — only an upward, high-composite signal becomes a LONG candidate; a
+    breakdown (-1), a directionless signal (0) and a sub-threshold one are all
+    dropped (audit 2026-10-20: breakdowns were previously forced long)."""
     s = _strat(entry_composite_threshold=0.55)
     fake = [
         _sig("UP", 0.80, 1.0),
-        _sig("DN", 0.70, -1.0),   # short -> forced long
+        _sig("DN", 0.70, -1.0),   # breakdown below the pivot low -> dropped
+        _sig("FLAT", 0.65, 0.0),  # no direction -> dropped
         _sig("WEAK", 0.40, 1.0),  # below 0.55 -> dropped
     ]
     monkeypatch.setattr(s._scanner, "scan", lambda data, spy: fake)
     cands = s.scan({"UP": pd.DataFrame({"close": [1]})}, "trending_up")
     by = {c.symbol: c for c in cands}
-    assert set(by) == {"UP", "DN"}                      # WEAK filtered by 0.55 gate
+    assert set(by) == {"UP"}
     assert all(isinstance(c, Candidate) for c in cands)
-    assert by["UP"].direction == 1.0 and by["DN"].direction == 1.0  # long-only force
-    assert by["DN"].confidence == 0.70                  # min(composite,1.0)
+    assert by["UP"].direction == 1.0
+    assert by["UP"].confidence == 0.80                  # min(composite,1.0)
     assert by["UP"].extra["composite_score"] == 0.80
 
 
@@ -79,7 +84,8 @@ def test_short_emitted_when_long_only_disabled(monkeypatch):
 
 def test_realdata_adapter_surfaces_scanner_signals():
     """Real-data parity: with the threshold dropped to the scanner's own floor,
-    the adapter must emit EXACTLY the scanner's signals, all as long candidates."""
+    the adapter must emit EXACTLY the scanner's upward signals, all as long
+    candidates."""
     syms = ["AAPL", "MSFT", "NVDA", "GOOGL", "SPY"]
     feats = make_features_dict(syms, n=120, seed=7, trend="up")
 
@@ -92,7 +98,12 @@ def test_realdata_adapter_surfaces_scanner_signals():
     ref.BB_PERIOD, ref.ATR_SHORT, ref.ATR_LONG, ref.VOL_AVG_PERIOD = (
         cfg["bb_period"], cfg["atr_short"], cfg["atr_long"], cfg["vol_avg_period"])
     data = {s: df for s, df in feats.items()}
-    ref_syms = {sig.symbol for sig in ref.scan(data, feats.get("SPY"))}
+    ref_all = ref.scan(data, feats.get("SPY"))
+    ref_syms = {sig.symbol for sig in ref_all if sig.direction > 0}
+    # The fixture exercises both sides of the rule: upward signals pass and
+    # at least one breakdown/directionless signal is dropped.
+    assert ref_syms
+    assert {sig.symbol for sig in ref_all} - ref_syms
 
     s = _strat(entry_composite_threshold=cfg["min_breakout_score"])  # surface all
     cands = s.scan(feats, "trending_up")
