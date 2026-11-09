@@ -830,3 +830,69 @@ def test_extreme_broker_cashflow_is_controlled_blocked_report(host):
     assert report['strategy_gate']['state'] == 'WITHHELD'
     pack = daily.publish(host[0] / 'packs', inputs, collection, report, paths)
     daily.verify_pack(pack)
+
+
+# Audit O2-02: while ML is isolated a pure breakout is recorded as 'alpha+breakout'
+# with predicted_return 0.005 + 0.015 * composite (0.01325-0.0200); alpha trades
+# carry exactly 0.01; both with ml_spoke False.
+ATTRIBUTION_FIELDS = FIELDS + ['predicted_return', 'ml_spoke']
+
+
+def attribution_csv(rows):
+    stream = io.StringIO()
+    writer = csv.DictWriter(stream, fieldnames=ATTRIBUTION_FIELDS)
+    writer.writeheader()
+    writer.writerows(rows)
+    return stream.getvalue().encode()
+
+
+def test_native_gates_split_alpha_breakout_and_report_n_per_source():
+    base = {'symbol': 'XYZ', 'shares': 6, 'entry_price': 100, 'exit_price': 101, 'pnl': 6,
+            'had_partial_exits': False, 'price_source': 'db_position_fills', 'ml_spoke': False}
+    rows = [{**base, 'closed_at': f'2026-09-21T16:0{i}:00Z', 'entry_order_id': f'e{i}',
+             'entry_source': source, 'regime_at_entry': regime, 'predicted_return': predicted}
+            for i, (source, regime, predicted) in enumerate([
+                ('alpha', 'trending_up', 0.01), ('alpha+breakout', 'high_vol', 0.01),
+                ('alpha+breakout', 'trending_up', 0.0155), ('alpha+breakout', 'low_vol', 0.019)])]
+    gates = daily.native_gates(attribution_csv(rows), CUTOFF)
+    assert gates['momentum']['n'] == 2 and gates['breakout']['n'] == 2
+    assert gates['momentum']['n_by_source'] == {'alpha': 2, 'pure_breakout': 0, 'ambiguous': 0}
+    assert gates['breakout']['n_by_source'] == {'alpha': 0, 'pure_breakout': 2, 'ambiguous': 0}
+    assert {g['state'] for g in gates.values()} == {'INSUFFICIENT'}
+    # A trade ML spoke on cannot be attributed: momentum and breakout are withheld.
+    rows.append({**rows[1], 'closed_at': '2026-09-21T16:09:00Z', 'entry_order_id': 'e9',
+                 'ml_spoke': True})
+    gates = daily.native_gates(attribution_csv(rows), CUTOFF)
+    for name, sources in (('momentum', {'alpha': 2, 'pure_breakout': 0, 'ambiguous': 1}),
+                          ('breakout', {'alpha': 0, 'pure_breakout': 2, 'ambiguous': 1})):
+        assert gates[name]['state'] == 'AMBIGUOUS_ATTRIBUTION' and gates[name]['t'] is None
+        assert gates[name]['n_by_source'] == sources
+    assert gates['orb']['state'] == gates['mean_reversion']['state'] == 'INSUFFICIENT'
+
+
+@pytest.mark.parametrize('predicted,ml_spoke,momentum,breakout', [
+    (0.01, False, ('INSUFFICIENT', {'alpha': 1, 'pure_breakout': 0, 'ambiguous': 0}),
+     ('INSUFFICIENT', {'alpha': 0, 'pure_breakout': 0, 'ambiguous': 0})),
+    (0.013544, False, ('INSUFFICIENT', {'alpha': 0, 'pure_breakout': 0, 'ambiguous': 0}),
+     ('INSUFFICIENT', {'alpha': 0, 'pure_breakout': 1, 'ambiguous': 0})),
+    (0.013544, True, ('AMBIGUOUS_ATTRIBUTION', {'alpha': 0, 'pure_breakout': 0, 'ambiguous': 1}),
+     ('AMBIGUOUS_ATTRIBUTION', {'alpha': 0, 'pure_breakout': 0, 'ambiguous': 1})),
+])
+def test_ready_pack_reports_attribution_of_alpha_breakout_trade(host, predicted, ml_spoke, momentum, breakout):
+    row, receipt, orders = exact_trade_inputs(host)
+    row.update(entry_source='alpha+breakout', predicted_return=predicted, ml_spoke=ml_spoke)
+    receipt['entry_source'] = 'alpha+breakout'
+    brain = host[0] / 'organism_brain'
+    (brain / 'trade_history.csv').write_bytes(attribution_csv([row]))
+    (brain / 'close_accounting.json').write_bytes(daily.encoded(checkpoint([row], {row['entry_order_id']: row['closed_at']})))
+    (brain / 'entry_evidence.jsonl').write_text(json.dumps(receipt) + '\n')
+    inputs, collection, _ = run_host(host, FakeTransport(orders))
+    report = daily.analyze(inputs, collection)
+    assert report['status'] == 'READY_FOR_REVIEW', report['issues']
+    gates = report['strategy_gate']
+    for name, (state, sources) in (('momentum', momentum), ('breakout', breakout)):
+        assert gates[name]['state'] == state
+        assert gates[name]['n_by_source'] == sources
+        assert gates[name]['attribution_rule'] == 'ml_isolation_signature_v1'
+    assert not {g['state'] for g in gates.values()} & {'PASS', 'FAIL'}
+    assert report['promotion_authorized'] is False
