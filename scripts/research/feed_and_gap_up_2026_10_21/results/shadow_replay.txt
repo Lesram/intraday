@@ -1,0 +1,21 @@
+Signals logged 2026-09-16..2026-10-20 (24 sessions), replayed on SIP 1-minute bars, 3 bps per side.
+
+                                trades  sessions  gross_bps  net_bps  t_sess   hit%  avg_bars  stop%  target%
+sid                      side
+fw_breakout_shadow       long     36.0       6.0      -5.10   -11.10   -0.63  33.33     60.00   0.00     0.00
+fw_mean_reversion_shadow long    663.0      24.0      -0.51    -6.51   -5.55  17.95     10.58  78.43    16.29
+fw_momentum_shadow       long    596.0      24.0      -2.34    -8.34   -1.19  41.78     58.28   0.00     0.00
+                         short   257.0      24.0     -10.03   -16.03   -2.25  42.80     57.13   0.00     0.00
+fw_orb_shadow            long     74.0      22.0      -0.72    -6.72   -0.47  44.59     53.72  21.62     0.00
+                         short    74.0      24.0       2.13    -3.87    0.40  52.70     52.31  20.27     0.00
+orb_legacy_shadow        long     74.0      22.0      -0.38    -6.38   -0.39  44.59     53.72  21.62     0.00
+                         short    74.0      24.0       1.33    -4.67    0.35  52.70     52.31  20.27     0.00
+
+mean reversion by regime:
+               trades  sessions  gross_bps  net_bps  t_sess   hit%  avg_bars   stop%  target%
+regime
+chop            580.0      24.0      -0.67    -6.67   -5.28  17.93     10.87   78.28    16.21
+high_vol          8.0       4.0      -9.03   -15.03   -0.76  12.50      9.62   87.50    12.50
+low_vol           9.0       3.0      -6.75   -12.75  -23.33   0.00      4.78  100.00     0.00
+trending_down    47.0       6.0       2.62    -3.38   -2.08  17.02      9.04   78.72    14.89
+trending_up      19.0       5.0       2.96    -3.04   -0.50  31.58      8.63   68.42    31.58
