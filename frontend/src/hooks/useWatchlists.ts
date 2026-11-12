@@ -52,14 +52,17 @@ export const useWatchlist = (id: number) => {
 
 /**
  * Hook to fetch quotes for a watchlist
+ *
+ * Audit 2026-10-05 A8-01: polled every 20 s (was 5 s). The backend serves one
+ * batched latest-quote request per 10 s from a shared cache.
  */
 export const useWatchlistQuotes = (id: number, enabled = true) => {
   return useQuery({
     queryKey: watchlistKeys.quotes(id),
     queryFn: () => getWatchlistQuotes(id),
     enabled: !!id && enabled,
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
-    staleTime: 3000, // Consider stale after 3 seconds
+    refetchInterval: 20000,
+    staleTime: 10000,
   });
 };
 

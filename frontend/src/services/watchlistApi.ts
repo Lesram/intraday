@@ -44,13 +44,22 @@ export interface ReorderSymbolsRequest {
   symbol_orders: { symbol: string; order: number }[];
 }
 
+/**
+ * One symbol's entry in GET /watchlists/{id}/quotes, a map keyed by symbol.
+ * price is the midpoint of the latest two-sided quote and timestamp that
+ * quote's exchange time; change/changePercent are null (a latest quote has no
+ * previous close). error explains a null price (audit 2026-10-05 A8-01).
+ */
 export interface QuoteData {
   symbol: string;
-  price: number;
-  change: number;
-  changePercent: number;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  bid?: number | null;
+  ask?: number | null;
   volume?: number;
-  timestamp: string;
+  timestamp: string | null;
+  error?: string;
 }
 
 /**

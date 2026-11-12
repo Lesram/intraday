@@ -133,7 +133,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onSymbolSelect }) => {
   const [presets, setPresets] = useState<ScanPreset[]>([]);
   const [presetsLoaded, setPresetsLoaded] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState(10); // seconds
+  // Seconds between Live scans; the server enforces at least 60 (audit 2026-10-05 A6-01).
+  const [refreshInterval, setRefreshInterval] = useState(60);
 
   const api = new ScannerAPI();
   
@@ -424,8 +425,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onSymbolSelect }) => {
           {/* Refresh Interval */}
           {autoRefresh && (
             <InputNumber
-              min={5}
-              max={60}
+              min={60}
+              max={3600}
               value={refreshInterval}
               onChange={(value) => {
                 if (value) {

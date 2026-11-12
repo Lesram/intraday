@@ -11,11 +11,23 @@ Features:
 
 Phase 7 - Market Data & Charting
 Created: October 16, 2025
+
+Audit 2026-10-05 A6-01: scans, exports and the scanner websocket make market
+data requests for ~50 symbols, and the API process runs one event loop that is
+shared with the trading engine's tick, the outbox worker and the Alpaca
+streams. They are therefore disabled unless DASHBOARD_SCANNER_ENABLED=true
+(default off; unrelated to SCANNER_ENABLED, which controls the engine's own
+market scanner). When enabled, every SDK call runs off the event loop through
+backend.services.dashboard_market_data (pool thread, timeout, no SDK retry
+sleeps), at most SCAN_CONCURRENCY at a time, one scan at a time per process,
+and websocket auto-refresh runs no more often than WS_MIN_SCAN_INTERVAL_S.
 """
 
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
+import os
+import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,10 +41,52 @@ from pydantic import BaseModel, Field
 from backend.infra.security import (
     get_authenticated_user as get_current_user,
 )
+from backend.services import dashboard_market_data
+from backend.services.scanner_universe import SCANNABLE_SYMBOLS
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/scanner", tags=["scanner"])
+
+# ============================================================================
+# FEATURE FLAG (audit 2026-10-05 A6-01)
+# ============================================================================
+
+DASHBOARD_SCANNER_ENV = "DASHBOARD_SCANNER_ENABLED"
+SCANNER_DISABLED_DETAIL = (
+    "The dashboard market scanner is disabled on this deployment "
+    f"({DASHBOARD_SCANNER_ENV}=false)."
+)
+# Close code sent, before accept, to scanner websocket connections while the
+# flag is off. Closing before accept rejects the handshake (HTTP 403).
+SCANNER_DISABLED_WS_CODE = 4503
+# Enabled-path bounds.
+SCAN_CONCURRENCY = 2
+WS_MIN_SCAN_INTERVAL_S = 60
+WS_MAX_SCAN_INTERVAL_S = 3600
+
+
+def dashboard_scanner_enabled() -> bool:
+    """DASHBOARD_SCANNER_ENABLED, read per request; default off."""
+    return os.getenv(DASHBOARD_SCANNER_ENV, "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+async def require_dashboard_scanner_enabled(
+    current_user=Depends(get_current_user),
+):
+    """Authenticate first, then refuse with 503 while the scanner is disabled."""
+    if not dashboard_scanner_enabled():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=SCANNER_DISABLED_DETAIL)
+    return current_user
+
+
+def _scan_interval(raw: Any) -> int:
+    """Seconds between websocket auto-refresh scans; the client value is only a request."""
+    try:
+        requested = int(float(raw))
+    except (TypeError, ValueError, OverflowError):
+        requested = WS_MIN_SCAN_INTERVAL_S
+    return min(WS_MAX_SCAN_INTERVAL_S, max(WS_MIN_SCAN_INTERVAL_S, requested))
 
 # ============================================================================
 # ENUMS
@@ -116,42 +170,43 @@ class ScanPreset(BaseModel):
     filters: ScanFilters
 
 # ============================================================================
-# MOCK DATA (Replace with real data source)
+# MARKET DATA (enabled path only; audit 2026-10-05 A6-01)
 # ============================================================================
 
-# Popular symbols to scan
-SCANNABLE_SYMBOLS = [
-    'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'META', 'NVDA', 'JPM', 'V', 'WMT',
-    'UNH', 'JNJ', 'PG', 'MA', 'HD', 'DIS', 'PYPL', 'BAC', 'ADBE', 'CRM',
-    'NFLX', 'CMCSA', 'XOM', 'VZ', 'KO', 'PEP', 'T', 'INTC', 'CSCO', 'PFE',
-    'ABT', 'MRK', 'TMO', 'COST', 'AVGO', 'NKE', 'CVX', 'MCD', 'DHR', 'LLY',
-    'TXN', 'NEE', 'UNP', 'ORCL', 'PM', 'BMY', 'QCOM', 'LIN', 'HON', 'AMD'
-]
+# SCANNABLE_SYMBOLS now lives in backend.services.scanner_universe (imported
+# above, so backend.api.routes.scanner.SCANNABLE_SYMBOLS still resolves).
 
-async def get_real_market_data(symbol: str) -> dict[str, Any] | None:
-    """✅ REAL DATA: Fetch actual market data from Alpaca"""
-    from datetime import datetime
-    import os
 
-    from alpaca.data.historical import StockHistoricalDataClient
+def _get_stock_bars_blocking(request):
+    """One bars request on a dashboard pool thread (bounded client, no retry sleeps)."""
+    return dashboard_market_data.stock_data_client().get_stock_bars(request)
+
+
+_INDICATORS_UNAVAILABLE_WARNED = False
+
+
+def _indicator_backend_available() -> bool:
+    """True when DataFrames carry the ``.ta`` accessor (pandas_ta) the indicators need."""
+    return hasattr(pd.DataFrame, "ta")
+
+
+async def get_real_market_data(symbol: str, quote_price: float | None = None) -> dict[str, Any] | None:
+    """✅ REAL DATA: Fetch actual market data from Alpaca
+
+    Audit 2026-10-05 A6-01: the current price comes from the shared dashboard
+    quote cache (a scan passes it in from one batched request) and the bars
+    request runs on the dashboard pool with a timeout, never on the event loop.
+    """
     from alpaca.data.requests import StockBarsRequest
     from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 
-    from backend.services.quote_manager import get_quote_manager
-
     try:
-        quote_manager = get_quote_manager()
-
-        # Get current quote
-        quote = await quote_manager.get_quote(symbol)
-        if not quote:
+        if quote_price is None:
+            batch = await dashboard_market_data.get_latest_quotes([symbol])
+            quote = batch.quotes.get(symbol.upper())
+            quote_price = quote.price if quote is not None else None
+        if not quote_price:
             return None
-
-        # Get previous day's close for change calculation
-        alpaca_client = StockHistoricalDataClient(
-            api_key=os.getenv('ALPACA_API_KEY_ID'),
-            secret_key=os.getenv('ALPACA_API_SECRET_KEY')
-        )
 
         # Get last 2 days of data
         request = StockBarsRequest(
@@ -161,7 +216,7 @@ async def get_real_market_data(symbol: str) -> dict[str, Any] | None:
             limit=10
         )
 
-        response = alpaca_client.get_stock_bars(request)
+        response = await dashboard_market_data.run_blocking(_get_stock_bars_blocking, request)
 
         # Check response format (SDK version compatibility)
         bars_data = None
@@ -178,7 +233,7 @@ async def get_real_market_data(symbol: str) -> dict[str, Any] | None:
         prev_bar = bars[-2]
 
         # Calculate change
-        current_price = quote.last
+        current_price = float(quote_price)
         prev_close = float(prev_bar.close)
         change = current_price - prev_close
         change_percent = (change / prev_close) * 100 if prev_close > 0 else 0
@@ -205,22 +260,17 @@ async def get_real_market_data(symbol: str) -> dict[str, Any] | None:
 
 
 async def calculate_indicators_for_symbol(symbol: str, bars_data: list = None) -> dict[str, float] | None:
-    """✅ REAL DATA: Calculate real technical indicators using pandas_ta"""
-    from datetime import datetime, timedelta
-    import os
+    """✅ REAL DATA: Calculate real technical indicators using pandas_ta
 
-    from alpaca.data.historical import StockHistoricalDataClient
+    Audit 2026-10-05 A6-01: the bars request runs on the dashboard pool with a
+    timeout (backend.services.dashboard_market_data), never on the event loop.
+    """
     from alpaca.data.requests import StockBarsRequest
     from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 
     try:
         # Get historical bars if not provided
         if not bars_data:
-            alpaca_client = StockHistoricalDataClient(
-                api_key=os.getenv('ALPACA_API_KEY_ID'),
-                secret_key=os.getenv('ALPACA_API_SECRET_KEY')
-            )
-
             # Get 250 days for 200 SMA calculation
             request = StockBarsRequest(
                 symbol_or_symbols=symbol,
@@ -229,7 +279,7 @@ async def calculate_indicators_for_symbol(symbol: str, bars_data: list = None) -
                 limit=250
             )
 
-            response = alpaca_client.get_stock_bars(request)
+            response = await dashboard_market_data.run_blocking(_get_stock_bars_blocking, request)
 
             # Check response format (SDK version compatibility)
             if response and hasattr(response, 'data'):
@@ -467,13 +517,30 @@ def apply_filters(data: dict[str, Any], indicators: dict[str, float], filters: S
 # API ENDPOINTS
 # ============================================================================
 
-@router.post("/scan", response_model=ScanResponse)
+@router.get("/status")
+async def get_scanner_status(current_user=Depends(get_current_user)):
+    """Whether the dashboard scanner is enabled here (no market-data I/O).
+
+    The Market Scanner page reads this once on load and shows a static notice
+    while the scanner is disabled (audit 2026-10-05 A6-01).
+    """
+    return {
+        "enabled": dashboard_scanner_enabled(),
+        "flag": DASHBOARD_SCANNER_ENV,
+        "min_interval_seconds": WS_MIN_SCAN_INTERVAL_S,
+    }
+
+
+@router.post(
+    "/scan", response_model=ScanResponse,
+    dependencies=[Depends(require_dashboard_scanner_enabled)],
+)
 async def scan_market(
     filters: ScanFilters,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Scan market with filters
+    Scan market with filters (503 unless DASHBOARD_SCANNER_ENABLED=true)
 
     Args:
         filters: Scan filter criteria
@@ -663,8 +730,9 @@ class ScannerConnectionManager:
                 logger.exception("Failed to send scan results to %s", client_id)
                 self.disconnect(client_id)
 
-    async def start_scanning(self, client_id: str, filters: ScanFilters, interval: int = 10):
-        """Start continuous scanning for a client"""
+    async def start_scanning(self, client_id: str, filters: ScanFilters, interval: int = WS_MIN_SCAN_INTERVAL_S):
+        """Start continuous scanning for a client (interval clamped to the server minimum)."""
+        interval = _scan_interval(interval)
         while client_id in self.active_connections:
             try:
                 # Perform scan
@@ -684,57 +752,86 @@ class ScannerConnectionManager:
 # Global connection manager
 scanner_manager = ScannerConnectionManager()
 
+# One scan at a time per process (scans from several tabs queue behind each other).
+_scan_lock = dashboard_market_data.PerLoopLock()
+
+
+async def _scan_symbol(symbol: str, quote_price: float, filters: ScanFilters) -> ScanResult | None:
+    """Market data, indicators and filters for one symbol; None when it does not match."""
+    try:
+        # Get market data (real data)
+        market_data = await get_real_market_data(symbol, quote_price=quote_price)
+        if not market_data:
+            return None
+
+        # Calculate indicators (real calculations)
+        indicators = await calculate_indicators_for_symbol(symbol)
+        if not indicators:
+            return None
+
+        # Apply filters
+        matches, signals, score = apply_filters(market_data, indicators, filters)
+        if not matches:
+            return None
+        return ScanResult(
+            symbol=symbol,
+            price=market_data['price'],
+            change=market_data['change'],
+            change_percent=market_data['change_percent'],
+            volume=market_data['volume'],
+            avg_volume=market_data.get('avg_volume'),
+            rsi=indicators.get('rsi'),
+            macd=indicators.get('macd'),
+            macd_signal=indicators.get('macd_signal'),
+            sma_50=indicators.get('sma_50'),
+            sma_200=indicators.get('sma_200'),
+            atr=indicators.get('atr'),
+            score=score,
+            signals=signals
+        )
+    except Exception:  # noqa: BLE001 - skip one bad symbol without failing the scan.
+        logger.exception("Error scanning %s", symbol)
+        return None
+
+
 async def scan_market_internal(filters: ScanFilters) -> ScanResponse:
-    """✅ REAL DATA: Internal function to perform market scan with real Alpaca data"""
-    start_time = datetime.now()
-    results = []
+    """✅ REAL DATA: Internal function to perform market scan with real Alpaca data
 
-    # Batch fetch quotes for all symbols (much faster than individual calls)
-    from backend.services.quote_manager import get_quote_manager
-    quote_manager = get_quote_manager()
-    quotes_dict = await quote_manager.get_quotes(SCANNABLE_SYMBOLS)
+    Audit 2026-10-05 A6-01: quotes come from ONE batched request (shared
+    dashboard cache); each symbol's bars requests run on the dashboard pool
+    with a timeout, at most SCAN_CONCURRENCY symbols at a time, and only one
+    scan runs at a time. Without the indicator backend (pandas_ta, not in the
+    image) no symbol can match, so the scan returns at once without any
+    market-data request.
+    """
+    global _INDICATORS_UNAVAILABLE_WARNED
+    started = time.monotonic()
+    results: list[ScanResult] = []
 
-    logger.info("Fetched %s quotes for scanning", len(quotes_dict))
+    if not _indicator_backend_available():
+        if not _INDICATORS_UNAVAILABLE_WARNED:
+            logger.warning(
+                "pandas_ta not installed — scanner indicators (RSI/MACD/SMA/ATR) "
+                "unavailable; scans return no results and make no market-data requests."
+            )
+            _INDICATORS_UNAVAILABLE_WARNED = True
+    else:
+        async with _scan_lock():
+            batch = await dashboard_market_data.get_latest_quotes(SCANNABLE_SYMBOLS)
+            priced = [
+                (symbol, quote.price)
+                for symbol in SCANNABLE_SYMBOLS
+                if (quote := batch.quotes.get(symbol)) is not None and quote.price
+            ]
+            logger.info("Fetched %s quotes for scanning", len(priced))
+            gate = asyncio.Semaphore(SCAN_CONCURRENCY)
 
-    # Scan symbols that have quotes
-    for symbol in SCANNABLE_SYMBOLS:
-        if symbol not in quotes_dict:
-            continue
+            async def bounded(symbol: str, price: float) -> ScanResult | None:
+                async with gate:
+                    return await _scan_symbol(symbol, price, filters)
 
-        try:
-            # Get market data (real data)
-            market_data = await get_real_market_data(symbol)
-            if not market_data:
-                continue
-
-            # Calculate indicators (real calculations)
-            indicators = await calculate_indicators_for_symbol(symbol)
-            if not indicators:
-                continue
-
-            # Apply filters
-            matches, signals, score = apply_filters(market_data, indicators, filters)
-
-            if matches:
-                results.append(ScanResult(
-                    symbol=symbol,
-                    price=market_data['price'],
-                    change=market_data['change'],
-                    change_percent=market_data['change_percent'],
-                    volume=market_data['volume'],
-                    avg_volume=market_data.get('avg_volume'),
-                    rsi=indicators.get('rsi'),
-                    macd=indicators.get('macd'),
-                    macd_signal=indicators.get('macd_signal'),
-                    sma_50=indicators.get('sma_50'),
-                    sma_200=indicators.get('sma_200'),
-                    atr=indicators.get('atr'),
-                    score=score,
-                    signals=signals
-                ))
-        except Exception:  # noqa: BLE001 - skip one bad symbol without failing the scan.
-            logger.exception("Error scanning %s", symbol)
-            continue
+            outcomes = await asyncio.gather(*(bounded(symbol, price) for symbol, price in priced))
+            results = [result for result in outcomes if result is not None]
 
     # Sort by score (highest first)
     results.sort(key=lambda x: x.score, reverse=True)
@@ -743,7 +840,7 @@ async def scan_market_internal(filters: ScanFilters) -> ScanResponse:
     results = results[:filters.limit]
 
     # Calculate scan time
-    scan_time = (datetime.now() - start_time).total_seconds()
+    scan_time = time.monotonic() - started
 
     # Count filters applied
     filters_applied = sum([
@@ -777,11 +874,15 @@ async def scanner_websocket(
     """
     WebSocket endpoint for real-time market scanning.
 
+    Refused before accept unless DASHBOARD_SCANNER_ENABLED=true (audit
+    2026-10-05 A6-01).
+
     Client sends:
     {
         "action": "start" | "stop" | "update_filters",
         "filters": { ... },  // ScanFilters object
-        "interval": 10       // Scan interval in seconds (default: 10)
+        "interval": 60       // Requested seconds between scans; the server
+                             // enforces at least WS_MIN_SCAN_INTERVAL_S (60)
     }
 
     Server sends:
@@ -813,6 +914,14 @@ async def scanner_websocket(
         await websocket.close(code=4003, reason="Invalid or expired token")
         return
 
+    # Audit 2026-10-05 A6-01: refuse BEFORE accept while the dashboard scanner
+    # is disabled. A close before accept rejects the handshake, so the page's
+    # Live mode never sees connected -> disconnected and does not reconnect in
+    # a loop (accept-then-close would).
+    if not dashboard_scanner_enabled():
+        await websocket.close(code=SCANNER_DISABLED_WS_CODE, reason="Dashboard market scanner is disabled")
+        return
+
     await scanner_manager.connect(websocket, client_id)
 
     try:
@@ -827,7 +936,7 @@ async def scanner_websocket(
                 # Start continuous scanning
                 filters_dict = message.get('filters', {})
                 filters = ScanFilters(**filters_dict)
-                interval = message.get('interval', 10)
+                interval = _scan_interval(message.get('interval'))
 
                 # Cancel existing task if any
                 if client_id in scanner_manager.scan_tasks:
@@ -860,7 +969,7 @@ async def scanner_websocket(
                 # Update filters and restart scanning
                 filters_dict = message.get('filters', {})
                 filters = ScanFilters(**filters_dict)
-                interval = message.get('interval', 10)
+                interval = _scan_interval(message.get('interval'))
 
                 # Cancel and restart
                 if client_id in scanner_manager.scan_tasks:
@@ -906,13 +1015,13 @@ import io
 from fastapi.responses import StreamingResponse
 
 
-@router.post("/export/csv")
+@router.post("/export/csv", dependencies=[Depends(require_dashboard_scanner_enabled)])
 async def export_scan_results_csv(
     filters: ScanFilters,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Export scan results as CSV
+    Export scan results as CSV (503 unless DASHBOARD_SCANNER_ENABLED=true)
 
     Args:
         filters: Scan filter criteria
@@ -974,13 +1083,13 @@ async def export_scan_results_csv(
             detail="Export failed"
         )
 
-@router.post("/export/json")
+@router.post("/export/json", dependencies=[Depends(require_dashboard_scanner_enabled)])
 async def export_scan_results_json(
     filters: ScanFilters,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Export scan results as JSON
+    Export scan results as JSON (503 unless DASHBOARD_SCANNER_ENABLED=true)
 
     Args:
         filters: Scan filter criteria

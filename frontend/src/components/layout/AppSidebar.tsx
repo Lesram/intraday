@@ -8,7 +8,6 @@ import {
   ThunderboltOutlined,
   RobotOutlined,
   WarningOutlined,
-  SearchOutlined,
   FileTextOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -44,7 +43,8 @@ const AppSidebar = () => {
       { key: '/backtesting', icon: <ExperimentOutlined />, label: 'Backtesting' },
       { key: '/ml-models', icon: <RobotOutlined />, label: 'ML Models' },
       { key: '/risk', icon: <WarningOutlined />, label: 'Risk Management' },
-      { key: '/market-data', icon: <SearchOutlined />, label: 'Market Scanner' },
+      // Market Scanner (/market-data) is not listed: it is disabled by default
+      // on the trading host (DASHBOARD_SCANNER_ENABLED, audit 2026-10-05 A6-01).
       { key: '/organism', icon: <ApartmentOutlined />, label: 'Living Organism' },
       { type: 'divider' },
       { key: '/architecture', icon: <DeploymentUnitOutlined />, label: 'Architecture Map' },

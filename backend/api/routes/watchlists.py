@@ -3,7 +3,7 @@ Watchlist management routes
 """
 from datetime import UTC, datetime
 import logging
-import os
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
@@ -20,9 +20,18 @@ from backend.api.schemas.watchlists import (
 )
 from backend.infra.db import get_db_session
 from backend.infra.schemas import User, Watchlist, WatchlistSymbol
+from backend.services import dashboard_market_data
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/watchlists", tags=["watchlists"])
+
+# Audit 2026-10-05 A8-01: most symbols one quotes request looks up (one batched
+# latest-quote request; further symbols are answered with error "symbol_limit").
+WATCHLIST_QUOTE_SYMBOL_LIMIT = 50
+# US equity tickers: 1-5 letters with an optional class or unit suffix (BRK.B,
+# ACAH.WS). Anything else is answered "unsupported_symbol" without reaching the
+# data API, so one malformed symbol cannot make it refuse the whole batch.
+_QUOTABLE_SYMBOL = re.compile(r"[A-Z]{1,5}(?:[.-][A-Z]{1,2})?")
 
 
 @router.get("/", response_model=list[WatchlistResponse])
@@ -410,7 +419,24 @@ async def get_watchlist_quotes(
     db: AsyncSession = Depends(get_db_session)
 ):
     """
-    Get real-time quotes for all symbols in a watchlist
+    Get the latest quotes for the symbols in a watchlist.
+
+    Returns a map keyed by symbol, the shape the Trading page reads:
+    ``{symbol: {symbol, price, change, changePercent, bid, ask, timestamp[, error]}}``.
+    ``price`` is the midpoint of the latest two-sided quote and ``timestamp`` is
+    that quote's own exchange time; ``change``/``changePercent`` are null (a
+    latest quote has no previous close). ``error`` explains a null price:
+    ``no_quote``, ``no_two_sided_quote``, ``market_data_unavailable``,
+    ``symbol_limit`` or ``unsupported_symbol`` (not a US equity ticker, or
+    refused by the data API).
+
+    Audit 2026-10-05 A8-01: no AlpacaClient is built per request (its
+    constructor called get_account and logged account data) and no blocking
+    call runs on the event loop. All symbols share ONE batched latest-quote
+    request on the dashboard pool (timeout, no SDK retry sleeps; retried once
+    without any symbol the data API refuses) behind a process-wide 10 s
+    cache, and at most WATCHLIST_QUOTE_SYMBOL_LIMIT symbols are looked up per
+    request. The DB session is closed before the fetch is awaited.
     """
     result = await db.execute(
         select(Watchlist)
@@ -428,50 +454,46 @@ async def get_watchlist_quotes(
             detail=f"Watchlist {watchlist_id} not found"
         )
 
-    # Get quotes from Alpaca
-    from backend.data.alpaca_client import AlpacaClient
+    symbols = list(dict.fromkeys(
+        s.symbol.strip().upper() for s in watchlist.symbols if s.symbol and s.symbol.strip()
+    ))
+    # The symbols are copied: end the read transaction and hand the pooled
+    # connection (the pool the trading engine uses too) back before awaiting
+    # market data, so a stalled quote fetch never holds a DB connection.
+    await db.close()
+    quotable = [s for s in symbols if _QUOTABLE_SYMBOL.fullmatch(s)]
+    requested = quotable[:WATCHLIST_QUOTE_SYMBOL_LIMIT]
+    batch = await dashboard_market_data.get_latest_quotes(requested) if requested else None
+    requested_set = set(requested)
 
-    symbols = [s.symbol for s in watchlist.symbols]
-    quotes_data = []
+    quotes: dict[str, dict] = {}
+    for symbol in symbols:
+        quote = None
+        if symbol not in requested_set:
+            error = "symbol_limit" if _QUOTABLE_SYMBOL.fullmatch(symbol) else "unsupported_symbol"
+        else:
+            quote = batch.quotes.get(symbol)
+            if symbol in batch.refused:
+                error = "unsupported_symbol"  # the data API refused it
+            elif quote is None:
+                error = "market_data_unavailable" if symbol in batch.unavailable else "no_quote"
+            else:
+                error = None if quote.price is not None else "no_two_sided_quote"
+        quotes[symbol] = _quote_entry(symbol, quote, error)
+    return quotes
 
-    try:
-        alpaca_client = AlpacaClient(
-            api_key=os.getenv("ALPACA_API_KEY_ID"),
-            secret_key=os.getenv("ALPACA_API_SECRET_KEY"),
-            paper=os.getenv("ALPACA_PAPER", "true").lower() == "true"
-        )
 
-        # Get quote for each symbol
-        for symbol in symbols:
-            try:
-                price = alpaca_client.get_current_price(symbol)
-                if price:
-                    quotes_data.append({
-                        "symbol": symbol,
-                        "price": price,
-                        "timestamp": datetime.now(UTC).isoformat()
-                    })
-                else:
-                    # If no price available, return placeholder
-                    quotes_data.append({
-                        "symbol": symbol,
-                        "price": None,
-                        "error": "No quote available"
-                    })
-            except Exception as e:
-                logger.warning(f"Failed to get quote for {symbol}: {str(e)}")
-                quotes_data.append({
-                    "symbol": symbol,
-                    "price": None,
-                    "error": str(e)
-                })
-
-    except Exception as e:
-        logger.error(f"Failed to initialize Alpaca client: {str(e)}")
-        # Return error for all symbols
-        quotes_data = [{"symbol": s, "price": None, "error": "Market data unavailable"} for s in symbols]
-
-    return {
-        "watchlist_id": watchlist_id,
-        "quotes": quotes_data
+def _quote_entry(symbol: str, quote, error: str | None) -> dict:
+    entry = {
+        "symbol": symbol,
+        "price": quote.price if quote is not None else None,
+        # A latest quote carries no previous close; the card shows price only.
+        "change": None,
+        "changePercent": None,
+        "bid": quote.bid if quote is not None else None,
+        "ask": quote.ask if quote is not None else None,
+        "timestamp": quote.timestamp if quote is not None else None,
     }
+    if error:
+        entry["error"] = error
+    return entry
